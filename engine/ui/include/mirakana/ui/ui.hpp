@@ -130,6 +130,7 @@ struct ElementDesc {
     TextContent text;
     ImageContent image;
     std::string accessibility_label;
+    bool accessibility_live_region{false};
     Style style;
 };
 
@@ -143,6 +144,7 @@ struct Element {
     TextContent text;
     ImageContent image;
     std::string accessibility_label;
+    bool accessibility_live_region{false};
     Style style;
     std::vector<ElementId> children;
 };
@@ -353,6 +355,7 @@ struct AccessibilityNode {
     std::string localization_key;
     bool enabled{true};
     bool focusable{false};
+    bool live_region{false};
     ElementId parent;
     std::size_t depth{0};
 };

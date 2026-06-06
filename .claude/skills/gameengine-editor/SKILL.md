@@ -25,7 +25,8 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
 - AI operation status stays in first-party value rows: `EditorAiOperationSnapshot.status_rows` uses exact ids
   `editor.ai.dock.selected_panel`, `editor.ai.rich_text.documents`, `editor.ai.text_input.focused_target`, `editor.ai.adapter.text_font`,
   `editor.ai.ime.session`, `editor.ai.ime.parity`, `editor.ai.ime.candidate_selection`, `editor.ai.ime.reconversion`,
-  `editor.ai.ime.platform_host_gates`, `editor.ai.accessibility.uia_provider`, `editor.ai.viewport.display`, and
+  `editor.ai.ime.platform_host_gates`, `editor.ai.accessibility.uia_provider`, `editor.ai.accessibility.parity`,
+  `editor.ai.viewport.display`, and
   `editor.ai.material_preview.display`;
   reviewed rich-text commands always include read-only copy rows `<rich_text_document_id>.copy_plain_text` and
   `<rich_text_document_id>.copy_selection_plain_text`; editable documents may additionally expose
@@ -48,7 +49,12 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor_ime_linux_ibus_status=host_gated`, `editor_ime_linux_fcitx_status=host_gated`, `editor_ime_android_status=host_gated`,
   `editor_ime_ios_status=host_gated`, and `editor_ime_native_handles_exposed=0`, private Windows UIA provider publication with
   `editor_shell_accessibility_status=uia_provider_ready`, screen-space bounds, hosted-root null runtime ids, and child `UiaAppendRuntimeId`
-  rows, native viewport/material preview lifecycle gates, private `native_texture_display_adapter.*` RHI evidence, and private
+  rows, first-party accessibility parity evidence rows including `editor_accessibility_parity_status=ready`,
+  `editor_accessibility_windows_uia_patterns_ready=1`, `editor_accessibility_windows_uia_events_ready=1`,
+  `editor_accessibility_macos_status=host_gated`, `editor_accessibility_linux_at_spi_status=host_gated`,
+  `editor_accessibility_android_status=host_gated`, `editor_accessibility_ios_status=host_gated`,
+  positive live-region/pattern/event rows, and `editor_accessibility_native_handles_exposed=0`, native viewport/material preview
+  lifecycle gates, private `native_texture_display_adapter.*` RHI evidence, and private
   `native_editor_visible_texture_compositor.*` presentation for requested private D3D12 texture display, offscreen targets, descriptor
   updates, resource-barrier, fence readiness, viewport resize-safe teardown, visible-compositor consumption, positive visible texture
   composite smoke counters, material-preview host-private frame preparation, retained `ui_retained_*` diff/cache smoke rows
@@ -64,9 +70,9 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor_rich_text_edit_status=ready`, `editor_rich_text_clipboard_plain_ready=1`,
   `editor_rich_text_clipboard_rich_ready=1`, and `editor_rich_text_native_handles_exposed=0`. Visible OS-level multi-window drag/drop
   shell restoration, help rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, custom native IME candidate UI,
-  non-Windows IME execution, full UIA control pattern/event parity, Vulkan/Metal editor texture-display
+  non-Windows IME execution, external OS accessibility-tool execution beyond first-party evidence, Vulkan/Metal editor texture-display
   parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.
-- When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
+- When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, non-Windows IME execution, or external accessibility-tool execution. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 - Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows: macOS Core Text/InputMethodKit/NSAccessibility,
   Linux AT-SPI/IBus/Fcitx, Android InputMethodService/accessibility, iOS UITextInput/UIAccessibility, and HarfBuzz/FreeType/ICU-class adapters
   must not be claimed from Windows DirectWrite/TSF/UIA evidence. HarfBuzz, FreeType, ICU, and font packages stay `dependency_gated` until

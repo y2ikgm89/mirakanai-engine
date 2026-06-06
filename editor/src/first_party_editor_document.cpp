@@ -135,10 +135,36 @@ void add_or_throw(ui::UiDocument& document, ui::ElementDesc desc) {
     }
 }
 
-void append_label(ui::UiDocument& document, const ui::ElementId& parent, std::string id, std::string label) {
+void append_label(ui::UiDocument& document, const ui::ElementId& parent, std::string id, std::string label,
+                  bool live_region = false) {
     ui::ElementDesc desc = child(std::move(id), parent, ui::SemanticRole::label);
     desc.text = text(std::move(label));
     desc.accessibility_label = desc.text.label;
+    desc.accessibility_live_region = live_region;
+    add_or_throw(document, std::move(desc));
+}
+
+void append_checkbox(ui::UiDocument& document, const ui::ElementId& parent, std::string id, std::string label,
+                     bool enabled = true) {
+    ui::ElementDesc desc = child(std::move(id), parent, ui::SemanticRole::checkbox);
+    desc.text = text(std::move(label));
+    desc.accessibility_label = desc.text.label;
+    desc.enabled = enabled;
+    desc.bounds = ui::Rect{.width = 160.0F, .height = 24.0F};
+    desc.style.background_token = "editor.checkbox.background";
+    desc.style.foreground_token = "editor.text";
+    add_or_throw(document, std::move(desc));
+}
+
+void append_text_field_row(ui::UiDocument& document, const ui::ElementId& parent, std::string id, std::string label,
+                           std::string value) {
+    ui::ElementDesc desc = child(std::move(id), parent, ui::SemanticRole::text_field);
+    desc.text = text(std::move(value));
+    desc.accessibility_label = std::move(label);
+    desc.bounds = ui::Rect{.width = 240.0F, .height = 24.0F};
+    desc.enabled = true;
+    desc.style.background_token = "editor.input.background";
+    desc.style.foreground_token = "editor.text";
     add_or_throw(document, std::move(desc));
 }
 
@@ -170,6 +196,7 @@ void append_text_field(ui::UiDocument& document, const ui::ElementId& parent,
     desc.text = element.text;
     desc.image = element.image;
     desc.accessibility_label = element.accessibility_label;
+    desc.accessibility_live_region = element.accessibility_live_region;
     desc.style = element.style;
     return desc;
 }
@@ -178,8 +205,12 @@ void append_rich_text_document(ui::UiDocument& document, const ui::ElementId& pa
                                const EditorRichTextDocument& rich_text) {
     const auto model = make_editor_rich_text_view_model(
         rich_text, EditorRichTextViewport{.enabled = true, .first_paragraph = 0U, .max_paragraphs = 64U});
+    const bool live_region =
+        rich_text.id.find("console") != std::string::npos || rich_text.id.find("ai_commands") != std::string::npos;
     for (const auto& element : model.document.traverse()) {
-        add_or_throw(document, clone_element_desc(element, parent));
+        auto desc = clone_element_desc(element, parent);
+        desc.accessibility_live_region = desc.accessibility_live_region || live_region;
+        add_or_throw(document, std::move(desc));
     }
     if (!rich_text.editable) {
         return;
@@ -220,6 +251,7 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
         append_rich_text_document(
             document, panel_root,
             make_editor_inspector_rich_text_document(app.inspector_rows(), "editor.panel.inspector.rich_text"));
+        append_text_field_row(document, panel_root, prefix + ".filter.text_field", "Inspector Filter", "filter");
     } else if (panel_id == "console") {
         append_rich_text_document(
             document, panel_root,
@@ -234,6 +266,7 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
         append_label(document, panel_root, prefix + ".status",
                      "project settings diagnostics " + std::to_string(app.project_settings_errors().size()));
         append_text_field(document, panel_root, app.text_input_state());
+        append_checkbox(document, panel_root, prefix + ".autosave", "Autosave enabled");
     }
 }
 
@@ -574,6 +607,16 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .accessibility_invalid_bounds_diagnostics = accessibility.invalid_bounds_diagnostics,
         .accessibility_hidden_nodes = accessibility.hidden_nodes,
         .accessibility_unsupported_pattern_diagnostics = accessibility.unsupported_pattern_diagnostics,
+        .accessibility_parity_status = accessibility.parity_status_id,
+        .accessibility_windows_uia_patterns_ready = accessibility.windows_uia_patterns_ready,
+        .accessibility_windows_uia_events_ready = accessibility.windows_uia_events_ready,
+        .accessibility_macos_status = accessibility.macos_status,
+        .accessibility_linux_at_spi_status = accessibility.linux_at_spi_status,
+        .accessibility_android_status = accessibility.android_status,
+        .accessibility_ios_status = accessibility.ios_status,
+        .accessibility_live_region_rows = accessibility.live_region_rows,
+        .accessibility_uia_pattern_rows = accessibility.uia_pattern_rows,
+        .accessibility_uia_event_rows = accessibility.uia_event_rows,
         .accessibility_native_handles_exposed = accessibility.native_handles_exposed,
         .docking_status = document.docking_status,
         .dock_tab_header_count = document.tab_header_count,
@@ -691,6 +734,13 @@ make_first_party_editor_ai_operation_ux_status_desc(const NativeEditorApp& app,
         .accessibility_invalid_bounds_diagnostics = counters.accessibility_invalid_bounds_diagnostics,
         .accessibility_hidden_nodes = counters.accessibility_hidden_nodes,
         .accessibility_unsupported_pattern_diagnostics = counters.accessibility_unsupported_pattern_diagnostics,
+        .accessibility_parity_status = counters.accessibility_parity_status,
+        .accessibility_windows_uia_patterns_ready = counters.accessibility_windows_uia_patterns_ready,
+        .accessibility_windows_uia_events_ready = counters.accessibility_windows_uia_events_ready,
+        .accessibility_macos_status = counters.accessibility_macos_status,
+        .accessibility_linux_at_spi_status = counters.accessibility_linux_at_spi_status,
+        .accessibility_android_status = counters.accessibility_android_status,
+        .accessibility_ios_status = counters.accessibility_ios_status,
         .accessibility_native_handles_exposed = counters.accessibility_native_handles_exposed,
         .viewport_status = counters.viewport_status,
         .viewport_visible_texture_composites = counters.viewport_visible_texture_composites,

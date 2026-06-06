@@ -64,7 +64,10 @@ Windows text, IME, and accessibility:
 - Microsoft TSF API reference: <https://learn.microsoft.com/en-us/windows/win32/api/_tsf/>
 - Microsoft UI Automation overview: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-uiautomationoverview>
 - Microsoft UI Automation fundamentals: <https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiautocore-overview>
+- Microsoft UI Automation control patterns overview: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-controlpatternsoverview>
 - Microsoft UI Automation control pattern identifiers: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-controlpattern-ids>
+- Microsoft UI Automation properties overview: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-propertiesoverview>
+- Microsoft UI Automation events overview: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-eventsoverview>
 - Microsoft UI Automation for automated testing: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-usefortesting>
 
 Vulkan and Metal editor texture display:
@@ -85,6 +88,8 @@ Cross-platform text, font, IME, and accessibility:
 - Apple InputMethodKit: <https://developer.apple.com/documentation/inputmethodkit>
 - Apple Accessibility for AppKit: <https://developer.apple.com/documentation/appkit/accessibility-for-appkit>
 - Apple `NSAccessibility`: <https://developer.apple.com/documentation/appkit/accessibility_for_appkit/nsaccessibility>
+- GNOME AT-SPI2 core developer docs: <https://gnome.pages.gitlab.gnome.org/at-spi2-core/devel-docs/>
+- WAI-ARIA Authoring Practices Guide: <https://www.w3.org/WAI/ARIA/apg/>
 - freedesktop AT-SPI2: <https://www.freedesktop.org/wiki/Accessibility/AT-SPI2/>
 - Fcitx 5: <https://fcitx-im.org/wiki/Fcitx_5/en>
 - ICU Boundary Analysis: <https://unicode-org.github.io/icu/userguide/boundaryanalysis/>
@@ -466,12 +471,12 @@ Expected: IME parity is per-platform and fail-closed; Windows readiness does not
 
 **Files:** `engine/ui/**`, `editor/src/native_editor_uia_provider.*`, future platform accessibility adapters, tests, docs/manifest/static checks.
 
-- [ ] Add RED tests for first-party semantic role/name/state/focus/action/relationship/live-region rows.
-- [ ] Add Windows UIA RED tests for AutomationId, RuntimeId opacity, Name, ControlType, Invoke, Value, Selection, Text, TextEdit, Scroll, Window, and Toggle patterns where the first-party row supports them.
-- [ ] Add RED tests for UIA events: focus change, property change, text edit, selection change, structure change, and window opened/closed rows.
-- [ ] Add macOS host-gated rows for `NSAccessibilityProtocol`.
-- [ ] Add Linux host-gated rows for AT-SPI2 tree, role, action, text, selection, and event exposure.
-- [ ] Add counters:
+- [x] Add RED tests for first-party semantic role/name/state/focus/action/relationship/live-region rows.
+- [x] Add Windows UIA RED tests for AutomationId, RuntimeId opacity, Name, ControlType, Invoke, Value, Selection, Text, TextEdit, Scroll, Window, and Toggle patterns where the first-party row supports them.
+- [x] Add RED tests for UIA events: focus change, property change, text edit, selection change, structure change, and window opened/closed rows.
+- [x] Add macOS host-gated rows for `NSAccessibilityProtocol`.
+- [x] Add Linux host-gated rows for AT-SPI2 tree, role, action, text, selection, and event exposure.
+- [x] Add counters:
 
 ```text
 editor_accessibility_parity_status=ready
@@ -484,9 +489,11 @@ editor_accessibility_ios_status=host_gated
 editor_accessibility_native_handles_exposed=0
 ```
 
-- [ ] Validate Windows rows with UIA provider tests and Inspect-compatible evidence rows where host tools are available.
+- [x] Validate Windows rows with UIA provider tests and Inspect-compatible evidence rows where host tools are available.
 
 Expected: accessibility parity becomes explicit evidence, not a generic provider-ready claim.
+
+**Phase 7 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase7` adds dependency-free first-party accessibility parity evidence. `mirakana::ui` now propagates `accessibility_live_region` through retained element descriptions, elements, accessibility nodes, and retained UI hashes so live-region changes participate in deterministic snapshot/diff evidence. The Windows editor shell keeps UIA private in `editor/src/native_editor_uia_provider.*` and records `NativeEditorUiaProviderState` rows for AutomationId, opaque child `UiaAppendRuntimeId` runtime ids, Name, ControlType, live regions, Invoke, Value, Selection, Text, TextEdit, Scroll, Window, Toggle, focus, property-change, text-edit, selection-change, structure-change, window, and live-region evidence without exposing native handles. `MK_editor_smoke` reports `editor_accessibility_parity_status=ready`, `editor_accessibility_windows_uia_patterns_ready=1`, `editor_accessibility_windows_uia_events_ready=1`, `editor_accessibility_macos_status=host_gated`, `editor_accessibility_linux_at_spi_status=host_gated`, `editor_accessibility_android_status=host_gated`, `editor_accessibility_ios_status=host_gated`, positive `editor_accessibility_live_region_rows`, positive `editor_accessibility_windows_uia_pattern_rows`, positive `editor_accessibility_windows_uia_event_rows`, and `editor_accessibility_native_handles_exposed=0`. `EditorAiOperationSnapshot.status_rows` now includes `editor.ai.accessibility.parity`. Microsoft UI Automation pattern/property/event documentation, Apple AppKit accessibility documentation, GNOME AT-SPI2 documentation, and WAI-ARIA/APG role/state/live-region guidance via Context7 were refreshed on 2026-06-06; no accessibility middleware or third-party dependency was added. Focused validation passed for `MK_editor_core_tests` and `MK_editor_native_shell_tests`. This completes Phase 7 for selected first-party Windows UIA pattern/event evidence and cross-platform host-gated accessibility rows only; external Inspect/tool execution, macOS/Linux/Android/iOS accessibility execution, Vulkan/Metal editor texture parity, cross-platform visible editor shells, visible OS-level multi-window drag/drop shell restoration, and broad `first_party_editor_excellence` remain later phases.
 
 ## Phase 8: Vulkan Editor Texture Display Parity
 

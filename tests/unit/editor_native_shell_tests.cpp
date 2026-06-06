@@ -502,6 +502,11 @@ MK_TEST("editor native UIA provider maps accessibility payload to stable fragmen
     const mirakana::ui::ElementId panel_id{.value = "editor.panel.inspector"};
     const mirakana::ui::ElementId button_id{.value = "editor.panel.inspector.apply"};
     const mirakana::ui::ElementId text_field_id{.value = "editor.panel.project_settings.name.text_field"};
+    const mirakana::ui::ElementId list_id{.value = "editor.panel.assets.list"};
+    const mirakana::ui::ElementId list_item_id{.value = "editor.panel.assets.list.item.material"};
+    const mirakana::ui::ElementId checkbox_id{.value = "editor.panel.inspector.visible"};
+    const mirakana::ui::ElementId slider_id{.value = "editor.panel.inspector.opacity"};
+    const mirakana::ui::ElementId status_id{.value = "editor.panel.console.status"};
     const mirakana::ui::AccessibilityPayload payload{
         .nodes = {
             mirakana::ui::AccessibilityNode{
@@ -538,6 +543,53 @@ MK_TEST("editor native UIA provider maps accessibility payload to stable fragmen
                 .parent = panel_id,
                 .depth = 2U,
             },
+            mirakana::ui::AccessibilityNode{
+                .id = list_id,
+                .role = mirakana::ui::SemanticRole::list,
+                .label = "Assets",
+                .bounds = mirakana::ui::Rect{.x = 976.0F, .y = 140.0F, .width = 240.0F, .height = 160.0F},
+                .parent = panel_id,
+                .depth = 2U,
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = list_item_id,
+                .role = mirakana::ui::SemanticRole::list_item,
+                .label = "Material",
+                .bounds = mirakana::ui::Rect{.x = 984.0F, .y = 148.0F, .width = 224.0F, .height = 24.0F},
+                .enabled = true,
+                .focusable = true,
+                .parent = list_id,
+                .depth = 3U,
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = checkbox_id,
+                .role = mirakana::ui::SemanticRole::checkbox,
+                .label = "Visible",
+                .bounds = mirakana::ui::Rect{.x = 976.0F, .y = 316.0F, .width = 120.0F, .height = 24.0F},
+                .enabled = true,
+                .focusable = true,
+                .parent = panel_id,
+                .depth = 2U,
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = slider_id,
+                .role = mirakana::ui::SemanticRole::slider,
+                .label = "Opacity",
+                .bounds = mirakana::ui::Rect{.x = 976.0F, .y = 352.0F, .width = 180.0F, .height = 24.0F},
+                .enabled = true,
+                .focusable = true,
+                .parent = panel_id,
+                .depth = 2U,
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = status_id,
+                .role = mirakana::ui::SemanticRole::label,
+                .label = "Build completed",
+                .bounds = mirakana::ui::Rect{.x = 976.0F, .y = 388.0F, .width = 220.0F, .height = 24.0F},
+                .live_region = true,
+                .parent = panel_id,
+                .depth = 2U,
+            },
         }};
 
     const mirakana::editor::NativeEditorUiaScreenOrigin screen_origin{.x = 320.0F, .y = 48.0F};
@@ -545,16 +597,44 @@ MK_TEST("editor native UIA provider maps accessibility payload to stable fragmen
 
     MK_REQUIRE(state.service_id == "win32_uia");
     MK_REQUIRE(state.status_id == "uia_provider_ready");
+    MK_REQUIRE(state.parity_status_id == "ready");
     MK_REQUIRE(state.provider_available);
     MK_REQUIRE(!state.native_handles_exposed);
-    MK_REQUIRE(state.nodes.size() == 4U);
-    MK_REQUIRE(state.role_rows == 4U);
-    MK_REQUIRE(state.name_rows == 4U);
-    MK_REQUIRE(state.state_rows == 4U);
+    MK_REQUIRE(state.nodes.size() == 9U);
+    MK_REQUIRE(state.role_rows == 9U);
+    MK_REQUIRE(state.name_rows == 9U);
+    MK_REQUIRE(state.state_rows == 9U);
     MK_REQUIRE(state.focus_rows == 1U);
-    MK_REQUIRE(state.action_rows == 2U);
-    MK_REQUIRE(state.relationship_rows == 3U);
+    MK_REQUIRE(state.action_rows == 5U);
+    MK_REQUIRE(state.relationship_rows == 8U);
     MK_REQUIRE(state.tree_navigation_rows >= 6U);
+    MK_REQUIRE(state.live_region_rows == 1U);
+    MK_REQUIRE(state.automation_id_rows == 9U);
+    MK_REQUIRE(state.runtime_id_opaque_rows == 8U);
+    MK_REQUIRE(state.name_property_rows == 9U);
+    MK_REQUIRE(state.control_type_rows == 9U);
+    MK_REQUIRE(state.invoke_pattern_rows >= 2U);
+    MK_REQUIRE(state.value_pattern_rows >= 2U);
+    MK_REQUIRE(state.selection_pattern_rows >= 1U);
+    MK_REQUIRE(state.text_pattern_rows >= 2U);
+    MK_REQUIRE(state.text_edit_pattern_rows >= 1U);
+    MK_REQUIRE(state.scroll_pattern_rows >= 1U);
+    MK_REQUIRE(state.window_pattern_rows >= 1U);
+    MK_REQUIRE(state.toggle_pattern_rows >= 1U);
+    MK_REQUIRE(state.uia_pattern_rows >= 12U);
+    MK_REQUIRE(state.windows_uia_patterns_ready);
+    MK_REQUIRE(state.focus_event_rows == 1U);
+    MK_REQUIRE(state.property_change_event_rows >= 1U);
+    MK_REQUIRE(state.text_edit_event_rows >= 1U);
+    MK_REQUIRE(state.selection_change_event_rows >= 1U);
+    MK_REQUIRE(state.structure_change_event_rows >= 1U);
+    MK_REQUIRE(state.window_event_rows >= 2U);
+    MK_REQUIRE(state.uia_event_rows >= 7U);
+    MK_REQUIRE(state.windows_uia_events_ready);
+    MK_REQUIRE(state.macos_status == "host_gated");
+    MK_REQUIRE(state.linux_at_spi_status == "host_gated");
+    MK_REQUIRE(state.android_status == "host_gated");
+    MK_REQUIRE(state.ios_status == "host_gated");
     MK_REQUIRE(state.diagnostics.empty());
     MK_REQUIRE(state.hidden_nodes == 0U);
     MK_REQUIRE(state.unsupported_pattern_diagnostics == 0U);
@@ -563,32 +643,56 @@ MK_TEST("editor native UIA provider maps accessibility payload to stable fragmen
     const auto* panel = find_uia_node(state, panel_id.value);
     const auto* button = find_uia_node(state, button_id.value);
     const auto* text_field = find_uia_node(state, text_field_id.value);
+    const auto* list = find_uia_node(state, list_id.value);
+    const auto* list_item = find_uia_node(state, list_item_id.value);
+    const auto* checkbox = find_uia_node(state, checkbox_id.value);
+    const auto* slider = find_uia_node(state, slider_id.value);
+    const auto* status = find_uia_node(state, status_id.value);
 
     MK_REQUIRE(root != nullptr);
     MK_REQUIRE(panel != nullptr);
     MK_REQUIRE(button != nullptr);
     MK_REQUIRE(text_field != nullptr);
+    MK_REQUIRE(list != nullptr);
+    MK_REQUIRE(list_item != nullptr);
+    MK_REQUIRE(checkbox != nullptr);
+    MK_REQUIRE(slider != nullptr);
+    MK_REQUIRE(status != nullptr);
     MK_REQUIRE(root->control_type_id == "UIA_PaneControlTypeId");
     MK_REQUIRE(panel->control_type_id == "UIA_PaneControlTypeId");
     MK_REQUIRE(button->control_type_id == "UIA_ButtonControlTypeId");
     MK_REQUIRE(text_field->control_type_id == "UIA_EditControlTypeId");
+    MK_REQUIRE(list->control_type_id == "UIA_ListControlTypeId");
+    MK_REQUIRE(list_item->control_type_id == "UIA_ListItemControlTypeId");
+    MK_REQUIRE(checkbox->control_type_id == "UIA_CheckBoxControlTypeId");
+    MK_REQUIRE(slider->control_type_id == "UIA_SliderControlTypeId");
+    MK_REQUIRE(status->control_type_id == "UIA_TextControlTypeId");
     MK_REQUIRE(root->bounds == (mirakana::ui::Rect{.x = 320.0F, .y = 48.0F, .width = 1280.0F, .height = 720.0F}));
     MK_REQUIRE(panel->bounds == (mirakana::ui::Rect{.x = 1280.0F, .y = 48.0F, .width = 320.0F, .height = 720.0F}));
     MK_REQUIRE(button->bounds == (mirakana::ui::Rect{.x = 1296.0F, .y = 96.0F, .width = 96.0F, .height = 28.0F}));
     MK_REQUIRE(root->first_child == panel_id);
     MK_REQUIRE(panel->parent == root_id);
     MK_REQUIRE(panel->first_child == button_id);
-    MK_REQUIRE(panel->last_child == text_field_id);
+    MK_REQUIRE(panel->last_child == status_id);
     MK_REQUIRE(button->next_sibling == text_field_id);
     MK_REQUIRE(text_field->previous_sibling == button_id);
     MK_REQUIRE(button->has_keyboard_focus);
     MK_REQUIRE(!text_field->has_keyboard_focus);
+    MK_REQUIRE(status->live_region);
     MK_REQUIRE(root->runtime_id.empty());
     MK_REQUIRE(!panel->runtime_id.empty());
     MK_REQUIRE(!button->runtime_id.empty());
     MK_REQUIRE(button->runtime_id.front() == 3);
     MK_REQUIRE(std::ranges::find(button->actions, "focus") != button->actions.end());
     MK_REQUIRE(std::ranges::find(text_field->actions, "focus") != text_field->actions.end());
+    MK_REQUIRE(std::ranges::find(button->control_patterns, "Invoke") != button->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(text_field->control_patterns, "Value") != text_field->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(text_field->control_patterns, "Text") != text_field->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(text_field->control_patterns, "TextEdit") != text_field->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(list->control_patterns, "Selection") != list->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(checkbox->control_patterns, "Toggle") != checkbox->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(slider->control_patterns, "Value") != slider->control_patterns.end());
+    MK_REQUIRE(std::ranges::find(root->control_patterns, "Window") != root->control_patterns.end());
 }
 
 MK_TEST("editor native UIA provider diagnoses incomplete accessibility rows") {
@@ -1028,6 +1132,29 @@ MK_TEST("editor native app publishes first party shell accessibility through pri
     MK_REQUIRE(app.accessibility_state().nodes.front().runtime_id.empty());
     MK_REQUIRE(app.accessibility_state().hidden_nodes == 0U);
     MK_REQUIRE(app.accessibility_state().unsupported_pattern_diagnostics == 0U);
+    MK_REQUIRE(app.accessibility_state().automation_id_rows == app.accessibility_state().nodes.size());
+    MK_REQUIRE(app.accessibility_state().name_property_rows == app.accessibility_state().nodes.size());
+    MK_REQUIRE(app.accessibility_state().control_type_rows == app.accessibility_state().nodes.size());
+    MK_REQUIRE(app.accessibility_state().invoke_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().value_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().selection_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().text_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().text_edit_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().scroll_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().window_pattern_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().focus_event_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().property_change_event_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().text_edit_event_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().selection_change_event_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().structure_change_event_rows > 0U);
+    MK_REQUIRE(app.accessibility_state().window_event_rows >= 2U);
+    MK_REQUIRE(app.accessibility_state().windows_uia_patterns_ready);
+    MK_REQUIRE(app.accessibility_state().windows_uia_events_ready);
+    MK_REQUIRE(app.accessibility_state().parity_status_id == "ready");
+    MK_REQUIRE(app.accessibility_state().macos_status == "host_gated");
+    MK_REQUIRE(app.accessibility_state().linux_at_spi_status == "host_gated");
+    MK_REQUIRE(app.accessibility_state().android_status == "host_gated");
+    MK_REQUIRE(app.accessibility_state().ios_status == "host_gated");
     MK_REQUIRE(!app.accessibility_state().native_handles_exposed);
     MK_REQUIRE(adapter->state().status_id == "uia_provider_ready");
 }
@@ -1483,6 +1610,7 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     const auto snapshot = mirakana::editor::make_first_party_editor_ai_operation_snapshot(app, shell_document);
     const auto* text_input = find_ai_operation_status_row(snapshot, "editor.ai.text_input.focused_target");
     const auto* accessibility_row = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
+    const auto* accessibility_parity = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.parity");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
     const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
 
@@ -1495,6 +1623,12 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     MK_REQUIRE(accessibility_row->ready);
     MK_REQUIRE(accessibility_row->count == app.accessibility_state().nodes.size());
     MK_REQUIRE(!accessibility_row->native_handles_public);
+    MK_REQUIRE(accessibility_parity != nullptr);
+    MK_REQUIRE(accessibility_parity->status == "ready");
+    MK_REQUIRE(accessibility_parity->ready);
+    MK_REQUIRE(accessibility_parity->host_gated);
+    MK_REQUIRE(accessibility_parity->count == app.accessibility_state().nodes.size());
+    MK_REQUIRE(!accessibility_parity->native_handles_public);
     MK_REQUIRE(viewport != nullptr);
     MK_REQUIRE(viewport->status == "d3d12_texture_ready");
     MK_REQUIRE(viewport->count == 3U);

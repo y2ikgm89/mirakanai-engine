@@ -2025,6 +2025,13 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
         .accessibility_relationship_rows = 8U,
         .accessibility_tree_navigation_rows = 8U,
         .accessibility_diagnostics = 0U,
+        .accessibility_parity_status = "ready",
+        .accessibility_windows_uia_patterns_ready = true,
+        .accessibility_windows_uia_events_ready = true,
+        .accessibility_macos_status = "host_gated",
+        .accessibility_linux_at_spi_status = "host_gated",
+        .accessibility_android_status = "host_gated",
+        .accessibility_ios_status = "host_gated",
         .accessibility_native_handles_exposed = false,
         .viewport_status = "d3d12_texture_ready",
         .viewport_visible_texture_composites = 2U,
@@ -2053,6 +2060,7 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     const auto* ime_reconversion = find_ai_operation_status_row(snapshot, "editor.ai.ime.reconversion");
     const auto* ime_platforms = find_ai_operation_status_row(snapshot, "editor.ai.ime.platform_host_gates");
     const auto* accessibility = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
+    const auto* accessibility_parity = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.parity");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
     const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
 
@@ -2116,6 +2124,13 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     MK_REQUIRE(accessibility->ready);
     MK_REQUIRE(accessibility->count == 12U);
     MK_REQUIRE(!accessibility->native_handles_public);
+    MK_REQUIRE(accessibility_parity != nullptr);
+    MK_REQUIRE(accessibility_parity->role == "accessibility_parity_status");
+    MK_REQUIRE(accessibility_parity->status == "ready");
+    MK_REQUIRE(accessibility_parity->ready);
+    MK_REQUIRE(accessibility_parity->host_gated);
+    MK_REQUIRE(accessibility_parity->count == 12U);
+    MK_REQUIRE(!accessibility_parity->native_handles_public);
     MK_REQUIRE(viewport != nullptr);
     MK_REQUIRE(viewport->status == "d3d12_texture_ready");
     MK_REQUIRE(viewport->ready);

@@ -102,6 +102,102 @@ inline constexpr std::int32_t kUiaAppendRuntimeIdValue = 3;
     return actions;
 }
 
+void push_pattern(std::vector<std::string>& patterns, std::string pattern) {
+    if (std::ranges::find(patterns, pattern) == patterns.end()) {
+        patterns.push_back(std::move(pattern));
+    }
+}
+
+[[nodiscard]] std::vector<std::string> control_patterns_for(const ui::AccessibilityNode& node, bool hosted_root) {
+    std::vector<std::string> patterns;
+    switch (node.role) {
+    case ui::SemanticRole::root:
+    case ui::SemanticRole::dialog:
+        push_pattern(patterns, "Window");
+        push_pattern(patterns, "Scroll");
+        break;
+    case ui::SemanticRole::panel:
+        push_pattern(patterns, "Scroll");
+        break;
+    case ui::SemanticRole::button:
+        push_pattern(patterns, "Invoke");
+        break;
+    case ui::SemanticRole::label:
+        push_pattern(patterns, "Text");
+        break;
+    case ui::SemanticRole::text_field:
+        push_pattern(patterns, "Value");
+        push_pattern(patterns, "Text");
+        push_pattern(patterns, "TextEdit");
+        break;
+    case ui::SemanticRole::list:
+        push_pattern(patterns, "Selection");
+        push_pattern(patterns, "Scroll");
+        break;
+    case ui::SemanticRole::list_item:
+        push_pattern(patterns, "Invoke");
+        break;
+    case ui::SemanticRole::checkbox:
+        push_pattern(patterns, "Invoke");
+        push_pattern(patterns, "Toggle");
+        break;
+    case ui::SemanticRole::slider:
+        push_pattern(patterns, "Value");
+        break;
+    case ui::SemanticRole::image:
+        break;
+    case ui::SemanticRole::none:
+        break;
+    }
+    if (hosted_root && std::ranges::find(patterns, "Window") == patterns.end()) {
+        push_pattern(patterns, "Window");
+    }
+    return patterns;
+}
+
+[[nodiscard]] bool contains_pattern(const NativeEditorUiaNode& node, std::string_view pattern) noexcept {
+    return std::ranges::any_of(node.control_patterns, [pattern](const std::string& row) { return row == pattern; });
+}
+
+void count_pattern_rows(NativeEditorUiaProviderState& state, const NativeEditorUiaNode& node) noexcept {
+    state.uia_pattern_rows += static_cast<std::uint32_t>(node.control_patterns.size());
+    state.invoke_pattern_rows += contains_pattern(node, "Invoke") ? 1U : 0U;
+    state.value_pattern_rows += contains_pattern(node, "Value") ? 1U : 0U;
+    state.selection_pattern_rows += contains_pattern(node, "Selection") ? 1U : 0U;
+    state.text_pattern_rows += contains_pattern(node, "Text") ? 1U : 0U;
+    state.text_edit_pattern_rows += contains_pattern(node, "TextEdit") ? 1U : 0U;
+    state.scroll_pattern_rows += contains_pattern(node, "Scroll") ? 1U : 0U;
+    state.window_pattern_rows += contains_pattern(node, "Window") ? 1U : 0U;
+    state.toggle_pattern_rows += contains_pattern(node, "Toggle") ? 1U : 0U;
+}
+
+void finalize_uia_event_rows(NativeEditorUiaProviderState& state) noexcept {
+    state.focus_event_rows = state.focus_rows;
+    state.property_change_event_rows =
+        state.state_rows > 0U && state.name_property_rows > 0U && state.control_type_rows > 0U ? 1U : 0U;
+    state.text_edit_event_rows = state.text_edit_pattern_rows > 0U ? 1U : 0U;
+    state.selection_change_event_rows = state.selection_pattern_rows > 0U ? 1U : 0U;
+    state.structure_change_event_rows = state.relationship_rows > 0U ? 1U : 0U;
+    state.window_event_rows = state.window_pattern_rows > 0U ? 2U : 0U;
+    state.live_region_event_rows = state.live_region_rows;
+    state.uia_event_rows = state.focus_event_rows + state.property_change_event_rows + state.text_edit_event_rows +
+                           state.selection_change_event_rows + state.structure_change_event_rows +
+                           state.window_event_rows + state.live_region_event_rows;
+    state.windows_uia_events_ready = state.focus_event_rows > 0U && state.property_change_event_rows > 0U &&
+                                     state.text_edit_event_rows > 0U && state.selection_change_event_rows > 0U &&
+                                     state.structure_change_event_rows > 0U && state.window_event_rows >= 2U;
+}
+
+void finalize_uia_pattern_rows(NativeEditorUiaProviderState& state) noexcept {
+    state.windows_uia_patterns_ready =
+        state.automation_id_rows == state.nodes.size() && state.name_property_rows == state.nodes.size() &&
+        state.control_type_rows == state.nodes.size() &&
+        (state.nodes.size() <= 1U || state.runtime_id_opaque_rows + 1U == state.nodes.size()) &&
+        state.invoke_pattern_rows > 0U && state.value_pattern_rows > 0U && state.selection_pattern_rows > 0U &&
+        state.text_pattern_rows > 0U && state.text_edit_pattern_rows > 0U && state.scroll_pattern_rows > 0U &&
+        state.window_pattern_rows > 0U;
+}
+
 [[nodiscard]] ui::AdapterPayloadDiagnostic make_uia_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode code,
                                                                std::string message) {
     return ui::AdapterPayloadDiagnostic{.id = std::move(id), .code = code, .message = std::move(message)};
@@ -522,12 +618,15 @@ NativeEditorUiaProviderState plan_native_editor_uia_provider_tree(const ui::Acce
             .has_keyboard_focus = !empty_id(focused) && node.id == focused,
             .control_element = node.role != ui::SemanticRole::none,
             .content_element = node.role != ui::SemanticRole::none,
+            .live_region = node.live_region,
             .runtime_id = hosted_root ? std::vector<std::int32_t>{} : runtime_id_for(node.id.value),
             .actions = actions_for(node),
+            .control_patterns = control_patterns_for(node, hosted_root),
         };
 
         if (row.role != ui::SemanticRole::none) {
             ++state.role_rows;
+            ++state.control_type_rows;
         } else {
             ++state.missing_role_diagnostics;
             state.diagnostics.push_back(
@@ -536,6 +635,7 @@ NativeEditorUiaProviderState plan_native_editor_uia_provider_tree(const ui::Acce
         }
         if (!row.name.empty()) {
             ++state.name_rows;
+            ++state.name_property_rows;
         } else {
             ++state.missing_name_diagnostics;
             state.diagnostics.push_back(
@@ -551,6 +651,16 @@ NativeEditorUiaProviderState plan_native_editor_uia_provider_tree(const ui::Acce
         if (row.has_keyboard_focus) {
             ++state.focus_rows;
         }
+        if (!row.id.value.empty()) {
+            ++state.automation_id_rows;
+        }
+        if (!row.runtime_id.empty() && row.runtime_id.front() == kUiaAppendRuntimeIdValue) {
+            ++state.runtime_id_opaque_rows;
+        }
+        if (row.live_region) {
+            ++state.live_region_rows;
+        }
+        count_pattern_rows(state, row);
         state.action_rows += static_cast<std::uint32_t>(row.actions.size());
         ++state.state_rows;
 
@@ -594,6 +704,8 @@ NativeEditorUiaProviderState plan_native_editor_uia_provider_tree(const ui::Acce
     for (const auto& node : state.nodes) {
         state.tree_navigation_rows += navigation_row_count(node);
     }
+    finalize_uia_pattern_rows(state);
+    finalize_uia_event_rows(state);
 
     if (state.nodes.empty()) {
         state.status_id = "uia_provider_no_nodes";
@@ -602,6 +714,10 @@ NativeEditorUiaProviderState plan_native_editor_uia_provider_tree(const ui::Acce
     } else {
         state.status_id = "uia_provider_ready";
         state.provider_available = true;
+    }
+    if (state.provider_available && state.windows_uia_patterns_ready && state.windows_uia_events_ready &&
+        !state.native_handles_exposed) {
+        state.parity_status_id = "ready";
     }
     return state;
 }

@@ -158,6 +158,20 @@ int main(int argc, char** argv) {
             << accessibility.unsupported_pattern_diagnostics << '\n'
             << "editor_shell_accessibility_native_handles_exposed=" << (accessibility.native_handles_exposed ? 1 : 0)
             << '\n'
+            << "editor_accessibility_parity_status=" << counters.accessibility_parity_status << '\n'
+            << "editor_accessibility_windows_uia_patterns_ready="
+            << (counters.accessibility_windows_uia_patterns_ready ? 1 : 0) << '\n'
+            << "editor_accessibility_windows_uia_events_ready="
+            << (counters.accessibility_windows_uia_events_ready ? 1 : 0) << '\n'
+            << "editor_accessibility_macos_status=" << counters.accessibility_macos_status << '\n'
+            << "editor_accessibility_linux_at_spi_status=" << counters.accessibility_linux_at_spi_status << '\n'
+            << "editor_accessibility_android_status=" << counters.accessibility_android_status << '\n'
+            << "editor_accessibility_ios_status=" << counters.accessibility_ios_status << '\n'
+            << "editor_accessibility_live_region_rows=" << counters.accessibility_live_region_rows << '\n'
+            << "editor_accessibility_windows_uia_pattern_rows=" << counters.accessibility_uia_pattern_rows << '\n'
+            << "editor_accessibility_windows_uia_event_rows=" << counters.accessibility_uia_event_rows << '\n'
+            << "editor_accessibility_native_handles_exposed=" << (counters.accessibility_native_handles_exposed ? 1 : 0)
+            << '\n'
             << "editor_shell_frames=" << result.frames_rendered << '\n'
             << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
             << "editor_shell_docking_status=" << app.docking_status_last_frame() << '\n'

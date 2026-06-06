@@ -109,6 +109,16 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t accessibility_invalid_bounds_diagnostics{0};
     std::uint32_t accessibility_hidden_nodes{0};
     std::uint32_t accessibility_unsupported_pattern_diagnostics{0};
+    std::string accessibility_parity_status{"not_ready"};
+    bool accessibility_windows_uia_patterns_ready{false};
+    bool accessibility_windows_uia_events_ready{false};
+    std::string accessibility_macos_status{"host_gated"};
+    std::string accessibility_linux_at_spi_status{"host_gated"};
+    std::string accessibility_android_status{"host_gated"};
+    std::string accessibility_ios_status{"host_gated"};
+    std::uint32_t accessibility_live_region_rows{0};
+    std::uint32_t accessibility_uia_pattern_rows{0};
+    std::uint32_t accessibility_uia_event_rows{0};
     bool accessibility_native_handles_exposed{false};
     std::string docking_status{"not_rendered"};
     std::uint32_t dock_tab_header_count{0};

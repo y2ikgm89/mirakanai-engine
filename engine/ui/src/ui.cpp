@@ -1193,6 +1193,7 @@ void hash_retained_ui_element(std::uint64_t& hash, const Element& element) noexc
     hash_retained_ui_text(hash, element.text);
     hash_retained_ui_image(hash, element.image);
     hash_retained_ui_string(hash, element.accessibility_label);
+    hash_retained_ui_bool(hash, element.accessibility_live_region);
     hash_retained_ui_style(hash, element.style);
     hash_retained_ui_u64(hash, element.children.size());
     for (const auto& child : element.children) {
@@ -1240,6 +1241,7 @@ void hash_retained_ui_accessibility_node(std::uint64_t& hash, const Accessibilit
     hash_retained_ui_string(hash, node.localization_key);
     hash_retained_ui_bool(hash, node.enabled);
     hash_retained_ui_bool(hash, node.focusable);
+    hash_retained_ui_bool(hash, node.live_region);
     hash_retained_ui_id(hash, node.parent);
     hash_retained_ui_u64(hash, node.depth);
 }
@@ -1399,6 +1401,7 @@ bool UiDocument::try_add_element(ElementDesc desc) {
     element.text = std::move(desc.text);
     element.image = std::move(desc.image);
     element.accessibility_label = std::move(desc.accessibility_label);
+    element.accessibility_live_region = desc.accessibility_live_region;
     element.style = std::move(desc.style);
 
     if (!element.parent.value.empty()) {
@@ -1740,6 +1743,7 @@ RendererSubmission build_renderer_submission(const UiDocument& document, const L
                 .localization_key = submitted_element.text.localization_key,
                 .enabled = submitted_element.enabled,
                 .focusable = submitted_element.enabled && is_focusable_role(submitted_element.role),
+                .live_region = submitted_element.accessibility_live_region,
                 .parent = submitted_element.parent,
                 .depth = element_depth(document, submitted_element),
             });

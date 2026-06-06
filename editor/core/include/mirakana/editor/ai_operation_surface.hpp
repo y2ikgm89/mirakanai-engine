@@ -112,6 +112,13 @@ struct EditorAiOperationUxStatusDesc {
     std::uint32_t accessibility_invalid_bounds_diagnostics{0};
     std::uint32_t accessibility_hidden_nodes{0};
     std::uint32_t accessibility_unsupported_pattern_diagnostics{0};
+    std::string accessibility_parity_status;
+    bool accessibility_windows_uia_patterns_ready{false};
+    bool accessibility_windows_uia_events_ready{false};
+    std::string accessibility_macos_status;
+    std::string accessibility_linux_at_spi_status;
+    std::string accessibility_android_status;
+    std::string accessibility_ios_status;
     bool accessibility_native_handles_exposed{false};
     std::string viewport_status;
     std::uint64_t viewport_visible_texture_composites{0};

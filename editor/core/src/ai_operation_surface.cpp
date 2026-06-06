@@ -848,7 +848,7 @@ void append_status_row(std::vector<EditorAiOperationStatusRow>& rows, EditorAiOp
 std::vector<EditorAiOperationStatusRow>
 make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& desc) {
     std::vector<EditorAiOperationStatusRow> rows;
-    rows.reserve(18U);
+    rows.reserve(19U);
 
     if (!desc.selected_dock_panel_id.empty()) {
         append_status_row(rows, EditorAiOperationStatusRow{
@@ -1028,6 +1028,23 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                   .ready = desc.accessibility_status == "uia_provider_ready" && desc.accessibility_diagnostics == 0U,
                   .native_handles_public = desc.accessibility_native_handles_exposed,
               });
+    append_status_row(
+        rows,
+        EditorAiOperationStatusRow{
+            .id = "editor.ai.accessibility.parity",
+            .role = "accessibility_parity_status",
+            .label = "Accessibility Parity",
+            .target_element_id = "editor.accessibility.parity",
+            .status = desc.accessibility_parity_status.empty() ? "not_ready" : desc.accessibility_parity_status,
+            .count = desc.accessibility_nodes,
+            .ready = desc.accessibility_parity_status == "ready" && desc.accessibility_windows_uia_patterns_ready &&
+                     desc.accessibility_windows_uia_events_ready && !desc.accessibility_native_handles_exposed,
+            .host_gated = desc.accessibility_macos_status == "host_gated" ||
+                          desc.accessibility_linux_at_spi_status == "host_gated" ||
+                          desc.accessibility_android_status == "host_gated" ||
+                          desc.accessibility_ios_status == "host_gated",
+            .native_handles_public = desc.accessibility_native_handles_exposed,
+        });
     append_status_row(rows, EditorAiOperationStatusRow{
                                 .id = "editor.ai.viewport.display",
                                 .role = "viewport_display_status",
