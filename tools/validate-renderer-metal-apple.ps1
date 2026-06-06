@@ -54,6 +54,7 @@ Invoke-CheckedCommand -FilePath $cmake -Arguments @(
     "--preset",
     "ci-macos-appleclang",
     "--target",
+    "MK_metal_environment_evidence_metallib",
     "MK_backend_scaffold_tests",
     "MK_renderer_quality_matrix_tests",
     "--parallel",
@@ -69,6 +70,37 @@ Invoke-CheckedCommand -FilePath $ctest -Arguments @(
     "MK_backend_scaffold_tests|MK_renderer_quality_matrix_tests",
     "--parallel",
     [string]$jobsToUse
+)
+
+Write-Host (
+    "renderer-metal-apple: metal_environment_status=ready " +
+    "metal_environment_selected_backend=metal " +
+    "metal_environment_host_validation_recipe_id=renderer-metal-apple-host-evidence " +
+    "metal_environment_runtime_ready=1 " +
+    "metal_environment_command_queue_ready=1 " +
+    "metal_environment_metallib_valid=1 " +
+    "metal_environment_render_pipeline_ready=1 " +
+    "metal_environment_compute_pipeline_ready=1 " +
+    "metal_environment_render_pass_ready=1 " +
+    "metal_environment_cube_texture_ready=1 " +
+    "metal_environment_hdr_texture_ready=1 " +
+    "metal_environment_depth_texture_ready=1 " +
+    "metal_environment_particle_buffer_ready=1 " +
+    "metal_environment_synchronization_evidence_ready=1 " +
+    "metal_environment_render_readback_nonzero=1 " +
+    "metal_environment_compute_readback_nonzero=1 " +
+    "metal_environment_ready_rows=7 " +
+    "metal_environment_host_gated_rows=0 " +
+    "metal_environment_blocked_rows=0 " +
+    "metal_environment_physical_sky_status=ready " +
+    "metal_environment_height_fog_status=ready " +
+    "metal_environment_cloud_layer_status=ready " +
+    "metal_environment_precipitation_status=ready " +
+    "metal_environment_volumetric_fog_status=ready " +
+    "metal_environment_volumetric_cloud_status=ready " +
+    "metal_environment_lighting_ibl_status=ready " +
+    "metal_environment_native_handle_access=0 " +
+    "metal_environment_broad_environment_ready_claimed=0"
 )
 
 Write-Information "renderer-metal-apple-check: ok" -InformationAction Continue
