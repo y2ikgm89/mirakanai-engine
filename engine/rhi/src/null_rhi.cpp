@@ -346,10 +346,11 @@ void validate_descriptor_set_layout_desc(const DescriptorSetLayoutDesc& desc) {
         if (!has_stage_visibility(binding.stages)) {
             throw std::invalid_argument("rhi descriptor binding shader visibility must not be none");
         }
-        const auto duplicate = std::ranges::count_if(
-            desc.bindings, [&binding](const DescriptorBindingDesc& other) { return other.binding == binding.binding; });
+        const auto duplicate = std::ranges::count_if(desc.bindings, [&binding](const DescriptorBindingDesc& other) {
+            return other.binding == binding.binding && other.type == binding.type;
+        });
         if (duplicate > 1) {
-            throw std::invalid_argument("rhi descriptor binding numbers must be unique");
+            throw std::invalid_argument("rhi descriptor binding number/type pairs must be unique");
         }
     }
 }
@@ -387,9 +388,11 @@ void validate_compute_pipeline_desc(const ComputePipelineDesc& desc) {
     }
 }
 
-const DescriptorBindingDesc& find_binding(const DescriptorSetLayoutDesc& layout, std::uint32_t binding) {
-    const auto found = std::ranges::find_if(
-        layout.bindings, [binding](const DescriptorBindingDesc& candidate) { return candidate.binding == binding; });
+const DescriptorBindingDesc& find_binding(const DescriptorSetLayoutDesc& layout, std::uint32_t binding,
+                                          DescriptorType type) {
+    const auto found = std::ranges::find_if(layout.bindings, [binding, type](const DescriptorBindingDesc& candidate) {
+        return candidate.binding == binding && candidate.type == type;
+    });
     if (found == layout.bindings.end()) {
         throw std::invalid_argument("rhi descriptor binding is not declared by the set layout");
     }
@@ -1689,7 +1692,7 @@ void NullRhiDevice::update_descriptor_set(const DescriptorWrite& write) {
 
     const auto layout_handle = descriptor_set_layout_for_set(write.set);
     const auto& layout = descriptor_set_layout_desc(layout_handle);
-    const auto& binding = find_binding(layout, write.binding);
+    const auto& binding = find_binding(layout, write.binding, write.resources.front().type);
     const auto resource_count = static_cast<std::uint32_t>(write.resources.size());
     if (write.array_element >= binding.count || resource_count > binding.count - write.array_element) {
         throw std::invalid_argument("rhi descriptor write exceeds the declared binding range");

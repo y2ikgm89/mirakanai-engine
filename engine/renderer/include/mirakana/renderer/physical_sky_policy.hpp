@@ -38,6 +38,8 @@ enum class PhysicalSkyDiagnosticCode : std::uint8_t {
     invalid_sample_budget,
     unsupported_aerial_perspective_mode,
     missing_shader_contract_evidence,
+    missing_package_evidence,
+    missing_execution_evidence,
     unsupported_lut_texture_allocation,
     unsupported_backend_execution,
     unsupported_native_handle_claim,
@@ -74,6 +76,9 @@ struct PhysicalSkyPolicyDesc {
     PhysicalSkySampleBudgetDesc sample_budget;
     PhysicalSkyAerialPerspectiveMode aerial_perspective_mode{PhysicalSkyAerialPerspectiveMode::froxel_volume};
     bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool request_ready_promotion{false};
     bool request_lut_texture_allocation{false};
     bool request_backend_execution{false};
     bool request_native_handle_access{false};
@@ -106,6 +111,8 @@ struct PhysicalSkyPolicyPlan {
     PhysicalSkySampleBudgetDesc sample_budget;
     PhysicalSkyAerialPerspectiveMode aerial_perspective_mode{PhysicalSkyAerialPerspectiveMode::unknown};
     bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
     bool allocates_lut_textures{false};
     bool invokes_backend{false};
     bool exposes_native_handles{false};
@@ -114,6 +121,7 @@ struct PhysicalSkyPolicyPlan {
     std::vector<PhysicalSkyDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept;
+    [[nodiscard]] bool ready() const noexcept;
 };
 
 [[nodiscard]] PhysicalSkyPolicyPlan plan_physical_sky_policy(const PhysicalSkyPolicyDesc& desc);

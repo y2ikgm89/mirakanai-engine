@@ -232,6 +232,223 @@ MetalPlatformAvailabilityDiagnostics diagnose_platform_availability(RhiHostPlatf
     return diagnostics;
 }
 
+std::vector<MetalEnvironmentFeatureEvidenceRequirement> default_environment_feature_evidence_requirements() {
+    return {
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::physical_sky,
+            .selected = true,
+            .render_pass_required = true,
+            .render_pipeline_required = true,
+        },
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::height_fog,
+            .selected = true,
+            .render_pass_required = true,
+            .render_pipeline_required = true,
+            .depth_texture_required = true,
+        },
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::cloud_layer,
+            .selected = true,
+            .render_pass_required = true,
+            .render_pipeline_required = true,
+        },
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::precipitation,
+            .selected = true,
+            .render_pass_required = true,
+            .render_pipeline_required = true,
+            .depth_texture_required = true,
+            .particle_buffer_required = true,
+        },
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::volumetric_fog,
+            .selected = true,
+            .compute_pipeline_required = true,
+            .depth_texture_required = true,
+        },
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::volumetric_cloud,
+            .selected = true,
+            .compute_pipeline_required = true,
+        },
+        MetalEnvironmentFeatureEvidenceRequirement{
+            .feature = MetalEnvironmentFeatureKind::environment_lighting_ibl,
+            .selected = true,
+            .render_pass_required = true,
+            .render_pipeline_required = true,
+            .cube_map_texture_required = true,
+            .hdr_texture_required = true,
+        },
+    };
+}
+
+std::string_view metal_environment_feature_kind_label(MetalEnvironmentFeatureKind feature) noexcept {
+    switch (feature) {
+    case MetalEnvironmentFeatureKind::physical_sky:
+        return "physical_sky";
+    case MetalEnvironmentFeatureKind::height_fog:
+        return "height_fog";
+    case MetalEnvironmentFeatureKind::cloud_layer:
+        return "cloud_layer";
+    case MetalEnvironmentFeatureKind::precipitation:
+        return "precipitation";
+    case MetalEnvironmentFeatureKind::volumetric_fog:
+        return "volumetric_fog";
+    case MetalEnvironmentFeatureKind::volumetric_cloud:
+        return "volumetric_cloud";
+    case MetalEnvironmentFeatureKind::environment_lighting_ibl:
+        return "environment_lighting_ibl";
+    }
+
+    return "unknown";
+}
+
+std::string_view
+metal_environment_feature_evidence_status_label(MetalEnvironmentFeatureEvidenceStatus status) noexcept {
+    switch (status) {
+    case MetalEnvironmentFeatureEvidenceStatus::blocked:
+        return "blocked";
+    case MetalEnvironmentFeatureEvidenceStatus::host_evidence_required:
+        return "host_evidence_required";
+    case MetalEnvironmentFeatureEvidenceStatus::ready:
+        return "ready";
+    }
+
+    return "unknown";
+}
+
+namespace {
+
+[[nodiscard]] bool is_reviewed_metal_environment_host_recipe(std::string_view recipe_id) noexcept {
+    return recipe_id == "renderer-metal-apple-host-evidence";
+}
+
+[[nodiscard]] bool has_required_feature_evidence(const MetalEnvironmentFeatureHostEvidenceDesc& desc,
+                                                 const MetalEnvironmentFeatureEvidenceRequirement& requirement) {
+    return (!requirement.render_pass_required || desc.render_pass_ready) &&
+           (!requirement.render_pipeline_required || desc.render_pipeline_ready) &&
+           (!requirement.compute_pipeline_required || desc.compute_pipeline_ready) &&
+           (!requirement.depth_texture_required || desc.depth_texture_ready) &&
+           (!requirement.particle_buffer_required || desc.particle_buffer_ready) &&
+           (!requirement.cube_map_texture_required || desc.cube_map_texture_feature_available) &&
+           (!requirement.hdr_texture_required || desc.hdr_texture_feature_available);
+}
+
+[[nodiscard]] MetalEnvironmentFeatureEvidenceRow
+make_environment_feature_evidence_row(const MetalEnvironmentFeatureHostEvidenceDesc& desc,
+                                      const MetalEnvironmentFeatureEvidenceRequirement& requirement) {
+    MetalEnvironmentFeatureEvidenceRow row;
+    row.feature = requirement.feature;
+    row.selected = requirement.selected;
+    row.host_supported = supports_host(desc.host);
+    row.host_evidence_available = desc.apple_host_validation_available;
+    row.runtime_ready = desc.runtime_ready;
+    row.command_queue_ready = desc.command_queue_ready;
+    row.shader_library_ready = desc.shader_library_ready;
+    row.render_pass_ready = desc.render_pass_ready;
+    row.render_pipeline_ready = desc.render_pipeline_ready;
+    row.compute_pipeline_ready = desc.compute_pipeline_ready;
+    row.depth_texture_ready = desc.depth_texture_ready;
+    row.particle_buffer_ready = desc.particle_buffer_ready;
+    row.cube_map_texture_feature_available = desc.cube_map_texture_feature_available;
+    row.hdr_texture_feature_available = desc.hdr_texture_feature_available;
+    row.native_handle_access = desc.native_handles_exposed;
+    row.host_validation_recipe_id = desc.host_validation_recipe_id;
+
+    const auto feature_label = metal_environment_feature_kind_label(requirement.feature);
+    if (!requirement.selected) {
+        row.status = MetalEnvironmentFeatureEvidenceStatus::blocked;
+        row.diagnostic = std::string{"Metal environment feature is not selected: "} + std::string{feature_label};
+        return row;
+    }
+
+    if (desc.native_handles_exposed) {
+        row.status = MetalEnvironmentFeatureEvidenceStatus::blocked;
+        row.diagnostic = std::string{"Metal environment feature evidence must not expose native handles: "} +
+                         std::string{feature_label};
+        return row;
+    }
+
+    if (!is_reviewed_metal_environment_host_recipe(desc.host_validation_recipe_id)) {
+        row.status = MetalEnvironmentFeatureEvidenceStatus::blocked;
+        row.diagnostic = std::string{"Metal environment feature evidence requires reviewed Apple host recipe: "} +
+                         std::string{feature_label};
+        return row;
+    }
+
+    const auto host_ready = row.host_supported && desc.apple_host_validation_available && desc.runtime_ready &&
+                            desc.command_queue_ready && desc.shader_library_ready;
+    if (!host_ready) {
+        row.status = MetalEnvironmentFeatureEvidenceStatus::host_evidence_required;
+        row.host_evidence_required = true;
+        row.diagnostic =
+            std::string{"Metal environment feature requires Apple host validation: "} + std::string{feature_label};
+        return row;
+    }
+
+    if (!has_required_feature_evidence(desc, requirement)) {
+        row.status = MetalEnvironmentFeatureEvidenceStatus::blocked;
+        row.diagnostic = std::string{"Metal environment feature is missing feature-local pipeline or texture proof: "} +
+                         std::string{feature_label};
+        return row;
+    }
+
+    row.status = MetalEnvironmentFeatureEvidenceStatus::ready;
+    row.diagnostic = std::string{"Metal environment feature evidence ready: "} + std::string{feature_label};
+    return row;
+}
+
+} // namespace
+
+MetalEnvironmentFeatureHostEvidencePlan
+build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEvidenceDesc& desc) {
+    MetalEnvironmentFeatureHostEvidencePlan plan;
+    const auto requirements =
+        desc.requirements.empty() ? default_environment_feature_evidence_requirements() : desc.requirements;
+    plan.rows.reserve(requirements.size());
+
+    if (requirements.empty()) {
+        plan.diagnostic = "Metal environment feature evidence requires at least one selected row";
+        return plan;
+    }
+
+    for (const auto& requirement : requirements) {
+        auto row = make_environment_feature_evidence_row(desc, requirement);
+        switch (row.status) {
+        case MetalEnvironmentFeatureEvidenceStatus::ready:
+            ++plan.ready_row_count;
+            break;
+        case MetalEnvironmentFeatureEvidenceStatus::host_evidence_required:
+            ++plan.host_gated_row_count;
+            break;
+        case MetalEnvironmentFeatureEvidenceStatus::blocked:
+            ++plan.blocked_row_count;
+            break;
+        }
+        if (row.native_handle_access) {
+            ++plan.native_handle_access_count;
+        }
+        plan.rows.push_back(std::move(row));
+    }
+
+    if (plan.blocked_row_count > 0U || plan.native_handle_access_count > 0U) {
+        plan.status = MetalEnvironmentFeatureEvidenceStatus::blocked;
+        plan.diagnostic = "Metal environment feature evidence blocked";
+        return plan;
+    }
+
+    if (plan.host_gated_row_count > 0U) {
+        plan.status = MetalEnvironmentFeatureEvidenceStatus::host_evidence_required;
+        plan.diagnostic = "Metal environment feature evidence requires Apple host validation";
+        return plan;
+    }
+
+    plan.status = MetalEnvironmentFeatureEvidenceStatus::ready;
+    plan.diagnostic = "Metal environment feature evidence ready";
+    return plan;
+}
+
 MetalRuntimeDevice::MetalRuntimeDevice() noexcept = default;
 
 MetalRuntimeDevice::~MetalRuntimeDevice() = default;
