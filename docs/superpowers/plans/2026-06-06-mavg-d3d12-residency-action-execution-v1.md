@@ -14,7 +14,7 @@
 
 **Plan ID:** `mavg-d3d12-residency-action-execution-v1`
 
-**Status:** Published as stacked draft PR #491 over `mavg-dxgi-gpu-memory-pressure-evidence-v1`.
+**Status:** Published as stacked draft PR #491 over `mavg-dxgi-gpu-memory-pressure-evidence-v1`; review follow-up validated for the same PR.
 
 ## Context
 
@@ -160,8 +160,11 @@ Modify `DeviceContext` and `D3d12RhiDevice` so D3D12:
 - Calls `ID3D12Device::Evict` for `evict`.
 - Reports HRESULT as `native_error_code` on failure.
 - Sets `invoked_native_make_resident` or `invoked_native_evict` only after the native call is attempted.
+- Tracks resident/evicted state for active public rows after successful native calls.
+- Rejects `Evict` before native calls when tracked resource-use fences are incomplete.
+- Rejects evicted-resource direct buffer reads/writes, descriptor resource writes, command recording, and submit of a command list whose observed resources were evicted after recording.
 
-This slice acts only on committed public buffers/textures. Placed/transient resources, descriptor heaps, query heaps, residency priority, video-memory reservation, command-list integration, fence scheduling, and MAVG page-to-resource ownership are out of scope.
+This slice acts only on committed public buffers/textures. Placed/transient resources are rejected before native calls. Descriptor heaps, query heaps, residency priority, video-memory reservation, command-list residency-set scheduling, and MAVG page-to-resource ownership are out of scope.
 
 - [x] **Step 6: Add unsupported backend behavior.**
 
@@ -226,6 +229,12 @@ Validation evidence on 2026-06-06:
 - `git diff --check` passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; all 109 CTest tests passed.
 
+Review follow-up evidence on 2026-06-06:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_d3d12_rhi_tests` passed after resident/evicted state tracking and use-site rejection were added.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_d3d12_rhi_tests` passed with `d3d12 rhi residency action tracks evicted resources at use sites` and `d3d12 rhi residency action rejects transient placed textures before native calls`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after the review follow-up; all 109 CTest tests passed.
+
 - [x] **Step 10: Publish stacked PR.**
 
 Run publication preflight, commit the candidate, push `codex/mavg-d3d12-residency-action-execution-v1`, and create a draft PR over `codex/mavg-dxgi-gpu-memory-pressure-evidence-v1`.
@@ -235,6 +244,7 @@ Publication evidence:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed.
 - Commit `0d77d6f6` (`Add MAVG D3D12 residency action execution`) was pushed to `origin/codex/mavg-d3d12-residency-action-execution-v1`.
 - Draft PR #491 was created over `codex/mavg-dxgi-gpu-memory-pressure-evidence-v1`.
+- Commit `00fb0708` (`Record MAVG D3D12 residency PR publication`) records the initial publication evidence.
 
 ## Done When
 

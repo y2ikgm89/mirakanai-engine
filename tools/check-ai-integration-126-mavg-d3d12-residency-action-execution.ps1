@@ -70,7 +70,14 @@ foreach ($needle in @(
         "result.native_error_code",
         "execute_residency_action(const RhiResidencyActionDesc& desc) override",
         "buffer_handles_.at(resource.buffer.value - 1U)",
-        "texture_handles_.at(resource.texture.value - 1U)"
+        "texture_handles_.at(resource.texture.value - 1U)",
+        "buffer_resident_",
+        "texture_resident_",
+        "observed_resources_resident",
+        "d3d12 rhi residency evict requires completed resource-use fences",
+        "d3d12 rhi command list references nonresident resources",
+        "d3d12 rhi buffer is not resident",
+        "d3d12 rhi texture is not resident"
     )) {
     Assert-ContainsText $d3d12SourceText $needle "d3d12_backend.cpp committed-resource residency action execution"
 }
@@ -99,8 +106,12 @@ foreach ($needle in @(
 foreach ($needle in @(
         "d3d12 rhi residency action executes make resident and evict for committed resources",
         "d3d12 rhi residency action rejects unknown resources before native calls",
+        "d3d12 rhi residency action tracks evicted resources at use sites",
+        "d3d12 rhi residency action rejects transient placed textures before native calls",
         "evicted.invoked_native_evict",
         "made_resident.invoked_native_make_resident",
+        "rejected_recording",
+        "rejected_submit",
         "!result.invoked_native_make_resident",
         "!result.invoked_native_evict",
         "!result.exposed_native_handles",
@@ -149,6 +160,8 @@ foreach ($needle in @(
         "invoked_native_make_resident",
         "invoked_native_evict",
         "native_error_code",
+        "evicted-resource",
+        "placed",
         "exposed_native_handles=false",
         "enforced_allocator_budget=false",
         "no DirectStorage file IO",

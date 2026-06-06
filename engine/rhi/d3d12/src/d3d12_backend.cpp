@@ -5260,9 +5260,10 @@ class D3d12RhiCommandList final : public IRhiCommandList {
                         const std::vector<SwapchainHandle>& swapchain_frame_swapchains,
                         std::vector<bool>& swapchain_frame_active, std::vector<bool>& swapchain_frame_presented,
                         const std::vector<NativeResourceHandle>& buffers, const std::vector<BufferDesc>& buffer_descs,
-                        const std::vector<bool>& buffer_active, const std::vector<NativeResourceHandle>& textures,
+                        const std::vector<bool>& buffer_active, const std::vector<bool>& buffer_resident,
+                        const std::vector<NativeResourceHandle>& textures,
                         const std::vector<TextureDesc>& texture_descs, const std::vector<bool>& texture_active,
-                        const std::vector<ResourceState>& texture_states,
+                        const std::vector<bool>& texture_resident, const std::vector<ResourceState>& texture_states,
                         const std::vector<NativeDescriptorHeapHandle>& descriptor_set_cbv_srv_uav_heaps,
                         const std::vector<std::uint32_t>& descriptor_set_cbv_srv_uav_base_descriptors,
                         const std::vector<NativeDescriptorHeapHandle>& descriptor_set_sampler_heaps,
@@ -5287,8 +5288,9 @@ class D3d12RhiCommandList final : public IRhiCommandList {
           swapchain_presentable_(swapchain_presentable), swapchain_frame_reserved_(&swapchain_frame_reserved),
           swapchain_frame_swapchains_(&swapchain_frame_swapchains), swapchain_frame_active_(&swapchain_frame_active),
           swapchain_frame_presented_(&swapchain_frame_presented), buffers_(&buffers), buffer_descs_(&buffer_descs),
-          buffer_active_(&buffer_active), textures_(&textures), texture_descs_(&texture_descs),
-          texture_active_(&texture_active), texture_states_(texture_states), initial_texture_states_(texture_states),
+          buffer_active_(&buffer_active), buffer_resident_(&buffer_resident), textures_(&textures),
+          texture_descs_(&texture_descs), texture_active_(&texture_active), texture_resident_(&texture_resident),
+          texture_states_(texture_states), initial_texture_states_(texture_states),
           descriptor_set_cbv_srv_uav_heaps_(&descriptor_set_cbv_srv_uav_heaps),
           descriptor_set_cbv_srv_uav_base_descriptors_(&descriptor_set_cbv_srv_uav_base_descriptors),
           descriptor_set_sampler_heaps_(&descriptor_set_sampler_heaps),
@@ -6089,6 +6091,22 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         });
     }
 
+    [[nodiscard]] bool observed_resources_resident() const noexcept {
+        for (const auto buffer : observed_buffers_) {
+            if (buffer.value == 0 || buffer_resident_ == nullptr || buffer.value > buffer_resident_->size() ||
+                !buffer_resident_->at(buffer.value - 1U)) {
+                return false;
+            }
+        }
+        for (const auto texture : observed_textures_) {
+            if (texture.value == 0 || texture_resident_ == nullptr || texture.value > texture_resident_->size() ||
+                !texture_resident_->at(texture.value - 1U)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void commit_swapchain_states(std::vector<ResourceState>& states, std::vector<bool>& presentable) const {
         const auto state_count = std::min(states.size(), swapchain_states_.size());
         for (std::size_t index = 0; index < state_count; ++index) {
@@ -6248,6 +6266,10 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             handle.value > buffer_active_->size() || !buffer_active_->at(handle.value - 1U)) {
             throw std::invalid_argument("d3d12 rhi buffer handle is unknown");
         }
+        if (buffer_resident_ == nullptr || handle.value > buffer_resident_->size() ||
+            !buffer_resident_->at(handle.value - 1U)) {
+            throw std::invalid_argument("d3d12 rhi buffer is not resident");
+        }
         return buffers_->at(handle.value - 1U);
     }
 
@@ -6256,6 +6278,10 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             handle.value > buffer_descs_->size() || handle.value > buffer_active_->size() ||
             !buffer_active_->at(handle.value - 1U)) {
             throw std::invalid_argument("d3d12 rhi buffer handle is unknown");
+        }
+        if (buffer_resident_ == nullptr || handle.value > buffer_resident_->size() ||
+            !buffer_resident_->at(handle.value - 1U)) {
+            throw std::invalid_argument("d3d12 rhi buffer is not resident");
         }
         return buffer_descs_->at(handle.value - 1U);
     }
@@ -6266,6 +6292,10 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             !texture_active_->at(handle.value - 1U)) {
             throw std::invalid_argument("d3d12 rhi texture handle is unknown");
         }
+        if (texture_resident_ == nullptr || handle.value > texture_resident_->size() ||
+            !texture_resident_->at(handle.value - 1U)) {
+            throw std::invalid_argument("d3d12 rhi texture is not resident");
+        }
         return textures_->at(handle.value - 1U);
     }
 
@@ -6274,6 +6304,10 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             handle.value > texture_descs_->size() || handle.value > texture_active_->size() ||
             !texture_active_->at(handle.value - 1U)) {
             throw std::invalid_argument("d3d12 rhi texture handle is unknown");
+        }
+        if (texture_resident_ == nullptr || handle.value > texture_resident_->size() ||
+            !texture_resident_->at(handle.value - 1U)) {
+            throw std::invalid_argument("d3d12 rhi texture is not resident");
         }
         return texture_descs_->at(handle.value - 1U);
     }
@@ -6486,9 +6520,11 @@ class D3d12RhiCommandList final : public IRhiCommandList {
     const std::vector<NativeResourceHandle>* buffers_{nullptr};
     const std::vector<BufferDesc>* buffer_descs_{nullptr};
     const std::vector<bool>* buffer_active_{nullptr};
+    const std::vector<bool>* buffer_resident_{nullptr};
     const std::vector<NativeResourceHandle>* textures_{nullptr};
     const std::vector<TextureDesc>* texture_descs_{nullptr};
     const std::vector<bool>* texture_active_{nullptr};
+    const std::vector<bool>* texture_resident_{nullptr};
     std::vector<ResourceState> texture_states_;
     std::vector<ResourceState> initial_texture_states_;
     std::vector<BufferHandle> observed_buffers_;
@@ -6648,7 +6684,11 @@ class D3d12RhiDevice final : public IRhiDevice {
         }
 
         std::vector<NativeResourceHandle> native_resources;
+        std::vector<BufferHandle> resident_buffers_to_update;
+        std::vector<TextureHandle> resident_textures_to_update;
         native_resources.reserve(desc.resources.size());
+        resident_buffers_to_update.reserve(desc.resources.size());
+        resident_textures_to_update.reserve(desc.resources.size());
         for (const auto& resource : desc.resources) {
             switch (resource.kind) {
             case RhiResidencyResourceKind::buffer:
@@ -6656,14 +6696,38 @@ class D3d12RhiDevice final : public IRhiDevice {
                     ++result.invalid_resource_count;
                     break;
                 }
+                if (desc.action == RhiResidencyActionKind::evict) {
+                    if (!buffer_resident(resource.buffer)) {
+                        ++result.invalid_resource_count;
+                        break;
+                    }
+                    if (!buffer_last_use_completed(resource.buffer)) {
+                        result.status = RhiResidencyActionStatus::invalid_request;
+                        result.diagnostic = "d3d12 rhi residency evict requires completed resource-use fences";
+                        return result;
+                    }
+                }
                 native_resources.push_back(buffer_handles_.at(resource.buffer.value - 1U));
+                resident_buffers_to_update.push_back(resource.buffer);
                 break;
             case RhiResidencyResourceKind::texture:
                 if (resource.buffer.value != 0 || !owns_texture(resource.texture)) {
                     ++result.invalid_resource_count;
                     break;
                 }
+                if (desc.action == RhiResidencyActionKind::evict) {
+                    if (!texture_resident(resource.texture)) {
+                        ++result.invalid_resource_count;
+                        break;
+                    }
+                    if (!texture_last_use_completed(resource.texture)) {
+                        result.status = RhiResidencyActionStatus::invalid_request;
+                        result.diagnostic = "d3d12 rhi residency evict requires completed resource-use fences";
+                        return result;
+                    }
+                }
                 native_resources.push_back(texture_handles_.at(resource.texture.value - 1U));
+                resident_textures_to_update.push_back(resource.texture);
                 break;
             default:
                 ++result.invalid_resource_count;
@@ -6677,7 +6741,17 @@ class D3d12RhiDevice final : public IRhiDevice {
             return result;
         }
 
-        return context_->execute_residency_action(desc.action, native_resources);
+        auto action_result = context_->execute_residency_action(desc.action, native_resources);
+        if (action_result.status == RhiResidencyActionStatus::succeeded) {
+            const bool resident = desc.action == RhiResidencyActionKind::make_resident;
+            for (const auto buffer : resident_buffers_to_update) {
+                buffer_resident_.at(buffer.value - 1U) = resident;
+            }
+            for (const auto texture : resident_textures_to_update) {
+                texture_resident_.at(texture.value - 1U) = resident;
+            }
+        }
+        return action_result;
     }
 
     [[nodiscard]] const RhiResourceLifetimeRegistry* resource_lifetime_registry() const noexcept override {
@@ -6687,6 +6761,11 @@ class D3d12RhiDevice final : public IRhiDevice {
     [[nodiscard]] D3d12SharedTextureExportResult export_shared_texture(TextureHandle texture) noexcept {
         D3d12SharedTextureExportResult result{};
         if (!owns_texture(texture)) {
+            result.invalid_texture = true;
+            ++stats_.shared_texture_export_failures;
+            return result;
+        }
+        if (!texture_resident(texture)) {
             result.invalid_texture = true;
             ++stats_.shared_texture_export_failures;
             return result;
@@ -6731,6 +6810,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         buffer_handles_.push_back(native);
         buffer_descs_.push_back(desc);
         buffer_active_.push_back(true);
+        buffer_resident_.push_back(true);
         buffer_lifetime_.push_back(lifetime_registration.handle);
         buffer_last_used_fences_.push_back(FenceValue{});
         ++stats_.buffers_created;
@@ -6757,6 +6837,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         texture_handles_.push_back(native);
         texture_descs_.push_back(desc);
         texture_active_.push_back(true);
+        texture_resident_.push_back(true);
         texture_states_.push_back(initial_texture_state(desc.usage));
         texture_lifetime_.push_back(lifetime_registration.handle);
         texture_last_used_fences_.push_back(FenceValue{});
@@ -6896,6 +6977,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         texture_handles_.push_back(native);
         texture_descs_.push_back(desc);
         texture_active_.push_back(true);
+        texture_resident_.push_back(true);
         texture_states_.push_back(initial_texture_state(desc.usage));
         texture_lifetime_.push_back(lifetime_registration.handle);
         texture_last_used_fences_.push_back(FenceValue{});
@@ -6959,6 +7041,7 @@ class D3d12RhiDevice final : public IRhiDevice {
             texture_handles_.push_back(natives[i]);
             texture_descs_.push_back(desc);
             texture_active_.push_back(true);
+            texture_resident_.push_back(true);
             texture_states_.push_back(initial_texture_state(desc.usage));
             texture_lifetime_.push_back(lifetime_handles[i]);
             texture_last_used_fences_.push_back(FenceValue{});
@@ -6998,6 +7081,7 @@ class D3d12RhiDevice final : public IRhiDevice {
                 const auto release_fence = buffer_release_fence(buffer);
                 (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), release_fence);
                 buffer_active_.at(index) = false;
+                buffer_resident_.at(index) = false;
             }
         } else {
             for (const auto texture : record.textures) {
@@ -7006,6 +7090,7 @@ class D3d12RhiDevice final : public IRhiDevice {
                     const auto release_fence = texture_release_fence(texture);
                     (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
                     texture_active_.at(index) = false;
+                    texture_resident_.at(index) = false;
                     texture_states_.at(index) = ResourceState::undefined;
                 }
             }
@@ -7346,14 +7431,15 @@ class D3d12RhiDevice final : public IRhiDevice {
         return std::make_unique<D3d12RhiCommandList>(
             *context_, native, queue, swapchain_handles_, swapchain_descs_, swapchain_states_, swapchain_presentable_,
             swapchain_frame_reserved_, swapchain_frame_swapchains_, swapchain_frame_active_, swapchain_frame_presented_,
-            buffer_handles_, buffer_descs_, buffer_active_, texture_handles_, texture_descs_, texture_active_,
-            texture_states_, descriptor_set_cbv_srv_uav_heaps_, descriptor_set_cbv_srv_uav_base_descriptors_,
-            descriptor_set_sampler_heaps_, descriptor_set_sampler_base_descriptors_, descriptor_set_layout_handles_,
-            descriptor_set_resource_refs_, pipeline_layout_handles_, pipeline_layout_descriptor_sets_,
-            pipeline_layout_descriptor_tables_, graphics_pipeline_handles_, graphics_pipeline_root_signatures_,
-            graphics_pipeline_layouts_, graphics_pipeline_active_, compute_pipeline_handles_,
-            compute_pipeline_root_signatures_, compute_pipeline_layouts_, compute_pipeline_active_,
-            pipeline_layout_active_, descriptor_set_active_, stats_);
+            buffer_handles_, buffer_descs_, buffer_active_, buffer_resident_, texture_handles_, texture_descs_,
+            texture_active_, texture_resident_, texture_states_, descriptor_set_cbv_srv_uav_heaps_,
+            descriptor_set_cbv_srv_uav_base_descriptors_, descriptor_set_sampler_heaps_,
+            descriptor_set_sampler_base_descriptors_, descriptor_set_layout_handles_, descriptor_set_resource_refs_,
+            pipeline_layout_handles_, pipeline_layout_descriptor_sets_, pipeline_layout_descriptor_tables_,
+            graphics_pipeline_handles_, graphics_pipeline_root_signatures_, graphics_pipeline_layouts_,
+            graphics_pipeline_active_, compute_pipeline_handles_, compute_pipeline_root_signatures_,
+            compute_pipeline_layouts_, compute_pipeline_active_, pipeline_layout_active_, descriptor_set_active_,
+            stats_);
     }
 
     [[nodiscard]] FenceValue submit(IRhiCommandList& commands) override {
@@ -7366,6 +7452,9 @@ class D3d12RhiDevice final : public IRhiDevice {
         }
         if (!d3d12_commands->observed_texture_states_match(texture_states_)) {
             throw std::logic_error("d3d12 rhi command list was recorded against stale texture state");
+        }
+        if (!d3d12_commands->observed_resources_resident()) {
+            throw std::logic_error("d3d12 rhi command list references nonresident resources");
         }
 
         const auto fence = context_->execute_command_list(d3d12_commands->native_handle());
@@ -7421,6 +7510,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         if (!owns_buffer(buffer)) {
             throw std::invalid_argument("d3d12 rhi write buffer handle is unknown");
         }
+        require_buffer_resident(buffer);
         if (bytes.empty()) {
             throw std::invalid_argument("d3d12 rhi write buffer byte span must be non-empty");
         }
@@ -7444,6 +7534,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         if (!owns_buffer(buffer)) {
             throw std::invalid_argument("d3d12 rhi read buffer handle is unknown");
         }
+        require_buffer_resident(buffer);
         if (size_bytes == 0) {
             throw std::invalid_argument("d3d12 rhi read buffer size must be non-zero");
         }
@@ -7506,6 +7597,48 @@ class D3d12RhiDevice final : public IRhiDevice {
     [[nodiscard]] bool owns_texture(TextureHandle handle) const noexcept {
         return handle.value > 0 && handle.value <= texture_handles_.size() && handle.value <= texture_active_.size() &&
                texture_active_.at(handle.value - 1U);
+    }
+
+    [[nodiscard]] bool buffer_resident(BufferHandle handle) const noexcept {
+        return owns_buffer(handle) && handle.value <= buffer_resident_.size() && buffer_resident_.at(handle.value - 1U);
+    }
+
+    [[nodiscard]] bool texture_resident(TextureHandle handle) const noexcept {
+        return owns_texture(handle) && handle.value <= texture_resident_.size() &&
+               texture_resident_.at(handle.value - 1U);
+    }
+
+    void require_buffer_resident(BufferHandle handle) const {
+        if (!buffer_resident(handle)) {
+            throw std::invalid_argument("d3d12 rhi buffer is not resident");
+        }
+    }
+
+    void require_texture_resident(TextureHandle handle) const {
+        if (!texture_resident(handle)) {
+            throw std::invalid_argument("d3d12 rhi texture is not resident");
+        }
+    }
+
+    [[nodiscard]] bool resource_last_use_completed(FenceValue fence) const noexcept {
+        if (fence.value == 0) {
+            return true;
+        }
+        if (!context_) {
+            return false;
+        }
+        const auto completed_fences = context_->completed_queue_fences();
+        return completed_fence_value_for_queue(completed_fences, fence.queue) >= fence.value;
+    }
+
+    [[nodiscard]] bool buffer_last_use_completed(BufferHandle handle) const noexcept {
+        return handle.value > 0 && handle.value <= buffer_last_used_fences_.size() &&
+               resource_last_use_completed(buffer_last_used_fences_.at(handle.value - 1U));
+    }
+
+    [[nodiscard]] bool texture_last_use_completed(TextureHandle handle) const noexcept {
+        return handle.value > 0 && handle.value <= texture_last_used_fences_.size() &&
+               resource_last_use_completed(texture_last_used_fences_.at(handle.value - 1U));
     }
 
     [[nodiscard]] bool owns_sampler(SamplerHandle handle) const noexcept {
@@ -7675,6 +7808,7 @@ class D3d12RhiDevice final : public IRhiDevice {
             if (!owns_buffer(resource.buffer_handle)) {
                 throw std::invalid_argument("d3d12 rhi descriptor buffer handle is unknown");
             }
+            require_buffer_resident(resource.buffer_handle);
             const auto usage = buffer_descs_.at(resource.buffer_handle.value - 1U).usage;
             if (type == DescriptorType::uniform_buffer && !has_flag(usage, BufferUsage::uniform)) {
                 throw std::invalid_argument("d3d12 rhi uniform buffer descriptor requires uniform buffer usage");
@@ -7689,6 +7823,7 @@ class D3d12RhiDevice final : public IRhiDevice {
             if (!owns_texture(resource.texture_handle)) {
                 throw std::invalid_argument("d3d12 rhi descriptor texture handle is unknown");
             }
+            require_texture_resident(resource.texture_handle);
             const auto usage = texture_descs_.at(resource.texture_handle.value - 1U).usage;
             if (type == DescriptorType::sampled_texture && !has_flag(usage, TextureUsage::shader_resource)) {
                 throw std::invalid_argument(
@@ -7713,9 +7848,11 @@ class D3d12RhiDevice final : public IRhiDevice {
     [[nodiscard]] NativeResourceHandle native_resource_handle(const DescriptorResource& resource,
                                                               DescriptorType type) const {
         if (is_buffer_descriptor(type)) {
+            require_buffer_resident(resource.buffer_handle);
             return buffer_handles_.at(resource.buffer_handle.value - 1U);
         }
         if (is_texture_descriptor(type)) {
+            require_texture_resident(resource.texture_handle);
             return texture_handles_.at(resource.texture_handle.value - 1U);
         }
         throw std::invalid_argument("d3d12 rhi descriptor resource type is invalid");
@@ -7758,11 +7895,13 @@ class D3d12RhiDevice final : public IRhiDevice {
     std::vector<NativeResourceHandle> buffer_handles_;
     std::vector<BufferDesc> buffer_descs_;
     std::vector<bool> buffer_active_;
+    std::vector<bool> buffer_resident_;
     std::vector<RhiResourceHandle> buffer_lifetime_;
     std::vector<FenceValue> buffer_last_used_fences_;
     std::vector<NativeResourceHandle> texture_handles_;
     std::vector<TextureDesc> texture_descs_;
     std::vector<bool> texture_active_;
+    std::vector<bool> texture_resident_;
     std::vector<RhiResourceHandle> texture_lifetime_;
     std::vector<ResourceState> texture_states_;
     std::vector<FenceValue> texture_last_used_fences_;
@@ -7865,6 +8004,9 @@ void D3d12RhiDevice::retire_deferred_committed_resources(
                 if (i < buffer_active_.size()) {
                     buffer_active_[i] = false;
                 }
+                if (i < buffer_resident_.size()) {
+                    buffer_resident_[i] = false;
+                }
                 break;
             }
         } break;
@@ -7884,6 +8026,9 @@ void D3d12RhiDevice::retire_deferred_committed_resources(
                 }
                 if (i < texture_active_.size()) {
                     texture_active_[i] = false;
+                }
+                if (i < texture_resident_.size()) {
+                    texture_resident_[i] = false;
                 }
                 if (i < texture_states_.size()) {
                     texture_states_[i] = ResourceState::undefined;

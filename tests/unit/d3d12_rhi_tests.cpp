@@ -2115,6 +2115,147 @@ MK_TEST("d3d12 rhi residency action rejects unknown resources before native call
     MK_REQUIRE(!result.enforced_allocator_budget);
 }
 
+MK_TEST("d3d12 rhi residency action tracks evicted resources at use sites") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+    MK_REQUIRE(device != nullptr);
+
+    const auto upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 16,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 16,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const std::array bytes{std::uint8_t{0x11}, std::uint8_t{0x22}, std::uint8_t{0x33}, std::uint8_t{0x44}};
+    const std::array rows{
+        mirakana::rhi::RhiResidencyResourceRef{
+            .kind = mirakana::rhi::RhiResidencyResourceKind::buffer,
+            .buffer = upload,
+        },
+    };
+
+    const auto evicted = device->execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::evict,
+        .resources = rows,
+    });
+    MK_REQUIRE(evicted.status == mirakana::rhi::RhiResidencyActionStatus::succeeded);
+    MK_REQUIRE(evicted.invoked_native_evict);
+
+    bool rejected_write = false;
+    try {
+        device->write_buffer(upload, 0, bytes);
+    } catch (const std::invalid_argument&) {
+        rejected_write = true;
+    }
+
+    bool rejected_recording = false;
+    try {
+        auto commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+        commands->copy_buffer(upload, readback,
+                              mirakana::rhi::BufferCopyRegion{
+                                  .source_offset = 0,
+                                  .destination_offset = 0,
+                                  .size_bytes = static_cast<std::uint64_t>(bytes.size()),
+                              });
+    } catch (const std::invalid_argument&) {
+        rejected_recording = true;
+    }
+
+    const auto made_resident = device->execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::make_resident,
+        .resources = rows,
+    });
+    MK_REQUIRE(made_resident.status == mirakana::rhi::RhiResidencyActionStatus::succeeded);
+    MK_REQUIRE(made_resident.invoked_native_make_resident);
+
+    device->write_buffer(upload, 0, bytes);
+
+    auto pending_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    pending_commands->copy_buffer(upload, readback,
+                                  mirakana::rhi::BufferCopyRegion{
+                                      .source_offset = 0,
+                                      .destination_offset = 0,
+                                      .size_bytes = static_cast<std::uint64_t>(bytes.size()),
+                                  });
+    pending_commands->close();
+
+    const auto evicted_after_recording = device->execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::evict,
+        .resources = rows,
+    });
+    MK_REQUIRE(evicted_after_recording.status == mirakana::rhi::RhiResidencyActionStatus::succeeded);
+    MK_REQUIRE(evicted_after_recording.invoked_native_evict);
+
+    bool rejected_submit = false;
+    try {
+        (void)device->submit(*pending_commands);
+    } catch (const std::logic_error&) {
+        rejected_submit = true;
+    }
+
+    const auto made_resident_again = device->execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::make_resident,
+        .resources = rows,
+    });
+    MK_REQUIRE(made_resident_again.status == mirakana::rhi::RhiResidencyActionStatus::succeeded);
+
+    auto copy_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_commands->copy_buffer(upload, readback,
+                               mirakana::rhi::BufferCopyRegion{
+                                   .source_offset = 0,
+                                   .destination_offset = 0,
+                                   .size_bytes = static_cast<std::uint64_t>(bytes.size()),
+                               });
+    copy_commands->close();
+    const auto copy_fence = device->submit(*copy_commands);
+    device->wait(copy_fence);
+
+    const auto copied = device->read_buffer(readback, 0, static_cast<std::uint64_t>(bytes.size()));
+
+    MK_REQUIRE(rejected_write);
+    MK_REQUIRE(rejected_recording);
+    MK_REQUIRE(rejected_submit);
+    MK_REQUIRE(copied.size() == bytes.size());
+    MK_REQUIRE(copied[0] == bytes[0]);
+    MK_REQUIRE(copied[1] == bytes[1]);
+    MK_REQUIRE(copied[2] == bytes[2]);
+    MK_REQUIRE(copied[3] == bytes[3]);
+}
+
+MK_TEST("d3d12 rhi residency action rejects transient placed textures before native calls") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+    MK_REQUIRE(device != nullptr);
+
+    const auto transient = device->acquire_transient_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination,
+    });
+    const std::array rows{
+        mirakana::rhi::RhiResidencyResourceRef{
+            .kind = mirakana::rhi::RhiResidencyResourceKind::texture,
+            .texture = transient.texture,
+        },
+    };
+
+    const auto result = device->execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::make_resident,
+        .resources = rows,
+    });
+    device->release_transient(transient.lease);
+
+    MK_REQUIRE(result.status == mirakana::rhi::RhiResidencyActionStatus::invalid_resource);
+    MK_REQUIRE(result.backend == mirakana::rhi::BackendKind::d3d12);
+    MK_REQUIRE(result.requested_resource_count == 1U);
+    MK_REQUIRE(result.acted_resource_count == 0U);
+    MK_REQUIRE(result.invalid_resource_count == 1U);
+    MK_REQUIRE(!result.invoked_native_make_resident);
+    MK_REQUIRE(!result.invoked_native_evict);
+    MK_REQUIRE(!result.exposed_native_handles);
+    MK_REQUIRE(!result.enforced_allocator_budget);
+}
+
 MK_TEST("d3d12 device context rejects invalid committed resource descriptions") {
     auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
