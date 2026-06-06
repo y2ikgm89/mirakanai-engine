@@ -197,7 +197,7 @@
   pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
   ```
 
-- [ ] **Step 2: Run publication preflight**
+- [x] **Step 2: Run publication preflight**
 
   Command:
 
@@ -205,7 +205,7 @@
   pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
   ```
 
-- [ ] **Step 3: Commit, push, and open stacked draft PR**
+- [x] **Step 3: Commit, push, and open stacked draft PR**
 
   Base branch:
 
@@ -240,5 +240,7 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` | Passed before staging and again clean before push |
+| Stacked draft PR | Published as draft PR #510 with base `codex/mavg-gpu-visible-cluster-packets-v1` |
 
-Publication preflight remains pending for Task 5.
+Published stacked draft PR #510.
