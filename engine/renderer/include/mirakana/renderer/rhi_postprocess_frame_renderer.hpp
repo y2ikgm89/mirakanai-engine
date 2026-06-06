@@ -59,6 +59,10 @@ struct RhiPostprocessFrameRendererDesc {
     NativeUiOverlayAtlasBinding native_ui_overlay_atlas;
     bool enable_native_ui_overlay{false};
     bool enable_native_ui_overlay_textures{false};
+    rhi::GraphicsPipelineHandle cloud_layer_graphics_pipeline;
+    rhi::PipelineLayoutHandle cloud_layer_pipeline_layout;
+    rhi::DescriptorSetHandle cloud_layer_descriptor_set;
+    bool enable_cloud_layer{false};
 };
 
 class RhiPostprocessFrameRenderer final : public IRenderer {
@@ -132,6 +136,10 @@ class RhiPostprocessFrameRenderer final : public IRenderer {
     bool depth_input_enabled_{false};
     bool native_ui_overlay_enabled_{false};
     bool native_ui_overlay_textures_enabled_{false};
+    bool enable_cloud_layer_{false};
+    rhi::GraphicsPipelineHandle cloud_layer_graphics_pipeline_{};
+    rhi::PipelineLayoutHandle cloud_layer_pipeline_layout_{};
+    rhi::DescriptorSetHandle cloud_layer_descriptor_set_{};
     Color clear_color_{.r = 0.0F, .g = 0.0F, .b = 0.0F, .a = 1.0F};
     RendererStats stats_{};
     std::unique_ptr<rhi::IRhiCommandList> commands_;

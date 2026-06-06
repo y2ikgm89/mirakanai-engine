@@ -257,9 +257,12 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
 RhiFrameRenderer::RhiFrameRenderer(const RhiFrameRendererDesc& desc)
     : device_(desc.device), extent_(desc.extent), color_texture_(desc.color_texture), swapchain_(desc.swapchain),
       graphics_pipeline_(desc.graphics_pipeline), skinned_graphics_pipeline_(desc.skinned_graphics_pipeline),
-      morph_graphics_pipeline_(desc.morph_graphics_pipeline), depth_texture_(desc.depth_texture),
-      color_texture_state_(desc.color_texture_state), depth_texture_state_(desc.depth_texture_state),
-      wait_for_completion_(desc.wait_for_completion) {
+      morph_graphics_pipeline_(desc.morph_graphics_pipeline),
+      cloud_layer_graphics_pipeline_(desc.cloud_layer_graphics_pipeline),
+      cloud_layer_pipeline_layout_(desc.cloud_layer_pipeline_layout),
+      cloud_layer_descriptor_set_(desc.cloud_layer_descriptor_set), enable_cloud_layer_(desc.enable_cloud_layer),
+      depth_texture_(desc.depth_texture), color_texture_state_(desc.color_texture_state),
+      depth_texture_state_(desc.depth_texture_state), wait_for_completion_(desc.wait_for_completion) {
     if (device_ == nullptr) {
         throw std::invalid_argument("rhi frame renderer requires an rhi device");
     }
@@ -287,6 +290,10 @@ RhiFrameRenderer::RhiFrameRenderer(const RhiFrameRendererDesc& desc)
     }
     if (desc.enable_native_sprite_overlay_textures && !desc.enable_native_sprite_overlay) {
         throw std::invalid_argument("rhi frame renderer textured native sprite overlay requires native sprite overlay");
+    }
+    if (enable_cloud_layer_ && (cloud_layer_graphics_pipeline_.value == 0 || cloud_layer_pipeline_layout_.value == 0 ||
+                                cloud_layer_descriptor_set_.value == 0)) {
+        throw std::invalid_argument("rhi frame renderer cloud layer requires pipeline layout and descriptor set");
     }
     if (desc.enable_native_sprite_overlay) {
         native_sprite_overlay_ = std::make_unique<RhiNativeUiOverlay>(RhiNativeUiOverlayDesc{
@@ -528,6 +535,14 @@ void RhiFrameRenderer::end_frame() {
                         commands_->bind_graphics_pipeline(graphics_pipeline_);
                         skinned_pipeline_bound_ = false;
                         morph_pipeline_bound_ = false;
+                        if (enable_cloud_layer_) {
+                            commands_->bind_graphics_pipeline(cloud_layer_graphics_pipeline_);
+                            commands_->bind_descriptor_set(cloud_layer_pipeline_layout_, 0,
+                                                           cloud_layer_descriptor_set_);
+                            commands_->draw(3, 1);
+                            ++recorded_primary_stats.cloud_layer_draws;
+                            commands_->bind_graphics_pipeline(graphics_pipeline_);
+                        }
                         for (const auto& draw : queued_primary_draws_) {
                             switch (draw.kind) {
                             case QueuedPrimaryDrawKind::sprite:
@@ -605,6 +620,7 @@ void RhiFrameRenderer::end_frame() {
         stats_.framegraph_passes_executed += frame_graph_execution.pass_callbacks_invoked;
         stats_.framegraph_render_passes_recorded += frame_graph_execution.render_passes_recorded;
         stats_.framegraph_barrier_steps_executed += frame_graph_execution.barriers_recorded;
+        stats_.cloud_layer_draws += recorded_primary_stats.cloud_layer_draws;
         stats_.native_ui_overlay_draws += overlay_draw.batch_count;
         stats_.native_ui_overlay_texture_binds += overlay_draw.texture_bind_count;
         stats_.native_ui_overlay_textured_draws += overlay_draw.textured_batch_count;

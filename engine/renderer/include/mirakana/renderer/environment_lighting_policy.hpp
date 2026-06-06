@@ -43,6 +43,10 @@ enum class EnvironmentLightingDiagnosticCode : std::uint8_t {
     invalid_reflection_cubemap_mips,
     missing_hdr_metadata,
     missing_package_evidence,
+    missing_package_record,
+    missing_package_source,
+    missing_renderer_upload_evidence,
+    missing_runtime_capture_evidence,
     invalid_irradiance_order,
     invalid_radiance_mips,
     invalid_roughness_policy,
@@ -59,6 +63,8 @@ struct EnvironmentReflectionCubemapDesc {
     std::uint32_t mip_count{0};
     EnvironmentLightingTextureFormat format{EnvironmentLightingTextureFormat::unknown};
     bool hdr_metadata_ready{false};
+    bool package_record_ready{false};
+    bool package_source_ready{false};
     bool package_evidence_ready{false};
 };
 
@@ -79,6 +85,24 @@ struct EnvironmentHdrClampPolicyDesc {
     float exposure_bias{0.0F};
 };
 
+struct EnvironmentLightingRendererUploadEvidenceDesc {
+    bool evidence_ready{false};
+    std::uint32_t texture_cube_uploads{0};
+    std::uint32_t texture_cube_faces{0};
+    std::uint32_t texture_cube_edge_size{0};
+    std::uint32_t radiance_mips{0};
+    std::uint32_t irradiance_rows{0};
+    bool shader_sampling_proven{false};
+    bool shader_sample_readback_nonzero{false};
+};
+
+struct EnvironmentLightingRuntimeCaptureEvidenceDesc {
+    bool evidence_ready{false};
+    std::uint32_t capture_faces{0};
+    bool readback_nonzero{false};
+    std::uint64_t readback_checksum{0};
+};
+
 struct EnvironmentLightingPolicyDesc {
     EnvironmentLightingDependencyMode dependency_mode{EnvironmentLightingDependencyMode::unknown};
     EnvironmentLightingSkySource visual_sky_source{EnvironmentLightingSkySource::unknown};
@@ -87,6 +111,8 @@ struct EnvironmentLightingPolicyDesc {
     EnvironmentIrradianceDesc irradiance;
     EnvironmentRadianceDesc radiance;
     EnvironmentHdrClampPolicyDesc hdr_clamp;
+    EnvironmentLightingRendererUploadEvidenceDesc renderer_upload;
+    EnvironmentLightingRuntimeCaptureEvidenceDesc runtime_capture;
     bool visual_sky_visible_in_main_camera{true};
     bool request_coupled_visual_and_lighting_sky{false};
     bool request_runtime_capture{false};
@@ -101,6 +127,8 @@ struct EnvironmentReflectionCubemapRow {
     std::uint32_t mip_count{0};
     EnvironmentLightingTextureFormat format{EnvironmentLightingTextureFormat::unknown};
     bool hdr_metadata_ready{false};
+    bool package_record_ready{false};
+    bool package_source_ready{false};
     bool package_evidence_ready{false};
     bool allocates_texture{false};
 };
@@ -119,6 +147,10 @@ struct EnvironmentRadianceMipRow {
 struct EnvironmentLightingPackageEvidenceRow {
     AssetId asset;
     std::string evidence_kind;
+    bool package_record_ready{false};
+    bool package_source_ready{false};
+    bool hdr_metadata_ready{false};
+    bool renderer_upload_evidence_ready{false};
     bool ready{false};
 };
 
@@ -144,6 +176,21 @@ struct EnvironmentLightingPolicyPlan {
     bool allocates_textures{false};
     bool invokes_backend{false};
     bool exposes_native_handles{false};
+    bool renderer_upload_evidence_ready{false};
+    bool runtime_capture_evidence_ready{false};
+    std::uint32_t texture_uploads{0};
+    std::uint32_t texture_cube_uploads{0};
+    std::uint32_t texture_cube_faces{0};
+    std::uint32_t texture_cube_edge_size{0};
+    std::uint32_t renderer_radiance_mips{0};
+    std::uint32_t renderer_irradiance_rows{0};
+    bool shader_sampling_proven{false};
+    bool shader_sample_readback_nonzero{false};
+    std::uint32_t backend_invocations{0};
+    std::uint32_t runtime_captures{0};
+    std::uint32_t runtime_capture_faces{0};
+    bool runtime_capture_readback_nonzero{false};
+    std::uint64_t runtime_capture_readback_checksum{0};
     std::vector<EnvironmentReflectionCubemapRow> reflection_cubemap_rows;
     std::vector<EnvironmentIrradianceRow> irradiance_rows;
     std::vector<EnvironmentRadianceMipRow> radiance_mip_rows;

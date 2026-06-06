@@ -95,6 +95,26 @@ MK_TEST("renderer cloud layer policy requires execution evidence before ready pr
     MK_REQUIRE(ready_plan.ready());
 }
 
+MK_TEST("renderer cloud layer policy promotes texture upload backend and draw execution evidence") {
+    auto desc = make_valid_cloud_policy_desc();
+    desc.execution_evidence_ready = true;
+    desc.request_ready_promotion = true;
+    desc.request_texture_upload = true;
+    desc.request_backend_execution = true;
+
+    const auto plan = mirakana::plan_cloud_layer_policy(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.uploads_textures);
+    MK_REQUIRE(plan.invokes_backend);
+    MK_REQUIRE(plan.renderer_draws == 1);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.uses_volumetric_clouds);
+    MK_REQUIRE(plan.texture_rows.size() == 1);
+    MK_REQUIRE(plan.texture_rows[0].uploads_texture);
+}
+
 MK_TEST("renderer cloud layer policy fails closed for invalid values and unsupported claims") {
     auto desc = make_valid_cloud_policy_desc();
     desc.layer.coverage = std::numeric_limits<float>::quiet_NaN();
@@ -102,8 +122,6 @@ MK_TEST("renderer cloud layer policy fails closed for invalid values and unsuppo
     desc.quality_tier = mirakana::CloudLayerQualityTier::unknown;
     desc.shader_contract_evidence_ready = false;
     desc.package_evidence_ready = false;
-    desc.request_texture_upload = true;
-    desc.request_backend_execution = true;
     desc.request_native_handle_access = true;
     desc.request_volumetric_clouds = true;
 
@@ -122,10 +140,6 @@ MK_TEST("renderer cloud layer policy fails closed for invalid values and unsuppo
         plan, mirakana::CloudLayerDiagnosticCode::missing_shader_contract_evidence));
     MK_REQUIRE(
         mirakana::has_cloud_layer_diagnostic(plan, mirakana::CloudLayerDiagnosticCode::missing_package_evidence));
-    MK_REQUIRE(
-        mirakana::has_cloud_layer_diagnostic(plan, mirakana::CloudLayerDiagnosticCode::unsupported_texture_upload));
-    MK_REQUIRE(
-        mirakana::has_cloud_layer_diagnostic(plan, mirakana::CloudLayerDiagnosticCode::unsupported_backend_execution));
     MK_REQUIRE(mirakana::has_cloud_layer_diagnostic(
         plan, mirakana::CloudLayerDiagnosticCode::unsupported_native_handle_claim));
     MK_REQUIRE(

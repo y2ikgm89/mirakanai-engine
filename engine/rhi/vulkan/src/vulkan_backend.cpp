@@ -200,6 +200,7 @@ inline constexpr std::uint32_t vulkan_format_r32g32b32_sfloat = 106;
 inline constexpr std::uint32_t vulkan_format_r32g32b32a32_sfloat = 109;
 /// `VK_FORMAT_R16G16B16A16_UINT` - four 16-bit unsigned integer components per vertex attribute (skin joint indices).
 inline constexpr std::uint32_t vulkan_format_r16g16b16a16_uint = 95;
+inline constexpr std::uint32_t vulkan_format_r16g16b16a16_sfloat = 97;
 inline constexpr std::uint32_t vulkan_format_r8g8b8a8_unorm = 37;
 inline constexpr std::uint32_t vulkan_format_b8g8r8a8_unorm = 44;
 inline constexpr std::uint32_t vulkan_format_d24_unorm_s8_uint = 129;
@@ -210,6 +211,7 @@ inline constexpr std::uint32_t vulkan_image_usage_sampled_bit = 0x00000004U;
 inline constexpr std::uint32_t vulkan_image_usage_storage_bit = 0x00000008U;
 inline constexpr std::uint32_t vulkan_image_usage_color_attachment_bit = 0x00000010U;
 inline constexpr std::uint32_t vulkan_image_usage_depth_stencil_attachment_bit = 0x00000020U;
+inline constexpr std::uint32_t vulkan_image_create_cube_compatible_bit = 0x00000010U;
 inline constexpr std::uint32_t vulkan_image_create_alias_bit = 0x00000400U;
 inline constexpr std::uint32_t vulkan_buffer_usage_transfer_src_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_buffer_usage_transfer_dst_bit = 0x00000002U;
@@ -218,6 +220,7 @@ inline constexpr std::uint32_t vulkan_buffer_usage_storage_buffer_bit = 0x000000
 inline constexpr std::uint32_t vulkan_buffer_usage_index_buffer_bit = 0x00000040U;
 inline constexpr std::uint32_t vulkan_buffer_usage_vertex_buffer_bit = 0x00000080U;
 inline constexpr std::uint32_t vulkan_image_view_type_2d = 1;
+inline constexpr std::uint32_t vulkan_image_view_type_cube = 3;
 inline constexpr std::uint32_t vulkan_component_swizzle_identity = 0;
 inline constexpr std::uint32_t vulkan_image_aspect_color_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_image_aspect_depth_bit = 0x00000002U;
@@ -1754,7 +1757,14 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
     return queue.index != invalid_vulkan_queue_family && queue.queue_count > 0;
 }
 
-[[nodiscard]] QueueFamilySelection select_queue_families(const VulkanPhysicalDeviceCandidate& device) noexcept {
+[[nodiscard]] bool logical_device_requires_extension(const VulkanLogicalDeviceCreateDesc& desc,
+                                                     std::string_view extension) noexcept {
+    return std::ranges::any_of(desc.required_extensions,
+                               [extension](const std::string& required) { return required == extension; });
+}
+
+[[nodiscard]] QueueFamilySelection select_queue_families(const VulkanPhysicalDeviceCandidate& device,
+                                                         const bool require_present_queue) noexcept {
     QueueFamilySelection selection;
 
     for (const auto& queue : device.queue_families) {
@@ -1763,13 +1773,13 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
         }
         const bool graphics_compute = has_queue_capability(queue.capabilities, VulkanQueueCapability::graphics) &&
                                       has_queue_capability(queue.capabilities, VulkanQueueCapability::compute);
-        if (graphics_compute && queue.supports_present) {
+        if (require_present_queue && graphics_compute && queue.supports_present) {
             return QueueFamilySelection{.graphics = queue.index, .present = queue.index};
         }
         if (selection.graphics == invalid_vulkan_queue_family && graphics_compute) {
             selection.graphics = queue.index;
         }
-        if (selection.present == invalid_vulkan_queue_family && queue.supports_present) {
+        if (require_present_queue && selection.present == invalid_vulkan_queue_family && queue.supports_present) {
             selection.present = queue.index;
         }
     }
@@ -1777,8 +1787,10 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
     return selection;
 }
 
-[[nodiscard]] bool has_required_queues(const QueueFamilySelection& selection) noexcept {
-    return selection.graphics != invalid_vulkan_queue_family && selection.present != invalid_vulkan_queue_family;
+[[nodiscard]] bool has_required_queues(const QueueFamilySelection& selection,
+                                       const bool require_present_queue) noexcept {
+    return selection.graphics != invalid_vulkan_queue_family &&
+           (!require_present_queue || selection.present != invalid_vulkan_queue_family);
 }
 
 [[nodiscard]] int device_type_score(VulkanPhysicalDeviceType type) noexcept {
@@ -1806,14 +1818,19 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
     return score;
 }
 
-[[nodiscard]] bool is_suitable_device(const VulkanPhysicalDeviceCandidate& device,
+[[nodiscard]] bool is_suitable_device(const VulkanLogicalDeviceCreateDesc& desc,
+                                      const VulkanPhysicalDeviceCandidate& device,
                                       const QueueFamilySelection& queues) noexcept {
     return is_vulkan_api_at_least(device.api_version, VulkanApiVersion{.major = 1, .minor = 3}) &&
-           device.supports_swapchain_extension && device.supports_dynamic_rendering &&
-           device.supports_synchronization2 && has_required_queues(queues);
+           (!logical_device_requires_extension(desc, "VK_KHR_swapchain") || device.supports_swapchain_extension) &&
+           (!desc.require_dynamic_rendering || device.supports_dynamic_rendering) &&
+           (!desc.require_synchronization2 || device.supports_synchronization2) &&
+           has_required_queues(queues, desc.require_present_queue);
 }
 
-template <typename Devices> [[nodiscard]] VulkanDeviceSelection select_physical_device_impl(const Devices& devices) {
+template <typename Devices>
+[[nodiscard]] VulkanDeviceSelection select_physical_device_impl(const VulkanLogicalDeviceCreateDesc& desc,
+                                                                const Devices& devices) {
     VulkanDeviceSelection best{
         .suitable = false,
         .device_index = invalid_vulkan_device_index,
@@ -1825,8 +1842,8 @@ template <typename Devices> [[nodiscard]] VulkanDeviceSelection select_physical_
 
     std::size_t index = 0;
     for (const auto& device : devices) {
-        const auto queues = select_queue_families(device);
-        if (!is_suitable_device(device, queues)) {
+        const auto queues = select_queue_families(device, desc.require_present_queue);
+        if (!is_suitable_device(desc, device, queues)) {
             ++index;
             continue;
         }
@@ -1909,12 +1926,16 @@ template <typename AvailableDeviceExtensions>
         return plan;
     }
 
-    append_queue_family_once(plan.queue_families, selection.graphics_queue_family);
-    append_queue_family_once(plan.queue_families, selection.present_queue_family);
-
-    if (plan.queue_families.empty()) {
-        plan.diagnostic = "Vulkan logical device requires graphics and present queues";
+    if (selection.graphics_queue_family == invalid_vulkan_queue_family ||
+        (desc.require_present_queue && selection.present_queue_family == invalid_vulkan_queue_family)) {
+        plan.diagnostic = desc.require_present_queue ? "Vulkan logical device requires graphics and present queues"
+                                                     : "Vulkan logical device requires a graphics queue";
         return plan;
+    }
+
+    append_queue_family_once(plan.queue_families, selection.graphics_queue_family);
+    if (desc.require_present_queue) {
+        append_queue_family_once(plan.queue_families, selection.present_queue_family);
     }
 
     for (const auto& required : desc.required_extensions) {
@@ -2294,6 +2315,23 @@ template <typename AvailableDeviceExtensions>
     }
 
     return true;
+}
+
+[[nodiscard]] std::vector<VulkanRuntimeVertexBufferBindingDesc>
+sorted_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBindingDesc> bindings) {
+    std::vector<VulkanRuntimeVertexBufferBindingDesc> sorted{bindings.begin(), bindings.end()};
+    std::ranges::sort(sorted, {}, &VulkanRuntimeVertexBufferBindingDesc::binding);
+    return sorted;
+}
+
+[[nodiscard]] bool
+has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBindingDesc> bindings) noexcept {
+    for (std::size_t index = 1; index < bindings.size(); ++index) {
+        if (bindings[index - 1U].binding == bindings[index].binding) {
+            return true;
+        }
+    }
+    return false;
 }
 
 [[nodiscard]] std::uint32_t native_vulkan_topology(PrimitiveTopology topology) noexcept {
@@ -4766,9 +4804,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             render_pass_active_ = true;
             rendering_recorded_ = false;
             bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-            vertex_buffer_bound_ = false;
             index_buffer_bound_ = false;
-            bound_vertex_buffer_ = VertexBufferBinding{};
+            bound_vertex_buffers_.clear();
             bound_index_buffer_ = IndexBufferBinding{};
             recorded_work_ = true;
             ++device_->stats_.render_passes_begun;
@@ -4807,9 +4844,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         render_pass_active_ = true;
         rendering_recorded_ = false;
         bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-        vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
-        bound_vertex_buffer_ = VertexBufferBinding{};
+        bound_vertex_buffers_.clear();
         bound_index_buffer_ = IndexBufferBinding{};
         track_swapchain_frame(desc.color.swapchain_frame);
         if (desc.depth.texture.value != 0) {
@@ -4836,9 +4872,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             render_pass_active_ = false;
             rendering_recorded_ = false;
             bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-            vertex_buffer_bound_ = false;
             index_buffer_bound_ = false;
-            bound_vertex_buffer_ = VertexBufferBinding{};
+            bound_vertex_buffers_.clear();
             bound_index_buffer_ = IndexBufferBinding{};
             return;
         }
@@ -4862,9 +4897,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         render_pass_active_ = false;
         rendering_recorded_ = false;
         bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-        vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
-        bound_vertex_buffer_ = VertexBufferBinding{};
+        bound_vertex_buffers_.clear();
         bound_index_buffer_ = IndexBufferBinding{};
         ++device_->stats_.resource_transitions;
     }
@@ -4884,9 +4918,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         }
 
         bound_graphics_pipeline_ = pipeline;
-        vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
-        bound_vertex_buffer_ = VertexBufferBinding{};
+        bound_vertex_buffers_.clear();
         bound_index_buffer_ = IndexBufferBinding{};
         ++device_->stats_.graphics_pipelines_bound;
     }
@@ -4984,8 +5017,14 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (binding.offset >= desc.size_bytes) {
             throw std::invalid_argument("vulkan rhi vertex buffer offset is outside the buffer");
         }
-        vertex_buffer_bound_ = true;
-        bound_vertex_buffer_ = binding;
+        const auto existing = std::ranges::find_if(bound_vertex_buffers_, [&binding](const VertexBufferBinding& item) {
+            return item.binding == binding.binding;
+        });
+        if (existing == bound_vertex_buffers_.end()) {
+            bound_vertex_buffers_.push_back(binding);
+        } else {
+            *existing = binding;
+        }
         ++device_->stats_.vertex_buffer_bindings;
     }
 
@@ -5029,8 +5068,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
         const auto depth_load_action = depth_load_action_for_next_draw();
-        auto* vertex_buffer =
-            vertex_buffer_bound_ ? &device_->buffers_.at(bound_vertex_buffer_.buffer.value - 1U) : nullptr;
+        std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
+        vertex_buffers.reserve(bound_vertex_buffers_.size());
+        for (const auto& binding : bound_vertex_buffers_) {
+            vertex_buffers.push_back(VulkanRuntimeVertexBufferBindingDesc{
+                .buffer = &device_->buffers_.at(binding.buffer.value - 1U),
+                .offset = binding.offset,
+                .binding = binding.binding,
+            });
+        }
         VulkanRuntimeDynamicRenderingDrawResult result;
         if (active_texture_.value != 0) {
             result = record_runtime_texture_rendering_draw(
@@ -5042,9 +5088,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = vertex_buffer,
-                    .vertex_buffer_offset = vertex_buffer_bound_ ? bound_vertex_buffer_.offset : 0,
-                    .vertex_buffer_binding = vertex_buffer_bound_ ? bound_vertex_buffer_.binding : 0,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = nullptr,
                     .index_buffer_offset = 0,
                     .index_format = IndexFormat::unknown,
@@ -5069,9 +5113,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = vertex_buffer,
-                    .vertex_buffer_offset = vertex_buffer_bound_ ? bound_vertex_buffer_.offset : 0,
-                    .vertex_buffer_binding = vertex_buffer_bound_ ? bound_vertex_buffer_.binding : 0,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = nullptr,
                     .index_buffer_offset = 0,
                     .index_format = IndexFormat::unknown,
@@ -5107,7 +5149,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (!device_->owns_graphics_pipeline(bound_graphics_pipeline_)) {
             throw std::logic_error("vulkan rhi indexed draw requires a bound graphics pipeline");
         }
-        if (!vertex_buffer_bound_) {
+        if (bound_vertex_buffers_.empty()) {
             throw std::logic_error("vulkan rhi indexed draw requires a vertex buffer");
         }
         if (!index_buffer_bound_) {
@@ -5119,6 +5161,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
         const auto depth_load_action = depth_load_action_for_next_draw();
+        std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
+        vertex_buffers.reserve(bound_vertex_buffers_.size());
+        for (const auto& binding : bound_vertex_buffers_) {
+            vertex_buffers.push_back(VulkanRuntimeVertexBufferBindingDesc{
+                .buffer = &device_->buffers_.at(binding.buffer.value - 1U),
+                .offset = binding.offset,
+                .binding = binding.binding,
+            });
+        }
         VulkanRuntimeDynamicRenderingDrawResult result;
         if (active_texture_.value != 0) {
             result = record_runtime_texture_rendering_draw(
@@ -5130,9 +5181,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = &device_->buffers_.at(bound_vertex_buffer_.buffer.value - 1U),
-                    .vertex_buffer_offset = bound_vertex_buffer_.offset,
-                    .vertex_buffer_binding = bound_vertex_buffer_.binding,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = &device_->buffers_.at(bound_index_buffer_.buffer.value - 1U),
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
@@ -5159,9 +5208,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = &device_->buffers_.at(bound_vertex_buffer_.buffer.value - 1U),
-                    .vertex_buffer_offset = bound_vertex_buffer_.offset,
-                    .vertex_buffer_binding = bound_vertex_buffer_.binding,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = &device_->buffers_.at(bound_index_buffer_.buffer.value - 1U),
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
@@ -5572,7 +5619,6 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     bool render_pass_active_{false};
     bool rendering_recorded_{false};
     bool recorded_work_{false};
-    bool vertex_buffer_bound_{false};
     bool index_buffer_bound_{false};
     RenderPassDesc active_render_pass_;
     SwapchainHandle active_swapchain_;
@@ -5580,7 +5626,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     TextureHandle active_texture_;
     GraphicsPipelineHandle bound_graphics_pipeline_;
     ComputePipelineHandle bound_compute_pipeline_;
-    VertexBufferBinding bound_vertex_buffer_;
+    std::vector<VertexBufferBinding> bound_vertex_buffers_;
     IndexBufferBinding bound_index_buffer_;
     std::vector<SwapchainFrameHandle> reserved_swapchain_frames_;
     std::vector<SwapchainFrameHandle> presentable_swapchain_frames_;
@@ -6828,11 +6874,21 @@ bool is_vulkan_api_at_least(VulkanApiVersion actual, VulkanApiVersion required) 
 }
 
 VulkanDeviceSelection select_physical_device(std::initializer_list<VulkanPhysicalDeviceCandidate> devices) {
-    return select_physical_device_impl(devices);
+    return select_physical_device_impl(VulkanLogicalDeviceCreateDesc{}, devices);
 }
 
 VulkanDeviceSelection select_physical_device(const std::vector<VulkanPhysicalDeviceCandidate>& devices) {
-    return select_physical_device_impl(devices);
+    return select_physical_device_impl(VulkanLogicalDeviceCreateDesc{}, devices);
+}
+
+VulkanDeviceSelection select_physical_device(const VulkanLogicalDeviceCreateDesc& desc,
+                                             std::initializer_list<VulkanPhysicalDeviceCandidate> devices) {
+    return select_physical_device_impl(desc, devices);
+}
+
+VulkanDeviceSelection select_physical_device(const VulkanLogicalDeviceCreateDesc& desc,
+                                             const std::vector<VulkanPhysicalDeviceCandidate>& devices) {
+    return select_physical_device_impl(desc, devices);
 }
 
 VulkanInstanceCreatePlan build_instance_create_plan(const VulkanInstanceCreateDesc& desc,
@@ -8450,6 +8506,13 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto host = normalize_host(loader_desc.host);
     const auto runtime_instance_desc =
         surface.value != 0 ? make_surface_instance_desc(instance_desc, host) : instance_desc;
+    auto effective_device_desc = device_desc;
+    if (surface.value != 0) {
+        effective_device_desc.require_present_queue = true;
+        if (!logical_device_requires_extension(effective_device_desc, "VK_KHR_swapchain")) {
+            effective_device_desc.required_extensions.push_back("VK_KHR_swapchain");
+        }
+    }
 
     if (surface.value != 0) {
         auto surface_probe = probe_runtime_surface_support(loader_desc, instance_desc, surface);
@@ -8463,11 +8526,25 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         for (const auto& snapshot : result.selection_probe.snapshots.devices) {
             result.selection_probe.candidates.push_back(make_physical_device_candidate(snapshot));
         }
-        result.selection_probe.selection = select_physical_device(result.selection_probe.candidates);
+        result.selection_probe.selection =
+            select_physical_device(effective_device_desc, result.selection_probe.candidates);
         result.selection_probe.selected = result.selection_probe.selection.suitable;
         result.selection_probe.diagnostic = result.selection_probe.selection.diagnostic;
     } else {
-        result.selection_probe = probe_runtime_physical_device_selection(loader_desc, runtime_instance_desc);
+        result.selection_probe.snapshots = probe_runtime_physical_device_snapshots(loader_desc, runtime_instance_desc);
+        if (!result.selection_probe.snapshots.enumerated) {
+            result.diagnostic = result.selection_probe.snapshots.diagnostic;
+            return result;
+        }
+
+        result.selection_probe.candidates.reserve(result.selection_probe.snapshots.devices.size());
+        for (const auto& snapshot : result.selection_probe.snapshots.devices) {
+            result.selection_probe.candidates.push_back(make_physical_device_candidate(snapshot));
+        }
+        result.selection_probe.selection =
+            select_physical_device(effective_device_desc, result.selection_probe.candidates);
+        result.selection_probe.selected = result.selection_probe.selection.suitable;
+        result.selection_probe.diagnostic = result.selection_probe.selection.diagnostic;
     }
 
     if (!result.selection_probe.selected) {
@@ -8484,8 +8561,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
 
     const auto& selected_snapshot = result.selection_probe.snapshots.devices[selected_index];
     const auto& selected_candidate = result.selection_probe.candidates[selected_index];
-    result.logical_device_plan = build_logical_device_create_plan(
-        device_desc, selected_candidate, result.selection_probe.selection, selected_snapshot.device_extensions);
+    result.logical_device_plan =
+        build_logical_device_create_plan(effective_device_desc, selected_candidate, result.selection_probe.selection,
+                                         selected_snapshot.device_extensions);
     if (!result.logical_device_plan.supported) {
         result.diagnostic = result.logical_device_plan.diagnostic;
         return result;
@@ -8725,6 +8803,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     result.device.reset();
     const auto device_command_plan = build_command_resolution_plan(device_requests, device_availability);
     const auto synchronization2_enabled = result.logical_device_plan.synchronization2_enabled;
+    const auto swapchain_enabled =
+        extension_is_enabled(result.logical_device_plan.enabled_extensions, "VK_KHR_swapchain");
     if (!device_command_plan.supported || destroy_device == nullptr || get_device_queue == nullptr ||
         create_command_pool == nullptr || destroy_command_pool == nullptr || allocate_command_buffers == nullptr ||
         free_command_buffers == nullptr || begin_command_buffer == nullptr || end_command_buffer == nullptr ||
@@ -8744,10 +8824,12 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         cmd_bind_descriptor_sets == nullptr || create_pipeline_layout == nullptr ||
         destroy_pipeline_layout == nullptr || create_graphics_pipelines == nullptr ||
         create_compute_pipelines == nullptr || destroy_pipeline == nullptr || cmd_dispatch == nullptr ||
-        create_swapchain == nullptr || destroy_swapchain == nullptr || get_swapchain_images == nullptr ||
-        acquire_next_image == nullptr || create_image_view == nullptr || destroy_image_view == nullptr ||
-        create_semaphore == nullptr || destroy_semaphore == nullptr || create_fence == nullptr ||
-        destroy_fence == nullptr || wait_for_fences == nullptr || queue_present == nullptr) {
+        (swapchain_enabled &&
+         (create_swapchain == nullptr || destroy_swapchain == nullptr || get_swapchain_images == nullptr ||
+          acquire_next_image == nullptr || queue_present == nullptr)) ||
+        create_image_view == nullptr || destroy_image_view == nullptr || create_semaphore == nullptr ||
+        destroy_semaphore == nullptr || create_fence == nullptr || destroy_fence == nullptr ||
+        wait_for_fences == nullptr) {
         if (device_wait_idle != nullptr) {
             static_cast<void>(device_wait_idle(device));
         }
@@ -8764,8 +8846,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     NativeVulkanQueue graphics_queue = nullptr;
     NativeVulkanQueue present_queue = nullptr;
     get_device_queue(device, result.selection_probe.selection.graphics_queue_family, 0, &graphics_queue);
-    get_device_queue(device, result.selection_probe.selection.present_queue_family, 0, &present_queue);
-    if (graphics_queue == nullptr || present_queue == nullptr) {
+    if (effective_device_desc.require_present_queue) {
+        get_device_queue(device, result.selection_probe.selection.present_queue_family, 0, &present_queue);
+    }
+    if (graphics_queue == nullptr || (effective_device_desc.require_present_queue && present_queue == nullptr)) {
         if (device_wait_idle != nullptr) {
             static_cast<void>(device_wait_idle(device));
         }
@@ -9084,6 +9168,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     append_device_command_availability(device_availability, get_device_proc_addr, device, device_requests);
     const auto device_command_plan = build_command_resolution_plan(device_requests, device_availability);
     const auto synchronization2_enabled = result.logical_device_plan.synchronization2_enabled;
+    const auto swapchain_enabled =
+        extension_is_enabled(result.logical_device_plan.enabled_extensions, "VK_KHR_swapchain");
     if (!device_command_plan.supported || destroy_device == nullptr || get_device_queue == nullptr ||
         create_command_pool == nullptr || destroy_command_pool == nullptr || allocate_command_buffers == nullptr ||
         free_command_buffers == nullptr || begin_command_buffer == nullptr || end_command_buffer == nullptr ||
@@ -9103,10 +9189,12 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         cmd_bind_descriptor_sets == nullptr || create_pipeline_layout == nullptr ||
         destroy_pipeline_layout == nullptr || create_graphics_pipelines == nullptr ||
         create_compute_pipelines == nullptr || destroy_pipeline == nullptr || cmd_dispatch == nullptr ||
-        create_swapchain == nullptr || destroy_swapchain == nullptr || get_swapchain_images == nullptr ||
-        acquire_next_image == nullptr || create_image_view == nullptr || destroy_image_view == nullptr ||
-        create_semaphore == nullptr || destroy_semaphore == nullptr || create_fence == nullptr ||
-        destroy_fence == nullptr || wait_for_fences == nullptr || queue_present == nullptr) {
+        (swapchain_enabled &&
+         (create_swapchain == nullptr || destroy_swapchain == nullptr || get_swapchain_images == nullptr ||
+          acquire_next_image == nullptr || queue_present == nullptr)) ||
+        create_image_view == nullptr || destroy_image_view == nullptr || create_semaphore == nullptr ||
+        destroy_semaphore == nullptr || create_fence == nullptr || destroy_fence == nullptr ||
+        wait_for_fences == nullptr) {
         if (device_wait_idle != nullptr) {
             static_cast<void>(device_wait_idle(device));
         }
@@ -9123,8 +9211,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     NativeVulkanQueue graphics_queue = nullptr;
     NativeVulkanQueue present_queue = nullptr;
     get_device_queue(device, result.selection_probe.selection.graphics_queue_family, 0, &graphics_queue);
-    get_device_queue(device, result.selection_probe.selection.present_queue_family, 0, &present_queue);
-    if (graphics_queue == nullptr || present_queue == nullptr) {
+    if (effective_device_desc.require_present_queue) {
+        get_device_queue(device, result.selection_probe.selection.present_queue_family, 0, &present_queue);
+    }
+    if (graphics_queue == nullptr || (effective_device_desc.require_present_queue && present_queue == nullptr)) {
         if (device_wait_idle != nullptr) {
             static_cast<void>(device_wait_idle(device));
         }
@@ -9226,6 +9316,1097 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     result.diagnostic = "Vulkan runtime device ownership is unsupported on this host";
     return result;
 #endif
+}
+
+VulkanEnvironmentIblRendererUploadResult
+execute_environment_ibl_renderer_upload(const VulkanEnvironmentIblRendererUploadDesc& desc) noexcept {
+    VulkanEnvironmentIblRendererUploadResult result;
+    constexpr std::uint32_t cube_face_count = 6;
+    constexpr std::uint32_t irradiance_row_count = 9;
+    constexpr std::uint32_t bytes_per_rgba16_float_pixel = 8;
+    constexpr std::uint32_t bytes_per_rgba8_pixel = 4;
+    constexpr std::uint64_t fnv_offset = 1469598103934665603ULL;
+    constexpr std::uint64_t fnv_prime = 1099511628211ULL;
+
+    auto fail = [&result](std::string diagnostic) noexcept {
+        ++result.diagnostics;
+        result.diagnostic = std::move(diagnostic);
+        return result;
+    };
+
+    if (desc.request_native_handle_access) {
+        return fail("Vulkan environment IBL proof keeps native handles private");
+    }
+    if (desc.edge_size == 0 || (desc.edge_size & (desc.edge_size - 1U)) != 0U) {
+        return fail("Vulkan environment IBL cube edge size must be a positive power of two");
+    }
+    std::uint32_t full_mip_count = 0;
+    for (auto extent = desc.edge_size; extent > 0; extent >>= 1U) {
+        ++full_mip_count;
+    }
+    if (desc.mip_count == 0 || desc.mip_count > full_mip_count) {
+        return fail("Vulkan environment IBL mip count is invalid for the cube edge size");
+    }
+    if (desc.format != VulkanEnvironmentIblTextureFormat::rgba16_float) {
+        return fail("Vulkan environment IBL proof supports rgba16_float only");
+    }
+    if (desc.require_shader_sampling &&
+        (desc.sampling_vertex_shader.empty() || desc.sampling_fragment_shader.empty() ||
+         desc.sampling_vertex_entry_point.empty() || desc.sampling_fragment_entry_point.empty() ||
+         (desc.sampling_vertex_shader.size() % sizeof(std::uint32_t)) != 0U ||
+         (desc.sampling_fragment_shader.size() % sizeof(std::uint32_t)) != 0U)) {
+        return fail("Vulkan environment IBL shader sampling proof requires SPIR-V bytecode and entry points");
+    }
+
+    struct IblSubresourceUpload {
+        std::uint32_t face{0};
+        std::uint32_t mip{0};
+        std::uint32_t width{0};
+        std::uint32_t height{0};
+        std::uint64_t offset{0};
+        std::uint64_t byte_count{0};
+    };
+
+    auto align_to = [](std::uint64_t value, std::uint64_t alignment) noexcept {
+        return (value + alignment - 1U) & ~(alignment - 1U);
+    };
+    auto subresource_byte_count = [](std::uint32_t width, std::uint32_t height) noexcept {
+        return static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height) *
+               static_cast<std::uint64_t>(bytes_per_rgba16_float_pixel);
+    };
+
+    std::vector<IblSubresourceUpload> uploads;
+    uploads.reserve(static_cast<std::size_t>(cube_face_count) * static_cast<std::size_t>(desc.mip_count));
+    std::uint64_t upload_byte_count = 0;
+    for (std::uint32_t face = 0; face < cube_face_count; ++face) {
+        for (std::uint32_t mip = 0; mip < desc.mip_count; ++mip) {
+            const auto mip_extent = std::max<std::uint32_t>(1U, desc.edge_size >> mip);
+            const auto byte_count = subresource_byte_count(mip_extent, mip_extent);
+            upload_byte_count = align_to(upload_byte_count, 16);
+            uploads.push_back(IblSubresourceUpload{.face = face,
+                                                   .mip = mip,
+                                                   .width = mip_extent,
+                                                   .height = mip_extent,
+                                                   .offset = upload_byte_count,
+                                                   .byte_count = byte_count});
+            upload_byte_count += byte_count;
+        }
+    }
+    const auto capture_face_bytes = subresource_byte_count(desc.edge_size, desc.edge_size);
+    const auto capture_readback_byte_count =
+        align_to(capture_face_bytes, 16) * static_cast<std::uint64_t>(cube_face_count);
+    const auto shader_sample_readback_offset = capture_readback_byte_count;
+    const auto shader_sample_readback_byte_count =
+        desc.require_shader_sampling
+            ? align_to(static_cast<std::uint64_t>(desc.edge_size) * static_cast<std::uint64_t>(desc.edge_size) *
+                           static_cast<std::uint64_t>(bytes_per_rgba8_pixel),
+                       16)
+            : 0U;
+    const auto readback_byte_count = capture_readback_byte_count + shader_sample_readback_byte_count;
+    if (upload_byte_count == 0 || readback_byte_count == 0 ||
+        upload_byte_count > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max()) ||
+        readback_byte_count > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        return fail("Vulkan environment IBL proof byte count exceeds host addressable memory");
+    }
+
+    std::vector<std::uint8_t> upload_bytes(static_cast<std::size_t>(upload_byte_count), 0);
+    auto write_half = [&upload_bytes](std::uint64_t offset, std::uint16_t value) noexcept {
+        upload_bytes[static_cast<std::size_t>(offset)] = static_cast<std::uint8_t>(value & 0xffU);
+        upload_bytes[static_cast<std::size_t>(offset + 1U)] = static_cast<std::uint8_t>((value >> 8U) & 0xffU);
+    };
+    for (const auto& upload : uploads) {
+        const auto red = static_cast<std::uint16_t>(0x3000U + ((upload.face + 1U) * 0x0200U));
+        const auto green = static_cast<std::uint16_t>(0x3400U + (upload.mip * 0x0100U));
+        const auto blue = static_cast<std::uint16_t>(0x3800U + ((upload.face % 3U) * 0x0100U));
+        constexpr std::uint16_t alpha = 0x3c00U;
+        const auto pixel_count = static_cast<std::uint64_t>(upload.width) * static_cast<std::uint64_t>(upload.height);
+        for (std::uint64_t pixel = 0; pixel < pixel_count; ++pixel) {
+            const auto pixel_offset = upload.offset + (pixel * bytes_per_rgba16_float_pixel);
+            write_half(pixel_offset + 0U, red);
+            write_half(pixel_offset + 2U, green);
+            write_half(pixel_offset + 4U, blue);
+            write_half(pixel_offset + 6U, alpha);
+        }
+    }
+
+    VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineVulkanEnvironmentIblProof";
+    instance_desc.api_version = VulkanApiVersion{.major = 1, .minor = 3};
+    instance_desc.enable_validation = true;
+    VulkanLoaderProbeDesc loader_desc;
+    loader_desc.host = current_rhi_host_platform();
+    VulkanLogicalDeviceCreateDesc device_desc;
+    device_desc.required_extensions.clear();
+    device_desc.require_present_queue = false;
+    auto device_result = create_runtime_device(loader_desc, instance_desc, device_desc, {});
+    if (!device_result.created || !device_result.device.owns_device()) {
+        return fail(device_result.diagnostic.empty() ? "Vulkan runtime device is unavailable"
+                                                     : device_result.diagnostic);
+    }
+    auto& device = device_result.device;
+    auto& impl = *device.impl_;
+    if (impl.create_buffer == nullptr || impl.destroy_buffer == nullptr ||
+        impl.get_buffer_memory_requirements == nullptr || impl.create_image == nullptr ||
+        impl.destroy_image == nullptr || impl.get_image_memory_requirements == nullptr ||
+        impl.allocate_memory == nullptr || impl.free_memory == nullptr || impl.bind_buffer_memory == nullptr ||
+        impl.bind_image_memory == nullptr || impl.map_memory == nullptr || impl.unmap_memory == nullptr ||
+        impl.get_physical_device_memory_properties == nullptr || impl.create_image_view == nullptr ||
+        impl.destroy_image_view == nullptr || impl.create_sampler == nullptr || impl.destroy_sampler == nullptr ||
+        impl.create_descriptor_set_layout == nullptr || impl.destroy_descriptor_set_layout == nullptr ||
+        impl.create_descriptor_pool == nullptr || impl.destroy_descriptor_pool == nullptr ||
+        impl.allocate_descriptor_sets == nullptr || impl.update_descriptor_sets == nullptr ||
+        impl.create_command_pool == nullptr || impl.destroy_command_pool == nullptr ||
+        impl.allocate_command_buffers == nullptr || impl.free_command_buffers == nullptr ||
+        impl.begin_command_buffer == nullptr || impl.end_command_buffer == nullptr ||
+        impl.cmd_pipeline_barrier2 == nullptr || impl.cmd_copy_buffer_to_image == nullptr ||
+        impl.cmd_copy_image_to_buffer == nullptr || impl.queue_submit2 == nullptr || impl.queue_wait_idle == nullptr ||
+        impl.graphics_queue == nullptr || impl.graphics_queue_family == invalid_vulkan_queue_family) {
+        return fail("Vulkan environment IBL proof commands are unavailable");
+    }
+    if (desc.require_shader_sampling &&
+        (impl.create_pipeline_layout == nullptr || impl.destroy_pipeline_layout == nullptr ||
+         impl.create_graphics_pipelines == nullptr || impl.destroy_pipeline == nullptr ||
+         impl.cmd_begin_rendering == nullptr || impl.cmd_end_rendering == nullptr ||
+         impl.cmd_bind_pipeline == nullptr || impl.cmd_set_viewport == nullptr || impl.cmd_set_scissor == nullptr ||
+         impl.cmd_bind_descriptor_sets == nullptr || impl.cmd_draw == nullptr)) {
+        return fail("Vulkan environment IBL shader sampling proof commands are unavailable");
+    }
+
+    NativeVulkanBuffer upload_buffer = 0;
+    NativeVulkanDeviceMemory upload_memory = 0;
+    NativeVulkanBuffer readback_buffer = 0;
+    NativeVulkanDeviceMemory readback_memory = 0;
+    NativeVulkanImage cube_image = 0;
+    NativeVulkanDeviceMemory cube_memory = 0;
+    NativeVulkanImageView cube_view = 0;
+    NativeVulkanImage shader_sample_image = 0;
+    NativeVulkanDeviceMemory shader_sample_memory = 0;
+    NativeVulkanImageView shader_sample_view = 0;
+    NativeVulkanSampler sampler = 0;
+    NativeVulkanDescriptorSetLayout descriptor_set_layout = 0;
+    NativeVulkanDescriptorPool descriptor_pool = 0;
+    NativeVulkanShaderModule vertex_shader = 0;
+    NativeVulkanShaderModule fragment_shader = 0;
+    NativeVulkanPipelineLayout shader_sample_pipeline_layout = 0;
+    NativeVulkanPipeline shader_sample_pipeline = 0;
+    NativeVulkanCommandPool command_pool = 0;
+    NativeVulkanCommandBuffer command_buffer = nullptr;
+
+    auto cleanup = [&impl, &upload_buffer, &upload_memory, &readback_buffer, &readback_memory, &cube_image,
+                    &cube_memory, &cube_view, &shader_sample_image, &shader_sample_memory, &shader_sample_view,
+                    &sampler, &descriptor_set_layout, &descriptor_pool, &vertex_shader, &fragment_shader,
+                    &shader_sample_pipeline_layout, &shader_sample_pipeline, &command_pool,
+                    &command_buffer]() noexcept {
+        if (impl.queue_wait_idle != nullptr && impl.graphics_queue != nullptr) {
+            static_cast<void>(impl.queue_wait_idle(impl.graphics_queue));
+        }
+        if (command_buffer != nullptr && command_pool != 0 && impl.free_command_buffers != nullptr) {
+            impl.free_command_buffers(impl.device, command_pool, 1, &command_buffer);
+            command_buffer = nullptr;
+        }
+        if (command_pool != 0 && impl.destroy_command_pool != nullptr) {
+            impl.destroy_command_pool(impl.device, command_pool, nullptr);
+            command_pool = 0;
+        }
+        if (fragment_shader != 0 && impl.destroy_shader_module != nullptr) {
+            impl.destroy_shader_module(impl.device, fragment_shader, nullptr);
+            fragment_shader = 0;
+        }
+        if (shader_sample_pipeline != 0 && impl.destroy_pipeline != nullptr) {
+            impl.destroy_pipeline(impl.device, shader_sample_pipeline, nullptr);
+            shader_sample_pipeline = 0;
+        }
+        if (shader_sample_pipeline_layout != 0 && impl.destroy_pipeline_layout != nullptr) {
+            impl.destroy_pipeline_layout(impl.device, shader_sample_pipeline_layout, nullptr);
+            shader_sample_pipeline_layout = 0;
+        }
+        if (vertex_shader != 0 && impl.destroy_shader_module != nullptr) {
+            impl.destroy_shader_module(impl.device, vertex_shader, nullptr);
+            vertex_shader = 0;
+        }
+        if (descriptor_pool != 0 && impl.destroy_descriptor_pool != nullptr) {
+            impl.destroy_descriptor_pool(impl.device, descriptor_pool, nullptr);
+            descriptor_pool = 0;
+        }
+        if (descriptor_set_layout != 0 && impl.destroy_descriptor_set_layout != nullptr) {
+            impl.destroy_descriptor_set_layout(impl.device, descriptor_set_layout, nullptr);
+            descriptor_set_layout = 0;
+        }
+        if (sampler != 0 && impl.destroy_sampler != nullptr) {
+            impl.destroy_sampler(impl.device, sampler, nullptr);
+            sampler = 0;
+        }
+        if (cube_view != 0 && impl.destroy_image_view != nullptr) {
+            impl.destroy_image_view(impl.device, cube_view, nullptr);
+            cube_view = 0;
+        }
+        if (shader_sample_view != 0 && impl.destroy_image_view != nullptr) {
+            impl.destroy_image_view(impl.device, shader_sample_view, nullptr);
+            shader_sample_view = 0;
+        }
+        if (cube_image != 0 && impl.destroy_image != nullptr) {
+            impl.destroy_image(impl.device, cube_image, nullptr);
+            cube_image = 0;
+        }
+        if (shader_sample_image != 0 && impl.destroy_image != nullptr) {
+            impl.destroy_image(impl.device, shader_sample_image, nullptr);
+            shader_sample_image = 0;
+        }
+        if (cube_memory != 0 && impl.free_memory != nullptr) {
+            impl.free_memory(impl.device, cube_memory, nullptr);
+            cube_memory = 0;
+        }
+        if (shader_sample_memory != 0 && impl.free_memory != nullptr) {
+            impl.free_memory(impl.device, shader_sample_memory, nullptr);
+            shader_sample_memory = 0;
+        }
+        if (readback_buffer != 0 && impl.destroy_buffer != nullptr) {
+            impl.destroy_buffer(impl.device, readback_buffer, nullptr);
+            readback_buffer = 0;
+        }
+        if (readback_memory != 0 && impl.free_memory != nullptr) {
+            impl.free_memory(impl.device, readback_memory, nullptr);
+            readback_memory = 0;
+        }
+        if (upload_buffer != 0 && impl.destroy_buffer != nullptr) {
+            impl.destroy_buffer(impl.device, upload_buffer, nullptr);
+            upload_buffer = 0;
+        }
+        if (upload_memory != 0 && impl.free_memory != nullptr) {
+            impl.free_memory(impl.device, upload_memory, nullptr);
+            upload_memory = 0;
+        }
+    };
+    auto fail_with_cleanup = [&fail, &cleanup](std::string diagnostic) noexcept {
+        cleanup();
+        return fail(std::move(diagnostic));
+    };
+
+    auto create_buffer_with_memory = [&impl](std::uint64_t byte_count, std::uint32_t usage, std::uint32_t memory_flags,
+                                             NativeVulkanBuffer& buffer, NativeVulkanDeviceMemory& memory,
+                                             std::string& diagnostic) noexcept {
+        const NativeVulkanBufferCreateInfo create_info{
+            .s_type = vulkan_structure_type_buffer_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .size = byte_count,
+            .usage = usage,
+            .sharing_mode = vulkan_sharing_mode_exclusive,
+            .queue_family_index_count = 0,
+            .queue_family_indices = nullptr,
+        };
+        const auto create_result = impl.create_buffer(impl.device, &create_info, nullptr, &buffer);
+        if (create_result != vulkan_success || buffer == 0) {
+            diagnostic = vulkan_result_diagnostic("Vulkan vkCreateBuffer failed", create_result);
+            return false;
+        }
+        NativeVulkanMemoryRequirements requirements{};
+        impl.get_buffer_memory_requirements(impl.device, buffer, &requirements);
+        NativeVulkanPhysicalDeviceMemoryProperties memory_properties{};
+        impl.get_physical_device_memory_properties(impl.physical_device, &memory_properties);
+        const auto memory_type_index =
+            find_memory_type_index(memory_properties, requirements.memory_type_bits, memory_flags);
+        if (requirements.size == 0 || memory_type_index == invalid_vulkan_queue_family) {
+            diagnostic = "Vulkan buffer memory requirements are unavailable";
+            return false;
+        }
+        const NativeVulkanMemoryAllocateInfo allocate_info{
+            .s_type = vulkan_structure_type_memory_allocate_info,
+            .next = nullptr,
+            .allocation_size = requirements.size,
+            .memory_type_index = memory_type_index,
+        };
+        const auto allocate_result = impl.allocate_memory(impl.device, &allocate_info, nullptr, &memory);
+        if (allocate_result != vulkan_success || memory == 0) {
+            diagnostic = vulkan_result_diagnostic("Vulkan vkAllocateMemory failed", allocate_result);
+            return false;
+        }
+        const auto bind_result = impl.bind_buffer_memory(impl.device, buffer, memory, 0);
+        if (bind_result != vulkan_success) {
+            diagnostic = vulkan_result_diagnostic("Vulkan vkBindBufferMemory failed", bind_result);
+            return false;
+        }
+        return true;
+    };
+    auto create_image_with_memory = [&impl](const NativeVulkanImageCreateInfo& create_info, std::uint32_t memory_flags,
+                                            NativeVulkanImage& image, NativeVulkanDeviceMemory& memory,
+                                            std::string& diagnostic) noexcept {
+        const auto image_result = impl.create_image(impl.device, &create_info, nullptr, &image);
+        if (image_result != vulkan_success || image == 0) {
+            diagnostic = vulkan_result_diagnostic("Vulkan vkCreateImage failed", image_result);
+            return false;
+        }
+        NativeVulkanMemoryRequirements requirements{};
+        impl.get_image_memory_requirements(impl.device, image, &requirements);
+        NativeVulkanPhysicalDeviceMemoryProperties memory_properties{};
+        impl.get_physical_device_memory_properties(impl.physical_device, &memory_properties);
+        const auto memory_type_index =
+            find_memory_type_index(memory_properties, requirements.memory_type_bits, memory_flags);
+        if (requirements.size == 0 || memory_type_index == invalid_vulkan_queue_family) {
+            diagnostic = "Vulkan image memory requirements are unavailable";
+            return false;
+        }
+        const NativeVulkanMemoryAllocateInfo allocate_info{
+            .s_type = vulkan_structure_type_memory_allocate_info,
+            .next = nullptr,
+            .allocation_size = requirements.size,
+            .memory_type_index = memory_type_index,
+        };
+        const auto allocate_result = impl.allocate_memory(impl.device, &allocate_info, nullptr, &memory);
+        if (allocate_result != vulkan_success || memory == 0) {
+            diagnostic = vulkan_result_diagnostic("Vulkan vkAllocateMemory failed", allocate_result);
+            return false;
+        }
+        const auto bind_result = impl.bind_image_memory(impl.device, image, memory, 0);
+        if (bind_result != vulkan_success) {
+            diagnostic = vulkan_result_diagnostic("Vulkan vkBindImageMemory failed", bind_result);
+            return false;
+        }
+        return true;
+    };
+
+    std::string diagnostic;
+    const auto host_memory_flags = vulkan_memory_property_host_visible_bit | vulkan_memory_property_host_coherent_bit;
+    if (!create_buffer_with_memory(upload_byte_count, vulkan_buffer_usage_transfer_src_bit, host_memory_flags,
+                                   upload_buffer, upload_memory, diagnostic)) {
+        return fail_with_cleanup(diagnostic);
+    }
+    if (!create_buffer_with_memory(readback_byte_count, vulkan_buffer_usage_transfer_dst_bit, host_memory_flags,
+                                   readback_buffer, readback_memory, diagnostic)) {
+        return fail_with_cleanup(diagnostic);
+    }
+    void* upload_mapping = nullptr;
+    const auto upload_map = impl.map_memory(impl.device, upload_memory, 0, upload_byte_count, 0, &upload_mapping);
+    if (upload_map != vulkan_success || upload_mapping == nullptr) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkMapMemory failed", upload_map));
+    }
+    std::memcpy(upload_mapping, upload_bytes.data(), upload_bytes.size());
+    impl.unmap_memory(impl.device, upload_memory);
+
+    const NativeVulkanImageCreateInfo image_create_info{
+        .s_type = vulkan_structure_type_image_create_info,
+        .next = nullptr,
+        .flags = vulkan_image_create_cube_compatible_bit,
+        .image_type = vulkan_image_type_2d,
+        .format = vulkan_format_r16g16b16a16_sfloat,
+        .extent = NativeVulkanExtent3D{.width = desc.edge_size, .height = desc.edge_size, .depth = 1},
+        .mip_levels = desc.mip_count,
+        .array_layers = cube_face_count,
+        .samples = vulkan_sample_count_1_bit,
+        .tiling = vulkan_image_tiling_optimal,
+        .usage =
+            vulkan_image_usage_transfer_src_bit | vulkan_image_usage_transfer_dst_bit | vulkan_image_usage_sampled_bit,
+        .sharing_mode = vulkan_sharing_mode_exclusive,
+        .queue_family_index_count = 0,
+        .queue_family_indices = nullptr,
+        .initial_layout = vulkan_image_layout_undefined,
+    };
+    const auto image_result = impl.create_image(impl.device, &image_create_info, nullptr, &cube_image);
+    if (image_result != vulkan_success || cube_image == 0) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkCreateImage failed", image_result));
+    }
+    NativeVulkanMemoryRequirements image_requirements{};
+    impl.get_image_memory_requirements(impl.device, cube_image, &image_requirements);
+    NativeVulkanPhysicalDeviceMemoryProperties memory_properties{};
+    impl.get_physical_device_memory_properties(impl.physical_device, &memory_properties);
+    const auto cube_memory_type = find_memory_type_index(memory_properties, image_requirements.memory_type_bits,
+                                                         vulkan_memory_property_device_local_bit);
+    if (image_requirements.size == 0 || cube_memory_type == invalid_vulkan_queue_family) {
+        return fail_with_cleanup("Vulkan cube image memory requirements are unavailable");
+    }
+    const NativeVulkanMemoryAllocateInfo image_allocate_info{
+        .s_type = vulkan_structure_type_memory_allocate_info,
+        .next = nullptr,
+        .allocation_size = image_requirements.size,
+        .memory_type_index = cube_memory_type,
+    };
+    const auto image_allocate_result = impl.allocate_memory(impl.device, &image_allocate_info, nullptr, &cube_memory);
+    if (image_allocate_result != vulkan_success || cube_memory == 0) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkAllocateMemory failed", image_allocate_result));
+    }
+    const auto image_bind_result = impl.bind_image_memory(impl.device, cube_image, cube_memory, 0);
+    if (image_bind_result != vulkan_success) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkBindImageMemory failed", image_bind_result));
+    }
+    result.cube_compatible_image_created = true;
+
+    const NativeVulkanImageViewCreateInfo cube_view_info{
+        .s_type = vulkan_structure_type_image_view_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .image = cube_image,
+        .view_type = vulkan_image_view_type_cube,
+        .format = vulkan_format_r16g16b16a16_sfloat,
+        .components =
+            NativeVulkanComponentMapping{
+                .r = vulkan_component_swizzle_identity,
+                .g = vulkan_component_swizzle_identity,
+                .b = vulkan_component_swizzle_identity,
+                .a = vulkan_component_swizzle_identity,
+            },
+        .subresource_range = NativeVulkanImageSubresourceRange{.aspect_mask = vulkan_image_aspect_color_bit,
+                                                               .base_mip_level = 0,
+                                                               .level_count = desc.mip_count,
+                                                               .base_array_layer = 0,
+                                                               .layer_count = cube_face_count},
+    };
+    const auto cube_view_result = impl.create_image_view(impl.device, &cube_view_info, nullptr, &cube_view);
+    if (cube_view_result != vulkan_success || cube_view == 0) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkCreateImageView failed", cube_view_result));
+    }
+    result.cube_image_view_created = true;
+
+    const NativeVulkanSamplerCreateInfo sampler_info{
+        .s_type = vulkan_structure_type_sampler_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .mag_filter = vulkan_filter_linear,
+        .min_filter = vulkan_filter_linear,
+        .mipmap_mode = vulkan_sampler_mipmap_mode_nearest,
+        .address_mode_u = vulkan_sampler_address_mode_clamp_to_edge,
+        .address_mode_v = vulkan_sampler_address_mode_clamp_to_edge,
+        .address_mode_w = vulkan_sampler_address_mode_clamp_to_edge,
+        .mip_lod_bias = 0.0F,
+        .anisotropy_enable = 0,
+        .max_anisotropy = 1.0F,
+        .compare_enable = 0,
+        .compare_op = vulkan_compare_op_never,
+        .min_lod = 0.0F,
+        .max_lod = static_cast<float>(desc.mip_count),
+        .border_color = vulkan_border_color_float_transparent_black,
+        .unnormalized_coordinates = 0,
+    };
+    const auto sampler_result = impl.create_sampler(impl.device, &sampler_info, nullptr, &sampler);
+    if (sampler_result != vulkan_success || sampler == 0) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkCreateSampler failed", sampler_result));
+    }
+    result.sampler_created = true;
+
+    const std::array<NativeVulkanDescriptorSetLayoutBinding, 2> descriptor_bindings{
+        NativeVulkanDescriptorSetLayoutBinding{.binding = 0,
+                                               .descriptor_type = vulkan_descriptor_type_sampled_image,
+                                               .descriptor_count = 1,
+                                               .stage_flags = vulkan_shader_stage_fragment_bit,
+                                               .immutable_samplers = nullptr},
+        NativeVulkanDescriptorSetLayoutBinding{.binding = 1,
+                                               .descriptor_type = vulkan_descriptor_type_sampler,
+                                               .descriptor_count = 1,
+                                               .stage_flags = vulkan_shader_stage_fragment_bit,
+                                               .immutable_samplers = nullptr},
+    };
+    const NativeVulkanDescriptorSetLayoutCreateInfo descriptor_layout_info{
+        .s_type = vulkan_structure_type_descriptor_set_layout_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .binding_count = static_cast<std::uint32_t>(descriptor_bindings.size()),
+        .bindings = descriptor_bindings.data(),
+    };
+    const auto descriptor_layout_result =
+        impl.create_descriptor_set_layout(impl.device, &descriptor_layout_info, nullptr, &descriptor_set_layout);
+    if (descriptor_layout_result != vulkan_success || descriptor_set_layout == 0) {
+        return fail_with_cleanup(
+            vulkan_result_diagnostic("Vulkan vkCreateDescriptorSetLayout failed", descriptor_layout_result));
+    }
+    const std::array<NativeVulkanDescriptorPoolSize, 2> pool_sizes{
+        NativeVulkanDescriptorPoolSize{.type = vulkan_descriptor_type_sampled_image, .descriptor_count = 1},
+        NativeVulkanDescriptorPoolSize{.type = vulkan_descriptor_type_sampler, .descriptor_count = 1},
+    };
+    const NativeVulkanDescriptorPoolCreateInfo descriptor_pool_info{
+        .s_type = vulkan_structure_type_descriptor_pool_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .max_sets = 1,
+        .pool_size_count = static_cast<std::uint32_t>(pool_sizes.size()),
+        .pool_sizes = pool_sizes.data(),
+    };
+    const auto descriptor_pool_result =
+        impl.create_descriptor_pool(impl.device, &descriptor_pool_info, nullptr, &descriptor_pool);
+    if (descriptor_pool_result != vulkan_success || descriptor_pool == 0) {
+        return fail_with_cleanup(
+            vulkan_result_diagnostic("Vulkan vkCreateDescriptorPool failed", descriptor_pool_result));
+    }
+    NativeVulkanDescriptorSet descriptor_set = 0;
+    const NativeVulkanDescriptorSetAllocateInfo descriptor_allocate_info{
+        .s_type = vulkan_structure_type_descriptor_set_allocate_info,
+        .next = nullptr,
+        .descriptor_pool = descriptor_pool,
+        .descriptor_set_count = 1,
+        .set_layouts = &descriptor_set_layout,
+    };
+    const auto descriptor_allocate_result =
+        impl.allocate_descriptor_sets(impl.device, &descriptor_allocate_info, &descriptor_set);
+    if (descriptor_allocate_result != vulkan_success || descriptor_set == 0) {
+        return fail_with_cleanup(
+            vulkan_result_diagnostic("Vulkan vkAllocateDescriptorSets failed", descriptor_allocate_result));
+    }
+    const NativeVulkanDescriptorImageInfo image_info{
+        .sampler = 0, .image_view = cube_view, .image_layout = vulkan_image_layout_shader_read_only_optimal};
+    const NativeVulkanDescriptorImageInfo sampler_descriptor{
+        .sampler = sampler, .image_view = 0, .image_layout = vulkan_image_layout_undefined};
+    const std::array<NativeVulkanWriteDescriptorSet, 2> descriptor_writes{
+        NativeVulkanWriteDescriptorSet{.s_type = vulkan_structure_type_write_descriptor_set,
+                                       .next = nullptr,
+                                       .dst_set = descriptor_set,
+                                       .dst_binding = 0,
+                                       .dst_array_element = 0,
+                                       .descriptor_count = 1,
+                                       .descriptor_type = vulkan_descriptor_type_sampled_image,
+                                       .image_info = &image_info,
+                                       .buffer_info = nullptr,
+                                       .texel_buffer_view = nullptr},
+        NativeVulkanWriteDescriptorSet{.s_type = vulkan_structure_type_write_descriptor_set,
+                                       .next = nullptr,
+                                       .dst_set = descriptor_set,
+                                       .dst_binding = 1,
+                                       .dst_array_element = 0,
+                                       .descriptor_count = 1,
+                                       .descriptor_type = vulkan_descriptor_type_sampler,
+                                       .image_info = &sampler_descriptor,
+                                       .buffer_info = nullptr,
+                                       .texel_buffer_view = nullptr},
+    };
+    impl.update_descriptor_sets(impl.device, static_cast<std::uint32_t>(descriptor_writes.size()),
+                                descriptor_writes.data(), 0, nullptr);
+    result.descriptor_set_bindings = static_cast<std::uint32_t>(descriptor_bindings.size());
+
+    if (desc.require_shader_sampling) {
+        const NativeVulkanImageCreateInfo shader_sample_image_info{
+            .s_type = vulkan_structure_type_image_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .image_type = vulkan_image_type_2d,
+            .format = vulkan_format_r8g8b8a8_unorm,
+            .extent = NativeVulkanExtent3D{.width = desc.edge_size, .height = desc.edge_size, .depth = 1},
+            .mip_levels = 1,
+            .array_layers = 1,
+            .samples = vulkan_sample_count_1_bit,
+            .tiling = vulkan_image_tiling_optimal,
+            .usage = vulkan_image_usage_color_attachment_bit | vulkan_image_usage_transfer_src_bit,
+            .sharing_mode = vulkan_sharing_mode_exclusive,
+            .queue_family_index_count = 0,
+            .queue_family_indices = nullptr,
+            .initial_layout = vulkan_image_layout_undefined,
+        };
+        if (!create_image_with_memory(shader_sample_image_info, vulkan_memory_property_device_local_bit,
+                                      shader_sample_image, shader_sample_memory, diagnostic)) {
+            return fail_with_cleanup(diagnostic);
+        }
+        const NativeVulkanImageViewCreateInfo shader_sample_view_info{
+            .s_type = vulkan_structure_type_image_view_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .image = shader_sample_image,
+            .view_type = vulkan_image_view_type_2d,
+            .format = vulkan_format_r8g8b8a8_unorm,
+            .components =
+                NativeVulkanComponentMapping{
+                    .r = vulkan_component_swizzle_identity,
+                    .g = vulkan_component_swizzle_identity,
+                    .b = vulkan_component_swizzle_identity,
+                    .a = vulkan_component_swizzle_identity,
+                },
+            .subresource_range = NativeVulkanImageSubresourceRange{.aspect_mask = vulkan_image_aspect_color_bit,
+                                                                   .base_mip_level = 0,
+                                                                   .level_count = 1,
+                                                                   .base_array_layer = 0,
+                                                                   .layer_count = 1},
+        };
+        const auto shader_sample_view_result =
+            impl.create_image_view(impl.device, &shader_sample_view_info, nullptr, &shader_sample_view);
+        if (shader_sample_view_result != vulkan_success || shader_sample_view == 0) {
+            return fail_with_cleanup(
+                vulkan_result_diagnostic("Vulkan vkCreateImageView failed", shader_sample_view_result));
+        }
+    }
+
+    bool shader_modules_created = !desc.require_shader_sampling;
+    if (desc.require_shader_sampling) {
+        auto copy_spirv_words = [](std::span<const std::uint8_t> bytecode) {
+            std::vector<std::uint32_t> words(bytecode.size() / sizeof(std::uint32_t));
+            std::memcpy(words.data(), bytecode.data(), bytecode.size());
+            return words;
+        };
+        const auto vertex_words = copy_spirv_words(desc.sampling_vertex_shader);
+        const auto fragment_words = copy_spirv_words(desc.sampling_fragment_shader);
+        const auto vertex_validation = validate_spirv_shader_artifact(
+            VulkanSpirvShaderArtifactDesc{.stage = ShaderStage::vertex,
+                                          .bytecode = vertex_words.data(),
+                                          .bytecode_size = desc.sampling_vertex_shader.size()});
+        const auto fragment_validation = validate_spirv_shader_artifact(
+            VulkanSpirvShaderArtifactDesc{.stage = ShaderStage::fragment,
+                                          .bytecode = fragment_words.data(),
+                                          .bytecode_size = desc.sampling_fragment_shader.size()});
+        if (!vertex_validation.valid || !fragment_validation.valid || impl.create_shader_module == nullptr ||
+            impl.destroy_shader_module == nullptr) {
+            return fail_with_cleanup("Vulkan environment IBL shader modules are unavailable or invalid");
+        }
+        const NativeVulkanShaderModuleCreateInfo vertex_info{
+            .s_type = vulkan_structure_type_shader_module_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .code_size = desc.sampling_vertex_shader.size(),
+            .code = vertex_words.data(),
+        };
+        const auto vertex_result = impl.create_shader_module(impl.device, &vertex_info, nullptr, &vertex_shader);
+        if (vertex_result != vulkan_success || vertex_shader == 0) {
+            return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkCreateShaderModule failed", vertex_result));
+        }
+        const NativeVulkanShaderModuleCreateInfo fragment_info{
+            .s_type = vulkan_structure_type_shader_module_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .code_size = desc.sampling_fragment_shader.size(),
+            .code = fragment_words.data(),
+        };
+        const auto fragment_result = impl.create_shader_module(impl.device, &fragment_info, nullptr, &fragment_shader);
+        if (fragment_result != vulkan_success || fragment_shader == 0) {
+            return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkCreateShaderModule failed", fragment_result));
+        }
+        const NativeVulkanPipelineLayoutCreateInfo pipeline_layout_info{
+            .s_type = vulkan_structure_type_pipeline_layout_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .set_layout_count = 1,
+            .set_layouts = &descriptor_set_layout,
+            .push_constant_range_count = 0,
+            .push_constant_ranges = nullptr,
+        };
+        const auto pipeline_layout_result =
+            impl.create_pipeline_layout(impl.device, &pipeline_layout_info, nullptr, &shader_sample_pipeline_layout);
+        if (pipeline_layout_result != vulkan_success || shader_sample_pipeline_layout == 0) {
+            return fail_with_cleanup(
+                vulkan_result_diagnostic("Vulkan vkCreatePipelineLayout failed", pipeline_layout_result));
+        }
+        const std::string vertex_entry{desc.sampling_vertex_entry_point};
+        const std::string fragment_entry{desc.sampling_fragment_entry_point};
+        const std::array<NativeVulkanPipelineShaderStageCreateInfo, 2> shader_stages{{
+            {
+                .s_type = vulkan_structure_type_pipeline_shader_stage_create_info,
+                .next = nullptr,
+                .flags = 0,
+                .stage = vulkan_shader_stage_vertex_bit,
+                .module = vertex_shader,
+                .name = vertex_entry.c_str(),
+                .specialization_info = nullptr,
+            },
+            {
+                .s_type = vulkan_structure_type_pipeline_shader_stage_create_info,
+                .next = nullptr,
+                .flags = 0,
+                .stage = vulkan_shader_stage_fragment_bit,
+                .module = fragment_shader,
+                .name = fragment_entry.c_str(),
+                .specialization_info = nullptr,
+            },
+        }};
+        const NativeVulkanPipelineVertexInputStateCreateInfo vertex_input{
+            .s_type = vulkan_structure_type_pipeline_vertex_input_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .vertex_binding_description_count = 0,
+            .vertex_binding_descriptions = nullptr,
+            .vertex_attribute_description_count = 0,
+            .vertex_attribute_descriptions = nullptr,
+        };
+        const NativeVulkanPipelineInputAssemblyStateCreateInfo input_assembly{
+            .s_type = vulkan_structure_type_pipeline_input_assembly_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .topology = vulkan_primitive_topology_triangle_list,
+            .primitive_restart_enable = 0,
+        };
+        const NativeVulkanViewport viewport{
+            .x = 0.0F,
+            .y = 0.0F,
+            .width = static_cast<float>(desc.edge_size),
+            .height = static_cast<float>(desc.edge_size),
+            .min_depth = 0.0F,
+            .max_depth = 1.0F,
+        };
+        const NativeVulkanRect2D scissor{
+            .offset = NativeVulkanOffset2D{.x = 0, .y = 0},
+            .extent = NativeVulkanExtent2D{.width = desc.edge_size, .height = desc.edge_size},
+        };
+        const NativeVulkanPipelineViewportStateCreateInfo viewport_state{
+            .s_type = vulkan_structure_type_pipeline_viewport_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .viewport_count = 1,
+            .viewports = &viewport,
+            .scissor_count = 1,
+            .scissors = &scissor,
+        };
+        const NativeVulkanPipelineRasterizationStateCreateInfo rasterization{
+            .s_type = vulkan_structure_type_pipeline_rasterization_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .depth_clamp_enable = 0,
+            .rasterizer_discard_enable = 0,
+            .polygon_mode = vulkan_polygon_mode_fill,
+            .cull_mode = vulkan_cull_mode_none,
+            .front_face = vulkan_front_face_counter_clockwise,
+            .depth_bias_enable = 0,
+            .depth_bias_constant_factor = 0.0F,
+            .depth_bias_clamp = 0.0F,
+            .depth_bias_slope_factor = 0.0F,
+            .line_width = 1.0F,
+        };
+        const NativeVulkanPipelineMultisampleStateCreateInfo multisample{
+            .s_type = vulkan_structure_type_pipeline_multisample_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .rasterization_samples = vulkan_sample_count_1_bit,
+            .sample_shading_enable = 0,
+            .min_sample_shading = 1.0F,
+            .sample_mask = nullptr,
+            .alpha_to_coverage_enable = 0,
+            .alpha_to_one_enable = 0,
+        };
+        const NativeVulkanPipelineColorBlendAttachmentState color_blend_attachment{
+            .blend_enable = 0,
+            .src_color_blend_factor = 0,
+            .dst_color_blend_factor = 0,
+            .color_blend_op = 0,
+            .src_alpha_blend_factor = 0,
+            .dst_alpha_blend_factor = 0,
+            .alpha_blend_op = 0,
+            .color_write_mask = vulkan_color_component_r_bit | vulkan_color_component_g_bit |
+                                vulkan_color_component_b_bit | vulkan_color_component_a_bit,
+        };
+        const NativeVulkanPipelineColorBlendStateCreateInfo color_blend{
+            .s_type = vulkan_structure_type_pipeline_color_blend_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .logic_op_enable = 0,
+            .logic_op = 0,
+            .attachment_count = 1,
+            .attachments = &color_blend_attachment,
+            .blend_constants = {0.0F, 0.0F, 0.0F, 0.0F},
+        };
+        const std::array<std::uint32_t, 2> dynamic_states{
+            vulkan_dynamic_state_viewport,
+            vulkan_dynamic_state_scissor,
+        };
+        const NativeVulkanPipelineDynamicStateCreateInfo dynamic_state{
+            .s_type = vulkan_structure_type_pipeline_dynamic_state_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .dynamic_state_count = static_cast<std::uint32_t>(dynamic_states.size()),
+            .dynamic_states = dynamic_states.data(),
+        };
+        const std::uint32_t color_format = vulkan_format_r8g8b8a8_unorm;
+        const NativeVulkanPipelineRenderingCreateInfo rendering{
+            .s_type = vulkan_structure_type_pipeline_rendering_create_info,
+            .next = nullptr,
+            .view_mask = 0,
+            .color_attachment_count = 1,
+            .color_attachment_formats = &color_format,
+            .depth_attachment_format = 0,
+            .stencil_attachment_format = 0,
+        };
+        const NativeVulkanGraphicsPipelineCreateInfo pipeline_info{
+            .s_type = vulkan_structure_type_graphics_pipeline_create_info,
+            .next = &rendering,
+            .flags = 0,
+            .stage_count = static_cast<std::uint32_t>(shader_stages.size()),
+            .stages = shader_stages.data(),
+            .vertex_input_state = &vertex_input,
+            .input_assembly_state = &input_assembly,
+            .tessellation_state = nullptr,
+            .viewport_state = &viewport_state,
+            .rasterization_state = &rasterization,
+            .multisample_state = &multisample,
+            .depth_stencil_state = nullptr,
+            .color_blend_state = &color_blend,
+            .dynamic_state = &dynamic_state,
+            .layout = shader_sample_pipeline_layout,
+            .render_pass = 0,
+            .subpass = 0,
+            .base_pipeline_handle = 0,
+            .base_pipeline_index = -1,
+        };
+        const auto pipeline_result =
+            impl.create_graphics_pipelines(impl.device, 0, 1, &pipeline_info, nullptr, &shader_sample_pipeline);
+        if (pipeline_result != vulkan_success || shader_sample_pipeline == 0) {
+            return fail_with_cleanup(
+                vulkan_result_diagnostic("Vulkan vkCreateGraphicsPipelines failed", pipeline_result));
+        }
+        shader_modules_created = true;
+    }
+
+    const NativeVulkanCommandPoolCreateInfo command_pool_info{
+        .s_type = vulkan_structure_type_command_pool_create_info,
+        .next = nullptr,
+        .flags = vulkan_command_pool_create_transient_bit,
+        .queue_family_index = impl.graphics_queue_family,
+    };
+    const auto command_pool_result = impl.create_command_pool(impl.device, &command_pool_info, nullptr, &command_pool);
+    if (command_pool_result != vulkan_success || command_pool == 0) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkCreateCommandPool failed", command_pool_result));
+    }
+    const NativeVulkanCommandBufferAllocateInfo command_allocate_info{
+        .s_type = vulkan_structure_type_command_buffer_allocate_info,
+        .next = nullptr,
+        .command_pool = command_pool,
+        .level = vulkan_command_buffer_level_primary,
+        .command_buffer_count = 1,
+    };
+    const auto command_allocate_result =
+        impl.allocate_command_buffers(impl.device, &command_allocate_info, &command_buffer);
+    if (command_allocate_result != vulkan_success || command_buffer == nullptr) {
+        return fail_with_cleanup(
+            vulkan_result_diagnostic("Vulkan vkAllocateCommandBuffers failed", command_allocate_result));
+    }
+    const NativeVulkanCommandBufferBeginInfo begin_info{
+        .s_type = vulkan_structure_type_command_buffer_begin_info,
+        .next = nullptr,
+        .flags = 0,
+        .inheritance_info = nullptr,
+    };
+    const auto begin_result = impl.begin_command_buffer(command_buffer, &begin_info);
+    if (begin_result != vulkan_success) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkBeginCommandBuffer failed", begin_result));
+    }
+
+    auto record_image_barrier = [&impl, &command_buffer, &result](NativeVulkanImage image, std::uint32_t mip_count,
+                                                                  std::uint32_t layer_count, std::uint64_t src_stage,
+                                                                  std::uint64_t src_access, std::uint64_t dst_stage,
+                                                                  std::uint64_t dst_access, std::uint32_t old_layout,
+                                                                  std::uint32_t new_layout) noexcept {
+        const NativeVulkanImageMemoryBarrier2 barrier{
+            .s_type = vulkan_structure_type_image_memory_barrier2,
+            .next = nullptr,
+            .src_stage_mask = src_stage,
+            .src_access_mask = src_access,
+            .dst_stage_mask = dst_stage,
+            .dst_access_mask = dst_access,
+            .old_layout = old_layout,
+            .new_layout = new_layout,
+            .src_queue_family_index = vulkan_queue_family_ignored,
+            .dst_queue_family_index = vulkan_queue_family_ignored,
+            .image = image,
+            .subresource_range = NativeVulkanImageSubresourceRange{.aspect_mask = vulkan_image_aspect_color_bit,
+                                                                   .base_mip_level = 0,
+                                                                   .level_count = mip_count,
+                                                                   .base_array_layer = 0,
+                                                                   .layer_count = layer_count},
+        };
+        const NativeVulkanDependencyInfo dependency{
+            .s_type = vulkan_structure_type_dependency_info,
+            .next = nullptr,
+            .dependency_flags = 0,
+            .memory_barrier_count = 0,
+            .memory_barriers = nullptr,
+            .buffer_memory_barrier_count = 0,
+            .buffer_memory_barriers = nullptr,
+            .image_memory_barrier_count = 1,
+            .image_memory_barriers = &barrier,
+        };
+        impl.cmd_pipeline_barrier2(command_buffer, &dependency);
+        ++result.synchronization2_barriers;
+    };
+
+    record_image_barrier(cube_image, desc.mip_count, cube_face_count, vulkan_pipeline_stage2_none, vulkan_access2_none,
+                         vulkan_pipeline_stage2_transfer_bit, vulkan_access2_transfer_write_bit,
+                         vulkan_image_layout_undefined, vulkan_image_layout_transfer_dst_optimal);
+    std::vector<NativeVulkanBufferImageCopy> upload_regions;
+    upload_regions.reserve(uploads.size());
+    for (const auto& upload : uploads) {
+        upload_regions.push_back(NativeVulkanBufferImageCopy{
+            .buffer_offset = upload.offset,
+            .buffer_row_length = 0,
+            .buffer_image_height = 0,
+            .image_subresource = NativeVulkanImageSubresourceLayers{.aspect_mask = vulkan_image_aspect_color_bit,
+                                                                    .mip_level = upload.mip,
+                                                                    .base_array_layer = upload.face,
+                                                                    .layer_count = 1},
+            .image_offset = NativeVulkanOffset3D{.x = 0, .y = 0, .z = 0},
+            .image_extent = NativeVulkanExtent3D{.width = upload.width, .height = upload.height, .depth = 1},
+        });
+    }
+    impl.cmd_copy_buffer_to_image(command_buffer, upload_buffer, cube_image, vulkan_image_layout_transfer_dst_optimal,
+                                  static_cast<std::uint32_t>(upload_regions.size()), upload_regions.data());
+    record_image_barrier(cube_image, desc.mip_count, cube_face_count, vulkan_pipeline_stage2_transfer_bit,
+                         vulkan_access2_transfer_write_bit, vulkan_pipeline_stage2_transfer_bit,
+                         vulkan_access2_transfer_read_bit, vulkan_image_layout_transfer_dst_optimal,
+                         vulkan_image_layout_transfer_src_optimal);
+
+    if (desc.require_runtime_capture) {
+        std::vector<NativeVulkanBufferImageCopy> readback_regions;
+        readback_regions.reserve(cube_face_count);
+        for (std::uint32_t face = 0; face < cube_face_count; ++face) {
+            readback_regions.push_back(NativeVulkanBufferImageCopy{
+                .buffer_offset = align_to(capture_face_bytes, 16) * static_cast<std::uint64_t>(face),
+                .buffer_row_length = 0,
+                .buffer_image_height = 0,
+                .image_subresource = NativeVulkanImageSubresourceLayers{.aspect_mask = vulkan_image_aspect_color_bit,
+                                                                        .mip_level = 0,
+                                                                        .base_array_layer = face,
+                                                                        .layer_count = 1},
+                .image_offset = NativeVulkanOffset3D{.x = 0, .y = 0, .z = 0},
+                .image_extent = NativeVulkanExtent3D{.width = desc.edge_size, .height = desc.edge_size, .depth = 1},
+            });
+        }
+        impl.cmd_copy_image_to_buffer(command_buffer, cube_image, vulkan_image_layout_transfer_src_optimal,
+                                      readback_buffer, static_cast<std::uint32_t>(readback_regions.size()),
+                                      readback_regions.data());
+        result.runtime_capture_faces = cube_face_count;
+    }
+    record_image_barrier(cube_image, desc.mip_count, cube_face_count, vulkan_pipeline_stage2_transfer_bit,
+                         vulkan_access2_transfer_read_bit, vulkan_pipeline_stage2_fragment_shader_bit,
+                         vulkan_access2_shader_read_bit, vulkan_image_layout_transfer_src_optimal,
+                         vulkan_image_layout_shader_read_only_optimal);
+
+    if (desc.require_shader_sampling) {
+        record_image_barrier(shader_sample_image, 1, 1, vulkan_pipeline_stage2_none, vulkan_access2_none,
+                             vulkan_pipeline_stage2_color_attachment_output_bit,
+                             vulkan_access2_color_attachment_write_bit, vulkan_image_layout_undefined,
+                             vulkan_image_layout_color_attachment_optimal);
+
+        const NativeVulkanRenderingAttachmentInfo color_attachment{
+            .s_type = vulkan_structure_type_rendering_attachment_info,
+            .next = nullptr,
+            .image_view = shader_sample_view,
+            .image_layout = vulkan_image_layout_color_attachment_optimal,
+            .resolve_mode = vulkan_resolve_mode_none,
+            .resolve_image_view = 0,
+            .resolve_image_layout = vulkan_image_layout_color_attachment_optimal,
+            .load_op = vulkan_attachment_load_op_clear,
+            .store_op = vulkan_attachment_store_op_store,
+            .clear_value =
+                NativeVulkanClearValue{
+                    .color = NativeVulkanClearColorValue{.float32 = {0.0F, 0.0F, 0.0F, 0.0F}},
+                },
+        };
+        const NativeVulkanRect2D render_area{
+            .offset = NativeVulkanOffset2D{.x = 0, .y = 0},
+            .extent = NativeVulkanExtent2D{.width = desc.edge_size, .height = desc.edge_size},
+        };
+        const NativeVulkanRenderingInfo rendering_info{
+            .s_type = vulkan_structure_type_rendering_info,
+            .next = nullptr,
+            .flags = 0,
+            .render_area = render_area,
+            .layer_count = 1,
+            .view_mask = 0,
+            .color_attachment_count = 1,
+            .color_attachments = &color_attachment,
+            .depth_attachment = nullptr,
+            .stencil_attachment = nullptr,
+        };
+        const NativeVulkanViewport viewport{
+            .x = 0.0F,
+            .y = 0.0F,
+            .width = static_cast<float>(desc.edge_size),
+            .height = static_cast<float>(desc.edge_size),
+            .min_depth = 0.0F,
+            .max_depth = 1.0F,
+        };
+        const NativeVulkanRect2D scissor{
+            .offset = NativeVulkanOffset2D{.x = 0, .y = 0},
+            .extent = NativeVulkanExtent2D{.width = desc.edge_size, .height = desc.edge_size},
+        };
+        impl.cmd_begin_rendering(command_buffer, &rendering_info);
+        impl.cmd_set_viewport(command_buffer, 0, 1, &viewport);
+        impl.cmd_set_scissor(command_buffer, 0, 1, &scissor);
+        impl.cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, shader_sample_pipeline);
+        impl.cmd_bind_descriptor_sets(command_buffer, vulkan_pipeline_bind_point_graphics,
+                                      shader_sample_pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
+        impl.cmd_draw(command_buffer, 3, 1, 0, 0);
+        impl.cmd_end_rendering(command_buffer);
+
+        record_image_barrier(shader_sample_image, 1, 1, vulkan_pipeline_stage2_color_attachment_output_bit,
+                             vulkan_access2_color_attachment_write_bit, vulkan_pipeline_stage2_transfer_bit,
+                             vulkan_access2_transfer_read_bit, vulkan_image_layout_color_attachment_optimal,
+                             vulkan_image_layout_transfer_src_optimal);
+        const NativeVulkanBufferImageCopy shader_sample_readback_region{
+            .buffer_offset = shader_sample_readback_offset,
+            .buffer_row_length = 0,
+            .buffer_image_height = 0,
+            .image_subresource = NativeVulkanImageSubresourceLayers{.aspect_mask = vulkan_image_aspect_color_bit,
+                                                                    .mip_level = 0,
+                                                                    .base_array_layer = 0,
+                                                                    .layer_count = 1},
+            .image_offset = NativeVulkanOffset3D{.x = 0, .y = 0, .z = 0},
+            .image_extent = NativeVulkanExtent3D{.width = desc.edge_size, .height = desc.edge_size, .depth = 1},
+        };
+        impl.cmd_copy_image_to_buffer(command_buffer, shader_sample_image, vulkan_image_layout_transfer_src_optimal,
+                                      readback_buffer, 1, &shader_sample_readback_region);
+    }
+
+    const auto end_result = impl.end_command_buffer(command_buffer);
+    if (end_result != vulkan_success) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkEndCommandBuffer failed", end_result));
+    }
+    const NativeVulkanCommandBufferSubmitInfo command_submit{
+        .s_type = vulkan_structure_type_command_buffer_submit_info,
+        .next = nullptr,
+        .command_buffer = command_buffer,
+        .device_mask = 0,
+    };
+    const NativeVulkanSubmitInfo2 submit_info{
+        .s_type = vulkan_structure_type_submit_info2,
+        .next = nullptr,
+        .flags = 0,
+        .wait_semaphore_info_count = 0,
+        .wait_semaphore_infos = nullptr,
+        .command_buffer_info_count = 1,
+        .command_buffer_infos = &command_submit,
+        .signal_semaphore_info_count = 0,
+        .signal_semaphore_infos = nullptr,
+    };
+    const auto submit_result = impl.queue_submit2(impl.graphics_queue, 1, &submit_info, 0);
+    if (submit_result != vulkan_success) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkQueueSubmit2 failed", submit_result));
+    }
+    const auto wait_result = impl.queue_wait_idle(impl.graphics_queue);
+    if (wait_result != vulkan_success) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkQueueWaitIdle failed", wait_result));
+    }
+
+    void* readback_mapping = nullptr;
+    const auto readback_map =
+        impl.map_memory(impl.device, readback_memory, 0, readback_byte_count, 0, &readback_mapping);
+    if (readback_map != vulkan_success || readback_mapping == nullptr) {
+        return fail_with_cleanup(vulkan_result_diagnostic("Vulkan vkMapMemory failed", readback_map));
+    }
+    const auto* readback_bytes = static_cast<const std::uint8_t*>(readback_mapping);
+    std::uint64_t checksum = fnv_offset;
+    bool runtime_capture_readback_nonzero = false;
+    for (std::uint64_t index = 0; index < capture_readback_byte_count; ++index) {
+        const auto value = readback_bytes[index];
+        checksum ^= value;
+        checksum *= fnv_prime;
+        runtime_capture_readback_nonzero = runtime_capture_readback_nonzero || value != 0U;
+    }
+    bool shader_sample_readback_nonzero = false;
+    for (std::uint64_t index = shader_sample_readback_offset;
+         index < shader_sample_readback_offset + shader_sample_readback_byte_count; ++index) {
+        shader_sample_readback_nonzero = shader_sample_readback_nonzero || readback_bytes[index] != 0U;
+    }
+    impl.unmap_memory(impl.device, readback_memory);
+
+    result.texture_cube_uploads = 1;
+    result.texture_cube_faces = cube_face_count;
+    result.texture_cube_edge_size = desc.edge_size;
+    result.radiance_mips = desc.mip_count;
+    result.irradiance_rows = irradiance_row_count;
+    result.runtime_capture_readback_nonzero = desc.require_runtime_capture && runtime_capture_readback_nonzero;
+    result.readback_checksum = checksum;
+    result.shader_sample_readback_nonzero = desc.require_shader_sampling && shader_sample_readback_nonzero;
+    result.shader_sampling_proven = desc.require_shader_sampling && shader_modules_created &&
+                                    result.cube_image_view_created && result.sampler_created &&
+                                    result.descriptor_set_bindings == 2U && result.synchronization2_barriers > 0U &&
+                                    result.shader_sample_readback_nonzero;
+    result.succeeded = result.cube_compatible_image_created && result.cube_image_view_created &&
+                       result.sampler_created && result.descriptor_set_bindings == 2U &&
+                       result.synchronization2_barriers > 0U &&
+                       (!desc.require_runtime_capture || result.runtime_capture_readback_nonzero) &&
+                       (!desc.require_shader_sampling || result.shader_sampling_proven);
+    result.diagnostic = result.succeeded ? "Vulkan environment IBL renderer upload proof ready"
+                                         : "Vulkan environment IBL renderer upload proof incomplete";
+    cleanup();
+    return result;
 }
 
 std::unique_ptr<IRhiDevice> create_rhi_device(VulkanRuntimeDevice device,
@@ -11476,24 +12657,31 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         result.diagnostic = "Vulkan draw counts are required";
         return result;
     }
-    const auto uses_vertex_buffer = desc.vertex_buffer != nullptr;
+    const auto uses_vertex_buffer = !desc.vertex_buffers.empty();
     const auto indexed_draw = desc.index_count > 0;
+    auto sorted_vertex_buffers = sorted_vertex_buffer_bindings(desc.vertex_buffers);
+    if (has_duplicate_vertex_buffer_bindings(sorted_vertex_buffers)) {
+        result.diagnostic = "Vulkan vertex buffer bindings must be unique";
+        return result;
+    }
     if (uses_vertex_buffer) {
-        if (!desc.vertex_buffer->owns_buffer()) {
-            result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
-            return result;
-        }
-        if (desc.vertex_buffer->impl_->device_owner != device.impl_) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
-            return result;
-        }
-        if (!has_flag(desc.vertex_buffer->usage(), BufferUsage::vertex)) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
-            return result;
-        }
-        if (desc.vertex_buffer_offset >= desc.vertex_buffer->byte_size()) {
-            result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
-            return result;
+        for (const auto& binding : sorted_vertex_buffers) {
+            if (binding.buffer == nullptr || !binding.buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
+                return result;
+            }
+            if (binding.buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
+                return result;
+            }
+            if (!has_flag(binding.buffer->usage(), BufferUsage::vertex)) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
+                return result;
+            }
+            if (binding.offset >= binding.buffer->byte_size()) {
+                result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
+                return result;
+            }
         }
     }
     if (indexed_draw) {
@@ -11642,10 +12830,27 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     device.impl_->cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, pipeline.impl_->pipeline);
     result.bound_pipeline = true;
     if (uses_vertex_buffer) {
-        const NativeVulkanBuffer vertex_buffer = desc.vertex_buffer->impl_->buffer;
-        const std::uint64_t vertex_offset = desc.vertex_buffer_offset;
-        device.impl_->cmd_bind_vertex_buffers(command_buffer, desc.vertex_buffer_binding, 1, &vertex_buffer,
-                                              &vertex_offset);
+        std::size_t range_begin = 0;
+        while (range_begin < sorted_vertex_buffers.size()) {
+            std::size_t range_end = range_begin + 1U;
+            while (range_end < sorted_vertex_buffers.size() &&
+                   sorted_vertex_buffers[range_end].binding == sorted_vertex_buffers[range_end - 1U].binding + 1U) {
+                ++range_end;
+            }
+
+            std::vector<NativeVulkanBuffer> vertex_buffers;
+            std::vector<std::uint64_t> vertex_offsets;
+            vertex_buffers.reserve(range_end - range_begin);
+            vertex_offsets.reserve(range_end - range_begin);
+            for (std::size_t index = range_begin; index < range_end; ++index) {
+                vertex_buffers.push_back(sorted_vertex_buffers[index].buffer->impl_->buffer);
+                vertex_offsets.push_back(sorted_vertex_buffers[index].offset);
+            }
+            device.impl_->cmd_bind_vertex_buffers(command_buffer, sorted_vertex_buffers[range_begin].binding,
+                                                  static_cast<std::uint32_t>(vertex_buffers.size()),
+                                                  vertex_buffers.data(), vertex_offsets.data());
+            range_begin = range_end;
+        }
     }
     if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
@@ -11728,24 +12933,31 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         result.diagnostic = "Vulkan draw counts are required";
         return result;
     }
-    const auto uses_vertex_buffer = desc.vertex_buffer != nullptr;
+    const auto uses_vertex_buffer = !desc.vertex_buffers.empty();
     const auto indexed_draw = desc.index_count > 0;
+    auto sorted_vertex_buffers = sorted_vertex_buffer_bindings(desc.vertex_buffers);
+    if (has_duplicate_vertex_buffer_bindings(sorted_vertex_buffers)) {
+        result.diagnostic = "Vulkan vertex buffer bindings must be unique";
+        return result;
+    }
     if (uses_vertex_buffer) {
-        if (!desc.vertex_buffer->owns_buffer()) {
-            result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
-            return result;
-        }
-        if (desc.vertex_buffer->impl_->device_owner != device.impl_) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
-            return result;
-        }
-        if (!has_flag(desc.vertex_buffer->usage(), BufferUsage::vertex)) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
-            return result;
-        }
-        if (desc.vertex_buffer_offset >= desc.vertex_buffer->byte_size()) {
-            result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
-            return result;
+        for (const auto& binding : sorted_vertex_buffers) {
+            if (binding.buffer == nullptr || !binding.buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
+                return result;
+            }
+            if (binding.buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
+                return result;
+            }
+            if (!has_flag(binding.buffer->usage(), BufferUsage::vertex)) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
+                return result;
+            }
+            if (binding.offset >= binding.buffer->byte_size()) {
+                result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
+                return result;
+            }
         }
     }
     if (indexed_draw) {
@@ -11894,10 +13106,27 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     device.impl_->cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, pipeline.impl_->pipeline);
     result.bound_pipeline = true;
     if (uses_vertex_buffer) {
-        const NativeVulkanBuffer vertex_buffer = desc.vertex_buffer->impl_->buffer;
-        const std::uint64_t vertex_offset = desc.vertex_buffer_offset;
-        device.impl_->cmd_bind_vertex_buffers(command_buffer, desc.vertex_buffer_binding, 1, &vertex_buffer,
-                                              &vertex_offset);
+        std::size_t range_begin = 0;
+        while (range_begin < sorted_vertex_buffers.size()) {
+            std::size_t range_end = range_begin + 1U;
+            while (range_end < sorted_vertex_buffers.size() &&
+                   sorted_vertex_buffers[range_end].binding == sorted_vertex_buffers[range_end - 1U].binding + 1U) {
+                ++range_end;
+            }
+
+            std::vector<NativeVulkanBuffer> vertex_buffers;
+            std::vector<std::uint64_t> vertex_offsets;
+            vertex_buffers.reserve(range_end - range_begin);
+            vertex_offsets.reserve(range_end - range_begin);
+            for (std::size_t index = range_begin; index < range_end; ++index) {
+                vertex_buffers.push_back(sorted_vertex_buffers[index].buffer->impl_->buffer);
+                vertex_offsets.push_back(sorted_vertex_buffers[index].offset);
+            }
+            device.impl_->cmd_bind_vertex_buffers(command_buffer, sorted_vertex_buffers[range_begin].binding,
+                                                  static_cast<std::uint32_t>(vertex_buffers.size()),
+                                                  vertex_buffers.data(), vertex_offsets.data());
+            range_begin = range_end;
+        }
     }
     if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,

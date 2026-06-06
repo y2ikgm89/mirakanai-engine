@@ -43,6 +43,8 @@ MK_TEST("renderer environment fog policy plans depth-aware height fog rows") {
     const auto plan = mirakana::plan_environment_fog_policy(make_valid_height_fog_desc());
 
     MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentFogPolicyStatus::planned);
+    MK_REQUIRE(!plan.ready());
     MK_REQUIRE(plan.mode == mirakana::EnvironmentFogMode::exponential_height_with_aerial_perspective);
     MK_REQUIRE(plan.requires_scene_depth);
     MK_REQUIRE(plan.scene_depth_available);
@@ -76,6 +78,41 @@ MK_TEST("renderer environment fog policy plans depth-aware height fog rows") {
     MK_REQUIRE(plan.postprocess_rows.size() == 1);
     MK_REQUIRE(plan.postprocess_rows[0].effect == mirakana::PostprocessEffectKind::fog);
     MK_REQUIRE(plan.postprocess_rows[0].uses_scene_depth);
+}
+
+MK_TEST("renderer environment fog policy requires execution and package evidence before ready promotion") {
+    auto desc = make_valid_height_fog_desc();
+    desc.request_ready_promotion = true;
+
+    const auto missing_evidence_plan = mirakana::plan_environment_fog_policy(desc);
+
+    MK_REQUIRE(!missing_evidence_plan.succeeded());
+    MK_REQUIRE(missing_evidence_plan.status == mirakana::EnvironmentFogPolicyStatus::blocked);
+    MK_REQUIRE(!missing_evidence_plan.ready());
+    MK_REQUIRE(mirakana::has_environment_fog_diagnostic(
+        missing_evidence_plan, mirakana::EnvironmentFogDiagnosticCode::missing_execution_evidence));
+    MK_REQUIRE(mirakana::has_environment_fog_diagnostic(
+        missing_evidence_plan, mirakana::EnvironmentFogDiagnosticCode::missing_package_evidence));
+
+    desc.execution_evidence_ready = true;
+    const auto missing_package_plan = mirakana::plan_environment_fog_policy(desc);
+
+    MK_REQUIRE(!missing_package_plan.succeeded());
+    MK_REQUIRE(missing_package_plan.status == mirakana::EnvironmentFogPolicyStatus::blocked);
+    MK_REQUIRE(!missing_package_plan.ready());
+    MK_REQUIRE(!mirakana::has_environment_fog_diagnostic(
+        missing_package_plan, mirakana::EnvironmentFogDiagnosticCode::missing_execution_evidence));
+    MK_REQUIRE(mirakana::has_environment_fog_diagnostic(
+        missing_package_plan, mirakana::EnvironmentFogDiagnosticCode::missing_package_evidence));
+
+    desc.package_evidence_ready = true;
+    const auto ready_plan = mirakana::plan_environment_fog_policy(desc);
+
+    MK_REQUIRE(ready_plan.succeeded());
+    MK_REQUIRE(ready_plan.status == mirakana::EnvironmentFogPolicyStatus::ready);
+    MK_REQUIRE(ready_plan.ready());
+    MK_REQUIRE(ready_plan.execution_evidence_ready);
+    MK_REQUIRE(ready_plan.package_evidence_ready);
 }
 
 MK_TEST("renderer environment fog policy packs postprocess constants for RHI execution") {
@@ -122,6 +159,8 @@ MK_TEST("renderer environment fog policy fails closed for invalid values and exe
     const auto plan = mirakana::plan_environment_fog_policy(desc);
 
     MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentFogPolicyStatus::blocked);
+    MK_REQUIRE(!plan.ready());
     MK_REQUIRE(plan.requires_scene_depth);
     MK_REQUIRE(!plan.scene_depth_available);
     MK_REQUIRE(!plan.shader_contract_evidence_ready);
