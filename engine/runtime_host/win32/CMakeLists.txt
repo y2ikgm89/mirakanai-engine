@@ -18,6 +18,31 @@ target_link_libraries(MK_runtime_host_win32
 
 MK_apply_common_target_options(MK_runtime_host_win32)
 
+if(MK_ENABLE_DIRECTSTORAGE_SDK)
+    add_library(MK_runtime_host_win32_directstorage
+        src/win32_mavg_directstorage_payload_io.cpp
+    )
+
+    target_include_directories(MK_runtime_host_win32_directstorage
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+
+    target_link_libraries(MK_runtime_host_win32_directstorage
+        PUBLIC
+            MK_runtime_host_win32
+        PRIVATE
+            Microsoft::DirectStorage
+    )
+    target_compile_definitions(MK_runtime_host_win32_directstorage
+        PUBLIC
+            MK_RUNTIME_HOST_WIN32_ENABLE_DIRECTSTORAGE_SDK=1
+    )
+
+    MK_apply_common_target_options(MK_runtime_host_win32_directstorage)
+endif()
+
 add_library(MK_runtime_host_win32_presentation
     src/win32_desktop_game_host.cpp
     src/win32_desktop_presentation.cpp

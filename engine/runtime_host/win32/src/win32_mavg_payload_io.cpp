@@ -141,7 +141,7 @@ void add_diagnostic(runtime::RuntimeMavgPayloadNativeIoStatusBackendResult& resu
     }
 
     const std::filesystem::path parsed{std::string(path)};
-    if (parsed.is_absolute()) {
+    if (parsed.is_absolute() || parsed.has_root_name() || parsed.has_root_directory()) {
         return false;
     }
     for (const auto& part : parsed) {

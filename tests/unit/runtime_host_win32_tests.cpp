@@ -361,6 +361,32 @@ MK_TEST("win32 mavg payload async file io dispatcher rejects destination overflo
     }
 }
 
+MK_TEST("win32 mavg payload async file io dispatcher rejects drive relative source path before file open") {
+    ScopedTempDirectory temp;
+    std::vector<std::uint8_t> destination(16U, 0xcdU);
+    auto request_plan = make_single_win32_payload_request_plan("C:payload.bin", 3, 4);
+    mirakana::Win32MavgPayloadAsyncFileIoDispatcher dispatcher{
+        mirakana::Win32MavgPayloadAsyncFileIoDispatcherDesc{.root_path = temp.path()}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .destination_memory = destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(!dispatch.succeeded());
+    MK_REQUIRE(dispatch.ticket == 0U);
+    MK_REQUIRE(!dispatch.diagnostics.empty());
+    MK_REQUIRE(dispatch.diagnostics.front().message.find("relative single-line path") != std::string::npos);
+    MK_REQUIRE(!dispatch.submitted_io_queue);
+    for (const auto byte : destination) {
+        MK_REQUIRE(byte == 0xcdU);
+    }
+}
+
 MK_TEST("win32 mavg payload iocp file io worker reads multiple planned byte ranges into destination memory") {
     ScopedTempDirectory temp;
     const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U,
@@ -481,6 +507,32 @@ MK_TEST("win32 mavg payload iocp file io worker rejects destination overflow bef
     MK_REQUIRE(!dispatch.used_native_directstorage);
     MK_REQUIRE(!dispatch.executed_background_worker);
     MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+    for (const auto byte : destination) {
+        MK_REQUIRE(byte == 0xcdU);
+    }
+}
+
+MK_TEST("win32 mavg payload iocp file io worker rejects rooted source path before file open") {
+    ScopedTempDirectory temp;
+    std::vector<std::uint8_t> destination(16U, 0xcdU);
+    auto request_plan = make_single_win32_payload_request_plan(R"(\payload.bin)", 3, 4);
+    mirakana::Win32MavgPayloadIocpFileIoDispatcher dispatcher{
+        mirakana::Win32MavgPayloadIocpFileIoDispatcherDesc{.root_path = temp.path()}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .destination_memory = destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(!dispatch.succeeded());
+    MK_REQUIRE(dispatch.ticket == 0U);
+    MK_REQUIRE(!dispatch.diagnostics.empty());
+    MK_REQUIRE(dispatch.diagnostics.front().message.find("relative single-line path") != std::string::npos);
+    MK_REQUIRE(!dispatch.submitted_io_queue);
     for (const auto byte : destination) {
         MK_REQUIRE(byte == 0xcdU);
     }

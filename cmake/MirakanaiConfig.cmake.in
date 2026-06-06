@@ -30,6 +30,11 @@ if(Mirakanai_HAS_NETWORK_ENET)
     find_dependency(unofficial-enet CONFIG)
 endif()
 
+set(Mirakanai_HAS_DIRECTSTORAGE_SDK @MK_PACKAGE_HAS_DIRECTSTORAGE_SDK@)
+if(Mirakanai_HAS_DIRECTSTORAGE_SDK)
+    find_dependency(dstorage CONFIG)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/MirakanaiTargets.cmake")
 
 check_required_components(Mirakanai)

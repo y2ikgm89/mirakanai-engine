@@ -69,4 +69,35 @@ class Win32MavgPayloadIocpFileIoDispatcher final : public runtime::IRuntimeMavgP
     std::unique_ptr<Impl> impl_;
 };
 
+#if defined(MK_RUNTIME_HOST_WIN32_ENABLE_DIRECTSTORAGE_SDK)
+struct Win32MavgPayloadDirectStorageDispatcherDesc {
+    std::filesystem::path root_path;
+    std::size_t max_inflight_submissions{64};
+    std::size_t queue_capacity{128};
+};
+
+class Win32MavgPayloadDirectStorageDispatcher final : public runtime::IRuntimeMavgPayloadNativeIoDispatcher {
+  public:
+    explicit Win32MavgPayloadDirectStorageDispatcher(Win32MavgPayloadDirectStorageDispatcherDesc desc);
+    ~Win32MavgPayloadDirectStorageDispatcher() override;
+
+    Win32MavgPayloadDirectStorageDispatcher(const Win32MavgPayloadDirectStorageDispatcher&) = delete;
+    Win32MavgPayloadDirectStorageDispatcher& operator=(const Win32MavgPayloadDirectStorageDispatcher&) = delete;
+    Win32MavgPayloadDirectStorageDispatcher(Win32MavgPayloadDirectStorageDispatcher&&) noexcept;
+    Win32MavgPayloadDirectStorageDispatcher& operator=(Win32MavgPayloadDirectStorageDispatcher&&) noexcept;
+
+    [[nodiscard]] runtime::RuntimeMavgPayloadNativeIoBackend backend() const noexcept override;
+
+    [[nodiscard]] runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult
+    dispatch(std::span<const runtime::RuntimeMavgPayloadDirectStorageRequestRow> requests,
+             const runtime::RuntimeMavgPayloadNativeIoDispatchBackendDesc& desc) override;
+
+    [[nodiscard]] runtime::RuntimeMavgPayloadNativeIoStatusBackendResult poll_status(std::uint64_t ticket) override;
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+#endif
+
 } // namespace mirakana

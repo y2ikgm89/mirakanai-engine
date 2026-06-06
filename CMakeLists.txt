@@ -164,6 +164,12 @@ add_subdirectory(engine/tools)
 add_subdirectory(engine/rhi)
 add_subdirectory(engine/runtime_rhi)
 add_subdirectory(engine/renderer)
+if(MK_ENABLE_DIRECTSTORAGE_SDK)
+    if(NOT WIN32)
+        message(FATAL_ERROR "MK_ENABLE_DIRECTSTORAGE_SDK is Windows-only")
+    endif()
+    find_package(dstorage CONFIG REQUIRED)
+endif()
 add_subdirectory(engine/runtime_host)
 add_subdirectory(engine/ui_renderer)
 add_subdirectory(engine/scene)
@@ -171,13 +177,6 @@ add_subdirectory(engine/runtime_scene)
 add_subdirectory(engine/scene_renderer)
 add_subdirectory(engine/runtime_scene_rhi)
 add_subdirectory(editor)
-
-if(MK_ENABLE_DIRECTSTORAGE_SDK)
-    if(NOT WIN32)
-        message(FATAL_ERROR "MK_ENABLE_DIRECTSTORAGE_SDK is Windows-only")
-    endif()
-    find_package(dstorage CONFIG REQUIRED)
-endif()
 
 add_executable(MK_sandbox examples/sandbox/main.cpp)
 target_link_libraries(MK_sandbox PRIVATE
@@ -1190,7 +1189,10 @@ if(BUILD_TESTING)
             add_executable(MK_runtime_host_win32_directstorage_sdk_tests
                 tests/unit/runtime_host_win32_directstorage_sdk_tests.cpp
             )
-            target_link_libraries(MK_runtime_host_win32_directstorage_sdk_tests PRIVATE Microsoft::DirectStorage)
+            target_link_libraries(MK_runtime_host_win32_directstorage_sdk_tests PRIVATE
+                MK_runtime_host_win32_directstorage
+                Microsoft::DirectStorage
+            )
             MK_apply_common_target_options(MK_runtime_host_win32_directstorage_sdk_tests)
             MK_disable_module_scanning_for_non_module_executable(MK_runtime_host_win32_directstorage_sdk_tests)
             foreach(MK_DIRECTSTORAGE_RUNTIME_TARGET IN ITEMS Microsoft::DirectStorage Microsoft::DirectStorageCore)
@@ -1245,6 +1247,7 @@ MK_set_export_name(MK_rhi rhi)
 MK_set_export_name(MK_runtime runtime)
 MK_set_export_name(MK_runtime_host runtime_host)
 MK_set_export_name(MK_runtime_host_win32 runtime_host_win32)
+MK_set_export_name(MK_runtime_host_win32_directstorage runtime_host_win32_directstorage)
 MK_set_export_name(MK_runtime_host_win32_presentation runtime_host_win32_presentation)
 MK_set_export_name(MK_runtime_rhi runtime_rhi)
 MK_set_export_name(MK_runtime_scene runtime_scene)
@@ -1298,8 +1301,8 @@ set(MK_RUNTIME_TARGETS
 )
 
 foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_wasapi mirakana_platform_win32
-        MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
-        mirakana_runtime_network_enet)
+        MK_runtime_host_win32 MK_runtime_host_win32_directstorage MK_runtime_host_win32_presentation MK_editor_core
+        mirakana_physics_jolt mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
     endif()
@@ -1517,6 +1520,11 @@ endif()
 set(MK_PACKAGE_HAS_NETWORK_ENET OFF)
 if(TARGET MK_runtime_network_enet)
     set(MK_PACKAGE_HAS_NETWORK_ENET ON)
+endif()
+
+set(MK_PACKAGE_HAS_DIRECTSTORAGE_SDK OFF)
+if(TARGET MK_runtime_host_win32_directstorage)
+    set(MK_PACKAGE_HAS_DIRECTSTORAGE_SDK ON)
 endif()
 
 configure_package_config_file(
