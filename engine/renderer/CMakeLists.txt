@@ -21,6 +21,7 @@ add_library(mirakana_renderer
     src/gpu_memory_policy.cpp
     src/mavg_gpu_cluster_format.cpp
     src/mavg_gpu_culling.cpp
+    src/mavg_gpu_visible_cluster_packets.cpp
     src/mavg_lod_selection.cpp
     src/scene_scale_policy.cpp
     src/shadow_map.cpp

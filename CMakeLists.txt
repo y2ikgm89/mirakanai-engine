@@ -734,6 +734,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_mavg_gpu_cluster_format_tests)
     add_test(NAME MK_mavg_gpu_cluster_format_tests COMMAND MK_mavg_gpu_cluster_format_tests)
 
+    add_executable(MK_mavg_gpu_visible_cluster_packets_tests
+        tests/unit/mavg_gpu_visible_cluster_packets_tests.cpp
+    )
+    target_link_libraries(MK_mavg_gpu_visible_cluster_packets_tests PRIVATE MK_renderer)
+    target_include_directories(MK_mavg_gpu_visible_cluster_packets_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_mavg_gpu_visible_cluster_packets_tests)
+    add_test(NAME MK_mavg_gpu_visible_cluster_packets_tests COMMAND MK_mavg_gpu_visible_cluster_packets_tests)
+
     add_executable(MK_asset_import_production_review_tests
         tests/unit/asset_import_production_review_tests.cpp
     )
