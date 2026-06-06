@@ -5,7 +5,9 @@
 
 #include "mirakana/environment/cloud_layer.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -52,6 +54,10 @@ enum class CloudLayerDiagnosticCode : std::uint8_t {
 
 [[nodiscard]] constexpr std::uint32_t cloud_layer_constants_binding() noexcept {
     return 6;
+}
+
+[[nodiscard]] constexpr std::size_t cloud_layer_constants_byte_size() noexcept {
+    return 256;
 }
 
 struct CloudLayerPolicyDesc {
@@ -119,6 +125,7 @@ struct CloudLayerPolicyPlan {
     bool execution_evidence_ready{false};
     bool uploads_textures{false};
     bool invokes_backend{false};
+    std::uint32_t renderer_draws{0};
     bool exposes_native_handles{false};
     std::vector<CloudLayerTextureRow> texture_rows;
     std::vector<CloudLayerVisualRow> visual_rows;
@@ -132,6 +139,8 @@ struct CloudLayerPolicyPlan {
 };
 
 [[nodiscard]] CloudLayerPolicyPlan plan_cloud_layer_policy(const CloudLayerPolicyDesc& desc);
+
+void pack_cloud_layer_constants(std::span<std::uint8_t> destination, const CloudLayerPolicyDesc& desc);
 
 [[nodiscard]] bool has_cloud_layer_diagnostic(const CloudLayerPolicyPlan& plan, CloudLayerDiagnosticCode code) noexcept;
 

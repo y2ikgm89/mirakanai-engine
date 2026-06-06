@@ -10,12 +10,14 @@
 #include "mirakana/renderer/debug_profiling_policy.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/scene_scale_policy.hpp"
+#include "mirakana/renderer/volumetric_cloud_policy.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
@@ -33,6 +35,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <limits>
 #include <span>
@@ -45,6 +48,14 @@ namespace mirakana {
 namespace {
 using runtime_host_win32_detail::SceneComputeMorphMeshBinding;
 using runtime_host_win32_detail::SceneGpuBindingInjectingRenderer;
+
+constexpr std::uint32_t kVulkanPrecipitationDescriptorSetBindings{4};
+constexpr std::uint32_t kVulkanPrecipitationSamplerBindingShift{20};
+constexpr std::uint32_t kVulkanPrecipitationConstantsBindingShift{40};
+constexpr std::uint32_t kVulkanVolumetricFogDescriptorSetBindings{4};
+constexpr std::uint32_t kVulkanVolumetricCloudDescriptorSetBindings{5};
+constexpr std::uint32_t kVulkanVolumetricCloudSamplerBindingShift{20};
+constexpr std::uint32_t kVulkanVolumetricCloudConstantsBindingShift{40};
 
 struct SurfaceProbe {
     rhi::SurfaceHandle surface;
@@ -70,6 +81,35 @@ struct NativeRendererCreateResult {
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool environment_fog_vulkan_package_requested{false};
+    bool environment_fog_vulkan_package_shader_contract_evidence_ready{false};
+    bool environment_fog_vulkan_package_evidence_ready{false};
+    bool environment_fog_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t environment_fog_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_requested{false};
+    bool physical_sky_vulkan_package_shader_contract_evidence_ready{false};
+    bool physical_sky_vulkan_package_evidence_ready{false};
+    bool physical_sky_vulkan_package_execution_evidence_ready{false};
+    bool physical_sky_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t physical_sky_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_allocates_lut_textures{false};
+    bool physical_sky_vulkan_package_invokes_backend{false};
+    bool physical_sky_vulkan_package_exposes_native_handles{false};
+    std::uint32_t physical_sky_vulkan_package_constant_layout_rows{0};
+    std::uint32_t physical_sky_vulkan_package_lut_intent_rows{0};
+    std::uint32_t physical_sky_vulkan_package_policy_diagnostics_count{0};
+    bool physical_sky_requested{false};
+    bool physical_sky_shader_contract_evidence_ready{false};
+    bool physical_sky_package_evidence_ready{false};
+    bool physical_sky_execution_evidence_ready{false};
+    bool physical_sky_constant_buffer_ready{false};
+    std::uint64_t physical_sky_constant_buffer_bytes{0};
+    bool physical_sky_allocates_lut_textures{false};
+    bool physical_sky_invokes_backend{false};
+    bool physical_sky_exposes_native_handles{false};
+    std::uint32_t physical_sky_constant_layout_rows{0};
+    std::uint32_t physical_sky_lut_intent_rows{0};
+    std::uint32_t physical_sky_policy_diagnostics_count{0};
     bool cloud_layer_requested{false};
     bool cloud_layer_shader_contract_evidence_ready{false};
     bool cloud_layer_package_evidence_ready{false};
@@ -86,6 +126,7 @@ struct NativeRendererCreateResult {
     std::uint32_t cloud_layer_shader_contract_rows{0};
     std::uint32_t cloud_layer_quality_rows{0};
     std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    std::uint64_t cloud_layer_renderer_draws{0};
     bool environment_precipitation_requested{false};
     EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
     EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
@@ -97,6 +138,8 @@ struct NativeRendererCreateResult {
     bool environment_precipitation_exposes_native_handles{false};
     bool environment_precipitation_mutates_materials{false};
     bool environment_precipitation_plays_audio{false};
+    std::uint64_t environment_precipitation_renderer_draws{0};
+    bool environment_precipitation_depth_occlusion_readback{false};
     bool environment_precipitation_uses_camera_near_particles{false};
     bool environment_precipitation_uses_scene_depth_occlusion{false};
     std::uint32_t environment_precipitation_weather_rows{0};
@@ -107,6 +150,104 @@ struct NativeRendererCreateResult {
     std::uint32_t environment_precipitation_shader_rows{0};
     std::uint32_t environment_precipitation_quality_rows{0};
     std::uint32_t environment_precipitation_policy_diagnostics_count{0};
+    bool environment_precipitation_vulkan_requested{false};
+    EnvironmentWeatherKind environment_precipitation_vulkan_weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind environment_precipitation_vulkan_kind{EnvironmentPrecipitationKind::none};
+    bool environment_precipitation_vulkan_shader_contract_evidence_ready{false};
+    bool environment_precipitation_vulkan_package_evidence_ready{false};
+    bool environment_precipitation_vulkan_execution_evidence_ready{false};
+    bool environment_precipitation_vulkan_uses_camera_near_particles{false};
+    bool environment_precipitation_vulkan_uses_scene_depth_occlusion{false};
+    std::uint32_t environment_precipitation_vulkan_weather_rows{0};
+    std::uint32_t environment_precipitation_vulkan_particle_rows{0};
+    std::uint32_t environment_precipitation_vulkan_occlusion_rows{0};
+    std::uint32_t environment_precipitation_vulkan_wetness_rows{0};
+    std::uint32_t environment_precipitation_vulkan_audio_handoff_rows{0};
+    std::uint32_t environment_precipitation_vulkan_shader_rows{0};
+    std::uint32_t environment_precipitation_vulkan_quality_rows{0};
+    std::uint64_t environment_precipitation_vulkan_particle_buffer_uploads{0};
+    std::uint64_t environment_precipitation_vulkan_backend_invocations{0};
+    std::uint64_t environment_precipitation_vulkan_renderer_draws{0};
+    bool environment_precipitation_vulkan_depth_occlusion_readback{false};
+    std::uint32_t environment_precipitation_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_precipitation_vulkan_synchronization2_barriers{0};
+    bool environment_precipitation_vulkan_exposes_native_handles{false};
+    bool environment_precipitation_vulkan_mutates_materials{false};
+    bool environment_precipitation_vulkan_plays_audio{false};
+    std::uint32_t environment_precipitation_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_fog_requested{false};
+    bool environment_volumetric_fog_shader_contract_evidence_ready{false};
+    bool environment_volumetric_fog_package_evidence_ready{false};
+    bool environment_volumetric_fog_execution_evidence_ready{false};
+    bool environment_volumetric_fog_froxel_output_ready{false};
+    bool environment_volumetric_fog_scene_depth_ready{false};
+    std::uint64_t environment_volumetric_fog_compute_dispatches{0};
+    bool environment_volumetric_fog_exposes_native_handles{false};
+    std::uint32_t environment_volumetric_fog_policy_diagnostics_count{0};
+    bool environment_volumetric_fog_vulkan_requested{false};
+    bool environment_volumetric_fog_vulkan_shader_contract_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_package_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_execution_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_froxel_output_ready{false};
+    bool environment_volumetric_fog_vulkan_scene_depth_ready{false};
+    std::uint64_t environment_volumetric_fog_vulkan_compute_dispatches{0};
+    std::uint32_t environment_volumetric_fog_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_volumetric_fog_vulkan_synchronization2_barriers{0};
+    bool environment_volumetric_fog_vulkan_froxel_readback_nonzero{false};
+    bool environment_volumetric_fog_vulkan_exposes_native_handles{false};
+    std::uint32_t environment_volumetric_fog_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_cloud_vulkan_requested{false};
+    bool environment_volumetric_cloud_vulkan_shader_contract_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_package_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_execution_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_weather_map_ready{false};
+    bool environment_volumetric_cloud_vulkan_shape_noise_ready{false};
+    bool environment_volumetric_cloud_vulkan_erosion_noise_ready{false};
+    bool environment_volumetric_cloud_vulkan_uploads_volume_textures{false};
+    bool environment_volumetric_cloud_vulkan_invokes_backend{false};
+    std::uint64_t environment_volumetric_cloud_vulkan_renderer_draws{0};
+    std::uint64_t environment_volumetric_cloud_vulkan_raymarch_passes{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_synchronization2_barriers{0};
+    bool environment_volumetric_cloud_vulkan_readback_nonzero{false};
+    bool environment_volumetric_cloud_vulkan_exposes_native_handles{false};
+    bool environment_volumetric_cloud_vulkan_plays_audio{false};
+    bool environment_volumetric_cloud_vulkan_executes_precipitation{false};
+    std::uint32_t environment_volumetric_cloud_vulkan_map_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_layer_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_lighting_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_raymarch_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_temporal_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_shadow_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_storm_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_shader_contract_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_quality_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_cloud_requested{false};
+    bool environment_volumetric_cloud_shader_contract_evidence_ready{false};
+    bool environment_volumetric_cloud_package_evidence_ready{false};
+    bool environment_volumetric_cloud_execution_evidence_ready{false};
+    bool environment_volumetric_cloud_weather_map_ready{false};
+    bool environment_volumetric_cloud_shape_noise_ready{false};
+    bool environment_volumetric_cloud_erosion_noise_ready{false};
+    bool environment_volumetric_cloud_uploads_volume_textures{false};
+    bool environment_volumetric_cloud_invokes_backend{false};
+    std::uint64_t environment_volumetric_cloud_renderer_draws{0};
+    std::uint64_t environment_volumetric_cloud_raymarch_passes{0};
+    bool environment_volumetric_cloud_readback_nonzero{false};
+    bool environment_volumetric_cloud_exposes_native_handles{false};
+    bool environment_volumetric_cloud_plays_audio{false};
+    bool environment_volumetric_cloud_executes_precipitation{false};
+    std::uint32_t environment_volumetric_cloud_map_rows{0};
+    std::uint32_t environment_volumetric_cloud_layer_rows{0};
+    std::uint32_t environment_volumetric_cloud_lighting_rows{0};
+    std::uint32_t environment_volumetric_cloud_raymarch_rows{0};
+    std::uint32_t environment_volumetric_cloud_temporal_rows{0};
+    std::uint32_t environment_volumetric_cloud_shadow_rows{0};
+    std::uint32_t environment_volumetric_cloud_storm_rows{0};
+    std::uint32_t environment_volumetric_cloud_shader_contract_rows{0};
+    std::uint32_t environment_volumetric_cloud_quality_rows{0};
+    std::uint32_t environment_volumetric_cloud_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     std::vector<Win32DesktopPresentationDirectionalShadowDiagnostic> directional_shadow_diagnostics;
@@ -139,6 +280,99 @@ struct NativeRendererCreateResult {
 struct SceneRendererRequestValidation {
     bool valid{false};
     std::string diagnostic;
+};
+
+struct CloudLayerRuntimeBinding {
+    rhi::DescriptorSetLayoutHandle descriptor_set_layout;
+    rhi::PipelineLayoutHandle pipeline_layout;
+    rhi::DescriptorSetHandle descriptor_set;
+    rhi::GraphicsPipelineHandle pipeline;
+    std::uint64_t texture_uploads{0};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && descriptor_set_layout.value != 0 && pipeline_layout.value != 0 &&
+               descriptor_set.value != 0 && pipeline.value != 0;
+    }
+};
+
+struct PrecipitationRuntimeProbeResult {
+    std::uint64_t particle_buffer_uploads{0};
+    std::uint64_t backend_invocations{0};
+    std::uint64_t renderer_draws{0};
+    std::uint32_t synchronization2_barriers{0};
+    bool depth_occlusion_readback{false};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && particle_buffer_uploads > 0 && backend_invocations > 0 && renderer_draws > 0 &&
+               depth_occlusion_readback;
+    }
+};
+
+struct VolumetricCloudRuntimeProbeResult {
+    std::uint64_t weather_map_uploads{0};
+    std::uint64_t shape_noise_uploads{0};
+    std::uint64_t erosion_noise_uploads{0};
+    std::uint64_t backend_invocations{0};
+    std::uint64_t renderer_draws{0};
+    std::uint64_t raymarch_passes{0};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
+    bool readback_nonzero{false};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && weather_map_uploads > 0 && shape_noise_uploads > 0 && erosion_noise_uploads > 0 &&
+               backend_invocations > 0 && renderer_draws > 0 && raymarch_passes > 0 && readback_nonzero;
+    }
+};
+
+struct VolumetricCloudRuntimeProbeBindings {
+    std::uint32_t weather_map_binding{0};
+    std::uint32_t shape_noise_binding{0};
+    std::uint32_t erosion_noise_binding{0};
+    std::uint32_t sampler_binding{0};
+    std::uint32_t constants_binding{0};
+    bool transition_upload_textures_from_undefined{false};
+};
+
+[[nodiscard]] constexpr VolumetricCloudRuntimeProbeBindings d3d12_volumetric_cloud_probe_bindings() noexcept {
+    return VolumetricCloudRuntimeProbeBindings{
+        .weather_map_binding = volumetric_cloud_weather_map_binding(),
+        .shape_noise_binding = volumetric_cloud_shape_noise_binding(),
+        .erosion_noise_binding = volumetric_cloud_erosion_noise_binding(),
+        .sampler_binding = volumetric_cloud_sampler_binding(),
+        .constants_binding = volumetric_cloud_constants_binding(),
+        .transition_upload_textures_from_undefined = false,
+    };
+}
+
+[[nodiscard]] constexpr VolumetricCloudRuntimeProbeBindings vulkan_volumetric_cloud_probe_bindings() noexcept {
+    return VolumetricCloudRuntimeProbeBindings{
+        .weather_map_binding = volumetric_cloud_weather_map_binding(),
+        .shape_noise_binding = volumetric_cloud_shape_noise_binding(),
+        .erosion_noise_binding = volumetric_cloud_erosion_noise_binding(),
+        .sampler_binding = volumetric_cloud_sampler_binding() + kVulkanVolumetricCloudSamplerBindingShift,
+        .constants_binding = volumetric_cloud_constants_binding() + kVulkanVolumetricCloudConstantsBindingShift,
+        .transition_upload_textures_from_undefined = true,
+    };
+}
+
+struct VolumetricFogRuntimeProbeResult {
+    std::uint64_t compute_dispatches{0};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
+    bool scene_depth_ready{false};
+    bool froxel_output_ready{false};
+    bool readback_nonzero{false};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && compute_dispatches > 0 &&
+               descriptor_set_bindings == kVulkanVolumetricFogDescriptorSetBindings && synchronization2_barriers > 0 &&
+               scene_depth_ready && froxel_output_ready && readback_nonzero;
+    }
 };
 
 [[nodiscard]] Win32DesktopPresentationDirectionalShadowDiagnostic
@@ -186,6 +420,1092 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
     return buffer;
 }
 
+[[nodiscard]] rhi::BufferHandle create_physical_sky_constants_buffer(rhi::IRhiDevice& device,
+                                                                     const PhysicalSkyPolicyDesc& desc) {
+    std::array<std::uint8_t, physical_sky_constants_byte_size()> constants{};
+    pack_physical_sky_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] rhi::BufferHandle create_cloud_layer_constants_buffer(rhi::IRhiDevice& device,
+                                                                    const CloudLayerPolicyDesc& desc) {
+    std::array<std::uint8_t, cloud_layer_constants_byte_size()> constants{};
+    pack_cloud_layer_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] rhi::BufferHandle create_precipitation_constants_buffer(rhi::IRhiDevice& device,
+                                                                      const PrecipitationPolicyDesc& desc) {
+    std::array<std::uint8_t, precipitation_constants_byte_size()> constants{};
+    pack_precipitation_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] rhi::BufferHandle create_volumetric_fog_constants_buffer(rhi::IRhiDevice& device,
+                                                                       const VolumetricFogPolicyDesc& desc) {
+    std::array<std::uint8_t, volumetric_fog_constants_byte_size()> constants{};
+    pack_volumetric_fog_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] rhi::BufferHandle create_volumetric_cloud_constants_buffer(rhi::IRhiDevice& device,
+                                                                         const VolumetricCloudPolicyDesc& desc) {
+    std::array<std::uint8_t, volumetric_cloud_constants_byte_size()> constants{};
+    pack_volumetric_cloud_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+void append_f32_le(std::vector<std::uint8_t>& bytes, float value) {
+    std::array<std::uint8_t, sizeof(float)> storage{};
+    std::memcpy(storage.data(), &value, sizeof(float));
+    bytes.insert(bytes.end(), storage.begin(), storage.end());
+}
+
+[[nodiscard]] runtime_rhi::RuntimeTextureUploadResult
+upload_runtime_texture_asset(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                             std::string_view asset_ref, std::string_view backend_name, std::string_view feature_name) {
+    const auto* record = package.find(asset_id_from_key_v2(AssetKeyV2{.value = std::string{asset_ref}}));
+    if (record == nullptr) {
+        return runtime_rhi::RuntimeTextureUploadResult{
+            .diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                          " texture asset is missing: " + std::string{asset_ref},
+        };
+    }
+    if (record->kind != AssetKind::texture) {
+        return runtime_rhi::RuntimeTextureUploadResult{
+            .diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                          " asset is not a cooked texture payload: " + std::string{asset_ref},
+        };
+    }
+
+    const auto payload = runtime::runtime_texture_payload(*record);
+    if (!payload.succeeded()) {
+        return runtime_rhi::RuntimeTextureUploadResult{
+            .diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                          " texture payload is invalid: " + payload.diagnostic,
+        };
+    }
+
+    auto upload = runtime_rhi::upload_runtime_texture(device, payload.payload);
+    if (!upload.succeeded()) {
+        upload.diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                            " texture upload failed: " + upload.diagnostic;
+    }
+    return upload;
+}
+
+[[nodiscard]] runtime_rhi::RuntimeTextureUploadResult
+upload_cloud_layer_texture(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                           std::string_view asset_ref, std::string_view backend_name) {
+    return upload_runtime_texture_asset(device, package, asset_ref, backend_name, "cloud layer");
+}
+
+[[nodiscard]] std::uint64_t volumetric_fog_output_byte_size(const VolumetricFogFroxelGridDesc& grid) noexcept {
+    const auto voxel_count = static_cast<std::uint64_t>(grid.width) * static_cast<std::uint64_t>(grid.height) *
+                             static_cast<std::uint64_t>(grid.depth_slices);
+    return voxel_count * sizeof(std::uint32_t);
+}
+
+[[nodiscard]] std::uint32_t div_round_up(std::uint32_t value, std::uint32_t divisor) noexcept {
+    return divisor == 0 ? 0 : (value + divisor - 1U) / divisor;
+}
+
+[[nodiscard]] CloudLayerRuntimeBinding
+create_cloud_layer_runtime_binding(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                                   const CloudLayerPolicyDesc& desc,
+                                   const Win32DesktopPresentationShaderBytecode& vertex_shader_bytecode,
+                                   const Win32DesktopPresentationShaderBytecode& fragment_shader_bytecode,
+                                   rhi::Format color_format, rhi::Format depth_format, std::string_view backend_name) {
+    try {
+        if (!has_shader_bytecode(vertex_shader_bytecode) || !has_shader_bytecode(fragment_shader_bytecode)) {
+            return CloudLayerRuntimeBinding{
+                .diagnostic = std::string{backend_name} +
+                              " cloud layer renderer execution requires vertex and fragment shader bytecode",
+            };
+        }
+
+        const auto cloud_upload =
+            upload_cloud_layer_texture(device, package, desc.layer.cloud_map_asset_ref, backend_name);
+        if (!cloud_upload.succeeded() || cloud_upload.texture.value == 0) {
+            return CloudLayerRuntimeBinding{.diagnostic = cloud_upload.diagnostic};
+        }
+        const auto flow_upload =
+            upload_cloud_layer_texture(device, package, desc.layer.flow_map_asset_ref, backend_name);
+        if (!flow_upload.succeeded() || flow_upload.texture.value == 0) {
+            return CloudLayerRuntimeBinding{.diagnostic = flow_upload.diagnostic};
+        }
+
+        const auto constants = create_cloud_layer_constants_buffer(device, desc);
+        if (constants.value == 0) {
+            return CloudLayerRuntimeBinding{
+                .diagnostic = std::string{backend_name} + " cloud layer constants buffer creation failed",
+            };
+        }
+
+        const auto sampler = device.create_sampler(rhi::SamplerDesc{
+            .min_filter = rhi::SamplerFilter::linear,
+            .mag_filter = rhi::SamplerFilter::linear,
+            .address_u = rhi::SamplerAddressMode::repeat,
+            .address_v = rhi::SamplerAddressMode::repeat,
+            .address_w = rhi::SamplerAddressMode::repeat,
+        });
+        if (sampler.value == 0) {
+            return CloudLayerRuntimeBinding{
+                .diagnostic = std::string{backend_name} + " cloud layer sampler creation failed",
+            };
+        }
+
+        const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_cloud_map_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_flow_map_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_sampler_binding(),
+                .type = rhi::DescriptorType::sampler,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_constants_binding(),
+                .type = rhi::DescriptorType::uniform_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+        }});
+        const auto descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_cloud_map_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, cloud_upload.texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_flow_map_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, flow_upload.texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_sampler_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::sampler(sampler)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_constants_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer, constants)},
+        });
+
+        const auto pipeline_layout = device.create_pipeline_layout(
+            rhi::PipelineLayoutDesc{.descriptor_sets = {descriptor_set_layout}, .push_constant_bytes = 0});
+        const auto vertex_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = vertex_shader_bytecode.entry_point,
+            .bytecode_size = vertex_shader_bytecode.bytecode.size(),
+            .bytecode = vertex_shader_bytecode.bytecode.data(),
+        });
+        const auto fragment_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = fragment_shader_bytecode.entry_point,
+            .bytecode_size = fragment_shader_bytecode.bytecode.size(),
+            .bytecode = fragment_shader_bytecode.bytecode.data(),
+        });
+        const auto pipeline = device.create_graphics_pipeline(rhi::GraphicsPipelineDesc{
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = color_format,
+            .depth_format = depth_format,
+            .topology = rhi::PrimitiveTopology::triangle_list,
+        });
+
+        return CloudLayerRuntimeBinding{
+            .descriptor_set_layout = descriptor_set_layout,
+            .pipeline_layout = pipeline_layout,
+            .descriptor_set = descriptor_set,
+            .pipeline = pipeline,
+            .texture_uploads = (cloud_upload.copy_recorded ? 1U : 0U) + (flow_upload.copy_recorded ? 1U : 0U),
+            .diagnostic = {},
+        };
+    } catch (const std::exception& exception) {
+        return CloudLayerRuntimeBinding{
+            .diagnostic =
+                std::string{backend_name} + " cloud layer runtime binding creation failed: " + exception.what(),
+        };
+    }
+}
+
+[[nodiscard]] VolumetricFogRuntimeProbeResult
+execute_volumetric_fog_runtime_probe(rhi::IRhiDevice& device, const VolumetricFogPolicyDesc& desc,
+                                     const Win32DesktopPresentationShaderBytecode& compute_shader_bytecode,
+                                     std::string_view backend_name) {
+    try {
+        if (!has_shader_bytecode(compute_shader_bytecode)) {
+            return VolumetricFogRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric fog renderer execution requires compute SPIR-V",
+            };
+        }
+        const auto output_byte_size = volumetric_fog_output_byte_size(desc.froxel_grid);
+        if (output_byte_size == 0) {
+            return VolumetricFogRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric fog froxel output size is zero",
+            };
+        }
+
+        const auto scene_color = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target,
+        });
+        const auto scene_depth = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::depth24_stencil8,
+            .usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource,
+        });
+        const auto constants = create_volumetric_fog_constants_buffer(device, desc);
+        const auto froxel_output = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = output_byte_size,
+            .usage = rhi::BufferUsage::storage | rhi::BufferUsage::copy_source,
+        });
+        const auto readback = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = output_byte_size,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        const auto sampler = device.create_sampler(rhi::SamplerDesc{
+            .min_filter = rhi::SamplerFilter::nearest,
+            .mag_filter = rhi::SamplerFilter::nearest,
+            .address_u = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_v = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_w = rhi::SamplerAddressMode::clamp_to_edge,
+        });
+        if (scene_color.value == 0 || scene_depth.value == 0 || constants.value == 0 || froxel_output.value == 0 ||
+            readback.value == 0 || sampler.value == 0) {
+            return VolumetricFogRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric fog probe resource creation failed",
+            };
+        }
+
+        auto depth_commands = device.begin_command_list(rhi::QueueKind::graphics);
+        depth_commands->transition_texture(scene_color, rhi::ResourceState::undefined,
+                                           rhi::ResourceState::render_target);
+        depth_commands->transition_texture(scene_depth, rhi::ResourceState::undefined, rhi::ResourceState::depth_write);
+        depth_commands->begin_render_pass(rhi::RenderPassDesc{
+            .color =
+                rhi::RenderPassColorAttachment{
+                    .texture = scene_color,
+                    .load_action = rhi::LoadAction::clear,
+                    .store_action = rhi::StoreAction::store,
+                    .swapchain_frame = rhi::SwapchainFrameHandle{},
+                    .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                },
+            .depth =
+                rhi::RenderPassDepthAttachment{
+                    .texture = scene_depth,
+                    .load_action = rhi::LoadAction::clear,
+                    .store_action = rhi::StoreAction::store,
+                    .clear_depth = rhi::ClearDepthValue{1.0F},
+                },
+        });
+        depth_commands->end_render_pass();
+        depth_commands->transition_texture(scene_depth, rhi::ResourceState::depth_write,
+                                           rhi::ResourceState::shader_read);
+        depth_commands->close();
+        const auto depth_fence = device.submit(*depth_commands);
+        device.wait(depth_fence);
+
+        const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+            rhi::DescriptorBindingDesc{
+                .binding = volumetric_fog_scene_depth_texture_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::compute,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = volumetric_fog_scene_depth_sampler_binding(),
+                .type = rhi::DescriptorType::sampler,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::compute,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = volumetric_fog_constants_binding(),
+                .type = rhi::DescriptorType::uniform_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::compute,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = volumetric_fog_froxel_output_buffer_binding(),
+                .type = rhi::DescriptorType::storage_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::compute,
+            },
+        }});
+        const auto descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = volumetric_fog_scene_depth_texture_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, scene_depth)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = volumetric_fog_scene_depth_sampler_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::sampler(sampler)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = volumetric_fog_constants_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer, constants)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = volumetric_fog_froxel_output_buffer_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::storage_buffer, froxel_output)},
+        });
+        const auto pipeline_layout =
+            device.create_pipeline_layout(rhi::PipelineLayoutDesc{.descriptor_sets = {descriptor_set_layout}});
+        const auto compute_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::compute,
+            .entry_point = compute_shader_bytecode.entry_point,
+            .bytecode_size = compute_shader_bytecode.bytecode.size(),
+            .bytecode = compute_shader_bytecode.bytecode.data(),
+        });
+        const auto pipeline = device.create_compute_pipeline(rhi::ComputePipelineDesc{
+            .layout = pipeline_layout,
+            .compute_shader = compute_shader,
+        });
+        if (descriptor_set_layout.value == 0 || descriptor_set.value == 0 || pipeline_layout.value == 0 ||
+            compute_shader.value == 0 || pipeline.value == 0) {
+            return VolumetricFogRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric fog probe pipeline creation failed",
+            };
+        }
+
+        const auto before_stats = device.stats();
+        auto compute_commands = device.begin_command_list(rhi::QueueKind::compute);
+        compute_commands->bind_compute_pipeline(pipeline);
+        compute_commands->bind_descriptor_set(pipeline_layout, 0, descriptor_set);
+        compute_commands->dispatch(div_round_up(desc.froxel_grid.width, 4U), div_round_up(desc.froxel_grid.height, 4U),
+                                   div_round_up(desc.froxel_grid.depth_slices, 4U));
+        // Wildcard aliasing barriers are the current backend-neutral RHI memory dependency hook;
+        // Vulkan lowers this to a synchronization2 vkCmdPipelineBarrier2 memory barrier.
+        compute_commands->texture_aliasing_barrier(rhi::TextureHandle{}, rhi::TextureHandle{});
+        compute_commands->copy_buffer(froxel_output, readback,
+                                      rhi::BufferCopyRegion{
+                                          .source_offset = 0,
+                                          .destination_offset = 0,
+                                          .size_bytes = output_byte_size,
+                                      });
+        compute_commands->close();
+        const auto compute_fence = device.submit(*compute_commands);
+        device.wait(compute_fence);
+
+        const auto read_size = std::min<std::uint64_t>(output_byte_size, 4096ULL);
+        const auto readback_bytes = device.read_buffer(readback, 0, read_size);
+        const auto readback_nonzero =
+            std::ranges::any_of(readback_bytes, [](const std::uint8_t value) { return value != 0; });
+        if (!readback_nonzero) {
+            return VolumetricFogRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric fog probe readback stayed zero",
+            };
+        }
+
+        const auto after_stats = device.stats();
+        const auto compute_dispatches = after_stats.compute_dispatches > before_stats.compute_dispatches
+                                            ? after_stats.compute_dispatches - before_stats.compute_dispatches
+                                            : 0U;
+        const auto synchronization2_barriers =
+            after_stats.texture_aliasing_barriers > before_stats.texture_aliasing_barriers
+                ? static_cast<std::uint32_t>(std::min<std::uint64_t>(after_stats.texture_aliasing_barriers -
+                                                                         before_stats.texture_aliasing_barriers,
+                                                                     std::numeric_limits<std::uint32_t>::max()))
+                : 0U;
+        return VolumetricFogRuntimeProbeResult{
+            .compute_dispatches = compute_dispatches,
+            .descriptor_set_bindings = kVulkanVolumetricFogDescriptorSetBindings,
+            .synchronization2_barriers = synchronization2_barriers,
+            .scene_depth_ready = true,
+            .froxel_output_ready = true,
+            .readback_nonzero = true,
+            .diagnostic = {},
+        };
+    } catch (const std::exception& exception) {
+        return VolumetricFogRuntimeProbeResult{
+            .diagnostic = std::string{backend_name} + " volumetric fog runtime probe failed: " + exception.what(),
+        };
+    }
+}
+
+[[nodiscard]] PrecipitationRuntimeProbeResult execute_precipitation_runtime_probe(
+    rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package, const PrecipitationPolicyDesc& desc,
+    const Win32DesktopPresentationShaderBytecode& vertex_shader_bytecode,
+    const Win32DesktopPresentationShaderBytecode& fragment_shader_bytecode, std::string_view backend_name) {
+    try {
+        if (!has_shader_bytecode(vertex_shader_bytecode) || !has_shader_bytecode(fragment_shader_bytecode)) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} +
+                              " precipitation renderer execution requires vertex and fragment shader bytecode",
+            };
+        }
+
+        const auto particle_upload = upload_runtime_texture_asset(device, package, "sample/desktop-runtime/texture",
+                                                                  backend_name, "environment precipitation");
+        if (!particle_upload.succeeded() || particle_upload.texture.value == 0) {
+            return PrecipitationRuntimeProbeResult{.diagnostic = particle_upload.diagnostic};
+        }
+
+        const auto scene_color = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target,
+        });
+        const auto unoccluded_depth = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::depth24_stencil8,
+            .usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource,
+        });
+        const auto occluded_depth = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::depth24_stencil8,
+            .usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource,
+        });
+        const auto unoccluded_target = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target | rhi::TextureUsage::copy_source,
+        });
+        const auto occluded_target = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target | rhi::TextureUsage::copy_source,
+        });
+        const auto constants = create_precipitation_constants_buffer(device, desc);
+        const auto quad_vertices = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 6U * 16U,
+            .usage = rhi::BufferUsage::vertex | rhi::BufferUsage::copy_source,
+        });
+        const auto instances = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 32U,
+            .usage = rhi::BufferUsage::vertex | rhi::BufferUsage::copy_source,
+        });
+        const auto unoccluded_readback = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 256U * 64U,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        const auto occluded_readback = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 256U * 64U,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        const auto sampler = device.create_sampler(rhi::SamplerDesc{
+            .min_filter = rhi::SamplerFilter::nearest,
+            .mag_filter = rhi::SamplerFilter::nearest,
+            .address_u = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_v = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_w = rhi::SamplerAddressMode::clamp_to_edge,
+        });
+        if (scene_color.value == 0 || unoccluded_depth.value == 0 || occluded_depth.value == 0 ||
+            unoccluded_target.value == 0 || occluded_target.value == 0 || constants.value == 0 ||
+            quad_vertices.value == 0 || instances.value == 0 || unoccluded_readback.value == 0 ||
+            occluded_readback.value == 0 || sampler.value == 0) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " precipitation probe resource creation failed",
+            };
+        }
+
+        const bool use_vulkan_descriptor_binding_shift = backend_name == "Vulkan";
+        const std::uint32_t particle_texture_binding = precipitation_particle_texture_binding();
+        const std::uint32_t scene_depth_texture_binding = precipitation_scene_depth_texture_binding();
+        const std::uint32_t sampler_binding =
+            use_vulkan_descriptor_binding_shift
+                ? precipitation_sampler_binding() + kVulkanPrecipitationSamplerBindingShift
+                : precipitation_sampler_binding();
+        const std::uint32_t constants_binding =
+            use_vulkan_descriptor_binding_shift
+                ? precipitation_constants_binding() + kVulkanPrecipitationConstantsBindingShift
+                : precipitation_constants_binding();
+
+        std::vector<std::uint8_t> quad_bytes;
+        quad_bytes.reserve(6U * 16U);
+        for (const auto& row : std::array<std::array<float, 4>, 6>{{
+                 {{-1.0F, -1.0F, 0.0F, 1.0F}},
+                 {{-1.0F, 1.0F, 0.0F, 0.0F}},
+                 {{1.0F, -1.0F, 1.0F, 1.0F}},
+                 {{1.0F, -1.0F, 1.0F, 1.0F}},
+                 {{-1.0F, 1.0F, 0.0F, 0.0F}},
+                 {{1.0F, 1.0F, 1.0F, 0.0F}},
+             }}) {
+            for (const float value : row) {
+                append_f32_le(quad_bytes, value);
+            }
+        }
+        std::vector<std::uint8_t> instance_bytes;
+        instance_bytes.reserve(32U);
+        for (const float value : std::array<float, 8>{0.0F, 0.0F, 0.0F, 40.0F, 0.0F, 0.0F, 0.0F, 1.0F}) {
+            append_f32_le(instance_bytes, value);
+        }
+        device.write_buffer(quad_vertices, 0, quad_bytes);
+        device.write_buffer(instances, 0, instance_bytes);
+
+        const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+            rhi::DescriptorBindingDesc{
+                .binding = particle_texture_binding,
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = scene_depth_texture_binding,
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = sampler_binding,
+                .type = rhi::DescriptorType::sampler,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = constants_binding,
+                .type = rhi::DescriptorType::uniform_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::vertex | rhi::ShaderStageVisibility::fragment,
+            },
+        }});
+        const auto unoccluded_descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        const auto occluded_descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        const auto update_precipitation_descriptor_set = [&](const rhi::DescriptorSetHandle set,
+                                                             const rhi::TextureHandle depth_texture) {
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = particle_texture_binding,
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture,
+                                                               particle_upload.texture)},
+            });
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = scene_depth_texture_binding,
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, depth_texture)},
+            });
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = sampler_binding,
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::sampler(sampler)},
+            });
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = constants_binding,
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer, constants)},
+            });
+        };
+        update_precipitation_descriptor_set(unoccluded_descriptor_set, unoccluded_depth);
+        update_precipitation_descriptor_set(occluded_descriptor_set, occluded_depth);
+
+        const auto pipeline_layout =
+            device.create_pipeline_layout(rhi::PipelineLayoutDesc{.descriptor_sets = {descriptor_set_layout}});
+        const auto vertex_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = vertex_shader_bytecode.entry_point,
+            .bytecode_size = vertex_shader_bytecode.bytecode.size(),
+            .bytecode = vertex_shader_bytecode.bytecode.data(),
+        });
+        const auto fragment_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = fragment_shader_bytecode.entry_point,
+            .bytecode_size = fragment_shader_bytecode.bytecode.size(),
+            .bytecode = fragment_shader_bytecode.bytecode.data(),
+        });
+        const auto pipeline = device.create_graphics_pipeline(rhi::GraphicsPipelineDesc{
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = rhi::Format::rgba8_unorm,
+            .depth_format = rhi::Format::unknown,
+            .topology = rhi::PrimitiveTopology::triangle_list,
+            .vertex_buffers =
+                {rhi::VertexBufferLayoutDesc{.binding = 0, .stride = 16, .input_rate = rhi::VertexInputRate::vertex},
+                 rhi::VertexBufferLayoutDesc{.binding = 1, .stride = 32, .input_rate = rhi::VertexInputRate::instance}},
+            .vertex_attributes = {rhi::VertexAttributeDesc{.location = 0,
+                                                           .binding = 0,
+                                                           .offset = 0,
+                                                           .format = rhi::VertexFormat::float32x2,
+                                                           .semantic = rhi::VertexSemantic::position,
+                                                           .semantic_index = 0},
+                                  rhi::VertexAttributeDesc{.location = 1,
+                                                           .binding = 0,
+                                                           .offset = 8,
+                                                           .format = rhi::VertexFormat::float32x2,
+                                                           .semantic = rhi::VertexSemantic::texcoord,
+                                                           .semantic_index = 0},
+                                  rhi::VertexAttributeDesc{.location = 2,
+                                                           .binding = 1,
+                                                           .offset = 0,
+                                                           .format = rhi::VertexFormat::float32x4,
+                                                           .semantic = rhi::VertexSemantic::texcoord,
+                                                           .semantic_index = 1},
+                                  rhi::VertexAttributeDesc{.location = 3,
+                                                           .binding = 1,
+                                                           .offset = 16,
+                                                           .format = rhi::VertexFormat::float32x4,
+                                                           .semantic = rhi::VertexSemantic::texcoord,
+                                                           .semantic_index = 2}},
+        });
+        if (descriptor_set_layout.value == 0 || unoccluded_descriptor_set.value == 0 ||
+            occluded_descriptor_set.value == 0 || pipeline_layout.value == 0 || vertex_shader.value == 0 ||
+            fragment_shader.value == 0 || pipeline.value == 0) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " precipitation probe pipeline creation failed",
+            };
+        }
+
+        const rhi::BufferTextureCopyRegion readback_region{
+            .buffer_offset = 0,
+            .buffer_row_length = 64,
+            .buffer_image_height = 64,
+            .texture_offset = rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        };
+
+        const auto before_stats = device.stats();
+        auto commands = device.begin_command_list(rhi::QueueKind::graphics);
+        commands->transition_texture(scene_color, rhi::ResourceState::undefined, rhi::ResourceState::render_target);
+        const auto clear_depth_for_sampling = [&](const rhi::TextureHandle depth_texture, const float depth_value) {
+            commands->transition_texture(depth_texture, rhi::ResourceState::undefined, rhi::ResourceState::depth_write);
+            commands->begin_render_pass(rhi::RenderPassDesc{
+                .color =
+                    rhi::RenderPassColorAttachment{
+                        .texture = scene_color,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .swapchain_frame = rhi::SwapchainFrameHandle{},
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+                .depth =
+                    rhi::RenderPassDepthAttachment{
+                        .texture = depth_texture,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_depth = rhi::ClearDepthValue{depth_value},
+                    },
+            });
+            commands->end_render_pass();
+            commands->transition_texture(depth_texture, rhi::ResourceState::depth_write,
+                                         rhi::ResourceState::shader_read);
+        };
+        const auto render_precipitation_probe = [&](const rhi::TextureHandle target,
+                                                    const rhi::DescriptorSetHandle descriptor_set) {
+            const auto target_before_state =
+                use_vulkan_descriptor_binding_shift ? rhi::ResourceState::undefined : rhi::ResourceState::copy_source;
+            commands->transition_texture(target, target_before_state, rhi::ResourceState::render_target);
+            commands->begin_render_pass(rhi::RenderPassDesc{
+                .color =
+                    rhi::RenderPassColorAttachment{
+                        .texture = target,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .swapchain_frame = rhi::SwapchainFrameHandle{},
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+            });
+            commands->bind_graphics_pipeline(pipeline);
+            commands->bind_descriptor_set(pipeline_layout, 0, descriptor_set);
+            commands->bind_vertex_buffer(
+                rhi::VertexBufferBinding{.buffer = quad_vertices, .offset = 0, .stride = 16, .binding = 0});
+            commands->bind_vertex_buffer(
+                rhi::VertexBufferBinding{.buffer = instances, .offset = 0, .stride = 32, .binding = 1});
+            commands->draw(6, 1);
+            commands->end_render_pass();
+            commands->transition_texture(target, rhi::ResourceState::render_target, rhi::ResourceState::copy_source);
+        };
+
+        clear_depth_for_sampling(unoccluded_depth, 1.0F);
+        clear_depth_for_sampling(occluded_depth, 0.0F);
+        render_precipitation_probe(unoccluded_target, unoccluded_descriptor_set);
+        render_precipitation_probe(occluded_target, occluded_descriptor_set);
+        commands->copy_texture_to_buffer(unoccluded_target, unoccluded_readback, readback_region);
+        commands->copy_texture_to_buffer(occluded_target, occluded_readback, readback_region);
+        commands->close();
+
+        const auto fence = device.submit(*commands);
+        device.wait(fence);
+        const auto unoccluded_bytes = device.read_buffer(unoccluded_readback, 0, 256U * 64U);
+        const auto occluded_bytes = device.read_buffer(occluded_readback, 0, 256U * 64U);
+        const auto center_pixel = (32U * 256U) + (32U * 4U);
+        if (unoccluded_bytes.size() < center_pixel + 4U || occluded_bytes.size() < center_pixel + 4U) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " precipitation probe readback was incomplete",
+            };
+        }
+        const auto unoccluded_alpha = unoccluded_bytes[center_pixel + 3U];
+        const auto occluded_alpha = occluded_bytes[center_pixel + 3U];
+        if (unoccluded_alpha < 128U ||
+            (unoccluded_bytes[center_pixel] == 0U && unoccluded_bytes[center_pixel + 1U] == 0U &&
+             unoccluded_bytes[center_pixel + 2U] == 0U)) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic =
+                    std::string{backend_name} + " precipitation probe readback did not contain an unoccluded particle",
+            };
+        }
+        if (occluded_alpha > 8U || occluded_alpha >= unoccluded_alpha) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic =
+                    std::string{backend_name} + " precipitation probe readback did not prove scene-depth occlusion",
+            };
+        }
+
+        const auto after_stats = device.stats();
+        const auto renderer_draws =
+            after_stats.draw_calls > before_stats.draw_calls ? after_stats.draw_calls - before_stats.draw_calls : 0U;
+        const auto transition_delta =
+            use_vulkan_descriptor_binding_shift && after_stats.resource_transitions > before_stats.resource_transitions
+                ? after_stats.resource_transitions - before_stats.resource_transitions
+                : 0U;
+        const auto synchronization2_barriers = static_cast<std::uint32_t>(
+            std::min<std::uint64_t>(transition_delta, std::numeric_limits<std::uint32_t>::max()));
+        return PrecipitationRuntimeProbeResult{
+            .particle_buffer_uploads = 1U,
+            .backend_invocations = 1U,
+            .renderer_draws = renderer_draws,
+            .synchronization2_barriers = synchronization2_barriers,
+            .depth_occlusion_readback = true,
+            .diagnostic = {},
+        };
+    } catch (const std::exception& exception) {
+        return PrecipitationRuntimeProbeResult{
+            .diagnostic = std::string{backend_name} + " precipitation runtime probe failed: " + exception.what(),
+        };
+    }
+}
+
+[[nodiscard]] VolumetricCloudRuntimeProbeResult execute_volumetric_cloud_runtime_probe(
+    rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package, const VolumetricCloudPolicyDesc& desc,
+    const Win32DesktopPresentationShaderBytecode& vertex_shader_bytecode,
+    const Win32DesktopPresentationShaderBytecode& fragment_shader_bytecode, std::string_view backend_name,
+    const VolumetricCloudRuntimeProbeBindings bindings = d3d12_volumetric_cloud_probe_bindings()) {
+    try {
+        if (!has_shader_bytecode(vertex_shader_bytecode) || !has_shader_bytecode(fragment_shader_bytecode)) {
+            return VolumetricCloudRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} +
+                              " volumetric cloud renderer execution requires vertex and fragment shader bytecode",
+            };
+        }
+
+        const auto weather_upload = upload_runtime_texture_asset(device, package, desc.layer.weather_map_asset_ref,
+                                                                 backend_name, "environment volumetric cloud");
+        if (!weather_upload.succeeded() || weather_upload.texture.value == 0) {
+            return VolumetricCloudRuntimeProbeResult{.diagnostic = weather_upload.diagnostic};
+        }
+
+        const auto shape_upload = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 4096,
+            .usage = rhi::BufferUsage::copy_source,
+        });
+        const auto erosion_upload = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 4096,
+            .usage = rhi::BufferUsage::copy_source,
+        });
+        const auto shape_texture = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::copy_destination | rhi::TextureUsage::shader_resource,
+        });
+        const auto erosion_texture = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::copy_destination | rhi::TextureUsage::shader_resource,
+        });
+        const auto constants = create_volumetric_cloud_constants_buffer(device, desc);
+        const auto target = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target | rhi::TextureUsage::copy_source,
+        });
+        const auto readback = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 256U * 64U,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        const auto sampler = device.create_sampler(rhi::SamplerDesc{
+            .min_filter = rhi::SamplerFilter::nearest,
+            .mag_filter = rhi::SamplerFilter::nearest,
+            .address_u = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_v = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_w = rhi::SamplerAddressMode::clamp_to_edge,
+        });
+        if (shape_upload.value == 0 || erosion_upload.value == 0 || shape_texture.value == 0 ||
+            erosion_texture.value == 0 || constants.value == 0 || target.value == 0 || readback.value == 0 ||
+            sampler.value == 0) {
+            return VolumetricCloudRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric cloud probe resource creation failed",
+            };
+        }
+
+        std::array<std::uint8_t, 4096> shape_bytes{};
+        for (std::size_t offset = 0; offset < shape_bytes.size(); offset += 4U) {
+            shape_bytes[offset + 0U] = 255U;
+            shape_bytes[offset + 1U] = 255U;
+            shape_bytes[offset + 2U] = 255U;
+            shape_bytes[offset + 3U] = 255U;
+        }
+        std::array<std::uint8_t, 4096> erosion_bytes{};
+        for (std::size_t offset = 0; offset < erosion_bytes.size(); offset += 4U) {
+            erosion_bytes[offset + 3U] = 255U;
+        }
+        device.write_buffer(shape_upload, 0, shape_bytes);
+        device.write_buffer(erosion_upload, 0, erosion_bytes);
+
+        const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+            rhi::DescriptorBindingDesc{
+                .binding = bindings.weather_map_binding,
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = bindings.shape_noise_binding,
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = bindings.erosion_noise_binding,
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = bindings.sampler_binding,
+                .type = rhi::DescriptorType::sampler,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = bindings.constants_binding,
+                .type = rhi::DescriptorType::uniform_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+        }});
+        const auto descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = bindings.weather_map_binding,
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture,
+                                                           weather_upload.texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = bindings.shape_noise_binding,
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, shape_texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = bindings.erosion_noise_binding,
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, erosion_texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = bindings.sampler_binding,
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::sampler(sampler)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = bindings.constants_binding,
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer, constants)},
+        });
+
+        const auto pipeline_layout =
+            device.create_pipeline_layout(rhi::PipelineLayoutDesc{.descriptor_sets = {descriptor_set_layout}});
+        const auto vertex_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = vertex_shader_bytecode.entry_point,
+            .bytecode_size = vertex_shader_bytecode.bytecode.size(),
+            .bytecode = vertex_shader_bytecode.bytecode.data(),
+        });
+        const auto fragment_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = fragment_shader_bytecode.entry_point,
+            .bytecode_size = fragment_shader_bytecode.bytecode.size(),
+            .bytecode = fragment_shader_bytecode.bytecode.data(),
+        });
+        const auto pipeline = device.create_graphics_pipeline(rhi::GraphicsPipelineDesc{
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = rhi::Format::rgba8_unorm,
+            .depth_format = rhi::Format::unknown,
+            .topology = rhi::PrimitiveTopology::triangle_list,
+        });
+        if (descriptor_set_layout.value == 0 || descriptor_set.value == 0 || pipeline_layout.value == 0 ||
+            vertex_shader.value == 0 || fragment_shader.value == 0 || pipeline.value == 0) {
+            return VolumetricCloudRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric cloud probe pipeline creation failed",
+            };
+        }
+
+        const rhi::BufferTextureCopyRegion volume_footprint{
+            .buffer_offset = 0,
+            .buffer_row_length = 64,
+            .buffer_image_height = 4,
+            .texture_offset = rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+        };
+        const rhi::BufferTextureCopyRegion readback_footprint{
+            .buffer_offset = 0,
+            .buffer_row_length = 64,
+            .buffer_image_height = 64,
+            .texture_offset = rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        };
+
+        const auto before_stats = device.stats();
+        auto commands = device.begin_command_list(rhi::QueueKind::graphics);
+        if (bindings.transition_upload_textures_from_undefined) {
+            commands->transition_texture(shape_texture, rhi::ResourceState::undefined,
+                                         rhi::ResourceState::copy_destination);
+            commands->transition_texture(erosion_texture, rhi::ResourceState::undefined,
+                                         rhi::ResourceState::copy_destination);
+        }
+        commands->copy_buffer_to_texture(shape_upload, shape_texture, volume_footprint);
+        commands->copy_buffer_to_texture(erosion_upload, erosion_texture, volume_footprint);
+        commands->transition_texture(shape_texture, rhi::ResourceState::copy_destination,
+                                     rhi::ResourceState::shader_read);
+        commands->transition_texture(erosion_texture, rhi::ResourceState::copy_destination,
+                                     rhi::ResourceState::shader_read);
+        commands->transition_texture(target,
+                                     bindings.transition_upload_textures_from_undefined
+                                         ? rhi::ResourceState::undefined
+                                         : rhi::ResourceState::copy_source,
+                                     rhi::ResourceState::render_target);
+        commands->begin_render_pass(rhi::RenderPassDesc{
+            .color =
+                rhi::RenderPassColorAttachment{
+                    .texture = target,
+                    .load_action = rhi::LoadAction::clear,
+                    .store_action = rhi::StoreAction::store,
+                    .swapchain_frame = rhi::SwapchainFrameHandle{},
+                    .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 0.0F},
+                },
+        });
+        commands->bind_graphics_pipeline(pipeline);
+        commands->bind_descriptor_set(pipeline_layout, 0, descriptor_set);
+        commands->draw(3, 1);
+        commands->end_render_pass();
+        commands->transition_texture(target, rhi::ResourceState::render_target, rhi::ResourceState::copy_source);
+        commands->copy_texture_to_buffer(target, readback, readback_footprint);
+        commands->close();
+
+        const auto fence = device.submit(*commands);
+        device.wait(fence);
+
+        const auto bytes = device.read_buffer(readback, 0, 256U * 64U);
+        const auto center_pixel = (32U * 256U) + (32U * 4U);
+        if (bytes.size() < center_pixel + 4U) {
+            return VolumetricCloudRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " volumetric cloud probe readback was incomplete",
+            };
+        }
+        const bool readback_nonzero = bytes[center_pixel + 0U] > 12U && bytes[center_pixel + 1U] > 12U &&
+                                      bytes[center_pixel + 2U] > 12U && bytes[center_pixel + 3U] > 12U;
+        if (!readback_nonzero) {
+            return VolumetricCloudRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} +
+                              " volumetric cloud probe readback did not contain raymarched cloud output",
+            };
+        }
+
+        const auto after_stats = device.stats();
+        const auto renderer_draws =
+            after_stats.draw_calls > before_stats.draw_calls ? after_stats.draw_calls - before_stats.draw_calls : 0U;
+        const auto transition_delta = after_stats.resource_transitions > before_stats.resource_transitions
+                                          ? after_stats.resource_transitions - before_stats.resource_transitions
+                                          : 0U;
+        const auto synchronization2_barriers = static_cast<std::uint32_t>(
+            std::min<std::uint64_t>(transition_delta, std::numeric_limits<std::uint32_t>::max()));
+        return VolumetricCloudRuntimeProbeResult{
+            .weather_map_uploads = weather_upload.copy_recorded ? 1U : 0U,
+            .shape_noise_uploads = 1U,
+            .erosion_noise_uploads = 1U,
+            .backend_invocations = 1U,
+            .renderer_draws = renderer_draws,
+            .raymarch_passes = renderer_draws,
+            .descriptor_set_bindings = kVulkanVolumetricCloudDescriptorSetBindings,
+            .synchronization2_barriers = synchronization2_barriers,
+            .readback_nonzero = true,
+            .diagnostic = {},
+        };
+    } catch (const std::exception& exception) {
+        return VolumetricCloudRuntimeProbeResult{
+            .diagnostic = std::string{backend_name} + " volumetric cloud runtime probe failed: " + exception.what(),
+        };
+    }
+}
+
+[[nodiscard]] PhysicalSkyPolicyDesc sample_physical_sky_policy_desc() {
+    return PhysicalSkyPolicyDesc{
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
 [[nodiscard]] EnvironmentCloudLayerDesc sample_cloud_layer_package_desc() {
     return EnvironmentCloudLayerDesc{
         .mode = EnvironmentCloudLayerMode::equirectangular_2d,
@@ -194,7 +1514,7 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
         .altitude_m = 2400.0F,
         .wind_velocity_mps = Vec2{.x = 8.0F, .y = 1.5F},
         .cloud_map_asset_ref = "sample/desktop-runtime/texture",
-        .flow_map_asset_ref = "sample/desktop-runtime/texture",
+        .flow_map_asset_ref = "sample/desktop-runtime/cloud-flow",
         .sky_tint_response = Vec3{.x = 0.78F, .y = 0.84F, .z = 0.92F},
         .time_of_day_response = 0.55F,
         .ibl_contribution_mode = EnvironmentCloudIblContributionMode::sky_tint_only,
@@ -251,6 +1571,67 @@ environment_precipitation_package_texture_evidence_ready(const runtime::RuntimeA
     return runtime_package_has_texture_asset(package, "sample/desktop-runtime/texture");
 }
 
+[[nodiscard]] std::span<const VolumetricCloudAtmosphericLightDesc>
+sample_environment_volumetric_cloud_lights() noexcept {
+    static constexpr std::array lights{
+        VolumetricCloudAtmosphericLightDesc{
+            .direction = Vec3{.x = 0.3F, .y = -1.0F, .z = 0.1F},
+            .color = Vec3{.x = 1.0F, .y = 0.95F, .z = 0.85F},
+            .illuminance_lux = 100000.0F,
+            .casts_cloud_shadows = true,
+            .source_index = 0U,
+        },
+    };
+    return lights;
+}
+
+[[nodiscard]] VolumetricCloudPolicyDesc sample_environment_volumetric_cloud_policy_desc() {
+    return VolumetricCloudPolicyDesc{
+        .layer =
+            VolumetricCloudLayerDesc{
+                .weather_map_asset_ref = "sample/desktop-runtime/texture",
+                .shape_noise_asset_ref = "sample/desktop-runtime/volumetric-cloud-shape-noise-3d",
+                .erosion_noise_asset_ref = "sample/desktop-runtime/volumetric-cloud-erosion-noise-3d",
+                .coverage = 0.82F,
+                .density = 0.92F,
+                .altitude_min_m = 1000.0F,
+                .altitude_max_m = 4000.0F,
+                .wind_velocity_mps = Vec2{.x = 0.0F, .y = 0.0F},
+            },
+        .quality_tier = VolumetricCloudQualityTier::balanced,
+        .raymarch =
+            VolumetricCloudRaymarchBudgetDesc{
+                .primary_steps = 48U,
+                .light_steps = 8U,
+                .shadow_mode = VolumetricCloudShadowMode::beer_shadow_map_intent,
+                .temporal_reprojection_enabled = true,
+                .temporal_history_weight = 0.9F,
+            },
+        .atmospheric_lights = sample_environment_volumetric_cloud_lights(),
+        .storm =
+            VolumetricCloudStormDesc{
+                .enabled = true,
+                .lightning_flash_intensity = 10000.0F,
+                .lightning_direction = Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+                .thunder_delay_seconds = 0.0F,
+                .cloud_darkening = 0.05F,
+                .precipitation_boost = 0.2F,
+                .wind_gust_mps = 0.0F,
+                .exposure_response = 0.2F,
+            },
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] bool environment_volumetric_cloud_package_evidence_ready(const runtime::RuntimeAssetPackage* package,
+                                                                       const VolumetricCloudPolicyDesc& desc) {
+    return runtime_package_has_texture_asset(package, desc.layer.weather_map_asset_ref) &&
+           !desc.layer.shape_noise_asset_ref.empty() && !desc.layer.erosion_noise_asset_ref.empty();
+}
+
 void apply_cloud_layer_plan(NativeRendererCreateResult& result, const CloudLayerPolicyPlan& plan) noexcept {
     result.cloud_layer_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
     result.cloud_layer_package_evidence_ready = plan.package_evidence_ready;
@@ -265,10 +1646,37 @@ void apply_cloud_layer_plan(NativeRendererCreateResult& result, const CloudLayer
     result.cloud_layer_shader_contract_rows = static_cast<std::uint32_t>(plan.shader_contract_rows.size());
     result.cloud_layer_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
     result.cloud_layer_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    result.cloud_layer_renderer_draws = plan.renderer_draws;
     if (!plan.shader_contract_rows.empty()) {
         result.cloud_layer_uses_latlong_projection = plan.shader_contract_rows.front().uses_latlong_projection;
         result.cloud_layer_uses_flow_map = plan.shader_contract_rows.front().uses_flow_map;
     }
+}
+
+void apply_physical_sky_plan(NativeRendererCreateResult& result, const PhysicalSkyPolicyPlan& plan) noexcept {
+    result.physical_sky_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.physical_sky_package_evidence_ready = plan.package_evidence_ready;
+    result.physical_sky_execution_evidence_ready = plan.execution_evidence_ready;
+    result.physical_sky_allocates_lut_textures = plan.allocates_lut_textures;
+    result.physical_sky_invokes_backend = plan.invokes_backend;
+    result.physical_sky_exposes_native_handles = plan.exposes_native_handles;
+    result.physical_sky_constant_layout_rows = static_cast<std::uint32_t>(plan.constant_layout_rows.size());
+    result.physical_sky_lut_intent_rows = static_cast<std::uint32_t>(plan.lut_intent_rows.size());
+    result.physical_sky_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+}
+
+void apply_vulkan_physical_sky_package_plan(NativeRendererCreateResult& result,
+                                            const PhysicalSkyPolicyPlan& plan) noexcept {
+    result.physical_sky_vulkan_package_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.physical_sky_vulkan_package_evidence_ready = plan.package_evidence_ready;
+    result.physical_sky_vulkan_package_execution_evidence_ready = plan.execution_evidence_ready;
+    result.physical_sky_vulkan_package_allocates_lut_textures = plan.allocates_lut_textures;
+    result.physical_sky_vulkan_package_invokes_backend = plan.invokes_backend;
+    result.physical_sky_vulkan_package_exposes_native_handles = plan.exposes_native_handles;
+    result.physical_sky_vulkan_package_constant_layout_rows =
+        static_cast<std::uint32_t>(plan.constant_layout_rows.size());
+    result.physical_sky_vulkan_package_lut_intent_rows = static_cast<std::uint32_t>(plan.lut_intent_rows.size());
+    result.physical_sky_vulkan_package_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
 }
 
 void apply_precipitation_plan(NativeRendererCreateResult& result, const PrecipitationPolicyDesc& desc,
@@ -281,6 +1689,8 @@ void apply_precipitation_plan(NativeRendererCreateResult& result, const Precipit
     result.environment_precipitation_exposes_native_handles = plan.exposes_native_handles;
     result.environment_precipitation_mutates_materials = plan.mutates_materials;
     result.environment_precipitation_plays_audio = plan.plays_audio;
+    result.environment_precipitation_renderer_draws = plan.renderer_draws;
+    result.environment_precipitation_depth_occlusion_readback = plan.depth_occlusion_readback;
     result.environment_precipitation_weather_rows =
         static_cast<std::uint32_t>(desc.environment_plan.weather_rows.size());
     result.environment_precipitation_particle_rows =
@@ -301,6 +1711,139 @@ void apply_precipitation_plan(NativeRendererCreateResult& result, const Precipit
             plan.shader_rows.front().uses_camera_near_particles;
         result.environment_precipitation_uses_scene_depth_occlusion =
             plan.shader_rows.front().uses_scene_depth_occlusion;
+    }
+}
+
+void apply_vulkan_precipitation_plan(NativeRendererCreateResult& result, const PrecipitationPolicyDesc& desc,
+                                     const PrecipitationPolicyPlan& plan) noexcept {
+    result.environment_precipitation_vulkan_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.environment_precipitation_vulkan_package_evidence_ready = plan.package_evidence_ready;
+    result.environment_precipitation_vulkan_execution_evidence_ready = plan.execution_evidence_ready;
+    result.environment_precipitation_vulkan_particle_buffer_uploads =
+        plan.uploads_particle_buffers ? desc.particle_buffer_upload_count : 0U;
+    result.environment_precipitation_vulkan_backend_invocations =
+        plan.invokes_backend ? desc.backend_invocation_count : 0U;
+    result.environment_precipitation_vulkan_renderer_draws = plan.renderer_draws;
+    result.environment_precipitation_vulkan_depth_occlusion_readback = plan.depth_occlusion_readback;
+    result.environment_precipitation_vulkan_descriptor_set_bindings =
+        plan.invokes_backend ? kVulkanPrecipitationDescriptorSetBindings : 0U;
+    result.environment_precipitation_vulkan_exposes_native_handles = plan.exposes_native_handles;
+    result.environment_precipitation_vulkan_mutates_materials = plan.mutates_materials;
+    result.environment_precipitation_vulkan_plays_audio = plan.plays_audio;
+    result.environment_precipitation_vulkan_weather_rows =
+        static_cast<std::uint32_t>(desc.environment_plan.weather_rows.size());
+    result.environment_precipitation_vulkan_particle_rows =
+        static_cast<std::uint32_t>(desc.environment_plan.particle_rows.size());
+    result.environment_precipitation_vulkan_occlusion_rows =
+        static_cast<std::uint32_t>(desc.environment_plan.occlusion_rows.size());
+    result.environment_precipitation_vulkan_wetness_rows = static_cast<std::uint32_t>(plan.wetness_rows.size());
+    result.environment_precipitation_vulkan_audio_handoff_rows =
+        static_cast<std::uint32_t>(plan.audio_handoff_rows.size());
+    result.environment_precipitation_vulkan_shader_rows = static_cast<std::uint32_t>(plan.shader_rows.size());
+    result.environment_precipitation_vulkan_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
+    result.environment_precipitation_vulkan_policy_diagnostics_count =
+        static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!desc.environment_plan.weather_rows.empty()) {
+        result.environment_precipitation_vulkan_weather = desc.environment_plan.weather_rows.front().weather;
+        result.environment_precipitation_vulkan_kind = desc.environment_plan.weather_rows.front().precipitation_kind;
+    }
+    if (!plan.shader_rows.empty()) {
+        result.environment_precipitation_vulkan_uses_camera_near_particles =
+            plan.shader_rows.front().uses_camera_near_particles;
+        result.environment_precipitation_vulkan_uses_scene_depth_occlusion =
+            plan.shader_rows.front().uses_scene_depth_occlusion;
+    }
+}
+
+void apply_volumetric_fog_plan(NativeRendererCreateResult& result, const VolumetricFogPolicyPlan& plan) noexcept {
+    result.environment_volumetric_fog_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.environment_volumetric_fog_package_evidence_ready = plan.package_evidence_ready;
+    result.environment_volumetric_fog_execution_evidence_ready = plan.execution_evidence_ready;
+    result.environment_volumetric_fog_scene_depth_ready = plan.scene_depth_available;
+    result.environment_volumetric_fog_froxel_output_ready =
+        plan.package_evidence_ready && plan.execution_evidence_ready;
+    result.environment_volumetric_fog_compute_dispatches =
+        result.environment_volumetric_fog_froxel_output_ready ? 1U : 0U;
+    result.environment_volumetric_fog_exposes_native_handles = plan.exposes_native_handles;
+    result.environment_volumetric_fog_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+}
+
+void apply_vulkan_volumetric_fog_plan(NativeRendererCreateResult& result, const VolumetricFogPolicyPlan& plan,
+                                      const VolumetricFogRuntimeProbeResult& probe) noexcept {
+    result.environment_volumetric_fog_vulkan_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.environment_volumetric_fog_vulkan_package_evidence_ready = plan.package_evidence_ready;
+    result.environment_volumetric_fog_vulkan_execution_evidence_ready = plan.execution_evidence_ready;
+    result.environment_volumetric_fog_vulkan_scene_depth_ready = plan.scene_depth_available && probe.scene_depth_ready;
+    result.environment_volumetric_fog_vulkan_froxel_output_ready = plan.ready() && probe.froxel_output_ready;
+    result.environment_volumetric_fog_vulkan_compute_dispatches = probe.compute_dispatches;
+    result.environment_volumetric_fog_vulkan_descriptor_set_bindings = probe.descriptor_set_bindings;
+    result.environment_volumetric_fog_vulkan_synchronization2_barriers = probe.synchronization2_barriers;
+    result.environment_volumetric_fog_vulkan_froxel_readback_nonzero = probe.readback_nonzero;
+    result.environment_volumetric_fog_vulkan_exposes_native_handles = plan.exposes_native_handles;
+    result.environment_volumetric_fog_vulkan_policy_diagnostics_count =
+        static_cast<std::uint32_t>(plan.diagnostics.size());
+}
+
+void apply_volumetric_cloud_plan(NativeRendererCreateResult& result, const VolumetricCloudPolicyPlan& plan) noexcept {
+    result.environment_volumetric_cloud_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.environment_volumetric_cloud_package_evidence_ready = plan.package_evidence_ready;
+    result.environment_volumetric_cloud_execution_evidence_ready = plan.execution_evidence_ready;
+    result.environment_volumetric_cloud_uploads_volume_textures = plan.uploads_volume_textures;
+    result.environment_volumetric_cloud_invokes_backend = plan.invokes_backend;
+    result.environment_volumetric_cloud_raymarch_passes = plan.raymarch_passes;
+    result.environment_volumetric_cloud_readback_nonzero = plan.readback_nonzero;
+    result.environment_volumetric_cloud_exposes_native_handles = plan.exposes_native_handles;
+    result.environment_volumetric_cloud_plays_audio = plan.plays_audio;
+    result.environment_volumetric_cloud_executes_precipitation = plan.executes_precipitation;
+    result.environment_volumetric_cloud_map_rows = static_cast<std::uint32_t>(plan.map_rows.size());
+    result.environment_volumetric_cloud_layer_rows = static_cast<std::uint32_t>(plan.layer_rows.size());
+    result.environment_volumetric_cloud_lighting_rows = static_cast<std::uint32_t>(plan.lighting_rows.size());
+    result.environment_volumetric_cloud_raymarch_rows = static_cast<std::uint32_t>(plan.raymarch_rows.size());
+    result.environment_volumetric_cloud_temporal_rows = static_cast<std::uint32_t>(plan.temporal_rows.size());
+    result.environment_volumetric_cloud_shadow_rows = static_cast<std::uint32_t>(plan.shadow_rows.size());
+    result.environment_volumetric_cloud_storm_rows = static_cast<std::uint32_t>(plan.storm_rows.size());
+    result.environment_volumetric_cloud_shader_contract_rows =
+        static_cast<std::uint32_t>(plan.shader_contract_rows.size());
+    result.environment_volumetric_cloud_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
+    result.environment_volumetric_cloud_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!plan.map_rows.empty()) {
+        result.environment_volumetric_cloud_weather_map_ready = plan.map_rows.front().weather_map_ready;
+        result.environment_volumetric_cloud_shape_noise_ready = plan.map_rows.front().shape_noise_ready;
+        result.environment_volumetric_cloud_erosion_noise_ready = plan.map_rows.front().erosion_noise_ready;
+    }
+}
+
+void apply_vulkan_volumetric_cloud_plan(NativeRendererCreateResult& result, const VolumetricCloudPolicyPlan& plan,
+                                        const VolumetricCloudRuntimeProbeResult& probe) noexcept {
+    result.environment_volumetric_cloud_vulkan_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.environment_volumetric_cloud_vulkan_package_evidence_ready = plan.package_evidence_ready;
+    result.environment_volumetric_cloud_vulkan_execution_evidence_ready = plan.execution_evidence_ready;
+    result.environment_volumetric_cloud_vulkan_uploads_volume_textures = plan.uploads_volume_textures;
+    result.environment_volumetric_cloud_vulkan_invokes_backend = plan.invokes_backend;
+    result.environment_volumetric_cloud_vulkan_renderer_draws = probe.renderer_draws;
+    result.environment_volumetric_cloud_vulkan_raymarch_passes = plan.raymarch_passes;
+    result.environment_volumetric_cloud_vulkan_descriptor_set_bindings = probe.descriptor_set_bindings;
+    result.environment_volumetric_cloud_vulkan_synchronization2_barriers = probe.synchronization2_barriers;
+    result.environment_volumetric_cloud_vulkan_readback_nonzero = plan.readback_nonzero && probe.readback_nonzero;
+    result.environment_volumetric_cloud_vulkan_exposes_native_handles = plan.exposes_native_handles;
+    result.environment_volumetric_cloud_vulkan_plays_audio = plan.plays_audio;
+    result.environment_volumetric_cloud_vulkan_executes_precipitation = plan.executes_precipitation;
+    result.environment_volumetric_cloud_vulkan_map_rows = static_cast<std::uint32_t>(plan.map_rows.size());
+    result.environment_volumetric_cloud_vulkan_layer_rows = static_cast<std::uint32_t>(plan.layer_rows.size());
+    result.environment_volumetric_cloud_vulkan_lighting_rows = static_cast<std::uint32_t>(plan.lighting_rows.size());
+    result.environment_volumetric_cloud_vulkan_raymarch_rows = static_cast<std::uint32_t>(plan.raymarch_rows.size());
+    result.environment_volumetric_cloud_vulkan_temporal_rows = static_cast<std::uint32_t>(plan.temporal_rows.size());
+    result.environment_volumetric_cloud_vulkan_shadow_rows = static_cast<std::uint32_t>(plan.shadow_rows.size());
+    result.environment_volumetric_cloud_vulkan_storm_rows = static_cast<std::uint32_t>(plan.storm_rows.size());
+    result.environment_volumetric_cloud_vulkan_shader_contract_rows =
+        static_cast<std::uint32_t>(plan.shader_contract_rows.size());
+    result.environment_volumetric_cloud_vulkan_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
+    result.environment_volumetric_cloud_vulkan_policy_diagnostics_count =
+        static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!plan.map_rows.empty()) {
+        result.environment_volumetric_cloud_vulkan_weather_map_ready = plan.map_rows.front().weather_map_ready;
+        result.environment_volumetric_cloud_vulkan_shape_noise_ready = plan.map_rows.front().shape_noise_ready;
+        result.environment_volumetric_cloud_vulkan_erosion_noise_ready = plan.map_rows.front().erosion_noise_ready;
     }
 }
 
@@ -725,6 +2268,11 @@ valid_d3d12_scene_renderer_request(const Win32DesktopPresentationD3d12SceneRende
          desc->enable_directional_shadow_smoke)) {
         return false;
     }
+    if (desc->enable_cloud_layer_renderer_execution &&
+        (!has_shader_bytecode(desc->cloud_layer_vertex_shader) ||
+         !has_shader_bytecode(desc->cloud_layer_fragment_shader) || desc->enable_directional_shadow_smoke)) {
+        return false;
+    }
     return true;
 }
 
@@ -766,6 +2314,22 @@ valid_vulkan_scene_renderer_request(const Win32DesktopPresentationVulkanSceneRen
     if (!desc->compute_morph_mesh_bindings.empty() &&
         (!has_shader_bytecode(desc->compute_morph_vertex_shader) || !has_shader_bytecode(desc->compute_morph_shader) ||
          desc->enable_directional_shadow_smoke)) {
+        return false;
+    }
+    if (desc->enable_environment_precipitation_renderer_execution &&
+        (!has_shader_bytecode(desc->precipitation_vertex_shader) ||
+         !has_shader_bytecode(desc->precipitation_fragment_shader) || desc->enable_directional_shadow_smoke)) {
+        return false;
+    }
+    if (desc->enable_environment_volumetric_fog_renderer_execution &&
+        (!has_shader_bytecode(desc->volumetric_fog_compute_shader) || !desc->enable_postprocess ||
+         !desc->enable_postprocess_depth_input || desc->enable_directional_shadow_smoke)) {
+        return false;
+    }
+    if (desc->enable_environment_volumetric_cloud_renderer_execution &&
+        (!has_shader_bytecode(desc->volumetric_cloud_vertex_shader) ||
+         !has_shader_bytecode(desc->volumetric_cloud_fragment_shader) || !desc->enable_postprocess ||
+         !desc->enable_postprocess_depth_input || desc->enable_directional_shadow_smoke)) {
         return false;
     }
     return true;
@@ -1912,9 +3476,23 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         const bool enable_postprocess_depth_input =
             desc.d3d12_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
         const bool environment_fog_requested = desc.d3d12_scene_renderer->enable_environment_fog;
-        const bool cloud_layer_requested = desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
+        const bool physical_sky_requested = desc.d3d12_scene_renderer->enable_physical_sky_package_evidence;
+        const bool cloud_layer_renderer_execution_requested =
+            desc.d3d12_scene_renderer->enable_cloud_layer_renderer_execution;
+        const bool cloud_layer_requested =
+            desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence || cloud_layer_renderer_execution_requested;
+        const bool environment_precipitation_renderer_execution_requested =
+            desc.d3d12_scene_renderer->enable_environment_precipitation_renderer_execution;
         const bool environment_precipitation_requested =
-            desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
+            desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence ||
+            environment_precipitation_renderer_execution_requested;
+        const bool environment_volumetric_fog_requested =
+            desc.d3d12_scene_renderer->enable_environment_volumetric_fog_package_evidence;
+        const bool environment_volumetric_cloud_renderer_execution_requested =
+            desc.d3d12_scene_renderer->enable_environment_volumetric_cloud_renderer_execution;
+        const bool environment_volumetric_cloud_requested =
+            desc.d3d12_scene_renderer->enable_environment_volumetric_cloud_package_evidence ||
+            environment_volumetric_cloud_renderer_execution_requested;
         const auto compute_morph_vertex_buffers = desc.d3d12_scene_renderer->enable_compute_morph_tangent_frame_output
                                                       ? compute_morph_tangent_frame_vertex_buffers()
                                                       : compute_morph_position_vertex_buffers();
@@ -1973,16 +3551,53 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         result.failure_reason = Win32DesktopPresentationFallbackReason::none;
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
         result.environment_fog_requested = environment_fog_requested;
+        result.physical_sky_requested = physical_sky_requested;
         result.cloud_layer_requested = cloud_layer_requested;
         result.environment_precipitation_requested = environment_precipitation_requested;
+        result.environment_volumetric_fog_requested = environment_volumetric_fog_requested;
+        result.environment_volumetric_cloud_requested = environment_volumetric_cloud_requested;
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
+        CloudLayerRuntimeBinding cloud_layer_binding;
+        if (physical_sky_requested) {
+            auto physical_sky_desc = desc.d3d12_scene_renderer->physical_sky;
+            physical_sky_desc.package_evidence_ready =
+                physical_sky_desc.package_evidence_ready && desc.d3d12_scene_renderer->package != nullptr;
+            const auto physical_sky_plan = plan_physical_sky_policy(physical_sky_desc);
+            apply_physical_sky_plan(result, physical_sky_plan);
+            if (!physical_sky_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "D3D12 physical sky package evidence failed the physical sky policy; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+            const auto physical_sky_constants_buffer = create_physical_sky_constants_buffer(*device, physical_sky_desc);
+            result.physical_sky_constant_buffer_ready = physical_sky_constants_buffer.value != 0;
+            result.physical_sky_constant_buffer_bytes = static_cast<std::uint64_t>(physical_sky_constants_byte_size());
+            if (!result.physical_sky_constant_buffer_ready) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic = "D3D12 physical sky constants buffer creation failed; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
         if (cloud_layer_requested) {
             auto cloud_layer_desc = desc.d3d12_scene_renderer->cloud_layer;
             cloud_layer_desc.package_evidence_ready =
                 cloud_layer_desc.package_evidence_ready &&
                 cloud_layer_package_texture_evidence_ready(desc.d3d12_scene_renderer->package, cloud_layer_desc);
+            cloud_layer_desc.request_texture_upload =
+                cloud_layer_desc.request_texture_upload || cloud_layer_renderer_execution_requested;
+            cloud_layer_desc.request_backend_execution =
+                cloud_layer_desc.request_backend_execution || cloud_layer_renderer_execution_requested;
             const auto cloud_layer_plan = plan_cloud_layer_policy(cloud_layer_desc);
             apply_cloud_layer_plan(result, cloud_layer_plan);
             if (!cloud_layer_plan.ready()) {
@@ -1995,12 +3610,51 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                     make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
                 return result;
             }
+            if (cloud_layer_renderer_execution_requested) {
+                cloud_layer_binding = create_cloud_layer_runtime_binding(
+                    *device, *desc.d3d12_scene_renderer->package, cloud_layer_desc,
+                    desc.d3d12_scene_renderer->cloud_layer_vertex_shader,
+                    desc.d3d12_scene_renderer->cloud_layer_fragment_shader, rhi::Format::bgra8_unorm,
+                    postprocess_scene_depth_format(enable_postprocess_depth_input), "D3D12");
+                if (!cloud_layer_binding.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = cloud_layer_binding.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    return result;
+                }
+                result.cloud_layer_uploads_textures = cloud_layer_binding.texture_uploads > 0;
+                result.cloud_layer_invokes_backend = true;
+            }
         }
         if (environment_precipitation_requested) {
             auto precipitation_desc = desc.d3d12_scene_renderer->environment_precipitation;
             precipitation_desc.package_evidence_ready =
                 precipitation_desc.package_evidence_ready &&
                 environment_precipitation_package_texture_evidence_ready(desc.d3d12_scene_renderer->package);
+            if (environment_precipitation_renderer_execution_requested) {
+                const auto precipitation_probe = execute_precipitation_runtime_probe(
+                    *device, *desc.d3d12_scene_renderer->package, precipitation_desc,
+                    desc.d3d12_scene_renderer->precipitation_vertex_shader,
+                    desc.d3d12_scene_renderer->precipitation_fragment_shader, "D3D12");
+                if (!precipitation_probe.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = precipitation_probe.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    return result;
+                }
+                precipitation_desc.request_particle_buffer_upload = true;
+                precipitation_desc.request_backend_execution = true;
+                precipitation_desc.particle_buffer_upload_count = precipitation_probe.particle_buffer_uploads;
+                precipitation_desc.backend_invocation_count = precipitation_probe.backend_invocations;
+                precipitation_desc.renderer_draw_count = precipitation_probe.renderer_draws;
+                precipitation_desc.depth_occlusion_readback_proven = precipitation_probe.depth_occlusion_readback;
+            }
             const auto precipitation_plan = plan_precipitation_policy(precipitation_desc);
             apply_precipitation_plan(result, precipitation_desc, precipitation_plan);
             if (!precipitation_plan.ready()) {
@@ -2009,6 +3663,88 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                 result.diagnostic =
                     "D3D12 environment precipitation package evidence failed the precipitation policy; using "
                     "NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
+        if (environment_volumetric_cloud_requested) {
+            auto volumetric_cloud_desc = desc.d3d12_scene_renderer->environment_volumetric_cloud;
+            volumetric_cloud_desc.package_evidence_ready =
+                volumetric_cloud_desc.package_evidence_ready &&
+                environment_volumetric_cloud_package_evidence_ready(desc.d3d12_scene_renderer->package,
+                                                                    volumetric_cloud_desc);
+            VolumetricCloudRuntimeProbeResult volumetric_cloud_probe;
+            if (environment_volumetric_cloud_renderer_execution_requested) {
+                if (desc.d3d12_scene_renderer->package == nullptr) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = "D3D12 volumetric cloud renderer execution requires a runtime package; using "
+                                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    return result;
+                }
+                volumetric_cloud_probe = execute_volumetric_cloud_runtime_probe(
+                    *device, *desc.d3d12_scene_renderer->package, volumetric_cloud_desc,
+                    desc.d3d12_scene_renderer->volumetric_cloud_vertex_shader,
+                    desc.d3d12_scene_renderer->volumetric_cloud_fragment_shader, "D3D12");
+                if (!volumetric_cloud_probe.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = volumetric_cloud_probe.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    return result;
+                }
+                volumetric_cloud_desc.request_volume_texture_upload = true;
+                volumetric_cloud_desc.request_backend_execution = true;
+                volumetric_cloud_desc.weather_map_upload_count = volumetric_cloud_probe.weather_map_uploads;
+                volumetric_cloud_desc.shape_noise_upload_count = volumetric_cloud_probe.shape_noise_uploads;
+                volumetric_cloud_desc.erosion_noise_upload_count = volumetric_cloud_probe.erosion_noise_uploads;
+                volumetric_cloud_desc.backend_invocation_count = volumetric_cloud_probe.backend_invocations;
+                volumetric_cloud_desc.raymarch_pass_count = volumetric_cloud_probe.raymarch_passes;
+                volumetric_cloud_desc.readback_nonzero_proven = volumetric_cloud_probe.readback_nonzero;
+            }
+            const auto volumetric_cloud_plan = plan_volumetric_cloud_policy(volumetric_cloud_desc);
+            apply_volumetric_cloud_plan(result, volumetric_cloud_plan);
+            result.environment_volumetric_cloud_renderer_draws = volumetric_cloud_probe.renderer_draws;
+            if (!volumetric_cloud_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "D3D12 environment volumetric cloud package evidence failed the volumetric cloud policy; "
+                    "using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
+        if (environment_volumetric_fog_requested) {
+            if (!enable_postprocess_depth_input) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "D3D12 volumetric fog package evidence requires scene-depth input; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+            auto volumetric_fog_desc = desc.d3d12_scene_renderer->environment_volumetric_fog;
+            volumetric_fog_desc.scene_depth_available = true;
+            volumetric_fog_desc.request_ready_promotion = true;
+            const auto volumetric_fog_plan = plan_volumetric_fog_policy(volumetric_fog_desc);
+            apply_volumetric_fog_plan(result, volumetric_fog_plan);
+            if (!volumetric_fog_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic = "D3D12 volumetric fog package evidence failed the volumetric fog policy; using "
+                                    "NullRenderer fallback.";
                 result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
                 result.scene_gpu_diagnostics.push_back(
                     make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -2217,6 +3953,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                         .native_ui_overlay_atlas = native_ui_overlay_atlas,
                         .enable_native_ui_overlay = native_ui_overlay_requested,
                         .enable_native_ui_overlay_textures = native_ui_texture_overlay_requested,
+                        .cloud_layer_graphics_pipeline = cloud_layer_binding.pipeline,
+                        .cloud_layer_pipeline_layout = cloud_layer_binding.pipeline_layout,
+                        .cloud_layer_descriptor_set = cloud_layer_binding.descriptor_set,
+                        .enable_cloud_layer = cloud_layer_renderer_execution_requested,
                     });
                 if (native_ui_overlay_requested) {
                     result.native_ui_overlay_status = Win32DesktopPresentationNativeUiOverlayStatus::ready;
@@ -2244,6 +3984,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                 .wait_for_completion = true,
                 .skinned_graphics_pipeline = skinned_scene_graphics_pipeline,
                 .morph_graphics_pipeline = morph_scene_graphics_pipeline,
+                .cloud_layer_graphics_pipeline = cloud_layer_binding.pipeline,
+                .cloud_layer_pipeline_layout = cloud_layer_binding.pipeline_layout,
+                .cloud_layer_descriptor_set = cloud_layer_binding.descriptor_set,
+                .enable_cloud_layer = cloud_layer_renderer_execution_requested,
             });
         }
         auto scene_renderer = std::make_unique<SceneGpuBindingInjectingRenderer>(
@@ -2455,6 +4199,13 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 [[nodiscard]] NativeRendererCreateResult create_vulkan_renderer(const Win32DesktopPresentationDesc& desc,
                                                                 rhi::SurfaceHandle surface) {
 #if defined(MK_RUNTIME_HOST_WIN32_PRESENTATION_HAS_VULKAN)
+    if (desc.vulkan_renderer == nullptr || !valid_vulkan_renderer_request(desc.vulkan_renderer)) {
+        return NativeRendererCreateResult{
+            .succeeded = false,
+            .failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan renderer request is incomplete; using NullRenderer fallback.",
+        };
+    }
     const bool native_sprite_overlay_requested =
         desc.vulkan_renderer != nullptr && desc.vulkan_renderer->enable_native_sprite_overlay;
     const bool native_sprite_texture_overlay_requested =
@@ -3396,6 +5147,18 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         const bool postprocess_depth_input_requested = desc.vulkan_scene_renderer->enable_postprocess_depth_input;
         const bool enable_postprocess_depth_input =
             desc.vulkan_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
+        const bool environment_fog_requested = desc.vulkan_scene_renderer->enable_environment_fog;
+        const bool physical_sky_vulkan_package_requested =
+            desc.vulkan_scene_renderer->enable_physical_sky_package_evidence;
+        const bool environment_precipitation_vulkan_renderer_execution_requested =
+            desc.vulkan_scene_renderer->enable_environment_precipitation_renderer_execution;
+        const bool environment_precipitation_vulkan_requested =
+            desc.vulkan_scene_renderer->enable_environment_precipitation_package_evidence ||
+            environment_precipitation_vulkan_renderer_execution_requested;
+        const bool environment_volumetric_fog_vulkan_renderer_execution_requested =
+            desc.vulkan_scene_renderer->enable_environment_volumetric_fog_renderer_execution;
+        const bool environment_volumetric_cloud_vulkan_renderer_execution_requested =
+            desc.vulkan_scene_renderer->enable_environment_volumetric_cloud_renderer_execution;
         const auto compute_morph_vertex_buffers = desc.vulkan_scene_renderer->enable_compute_morph_tangent_frame_output
                                                       ? compute_morph_tangent_frame_vertex_buffers()
                                                       : compute_morph_position_vertex_buffers();
@@ -3447,10 +5210,398 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         result.succeeded = true;
         result.failure_reason = Win32DesktopPresentationFallbackReason::none;
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
+        result.environment_fog_requested = environment_fog_requested;
+        result.environment_fog_vulkan_package_requested = environment_fog_requested;
+        result.physical_sky_vulkan_package_requested = physical_sky_vulkan_package_requested;
+        result.environment_precipitation_vulkan_requested = environment_precipitation_vulkan_requested;
+        result.environment_volumetric_fog_vulkan_requested =
+            environment_volumetric_fog_vulkan_renderer_execution_requested;
+        result.environment_volumetric_cloud_vulkan_requested =
+            environment_volumetric_cloud_vulkan_renderer_execution_requested;
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
+        if (physical_sky_vulkan_package_requested) {
+            auto physical_sky_desc = desc.vulkan_scene_renderer->physical_sky;
+            physical_sky_desc.shader_contract_evidence_ready = physical_sky_desc.shader_contract_evidence_ready &&
+                                                               vertex_validation.valid && fragment_validation.valid;
+            physical_sky_desc.package_evidence_ready =
+                physical_sky_desc.package_evidence_ready && desc.vulkan_scene_renderer->package != nullptr;
+            physical_sky_desc.execution_evidence_ready =
+                physical_sky_desc.execution_evidence_ready && pipeline.value != 0;
+            const auto physical_sky_plan = plan_physical_sky_policy(physical_sky_desc);
+            apply_vulkan_physical_sky_package_plan(result, physical_sky_plan);
+            if (!physical_sky_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "Vulkan physical sky package evidence failed the physical sky policy; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+            const auto physical_sky_constants_buffer = create_physical_sky_constants_buffer(*device, physical_sky_desc);
+            result.physical_sky_vulkan_package_constant_buffer_ready = physical_sky_constants_buffer.value != 0;
+            result.physical_sky_vulkan_package_constant_buffer_bytes =
+                static_cast<std::uint64_t>(physical_sky_constants_byte_size());
+            if (!result.physical_sky_vulkan_package_constant_buffer_ready) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "Vulkan physical sky package evidence could not create the physical sky constant buffer; using "
+                    "NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
         if (desc.vulkan_scene_renderer->enable_postprocess) {
+            rhi::BufferHandle environment_fog_constants_buffer;
+            if (environment_fog_requested) {
+                if (!enable_postprocess_depth_input || directional_shadow_requested) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan environment fog package evidence requires depth-aware non-shadow scene postprocess; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                auto environment_fog_desc = desc.vulkan_scene_renderer->environment_fog;
+                environment_fog_desc.scene_depth_available = true;
+                environment_fog_desc.shader_contract_evidence_ready =
+                    postprocess_vertex_validation.valid && postprocess_fragment_validation.valid;
+                environment_fog_desc.package_evidence_ready =
+                    environment_fog_desc.package_evidence_ready &&
+                    has_shader_bytecode(desc.vulkan_scene_renderer->postprocess_vertex_shader) &&
+                    has_shader_bytecode(desc.vulkan_scene_renderer->postprocess_fragment_shader) &&
+                    desc.vulkan_scene_renderer->package != nullptr;
+                const auto environment_fog_plan = plan_environment_fog_policy(environment_fog_desc);
+                result.environment_fog_vulkan_package_shader_contract_evidence_ready =
+                    environment_fog_plan.shader_contract_evidence_ready;
+                result.environment_fog_vulkan_package_evidence_ready = environment_fog_plan.package_evidence_ready;
+                if (!environment_fog_plan.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan environment fog package evidence failed the environment fog policy; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                environment_fog_constants_buffer =
+                    create_environment_fog_constants_buffer(*device, environment_fog_desc);
+                result.environment_fog_vulkan_package_constant_buffer_ready =
+                    environment_fog_constants_buffer.value != 0;
+                result.environment_fog_vulkan_package_constant_buffer_bytes =
+                    static_cast<std::uint64_t>(environment_fog_constants_byte_size());
+                if (!result.environment_fog_vulkan_package_constant_buffer_ready) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan environment fog package evidence could not create the fog constant buffer; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+            }
+            if (environment_precipitation_vulkan_requested) {
+                if (!enable_postprocess_depth_input || directional_shadow_requested) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan precipitation renderer execution requires depth-aware non-shadow scene postprocess; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                auto precipitation_desc = desc.vulkan_scene_renderer->environment_precipitation;
+                std::uint32_t precipitation_synchronization2_barriers = 0U;
+                precipitation_desc.package_evidence_ready =
+                    precipitation_desc.package_evidence_ready &&
+                    environment_precipitation_package_texture_evidence_ready(desc.vulkan_scene_renderer->package);
+                if (environment_precipitation_vulkan_renderer_execution_requested) {
+                    const auto precipitation_vertex_validation =
+                        rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+                            .stage = rhi::ShaderStage::vertex,
+                            .bytecode = desc.vulkan_scene_renderer->precipitation_vertex_shader.bytecode.data(),
+                            .bytecode_size = desc.vulkan_scene_renderer->precipitation_vertex_shader.bytecode.size(),
+                        });
+                    const auto precipitation_fragment_validation =
+                        rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+                            .stage = rhi::ShaderStage::fragment,
+                            .bytecode = desc.vulkan_scene_renderer->precipitation_fragment_shader.bytecode.data(),
+                            .bytecode_size = desc.vulkan_scene_renderer->precipitation_fragment_shader.bytecode.size(),
+                        });
+                    precipitation_desc.shader_contract_evidence_ready =
+                        precipitation_desc.shader_contract_evidence_ready && precipitation_vertex_validation.valid &&
+                        precipitation_fragment_validation.valid;
+                    if (!precipitation_vertex_validation.valid || !precipitation_fragment_validation.valid) {
+                        result.succeeded = false;
+                        result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                        result.diagnostic =
+                            std::string{"Vulkan precipitation SPIR-V validation failed: "} +
+                            (!precipitation_vertex_validation.valid ? precipitation_vertex_validation.diagnostic
+                                                                    : precipitation_fragment_validation.diagnostic) +
+                            "; using NullRenderer fallback.";
+                        result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                        result.scene_gpu_diagnostics.push_back(
+                            make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                        result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                        result.postprocess_diagnostics.push_back(
+                            make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                        return result;
+                    }
+                    const auto precipitation_probe = execute_precipitation_runtime_probe(
+                        *device, *desc.vulkan_scene_renderer->package, precipitation_desc,
+                        desc.vulkan_scene_renderer->precipitation_vertex_shader,
+                        desc.vulkan_scene_renderer->precipitation_fragment_shader, "Vulkan");
+                    if (!precipitation_probe.succeeded()) {
+                        result.succeeded = false;
+                        result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                        result.diagnostic = precipitation_probe.diagnostic + "; using NullRenderer fallback.";
+                        result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                        result.scene_gpu_diagnostics.push_back(
+                            make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                        result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                        result.postprocess_diagnostics.push_back(
+                            make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                        return result;
+                    }
+                    precipitation_desc.request_particle_buffer_upload = true;
+                    precipitation_desc.request_backend_execution = true;
+                    precipitation_desc.particle_buffer_upload_count = precipitation_probe.particle_buffer_uploads;
+                    precipitation_desc.backend_invocation_count = precipitation_probe.backend_invocations;
+                    precipitation_desc.renderer_draw_count = precipitation_probe.renderer_draws;
+                    precipitation_desc.depth_occlusion_readback_proven = precipitation_probe.depth_occlusion_readback;
+                    precipitation_synchronization2_barriers = precipitation_probe.synchronization2_barriers;
+                }
+                const auto precipitation_plan = plan_precipitation_policy(precipitation_desc);
+                apply_vulkan_precipitation_plan(result, precipitation_desc, precipitation_plan);
+                result.environment_precipitation_vulkan_synchronization2_barriers =
+                    precipitation_synchronization2_barriers;
+                if (!precipitation_plan.ready()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan precipitation renderer execution failed the precipitation policy; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+            }
+            if (environment_volumetric_fog_vulkan_renderer_execution_requested) {
+                if (!enable_postprocess_depth_input || directional_shadow_requested) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan volumetric fog renderer execution requires depth-aware non-shadow scene postprocess; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                const auto volumetric_fog_compute_validation =
+                    rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+                        .stage = rhi::ShaderStage::compute,
+                        .bytecode = desc.vulkan_scene_renderer->volumetric_fog_compute_shader.bytecode.data(),
+                        .bytecode_size = desc.vulkan_scene_renderer->volumetric_fog_compute_shader.bytecode.size(),
+                    });
+                if (!volumetric_fog_compute_validation.valid) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = "Vulkan volumetric fog compute SPIR-V validation failed: " +
+                                        volumetric_fog_compute_validation.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+
+                auto volumetric_fog_desc = desc.vulkan_scene_renderer->environment_volumetric_fog;
+                volumetric_fog_desc.scene_depth_available = true;
+                volumetric_fog_desc.shader_contract_evidence_ready =
+                    volumetric_fog_desc.shader_contract_evidence_ready && volumetric_fog_compute_validation.valid;
+                volumetric_fog_desc.package_evidence_ready =
+                    volumetric_fog_desc.package_evidence_ready &&
+                    has_shader_bytecode(desc.vulkan_scene_renderer->volumetric_fog_compute_shader) &&
+                    desc.vulkan_scene_renderer->package != nullptr;
+
+                const auto volumetric_fog_probe = execute_volumetric_fog_runtime_probe(
+                    *device, volumetric_fog_desc, desc.vulkan_scene_renderer->volumetric_fog_compute_shader, "Vulkan");
+                if (!volumetric_fog_probe.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = volumetric_fog_probe.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                volumetric_fog_desc.execution_evidence_ready = true;
+                volumetric_fog_desc.request_ready_promotion = true;
+                const auto volumetric_fog_plan = plan_volumetric_fog_policy(volumetric_fog_desc);
+                apply_vulkan_volumetric_fog_plan(result, volumetric_fog_plan, volumetric_fog_probe);
+                if (!volumetric_fog_plan.ready()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = "Vulkan volumetric fog renderer execution failed the volumetric fog policy; "
+                                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+            }
+            if (environment_volumetric_cloud_vulkan_renderer_execution_requested) {
+                if (!enable_postprocess_depth_input || directional_shadow_requested) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan volumetric cloud renderer execution requires depth-aware non-shadow scene postprocess; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                if (desc.vulkan_scene_renderer->package == nullptr) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = "Vulkan volumetric cloud renderer execution requires a runtime package; using "
+                                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                const auto volumetric_cloud_vertex_validation =
+                    rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+                        .stage = rhi::ShaderStage::vertex,
+                        .bytecode = desc.vulkan_scene_renderer->volumetric_cloud_vertex_shader.bytecode.data(),
+                        .bytecode_size = desc.vulkan_scene_renderer->volumetric_cloud_vertex_shader.bytecode.size(),
+                    });
+                const auto volumetric_cloud_fragment_validation =
+                    rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+                        .stage = rhi::ShaderStage::fragment,
+                        .bytecode = desc.vulkan_scene_renderer->volumetric_cloud_fragment_shader.bytecode.data(),
+                        .bytecode_size = desc.vulkan_scene_renderer->volumetric_cloud_fragment_shader.bytecode.size(),
+                    });
+                if (!volumetric_cloud_vertex_validation.valid || !volumetric_cloud_fragment_validation.valid) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        std::string{"Vulkan volumetric cloud SPIR-V validation failed: "} +
+                        (!volumetric_cloud_vertex_validation.valid ? volumetric_cloud_vertex_validation.diagnostic
+                                                                   : volumetric_cloud_fragment_validation.diagnostic) +
+                        "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+
+                auto volumetric_cloud_desc = desc.vulkan_scene_renderer->environment_volumetric_cloud;
+                volumetric_cloud_desc.shader_contract_evidence_ready =
+                    volumetric_cloud_desc.shader_contract_evidence_ready && volumetric_cloud_vertex_validation.valid &&
+                    volumetric_cloud_fragment_validation.valid;
+                volumetric_cloud_desc.package_evidence_ready =
+                    volumetric_cloud_desc.package_evidence_ready &&
+                    environment_volumetric_cloud_package_evidence_ready(desc.vulkan_scene_renderer->package,
+                                                                        volumetric_cloud_desc);
+                const auto volumetric_cloud_probe = execute_volumetric_cloud_runtime_probe(
+                    *device, *desc.vulkan_scene_renderer->package, volumetric_cloud_desc,
+                    desc.vulkan_scene_renderer->volumetric_cloud_vertex_shader,
+                    desc.vulkan_scene_renderer->volumetric_cloud_fragment_shader, "Vulkan",
+                    vulkan_volumetric_cloud_probe_bindings());
+                if (!volumetric_cloud_probe.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = volumetric_cloud_probe.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                volumetric_cloud_desc.execution_evidence_ready = true;
+                volumetric_cloud_desc.request_ready_promotion = true;
+                volumetric_cloud_desc.request_volume_texture_upload = true;
+                volumetric_cloud_desc.request_backend_execution = true;
+                volumetric_cloud_desc.weather_map_upload_count = volumetric_cloud_probe.weather_map_uploads;
+                volumetric_cloud_desc.shape_noise_upload_count = volumetric_cloud_probe.shape_noise_uploads;
+                volumetric_cloud_desc.erosion_noise_upload_count = volumetric_cloud_probe.erosion_noise_uploads;
+                volumetric_cloud_desc.backend_invocation_count = volumetric_cloud_probe.backend_invocations;
+                volumetric_cloud_desc.raymarch_pass_count = volumetric_cloud_probe.raymarch_passes;
+                volumetric_cloud_desc.readback_nonzero_proven = volumetric_cloud_probe.readback_nonzero;
+                const auto volumetric_cloud_plan = plan_volumetric_cloud_policy(volumetric_cloud_desc);
+                apply_vulkan_volumetric_cloud_plan(result, volumetric_cloud_plan, volumetric_cloud_probe);
+                if (!volumetric_cloud_plan.ready()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "Vulkan volumetric cloud renderer execution failed the volumetric cloud policy; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+            }
             const auto postprocess_vertex_shader = device->create_shader(rhi::ShaderDesc{
                 .stage = rhi::ShaderStage::vertex,
                 .entry_point = desc.vulkan_scene_renderer->postprocess_vertex_shader.entry_point,
@@ -3858,6 +6009,35 @@ struct Win32DesktopPresentation::Impl {
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool environment_fog_vulkan_package_requested{false};
+    bool environment_fog_vulkan_package_shader_contract_evidence_ready{false};
+    bool environment_fog_vulkan_package_evidence_ready{false};
+    bool environment_fog_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t environment_fog_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_requested{false};
+    bool physical_sky_vulkan_package_shader_contract_evidence_ready{false};
+    bool physical_sky_vulkan_package_evidence_ready{false};
+    bool physical_sky_vulkan_package_execution_evidence_ready{false};
+    bool physical_sky_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t physical_sky_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_allocates_lut_textures{false};
+    bool physical_sky_vulkan_package_invokes_backend{false};
+    bool physical_sky_vulkan_package_exposes_native_handles{false};
+    std::uint32_t physical_sky_vulkan_package_constant_layout_rows{0};
+    std::uint32_t physical_sky_vulkan_package_lut_intent_rows{0};
+    std::uint32_t physical_sky_vulkan_package_policy_diagnostics_count{0};
+    bool physical_sky_requested{false};
+    bool physical_sky_shader_contract_evidence_ready{false};
+    bool physical_sky_package_evidence_ready{false};
+    bool physical_sky_execution_evidence_ready{false};
+    bool physical_sky_constant_buffer_ready{false};
+    std::uint64_t physical_sky_constant_buffer_bytes{0};
+    bool physical_sky_allocates_lut_textures{false};
+    bool physical_sky_invokes_backend{false};
+    bool physical_sky_exposes_native_handles{false};
+    std::uint32_t physical_sky_constant_layout_rows{0};
+    std::uint32_t physical_sky_lut_intent_rows{0};
+    std::uint32_t physical_sky_policy_diagnostics_count{0};
     bool cloud_layer_requested{false};
     bool cloud_layer_shader_contract_evidence_ready{false};
     bool cloud_layer_package_evidence_ready{false};
@@ -3874,6 +6054,7 @@ struct Win32DesktopPresentation::Impl {
     std::uint32_t cloud_layer_shader_contract_rows{0};
     std::uint32_t cloud_layer_quality_rows{0};
     std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    std::uint64_t cloud_layer_renderer_draws{0};
     bool environment_precipitation_requested{false};
     EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
     EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
@@ -3885,6 +6066,8 @@ struct Win32DesktopPresentation::Impl {
     bool environment_precipitation_exposes_native_handles{false};
     bool environment_precipitation_mutates_materials{false};
     bool environment_precipitation_plays_audio{false};
+    std::uint64_t environment_precipitation_renderer_draws{0};
+    bool environment_precipitation_depth_occlusion_readback{false};
     bool environment_precipitation_uses_camera_near_particles{false};
     bool environment_precipitation_uses_scene_depth_occlusion{false};
     std::uint32_t environment_precipitation_weather_rows{0};
@@ -3895,6 +6078,104 @@ struct Win32DesktopPresentation::Impl {
     std::uint32_t environment_precipitation_shader_rows{0};
     std::uint32_t environment_precipitation_quality_rows{0};
     std::uint32_t environment_precipitation_policy_diagnostics_count{0};
+    bool environment_precipitation_vulkan_requested{false};
+    EnvironmentWeatherKind environment_precipitation_vulkan_weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind environment_precipitation_vulkan_kind{EnvironmentPrecipitationKind::none};
+    bool environment_precipitation_vulkan_shader_contract_evidence_ready{false};
+    bool environment_precipitation_vulkan_package_evidence_ready{false};
+    bool environment_precipitation_vulkan_execution_evidence_ready{false};
+    bool environment_precipitation_vulkan_uses_camera_near_particles{false};
+    bool environment_precipitation_vulkan_uses_scene_depth_occlusion{false};
+    std::uint32_t environment_precipitation_vulkan_weather_rows{0};
+    std::uint32_t environment_precipitation_vulkan_particle_rows{0};
+    std::uint32_t environment_precipitation_vulkan_occlusion_rows{0};
+    std::uint32_t environment_precipitation_vulkan_wetness_rows{0};
+    std::uint32_t environment_precipitation_vulkan_audio_handoff_rows{0};
+    std::uint32_t environment_precipitation_vulkan_shader_rows{0};
+    std::uint32_t environment_precipitation_vulkan_quality_rows{0};
+    std::uint64_t environment_precipitation_vulkan_particle_buffer_uploads{0};
+    std::uint64_t environment_precipitation_vulkan_backend_invocations{0};
+    std::uint64_t environment_precipitation_vulkan_renderer_draws{0};
+    bool environment_precipitation_vulkan_depth_occlusion_readback{false};
+    std::uint32_t environment_precipitation_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_precipitation_vulkan_synchronization2_barriers{0};
+    bool environment_precipitation_vulkan_exposes_native_handles{false};
+    bool environment_precipitation_vulkan_mutates_materials{false};
+    bool environment_precipitation_vulkan_plays_audio{false};
+    std::uint32_t environment_precipitation_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_fog_requested{false};
+    bool environment_volumetric_fog_shader_contract_evidence_ready{false};
+    bool environment_volumetric_fog_package_evidence_ready{false};
+    bool environment_volumetric_fog_execution_evidence_ready{false};
+    bool environment_volumetric_fog_froxel_output_ready{false};
+    bool environment_volumetric_fog_scene_depth_ready{false};
+    std::uint64_t environment_volumetric_fog_compute_dispatches{0};
+    bool environment_volumetric_fog_exposes_native_handles{false};
+    std::uint32_t environment_volumetric_fog_policy_diagnostics_count{0};
+    bool environment_volumetric_fog_vulkan_requested{false};
+    bool environment_volumetric_fog_vulkan_shader_contract_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_package_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_execution_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_froxel_output_ready{false};
+    bool environment_volumetric_fog_vulkan_scene_depth_ready{false};
+    std::uint64_t environment_volumetric_fog_vulkan_compute_dispatches{0};
+    std::uint32_t environment_volumetric_fog_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_volumetric_fog_vulkan_synchronization2_barriers{0};
+    bool environment_volumetric_fog_vulkan_froxel_readback_nonzero{false};
+    bool environment_volumetric_fog_vulkan_exposes_native_handles{false};
+    std::uint32_t environment_volumetric_fog_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_cloud_vulkan_requested{false};
+    bool environment_volumetric_cloud_vulkan_shader_contract_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_package_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_execution_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_weather_map_ready{false};
+    bool environment_volumetric_cloud_vulkan_shape_noise_ready{false};
+    bool environment_volumetric_cloud_vulkan_erosion_noise_ready{false};
+    bool environment_volumetric_cloud_vulkan_uploads_volume_textures{false};
+    bool environment_volumetric_cloud_vulkan_invokes_backend{false};
+    std::uint64_t environment_volumetric_cloud_vulkan_renderer_draws{0};
+    std::uint64_t environment_volumetric_cloud_vulkan_raymarch_passes{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_synchronization2_barriers{0};
+    bool environment_volumetric_cloud_vulkan_readback_nonzero{false};
+    bool environment_volumetric_cloud_vulkan_exposes_native_handles{false};
+    bool environment_volumetric_cloud_vulkan_plays_audio{false};
+    bool environment_volumetric_cloud_vulkan_executes_precipitation{false};
+    std::uint32_t environment_volumetric_cloud_vulkan_map_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_layer_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_lighting_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_raymarch_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_temporal_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_shadow_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_storm_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_shader_contract_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_quality_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_cloud_requested{false};
+    bool environment_volumetric_cloud_shader_contract_evidence_ready{false};
+    bool environment_volumetric_cloud_package_evidence_ready{false};
+    bool environment_volumetric_cloud_execution_evidence_ready{false};
+    bool environment_volumetric_cloud_weather_map_ready{false};
+    bool environment_volumetric_cloud_shape_noise_ready{false};
+    bool environment_volumetric_cloud_erosion_noise_ready{false};
+    bool environment_volumetric_cloud_uploads_volume_textures{false};
+    bool environment_volumetric_cloud_invokes_backend{false};
+    std::uint64_t environment_volumetric_cloud_renderer_draws{0};
+    std::uint64_t environment_volumetric_cloud_raymarch_passes{0};
+    bool environment_volumetric_cloud_readback_nonzero{false};
+    bool environment_volumetric_cloud_exposes_native_handles{false};
+    bool environment_volumetric_cloud_plays_audio{false};
+    bool environment_volumetric_cloud_executes_precipitation{false};
+    std::uint32_t environment_volumetric_cloud_map_rows{0};
+    std::uint32_t environment_volumetric_cloud_layer_rows{0};
+    std::uint32_t environment_volumetric_cloud_lighting_rows{0};
+    std::uint32_t environment_volumetric_cloud_raymarch_rows{0};
+    std::uint32_t environment_volumetric_cloud_temporal_rows{0};
+    std::uint32_t environment_volumetric_cloud_shadow_rows{0};
+    std::uint32_t environment_volumetric_cloud_storm_rows{0};
+    std::uint32_t environment_volumetric_cloud_shader_contract_rows{0};
+    std::uint32_t environment_volumetric_cloud_quality_rows{0};
+    std::uint32_t environment_volumetric_cloud_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -3929,6 +6210,57 @@ struct Win32DesktopPresentation::Impl {
     std::unique_ptr<IRenderer> renderer;
     SceneGpuBindingInjectingRenderer* scene_gpu_renderer{nullptr};
 
+    void apply_environment_fog_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_fog_requested = environment_fog_requested || renderer_result.environment_fog_requested;
+        environment_fog_constant_buffer_ready = renderer_result.environment_fog_constant_buffer_ready;
+        environment_fog_constant_buffer_bytes = renderer_result.environment_fog_constant_buffer_bytes;
+        environment_fog_vulkan_package_requested =
+            environment_fog_vulkan_package_requested || renderer_result.environment_fog_vulkan_package_requested;
+        environment_fog_vulkan_package_shader_contract_evidence_ready =
+            renderer_result.environment_fog_vulkan_package_shader_contract_evidence_ready;
+        environment_fog_vulkan_package_evidence_ready = renderer_result.environment_fog_vulkan_package_evidence_ready;
+        environment_fog_vulkan_package_constant_buffer_ready =
+            renderer_result.environment_fog_vulkan_package_constant_buffer_ready;
+        environment_fog_vulkan_package_constant_buffer_bytes =
+            renderer_result.environment_fog_vulkan_package_constant_buffer_bytes;
+    }
+
+    void apply_physical_sky_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        physical_sky_vulkan_package_requested =
+            physical_sky_vulkan_package_requested || renderer_result.physical_sky_vulkan_package_requested;
+        physical_sky_vulkan_package_shader_contract_evidence_ready =
+            renderer_result.physical_sky_vulkan_package_shader_contract_evidence_ready;
+        physical_sky_vulkan_package_evidence_ready = renderer_result.physical_sky_vulkan_package_evidence_ready;
+        physical_sky_vulkan_package_execution_evidence_ready =
+            renderer_result.physical_sky_vulkan_package_execution_evidence_ready;
+        physical_sky_vulkan_package_constant_buffer_ready =
+            renderer_result.physical_sky_vulkan_package_constant_buffer_ready;
+        physical_sky_vulkan_package_constant_buffer_bytes =
+            renderer_result.physical_sky_vulkan_package_constant_buffer_bytes;
+        physical_sky_vulkan_package_allocates_lut_textures =
+            renderer_result.physical_sky_vulkan_package_allocates_lut_textures;
+        physical_sky_vulkan_package_invokes_backend = renderer_result.physical_sky_vulkan_package_invokes_backend;
+        physical_sky_vulkan_package_exposes_native_handles =
+            renderer_result.physical_sky_vulkan_package_exposes_native_handles;
+        physical_sky_vulkan_package_constant_layout_rows =
+            renderer_result.physical_sky_vulkan_package_constant_layout_rows;
+        physical_sky_vulkan_package_lut_intent_rows = renderer_result.physical_sky_vulkan_package_lut_intent_rows;
+        physical_sky_vulkan_package_policy_diagnostics_count =
+            renderer_result.physical_sky_vulkan_package_policy_diagnostics_count;
+        physical_sky_requested = physical_sky_requested || renderer_result.physical_sky_requested;
+        physical_sky_shader_contract_evidence_ready = renderer_result.physical_sky_shader_contract_evidence_ready;
+        physical_sky_package_evidence_ready = renderer_result.physical_sky_package_evidence_ready;
+        physical_sky_execution_evidence_ready = renderer_result.physical_sky_execution_evidence_ready;
+        physical_sky_constant_buffer_ready = renderer_result.physical_sky_constant_buffer_ready;
+        physical_sky_constant_buffer_bytes = renderer_result.physical_sky_constant_buffer_bytes;
+        physical_sky_allocates_lut_textures = renderer_result.physical_sky_allocates_lut_textures;
+        physical_sky_invokes_backend = renderer_result.physical_sky_invokes_backend;
+        physical_sky_exposes_native_handles = renderer_result.physical_sky_exposes_native_handles;
+        physical_sky_constant_layout_rows = renderer_result.physical_sky_constant_layout_rows;
+        physical_sky_lut_intent_rows = renderer_result.physical_sky_lut_intent_rows;
+        physical_sky_policy_diagnostics_count = renderer_result.physical_sky_policy_diagnostics_count;
+    }
+
     void apply_cloud_layer_result(const NativeRendererCreateResult& renderer_result) noexcept {
         cloud_layer_requested = cloud_layer_requested || renderer_result.cloud_layer_requested;
         cloud_layer_shader_contract_evidence_ready = renderer_result.cloud_layer_shader_contract_evidence_ready;
@@ -3946,6 +6278,7 @@ struct Win32DesktopPresentation::Impl {
         cloud_layer_shader_contract_rows = renderer_result.cloud_layer_shader_contract_rows;
         cloud_layer_quality_rows = renderer_result.cloud_layer_quality_rows;
         cloud_layer_policy_diagnostics_count = renderer_result.cloud_layer_policy_diagnostics_count;
+        cloud_layer_renderer_draws = renderer_result.cloud_layer_renderer_draws;
     }
 
     void apply_precipitation_result(const NativeRendererCreateResult& renderer_result) noexcept {
@@ -3966,6 +6299,9 @@ struct Win32DesktopPresentation::Impl {
             renderer_result.environment_precipitation_exposes_native_handles;
         environment_precipitation_mutates_materials = renderer_result.environment_precipitation_mutates_materials;
         environment_precipitation_plays_audio = renderer_result.environment_precipitation_plays_audio;
+        environment_precipitation_renderer_draws = renderer_result.environment_precipitation_renderer_draws;
+        environment_precipitation_depth_occlusion_readback =
+            renderer_result.environment_precipitation_depth_occlusion_readback;
         environment_precipitation_uses_camera_near_particles =
             renderer_result.environment_precipitation_uses_camera_near_particles;
         environment_precipitation_uses_scene_depth_occlusion =
@@ -3979,6 +6315,188 @@ struct Win32DesktopPresentation::Impl {
         environment_precipitation_quality_rows = renderer_result.environment_precipitation_quality_rows;
         environment_precipitation_policy_diagnostics_count =
             renderer_result.environment_precipitation_policy_diagnostics_count;
+    }
+
+    void apply_vulkan_precipitation_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_precipitation_vulkan_requested =
+            environment_precipitation_vulkan_requested || renderer_result.environment_precipitation_vulkan_requested;
+        environment_precipitation_vulkan_weather = renderer_result.environment_precipitation_vulkan_weather;
+        environment_precipitation_vulkan_kind = renderer_result.environment_precipitation_vulkan_kind;
+        environment_precipitation_vulkan_shader_contract_evidence_ready =
+            renderer_result.environment_precipitation_vulkan_shader_contract_evidence_ready;
+        environment_precipitation_vulkan_package_evidence_ready =
+            renderer_result.environment_precipitation_vulkan_package_evidence_ready;
+        environment_precipitation_vulkan_execution_evidence_ready =
+            renderer_result.environment_precipitation_vulkan_execution_evidence_ready;
+        environment_precipitation_vulkan_uses_camera_near_particles =
+            renderer_result.environment_precipitation_vulkan_uses_camera_near_particles;
+        environment_precipitation_vulkan_uses_scene_depth_occlusion =
+            renderer_result.environment_precipitation_vulkan_uses_scene_depth_occlusion;
+        environment_precipitation_vulkan_weather_rows = renderer_result.environment_precipitation_vulkan_weather_rows;
+        environment_precipitation_vulkan_particle_rows = renderer_result.environment_precipitation_vulkan_particle_rows;
+        environment_precipitation_vulkan_occlusion_rows =
+            renderer_result.environment_precipitation_vulkan_occlusion_rows;
+        environment_precipitation_vulkan_wetness_rows = renderer_result.environment_precipitation_vulkan_wetness_rows;
+        environment_precipitation_vulkan_audio_handoff_rows =
+            renderer_result.environment_precipitation_vulkan_audio_handoff_rows;
+        environment_precipitation_vulkan_shader_rows = renderer_result.environment_precipitation_vulkan_shader_rows;
+        environment_precipitation_vulkan_quality_rows = renderer_result.environment_precipitation_vulkan_quality_rows;
+        environment_precipitation_vulkan_particle_buffer_uploads =
+            renderer_result.environment_precipitation_vulkan_particle_buffer_uploads;
+        environment_precipitation_vulkan_backend_invocations =
+            renderer_result.environment_precipitation_vulkan_backend_invocations;
+        environment_precipitation_vulkan_renderer_draws =
+            renderer_result.environment_precipitation_vulkan_renderer_draws;
+        environment_precipitation_vulkan_depth_occlusion_readback =
+            renderer_result.environment_precipitation_vulkan_depth_occlusion_readback;
+        environment_precipitation_vulkan_descriptor_set_bindings =
+            renderer_result.environment_precipitation_vulkan_descriptor_set_bindings;
+        environment_precipitation_vulkan_synchronization2_barriers =
+            renderer_result.environment_precipitation_vulkan_synchronization2_barriers;
+        environment_precipitation_vulkan_exposes_native_handles =
+            renderer_result.environment_precipitation_vulkan_exposes_native_handles;
+        environment_precipitation_vulkan_mutates_materials =
+            renderer_result.environment_precipitation_vulkan_mutates_materials;
+        environment_precipitation_vulkan_plays_audio = renderer_result.environment_precipitation_vulkan_plays_audio;
+        environment_precipitation_vulkan_policy_diagnostics_count =
+            renderer_result.environment_precipitation_vulkan_policy_diagnostics_count;
+    }
+
+    void apply_volumetric_fog_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_volumetric_fog_requested =
+            environment_volumetric_fog_requested || renderer_result.environment_volumetric_fog_requested;
+        environment_volumetric_fog_shader_contract_evidence_ready =
+            renderer_result.environment_volumetric_fog_shader_contract_evidence_ready;
+        environment_volumetric_fog_package_evidence_ready =
+            renderer_result.environment_volumetric_fog_package_evidence_ready;
+        environment_volumetric_fog_execution_evidence_ready =
+            renderer_result.environment_volumetric_fog_execution_evidence_ready;
+        environment_volumetric_fog_froxel_output_ready = renderer_result.environment_volumetric_fog_froxel_output_ready;
+        environment_volumetric_fog_scene_depth_ready = renderer_result.environment_volumetric_fog_scene_depth_ready;
+        environment_volumetric_fog_compute_dispatches = renderer_result.environment_volumetric_fog_compute_dispatches;
+        environment_volumetric_fog_exposes_native_handles =
+            renderer_result.environment_volumetric_fog_exposes_native_handles;
+        environment_volumetric_fog_policy_diagnostics_count =
+            renderer_result.environment_volumetric_fog_policy_diagnostics_count;
+    }
+
+    void apply_vulkan_volumetric_fog_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_volumetric_fog_vulkan_requested =
+            environment_volumetric_fog_vulkan_requested || renderer_result.environment_volumetric_fog_vulkan_requested;
+        environment_volumetric_fog_vulkan_shader_contract_evidence_ready =
+            renderer_result.environment_volumetric_fog_vulkan_shader_contract_evidence_ready;
+        environment_volumetric_fog_vulkan_package_evidence_ready =
+            renderer_result.environment_volumetric_fog_vulkan_package_evidence_ready;
+        environment_volumetric_fog_vulkan_execution_evidence_ready =
+            renderer_result.environment_volumetric_fog_vulkan_execution_evidence_ready;
+        environment_volumetric_fog_vulkan_froxel_output_ready =
+            renderer_result.environment_volumetric_fog_vulkan_froxel_output_ready;
+        environment_volumetric_fog_vulkan_scene_depth_ready =
+            renderer_result.environment_volumetric_fog_vulkan_scene_depth_ready;
+        environment_volumetric_fog_vulkan_compute_dispatches =
+            renderer_result.environment_volumetric_fog_vulkan_compute_dispatches;
+        environment_volumetric_fog_vulkan_descriptor_set_bindings =
+            renderer_result.environment_volumetric_fog_vulkan_descriptor_set_bindings;
+        environment_volumetric_fog_vulkan_synchronization2_barriers =
+            renderer_result.environment_volumetric_fog_vulkan_synchronization2_barriers;
+        environment_volumetric_fog_vulkan_froxel_readback_nonzero =
+            renderer_result.environment_volumetric_fog_vulkan_froxel_readback_nonzero;
+        environment_volumetric_fog_vulkan_exposes_native_handles =
+            renderer_result.environment_volumetric_fog_vulkan_exposes_native_handles;
+        environment_volumetric_fog_vulkan_policy_diagnostics_count =
+            renderer_result.environment_volumetric_fog_vulkan_policy_diagnostics_count;
+    }
+
+    void apply_vulkan_volumetric_cloud_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_volumetric_cloud_vulkan_requested = environment_volumetric_cloud_vulkan_requested ||
+                                                        renderer_result.environment_volumetric_cloud_vulkan_requested;
+        environment_volumetric_cloud_vulkan_shader_contract_evidence_ready =
+            renderer_result.environment_volumetric_cloud_vulkan_shader_contract_evidence_ready;
+        environment_volumetric_cloud_vulkan_package_evidence_ready =
+            renderer_result.environment_volumetric_cloud_vulkan_package_evidence_ready;
+        environment_volumetric_cloud_vulkan_execution_evidence_ready =
+            renderer_result.environment_volumetric_cloud_vulkan_execution_evidence_ready;
+        environment_volumetric_cloud_vulkan_weather_map_ready =
+            renderer_result.environment_volumetric_cloud_vulkan_weather_map_ready;
+        environment_volumetric_cloud_vulkan_shape_noise_ready =
+            renderer_result.environment_volumetric_cloud_vulkan_shape_noise_ready;
+        environment_volumetric_cloud_vulkan_erosion_noise_ready =
+            renderer_result.environment_volumetric_cloud_vulkan_erosion_noise_ready;
+        environment_volumetric_cloud_vulkan_uploads_volume_textures =
+            renderer_result.environment_volumetric_cloud_vulkan_uploads_volume_textures;
+        environment_volumetric_cloud_vulkan_invokes_backend =
+            renderer_result.environment_volumetric_cloud_vulkan_invokes_backend;
+        environment_volumetric_cloud_vulkan_renderer_draws =
+            renderer_result.environment_volumetric_cloud_vulkan_renderer_draws;
+        environment_volumetric_cloud_vulkan_raymarch_passes =
+            renderer_result.environment_volumetric_cloud_vulkan_raymarch_passes;
+        environment_volumetric_cloud_vulkan_descriptor_set_bindings =
+            renderer_result.environment_volumetric_cloud_vulkan_descriptor_set_bindings;
+        environment_volumetric_cloud_vulkan_synchronization2_barriers =
+            renderer_result.environment_volumetric_cloud_vulkan_synchronization2_barriers;
+        environment_volumetric_cloud_vulkan_readback_nonzero =
+            renderer_result.environment_volumetric_cloud_vulkan_readback_nonzero;
+        environment_volumetric_cloud_vulkan_exposes_native_handles =
+            renderer_result.environment_volumetric_cloud_vulkan_exposes_native_handles;
+        environment_volumetric_cloud_vulkan_plays_audio =
+            renderer_result.environment_volumetric_cloud_vulkan_plays_audio;
+        environment_volumetric_cloud_vulkan_executes_precipitation =
+            renderer_result.environment_volumetric_cloud_vulkan_executes_precipitation;
+        environment_volumetric_cloud_vulkan_map_rows = renderer_result.environment_volumetric_cloud_vulkan_map_rows;
+        environment_volumetric_cloud_vulkan_layer_rows = renderer_result.environment_volumetric_cloud_vulkan_layer_rows;
+        environment_volumetric_cloud_vulkan_lighting_rows =
+            renderer_result.environment_volumetric_cloud_vulkan_lighting_rows;
+        environment_volumetric_cloud_vulkan_raymarch_rows =
+            renderer_result.environment_volumetric_cloud_vulkan_raymarch_rows;
+        environment_volumetric_cloud_vulkan_temporal_rows =
+            renderer_result.environment_volumetric_cloud_vulkan_temporal_rows;
+        environment_volumetric_cloud_vulkan_shadow_rows =
+            renderer_result.environment_volumetric_cloud_vulkan_shadow_rows;
+        environment_volumetric_cloud_vulkan_storm_rows = renderer_result.environment_volumetric_cloud_vulkan_storm_rows;
+        environment_volumetric_cloud_vulkan_shader_contract_rows =
+            renderer_result.environment_volumetric_cloud_vulkan_shader_contract_rows;
+        environment_volumetric_cloud_vulkan_quality_rows =
+            renderer_result.environment_volumetric_cloud_vulkan_quality_rows;
+        environment_volumetric_cloud_vulkan_policy_diagnostics_count =
+            renderer_result.environment_volumetric_cloud_vulkan_policy_diagnostics_count;
+    }
+
+    void apply_volumetric_cloud_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_volumetric_cloud_requested =
+            environment_volumetric_cloud_requested || renderer_result.environment_volumetric_cloud_requested;
+        environment_volumetric_cloud_shader_contract_evidence_ready =
+            renderer_result.environment_volumetric_cloud_shader_contract_evidence_ready;
+        environment_volumetric_cloud_package_evidence_ready =
+            renderer_result.environment_volumetric_cloud_package_evidence_ready;
+        environment_volumetric_cloud_execution_evidence_ready =
+            renderer_result.environment_volumetric_cloud_execution_evidence_ready;
+        environment_volumetric_cloud_weather_map_ready = renderer_result.environment_volumetric_cloud_weather_map_ready;
+        environment_volumetric_cloud_shape_noise_ready = renderer_result.environment_volumetric_cloud_shape_noise_ready;
+        environment_volumetric_cloud_erosion_noise_ready =
+            renderer_result.environment_volumetric_cloud_erosion_noise_ready;
+        environment_volumetric_cloud_uploads_volume_textures =
+            renderer_result.environment_volumetric_cloud_uploads_volume_textures;
+        environment_volumetric_cloud_invokes_backend = renderer_result.environment_volumetric_cloud_invokes_backend;
+        environment_volumetric_cloud_renderer_draws = renderer_result.environment_volumetric_cloud_renderer_draws;
+        environment_volumetric_cloud_raymarch_passes = renderer_result.environment_volumetric_cloud_raymarch_passes;
+        environment_volumetric_cloud_readback_nonzero = renderer_result.environment_volumetric_cloud_readback_nonzero;
+        environment_volumetric_cloud_exposes_native_handles =
+            renderer_result.environment_volumetric_cloud_exposes_native_handles;
+        environment_volumetric_cloud_plays_audio = renderer_result.environment_volumetric_cloud_plays_audio;
+        environment_volumetric_cloud_executes_precipitation =
+            renderer_result.environment_volumetric_cloud_executes_precipitation;
+        environment_volumetric_cloud_map_rows = renderer_result.environment_volumetric_cloud_map_rows;
+        environment_volumetric_cloud_layer_rows = renderer_result.environment_volumetric_cloud_layer_rows;
+        environment_volumetric_cloud_lighting_rows = renderer_result.environment_volumetric_cloud_lighting_rows;
+        environment_volumetric_cloud_raymarch_rows = renderer_result.environment_volumetric_cloud_raymarch_rows;
+        environment_volumetric_cloud_temporal_rows = renderer_result.environment_volumetric_cloud_temporal_rows;
+        environment_volumetric_cloud_shadow_rows = renderer_result.environment_volumetric_cloud_shadow_rows;
+        environment_volumetric_cloud_storm_rows = renderer_result.environment_volumetric_cloud_storm_rows;
+        environment_volumetric_cloud_shader_contract_rows =
+            renderer_result.environment_volumetric_cloud_shader_contract_rows;
+        environment_volumetric_cloud_quality_rows = renderer_result.environment_volumetric_cloud_quality_rows;
+        environment_volumetric_cloud_policy_diagnostics_count =
+            renderer_result.environment_volumetric_cloud_policy_diagnostics_count;
     }
 };
 
@@ -4008,12 +6526,35 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
             : desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
                   desc.d3d12_scene_renderer->enable_postprocess_depth_input;
     impl_->environment_fog_requested =
-        desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr && desc.d3d12_scene_renderer->enable_environment_fog;
+        desc.prefer_vulkan ? desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_environment_fog
+                           : desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
+                                 desc.d3d12_scene_renderer->enable_environment_fog;
+    impl_->environment_fog_vulkan_package_requested = desc.prefer_vulkan && desc.vulkan_scene_renderer != nullptr &&
+                                                      desc.vulkan_scene_renderer->enable_environment_fog;
     impl_->cloud_layer_requested = desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
-                                   desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
+                                   (desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence ||
+                                    desc.d3d12_scene_renderer->enable_cloud_layer_renderer_execution);
     impl_->environment_precipitation_requested =
         desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
-        desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
+        (desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence ||
+         desc.d3d12_scene_renderer->enable_environment_precipitation_renderer_execution);
+    impl_->environment_precipitation_vulkan_requested =
+        desc.prefer_vulkan && desc.vulkan_scene_renderer != nullptr &&
+        (desc.vulkan_scene_renderer->enable_environment_precipitation_package_evidence ||
+         desc.vulkan_scene_renderer->enable_environment_precipitation_renderer_execution);
+    impl_->environment_volumetric_fog_requested =
+        desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
+        desc.d3d12_scene_renderer->enable_environment_volumetric_fog_package_evidence;
+    impl_->environment_volumetric_fog_vulkan_requested =
+        desc.prefer_vulkan && desc.vulkan_scene_renderer != nullptr &&
+        desc.vulkan_scene_renderer->enable_environment_volumetric_fog_renderer_execution;
+    impl_->environment_volumetric_cloud_vulkan_requested =
+        desc.prefer_vulkan && desc.vulkan_scene_renderer != nullptr &&
+        desc.vulkan_scene_renderer->enable_environment_volumetric_cloud_renderer_execution;
+    impl_->environment_volumetric_cloud_requested =
+        desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
+        (desc.d3d12_scene_renderer->enable_environment_volumetric_cloud_package_evidence ||
+         desc.d3d12_scene_renderer->enable_environment_volumetric_cloud_renderer_execution);
     impl_->directional_shadow_requested =
         desc.prefer_vulkan
             ? desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_directional_shadow_smoke
@@ -4288,14 +6829,15 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
-                        impl_->environment_fog_requested =
-                            impl_->environment_fog_requested || renderer_result.environment_fog_requested;
-                        impl_->environment_fog_constant_buffer_ready =
-                            renderer_result.environment_fog_constant_buffer_ready;
-                        impl_->environment_fog_constant_buffer_bytes =
-                            renderer_result.environment_fog_constant_buffer_bytes;
+                        impl_->apply_environment_fog_result(renderer_result);
+                        impl_->apply_physical_sky_result(renderer_result);
                         impl_->apply_cloud_layer_result(renderer_result);
                         impl_->apply_precipitation_result(renderer_result);
+                        impl_->apply_vulkan_precipitation_result(renderer_result);
+                        impl_->apply_volumetric_fog_result(renderer_result);
+                        impl_->apply_vulkan_volumetric_fog_result(renderer_result);
+                        impl_->apply_vulkan_volumetric_cloud_result(renderer_result);
+                        impl_->apply_volumetric_cloud_result(renderer_result);
                         impl_->directional_shadow_requested =
                             impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                         impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4345,14 +6887,15 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
-                    impl_->environment_fog_requested =
-                        impl_->environment_fog_requested || renderer_result.environment_fog_requested;
-                    impl_->environment_fog_constant_buffer_ready =
-                        renderer_result.environment_fog_constant_buffer_ready;
-                    impl_->environment_fog_constant_buffer_bytes =
-                        renderer_result.environment_fog_constant_buffer_bytes;
+                    impl_->apply_environment_fog_result(renderer_result);
+                    impl_->apply_physical_sky_result(renderer_result);
                     impl_->apply_cloud_layer_result(renderer_result);
                     impl_->apply_precipitation_result(renderer_result);
+                    impl_->apply_vulkan_precipitation_result(renderer_result);
+                    impl_->apply_volumetric_fog_result(renderer_result);
+                    impl_->apply_vulkan_volumetric_fog_result(renderer_result);
+                    impl_->apply_vulkan_volumetric_cloud_result(renderer_result);
+                    impl_->apply_volumetric_cloud_result(renderer_result);
                     impl_->directional_shadow_requested =
                         impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                     impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4641,14 +7184,15 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
-                        impl_->environment_fog_requested =
-                            impl_->environment_fog_requested || renderer_result.environment_fog_requested;
-                        impl_->environment_fog_constant_buffer_ready =
-                            renderer_result.environment_fog_constant_buffer_ready;
-                        impl_->environment_fog_constant_buffer_bytes =
-                            renderer_result.environment_fog_constant_buffer_bytes;
+                        impl_->apply_environment_fog_result(renderer_result);
+                        impl_->apply_physical_sky_result(renderer_result);
                         impl_->apply_cloud_layer_result(renderer_result);
                         impl_->apply_precipitation_result(renderer_result);
+                        impl_->apply_vulkan_precipitation_result(renderer_result);
+                        impl_->apply_volumetric_fog_result(renderer_result);
+                        impl_->apply_vulkan_volumetric_fog_result(renderer_result);
+                        impl_->apply_vulkan_volumetric_cloud_result(renderer_result);
+                        impl_->apply_volumetric_cloud_result(renderer_result);
                         impl_->directional_shadow_requested =
                             impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                         impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4698,14 +7242,15 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
-                    impl_->environment_fog_requested =
-                        impl_->environment_fog_requested || renderer_result.environment_fog_requested;
-                    impl_->environment_fog_constant_buffer_ready =
-                        renderer_result.environment_fog_constant_buffer_ready;
-                    impl_->environment_fog_constant_buffer_bytes =
-                        renderer_result.environment_fog_constant_buffer_bytes;
+                    impl_->apply_environment_fog_result(renderer_result);
+                    impl_->apply_physical_sky_result(renderer_result);
                     impl_->apply_cloud_layer_result(renderer_result);
                     impl_->apply_precipitation_result(renderer_result);
+                    impl_->apply_vulkan_precipitation_result(renderer_result);
+                    impl_->apply_volumetric_fog_result(renderer_result);
+                    impl_->apply_vulkan_volumetric_fog_result(renderer_result);
+                    impl_->apply_vulkan_volumetric_cloud_result(renderer_result);
+                    impl_->apply_volumetric_cloud_result(renderer_result);
                     impl_->directional_shadow_requested =
                         impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                     impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4841,6 +7386,41 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .environment_fog_requested = impl_->environment_fog_requested,
         .environment_fog_constant_buffer_ready = impl_->environment_fog_constant_buffer_ready,
         .environment_fog_constant_buffer_bytes = impl_->environment_fog_constant_buffer_bytes,
+        .environment_fog_vulkan_package_requested = impl_->environment_fog_vulkan_package_requested,
+        .environment_fog_vulkan_package_shader_contract_evidence_ready =
+            impl_->environment_fog_vulkan_package_shader_contract_evidence_ready,
+        .environment_fog_vulkan_package_evidence_ready = impl_->environment_fog_vulkan_package_evidence_ready,
+        .environment_fog_vulkan_package_constant_buffer_ready =
+            impl_->environment_fog_vulkan_package_constant_buffer_ready,
+        .environment_fog_vulkan_package_constant_buffer_bytes =
+            impl_->environment_fog_vulkan_package_constant_buffer_bytes,
+        .physical_sky_vulkan_package_requested = impl_->physical_sky_vulkan_package_requested,
+        .physical_sky_vulkan_package_shader_contract_evidence_ready =
+            impl_->physical_sky_vulkan_package_shader_contract_evidence_ready,
+        .physical_sky_vulkan_package_evidence_ready = impl_->physical_sky_vulkan_package_evidence_ready,
+        .physical_sky_vulkan_package_execution_evidence_ready =
+            impl_->physical_sky_vulkan_package_execution_evidence_ready,
+        .physical_sky_vulkan_package_constant_buffer_ready = impl_->physical_sky_vulkan_package_constant_buffer_ready,
+        .physical_sky_vulkan_package_constant_buffer_bytes = impl_->physical_sky_vulkan_package_constant_buffer_bytes,
+        .physical_sky_vulkan_package_allocates_lut_textures = impl_->physical_sky_vulkan_package_allocates_lut_textures,
+        .physical_sky_vulkan_package_invokes_backend = impl_->physical_sky_vulkan_package_invokes_backend,
+        .physical_sky_vulkan_package_exposes_native_handles = impl_->physical_sky_vulkan_package_exposes_native_handles,
+        .physical_sky_vulkan_package_constant_layout_rows = impl_->physical_sky_vulkan_package_constant_layout_rows,
+        .physical_sky_vulkan_package_lut_intent_rows = impl_->physical_sky_vulkan_package_lut_intent_rows,
+        .physical_sky_vulkan_package_policy_diagnostics_count =
+            impl_->physical_sky_vulkan_package_policy_diagnostics_count,
+        .physical_sky_requested = impl_->physical_sky_requested,
+        .physical_sky_shader_contract_evidence_ready = impl_->physical_sky_shader_contract_evidence_ready,
+        .physical_sky_package_evidence_ready = impl_->physical_sky_package_evidence_ready,
+        .physical_sky_execution_evidence_ready = impl_->physical_sky_execution_evidence_ready,
+        .physical_sky_constant_buffer_ready = impl_->physical_sky_constant_buffer_ready,
+        .physical_sky_constant_buffer_bytes = impl_->physical_sky_constant_buffer_bytes,
+        .physical_sky_allocates_lut_textures = impl_->physical_sky_allocates_lut_textures,
+        .physical_sky_invokes_backend = impl_->physical_sky_invokes_backend,
+        .physical_sky_exposes_native_handles = impl_->physical_sky_exposes_native_handles,
+        .physical_sky_constant_layout_rows = impl_->physical_sky_constant_layout_rows,
+        .physical_sky_lut_intent_rows = impl_->physical_sky_lut_intent_rows,
+        .physical_sky_policy_diagnostics_count = impl_->physical_sky_policy_diagnostics_count,
         .cloud_layer_requested = impl_->cloud_layer_requested,
         .cloud_layer_shader_contract_evidence_ready = impl_->cloud_layer_shader_contract_evidence_ready,
         .cloud_layer_package_evidence_ready = impl_->cloud_layer_package_evidence_ready,
@@ -4857,6 +7437,7 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .cloud_layer_shader_contract_rows = impl_->cloud_layer_shader_contract_rows,
         .cloud_layer_quality_rows = impl_->cloud_layer_quality_rows,
         .cloud_layer_policy_diagnostics_count = impl_->cloud_layer_policy_diagnostics_count,
+        .cloud_layer_renderer_draws = renderer_stats.cloud_layer_draws,
         .environment_precipitation_requested = impl_->environment_precipitation_requested,
         .environment_precipitation_weather = impl_->environment_precipitation_weather,
         .environment_precipitation_kind = impl_->environment_precipitation_kind,
@@ -4869,6 +7450,8 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .environment_precipitation_exposes_native_handles = impl_->environment_precipitation_exposes_native_handles,
         .environment_precipitation_mutates_materials = impl_->environment_precipitation_mutates_materials,
         .environment_precipitation_plays_audio = impl_->environment_precipitation_plays_audio,
+        .environment_precipitation_renderer_draws = impl_->environment_precipitation_renderer_draws,
+        .environment_precipitation_depth_occlusion_readback = impl_->environment_precipitation_depth_occlusion_readback,
         .environment_precipitation_uses_camera_near_particles =
             impl_->environment_precipitation_uses_camera_near_particles,
         .environment_precipitation_uses_scene_depth_occlusion =
@@ -4881,6 +7464,154 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .environment_precipitation_shader_rows = impl_->environment_precipitation_shader_rows,
         .environment_precipitation_quality_rows = impl_->environment_precipitation_quality_rows,
         .environment_precipitation_policy_diagnostics_count = impl_->environment_precipitation_policy_diagnostics_count,
+        .environment_precipitation_vulkan_requested = impl_->environment_precipitation_vulkan_requested,
+        .environment_precipitation_vulkan_weather = impl_->environment_precipitation_vulkan_weather,
+        .environment_precipitation_vulkan_kind = impl_->environment_precipitation_vulkan_kind,
+        .environment_precipitation_vulkan_shader_contract_evidence_ready =
+            impl_->environment_precipitation_vulkan_shader_contract_evidence_ready,
+        .environment_precipitation_vulkan_package_evidence_ready =
+            impl_->environment_precipitation_vulkan_package_evidence_ready,
+        .environment_precipitation_vulkan_execution_evidence_ready =
+            impl_->environment_precipitation_vulkan_execution_evidence_ready,
+        .environment_precipitation_vulkan_uses_camera_near_particles =
+            impl_->environment_precipitation_vulkan_uses_camera_near_particles,
+        .environment_precipitation_vulkan_uses_scene_depth_occlusion =
+            impl_->environment_precipitation_vulkan_uses_scene_depth_occlusion,
+        .environment_precipitation_vulkan_weather_rows = impl_->environment_precipitation_vulkan_weather_rows,
+        .environment_precipitation_vulkan_particle_rows = impl_->environment_precipitation_vulkan_particle_rows,
+        .environment_precipitation_vulkan_occlusion_rows = impl_->environment_precipitation_vulkan_occlusion_rows,
+        .environment_precipitation_vulkan_wetness_rows = impl_->environment_precipitation_vulkan_wetness_rows,
+        .environment_precipitation_vulkan_audio_handoff_rows =
+            impl_->environment_precipitation_vulkan_audio_handoff_rows,
+        .environment_precipitation_vulkan_shader_rows = impl_->environment_precipitation_vulkan_shader_rows,
+        .environment_precipitation_vulkan_quality_rows = impl_->environment_precipitation_vulkan_quality_rows,
+        .environment_precipitation_vulkan_particle_buffer_uploads =
+            impl_->environment_precipitation_vulkan_particle_buffer_uploads,
+        .environment_precipitation_vulkan_backend_invocations =
+            impl_->environment_precipitation_vulkan_backend_invocations,
+        .environment_precipitation_vulkan_renderer_draws = impl_->environment_precipitation_vulkan_renderer_draws,
+        .environment_precipitation_vulkan_depth_occlusion_readback =
+            impl_->environment_precipitation_vulkan_depth_occlusion_readback,
+        .environment_precipitation_vulkan_descriptor_set_bindings =
+            impl_->environment_precipitation_vulkan_descriptor_set_bindings,
+        .environment_precipitation_vulkan_synchronization2_barriers =
+            impl_->environment_precipitation_vulkan_synchronization2_barriers,
+        .environment_precipitation_vulkan_exposes_native_handles =
+            impl_->environment_precipitation_vulkan_exposes_native_handles,
+        .environment_precipitation_vulkan_mutates_materials = impl_->environment_precipitation_vulkan_mutates_materials,
+        .environment_precipitation_vulkan_plays_audio = impl_->environment_precipitation_vulkan_plays_audio,
+        .environment_precipitation_vulkan_policy_diagnostics_count =
+            impl_->environment_precipitation_vulkan_policy_diagnostics_count,
+        .environment_volumetric_fog_requested = impl_->environment_volumetric_fog_requested,
+        .environment_volumetric_fog_shader_contract_evidence_ready =
+            impl_->environment_volumetric_fog_shader_contract_evidence_ready,
+        .environment_volumetric_fog_package_evidence_ready = impl_->environment_volumetric_fog_package_evidence_ready,
+        .environment_volumetric_fog_execution_evidence_ready =
+            impl_->environment_volumetric_fog_execution_evidence_ready,
+        .environment_volumetric_fog_froxel_output_ready = impl_->environment_volumetric_fog_froxel_output_ready,
+        .environment_volumetric_fog_scene_depth_ready = impl_->environment_volumetric_fog_scene_depth_ready,
+        .environment_volumetric_fog_compute_dispatches = impl_->environment_volumetric_fog_compute_dispatches,
+        .environment_volumetric_fog_exposes_native_handles = impl_->environment_volumetric_fog_exposes_native_handles,
+        .environment_volumetric_fog_policy_diagnostics_count =
+            impl_->environment_volumetric_fog_policy_diagnostics_count,
+        .environment_volumetric_fog_vulkan_requested = impl_->environment_volumetric_fog_vulkan_requested,
+        .environment_volumetric_fog_vulkan_shader_contract_evidence_ready =
+            impl_->environment_volumetric_fog_vulkan_shader_contract_evidence_ready,
+        .environment_volumetric_fog_vulkan_package_evidence_ready =
+            impl_->environment_volumetric_fog_vulkan_package_evidence_ready,
+        .environment_volumetric_fog_vulkan_execution_evidence_ready =
+            impl_->environment_volumetric_fog_vulkan_execution_evidence_ready,
+        .environment_volumetric_fog_vulkan_froxel_output_ready =
+            impl_->environment_volumetric_fog_vulkan_froxel_output_ready,
+        .environment_volumetric_fog_vulkan_scene_depth_ready =
+            impl_->environment_volumetric_fog_vulkan_scene_depth_ready,
+        .environment_volumetric_fog_vulkan_compute_dispatches =
+            impl_->environment_volumetric_fog_vulkan_compute_dispatches,
+        .environment_volumetric_fog_vulkan_descriptor_set_bindings =
+            impl_->environment_volumetric_fog_vulkan_descriptor_set_bindings,
+        .environment_volumetric_fog_vulkan_synchronization2_barriers =
+            impl_->environment_volumetric_fog_vulkan_synchronization2_barriers,
+        .environment_volumetric_fog_vulkan_froxel_readback_nonzero =
+            impl_->environment_volumetric_fog_vulkan_froxel_readback_nonzero,
+        .environment_volumetric_fog_vulkan_exposes_native_handles =
+            impl_->environment_volumetric_fog_vulkan_exposes_native_handles,
+        .environment_volumetric_fog_vulkan_policy_diagnostics_count =
+            impl_->environment_volumetric_fog_vulkan_policy_diagnostics_count,
+        .environment_volumetric_cloud_vulkan_requested = impl_->environment_volumetric_cloud_vulkan_requested,
+        .environment_volumetric_cloud_vulkan_shader_contract_evidence_ready =
+            impl_->environment_volumetric_cloud_vulkan_shader_contract_evidence_ready,
+        .environment_volumetric_cloud_vulkan_package_evidence_ready =
+            impl_->environment_volumetric_cloud_vulkan_package_evidence_ready,
+        .environment_volumetric_cloud_vulkan_execution_evidence_ready =
+            impl_->environment_volumetric_cloud_vulkan_execution_evidence_ready,
+        .environment_volumetric_cloud_vulkan_weather_map_ready =
+            impl_->environment_volumetric_cloud_vulkan_weather_map_ready,
+        .environment_volumetric_cloud_vulkan_shape_noise_ready =
+            impl_->environment_volumetric_cloud_vulkan_shape_noise_ready,
+        .environment_volumetric_cloud_vulkan_erosion_noise_ready =
+            impl_->environment_volumetric_cloud_vulkan_erosion_noise_ready,
+        .environment_volumetric_cloud_vulkan_uploads_volume_textures =
+            impl_->environment_volumetric_cloud_vulkan_uploads_volume_textures,
+        .environment_volumetric_cloud_vulkan_invokes_backend =
+            impl_->environment_volumetric_cloud_vulkan_invokes_backend,
+        .environment_volumetric_cloud_vulkan_renderer_draws = impl_->environment_volumetric_cloud_vulkan_renderer_draws,
+        .environment_volumetric_cloud_vulkan_raymarch_passes =
+            impl_->environment_volumetric_cloud_vulkan_raymarch_passes,
+        .environment_volumetric_cloud_vulkan_descriptor_set_bindings =
+            impl_->environment_volumetric_cloud_vulkan_descriptor_set_bindings,
+        .environment_volumetric_cloud_vulkan_synchronization2_barriers =
+            impl_->environment_volumetric_cloud_vulkan_synchronization2_barriers,
+        .environment_volumetric_cloud_vulkan_readback_nonzero =
+            impl_->environment_volumetric_cloud_vulkan_readback_nonzero,
+        .environment_volumetric_cloud_vulkan_exposes_native_handles =
+            impl_->environment_volumetric_cloud_vulkan_exposes_native_handles,
+        .environment_volumetric_cloud_vulkan_plays_audio = impl_->environment_volumetric_cloud_vulkan_plays_audio,
+        .environment_volumetric_cloud_vulkan_executes_precipitation =
+            impl_->environment_volumetric_cloud_vulkan_executes_precipitation,
+        .environment_volumetric_cloud_vulkan_map_rows = impl_->environment_volumetric_cloud_vulkan_map_rows,
+        .environment_volumetric_cloud_vulkan_layer_rows = impl_->environment_volumetric_cloud_vulkan_layer_rows,
+        .environment_volumetric_cloud_vulkan_lighting_rows = impl_->environment_volumetric_cloud_vulkan_lighting_rows,
+        .environment_volumetric_cloud_vulkan_raymarch_rows = impl_->environment_volumetric_cloud_vulkan_raymarch_rows,
+        .environment_volumetric_cloud_vulkan_temporal_rows = impl_->environment_volumetric_cloud_vulkan_temporal_rows,
+        .environment_volumetric_cloud_vulkan_shadow_rows = impl_->environment_volumetric_cloud_vulkan_shadow_rows,
+        .environment_volumetric_cloud_vulkan_storm_rows = impl_->environment_volumetric_cloud_vulkan_storm_rows,
+        .environment_volumetric_cloud_vulkan_shader_contract_rows =
+            impl_->environment_volumetric_cloud_vulkan_shader_contract_rows,
+        .environment_volumetric_cloud_vulkan_quality_rows = impl_->environment_volumetric_cloud_vulkan_quality_rows,
+        .environment_volumetric_cloud_vulkan_policy_diagnostics_count =
+            impl_->environment_volumetric_cloud_vulkan_policy_diagnostics_count,
+        .environment_volumetric_cloud_requested = impl_->environment_volumetric_cloud_requested,
+        .environment_volumetric_cloud_shader_contract_evidence_ready =
+            impl_->environment_volumetric_cloud_shader_contract_evidence_ready,
+        .environment_volumetric_cloud_package_evidence_ready =
+            impl_->environment_volumetric_cloud_package_evidence_ready,
+        .environment_volumetric_cloud_execution_evidence_ready =
+            impl_->environment_volumetric_cloud_execution_evidence_ready,
+        .environment_volumetric_cloud_weather_map_ready = impl_->environment_volumetric_cloud_weather_map_ready,
+        .environment_volumetric_cloud_shape_noise_ready = impl_->environment_volumetric_cloud_shape_noise_ready,
+        .environment_volumetric_cloud_erosion_noise_ready = impl_->environment_volumetric_cloud_erosion_noise_ready,
+        .environment_volumetric_cloud_uploads_volume_textures =
+            impl_->environment_volumetric_cloud_uploads_volume_textures,
+        .environment_volumetric_cloud_invokes_backend = impl_->environment_volumetric_cloud_invokes_backend,
+        .environment_volumetric_cloud_renderer_draws = impl_->environment_volumetric_cloud_renderer_draws,
+        .environment_volumetric_cloud_raymarch_passes = impl_->environment_volumetric_cloud_raymarch_passes,
+        .environment_volumetric_cloud_readback_nonzero = impl_->environment_volumetric_cloud_readback_nonzero,
+        .environment_volumetric_cloud_exposes_native_handles =
+            impl_->environment_volumetric_cloud_exposes_native_handles,
+        .environment_volumetric_cloud_plays_audio = impl_->environment_volumetric_cloud_plays_audio,
+        .environment_volumetric_cloud_executes_precipitation =
+            impl_->environment_volumetric_cloud_executes_precipitation,
+        .environment_volumetric_cloud_map_rows = impl_->environment_volumetric_cloud_map_rows,
+        .environment_volumetric_cloud_layer_rows = impl_->environment_volumetric_cloud_layer_rows,
+        .environment_volumetric_cloud_lighting_rows = impl_->environment_volumetric_cloud_lighting_rows,
+        .environment_volumetric_cloud_raymarch_rows = impl_->environment_volumetric_cloud_raymarch_rows,
+        .environment_volumetric_cloud_temporal_rows = impl_->environment_volumetric_cloud_temporal_rows,
+        .environment_volumetric_cloud_shadow_rows = impl_->environment_volumetric_cloud_shadow_rows,
+        .environment_volumetric_cloud_storm_rows = impl_->environment_volumetric_cloud_storm_rows,
+        .environment_volumetric_cloud_shader_contract_rows = impl_->environment_volumetric_cloud_shader_contract_rows,
+        .environment_volumetric_cloud_quality_rows = impl_->environment_volumetric_cloud_quality_rows,
+        .environment_volumetric_cloud_policy_diagnostics_count =
+            impl_->environment_volumetric_cloud_policy_diagnostics_count,
         .directional_shadow_status = impl_->directional_shadow_status,
         .directional_shadow_requested = impl_->directional_shadow_requested,
         .directional_shadow_ready = impl_->directional_shadow_ready,
@@ -5298,6 +8029,49 @@ win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationE
     return "unknown";
 }
 
+std::string_view win32_desktop_presentation_vulkan_environment_fog_package_status_name(
+    const Win32DesktopPresentationVulkanEnvironmentFogPackageStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view
+win32_desktop_presentation_physical_sky_status_name(Win32DesktopPresentationPhysicalSkyStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationPhysicalSkyStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationPhysicalSkyStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationPhysicalSkyStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_vulkan_physical_sky_package_status_name(
+    const Win32DesktopPresentationVulkanPhysicalSkyPackageStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view
 win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept {
     switch (status) {
@@ -5319,6 +8093,105 @@ std::string_view win32_desktop_presentation_environment_precipitation_status_nam
     case Win32DesktopPresentationEnvironmentPrecipitationStatus::blocked:
         return "blocked";
     case Win32DesktopPresentationEnvironmentPrecipitationStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_vulkan_environment_precipitation_status_name(
+    Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_environment_volumetric_fog_status_name(
+    const Win32DesktopPresentationEnvironmentVolumetricFogStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationEnvironmentVolumetricFogStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationEnvironmentVolumetricFogStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationEnvironmentVolumetricFogStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_vulkan_environment_volumetric_fog_status_name(
+    const Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_environment_volumetric_cloud_status_name(
+    const Win32DesktopPresentationEnvironmentVolumetricCloudStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationEnvironmentVolumetricCloudStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationEnvironmentVolumetricCloudStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationEnvironmentVolumetricCloudStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_vulkan_environment_volumetric_cloud_status_name(
+    const Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_environment_ibl_renderer_execution_status_name(
+    const Win32DesktopPresentationEnvironmentIblRendererExecutionStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_vulkan_environment_ibl_renderer_execution_status_name(
+    const Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::ready:
         return "ready";
     }
     return "unknown";
@@ -5585,8 +8458,191 @@ Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation
     return result;
 }
 
+Win32DesktopPresentationVulkanEnvironmentFogPackageReport
+evaluate_win32_desktop_presentation_vulkan_environment_fog_package(
+    const Win32DesktopPresentationReport& report,
+    const Win32DesktopPresentationVulkanPostprocessExecutionReport& vulkan_postprocess_execution,
+    const bool requested) {
+    Win32DesktopPresentationVulkanEnvironmentFogPackageReport result;
+    result.constants_binding = environment_fog_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_fog_vulkan_package_requested;
+    result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
+    result.postprocess_ready = report.postprocess_status == Win32DesktopPresentationPostprocessStatus::ready;
+    result.postprocess_depth_input_ready = report.postprocess_depth_input_ready;
+    result.vulkan_postprocess_execution_ready = vulkan_postprocess_execution.ready;
+    result.shader_contract_evidence_ready = report.environment_fog_vulkan_package_shader_contract_evidence_ready &&
+                                            vulkan_postprocess_execution.backend_shader_evidence_ready;
+    result.package_evidence_ready = report.environment_fog_vulkan_package_evidence_ready;
+    result.constant_buffer_ready = report.environment_fog_vulkan_package_constant_buffer_ready;
+    result.constant_buffer_bytes = report.environment_fog_vulkan_package_constant_buffer_bytes;
+    result.expected_postprocess_passes = vulkan_postprocess_execution.expected_postprocess_passes;
+    result.postprocess_passes_executed = vulkan_postprocess_execution.postprocess_passes_executed;
+    result.postprocess_passes_current = vulkan_postprocess_execution.postprocess_passes_current;
+
+    const auto plan = plan_environment_fog_policy(EnvironmentFogPolicyDesc{
+        .mode = EnvironmentFogMode::exponential_height,
+        .density = 0.08F,
+        .height_falloff = 0.35F,
+        .height_offset_m = 12.0F,
+        .start_distance_m = 0.0F,
+        .cutoff_distance_m = 1200.0F,
+        .max_opacity = 0.85F,
+        .sky_affect = 0.35F,
+        .directional_inscattering_anisotropy = 0.25F,
+        .inscattering_color = Vec3{.x = 0.58F, .y = 0.68F, .z = 0.78F},
+        .directional_inscattering_color = Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
+        .sample_step_budget = 8,
+        .scene_depth_available = result.postprocess_depth_input_ready,
+        .shader_contract_evidence_ready = result.shader_contract_evidence_ready,
+        .execution_evidence_ready = result.vulkan_postprocess_execution_ready,
+        .package_evidence_ready = result.package_evidence_ready,
+        .request_ready_promotion = true,
+    });
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.vulkan_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.postprocess_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(environment_fog_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (!result.postprocess_passes_current) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles) {
+        ++result.diagnostics_count;
+    }
+
+    if (!result.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::host_evidence_required;
+    } else {
+        result.ready = result.diagnostics_count == 0;
+        result.status = result.ready ? Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::ready
+                                     : Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::blocked;
+    }
+    return result;
+}
+
+Win32DesktopPresentationPhysicalSkyReport
+evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationReport& report, const bool requested) {
+    Win32DesktopPresentationPhysicalSkyReport result;
+    result.constants_binding = physical_sky_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.physical_sky_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.shader_contract_evidence_ready = report.physical_sky_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.physical_sky_package_evidence_ready;
+    result.execution_evidence_ready = report.physical_sky_execution_evidence_ready;
+    result.constant_buffer_ready = report.physical_sky_constant_buffer_ready;
+    result.constant_buffer_bytes = report.physical_sky_constant_buffer_bytes;
+    result.allocates_lut_textures = report.physical_sky_allocates_lut_textures;
+    result.invokes_backend = report.physical_sky_invokes_backend;
+    result.exposes_native_handles = report.physical_sky_exposes_native_handles;
+    result.constant_layout_rows = report.physical_sky_constant_layout_rows;
+    result.lut_intent_rows = report.physical_sky_lut_intent_rows;
+
+    const auto expected_plan = plan_physical_sky_policy(sample_physical_sky_policy_desc());
+    result.diagnostics_count =
+        static_cast<std::uint32_t>(expected_plan.diagnostics.size()) + report.physical_sky_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(physical_sky_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.constant_layout_rows != static_cast<std::uint32_t>(expected_plan.constant_layout_rows.size()) ||
+        result.lut_intent_rows != static_cast<std::uint32_t>(expected_plan.lut_intent_rows.size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.allocates_lut_textures || result.invokes_backend || result.exposes_native_handles) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationPhysicalSkyStatus::ready
+                                 : Win32DesktopPresentationPhysicalSkyStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationVulkanPhysicalSkyPackageReport
+evaluate_win32_desktop_presentation_vulkan_physical_sky_package(const Win32DesktopPresentationReport& report,
+                                                                const bool requested) {
+    Win32DesktopPresentationVulkanPhysicalSkyPackageReport result;
+    result.constants_binding = physical_sky_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.physical_sky_vulkan_package_requested;
+    result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
+    result.shader_contract_evidence_ready = report.physical_sky_vulkan_package_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.physical_sky_vulkan_package_evidence_ready;
+    result.execution_evidence_ready = report.physical_sky_vulkan_package_execution_evidence_ready;
+    result.constant_buffer_ready = report.physical_sky_vulkan_package_constant_buffer_ready;
+    result.constant_buffer_bytes = report.physical_sky_vulkan_package_constant_buffer_bytes;
+    result.allocates_lut_textures = report.physical_sky_vulkan_package_allocates_lut_textures;
+    result.invokes_backend = report.physical_sky_vulkan_package_invokes_backend;
+    result.exposes_native_handles = report.physical_sky_vulkan_package_exposes_native_handles;
+    result.constant_layout_rows = report.physical_sky_vulkan_package_constant_layout_rows;
+    result.lut_intent_rows = report.physical_sky_vulkan_package_lut_intent_rows;
+
+    const auto expected_plan = plan_physical_sky_policy(sample_physical_sky_policy_desc());
+    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
+                               report.physical_sky_vulkan_package_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.vulkan_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(physical_sky_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.constant_layout_rows != static_cast<std::uint32_t>(expected_plan.constant_layout_rows.size()) ||
+        result.lut_intent_rows != static_cast<std::uint32_t>(expected_plan.lut_intent_rows.size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.allocates_lut_textures || result.invokes_backend || result.exposes_native_handles) {
+        ++result.diagnostics_count;
+    }
+
+    if (!result.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::host_evidence_required;
+    } else {
+        result.ready = result.diagnostics_count == 0;
+        result.status = result.ready ? Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::ready
+                                     : Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::blocked;
+    }
+    return result;
+}
+
 Win32DesktopPresentationCloudLayerReport
-evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, const bool requested) {
+evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, const bool requested,
+                                                const bool require_renderer_execution) {
     Win32DesktopPresentationCloudLayerReport result;
     result.cloud_map_binding = cloud_layer_cloud_map_binding();
     result.flow_map_binding = cloud_layer_flow_map_binding();
@@ -5603,6 +8659,7 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
     result.execution_evidence_ready = report.cloud_layer_execution_evidence_ready;
     result.uploads_textures = report.cloud_layer_uploads_textures;
     result.invokes_backend = report.cloud_layer_invokes_backend;
+    result.renderer_draws = report.cloud_layer_renderer_draws;
     result.exposes_native_handles = report.cloud_layer_exposes_native_handles;
     result.uses_volumetric_clouds = report.cloud_layer_uses_volumetric_clouds;
 
@@ -5621,6 +8678,8 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
         .package_evidence_ready = result.package_evidence_ready,
         .execution_evidence_ready = result.execution_evidence_ready,
         .request_ready_promotion = true,
+        .request_texture_upload = require_renderer_execution,
+        .request_backend_execution = require_renderer_execution,
     });
 
     const auto expected_texture_rows = static_cast<std::uint32_t>(expected_plan.texture_rows.size());
@@ -5652,8 +8711,14 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
         result.uses_flow_map != expected_uses_flow_map) {
         ++result.diagnostics_count;
     }
-    if (result.uploads_textures || result.invokes_backend || result.exposes_native_handles ||
-        result.uses_volumetric_clouds) {
+    if (require_renderer_execution) {
+        if (!result.uploads_textures || !result.invokes_backend || result.renderer_draws == 0) {
+            ++result.diagnostics_count;
+        }
+    } else if (result.uploads_textures || result.invokes_backend || result.renderer_draws != 0) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.uses_volumetric_clouds) {
         ++result.diagnostics_count;
     }
 
@@ -5663,9 +8728,9 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
     return result;
 }
 
-Win32DesktopPresentationEnvironmentPrecipitationReport
-evaluate_win32_desktop_presentation_environment_precipitation(const Win32DesktopPresentationReport& report,
-                                                              const bool requested) {
+Win32DesktopPresentationEnvironmentPrecipitationReport evaluate_win32_desktop_presentation_environment_precipitation(
+    const Win32DesktopPresentationReport& report, const bool requested,
+    const Win32DesktopPresentationEnvironmentPrecipitationExpectation expectation) {
     Win32DesktopPresentationEnvironmentPrecipitationReport result;
     result.particle_texture_binding = precipitation_particle_texture_binding();
     result.scene_depth_texture_binding = precipitation_scene_depth_texture_binding();
@@ -5684,6 +8749,8 @@ evaluate_win32_desktop_presentation_environment_precipitation(const Win32Desktop
     result.execution_evidence_ready = report.environment_precipitation_execution_evidence_ready;
     result.uploads_particle_buffers = report.environment_precipitation_uploads_particle_buffers;
     result.invokes_backend = report.environment_precipitation_invokes_backend;
+    result.renderer_draws = report.environment_precipitation_renderer_draws;
+    result.depth_occlusion_readback = report.environment_precipitation_depth_occlusion_readback;
     result.exposes_native_handles = report.environment_precipitation_exposes_native_handles;
     result.mutates_materials = report.environment_precipitation_mutates_materials;
     result.plays_audio = report.environment_precipitation_plays_audio;
@@ -5697,16 +8764,14 @@ evaluate_win32_desktop_presentation_environment_precipitation(const Win32Desktop
     result.shader_rows = report.environment_precipitation_shader_rows;
     result.quality_rows = report.environment_precipitation_quality_rows;
 
-    const auto expected_plan = plan_precipitation_policy(sample_environment_precipitation_policy_desc());
-    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
-                               report.environment_precipitation_policy_diagnostics_count;
+    result.diagnostics_count = report.environment_precipitation_policy_diagnostics_count;
     if (!result.requested) {
         ++result.diagnostics_count;
     }
     if (!result.d3d12_backend_selected) {
         ++result.diagnostics_count;
     }
-    if (result.kind != EnvironmentPrecipitationKind::rain && result.kind != EnvironmentPrecipitationKind::snow) {
+    if (result.weather != expectation.weather || result.kind != expectation.kind) {
         ++result.diagnostics_count;
     }
     if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
@@ -5715,19 +8780,599 @@ evaluate_win32_desktop_presentation_environment_precipitation(const Win32Desktop
     if (!result.uses_camera_near_particles || !result.uses_scene_depth_occlusion) {
         ++result.diagnostics_count;
     }
-    if (result.weather_rows == 0 || result.particle_rows == 0 || result.occlusion_rows == 0 ||
-        result.wetness_rows == 0 || result.audio_handoff_rows == 0 || result.shader_rows == 0 ||
-        result.quality_rows == 0) {
+    if (result.weather_rows != 1 || result.particle_rows != 1 || result.occlusion_rows != 1 ||
+        result.wetness_rows != expectation.wetness_rows ||
+        result.audio_handoff_rows < expectation.minimum_audio_handoff_rows || result.shader_rows != 1 ||
+        result.quality_rows != 1) {
         ++result.diagnostics_count;
     }
-    if (result.uploads_particle_buffers || result.invokes_backend || result.exposes_native_handles ||
-        result.mutates_materials || result.plays_audio) {
+    if (expectation.require_renderer_execution) {
+        if (!result.uploads_particle_buffers || !result.invokes_backend || result.renderer_draws == 0 ||
+            !result.depth_occlusion_readback) {
+            ++result.diagnostics_count;
+        }
+    } else if (result.uploads_particle_buffers || result.invokes_backend || result.renderer_draws != 0 ||
+               result.depth_occlusion_readback) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.mutates_materials || result.plays_audio) {
         ++result.diagnostics_count;
     }
 
     result.ready = result.diagnostics_count == 0;
     result.status = result.ready ? Win32DesktopPresentationEnvironmentPrecipitationStatus::ready
                                  : Win32DesktopPresentationEnvironmentPrecipitationStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationVulkanEnvironmentPrecipitationReport
+evaluate_win32_desktop_presentation_vulkan_environment_precipitation(
+    const Win32DesktopPresentationReport& report, const bool requested,
+    const Win32DesktopPresentationEnvironmentPrecipitationExpectation expectation) {
+    Win32DesktopPresentationVulkanEnvironmentPrecipitationReport result;
+    result.particle_texture_binding = precipitation_particle_texture_binding();
+    result.scene_depth_texture_binding = precipitation_scene_depth_texture_binding();
+    result.sampler_binding = precipitation_sampler_binding() + kVulkanPrecipitationSamplerBindingShift;
+    result.constants_binding = precipitation_constants_binding() + kVulkanPrecipitationConstantsBindingShift;
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_precipitation_vulkan_requested;
+    result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
+    result.weather = report.environment_precipitation_vulkan_weather;
+    result.kind = report.environment_precipitation_vulkan_kind;
+    result.shader_contract_evidence_ready = report.environment_precipitation_vulkan_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.environment_precipitation_vulkan_package_evidence_ready;
+    result.execution_evidence_ready = report.environment_precipitation_vulkan_execution_evidence_ready;
+    result.uses_camera_near_particles = report.environment_precipitation_vulkan_uses_camera_near_particles;
+    result.uses_scene_depth_occlusion = report.environment_precipitation_vulkan_uses_scene_depth_occlusion;
+    result.weather_rows = report.environment_precipitation_vulkan_weather_rows;
+    result.particle_rows = report.environment_precipitation_vulkan_particle_rows;
+    result.occlusion_rows = report.environment_precipitation_vulkan_occlusion_rows;
+    result.wetness_rows = report.environment_precipitation_vulkan_wetness_rows;
+    result.audio_handoff_rows = report.environment_precipitation_vulkan_audio_handoff_rows;
+    result.shader_rows = report.environment_precipitation_vulkan_shader_rows;
+    result.quality_rows = report.environment_precipitation_vulkan_quality_rows;
+    result.uploads_particle_buffers = report.environment_precipitation_vulkan_particle_buffer_uploads > 0U;
+    result.invokes_backend = report.environment_precipitation_vulkan_backend_invocations > 0U;
+    result.renderer_draws = report.environment_precipitation_vulkan_renderer_draws;
+    result.depth_occlusion_readback = report.environment_precipitation_vulkan_depth_occlusion_readback;
+    result.descriptor_set_bindings = report.environment_precipitation_vulkan_descriptor_set_bindings;
+    result.synchronization2_barriers = report.environment_precipitation_vulkan_synchronization2_barriers;
+    result.exposes_native_handles = report.environment_precipitation_vulkan_exposes_native_handles;
+    result.mutates_materials = report.environment_precipitation_vulkan_mutates_materials;
+    result.plays_audio = report.environment_precipitation_vulkan_plays_audio;
+
+    result.diagnostics_count = report.environment_precipitation_vulkan_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.vulkan_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (result.weather != expectation.weather || result.kind != expectation.kind) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.uses_camera_near_particles || !result.uses_scene_depth_occlusion) {
+        ++result.diagnostics_count;
+    }
+    if (result.weather_rows != 1 || result.particle_rows != 1 || result.occlusion_rows != 1 ||
+        result.wetness_rows != expectation.wetness_rows ||
+        result.audio_handoff_rows < expectation.minimum_audio_handoff_rows || result.shader_rows != 1 ||
+        result.quality_rows != 1) {
+        ++result.diagnostics_count;
+    }
+    if (expectation.require_renderer_execution) {
+        if (!result.uploads_particle_buffers || !result.invokes_backend || result.renderer_draws == 0 ||
+            !result.depth_occlusion_readback ||
+            result.descriptor_set_bindings != kVulkanPrecipitationDescriptorSetBindings ||
+            result.synchronization2_barriers == 0U) {
+            ++result.diagnostics_count;
+        }
+    } else if (result.uploads_particle_buffers || result.invokes_backend || result.renderer_draws != 0 ||
+               result.depth_occlusion_readback || result.descriptor_set_bindings != 0U ||
+               result.synchronization2_barriers != 0U) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.mutates_materials || result.plays_audio) {
+        ++result.diagnostics_count;
+    }
+
+    if (!result.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::host_evidence_required;
+    } else {
+        result.ready = result.diagnostics_count == 0;
+        result.status = result.ready ? Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::ready
+                                     : Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus::blocked;
+    }
+    return result;
+}
+
+Win32DesktopPresentationEnvironmentVolumetricFogReport
+evaluate_win32_desktop_presentation_environment_volumetric_fog(const Win32DesktopPresentationReport& report,
+                                                               const bool requested) {
+    Win32DesktopPresentationEnvironmentVolumetricFogReport result;
+    result.constants_binding = volumetric_fog_constants_binding();
+    result.constant_buffer_bytes = volumetric_fog_constants_byte_size();
+    result.froxel_output_buffer_binding = volumetric_fog_froxel_output_buffer_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_volumetric_fog_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.scene_depth_ready = report.environment_volumetric_fog_scene_depth_ready;
+    result.shader_contract_evidence_ready = report.environment_volumetric_fog_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.environment_volumetric_fog_package_evidence_ready;
+    result.execution_evidence_ready = report.environment_volumetric_fog_execution_evidence_ready;
+    result.froxel_output_ready = report.environment_volumetric_fog_froxel_output_ready;
+    result.compute_dispatches = report.environment_volumetric_fog_compute_dispatches;
+    result.exposes_native_handles = report.environment_volumetric_fog_exposes_native_handles;
+
+    const auto plan = plan_volumetric_fog_policy(VolumetricFogPolicyDesc{
+        .scene_depth_available = result.scene_depth_ready,
+        .shader_contract_evidence_ready = result.shader_contract_evidence_ready,
+        .execution_evidence_ready = result.execution_evidence_ready,
+        .package_evidence_ready = result.package_evidence_ready,
+        .request_ready_promotion = true,
+        .request_native_handle_access = result.exposes_native_handles,
+    });
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size()) +
+                               report.environment_volumetric_fog_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.froxel_output_ready || result.compute_dispatches == 0) {
+        ++result.diagnostics_count;
+    }
+    if (result.constant_buffer_bytes != static_cast<std::uint64_t>(volumetric_fog_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.froxel_output_buffer_binding != volumetric_fog_froxel_output_buffer_binding()) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationEnvironmentVolumetricFogStatus::ready
+                                 : Win32DesktopPresentationEnvironmentVolumetricFogStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport
+evaluate_win32_desktop_presentation_vulkan_environment_volumetric_fog(const Win32DesktopPresentationReport& report,
+                                                                      const bool requested) {
+    Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport result;
+    result.scene_depth_texture_binding = volumetric_fog_scene_depth_texture_binding();
+    result.scene_depth_sampler_binding = volumetric_fog_scene_depth_sampler_binding();
+    result.constants_binding = volumetric_fog_constants_binding();
+    result.constant_buffer_bytes = volumetric_fog_constants_byte_size();
+    result.froxel_output_buffer_binding = volumetric_fog_froxel_output_buffer_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_volumetric_fog_vulkan_requested;
+    result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
+    result.scene_depth_ready = report.environment_volumetric_fog_vulkan_scene_depth_ready;
+    result.shader_contract_evidence_ready = report.environment_volumetric_fog_vulkan_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.environment_volumetric_fog_vulkan_package_evidence_ready;
+    result.execution_evidence_ready = report.environment_volumetric_fog_vulkan_execution_evidence_ready;
+    result.froxel_output_ready = report.environment_volumetric_fog_vulkan_froxel_output_ready;
+    result.compute_dispatches = report.environment_volumetric_fog_vulkan_compute_dispatches;
+    result.descriptor_set_bindings = report.environment_volumetric_fog_vulkan_descriptor_set_bindings;
+    result.synchronization2_barriers = report.environment_volumetric_fog_vulkan_synchronization2_barriers;
+    result.froxel_readback_nonzero = report.environment_volumetric_fog_vulkan_froxel_readback_nonzero;
+    result.exposes_native_handles = report.environment_volumetric_fog_vulkan_exposes_native_handles;
+
+    const auto plan = plan_volumetric_fog_policy(VolumetricFogPolicyDesc{
+        .scene_depth_available = result.scene_depth_ready,
+        .shader_contract_evidence_ready = result.shader_contract_evidence_ready,
+        .execution_evidence_ready = result.execution_evidence_ready,
+        .package_evidence_ready = result.package_evidence_ready,
+        .request_ready_promotion = true,
+        .request_native_handle_access = false,
+    });
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size()) +
+                               report.environment_volumetric_fog_vulkan_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.vulkan_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.froxel_output_ready || result.compute_dispatches == 0) {
+        ++result.diagnostics_count;
+    }
+    if (result.descriptor_set_bindings != kVulkanVolumetricFogDescriptorSetBindings) {
+        ++result.diagnostics_count;
+    }
+    if (result.synchronization2_barriers == 0) {
+        ++result.diagnostics_count;
+    }
+    if (!result.froxel_readback_nonzero) {
+        ++result.diagnostics_count;
+    }
+    if (result.constant_buffer_bytes != static_cast<std::uint64_t>(volumetric_fog_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.scene_depth_texture_binding != volumetric_fog_scene_depth_texture_binding() ||
+        result.scene_depth_sampler_binding != volumetric_fog_scene_depth_sampler_binding() ||
+        result.constants_binding != volumetric_fog_constants_binding() ||
+        result.froxel_output_buffer_binding != volumetric_fog_froxel_output_buffer_binding()) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles) {
+        ++result.diagnostics_count;
+    }
+
+    if (!result.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::host_evidence_required;
+    } else {
+        result.ready = result.diagnostics_count == 0;
+        result.status = result.ready ? Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::ready
+                                     : Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::blocked;
+    }
+    return result;
+}
+
+Win32DesktopPresentationEnvironmentVolumetricCloudReport
+evaluate_win32_desktop_presentation_environment_volumetric_cloud(const Win32DesktopPresentationReport& report,
+                                                                 const bool requested,
+                                                                 const bool require_renderer_execution) {
+    Win32DesktopPresentationEnvironmentVolumetricCloudReport result;
+    result.weather_map_binding = volumetric_cloud_weather_map_binding();
+    result.shape_noise_binding = volumetric_cloud_shape_noise_binding();
+    result.erosion_noise_binding = volumetric_cloud_erosion_noise_binding();
+    result.sampler_binding = volumetric_cloud_sampler_binding();
+    result.constants_binding = volumetric_cloud_constants_binding();
+    result.constant_buffer_bytes = volumetric_cloud_constants_byte_size();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_volumetric_cloud_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.shader_contract_evidence_ready = report.environment_volumetric_cloud_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.environment_volumetric_cloud_package_evidence_ready;
+    result.execution_evidence_ready = report.environment_volumetric_cloud_execution_evidence_ready;
+    result.weather_map_ready = report.environment_volumetric_cloud_weather_map_ready;
+    result.shape_noise_ready = report.environment_volumetric_cloud_shape_noise_ready;
+    result.erosion_noise_ready = report.environment_volumetric_cloud_erosion_noise_ready;
+    result.uploads_volume_textures = report.environment_volumetric_cloud_uploads_volume_textures;
+    result.invokes_backend = report.environment_volumetric_cloud_invokes_backend;
+    result.renderer_draws = report.environment_volumetric_cloud_renderer_draws;
+    result.raymarch_passes = report.environment_volumetric_cloud_raymarch_passes;
+    result.readback_nonzero = report.environment_volumetric_cloud_readback_nonzero;
+    result.exposes_native_handles = report.environment_volumetric_cloud_exposes_native_handles;
+    result.plays_audio = report.environment_volumetric_cloud_plays_audio;
+    result.executes_precipitation = report.environment_volumetric_cloud_executes_precipitation;
+    result.map_rows = report.environment_volumetric_cloud_map_rows;
+    result.layer_rows = report.environment_volumetric_cloud_layer_rows;
+    result.lighting_rows = report.environment_volumetric_cloud_lighting_rows;
+    result.raymarch_rows = report.environment_volumetric_cloud_raymarch_rows;
+    result.temporal_rows = report.environment_volumetric_cloud_temporal_rows;
+    result.shadow_rows = report.environment_volumetric_cloud_shadow_rows;
+    result.storm_rows = report.environment_volumetric_cloud_storm_rows;
+    result.shader_contract_rows = report.environment_volumetric_cloud_shader_contract_rows;
+    result.quality_rows = report.environment_volumetric_cloud_quality_rows;
+
+    auto expected_desc = sample_environment_volumetric_cloud_policy_desc();
+    expected_desc.shader_contract_evidence_ready = result.shader_contract_evidence_ready;
+    expected_desc.package_evidence_ready = result.package_evidence_ready;
+    expected_desc.execution_evidence_ready = result.execution_evidence_ready;
+    expected_desc.request_ready_promotion = true;
+    expected_desc.request_volume_texture_upload = require_renderer_execution;
+    expected_desc.request_backend_execution = require_renderer_execution;
+    if (require_renderer_execution) {
+        expected_desc.weather_map_upload_count = result.uploads_volume_textures ? 1U : 0U;
+        expected_desc.shape_noise_upload_count = result.uploads_volume_textures ? 1U : 0U;
+        expected_desc.erosion_noise_upload_count = result.uploads_volume_textures ? 1U : 0U;
+        expected_desc.backend_invocation_count = result.invokes_backend ? 1U : 0U;
+        expected_desc.raymarch_pass_count = result.raymarch_passes;
+        expected_desc.readback_nonzero_proven = result.readback_nonzero;
+    }
+    const auto expected_plan = plan_volumetric_cloud_policy(expected_desc);
+    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
+                               report.environment_volumetric_cloud_policy_diagnostics_count;
+
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.weather_map_ready || !result.shape_noise_ready || !result.erosion_noise_ready) {
+        ++result.diagnostics_count;
+    }
+    if (result.weather_map_binding != volumetric_cloud_weather_map_binding() ||
+        result.shape_noise_binding != volumetric_cloud_shape_noise_binding() ||
+        result.erosion_noise_binding != volumetric_cloud_erosion_noise_binding() ||
+        result.sampler_binding != volumetric_cloud_sampler_binding() ||
+        result.constants_binding != volumetric_cloud_constants_binding() ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(volumetric_cloud_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.map_rows != static_cast<std::uint32_t>(expected_plan.map_rows.size()) ||
+        result.layer_rows != static_cast<std::uint32_t>(expected_plan.layer_rows.size()) ||
+        result.lighting_rows != static_cast<std::uint32_t>(expected_plan.lighting_rows.size()) ||
+        result.raymarch_rows != static_cast<std::uint32_t>(expected_plan.raymarch_rows.size()) ||
+        result.temporal_rows != static_cast<std::uint32_t>(expected_plan.temporal_rows.size()) ||
+        result.shadow_rows != static_cast<std::uint32_t>(expected_plan.shadow_rows.size()) ||
+        result.storm_rows != static_cast<std::uint32_t>(expected_plan.storm_rows.size()) ||
+        result.shader_contract_rows != static_cast<std::uint32_t>(expected_plan.shader_contract_rows.size()) ||
+        result.quality_rows != static_cast<std::uint32_t>(expected_plan.quality_rows.size())) {
+        ++result.diagnostics_count;
+    }
+    if (require_renderer_execution) {
+        if (!result.uploads_volume_textures || !result.invokes_backend || result.renderer_draws == 0 ||
+            result.raymarch_passes == 0 || !result.readback_nonzero) {
+            ++result.diagnostics_count;
+        }
+    } else if (result.uploads_volume_textures || result.invokes_backend || result.renderer_draws != 0 ||
+               result.raymarch_passes != 0 || result.readback_nonzero) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.plays_audio || result.executes_precipitation) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationEnvironmentVolumetricCloudStatus::ready
+                                 : Win32DesktopPresentationEnvironmentVolumetricCloudStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationVulkanEnvironmentVolumetricCloudReport
+evaluate_win32_desktop_presentation_vulkan_environment_volumetric_cloud(const Win32DesktopPresentationReport& report,
+                                                                        const bool requested) {
+    Win32DesktopPresentationVulkanEnvironmentVolumetricCloudReport result;
+    const auto bindings = vulkan_volumetric_cloud_probe_bindings();
+    result.weather_map_binding = bindings.weather_map_binding;
+    result.shape_noise_binding = bindings.shape_noise_binding;
+    result.erosion_noise_binding = bindings.erosion_noise_binding;
+    result.sampler_binding = bindings.sampler_binding;
+    result.constants_binding = bindings.constants_binding;
+    result.constant_buffer_bytes = volumetric_cloud_constants_byte_size();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_volumetric_cloud_vulkan_requested;
+    result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
+    result.shader_contract_evidence_ready = report.environment_volumetric_cloud_vulkan_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.environment_volumetric_cloud_vulkan_package_evidence_ready;
+    result.execution_evidence_ready = report.environment_volumetric_cloud_vulkan_execution_evidence_ready;
+    result.weather_map_ready = report.environment_volumetric_cloud_vulkan_weather_map_ready;
+    result.shape_noise_ready = report.environment_volumetric_cloud_vulkan_shape_noise_ready;
+    result.erosion_noise_ready = report.environment_volumetric_cloud_vulkan_erosion_noise_ready;
+    result.uploads_volume_textures = report.environment_volumetric_cloud_vulkan_uploads_volume_textures;
+    result.invokes_backend = report.environment_volumetric_cloud_vulkan_invokes_backend;
+    result.renderer_draws = report.environment_volumetric_cloud_vulkan_renderer_draws;
+    result.raymarch_passes = report.environment_volumetric_cloud_vulkan_raymarch_passes;
+    result.descriptor_set_bindings = report.environment_volumetric_cloud_vulkan_descriptor_set_bindings;
+    result.synchronization2_barriers = report.environment_volumetric_cloud_vulkan_synchronization2_barriers;
+    result.readback_nonzero = report.environment_volumetric_cloud_vulkan_readback_nonzero;
+    result.exposes_native_handles = report.environment_volumetric_cloud_vulkan_exposes_native_handles;
+    result.plays_audio = report.environment_volumetric_cloud_vulkan_plays_audio;
+    result.executes_precipitation = report.environment_volumetric_cloud_vulkan_executes_precipitation;
+    result.map_rows = report.environment_volumetric_cloud_vulkan_map_rows;
+    result.layer_rows = report.environment_volumetric_cloud_vulkan_layer_rows;
+    result.lighting_rows = report.environment_volumetric_cloud_vulkan_lighting_rows;
+    result.raymarch_rows = report.environment_volumetric_cloud_vulkan_raymarch_rows;
+    result.temporal_rows = report.environment_volumetric_cloud_vulkan_temporal_rows;
+    result.shadow_rows = report.environment_volumetric_cloud_vulkan_shadow_rows;
+    result.storm_rows = report.environment_volumetric_cloud_vulkan_storm_rows;
+    result.shader_contract_rows = report.environment_volumetric_cloud_vulkan_shader_contract_rows;
+    result.quality_rows = report.environment_volumetric_cloud_vulkan_quality_rows;
+
+    auto expected_desc = sample_environment_volumetric_cloud_policy_desc();
+    expected_desc.shader_contract_evidence_ready = result.shader_contract_evidence_ready;
+    expected_desc.package_evidence_ready = result.package_evidence_ready;
+    expected_desc.execution_evidence_ready = result.execution_evidence_ready;
+    expected_desc.request_ready_promotion = true;
+    expected_desc.request_volume_texture_upload = true;
+    expected_desc.request_backend_execution = true;
+    expected_desc.weather_map_upload_count = result.uploads_volume_textures ? 1U : 0U;
+    expected_desc.shape_noise_upload_count = result.uploads_volume_textures ? 1U : 0U;
+    expected_desc.erosion_noise_upload_count = result.uploads_volume_textures ? 1U : 0U;
+    expected_desc.backend_invocation_count = result.invokes_backend ? 1U : 0U;
+    expected_desc.raymarch_pass_count = result.raymarch_passes;
+    expected_desc.readback_nonzero_proven = result.readback_nonzero;
+    const auto expected_plan = plan_volumetric_cloud_policy(expected_desc);
+    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
+                               report.environment_volumetric_cloud_vulkan_policy_diagnostics_count;
+
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.vulkan_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.weather_map_ready || !result.shape_noise_ready || !result.erosion_noise_ready) {
+        ++result.diagnostics_count;
+    }
+    if (result.weather_map_binding != volumetric_cloud_weather_map_binding() ||
+        result.shape_noise_binding != volumetric_cloud_shape_noise_binding() ||
+        result.erosion_noise_binding != volumetric_cloud_erosion_noise_binding() ||
+        result.sampler_binding != volumetric_cloud_sampler_binding() + kVulkanVolumetricCloudSamplerBindingShift ||
+        result.constants_binding !=
+            volumetric_cloud_constants_binding() + kVulkanVolumetricCloudConstantsBindingShift ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(volumetric_cloud_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.map_rows != static_cast<std::uint32_t>(expected_plan.map_rows.size()) ||
+        result.layer_rows != static_cast<std::uint32_t>(expected_plan.layer_rows.size()) ||
+        result.lighting_rows != static_cast<std::uint32_t>(expected_plan.lighting_rows.size()) ||
+        result.raymarch_rows != static_cast<std::uint32_t>(expected_plan.raymarch_rows.size()) ||
+        result.temporal_rows != static_cast<std::uint32_t>(expected_plan.temporal_rows.size()) ||
+        result.shadow_rows != static_cast<std::uint32_t>(expected_plan.shadow_rows.size()) ||
+        result.storm_rows != static_cast<std::uint32_t>(expected_plan.storm_rows.size()) ||
+        result.shader_contract_rows != static_cast<std::uint32_t>(expected_plan.shader_contract_rows.size()) ||
+        result.quality_rows != static_cast<std::uint32_t>(expected_plan.quality_rows.size())) {
+        ++result.diagnostics_count;
+    }
+    if (!result.uploads_volume_textures || !result.invokes_backend || result.renderer_draws == 0 ||
+        result.raymarch_passes == 0 || result.descriptor_set_bindings != kVulkanVolumetricCloudDescriptorSetBindings ||
+        result.synchronization2_barriers == 0 || !result.readback_nonzero) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.plays_audio || result.executes_precipitation) {
+        ++result.diagnostics_count;
+    }
+
+    if (!result.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::host_evidence_required;
+    } else {
+        result.ready = result.diagnostics_count == 0;
+        result.status = result.ready ? Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::ready
+                                     : Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::blocked;
+    }
+    return result;
+}
+
+Win32DesktopPresentationEnvironmentIblRendererExecutionReport
+evaluate_win32_desktop_presentation_environment_ibl_renderer_execution(
+    const Win32DesktopPresentationEnvironmentIblRendererExecutionDesc& desc) {
+    Win32DesktopPresentationEnvironmentIblRendererExecutionReport result;
+    result.requested = desc.requested;
+    result.d3d12_backend_selected = desc.d3d12_backend_selected;
+    result.texture_cube_edge_size = desc.edge_size;
+    result.radiance_mips = desc.mip_count;
+    if (!desc.requested) {
+        return result;
+    }
+
+    if (!desc.d3d12_backend_selected || !has_shader_bytecode(desc.sampling_vertex_shader) ||
+        !has_shader_bytecode(desc.sampling_fragment_shader)) {
+        result.status = Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::blocked;
+        result.diagnostics_count = 1U;
+        return result;
+    }
+
+#if defined(MK_RUNTIME_HOST_WIN32_PRESENTATION_HAS_D3D12)
+    const auto proof =
+        rhi::d3d12::execute_environment_ibl_renderer_upload(rhi::d3d12::D3d12EnvironmentIblRendererUploadDesc{
+            .device = rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true, .enable_debug_layer = false},
+            .edge_size = desc.edge_size,
+            .mip_count = desc.mip_count,
+            .format = rhi::d3d12::D3d12EnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+            .sampling_vertex_shader = desc.sampling_vertex_shader.bytecode,
+            .sampling_fragment_shader = desc.sampling_fragment_shader.bytecode,
+        });
+
+    result.texture_cube_uploads = proof.texture_cube_uploads;
+    result.texture_cube_faces = proof.texture_cube_faces;
+    result.texture_cube_edge_size = proof.texture_cube_edge_size;
+    result.radiance_mips = proof.radiance_mips;
+    result.irradiance_rows = proof.irradiance_rows;
+    result.shader_sampling_proven = proof.shader_sampling_proven;
+    result.shader_sample_readback_nonzero = proof.shader_sample_readback_nonzero;
+    result.runtime_capture_faces = proof.runtime_capture_faces;
+    result.runtime_capture_readback_nonzero = proof.runtime_capture_readback_nonzero;
+    result.runtime_capture_readback_checksum = proof.readback_checksum;
+    result.native_handle_access = proof.native_handle_access;
+    result.ready = proof.succeeded && proof.native_handle_access == 0U && proof.texture_cube_uploads > 0U &&
+                   proof.texture_cube_faces == 6U && proof.texture_cube_edge_size == desc.edge_size &&
+                   proof.radiance_mips == desc.mip_count && proof.irradiance_rows == 9U &&
+                   proof.shader_sampling_proven && proof.shader_sample_readback_nonzero &&
+                   proof.runtime_capture_faces == 6U && proof.runtime_capture_readback_nonzero &&
+                   proof.readback_checksum != 0U;
+    result.diagnostics_count = proof.diagnostics + (result.ready ? 0U : 1U);
+    result.status = result.ready ? Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::ready
+                                 : Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::blocked;
+#else
+    result.status = Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::blocked;
+    result.diagnostics_count = 1U;
+#endif
+    return result;
+}
+
+Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport
+evaluate_win32_desktop_presentation_vulkan_environment_ibl_renderer_execution(
+    const Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionDesc& desc) {
+    Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport result;
+    result.requested = desc.requested;
+    result.vulkan_backend_selected = desc.vulkan_backend_selected;
+    result.texture_cube_edge_size = desc.edge_size;
+    result.radiance_mips = desc.mip_count;
+    if (!desc.requested) {
+        return result;
+    }
+
+    if (!desc.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::host_evidence_required;
+        result.diagnostics_count = 1U;
+        result.diagnostic = "Vulkan environment IBL renderer execution requires the Vulkan backend";
+        return result;
+    }
+    if (!has_shader_bytecode(desc.sampling_vertex_shader) || !has_shader_bytecode(desc.sampling_fragment_shader)) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::blocked;
+        result.diagnostics_count = 1U;
+        result.diagnostic = "Vulkan environment IBL renderer execution requires packaged SPIR-V shaders";
+        return result;
+    }
+
+#if defined(MK_RUNTIME_HOST_WIN32_PRESENTATION_HAS_VULKAN)
+    const auto proof =
+        rhi::vulkan::execute_environment_ibl_renderer_upload(rhi::vulkan::VulkanEnvironmentIblRendererUploadDesc{
+            .edge_size = desc.edge_size,
+            .mip_count = desc.mip_count,
+            .format = rhi::vulkan::VulkanEnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+            .sampling_vertex_shader = desc.sampling_vertex_shader.bytecode,
+            .sampling_fragment_shader = desc.sampling_fragment_shader.bytecode,
+            .sampling_vertex_entry_point = desc.sampling_vertex_shader.entry_point,
+            .sampling_fragment_entry_point = desc.sampling_fragment_shader.entry_point,
+        });
+
+    result.texture_cube_uploads = proof.texture_cube_uploads;
+    result.texture_cube_faces = proof.texture_cube_faces;
+    result.texture_cube_edge_size = proof.texture_cube_edge_size;
+    result.radiance_mips = proof.radiance_mips;
+    result.irradiance_rows = proof.irradiance_rows;
+    result.cube_compatible_image_created = proof.cube_compatible_image_created;
+    result.cube_image_view_created = proof.cube_image_view_created;
+    result.sampler_created = proof.sampler_created;
+    result.descriptor_set_bindings = proof.descriptor_set_bindings;
+    result.synchronization2_barriers = proof.synchronization2_barriers;
+    result.shader_sampling_proven = proof.shader_sampling_proven;
+    result.shader_sample_readback_nonzero = proof.shader_sample_readback_nonzero;
+    result.runtime_capture_faces = proof.runtime_capture_faces;
+    result.runtime_capture_readback_nonzero = proof.runtime_capture_readback_nonzero;
+    result.runtime_capture_readback_checksum = proof.readback_checksum;
+    result.native_handle_access = proof.native_handle_access;
+    result.diagnostic = proof.diagnostic;
+    result.ready =
+        proof.succeeded && proof.native_handle_access == 0U && proof.texture_cube_uploads > 0U &&
+        proof.texture_cube_faces == 6U && proof.texture_cube_edge_size == desc.edge_size &&
+        proof.radiance_mips == desc.mip_count && proof.irradiance_rows == 9U && proof.cube_compatible_image_created &&
+        proof.cube_image_view_created && proof.sampler_created && proof.descriptor_set_bindings == 2U &&
+        proof.synchronization2_barriers > 0U && proof.shader_sampling_proven && proof.shader_sample_readback_nonzero &&
+        proof.runtime_capture_faces == 6U && proof.runtime_capture_readback_nonzero && proof.readback_checksum != 0U;
+    result.diagnostics_count = proof.diagnostics + (result.ready ? 0U : 1U);
+    result.status = result.ready ? Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::ready
+                                 : Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::blocked;
+#else
+    result.status = Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::host_evidence_required;
+    result.diagnostics_count = 1U;
+    result.diagnostic = "Vulkan runtime-host presentation support is unavailable";
+#endif
     return result;
 }
 

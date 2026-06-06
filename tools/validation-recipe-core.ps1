@@ -219,6 +219,177 @@ function Get-SampleDesktopRuntimeGameEnvironmentFogSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameVulkanEnvironmentFogPackageSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-fog-vulkan-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentVolumetricFogSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-volumetric-fog-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVulkanEnvironmentVolumetricFogRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-volumetric-fog-vulkan-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVolumetricCloudSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-volumetric-cloud-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVolumetricCloudRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-volumetric-cloud-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVulkanVolumetricCloudRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-volumetric-cloud-vulkan-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentLightingSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-lighting-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentLightingRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-lighting-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVulkanEnvironmentIblRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-lighting-vulkan-renderer-execution'
+    )
+}
+
 function Get-SampleDesktopRuntimeGameCloudLayerSmokeArgs {
     return @(
         '--smoke',
@@ -238,6 +409,60 @@ function Get-SampleDesktopRuntimeGameCloudLayerSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameCloudLayerRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-cloud-layer-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGamePhysicalSkySmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-physical-sky-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVulkanPhysicalSkySmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-physical-sky-vulkan-package-evidence'
+    )
+}
+
 function Get-SampleDesktopRuntimeGameEnvironmentPrecipitationSmokeArgs {
     return @(
         '--smoke',
@@ -254,6 +479,120 @@ function Get-SampleDesktopRuntimeGameEnvironmentPrecipitationSmokeArgs {
         '--require-postprocess-depth-input',
         '--require-d3d12-postprocess-evidence',
         '--require-environment-precipitation-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentPrecipitationRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-precipitation-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameVulkanEnvironmentPrecipitationRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-precipitation-vulkan-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentSnowSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-snow-package-evidence'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentSnowRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-snow-renderer-execution'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentMaterialWeatheringSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-material-weathering'
+    )
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentAudioPlaybackSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-audio-playback'
     )
 }
 

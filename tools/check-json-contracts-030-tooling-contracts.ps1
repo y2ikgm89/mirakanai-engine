@@ -899,8 +899,19 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-sample-game-environment-fog-package",
+            "desktop-runtime-sample-game-vulkan-environment-fog-package",
+            "desktop-runtime-sample-game-environment-volumetric-fog-package",
+            "desktop-runtime-sample-game-vulkan-physical-sky-package",
             "desktop-runtime-sample-game-cloud-layer-package",
+            "desktop-runtime-sample-game-cloud-layer-renderer-execution",
             "desktop-runtime-sample-game-environment-precipitation-package",
+            "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
+            "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
+            "desktop-runtime-sample-game-environment-snow-package",
+            "desktop-runtime-sample-game-environment-snow-renderer-execution",
+            "desktop-runtime-sample-game-environment-material-weathering",
+            "desktop-runtime-sample-game-environment-ibl-renderer-execution",
+            "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution",
             "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
@@ -914,8 +925,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 19) {
-        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 19 recipes"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 30) {
+        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 30 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine manifest run-validation-recipe must not expose a ready apply mode"
@@ -1507,6 +1518,8 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "simd-dispatch-policy-and-evidence-v1") { foreach ($needle in @("SIMD Dispatch Policy And Evidence v1", "scalar/SSE2", "CPU SIMD dispatch", "simd_dispatch_policy_*", "Intel and AMD x86/x64", "AVX2 behind compile/runtime gates", "span-based inputs", "raw pointers non-owning", "unsupportedProductionGaps = []", "ARM NEON", "NUMA allocation execution", "GPU async overlap", "CUDA/HIP/SYCL", "broad CPU/GPU/memory optimization")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe SIMD dispatch policy selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-system-v1") { foreach ($needle in @("Environment System v1", "MK_environment", "EnvironmentProfileDesc", "validate_environment_profile", "official docs/Context7", "sky", "sun/moon", "fog", "clouds", "rain/snow/storm", "time-of-day", "quality tiers", "D3D12", "strict Vulkan", "Metal host-gated", "unsupportedProductionGaps = []", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "OpenEXR/KTX")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe environment system selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-research-legal-benchmark-baseline-v1") { foreach ($needle in @("MAVG Phase 0", "research/specification", "official-source checks", "clean-room/legal guardrails", "benchmark methodology", "stale-doc cleanup", "MAVG not implemented", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "unsupportedProductionGaps = []")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe MAVG Phase 0 selection: $needle" } }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-rendering-readiness-v1") { foreach ($needle in @("Environment Rendering Readiness v1", "Environment System v1", "official docs/Context7", "snow package readiness", "physical-sky package/Vulkan proof", "cloud/precipitation renderer execution", "volumetric-cloud execution/package readiness", "height/volumetric-fog package proof", "environment lighting/IBL package proof", "later renderer upload/runtime-capture proof", "D3D12", "strict Vulkan", "Metal host-gated", "broad optimization", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "unsupportedProductionGaps = []")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe environment rendering readiness selection: $needle" } }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-production-excellence-v1") { foreach ($needle in @("Environment Production Excellence v1", "Phase 2 is complete", "Phase 5 precipitation candidate", "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution", "environment_precipitation_vulkan_status=ready", "Phase 5 physical-sky package candidate", "desktop-runtime-sample-game-vulkan-physical-sky-package", "environment_physical_sky_vulkan_status=ready", "EnvironmentProfile.v2", "local environment volumes", "runtime cubemap capture", "renderer IBL upload", "material wetness", "snow accumulation", "weather audio playback", "strict Vulkan", "Apple-host Metal", "quality budgets", "exact environment_ready", "official docs/Context7", "OpenEXR/KTX/Basis asset pipeline", "broad renderer quality", "broad CPU/GPU/memory optimization", "all-platform unconditional parity", "unsupportedProductionGaps = []", "Dear ImGui", "SDL3", "public native handles", "no inferred Vulkan/Metal readiness", "no broad optimization", "no broad environment_ready")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe environment production excellence selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @("First-Party UI Editor Production Stack v1", "MK_editor", "MK_editor_core", "desktop-editor", "mirakana::ui", "MK_ui_renderer", "dock graph", "rich text", "DirectWrite", "Text Services Framework", "UI Automation", "D3D12 viewport/material texture display", "AI-operable", "compatibility shims", "unsupportedProductionGaps = []", "SDL3", "native handles", "Dear ImGui")) {
         if (-not $recommendedText.Contains($needle)) {
