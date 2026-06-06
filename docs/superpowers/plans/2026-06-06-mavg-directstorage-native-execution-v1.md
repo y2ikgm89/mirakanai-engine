@@ -79,7 +79,7 @@
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, and `git diff --check`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` for the C++/build/public-contract slice.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-directstorage-sdk.ps1` only when `dstorage` is installed; otherwise record the precise install blocker.
-- [ ] Commit validated candidate changes, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/mavg-directstorage-native-execution-v1`, push, and open a stacked draft PR over `codex/mavg-d3d12-residency-action-execution-v1`.
+- [x] Commit validated candidate changes, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/mavg-directstorage-native-execution-v1`, push, and open stacked draft PR #495 over `codex/mavg-d3d12-residency-action-execution-v1`.
 
 ## Validation Evidence
 
@@ -98,6 +98,8 @@
 - `git diff --check` passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-directstorage-sdk.ps1` remains host-gated here: CMake cannot find `dstorageConfig.cmake` / `dstorage-config.cmake` until the optional `directstorage-sdk` vcpkg feature is installed by an approval-capable `tools/bootstrap-deps.ps1` run.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/mavg-directstorage-native-execution-v1` passed before push.
+- Published as stacked draft PR #495 over `codex/mavg-d3d12-residency-action-execution-v1`.
 
 ## Done When
 
