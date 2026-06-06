@@ -46,6 +46,13 @@ struct MavgClusterGraphCluster {
     std::uint32_t vertex_count{0};
     MavgBounds3f bounds;
     std::uint32_t material_partition{0};
+    std::uint32_t parent_cluster_index{0};
+    bool has_parent{false};
+    std::uint32_t resident_fallback_cluster_index{0};
+    float geometric_error{0.0F};
+    std::uint32_t first_index{0};
+    std::uint32_t index_count{0};
+    std::int32_t vertex_base{0};
     std::vector<std::uint32_t> children;
 };
 
@@ -84,6 +91,14 @@ enum class MavgClusterGraphDiagnosticCode : std::uint8_t {
     unknown_child_cluster,
     self_child_cluster,
     duplicate_child_cluster,
+    missing_root_cluster,
+    missing_parent_cluster,
+    parent_cycle,
+    parent_error_less_than_child,
+    missing_resident_fallback,
+    fallback_not_ancestor,
+    invalid_cluster_draw_range,
+    invalid_cluster_geometric_error,
 };
 
 struct MavgClusterGraphDiagnostic {

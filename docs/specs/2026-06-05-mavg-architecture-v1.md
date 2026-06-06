@@ -6,11 +6,11 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active first implementation child is `mavg-asset-graph-v1`, limited to deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` graph validation and `MK_tools` `plan_mavg_cluster_graph_cook_package` / `apply_mavg_cluster_graph_cook_package` package planning; runtime, renderer, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until future focused MAVG child plans add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoint implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation only; CPU selection, renderer execution, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-asset-graph-v1.md` while the first MAVG implementation child is active.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md` while the stacked LoD milestone is active.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -68,7 +68,7 @@ The first implementation files should start in `MK_assets` and `MK_tools`:
 Implemented v1 responsibilities:
 
 - Define deterministic static cluster graph rows through `MavgClusterGraphDocument`.
-- Validate asset ids, source mesh refs, source/payload URIs, material partitions, page rows, cluster rows, bounds, child refs, duplicate ids, and package dependency edge kinds.
+- Validate asset ids, source mesh refs, source/payload URIs, material partitions, page rows, cluster rows, bounds, child refs, parent/root hierarchy, geometric error monotonicity, resident fallback ancestry, draw ranges, duplicate ids, and package dependency edge kinds.
 - Serialize and deserialize `GameEngine.MavgClusterGraph.v1` text with canonical page/material/cluster ordering.
 - Produce first-party graph descriptor, placeholder payload evidence, changed-file rows, and `.geindex` package metadata through `MavgClusterCookRequest` / `MavgClusterCookResult`.
 - Reject invalid inputs, unsafe package paths, missing dependency package rows, and malformed graph/package rows before emitting changed files.
@@ -79,9 +79,9 @@ Non-responsibilities:
 - Streaming IO execution.
 - Runtime source import.
 - Third-party simplifier ownership.
-- Parent/error/fallback hierarchy, resident fallback ancestors, CPU selection, and visible-hole prevention; those belong to future runtime selection/streaming plans.
+- CPU selection and visible-hole prevention at runtime; those belong to the selector and residency tasks in the active LoD milestone.
 
-The planned next detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. It remains unselected until `mavg-asset-graph-v1` is reviewed/merged or explicitly superseded.
+The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its first graph checkpoint is implemented; draw-ready cook payloads, CPU selection, runtime resident-page evidence, range-aware conventional indexed draws, and scene submission remain pending tasks.
 
 ### Runtime Selection
 
