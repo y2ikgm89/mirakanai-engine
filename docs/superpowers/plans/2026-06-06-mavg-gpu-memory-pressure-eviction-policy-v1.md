@@ -14,7 +14,7 @@
 
 **Plan ID:** `mavg-gpu-memory-pressure-eviction-policy-v1`
 
-**Status:** Full slice validation passed; publication pending.
+**Status:** Published as stacked draft PR #486.
 
 ## Context
 
@@ -159,7 +159,7 @@ git diff --check
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] **Step 8: Publish stacked PR.**
+- [x] **Step 8: Publish stacked PR.**
 
 Run publication preflight, commit the candidate, push `codex/mavg-gpu-memory-pressure-eviction-policy-v1`, and create a draft PR over `codex/mavg-runtime-inferred-frequency-eviction-policy-v1`.
 
@@ -173,6 +173,7 @@ Run publication preflight, commit the candidate, push `codex/mavg-gpu-memory-pre
 - Docs/static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after docs/manifest/static guard updates.
 - Focused static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/mavg_page_streaming.cpp,tests/unit/runtime_mavg_page_streaming_tests.cpp -ReuseExistingFileApiReply`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, and `git diff --check` passed.
 - Full slice validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; CTest reported 109/109 tests passing. Metal/Apple and mobile Apple diagnostics remained host-gated on Windows as expected.
+- Publication: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed with `publication-preflight: ok`; commit `4641e2df` was pushed to `origin/codex/mavg-gpu-memory-pressure-eviction-policy-v1`; stacked draft PR #486 was created over `codex/mavg-runtime-inferred-frequency-eviction-policy-v1`.
 
 ## Done When
 
