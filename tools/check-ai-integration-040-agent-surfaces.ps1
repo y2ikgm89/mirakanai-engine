@@ -3,6 +3,15 @@
 
 # Chapter 4 for check-ai-integration.ps1 static contracts.
 
+$codexEnvironmentText = Get-AgentSurfaceText ".codex/environments/environment.toml"
+foreach ($requiredNeedle in @(
+        'name = "Build Editor"',
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1"
+    )) {
+    Assert-ContainsText $codexEnvironmentText $requiredNeedle ".codex/environments/environment.toml editor action"
+}
+Assert-DoesNotContainText $codexEnvironmentText "tools/build-gui.ps1" ".codex/environments/environment.toml stale editor action"
+
 $editorPackageRegistrationDraftChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/scene_authoring.hpp"

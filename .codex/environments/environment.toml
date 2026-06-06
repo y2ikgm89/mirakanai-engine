@@ -51,9 +51,9 @@ command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps
 platform = "win32"
 
 [[actions]]
-name = "Build GUI"
+name = "Build Editor"
 icon = "run"
-command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1"
+command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1"
 platform = "win32"
 
 [[actions]]

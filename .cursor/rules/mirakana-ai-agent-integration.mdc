@@ -9,6 +9,7 @@ alwaysApply: false
 - [`AGENTS.md`](../../AGENTS.md) is the shared baseline; resolve conflicts in its favor.
 - Keep Codex, Claude Code, and Cursor surfaces behaviorally equivalent when durable workflow changes.
 - Every implementation change includes a targeted **agent-surface drift check** before completion.
+- Replace stale deferred/unsupported wording when manifest or current-capabilities evidence promotes a surface; do not layer parallel status snapshots.
 - Edit `engine/agent/manifest.fragments/*.json`, then run `tools/compose-agent-manifest.ps1 -Write`; never hand-edit `engine/agent/manifest.json`.
 - Keep `.cursor/skills/gameengine-*` as thin pointers matching `.claude/skills/` except Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
 - Run `tools/check-agents.ps1` and the **Repository consistency checklist** in [`docs/workflows.md`](../../docs/workflows.md) when agent surfaces change.

@@ -38,6 +38,6 @@ paths:
 | Baseline | `AGENTS.md` |
 | Consistency checklist | `docs/workflows.md` (**Repository consistency checklist**) |
 
-Read the Claude skill for manifest compose, publication preflight, worktree cleanup, drift checks, `check-ai-integration` / `check-json-contracts` Needle updates, and [static-contract chapter ownership](.claude/skills/gameengine-agent-integration/references/static-contract-chapters.md). Run `tools/compose-agent-manifest.ps1 -Write` after manifest fragment edits; include an agent-surface drift check before completion.
+Read the Claude skill for manifest compose, publication preflight, worktree cleanup, drift checks, stale deferred-status cleanup, `check-ai-integration` / `check-json-contracts` Needle updates, and [static-contract chapter ownership](.claude/skills/gameengine-agent-integration/references/static-contract-chapters.md). Run `tools/compose-agent-manifest.ps1 -Write` after manifest fragment edits; include an agent-surface drift check before completion.
 
 Publication: run `tools/check-publication-preflight.ps1` before staging/push/PR/merge; if `publication-preflight: blocked`, switch session/host context.

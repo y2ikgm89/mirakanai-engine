@@ -33,6 +33,7 @@ This is a startup-loaded router for Claude Code memory imports. Keep it short; p
 - `CLAUDE.md` imports `AGENTS.md`, this file, and `.claude/rules/cpp-engine.md` with official memory imports; do not rely on undocumented automatic `.claude/rules/` loading.
 - Keep always-loaded guidance specific, concise, verifiable, and durable. Do not put personal preferences, credentials, API keys, MCP connection state, stale status snapshots, or machine-local paths in tracked instructions.
 - Reusable workflows belong in `.agents/skills/`, `.claude/skills/`, and `.cursor/skills/`; path-scoped guidance belongs in rules; specialized roles belong in subagents; machine-readable capability/status claims belong in `engine/agent/manifest.fragments/*.json` plus composed `engine/agent/manifest.json`.
+- When a completed plan turns a deferred or unsupported capability into an active or ready surface, replace stale wording instead of layering a second status snapshot.
 
 ## Drift And Manifest
 
