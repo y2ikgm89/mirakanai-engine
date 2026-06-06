@@ -422,6 +422,18 @@ void append_dock_node(ui::UiDocument& document, const NativeEditorApp& app, cons
     }
 }
 
+[[nodiscard]] bool status_is(std::string_view status, std::string_view expected) noexcept {
+    return status == expected;
+}
+
+[[nodiscard]] bool positive(std::uint64_t value) noexcept {
+    return value > 0U;
+}
+
+[[nodiscard]] bool positive(std::uint32_t value) noexcept {
+    return value > 0U;
+}
+
 } // namespace
 
 FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app) {
@@ -477,6 +489,186 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
     result.renderer_submission_us = elapsed_us(renderer_submission_begin, renderer_submission_end);
     result.retained_memory_high_water_bytes = retained_payload_high_water_bytes(result);
     return result;
+}
+
+FirstPartyEditorExcellenceGate
+make_first_party_editor_excellence_gate(const FirstPartyEditorShellSmokeCounters& counters) {
+    const bool d3d12_rows_ready = status_is(counters.ui, "first_party") && status_is(counters.backend, "d3d12") &&
+                                  counters.panel_count == 11U && !counters.imgui_enabled && !counters.sdl3_enabled &&
+                                  status_is(counters.viewport_status, "d3d12_texture_ready") &&
+                                  positive(counters.viewport_visible_texture_composites) &&
+                                  !counters.viewport_native_handles_exposed &&
+                                  status_is(counters.material_preview_status, "d3d12_texture_ready") &&
+                                  positive(counters.material_preview_visible_texture_composites) &&
+                                  !counters.material_preview_native_handles_exposed;
+
+    const bool vulkan_ready = status_is(counters.viewport_vulkan_status, "vulkan_texture_ready") &&
+                              status_is(counters.material_preview_vulkan_status, "vulkan_texture_ready") &&
+                              positive(counters.viewport_vulkan_visible_texture_composites) &&
+                              positive(counters.material_preview_vulkan_visible_texture_composites) &&
+                              counters.vulkan_validation_layer_ready && !counters.vulkan_native_handles_exposed;
+    const bool vulkan_host_gated = status_is(counters.viewport_vulkan_status, "host_gated") &&
+                                   status_is(counters.material_preview_vulkan_status, "host_gated") &&
+                                   counters.viewport_vulkan_visible_texture_composites == 0U &&
+                                   counters.material_preview_vulkan_visible_texture_composites == 0U &&
+                                   !counters.vulkan_validation_layer_ready && !counters.vulkan_native_handles_exposed;
+
+    const bool metal_ready = status_is(counters.viewport_metal_status, "metal_texture_ready") &&
+                             status_is(counters.material_preview_metal_status, "metal_texture_ready") &&
+                             positive(counters.viewport_metal_visible_texture_composites) &&
+                             positive(counters.material_preview_metal_visible_texture_composites) &&
+                             counters.metal_command_queue_ready && counters.metal_metallib_ready &&
+                             counters.metal_feature_set_ready && counters.metal_feature_family_ready &&
+                             counters.metal_render_pipeline_ready && counters.metal_render_pass_ready &&
+                             counters.metal_texture_render_target_ready && counters.metal_shader_read_sampling_ready &&
+                             counters.metal_sampler_state_ready && counters.metal_drawable_present_ready &&
+                             counters.metal_command_buffer_completed && !counters.metal_native_handles_exposed;
+    const bool metal_host_gated =
+        status_is(counters.viewport_metal_status, "host_gated") &&
+        status_is(counters.material_preview_metal_status, "host_gated") &&
+        counters.viewport_metal_visible_texture_composites == 0U &&
+        counters.material_preview_metal_visible_texture_composites == 0U && !counters.metal_command_queue_ready &&
+        !counters.metal_metallib_ready && !counters.metal_feature_set_ready && !counters.metal_feature_family_ready &&
+        !counters.metal_render_pipeline_ready && !counters.metal_render_pass_ready &&
+        !counters.metal_texture_render_target_ready && !counters.metal_shader_read_sampling_ready &&
+        !counters.metal_sampler_state_ready && !counters.metal_drawable_present_ready &&
+        !counters.metal_command_buffer_completed && !counters.metal_native_handles_exposed;
+
+    const bool selected_text_rows_ready =
+        status_is(counters.text_atlas_handoff_status, "glyphs_ready_atlas_handoff_host_gated") &&
+        counters.text_font_adapter_invoked && counters.text_font_glyphs_ready && !counters.text_font_fallback_used &&
+        !counters.text_atlas_handoff_ready && !counters.text_font_native_handles_exposed &&
+        counters.text_atlas_handoff_host_gated_rows == 1U && counters.text_atlas_handoff_unsupported_rows == 1U &&
+        status_is(counters.text_shaping_status, "ready") && status_is(counters.text_font_fallback_status, "ready") &&
+        status_is(counters.text_glyph_atlas_status, "ready") && status_is(counters.text_bidi_status, "ready") &&
+        status_is(counters.text_line_break_status, "ready") &&
+        status_is(counters.text_dependency_license_records, "ready") && positive(counters.text_shaping_segment_rows) &&
+        positive(counters.text_glyph_cluster_rows) && positive(counters.text_glyph_advance_offset_rows) &&
+        positive(counters.text_bidi_boundary_rows) && positive(counters.text_word_boundary_rows) &&
+        positive(counters.text_line_break_boundary_rows) && positive(counters.text_font_face_rows) &&
+        positive(counters.text_glyph_metric_rows) && positive(counters.text_glyph_bitmap_format_rows) &&
+        positive(counters.text_glyph_atlas_allocation_rows) && positive(counters.text_font_license_provenance_rows) &&
+        !counters.text_native_handles_exposed;
+    const bool text_dependency_gated = status_is(counters.text_harfbuzz_dependency_status, "dependency_gated") &&
+                                       status_is(counters.text_freetype_dependency_status, "dependency_gated") &&
+                                       status_is(counters.text_icu_dependency_status, "dependency_gated") &&
+                                       counters.text_dependency_gated_rows == 3U;
+    const bool text_parity = selected_text_rows_ready && status_is(counters.text_harfbuzz_dependency_status, "ready") &&
+                             status_is(counters.text_freetype_dependency_status, "ready") &&
+                             status_is(counters.text_icu_dependency_status, "ready") &&
+                             counters.text_dependency_gated_rows == 0U && counters.text_atlas_handoff_ready;
+
+    const bool ime_rows_ready =
+        status_is(counters.ime_status, "win32_tsf_selected") && status_is(counters.ime_parity_status, "ready") &&
+        status_is(counters.ime_windows_tsf_status, "ready") && status_is(counters.ime_macos_status, "host_gated") &&
+        status_is(counters.ime_linux_ibus_status, "host_gated") &&
+        status_is(counters.ime_linux_fcitx_status, "host_gated") &&
+        status_is(counters.ime_android_status, "host_gated") && status_is(counters.ime_ios_status, "host_gated") &&
+        positive(counters.ime_caret_rect_rows) && positive(counters.ime_surrounding_text_rows) &&
+        counters.ime_candidate_ui_host_owned && positive(counters.ime_grapheme_boundary_rows) &&
+        positive(counters.ime_grapheme_cursor_rows) && positive(counters.ime_grapheme_selection_rows) &&
+        positive(counters.ime_composition_range_rows) && positive(counters.ime_candidate_selection_rows) &&
+        positive(counters.ime_reconversion_request_rows) && !counters.ime_native_handles_exposed;
+
+    const bool accessibility_windows_ready =
+        status_is(counters.accessibility_status, "uia_provider_ready") &&
+        status_is(counters.accessibility_parity_status, "ready") && counters.accessibility_windows_uia_patterns_ready &&
+        counters.accessibility_windows_uia_events_ready && positive(counters.accessibility_nodes) &&
+        positive(counters.accessibility_role_rows) && positive(counters.accessibility_name_rows) &&
+        positive(counters.accessibility_state_rows) && positive(counters.accessibility_focus_rows) &&
+        positive(counters.accessibility_action_rows) && positive(counters.accessibility_relationship_rows) &&
+        positive(counters.accessibility_tree_navigation_rows) && counters.accessibility_diagnostics == 0U &&
+        counters.accessibility_missing_name_diagnostics == 0U &&
+        counters.accessibility_missing_role_diagnostics == 0U &&
+        counters.accessibility_invalid_bounds_diagnostics == 0U && counters.accessibility_hidden_nodes == 0U &&
+        counters.accessibility_unsupported_pattern_diagnostics == 0U &&
+        positive(counters.accessibility_live_region_rows) && positive(counters.accessibility_uia_pattern_rows) &&
+        positive(counters.accessibility_uia_event_rows) && !counters.accessibility_native_handles_exposed;
+    const bool accessibility_cross_platform_gated =
+        status_is(counters.accessibility_macos_status, "host_gated") &&
+        status_is(counters.accessibility_linux_at_spi_status, "host_gated") &&
+        status_is(counters.accessibility_android_status, "host_gated") &&
+        status_is(counters.accessibility_ios_status, "host_gated");
+    const bool accessibility_parity = accessibility_windows_ready &&
+                                      status_is(counters.accessibility_macos_status, "ready") &&
+                                      status_is(counters.accessibility_linux_at_spi_status, "ready") &&
+                                      status_is(counters.accessibility_android_status, "ready") &&
+                                      status_is(counters.accessibility_ios_status, "ready");
+
+    const bool docking_rows_ready =
+        status_is(counters.docking_status, "single_window_ready") && counters.dock_tab_header_count == 11U &&
+        counters.dock_split_gutter_count == 3U && counters.dock_active_panel_count == 4U &&
+        counters.dock_focusable_control_count == 11U && status_is(counters.multi_window_docking_status, "ready") &&
+        counters.dock_window_count == 1U && positive(counters.dock_tear_off_command_count) &&
+        positive(counters.dock_window_merge_command_count) && status_is(counters.workspace_v3_status, "ready") &&
+        !counters.multi_window_native_handles_exposed;
+    const bool rich_text_rows_ready =
+        status_is(counters.rich_text_edit_status, "ready") && positive(counters.rich_text_editable_documents) &&
+        positive(counters.rich_text_command_rows) && counters.rich_text_clipboard_plain_ready &&
+        counters.rich_text_clipboard_rich_ready && !counters.rich_text_native_handles_exposed;
+    const bool ai_operation_rows_ready =
+        status_is(counters.ai_operation_excellence_status, "ready") && positive(counters.ai_operation_snapshot_rows) &&
+        positive(counters.ai_operation_command_rows) && counters.ai_operation_mutating_commands_revision_checked &&
+        !counters.ai_operation_native_handles_exposed;
+    const bool cross_platform_ready =
+        status_is(counters.cross_platform_shell_status, "ready") && status_is(counters.macos_shell_status, "ready") &&
+        status_is(counters.linux_shell_status, "ready") && status_is(counters.android_shell_status, "ready") &&
+        status_is(counters.ios_shell_status, "ready") && !counters.cross_platform_shell_native_handles_exposed;
+    const bool cross_platform_host_gated = status_is(counters.cross_platform_shell_status, "host_gated") &&
+                                           status_is(counters.macos_shell_status, "host_gated") &&
+                                           status_is(counters.linux_shell_status, "host_gated") &&
+                                           status_is(counters.android_shell_status, "unsupported") &&
+                                           status_is(counters.ios_shell_status, "unsupported") &&
+                                           positive(counters.cross_platform_shell_core_contract_rows) &&
+                                           positive(counters.cross_platform_shell_macos_adapter_rows) &&
+                                           positive(counters.cross_platform_shell_linux_adapter_rows) &&
+                                           !counters.cross_platform_shell_native_handles_exposed;
+    const bool performance_rows_ready =
+        status_is(counters.ui_performance_budget_status, "ready") && counters.ui_performance_layout_us_p95 > 0.0 &&
+        counters.ui_performance_document_build_us_p95 > 0.0 &&
+        counters.ui_performance_renderer_submission_us_p95 > 0.0 && positive(counters.ui_performance_text_runs) &&
+        positive(counters.ui_performance_renderer_boxes) &&
+        positive(counters.ui_performance_visible_texture_composites) &&
+        positive(counters.ui_performance_memory_high_water_bytes) && counters.ui_performance_budget_violations == 0U &&
+        counters.ui_performance_diagnostics == 0U;
+    const bool retained_rows_ready =
+        status_is(counters.ui_retained_diff_status, "ready") && counters.ui_retained_dirty_rows == 0U &&
+        positive(counters.ui_retained_layout_cache_hits) && counters.ui_retained_layout_cache_misses == 0U &&
+        positive(counters.ui_retained_text_cache_hits) && counters.ui_retained_text_cache_misses == 0U &&
+        positive(counters.ui_retained_submission_reused_rows) && counters.ui_retained_submission_rebuilt_rows == 0U &&
+        !counters.ui_retained_cache_native_handle_access;
+
+    const bool broad_optimization_claimed = counters.ui_performance_broad_optimization_claimed ||
+                                            counters.first_party_editor_excellence_broad_optimization_claimed;
+    const bool native_handles_exposed =
+        counters.viewport_native_handles_exposed || counters.material_preview_native_handles_exposed ||
+        counters.vulkan_native_handles_exposed || counters.metal_native_handles_exposed ||
+        counters.text_font_native_handles_exposed || counters.text_native_handles_exposed ||
+        counters.ime_native_handles_exposed || counters.accessibility_native_handles_exposed ||
+        counters.multi_window_native_handles_exposed || counters.rich_text_native_handles_exposed ||
+        counters.ai_operation_native_handles_exposed || counters.cross_platform_shell_native_handles_exposed ||
+        counters.ui_retained_cache_native_handle_access ||
+        counters.first_party_editor_excellence_native_handles_exposed;
+
+    const bool ready = d3d12_rows_ready && (vulkan_ready || vulkan_host_gated) && (metal_ready || metal_host_gated) &&
+                       selected_text_rows_ready && (text_parity || text_dependency_gated) && ime_rows_ready &&
+                       accessibility_windows_ready && (accessibility_parity || accessibility_cross_platform_gated) &&
+                       docking_rows_ready && rich_text_rows_ready && ai_operation_rows_ready &&
+                       (cross_platform_ready || cross_platform_host_gated) && performance_rows_ready &&
+                       retained_rows_ready && !broad_optimization_claimed && !native_handles_exposed;
+
+    return FirstPartyEditorExcellenceGate{
+        .status = ready ? "ready" : "not_ready",
+        .ready = ready,
+        .windows_d3d12 = d3d12_rows_ready,
+        .vulkan = vulkan_ready,
+        .metal = metal_ready,
+        .cross_platform = cross_platform_ready,
+        .text_parity = text_parity,
+        .accessibility_parity = accessibility_parity,
+        .broad_optimization_claimed = broad_optimization_claimed,
+        .native_handles_exposed = native_handles_exposed,
+    };
 }
 
 FirstPartyEditorShellSmokeCounters
@@ -562,7 +754,7 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const bool ai_operation_excellence_ready =
         ai_operation_snapshot_rows >= 10U && !ai_command_catalog.commands.empty() &&
         ai_operation_mutating_commands_revision_checked && !ai_operation_native_handles_exposed;
-    return FirstPartyEditorShellSmokeCounters{
+    FirstPartyEditorShellSmokeCounters counters{
         .ui = "first_party",
         .backend = "d3d12",
         .panel_count = document.panel_root_count,
@@ -760,6 +952,18 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .ui_retained_submission_rebuilt_rows = count_to_u64(retained_diff.submission_rebuilt_rows),
         .ui_retained_cache_native_handle_access = retained_diff.native_handle_access,
     };
+    const auto excellence_gate = make_first_party_editor_excellence_gate(counters);
+    counters.first_party_editor_excellence_status = excellence_gate.status;
+    counters.first_party_editor_excellence = excellence_gate.ready;
+    counters.first_party_editor_excellence_windows_d3d12 = excellence_gate.windows_d3d12;
+    counters.first_party_editor_excellence_vulkan = excellence_gate.vulkan;
+    counters.first_party_editor_excellence_metal = excellence_gate.metal;
+    counters.first_party_editor_excellence_cross_platform = excellence_gate.cross_platform;
+    counters.first_party_editor_excellence_text_parity = excellence_gate.text_parity;
+    counters.first_party_editor_excellence_accessibility_parity = excellence_gate.accessibility_parity;
+    counters.first_party_editor_excellence_broad_optimization_claimed = excellence_gate.broad_optimization_claimed;
+    counters.first_party_editor_excellence_native_handles_exposed = excellence_gate.native_handles_exposed;
+    return counters;
 }
 
 EditorAiOperationUxStatusDesc

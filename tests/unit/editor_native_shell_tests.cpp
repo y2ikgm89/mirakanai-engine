@@ -756,6 +756,194 @@ MK_TEST("editor first party shell smoke counters report imgui disabled and multi
     MK_REQUIRE(!counters.ai_operation_native_handles_exposed);
 }
 
+MK_TEST("editor first party excellence gate requires exact selected rows and rejects broad parity claims") {
+    const mirakana::editor::FirstPartyEditorShellSmokeCounters counters{
+        .ui = "first_party",
+        .backend = "d3d12",
+        .panel_count = 11U,
+        .imgui_enabled = false,
+        .sdl3_enabled = false,
+        .viewport_status = "d3d12_texture_ready",
+        .viewport_visible_texture_composites = 1U,
+        .viewport_native_handles_exposed = false,
+        .viewport_vulkan_status = "host_gated",
+        .viewport_vulkan_visible_texture_composites = 0U,
+        .viewport_metal_status = "host_gated",
+        .viewport_metal_visible_texture_composites = 0U,
+        .material_preview_status = "d3d12_texture_ready",
+        .material_preview_visible_texture_composites = 1U,
+        .material_preview_native_handles_exposed = false,
+        .material_preview_vulkan_status = "host_gated",
+        .material_preview_vulkan_visible_texture_composites = 0U,
+        .material_preview_metal_status = "host_gated",
+        .material_preview_metal_visible_texture_composites = 0U,
+        .vulkan_validation_layer_ready = false,
+        .vulkan_native_handles_exposed = false,
+        .metal_native_handles_exposed = false,
+        .text_atlas_handoff_status = "glyphs_ready_atlas_handoff_host_gated",
+        .text_font_adapter_invoked = true,
+        .text_font_glyphs_ready = true,
+        .text_font_fallback_used = false,
+        .text_atlas_handoff_ready = false,
+        .text_font_native_handles_exposed = false,
+        .text_atlas_handoff_host_gated_rows = 1U,
+        .text_atlas_handoff_unsupported_rows = 1U,
+        .text_shaping_status = "ready",
+        .text_font_fallback_status = "ready",
+        .text_glyph_atlas_status = "ready",
+        .text_bidi_status = "ready",
+        .text_line_break_status = "ready",
+        .text_dependency_license_records = "ready",
+        .text_harfbuzz_dependency_status = "dependency_gated",
+        .text_freetype_dependency_status = "dependency_gated",
+        .text_icu_dependency_status = "dependency_gated",
+        .text_shaping_segment_rows = 1U,
+        .text_glyph_cluster_rows = 1U,
+        .text_glyph_advance_offset_rows = 1U,
+        .text_bidi_boundary_rows = 1U,
+        .text_word_boundary_rows = 1U,
+        .text_line_break_boundary_rows = 1U,
+        .text_font_face_rows = 1U,
+        .text_glyph_metric_rows = 1U,
+        .text_glyph_bitmap_format_rows = 1U,
+        .text_glyph_atlas_allocation_rows = 1U,
+        .text_font_license_provenance_rows = 1U,
+        .text_dependency_gated_rows = 3U,
+        .text_native_handles_exposed = false,
+        .ime_status = "win32_tsf_selected",
+        .ime_caret_rect_rows = 1U,
+        .ime_surrounding_text_rows = 1U,
+        .ime_candidate_ui_host_owned = true,
+        .ime_parity_status = "ready",
+        .ime_windows_tsf_status = "ready",
+        .ime_macos_status = "host_gated",
+        .ime_linux_ibus_status = "host_gated",
+        .ime_linux_fcitx_status = "host_gated",
+        .ime_android_status = "host_gated",
+        .ime_ios_status = "host_gated",
+        .ime_grapheme_boundary_rows = 1U,
+        .ime_grapheme_cursor_rows = 1U,
+        .ime_grapheme_selection_rows = 1U,
+        .ime_composition_range_rows = 1U,
+        .ime_candidate_selection_rows = 1U,
+        .ime_reconversion_request_rows = 1U,
+        .ime_native_handles_exposed = false,
+        .accessibility_status = "uia_provider_ready",
+        .accessibility_nodes = 1U,
+        .accessibility_role_rows = 1U,
+        .accessibility_name_rows = 1U,
+        .accessibility_state_rows = 1U,
+        .accessibility_focus_rows = 1U,
+        .accessibility_action_rows = 1U,
+        .accessibility_relationship_rows = 1U,
+        .accessibility_tree_navigation_rows = 1U,
+        .accessibility_diagnostics = 0U,
+        .accessibility_missing_name_diagnostics = 0U,
+        .accessibility_missing_role_diagnostics = 0U,
+        .accessibility_invalid_bounds_diagnostics = 0U,
+        .accessibility_hidden_nodes = 0U,
+        .accessibility_unsupported_pattern_diagnostics = 0U,
+        .accessibility_parity_status = "ready",
+        .accessibility_windows_uia_patterns_ready = true,
+        .accessibility_windows_uia_events_ready = true,
+        .accessibility_macos_status = "host_gated",
+        .accessibility_linux_at_spi_status = "host_gated",
+        .accessibility_android_status = "host_gated",
+        .accessibility_ios_status = "host_gated",
+        .accessibility_live_region_rows = 1U,
+        .accessibility_uia_pattern_rows = 1U,
+        .accessibility_uia_event_rows = 1U,
+        .accessibility_native_handles_exposed = false,
+        .docking_status = "single_window_ready",
+        .dock_tab_header_count = 11U,
+        .dock_split_gutter_count = 3U,
+        .dock_active_panel_count = 4U,
+        .dock_focusable_control_count = 11U,
+        .multi_window_docking_status = "ready",
+        .dock_window_count = 1U,
+        .dock_tear_off_command_count = 1U,
+        .dock_window_merge_command_count = 1U,
+        .workspace_v3_status = "ready",
+        .multi_window_native_handles_exposed = false,
+        .rich_text_edit_status = "ready",
+        .rich_text_editable_documents = 1U,
+        .rich_text_command_rows = 9U,
+        .rich_text_clipboard_plain_ready = true,
+        .rich_text_clipboard_rich_ready = true,
+        .rich_text_native_handles_exposed = false,
+        .ai_operation_excellence_status = "ready",
+        .ai_operation_snapshot_rows = 10U,
+        .ai_operation_command_rows = 20U,
+        .ai_operation_mutating_commands_revision_checked = true,
+        .ai_operation_native_handles_exposed = false,
+        .cross_platform_shell_status = "host_gated",
+        .macos_shell_status = "host_gated",
+        .linux_shell_status = "host_gated",
+        .android_shell_status = "unsupported",
+        .ios_shell_status = "unsupported",
+        .cross_platform_shell_core_contract_rows = 9U,
+        .cross_platform_shell_macos_adapter_rows = 5U,
+        .cross_platform_shell_linux_adapter_rows = 5U,
+        .cross_platform_shell_native_handles_exposed = false,
+        .ui_performance_budget_status = "ready",
+        .ui_performance_layout_us_p95 = 1.0,
+        .ui_performance_document_build_us_p95 = 1.0,
+        .ui_performance_renderer_submission_us_p95 = 1.0,
+        .ui_performance_text_runs = 1U,
+        .ui_performance_renderer_boxes = 1U,
+        .ui_performance_visible_texture_composites = 1U,
+        .ui_performance_memory_high_water_bytes = 1U,
+        .ui_performance_budget_violations = 0U,
+        .ui_performance_diagnostics = 0U,
+        .ui_performance_broad_optimization_claimed = false,
+        .ui_retained_diff_status = "ready",
+        .ui_retained_dirty_rows = 0U,
+        .ui_retained_layout_cache_hits = 1U,
+        .ui_retained_layout_cache_misses = 0U,
+        .ui_retained_text_cache_hits = 1U,
+        .ui_retained_text_cache_misses = 0U,
+        .ui_retained_submission_reused_rows = 1U,
+        .ui_retained_submission_rebuilt_rows = 0U,
+        .ui_retained_cache_native_handle_access = false,
+    };
+    const auto gate = mirakana::editor::make_first_party_editor_excellence_gate(counters);
+
+    MK_REQUIRE(gate.status == "ready");
+    MK_REQUIRE(gate.ready);
+    MK_REQUIRE(gate.windows_d3d12);
+    MK_REQUIRE(!gate.vulkan);
+    MK_REQUIRE(!gate.metal);
+    MK_REQUIRE(!gate.cross_platform);
+    MK_REQUIRE(!gate.text_parity);
+    MK_REQUIRE(!gate.accessibility_parity);
+    MK_REQUIRE(!gate.broad_optimization_claimed);
+    MK_REQUIRE(!gate.native_handles_exposed);
+
+    auto native_handle_claim = counters;
+    native_handle_claim.viewport_native_handles_exposed = true;
+    const auto native_handle_gate = mirakana::editor::make_first_party_editor_excellence_gate(native_handle_claim);
+    MK_REQUIRE(native_handle_gate.status == "not_ready");
+    MK_REQUIRE(!native_handle_gate.ready);
+    MK_REQUIRE(native_handle_gate.native_handles_exposed);
+
+    auto broad_optimization_claim = counters;
+    broad_optimization_claim.ui_performance_broad_optimization_claimed = true;
+    const auto broad_optimization_gate =
+        mirakana::editor::make_first_party_editor_excellence_gate(broad_optimization_claim);
+    MK_REQUIRE(broad_optimization_gate.status == "not_ready");
+    MK_REQUIRE(!broad_optimization_gate.ready);
+    MK_REQUIRE(broad_optimization_gate.broad_optimization_claimed);
+
+    auto unsupported_parity_claim = counters;
+    unsupported_parity_claim.viewport_vulkan_status = "vulkan_texture_ready";
+    unsupported_parity_claim.viewport_vulkan_visible_texture_composites = 1U;
+    const auto unsupported_parity_gate =
+        mirakana::editor::make_first_party_editor_excellence_gate(unsupported_parity_claim);
+    MK_REQUIRE(unsupported_parity_gate.status == "not_ready");
+    MK_REQUIRE(!unsupported_parity_gate.ready);
+    MK_REQUIRE(!unsupported_parity_gate.vulkan);
+}
+
 MK_TEST("editor first party shell smoke counters copy UI performance budget rows") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     const auto viewport_plan =

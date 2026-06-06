@@ -23,16 +23,14 @@ Prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, 
 AI operation status stays in first-party value rows such as `EditorAiOperationSnapshot.status_rows`, including `editor.ai.ime.session`, `editor.ai.ime.parity`, `editor.ai.accessibility.uia_provider`, `editor.ai.accessibility.parity`, `editor.ai.viewport.backend_parity`, and `editor.ai.operation.excellence`.
 Reviewed rich-text commands keep read-only copy rows such as `<rich_text_document_id>.copy_selection_plain_text`; editable documents may expose the edit/copy/paste rows documented in Claude/Codex skills. Reviewed diagnostics/refresh commands include `editor.text_font.diagnostics.copy`, `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and `editor.material_preview.backend_readiness.refresh`; every mutating AI command requires `expected_revision`.
 
+Phase 12 closes the excellence milestone with exact selected-row aggregate counters:
+`first_party_editor_excellence_status=ready`, `first_party_editor_excellence=1`, Windows D3D12 `=1`, and Vulkan/Metal/cross-platform/text/accessibility/broad-optimization/native-handle claims `=0`.
+Keep the exact selected-row aggregate explicit, including `first_party_editor_excellence_text_parity=0` and `first_party_editor_excellence_accessibility_parity=0`.
+
 Selected Windows DirectWrite/TSF/UIA rows are first-party smoke evidence only: `editor_text_shaping_status=ready`, `editor_ime_parity_status=ready`, `NativeEditorTsfTextStoreEvidence`, `NativeEditorUiaProviderState`, `editor_accessibility_parity_status=ready`, `editor_accessibility_windows_uia_patterns_ready=1`, `editor_accessibility_windows_uia_events_ready=1`, non-Windows `editor_ime_*_status=host_gated` and `editor_accessibility_*_status=host_gated`, and zero native-handle rows.
 
-Selected editor texture-display rows include D3D12 visible readiness, host/toolchain-gated Vulkan counter evidence, and Apple-host-gated Metal counter evidence:
-`editor_shell_viewport_vulkan_status`, `editor_shell_material_preview_vulkan_status`,
-`editor_shell_vulkan_validation_layer_ready`, `editor_shell_vulkan_native_handles_exposed=0`,
-`editor_shell_viewport_metal_status`, `editor_shell_material_preview_metal_status`,
-`editor_shell_metal_feature_set_ready`, and `editor_shell_metal_native_handles_exposed=0`.
-Do not infer Metal readiness from D3D12 or Vulkan evidence; `metal_texture_ready` requires the reviewed
-`renderer-metal-apple-host-evidence` Apple-host recipe and no native handle exposure. Default visible-shell Vulkan/Metal backend
-selection and broader material-preview GPU parity remain future focused phases.
+Selected editor texture rows include D3D12 visible readiness plus host/toolchain-gated Vulkan and Apple-host-gated Metal counter evidence.
+Do not infer Metal readiness from D3D12 or Vulkan; `metal_texture_ready` requires `renderer-metal-apple-host-evidence` on Apple host.
 
 When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, non-Windows IME execution, or external accessibility-tool execution. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 

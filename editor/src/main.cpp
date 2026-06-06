@@ -220,6 +220,23 @@ int main(int argc, char** argv) {
             << (counters.ai_operation_mutating_commands_revision_checked ? 1 : 0) << '\n'
             << "editor_ai_operation_native_handles_exposed=" << (counters.ai_operation_native_handles_exposed ? 1 : 0)
             << '\n'
+            << "first_party_editor_excellence_status=" << counters.first_party_editor_excellence_status << '\n'
+            << "first_party_editor_excellence=" << (counters.first_party_editor_excellence ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_windows_d3d12="
+            << (counters.first_party_editor_excellence_windows_d3d12 ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_vulkan=" << (counters.first_party_editor_excellence_vulkan ? 1 : 0)
+            << '\n'
+            << "first_party_editor_excellence_metal=" << (counters.first_party_editor_excellence_metal ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_cross_platform="
+            << (counters.first_party_editor_excellence_cross_platform ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_text_parity="
+            << (counters.first_party_editor_excellence_text_parity ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_accessibility_parity="
+            << (counters.first_party_editor_excellence_accessibility_parity ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_broad_optimization_claimed="
+            << (counters.first_party_editor_excellence_broad_optimization_claimed ? 1 : 0) << '\n'
+            << "first_party_editor_excellence_native_handles_exposed="
+            << (counters.first_party_editor_excellence_native_handles_exposed ? 1 : 0) << '\n'
             << "editor_shell_resizes=" << result.resize_count << '\n'
             << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n'
             << "editor_shell_renderer_boxes_submitted=" << result.renderer_boxes_submitted << '\n'

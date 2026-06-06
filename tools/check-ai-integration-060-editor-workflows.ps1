@@ -2576,6 +2576,32 @@ foreach ($check in $nativeEditorUiPerformanceBudgetChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor UI performance budget contract: $($missingNeedles -join ', ')"
     }
 }
+$editorFirstPartyExcellenceAggregateChecks = @(
+    @{ Path = "editor/src/first_party_editor_document.hpp"; Needles = @("FirstPartyEditorExcellenceGate", "make_first_party_editor_excellence_gate", "first_party_editor_excellence_status", "first_party_editor_excellence_broad_optimization_claimed", "first_party_editor_excellence_native_handles_exposed") },
+    @{ Path = "editor/src/first_party_editor_document.cpp"; Needles = @("make_first_party_editor_excellence_gate", "first_party_editor_excellence_status", "first_party_editor_excellence_windows_d3d12", "text_dependency_gated", "accessibility_cross_platform_gated", "broad_optimization_claimed", "native_handles_exposed") },
+    @{ Path = "editor/src/main.cpp"; Needles = @("first_party_editor_excellence_status=", "first_party_editor_excellence_windows_d3d12=", "first_party_editor_excellence_vulkan=", "first_party_editor_excellence_metal=", "first_party_editor_excellence_cross_platform=", "first_party_editor_excellence_text_parity=", "first_party_editor_excellence_accessibility_parity=", "first_party_editor_excellence_broad_optimization_claimed=", "first_party_editor_excellence_native_handles_exposed=") },
+    @{ Path = "CMakeLists.txt"; Needles = @("first_party_editor_excellence_status=ready", "first_party_editor_excellence=1", "first_party_editor_excellence_windows_d3d12=1", "first_party_editor_excellence_vulkan=0", "first_party_editor_excellence_metal=0", "first_party_editor_excellence_cross_platform=0", "first_party_editor_excellence_text_parity=0", "first_party_editor_excellence_accessibility_parity=0", "first_party_editor_excellence_broad_optimization_claimed=0", "first_party_editor_excellence_native_handles_exposed=0") },
+    @{ Path = "tests/unit/editor_native_shell_tests.cpp"; Needles = @("editor first party excellence gate requires exact selected rows and rejects broad parity claims", "make_first_party_editor_excellence_gate", "unsupported_parity_claim", "!gate.text_parity", "!gate.accessibility_parity") },
+    @{ Path = "docs/superpowers/plans/2026-06-06-first-party-ui-editor-excellence-v1.md"; Needles = @("Phase 12 Evidence", "first_party_editor_excellence_status=ready", "first_party_editor_excellence_text_parity=0", "first_party_editor_excellence_accessibility_parity=0", "exact selected-row aggregate") },
+    @{ Path = "docs/current-capabilities.md"; Needles = @("first_party_editor_excellence_status=ready", "first_party_editor_excellence=1", "first_party_editor_excellence_text_parity=0", "first_party_editor_excellence_accessibility_parity=0", "exact selected-row aggregate") },
+    @{ Path = "docs/editor.md"; Needles = @("Phase 12 aggregate", "first_party_editor_excellence_windows_d3d12=1", "first_party_editor_excellence_vulkan=0", "first_party_editor_excellence_broad_optimization_claimed=0") },
+    @{ Path = ".agents/skills/editor-change/SKILL.md"; Needles = @("first_party_editor_excellence_status=ready", "first_party_editor_excellence_text_parity=0", "exact selected-row aggregate") },
+    @{ Path = ".claude/skills/gameengine-editor/SKILL.md"; Needles = @("first_party_editor_excellence_status=ready", "first_party_editor_excellence_text_parity=0", "exact selected-row aggregate") },
+    @{ Path = ".cursor/skills/gameengine-editor/SKILL.md"; Needles = @("first_party_editor_excellence_status=ready", "first_party_editor_excellence_text_parity=0", "exact selected-row aggregate") },
+    @{ Path = "engine/agent/manifest.json"; Needles = @("first_party_editor_excellence_status=ready", "first_party_editor_excellence_windows_d3d12=1", "first_party_editor_excellence_text_parity=0", "first_party_editor_excellence_accessibility_parity=0", "exact selected-row aggregate") }
+)
+foreach ($check in $editorFirstPartyExcellenceAggregateChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing first-party editor excellence aggregate contract: $($missingNeedles -join ', ')"
+    }
+}
 $editorAiUxOperationChecks = @(
     @{ Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"; Needles = @("EditorAiOperationStatusRow", "EditorAiOperationUxStatusDesc", "std::vector<EditorAiOperationStatusRow> status_rows", "expected_revision", "output_mime_type", "ai_operation_excellence_status") },
     @{ Path = "editor/core/src/ai_operation_surface.cpp"; Needles = @("editor.ai.dock.selected_panel", "editor.ai.window.layout", "editor.ai.dock.multi_window", "editor.ai.rich_text.documents", "editor.ai.rich_text.editable_documents", "editor.ai.text_input.focused_target", "editor.ai.adapter.text_font", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.ime.candidate_selection", "editor.ai.ime.reconversion", "editor.ai.ime.platform_host_gates", "editor.ai.accessibility.uia_provider", "editor.ai.accessibility.parity", "editor.ai.viewport.display", "editor.ai.viewport.backend_parity", "editor.ai.material_preview.display", "editor.ai.material_preview.backend_parity", "editor.ai.performance.budgets", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "editor.accessibility.diagnostics.copy", "editor.viewport.backend_readiness.refresh", "editor.material_preview.backend_readiness.refresh", ".copy_plain_text", ".copy_selection_plain_text", "native_handle_unsupported", "shell_execution_unsupported", "validation_recipe_execution_unsupported", "package_script_execution_unsupported", "file_mutation_unsupported", "screen_coordinates_unsupported", "missing_expected_revision", "stale_revision") },

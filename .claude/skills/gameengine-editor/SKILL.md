@@ -81,7 +81,14 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and
   `editor.material_preview.backend_readiness.refresh`, and smoke rows include `editor_ai_operation_excellence_status=ready`,
   `editor_ai_operation_mutating_commands_revision_checked=1`, and `editor_ai_operation_native_handles_exposed=0`. Every mutating
-  AI command requires `expected_revision`; package scripts, file mutation, validation recipes, shell/process execution, screen
+  AI command requires `expected_revision`. Phase 12 closes the milestone with the exact selected-row aggregate
+  `first_party_editor_excellence_status=ready`, `first_party_editor_excellence=1`,
+  `first_party_editor_excellence_windows_d3d12=1`, `first_party_editor_excellence_vulkan=0`,
+  `first_party_editor_excellence_metal=0`, `first_party_editor_excellence_cross_platform=0`,
+  `first_party_editor_excellence_text_parity=0`, `first_party_editor_excellence_accessibility_parity=0`,
+  `first_party_editor_excellence_broad_optimization_claimed=0`, and
+  `first_party_editor_excellence_native_handles_exposed=0`; this exact selected-row aggregate is not a broad Vulkan/Metal,
+  cross-platform shell, text/font, accessibility, external-tool, or optimization claim. Package scripts, file mutation, validation recipes, shell/process execution, screen
   coordinates, and native-handle requests fail closed. Visible OS-level multi-window drag/drop
   shell restoration, help rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, custom native IME candidate UI,
   non-Windows IME execution, external OS accessibility-tool execution beyond first-party evidence,

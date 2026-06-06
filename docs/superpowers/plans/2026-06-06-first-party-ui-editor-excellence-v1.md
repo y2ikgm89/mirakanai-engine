@@ -4,7 +4,7 @@
 
 **Plan ID:** `first-party-ui-editor-excellence-v1`
 
-**Status:** Active. Phase 0 selected this milestone in `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` while preserving `unsupportedProductionGaps = []` and leaving every implementation claim unready until its exact phase gate passes.
+**Status:** Completed. Phase 12 closed this milestone and returned `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to the production-completion master selection gate while preserving `unsupportedProductionGaps = []`.
 
 **Goal:** Promote the first-party retained `MK_editor` / `mirakana::ui` stack into a production-grade, AI-operable, high-performance editor and UI platform covering broad optimization, multi-window docking, complete editable rich text, Vulkan/Metal editor texture parity, cross-platform editor shells, and broad text/font/IME/accessibility parity.
 
@@ -26,7 +26,7 @@ Audit sources used on 2026-06-06:
 - `engine/agent/manifest.fragments/005-applications.json`
 - `engine/agent/manifest.fragments/004-modules.json`
 - Targeted `rg` scans over `editor`, `engine/ui`, `engine/ui_renderer`, `engine/platform`, `engine/rhi`, `engine/agent`, `tools`, `CMakeLists.txt`, and `CMakePresets.json`
-- Current manifest summary: `unsupportedProductionGaps = 0`, `validationRecipes = 69`, `modules = 32`, `currentActivePlan = docs/superpowers/plans/2026-06-06-first-party-ui-editor-excellence-v1.md`, `recommendedNextPlan.id = first-party-ui-editor-excellence-v1`
+- Phase 0 manifest selection summary: `unsupportedProductionGaps = 0`, `validationRecipes = 69`, `modules = 32`, `currentActivePlan = docs/superpowers/plans/2026-06-06-first-party-ui-editor-excellence-v1.md`, `recommendedNextPlan.id = first-party-ui-editor-excellence-v1`; Phase 12 later returned the live pointer to the production-completion master selection gate.
 
 Current proven state:
 
@@ -231,7 +231,7 @@ Expected: all checks pass and no C++ runtime behavior changes.
 
 Phase 0 validation evidence:
 
-- `tools/agent-context.ps1 -ContextProfile Minimal` confirms `currentActivePlan = docs/superpowers/plans/2026-06-06-first-party-ui-editor-excellence-v1.md`, `recommendedNextPlan.id = first-party-ui-editor-excellence-v1`, and `unsupportedProductionGaps = []`.
+- At Phase 0 selection time, `tools/agent-context.ps1 -ContextProfile Minimal` confirmed `currentActivePlan = docs/superpowers/plans/2026-06-06-first-party-ui-editor-excellence-v1.md`, `recommendedNextPlan.id = first-party-ui-editor-excellence-v1`, and `unsupportedProductionGaps = []`; Phase 12 later returned the live pointer to the production-completion master selection gate.
 - `tools/check-toolchain.ps1`: ok.
 - `tools/check-json-contracts.ps1`: ok.
 - `tools/check-ai-integration.ps1`: ok.
@@ -623,7 +623,7 @@ editor_ai_operation_native_handles_exposed=0
 
 Expected: AI can operate the advanced editor through first-party structures, not screen automation.
 
-**Phase 11 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase11` extends the first-party AI operation surface with `editor.ai.window.layout`, `editor.ai.dock.multi_window`, `editor.ai.rich_text.editable_documents`, `editor.ai.viewport.backend_parity`, `editor.ai.material_preview.backend_parity`, `editor.ai.performance.budgets`, and `editor.ai.operation.excellence` rows while preserving existing text shaping, font fallback, IME parity, and accessibility parity rows. `EditorAiCommandCatalog` now includes non-mutating `editor.text_font.diagnostics.copy`, `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and `editor.material_preview.backend_readiness.refresh` commands alongside existing multi-window dock and editable rich-text commands. Every mutating AI command requires `expected_revision`; native handles, shell/process execution, validation recipe execution, package script execution, screen coordinates, arbitrary file mutation, stale revisions, disabled commands, and unsupported parameters fail closed. The native shell smoke counter surface now reports `editor_ai_operation_excellence_status=ready`, positive `editor_ai_operation_snapshot_rows`, positive `editor_ai_operation_command_rows`, `editor_ai_operation_mutating_commands_revision_checked=1`, and `editor_ai_operation_native_handles_exposed=0`. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. This completes AI-operable command expansion only; Phase 12 aggregate `first_party_editor_excellence` remains unclaimed.
+**Phase 11 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase11` extends the first-party AI operation surface with `editor.ai.window.layout`, `editor.ai.dock.multi_window`, `editor.ai.rich_text.editable_documents`, `editor.ai.viewport.backend_parity`, `editor.ai.material_preview.backend_parity`, `editor.ai.performance.budgets`, and `editor.ai.operation.excellence` rows while preserving existing text shaping, font fallback, IME parity, and accessibility parity rows. `EditorAiCommandCatalog` now includes non-mutating `editor.text_font.diagnostics.copy`, `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and `editor.material_preview.backend_readiness.refresh` commands alongside existing multi-window dock and editable rich-text commands. Every mutating AI command requires `expected_revision`; native handles, shell/process execution, validation recipe execution, package script execution, screen coordinates, arbitrary file mutation, stale revisions, disabled commands, and unsupported parameters fail closed. The native shell smoke counter surface now reports `editor_ai_operation_excellence_status=ready`, positive `editor_ai_operation_snapshot_rows`, positive `editor_ai_operation_command_rows`, `editor_ai_operation_mutating_commands_revision_checked=1`, and `editor_ai_operation_native_handles_exposed=0`. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. This completed AI-operable command expansion only; Phase 12 later added the exact selected-row aggregate.
 
 ## Phase 12: Aggregate Excellence Gate And Closeout
 
@@ -631,8 +631,8 @@ Expected: AI can operate the advanced editor through first-party structures, not
 
 **Files:** package/editor smoke validation, manifest fragments, docs, static checks, registry.
 
-- [ ] Add an aggregate validator requiring the selected exact rows from this plan.
-- [ ] Add counters:
+- [x] Add an aggregate validator requiring the selected exact rows from this plan.
+- [x] Add counters:
 
 ```text
 first_party_editor_excellence_status=ready
@@ -647,11 +647,13 @@ first_party_editor_excellence_broad_optimization_claimed=0
 first_party_editor_excellence_native_handles_exposed=0
 ```
 
-- [ ] If Vulkan, Metal, cross-platform, text parity, or accessibility parity is not selected for the current host, the aggregate must leave the matching value `0` and must not claim parity.
-- [ ] Update static checks so docs cannot claim broad editor excellence without the aggregate definition and evidence.
-- [ ] Return `currentActivePlan` to the production-completion master selection gate or select the next active plan with evidence.
+- [x] If Vulkan, Metal, cross-platform, text parity, or accessibility parity is not selected for the current host, the aggregate must leave the matching value `0` and must not claim parity.
+- [x] Update static checks so docs cannot claim broad editor excellence without the aggregate definition and evidence.
+- [x] Return `currentActivePlan` to the production-completion master selection gate or select the next active plan with evidence.
 
 Expected: the broad claim has one exact meaning and remains fail-closed.
+
+**Phase 12 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase12` adds `FirstPartyEditorExcellenceGate` and `make_first_party_editor_excellence_gate` so broad editor excellence has one exact selected-row aggregate instead of an inferred parity claim. The aggregate requires selected Windows D3D12 first-party rows for UI/backend, viewport/material texture display, multi-window docking/workspace v3, editable rich text, AI operation rows, UI performance budgets, retained UI diff/cache, DirectWrite text/font evidence, Windows TSF IME evidence, Windows UIA evidence, explicit Vulkan/Metal/cross-platform host gates, zero broad optimization, and zero native handle exposure. `MK_editor_smoke` now reports `first_party_editor_excellence_status=ready`, `first_party_editor_excellence=1`, `first_party_editor_excellence_windows_d3d12=1`, `first_party_editor_excellence_vulkan=0`, `first_party_editor_excellence_metal=0`, `first_party_editor_excellence_cross_platform=0`, `first_party_editor_excellence_text_parity=0`, `first_party_editor_excellence_accessibility_parity=0`, `first_party_editor_excellence_broad_optimization_claimed=0`, and `first_party_editor_excellence_native_handles_exposed=0`. This exact selected-row aggregate does not claim default visible-shell Vulkan/Metal backend selection, actual macOS/Linux shell execution, Android/iOS visible editor shells, broad text/font parity, broad accessibility parity, external OS accessibility-tool readiness, visible OS-level multi-window drag/drop shell restoration, or broad editor/UI optimization. The active plan pointer returns to the production-completion master selection gate with `recommendedNextPlan.id = next-production-gap-selection`.
 
 ## Required Validation At Phase Close
 

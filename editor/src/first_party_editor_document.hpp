@@ -164,6 +164,16 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t ai_operation_command_rows{0};
     bool ai_operation_mutating_commands_revision_checked{false};
     bool ai_operation_native_handles_exposed{false};
+    std::string first_party_editor_excellence_status{"not_ready"};
+    bool first_party_editor_excellence{false};
+    bool first_party_editor_excellence_windows_d3d12{false};
+    bool first_party_editor_excellence_vulkan{false};
+    bool first_party_editor_excellence_metal{false};
+    bool first_party_editor_excellence_cross_platform{false};
+    bool first_party_editor_excellence_text_parity{false};
+    bool first_party_editor_excellence_accessibility_parity{false};
+    bool first_party_editor_excellence_broad_optimization_claimed{false};
+    bool first_party_editor_excellence_native_handles_exposed{false};
     std::string cross_platform_shell_status{"host_gated"};
     std::string macos_shell_status{"host_gated"};
     std::string linux_shell_status{"host_gated"};
@@ -195,7 +205,23 @@ struct FirstPartyEditorShellSmokeCounters {
     bool ui_retained_cache_native_handle_access{false};
 };
 
+struct FirstPartyEditorExcellenceGate {
+    std::string status{"not_ready"};
+    bool ready{false};
+    bool windows_d3d12{false};
+    bool vulkan{false};
+    bool metal{false};
+    bool cross_platform{false};
+    bool text_parity{false};
+    bool accessibility_parity{false};
+    bool broad_optimization_claimed{false};
+    bool native_handles_exposed{false};
+};
+
 [[nodiscard]] FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app);
+
+[[nodiscard]] FirstPartyEditorExcellenceGate
+make_first_party_editor_excellence_gate(const FirstPartyEditorShellSmokeCounters& counters);
 
 [[nodiscard]] FirstPartyEditorShellSmokeCounters
 make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const FirstPartyEditorDocument& document);
