@@ -1,6 +1,7 @@
 add_library(mirakana_rhi
     src/async_overlap.cpp
     src/backend_capabilities.cpp
+    src/indirect_draw.cpp
     src/null_rhi.cpp
     src/resource_lifetime.cpp
     src/upload_staging.cpp

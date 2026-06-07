@@ -219,6 +219,7 @@ inline constexpr std::uint32_t vulkan_buffer_usage_uniform_buffer_bit = 0x000000
 inline constexpr std::uint32_t vulkan_buffer_usage_storage_buffer_bit = 0x00000020U;
 inline constexpr std::uint32_t vulkan_buffer_usage_index_buffer_bit = 0x00000040U;
 inline constexpr std::uint32_t vulkan_buffer_usage_vertex_buffer_bit = 0x00000080U;
+inline constexpr std::uint32_t vulkan_buffer_usage_indirect_buffer_bit = 0x00000100U;
 inline constexpr std::uint32_t vulkan_image_view_type_2d = 1;
 inline constexpr std::uint32_t vulkan_image_view_type_cube = 3;
 inline constexpr std::uint32_t vulkan_component_swizzle_identity = 0;
@@ -2071,6 +2072,9 @@ template <typename AvailableDeviceExtensions>
     }
     if (usage.storage) {
         flags |= vulkan_buffer_usage_storage_buffer_bit;
+    }
+    if (usage.indirect) {
+        flags |= vulkan_buffer_usage_indirect_buffer_bit;
     }
     return flags;
 }
@@ -7238,6 +7242,7 @@ VulkanRuntimeBufferCreatePlan build_runtime_buffer_create_plan(const VulkanRunti
     plan.usage.index = has_flag(desc.buffer.usage, BufferUsage::index);
     plan.usage.uniform = has_flag(desc.buffer.usage, BufferUsage::uniform);
     plan.usage.storage = has_flag(desc.buffer.usage, BufferUsage::storage);
+    plan.usage.indirect = has_flag(desc.buffer.usage, BufferUsage::indirect);
 
     switch (desc.memory_domain) {
     case VulkanBufferMemoryDomain::device_local:
