@@ -6,7 +6,7 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The stacked implementation milestone `mavg-runtime-lod-milestone-v1` is now completed over the `mavg-asset-graph-v1` foundation, and `mavg-page-streaming-queue-v1`, `mavg-page-streaming-eviction-review-v1`, `mavg-automatic-eviction-policy-v1`, `mavg-runtime-inferred-page-use-generation-v1` / `MAVG Runtime Inferred Page Use Generation v1`, and `mavg-resident-page-recency-eviction-order-v1` add caller-reviewed page request queue, selected/fallback page eviction review, deterministic resident-page eviction candidate ordering, value-only resident page use-generation evidence, and caller-supplied recency ordering evidence without reopening that completed milestone. The completed LoD path implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request planning, selected/fallback page eviction review, deterministic automatic candidate-order planning, resident page use-generation evidence, caller-supplied recency ordering, and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `review_runtime_mavg_page_streaming_evictions` / `plan_runtime_mavg_page_streaming_automatic_evictions` / `infer_runtime_mavg_resident_page_use_generations` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draws through `MeshIndexedDrawRange` and the clean-break 5-argument `rhi::IRhiCommandList::draw_indexed`, and `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`. Autonomous/background package streaming execution, runtime-inferred LRU/frequency eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, Metal readiness, benchmark superiority, and Nanite compatibility/equivalence/superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The stacked implementation milestone `mavg-runtime-lod-milestone-v1` is now completed over the `mavg-asset-graph-v1` foundation, and `mavg-page-streaming-queue-v1`, `mavg-page-streaming-eviction-review-v1`, `mavg-automatic-eviction-policy-v1`, `mavg-runtime-inferred-page-use-generation-v1` / `MAVG Runtime Inferred Page Use Generation v1`, and `mavg-resident-page-recency-eviction-order-v1` add caller-reviewed page request queue, selected/fallback page eviction review, deterministic resident-page eviction candidate ordering, value-only resident page use-generation evidence, and caller-supplied recency ordering evidence without reopening that completed milestone. The completed LoD path implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request planning, selected/fallback page eviction review, deterministic automatic candidate-order planning, resident page use-generation evidence, caller-supplied recency ordering, and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `review_runtime_mavg_page_streaming_evictions` / `plan_runtime_mavg_page_streaming_automatic_evictions` / `infer_runtime_mavg_resident_page_use_generations` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draws through `MeshIndexedDrawRange` and the clean-break 5-argument `rhi::IRhiCommandList::draw_indexed`, and `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`, and `MK_runtime_rhi` conventional package-visible MAVG mesh binding upload evidence through `mavg_conventional_upload.hpp` / `upload_runtime_mavg_conventional_mesh_binding`. Autonomous/background package streaming execution, runtime-inferred LRU/frequency eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, Metal readiness, benchmark superiority, and Nanite compatibility/equivalence/superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
@@ -158,22 +158,25 @@ Non-responsibilities:
 
 ### Conventional Renderer Adoption
 
-The completed conventional scene-submission path avoids backend-specific GPU work and lives in `MK_scene_renderer` while using existing renderer/RHI opaque binding contracts:
+The conventional path avoids backend-specific GPU work. The selected-cluster submission planner lives in `MK_scene_renderer`; package-visible conventional upload evidence lives in `MK_runtime_rhi` and consumes already-committed package streaming/catalog state without executing streaming:
 
+- `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_conventional_upload.hpp`
+- `engine/runtime_rhi/src/mavg_conventional_upload.cpp`
 - `engine/scene_renderer/include/mirakana/scene_renderer/mavg_scene_lod.hpp`
 - `engine/scene_renderer/src/mavg_scene_lod.cpp`
 
 Implemented responsibilities:
 
-- Plan selected clusters into existing `MeshCommand` rows through `SceneGpuBindingPalette`.
-- Submit only selected cluster index ranges through `MeshIndexedDrawRange`.
-- Preserve existing `MeshGpuBinding` / `MaterialGpuBinding` ownership and opaque handle boundaries.
-- Report missing material bindings and fallback substitutions as diagnostics without exposing native/RHI handles.
+- Expose `RuntimeMavgConventionalMeshUploadDesc`, `RuntimeMavgConventionalMeshUploadResult`, and `upload_runtime_mavg_conventional_mesh_binding` as the narrow runtime-RHI MAVG conventional upload contract.
+- Validate committed package streaming evidence, live `AssetKind::mavg_cluster_graph` catalog rows, caller-owned graph documents, payload asset/handle identity, and graph draw ranges before upload side effects.
+- Upload the static MAVG payload through existing `upload_runtime_mesh` and return a renderer `MeshGpuBinding` with package-visible counters, submitted fences, and explicit non-claim flags for GPU culling, indirect draws, mesh shaders, and native handles.
+- Submit selected clusters through range-aware conventional `MeshCommand` planning using existing `MeshGpuBinding` and `MaterialGpuBinding` payloads.
+- Preserve fallback-substitution counters and missing-material fallback-color diagnostics without exposing native handles.
 
 Future responsibilities:
 
-- Automate selected cluster payload upload through existing upload/frame-graph paths if a later package-streaming or runtime-upload plan selects it.
-- Report package-visible MAVG runtime counters without mesh shader dependency.
+- Autonomous background/page package streaming workers, async overlap/performance evidence, partial `.mavgpayload` byte-range page loading/schema, automatic eviction policy, and GPU memory pressure integration.
+- GPU culling, indirect command buffers, and mesh shader paths.
 
 ### GPU Culling And Indirect
 
