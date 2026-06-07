@@ -135,6 +135,16 @@ struct RuntimeMavgPageStreamingEvictionReviewDesc {
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
 };
 
+struct RuntimeMavgPageStreamingAutomaticEvictionPlanDesc {
+    AssetId graph_asset;
+    const MavgClusterGraphDocument* graph{nullptr};
+    std::span<const RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters;
+    std::span<const RuntimeMavgResidentPageMountRow> resident_page_mounts;
+    std::span<const RuntimeResidentPackageMountIdV2> caller_protected_mount_ids;
+    RuntimeResourceResidencyBudgetV2 target_budget{};
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+};
+
 struct RuntimeMavgPageStreamingEvictionReviewResult {
     std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
     std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
@@ -143,8 +153,11 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
     std::size_t protected_visible_page_count{0};
     std::size_t protected_fallback_page_count{0};
     std::size_t duplicate_protected_mount_count{0};
+    std::size_t protected_eviction_candidate_skip_count{0};
+    std::size_t automatic_eviction_candidate_count{0};
     bool invoked_eviction_plan{false};
     bool inferred_eviction_policy{false};
+    bool planned_automatic_eviction_policy{false};
     bool invoked_file_io{false};
     bool mutated_mount_set{false};
     bool touched_renderer_or_rhi_handles{false};
@@ -175,5 +188,14 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
 [[nodiscard]] RuntimeMavgPageStreamingEvictionReviewResult
 review_runtime_mavg_page_streaming_evictions(const RuntimeResidentPackageMountSetV2& mount_set,
                                              const RuntimeMavgPageStreamingEvictionReviewDesc& desc);
+
+/// Builds a deterministic resident-page eviction candidate order when the caller has not supplied reviewed eviction
+/// ids. The planner reuses selected/fallback page protection, skips protected mounts, sorts remaining resident page
+/// mounts by page index descending then mount id ascending, and delegates to the resident package eviction planner. It
+/// does not infer LRU/recency/frequency behavior, read files, mutate mounts, execute background streaming, or touch
+/// renderer/RHI/native handles.
+[[nodiscard]] RuntimeMavgPageStreamingEvictionReviewResult
+plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                     const RuntimeMavgPageStreamingAutomaticEvictionPlanDesc& desc);
 
 } // namespace mirakana::runtime

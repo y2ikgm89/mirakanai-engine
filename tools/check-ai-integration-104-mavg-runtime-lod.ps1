@@ -9,6 +9,7 @@ $runtimeMavgPageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_ma
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $mavgPageStreamingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-06-mavg-page-streaming-queue-v1.md"
 $mavgPageStreamingEvictionReviewPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-07-mavg-page-streaming-eviction-review-v1.md"
+$mavgAutomaticEvictionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-07-mavg-automatic-eviction-policy-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -23,8 +24,10 @@ foreach ($needle in @(
         "RuntimeMavgResidentPageMountRow",
         "RuntimeMavgPageStreamingSelectedClusterRow",
         "RuntimeMavgPageStreamingEvictionReviewResult",
+        "RuntimeMavgPageStreamingAutomaticEvictionPlanDesc",
         "plan_runtime_mavg_page_streaming_requests",
         "review_runtime_mavg_page_streaming_evictions",
+        "plan_runtime_mavg_page_streaming_automatic_evictions",
         "execute_runtime_mavg_page_streaming_request_safe_point",
         "executed_background_worker",
         "touched_renderer_or_rhi_handles"
@@ -40,7 +43,11 @@ foreach ($needle in @(
         "eviction_plan_failed",
         "max_queued_pages",
         "missing_candidate",
-        "safe_point_failed"
+        "safe_point_failed",
+        "prepare_eviction_review_protection",
+        "planned_automatic_eviction_policy",
+        "automatic_eviction_candidate_count",
+        "protected_eviction_candidate_skip_count"
     )) {
     Assert-ContainsText $runtimeMavgPageStreamingSourceText $needle "engine/runtime/src/mavg_page_streaming.cpp"
 }
@@ -51,6 +58,8 @@ foreach ($needle in @(
         "runtime mavg page streaming eviction review protects selected pages and fallback ancestors",
         "runtime mavg page streaming eviction review rejects protected selected eviction candidate",
         "runtime mavg page streaming eviction review rejects invalid selected rows before eviction planning",
+        "runtime mavg page streaming automatic eviction policy orders unprotected resident pages deterministically",
+        "runtime mavg page streaming automatic eviction policy rejects duplicate resident page rows before planning",
         "runtime mavg page streaming executes one queued row through reviewed safe point",
         "runtime mavg page streaming drain rejects invalid mount id before mutation"
     )) {
@@ -92,10 +101,30 @@ foreach ($surface in @(
             "RuntimeMavgPageStreamingSelectedClusterRow",
             "RuntimeMavgPageStreamingEvictionReviewResult",
             "review_runtime_mavg_page_streaming_evictions",
-            "fallback",
-            "automatic eviction policy"
+            "fallback"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page streaming eviction review evidence"
+    }
+}
+
+foreach ($surface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $mavgArchitectureSpecText; Label = "docs/specs/2026-06-05-mavg-architecture-v1.md" },
+        @{ Text = $mavgAutomaticEvictionPlanText; Label = "docs/superpowers/plans/2026-06-07-mavg-automatic-eviction-policy-v1.md" },
+        @{ Text = $modulesFragmentText; Label = "engine/agent/manifest.fragments/004-modules.json" },
+        @{ Text = $loopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
+    )) {
+    foreach ($needle in @(
+            "RuntimeMavgPageStreamingAutomaticEvictionPlanDesc",
+            "plan_runtime_mavg_page_streaming_automatic_evictions",
+            "planned_automatic_eviction_policy",
+            "automatic_eviction_candidate_count",
+            "protected_eviction_candidate_skip_count",
+            "LRU/recency/frequency"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG automatic eviction policy evidence"
     }
 }
 
@@ -114,8 +143,10 @@ foreach ($needle in @(
         "RuntimeMavgResidentPageMountRow",
         "RuntimeMavgPageStreamingSelectedClusterRow",
         "RuntimeMavgPageStreamingEvictionReviewResult",
+        "RuntimeMavgPageStreamingAutomaticEvictionPlanDesc",
         "plan_runtime_mavg_page_streaming_requests",
         "review_runtime_mavg_page_streaming_evictions",
+        "plan_runtime_mavg_page_streaming_automatic_evictions",
         "execute_runtime_mavg_page_streaming_request_safe_point",
         "autonomous background"
     )) {
