@@ -1908,7 +1908,15 @@
       "uniqueItems": true,
       "items": {
         "type": "object",
-        "required": ["id", "sourceMaterialPath", "runtimeMaterialPath", "packageIndexPath", "shaderSourcePaths"],
+        "required": [
+          "id",
+          "sourceMaterialPath",
+          "runtimeMaterialPath",
+          "packageIndexPath",
+          "shaderSourcePaths",
+          "d3d12ShaderArtifactPaths",
+          "vulkanShaderArtifactPaths"
+        ],
         "additionalProperties": false,
         "properties": {
           "id": {
@@ -1925,10 +1933,51 @@
             "minLength": 1,
             "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.material$"
           },
+          "sourceMaterialGraphPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.materialgraph$"
+          },
+          "shaderExportPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.shader_export$"
+          },
+          "reviewedHlslSourcePath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.hlsl$"
+          },
           "packageIndexPath": {
             "type": "string",
             "minLength": 1,
             "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "compileRequestTargets": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": ["d3d12-dxil", "vulkan-spirv"]
+            }
+          },
+          "unsupportedBoundaries": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "shader-graph-execution",
+                "live-shader-generation",
+                "runtime-compiler-execution",
+                "native-cache-handle",
+                "renderer-rhi-residency",
+                "metal-library-generation",
+                "package-streaming"
+              ]
+            }
           },
           "shaderSourcePaths": {
             "type": "array",
@@ -1942,6 +1991,7 @@
           },
           "d3d12ShaderArtifactPaths": {
             "type": "array",
+            "minItems": 1,
             "uniqueItems": true,
             "items": {
               "type": "string",
@@ -1951,6 +2001,7 @@
           },
           "vulkanShaderArtifactPaths": {
             "type": "array",
+            "minItems": 1,
             "uniqueItems": true,
             "items": {
               "type": "string",

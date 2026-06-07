@@ -12,6 +12,44 @@ if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("runtimeS
 if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("materialShaderAuthoringTargets")) {
     Write-Error "schemas/game-agent.schema.json must define materialShaderAuthoringTargets"
 }
+$materialShaderTargetSchema = $gameAgentSchema.properties.materialShaderAuthoringTargets.items
+Assert-Properties $materialShaderTargetSchema @("required", "additionalProperties", "properties") "schemas/game-agent.schema.json materialShaderAuthoringTargets item schema"
+if ($materialShaderTargetSchema.additionalProperties -ne $false) {
+    Write-Error "schemas/game-agent.schema.json materialShaderAuthoringTargets must reject additional properties"
+}
+foreach ($field in @(
+        "id",
+        "sourceMaterialPath",
+        "runtimeMaterialPath",
+        "packageIndexPath",
+        "sourceMaterialGraphPath",
+        "shaderExportPath",
+        "reviewedHlslSourcePath",
+        "compileRequestTargets",
+        "unsupportedBoundaries",
+        "shaderSourcePaths",
+        "d3d12ShaderArtifactPaths",
+        "vulkanShaderArtifactPaths",
+        "validateMaterialTextures",
+        "validateShaderArtifacts"
+    )) {
+    if (-not $materialShaderTargetSchema.properties.PSObject.Properties.Name.Contains($field)) {
+        Write-Error "schemas/game-agent.schema.json materialShaderAuthoringTargets item schema missing property: $field"
+    }
+}
+foreach ($field in @(
+        "id",
+        "sourceMaterialPath",
+        "runtimeMaterialPath",
+        "packageIndexPath",
+        "shaderSourcePaths",
+        "d3d12ShaderArtifactPaths",
+        "vulkanShaderArtifactPaths"
+    )) {
+    if (@($materialShaderTargetSchema.required) -notcontains $field) {
+        Write-Error "schemas/game-agent.schema.json materialShaderAuthoringTargets item schema must require $field"
+    }
+}
 if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("packageStreamingResidencyTargets")) {
     Write-Error "schemas/game-agent.schema.json must define packageStreamingResidencyTargets"
 }
