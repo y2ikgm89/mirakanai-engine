@@ -35,6 +35,16 @@ void add_diagnostic(RuntimeMavgPageStreamingDrainResult& result, RuntimeMavgPage
     });
 }
 
+void add_diagnostic(RuntimeMavgPageStreamingEvictionReviewResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
+                    AssetId graph_asset, std::uint32_t page_index, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool has_page(const MavgClusterGraphDocument& graph, std::uint32_t page_index) noexcept {
     return std::ranges::any_of(
         graph.pages, [page_index](const MavgClusterGraphPage& page) { return page.page_index == page_index; });
@@ -129,6 +139,64 @@ void sort_plan_rows(std::vector<RuntimeMavgPageStreamingPlanRow>& rows) {
         }
         return lhs.page_index < rhs.page_index;
     });
+}
+
+[[nodiscard]] const MavgClusterGraphCluster* find_cluster(const MavgClusterGraphDocument& graph,
+                                                          std::uint32_t cluster_index) noexcept {
+    const auto found = std::ranges::find_if(graph.clusters, [cluster_index](const MavgClusterGraphCluster& cluster) {
+        return cluster.cluster_index == cluster_index;
+    });
+    if (found == graph.clusters.end()) {
+        return nullptr;
+    }
+    return &*found;
+}
+
+[[nodiscard]] bool contains_mount_id(std::span<const RuntimeResidentPackageMountIdV2> mount_ids,
+                                     RuntimeResidentPackageMountIdV2 mount_id) noexcept {
+    return std::ranges::find(mount_ids, mount_id) != mount_ids.end();
+}
+
+[[nodiscard]] bool contains_mount_id(const std::vector<RuntimeResidentPackageMountIdV2>& mount_ids,
+                                     RuntimeResidentPackageMountIdV2 mount_id) noexcept {
+    return std::ranges::find(mount_ids, mount_id) != mount_ids.end();
+}
+
+[[nodiscard]] bool contains_mount_id(const RuntimeResidentPackageMountSetV2& mount_set,
+                                     RuntimeResidentPackageMountIdV2 mount_id) noexcept {
+    return std::ranges::any_of(mount_set.mounts(), [mount_id](const RuntimeResidentPackageMountRecordV2& mount) {
+        return mount.id == mount_id;
+    });
+}
+
+[[nodiscard]] const RuntimeMavgResidentPageMountRow*
+find_page_mount(std::span<const RuntimeMavgResidentPageMountRow> page_mounts, std::uint32_t page_index) noexcept {
+    const auto found = std::ranges::find_if(
+        page_mounts, [page_index](const RuntimeMavgResidentPageMountRow& row) { return row.page_index == page_index; });
+    if (found == page_mounts.end()) {
+        return nullptr;
+    }
+    return &*found;
+}
+
+void add_unique_protected_mount(RuntimeMavgPageStreamingEvictionReviewResult& result,
+                                RuntimeResidentPackageMountIdV2 mount_id) {
+    if (contains_mount_id(result.protected_mount_ids, mount_id)) {
+        ++result.duplicate_protected_mount_count;
+        return;
+    }
+    result.protected_mount_ids.push_back(mount_id);
+}
+
+void copy_eviction_plan_diagnostics(RuntimeMavgPageStreamingEvictionReviewResult& result, AssetId graph_asset) {
+    for (const auto& diagnostic : result.eviction_plan.diagnostics) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::eviction_plan_failed, graph_asset, 0,
+                       diagnostic.message.empty() ? diagnostic.code : diagnostic.message);
+    }
+    if (!result.eviction_plan.succeeded() && result.diagnostics.empty()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::eviction_plan_failed, graph_asset, 0,
+                       "MAVG page streaming eviction review plan failed");
+    }
 }
 
 void copy_mount_diagnostics(RuntimeMavgPageStreamingDrainResult& result) {
@@ -260,6 +328,177 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
         coalesced.resize(desc.max_queued_pages);
     }
     result.queued_page_requests = std::move(coalesced);
+    return result;
+}
+
+RuntimeMavgPageStreamingEvictionReviewResult
+review_runtime_mavg_page_streaming_evictions(const RuntimeResidentPackageMountSetV2& mount_set,
+                                             const RuntimeMavgPageStreamingEvictionReviewDesc& desc) {
+    RuntimeMavgPageStreamingEvictionReviewResult result;
+    result.eviction_candidate_unmount_order.assign(desc.reviewed_candidate_unmount_order.begin(),
+                                                   desc.reviewed_candidate_unmount_order.end());
+
+    bool invalid_inputs = false;
+    if (desc.graph_asset.value == 0) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph_asset, desc.graph_asset, 0,
+                       "MAVG page streaming eviction review graph asset id must be non-zero");
+        invalid_inputs = true;
+    }
+    if (desc.graph == nullptr) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_graph, desc.graph_asset, 0,
+                       "MAVG page streaming eviction review graph document is required");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    const auto& graph = *desc.graph;
+    if (graph.asset != desc.graph_asset) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::graph_asset_mismatch, desc.graph_asset, 0,
+                       "MAVG page streaming eviction review graph document asset must match the requested graph asset");
+    }
+    const auto validation = validate_mavg_cluster_graph(graph);
+    if (!validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph, desc.graph_asset, 0,
+                       "MAVG page streaming eviction review graph validation failed");
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    std::vector<std::uint32_t> seen_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> seen_page_mount_ids;
+    for (const auto& row : desc.resident_page_mounts) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::page_mount_graph_mismatch, row.graph_asset,
+                           row.page_index, "MAVG resident page mount graph asset does not match the review graph");
+            continue;
+        }
+        if (!has_page(graph, row.page_index)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_page, desc.graph_asset,
+                           row.page_index, "MAVG resident page mount references an unknown graph page");
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page mount id must be non-zero");
+            continue;
+        }
+        if (std::ranges::find(seen_page_indices, row.page_index) != seen_page_indices.end() ||
+            contains_mount_id(seen_page_mount_ids, row.mount_id)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page mount rows must be unique by page and mount id");
+            continue;
+        }
+        if (!contains_mount_id(mount_set, row.mount_id)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page mount id is not mounted");
+            continue;
+        }
+        seen_page_indices.push_back(row.page_index);
+        seen_page_mount_ids.push_back(row.mount_id);
+    }
+
+    std::vector<RuntimeResidentPackageMountIdV2> seen_caller_protected_mounts;
+    for (const auto mount_id : desc.caller_protected_mount_ids) {
+        if (mount_id.value == 0 || !contains_mount_id(mount_set, mount_id)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_protected_mount, desc.graph_asset, 0,
+                           "MAVG caller-protected mount ids must be non-zero mounted ids");
+            continue;
+        }
+        if (contains_mount_id(seen_caller_protected_mounts, mount_id)) {
+            ++result.duplicate_protected_mount_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_protected_mount, desc.graph_asset,
+                           0, "MAVG caller-protected mount id appears more than once");
+            continue;
+        }
+        seen_caller_protected_mounts.push_back(mount_id);
+        add_unique_protected_mount(result, mount_id);
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    std::vector<std::uint32_t> visible_page_indices;
+    std::vector<std::uint32_t> fallback_page_indices;
+    const auto contains_page = [](const std::vector<std::uint32_t>& pages, std::uint32_t page_index) noexcept {
+        return std::ranges::find(pages, page_index) != pages.end();
+    };
+    const auto protect_page = [&](std::uint32_t page_index, bool visible) {
+        const auto* const page_mount = find_page_mount(desc.resident_page_mounts, page_index);
+        if (page_mount == nullptr) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_page_mount, desc.graph_asset,
+                           page_index, "MAVG selected cluster page must have a resident page mount");
+            return;
+        }
+        if (visible) {
+            if (contains_page(visible_page_indices, page_index)) {
+                return;
+            }
+            visible_page_indices.push_back(page_index);
+            ++result.protected_visible_page_count;
+            add_unique_protected_mount(result, page_mount->mount_id);
+            return;
+        }
+        if (contains_page(visible_page_indices, page_index) || contains_page(fallback_page_indices, page_index)) {
+            return;
+        }
+        fallback_page_indices.push_back(page_index);
+        ++result.protected_fallback_page_count;
+        add_unique_protected_mount(result, page_mount->mount_id);
+    };
+
+    for (const auto& selected : desc.selected_clusters) {
+        if (selected.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::selected_graph_mismatch,
+                           selected.graph_asset, 0,
+                           "MAVG selected cluster graph asset does not match the eviction review graph");
+            continue;
+        }
+
+        const auto* cluster = find_cluster(graph, selected.cluster_index);
+        if (cluster == nullptr) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_cluster, desc.graph_asset, 0,
+                           "MAVG selected cluster references an unknown graph cluster");
+            continue;
+        }
+
+        protect_page(cluster->page_index, true);
+
+        const auto* fallback_cluster = find_cluster(graph, cluster->resident_fallback_cluster_index);
+        if (fallback_cluster == nullptr) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_cluster, desc.graph_asset, 0,
+                           "MAVG selected cluster resident fallback references an unknown graph cluster");
+        } else {
+            protect_page(fallback_cluster->page_index, false);
+        }
+
+        const auto* cursor = cluster;
+        for (std::size_t guard = 0; cursor != nullptr && cursor->has_parent && guard < graph.clusters.size(); ++guard) {
+            const auto* const parent = find_cluster(graph, cursor->parent_cluster_index);
+            if (parent == nullptr) {
+                add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_cluster, desc.graph_asset, 0,
+                               "MAVG selected cluster parent references an unknown graph cluster");
+                break;
+            }
+            protect_page(parent->page_index, false);
+            cursor = parent;
+        }
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.invoked_eviction_plan = true;
+    result.eviction_plan = plan_runtime_resident_package_evictions_v2(
+        mount_set, RuntimeResidentPackageEvictionPlanDescV2{
+                       .target_budget = desc.target_budget,
+                       .overlay = desc.overlay,
+                       .candidate_unmount_order = result.eviction_candidate_unmount_order,
+                       .protected_mount_ids = result.protected_mount_ids,
+                   });
+    copy_eviction_plan_diagnostics(result, desc.graph_asset);
     return result;
 }
 

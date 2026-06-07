@@ -8,6 +8,7 @@ $runtimeMavgPageStreamingSourceText = Get-AgentSurfaceText "engine/runtime/src/m
 $runtimeMavgPageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $mavgPageStreamingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-06-mavg-page-streaming-queue-v1.md"
+$mavgPageStreamingEvictionReviewPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-07-mavg-page-streaming-eviction-review-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -19,7 +20,11 @@ foreach ($needle in @(
         "RuntimeMavgPageStreamingCandidateRow",
         "RuntimeMavgPageStreamingPlanResult",
         "RuntimeMavgPageStreamingDrainResult",
+        "RuntimeMavgResidentPageMountRow",
+        "RuntimeMavgPageStreamingSelectedClusterRow",
+        "RuntimeMavgPageStreamingEvictionReviewResult",
         "plan_runtime_mavg_page_streaming_requests",
+        "review_runtime_mavg_page_streaming_evictions",
         "execute_runtime_mavg_page_streaming_request_safe_point",
         "executed_background_worker",
         "touched_renderer_or_rhi_handles"
@@ -29,6 +34,10 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2",
+        "plan_runtime_resident_package_evictions_v2",
+        "selected_graph_mismatch",
+        "missing_page_mount",
+        "eviction_plan_failed",
         "max_queued_pages",
         "missing_candidate",
         "safe_point_failed"
@@ -39,6 +48,9 @@ foreach ($needle in @(
 foreach ($needle in @(
         "runtime mavg page streaming planner coalesces nonresident requests deterministically",
         "runtime mavg page streaming planner applies deterministic max page budget",
+        "runtime mavg page streaming eviction review protects selected pages and fallback ancestors",
+        "runtime mavg page streaming eviction review rejects protected selected eviction candidate",
+        "runtime mavg page streaming eviction review rejects invalid selected rows before eviction planning",
         "runtime mavg page streaming executes one queued row through reviewed safe point",
         "runtime mavg page streaming drain rejects invalid mount id before mutation"
     )) {
@@ -66,6 +78,27 @@ foreach ($surface in @(
     }
 }
 
+foreach ($surface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $mavgArchitectureSpecText; Label = "docs/specs/2026-06-05-mavg-architecture-v1.md" },
+        @{ Text = $mavgPageStreamingEvictionReviewPlanText; Label = "docs/superpowers/plans/2026-06-07-mavg-page-streaming-eviction-review-v1.md" },
+        @{ Text = $modulesFragmentText; Label = "engine/agent/manifest.fragments/004-modules.json" },
+        @{ Text = $loopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
+    )) {
+    foreach ($needle in @(
+            "RuntimeMavgResidentPageMountRow",
+            "RuntimeMavgPageStreamingSelectedClusterRow",
+            "RuntimeMavgPageStreamingEvictionReviewResult",
+            "review_runtime_mavg_page_streaming_evictions",
+            "fallback",
+            "automatic eviction policy"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page streaming eviction review evidence"
+    }
+}
+
 $runtimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime" })
 if ($runtimeModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime module" }
 if (@($runtimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp") {
@@ -78,7 +111,11 @@ foreach ($needle in @(
         "RuntimeMavgPageStreamingCandidateRow",
         "RuntimeMavgPageStreamingPlanResult",
         "RuntimeMavgPageStreamingDrainResult",
+        "RuntimeMavgResidentPageMountRow",
+        "RuntimeMavgPageStreamingSelectedClusterRow",
+        "RuntimeMavgPageStreamingEvictionReviewResult",
         "plan_runtime_mavg_page_streaming_requests",
+        "review_runtime_mavg_page_streaming_evictions",
         "execute_runtime_mavg_page_streaming_request_safe_point",
         "autonomous background"
     )) {
