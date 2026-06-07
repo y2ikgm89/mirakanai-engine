@@ -860,6 +860,7 @@ int main(int argc, char** argv) {
         << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
         << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
         << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+        << " postprocess_policy_fog_effect=" << (postprocess_policy.fog_effect ? 1 : 0)
         << " postprocess_policy_backend_shader_evidence_ready="
         << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0)
         << " framegraph_passes=" << report.framegraph_passes
