@@ -562,8 +562,84 @@ MK_TEST("runtime mavg page streaming eviction review rejects protected selected 
     MK_REQUIRE(result.invoked_eviction_plan);
     MK_REQUIRE(result.eviction_plan.status ==
                mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::protected_candidate_mount_id);
+    MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::eviction_plan_failed));
     MK_REQUIRE(!result.inferred_eviction_policy);
     MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(mount_set.mounts().size() == 2U);
+}
+
+MK_TEST("runtime mavg page streaming eviction review rejects invalid caller protected mounts") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+    };
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> caller_protected_mounts{
+        {.value = 10},
+        {.value = 10},
+        {.value = 0},
+        {.value = 99},
+    };
+
+    const auto result = mirakana::runtime::review_runtime_mavg_page_streaming_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingEvictionReviewDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .resident_page_mounts = page_mounts,
+                       .caller_protected_mount_ids = caller_protected_mounts,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(
+        has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::invalid_protected_mount));
+    MK_REQUIRE(
+        has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::duplicate_protected_mount));
+    MK_REQUIRE(result.duplicate_protected_mount_count == 1U);
+    MK_REQUIRE(!result.inferred_eviction_policy);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 1U);
+}
+
+MK_TEST("runtime mavg page streaming eviction review rejects duplicate resident page mounts") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "visible");
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 11}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 1},
+    };
+
+    const auto result = mirakana::runtime::review_runtime_mavg_page_streaming_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingEvictionReviewDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::duplicate_page_mount));
+    MK_REQUIRE(!result.inferred_eviction_policy);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
     MK_REQUIRE(mount_set.mounts().size() == 2U);
 }
 

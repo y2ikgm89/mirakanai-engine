@@ -78,3 +78,14 @@
 - The API remains side-effect-free: no file IO, mount mutation, background worker, renderer/RHI, native handle, automatic policy, or GPU memory pressure claim.
 - Docs, plan registry, manifest fragments, composed manifest, and static checks reflect exactly the new eviction review capability.
 - Focused validation, static/agent checks, full validation, hosted PR checks, and publication flow pass or record a concrete blocker.
+
+## Validation Evidence
+
+- 2026-06-07: resolved the PR #527 / PR #528 main-follow conflict by preserving both Material Shader Authoring Package Evidence v1 and MAVG Page Streaming Eviction Review v1 in the plan registry and production-loop manifest fragment, then recomposed `engine/agent/manifest.json`.
+- 2026-06-07: added diagnostic coverage for delegated `eviction_plan_failed`, invalid/duplicate caller-protected mount rows, and duplicate resident page mount rows in `MK_runtime_mavg_page_streaming_tests`.
+- 2026-06-07: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` passed.
+- 2026-06-07: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` passed.
+- 2026-06-07: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_page_streaming_tests` passed.
+- 2026-06-07: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_lod_residency_tests MK_runtime_package_streaming_resident_mount_tests` passed.
+- 2026-06-07: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_(mavg_page_streaming|mavg_lod_residency|package_streaming_resident_mount)_tests"` passed with 3/3 tests.
+- 2026-06-07: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-agents.ps1`, `git diff --check`, and targeted `tools/check-tidy.ps1 -Files "engine/runtime/src/mavg_page_streaming.cpp,tests/unit/runtime_mavg_page_streaming_tests.cpp" -ReuseExistingFileApiReply` passed.
