@@ -564,6 +564,7 @@
       "dependencies": [],
       "publicHeaders": [
         "engine/rhi/include/mirakana/rhi/backend_capabilities.hpp",
+        "engine/rhi/include/mirakana/rhi/indirect_draw.hpp",
         "engine/rhi/include/mirakana/rhi/gpu_debug.hpp",
         "engine/rhi/include/mirakana/rhi/memory_diagnostics.hpp",
         "engine/rhi/include/mirakana/rhi/resource_lifetime.hpp",
@@ -571,6 +572,7 @@
         "engine/rhi/include/mirakana/rhi/rhi.hpp"
       ],
       "recentEvidence": [
+        "MAVG RHI Indirect Draw v1 adds indirect_draw.hpp, IndexedIndirectDrawCommand, IndexedIndirectDrawDesc, BufferUsage::indirect, IRhiCommandList::draw_indexed_indirect, indirect-draw RhiStats rows, Null RHI argument/count-buffer deterministic execution counters, and Vulkan VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT mapping while D3D12 ExecuteIndirect, Vulkan indirect draw execution, Metal indirect command buffers, actual GPU culling dispatch, native handles, Nanite equivalence/superiority, and broad optimization remain unclaimed.",
         "MAVG Conventional Indexed Draw Range v1 changes rhi::IRhiCommandList::draw_indexed to the clean-break five-argument contract (index_count, instance_count, first_index, vertex_offset, first_instance), adds RhiStats last indexed range rows, and forwards the range to Null RHI, D3D12 DrawIndexedInstanced, and Vulkan vkCmdDrawIndexed. Focused evidence covers MK_rhi_tests, MK_d3d12_rhi_tests, MK_backend_scaffold_tests, and MK_renderer_tests without indirect draws, command signatures, mesh shader dispatch, package streaming execution, backend handle exposure, or broad optimization claims.",
         "RHI Native Async Upload Execution v1 adds execute_upload_gpu_batch_async plus RhiUploadGpuBatchExecutionResult so caller-owned RhiUploadStagingPlan/RhiUploadRing batches can prevalidate target counts and ring ownership, submit pending copies on a selected backend-neutral QueueKind, mark staging allocations with the returned FenceValue, and avoid helper-owned CPU waits without exposing native handles or claiming async overlap/performance.",
         "Staging Pool Lease Adoption v1 adds RhiStagingBufferLease, RhiStagingBufferPool::try_acquire_lease, RhiStagingBufferPool::release(RhiStagingBufferLease), and RhiUploadRingDesc::buffer so explicit host-owned pool chunks can back caller-owned RhiUploadRing uploads without extra ring buffer allocation."
