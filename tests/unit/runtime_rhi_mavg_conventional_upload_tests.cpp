@@ -243,21 +243,15 @@ MK_TEST("mavg conventional upload publishes package visible mesh binding for sce
     MK_REQUIRE(upload.mesh_binding.binding.vertex_count == payload.vertex_count);
     MK_REQUIRE(upload.mesh_binding.binding.index_count == payload.index_count);
 
-    const auto scene_mesh_binding = mirakana::MavgSceneLodMeshBinding{.graph_asset = upload.mesh_binding.graph_asset,
-                                                                      .mesh_binding = upload.mesh_binding.binding};
-    const std::vector<mirakana::MavgSceneLodMaterialBinding> materials{
-        mirakana::MavgSceneLodMaterialBinding{.material = graph.material_partitions[0].material,
-                                              .material_binding = make_material_binding(device, 201)},
-        mirakana::MavgSceneLodMaterialBinding{.material = graph.material_partitions[1].material,
-                                              .material_binding = make_material_binding(device, 301)},
-    };
+    mirakana::SceneGpuBindingPalette gpu_bindings;
+    MK_REQUIRE(gpu_bindings.try_add_mesh(upload.mesh_binding.graph_asset, upload.mesh_binding.binding));
+    MK_REQUIRE(gpu_bindings.try_add_material(graph.material_partitions[0].material, make_material_binding(device, 201)));
+    MK_REQUIRE(gpu_bindings.try_add_material(graph.material_partitions[1].material, make_material_binding(device, 301)));
 
     const auto plan = mirakana::plan_mavg_scene_lod_mesh_commands(
         make_mavg_upload_selection(graph.asset), graph,
         mirakana::MavgSceneLodSubmitDesc{
-            .graph_asset = graph.asset,
-            .mesh_binding = &scene_mesh_binding,
-            .material_bindings = std::span<const mirakana::MavgSceneLodMaterialBinding>{materials},
+            .gpu_bindings = &gpu_bindings,
         });
 
     MK_REQUIRE(plan.succeeded());
