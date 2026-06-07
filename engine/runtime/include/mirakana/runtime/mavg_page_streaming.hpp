@@ -37,6 +37,10 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     invalid_protected_mount,
     duplicate_protected_mount,
     eviction_plan_failed,
+    recency_graph_mismatch,
+    invalid_recency_row,
+    duplicate_recency_row,
+    non_monotonic_use_generation,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -124,6 +128,44 @@ struct RuntimeMavgPageStreamingSelectedClusterRow {
     std::uint32_t cluster_index{0};
 };
 
+struct RuntimeMavgPageStreamingRecencyRow {
+    AssetId graph_asset;
+    std::uint32_t page_index{0};
+    RuntimeResidentPackageMountIdV2 mount_id;
+    std::uint64_t resident_page_last_used_generation{0};
+};
+
+struct RuntimeMavgResidentPageUseGenerationDesc {
+    AssetId graph_asset;
+    const MavgClusterGraphDocument* graph{nullptr};
+    std::span<const RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters;
+    std::span<const RuntimeMavgResidentPageMountRow> resident_page_mounts;
+    std::span<const RuntimeMavgPageStreamingRecencyRow> previous_recency_rows;
+    std::uint64_t current_use_generation{0};
+};
+
+struct RuntimeMavgResidentPageUseGenerationResult {
+    std::vector<RuntimeMavgPageStreamingRecencyRow> recency_rows;
+    std::vector<RuntimeMavgPageStreamingDiagnostic> diagnostics;
+    std::size_t input_resident_page_mount_count{0};
+    std::size_t input_selected_cluster_count{0};
+    std::size_t output_recency_row_count{0};
+    std::size_t touched_resident_page_count{0};
+    std::size_t carried_recency_row_count{0};
+    std::size_t new_resident_page_count{0};
+    std::size_t dropped_nonresident_recency_row_count{0};
+    std::size_t duplicate_recency_row_count{0};
+    std::size_t missing_page_mount_count{0};
+    bool inferred_resident_page_use_generation{false};
+    bool invoked_file_io{false};
+    bool mutated_mount_set{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct RuntimeMavgPageStreamingEvictionReviewDesc {
     AssetId graph_asset;
     const MavgClusterGraphDocument* graph{nullptr};
@@ -197,5 +239,14 @@ review_runtime_mavg_page_streaming_evictions(const RuntimeResidentPackageMountSe
 [[nodiscard]] RuntimeMavgPageStreamingEvictionReviewResult
 plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackageMountSetV2& mount_set,
                                                      const RuntimeMavgPageStreamingAutomaticEvictionPlanDesc& desc);
+
+/// Builds side-effect-free resident page use-generation rows from selected cluster pages, current resident page mounts,
+/// and caller-retained previous recency rows. Selected resident pages receive `current_use_generation`, retained
+/// unselected pages keep their previous generation, new resident pages start cold at zero, and nonresident previous
+/// rows are dropped. This does not read files, mutate mounts, execute streaming, infer eviction order, or touch
+/// renderer/RHI handles.
+[[nodiscard]] RuntimeMavgResidentPageUseGenerationResult
+infer_runtime_mavg_resident_page_use_generations(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                 const RuntimeMavgResidentPageUseGenerationDesc& desc);
 
 } // namespace mirakana::runtime
