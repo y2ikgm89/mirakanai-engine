@@ -28,6 +28,15 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     duplicate_candidate,
     missing_candidate,
     safe_point_failed,
+    selected_graph_mismatch,
+    unknown_cluster,
+    page_mount_graph_mismatch,
+    invalid_page_mount,
+    duplicate_page_mount,
+    missing_page_mount,
+    invalid_protected_mount,
+    duplicate_protected_mount,
+    eviction_plan_failed,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -104,6 +113,47 @@ struct RuntimeMavgPageStreamingDrainResult {
     }
 };
 
+struct RuntimeMavgResidentPageMountRow {
+    AssetId graph_asset;
+    std::uint32_t page_index{0};
+    RuntimeResidentPackageMountIdV2 mount_id;
+};
+
+struct RuntimeMavgPageStreamingSelectedClusterRow {
+    AssetId graph_asset;
+    std::uint32_t cluster_index{0};
+};
+
+struct RuntimeMavgPageStreamingEvictionReviewDesc {
+    AssetId graph_asset;
+    const MavgClusterGraphDocument* graph{nullptr};
+    std::span<const RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters;
+    std::span<const RuntimeMavgResidentPageMountRow> resident_page_mounts;
+    std::span<const RuntimeResidentPackageMountIdV2> reviewed_candidate_unmount_order;
+    std::span<const RuntimeResidentPackageMountIdV2> caller_protected_mount_ids;
+    RuntimeResourceResidencyBudgetV2 target_budget{};
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+};
+
+struct RuntimeMavgPageStreamingEvictionReviewResult {
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
+    std::vector<RuntimeMavgPageStreamingDiagnostic> diagnostics;
+    std::size_t protected_visible_page_count{0};
+    std::size_t protected_fallback_page_count{0};
+    std::size_t duplicate_protected_mount_count{0};
+    bool invoked_eviction_plan{false};
+    bool inferred_eviction_policy{false};
+    bool invoked_file_io{false};
+    bool mutated_mount_set{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && eviction_plan.succeeded();
+    }
+};
+
 /// Pure planner over caller-reviewed MAVG page requests and package candidates. `candidates` may contain rows for
 /// multiple graphs; only rows matching `desc.graph_asset` and the requested page participate. Matching candidates must
 /// satisfy the same relative `.geindex`, optional relative content root, and non-empty relative label shape required by
@@ -117,5 +167,13 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
 [[nodiscard]] RuntimeMavgPageStreamingDrainResult execute_runtime_mavg_page_streaming_request_safe_point(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     RuntimeMavgPageStreamingDrainDesc desc);
+
+/// Reviews caller-provided resident page mounts and eviction candidates before a MAVG page-streaming safe point. The
+/// function protects selected cluster pages plus resident fallback ancestors, then delegates to the existing resident
+/// package eviction planner. It does not infer eviction policy, read files, mutate mounts, execute background
+/// streaming, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimeMavgPageStreamingEvictionReviewResult
+review_runtime_mavg_page_streaming_evictions(const RuntimeResidentPackageMountSetV2& mount_set,
+                                             const RuntimeMavgPageStreamingEvictionReviewDesc& desc);
 
 } // namespace mirakana::runtime
