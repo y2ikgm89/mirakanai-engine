@@ -431,7 +431,7 @@ git diff --check
 - Cluster page request queue.
 - Resident page catalog.
 - Eviction policy that preserves fallback ancestors.
-- Resident page use-generation evidence through `RuntimeMavgPageStreamingRecencyRow`, `RuntimeMavgResidentPageUseGenerationDesc`, `RuntimeMavgResidentPageUseGenerationResult`, and `infer_runtime_mavg_resident_page_use_generations`, without claiming LRU/recency/frequency eviction policy.
+- Resident page use-generation evidence through `RuntimeMavgPageStreamingRecencyRow`, `RuntimeMavgResidentPageUseGenerationDesc`, `RuntimeMavgResidentPageUseGenerationResult`, and `infer_runtime_mavg_resident_page_use_generations`, without claiming eviction-order selection in that step or runtime-inferred LRU/frequency policy.
 - GPU memory policy integration.
 - Package streaming evidence with missing-fine-cluster fallback.
 

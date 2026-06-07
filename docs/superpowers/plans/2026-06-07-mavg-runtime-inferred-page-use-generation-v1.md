@@ -6,11 +6,11 @@
 
 ## Goal
 
-Add side-effect-free MAVG resident page use-generation inference so selected resident pages can update recency evidence before later LRU/recency eviction policy work.
+Add side-effect-free MAVG resident page use-generation inference so selected resident pages can update recency evidence before a caller-supplied recency order consumes the rows or later LRU/frequency work is selected.
 
 ## Context
 
-MAVG Runtime LOD Milestone v1, MAVG Page Streaming Queue v1, MAVG Page Streaming Eviction Review v1, and MAVG Automatic Eviction Policy v1 already provide resident page rows, selected cluster rows, protected eviction review, deterministic fallback ordering, and one-row safe-point drain evidence. This slice adds only the value-only page-use generation row builder needed by future recency/LRU/frequency policies.
+MAVG Runtime LOD Milestone v1, MAVG Page Streaming Queue v1, MAVG Page Streaming Eviction Review v1, and MAVG Automatic Eviction Policy v1 already provide resident page rows, selected cluster rows, protected eviction review, deterministic fallback ordering, and one-row safe-point drain evidence. This slice adds only the value-only page-use generation row builder needed by caller-supplied recency ordering or future LRU/frequency policies.
 
 The implementation uses current repository C++23 patterns and the existing `mavg_page_streaming.hpp` boundary. No external SDK, platform API, third-party dependency, renderer/RHI object, file IO API, worker API, or official library reference is introduced; Context7 remains the preferred route when a touched library/SDK/toolchain API needs current documentation.
 
@@ -18,7 +18,7 @@ The implementation uses current repository C++23 patterns and the existing `mavg
 
 - Keep the surface value-only and host-independent.
 - Do not mutate resident mounts, read files, execute streaming, start workers, or touch renderer/RHI/native handles.
-- Do not claim LRU/recency/frequency eviction policy yet; this slice only emits recency evidence rows.
+- Do not claim eviction-order selection or runtime-inferred LRU/frequency eviction policy in this slice; this slice only emits recency evidence rows.
 - Do not claim GPU memory pressure, DirectStorage/native IO, autonomous/background package streaming, Nanite compatibility/equivalence/superiority, or broad CPU/GPU/memory optimization.
 
 ## Tasks
@@ -56,7 +56,7 @@ The implementation uses current repository C++23 patterns and the existing `mavg
 
 ## Non-Claims
 
-- No LRU/recency/frequency eviction policy.
+- No eviction-order selection or runtime-inferred LRU/frequency eviction policy.
 - No GPU memory pressure integration.
 - No partial `.mavgpayload` byte-range page loading/schema.
 - No file IO, mount mutation, background worker, package streaming execution, renderer/RHI handle access, DirectStorage execution, Metal readiness, Nanite compatibility/equivalence/superiority, or broad optimization claim.

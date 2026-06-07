@@ -401,6 +401,44 @@ prepare_eviction_review_protection(RuntimeMavgPageStreamingEvictionReviewResult&
     return result.diagnostics.empty();
 }
 
+[[nodiscard]] bool validate_recency_rows(RuntimeMavgPageStreamingEvictionReviewResult& result, AssetId graph_asset,
+                                         std::span<const RuntimeMavgResidentPageMountRow> page_mounts,
+                                         std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows) {
+    std::vector<std::uint32_t> seen_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> seen_mount_ids;
+    for (const auto& row : recency_rows) {
+        if (row.graph_asset != graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::recency_graph_mismatch, row.graph_asset,
+                           row.page_index, "MAVG recency row graph asset does not match the review graph");
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, graph_asset,
+                           row.page_index, "MAVG recency row mount id must be non-zero");
+            continue;
+        }
+        if (std::ranges::find(seen_page_indices, row.page_index) != seen_page_indices.end() ||
+            contains_mount_id(seen_mount_ids, row.mount_id)) {
+            ++result.duplicate_recency_row_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_recency_row, graph_asset,
+                           row.page_index, "MAVG recency rows must be unique by page and mount id");
+            continue;
+        }
+        const auto page_mount_matches =
+            std::ranges::any_of(page_mounts, [&row](const RuntimeMavgResidentPageMountRow& page_mount) {
+                return matches_page_mount(page_mount, row);
+            });
+        if (!page_mount_matches) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, graph_asset,
+                           row.page_index, "MAVG recency row must match a resident page mount row");
+            continue;
+        }
+        seen_page_indices.push_back(row.page_index);
+        seen_mount_ids.push_back(row.mount_id);
+    }
+    return result.diagnostics.empty();
+}
+
 } // namespace
 
 RuntimeMavgPageStreamingPlanResult
@@ -744,27 +782,61 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
         return result;
     }
 
-    std::vector<RuntimeMavgResidentPageMountRow> eviction_candidates;
+    struct EvictionCandidate {
+        RuntimeMavgResidentPageMountRow page_mount;
+        std::uint64_t resident_page_last_used_generation{0};
+    };
+
+    std::vector<EvictionCandidate> eviction_candidates;
     eviction_candidates.reserve(desc.resident_page_mounts.size());
     for (const auto& row : desc.resident_page_mounts) {
         if (contains_mount_id(result.protected_mount_ids, row.mount_id)) {
             ++result.protected_eviction_candidate_skip_count;
             continue;
         }
-        eviction_candidates.push_back(row);
+        eviction_candidates.push_back(EvictionCandidate{.page_mount = row});
     }
 
-    std::ranges::sort(eviction_candidates,
-                      [](const RuntimeMavgResidentPageMountRow& lhs, const RuntimeMavgResidentPageMountRow& rhs) {
-                          if (lhs.page_index != rhs.page_index) {
-                              return lhs.page_index > rhs.page_index;
-                          }
-                          return lhs.mount_id.value < rhs.mount_id.value;
-                      });
+    if (desc.policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency) {
+        if (!validate_recency_rows(result, desc.graph_asset, desc.resident_page_mounts, desc.recency_rows)) {
+            return result;
+        }
+        for (auto& candidate : eviction_candidates) {
+            const auto* const recency = find_recency_row(desc.recency_rows, candidate.page_mount);
+            if (recency == nullptr) {
+                ++result.missing_recency_row_count;
+                add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_recency_row, desc.graph_asset,
+                               candidate.page_mount.page_index,
+                               "MAVG recency eviction policy requires one recency row for each candidate");
+                continue;
+            }
+            candidate.resident_page_last_used_generation = recency->resident_page_last_used_generation;
+        }
+        if (!result.diagnostics.empty()) {
+            return result;
+        }
+        result.applied_caller_supplied_recency_policy = true;
+        result.recency_eviction_candidate_count = eviction_candidates.size();
+    } else if (desc.policy_kind != RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::deterministic_page_index) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, desc.graph_asset, 0,
+                       "MAVG automatic eviction policy kind is not supported");
+        return result;
+    }
+
+    std::ranges::sort(eviction_candidates, [&desc](const EvictionCandidate& lhs, const EvictionCandidate& rhs) {
+        if (desc.policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency &&
+            lhs.resident_page_last_used_generation != rhs.resident_page_last_used_generation) {
+            return lhs.resident_page_last_used_generation < rhs.resident_page_last_used_generation;
+        }
+        if (lhs.page_mount.page_index != rhs.page_mount.page_index) {
+            return lhs.page_mount.page_index > rhs.page_mount.page_index;
+        }
+        return lhs.page_mount.mount_id.value < rhs.page_mount.mount_id.value;
+    });
 
     result.eviction_candidate_unmount_order.reserve(eviction_candidates.size());
     for (const auto& candidate : eviction_candidates) {
-        result.eviction_candidate_unmount_order.push_back(candidate.mount_id);
+        result.eviction_candidate_unmount_order.push_back(candidate.page_mount.mount_id);
     }
     result.automatic_eviction_candidate_count = result.eviction_candidate_unmount_order.size();
     result.planned_automatic_eviction_policy = true;
