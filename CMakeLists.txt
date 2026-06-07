@@ -839,6 +839,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_mavg_lod_selection_tests)
     add_test(NAME MK_mavg_lod_selection_tests COMMAND MK_mavg_lod_selection_tests)
 
+    add_executable(MK_mavg_gpu_culling_tests
+        tests/unit/mavg_gpu_culling_tests.cpp
+    )
+    target_link_libraries(MK_mavg_gpu_culling_tests PRIVATE MK_renderer)
+    target_include_directories(MK_mavg_gpu_culling_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_mavg_gpu_culling_tests)
+    add_test(NAME MK_mavg_gpu_culling_tests COMMAND MK_mavg_gpu_culling_tests)
+
     add_executable(MK_renderer_environment_policy_tests
         tests/unit/renderer_environment_policy_tests.cpp
     )

@@ -6,11 +6,11 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The stacked implementation milestone `mavg-runtime-lod-milestone-v1` is now completed over the `mavg-asset-graph-v1` foundation, and `mavg-page-streaming-queue-v1`, `mavg-page-streaming-eviction-review-v1`, `mavg-automatic-eviction-policy-v1`, `mavg-runtime-inferred-page-use-generation-v1` / `MAVG Runtime Inferred Page Use Generation v1`, and `mavg-resident-page-recency-eviction-order-v1` add caller-reviewed page request queue, selected/fallback page eviction review, deterministic resident-page eviction candidate ordering, value-only resident page use-generation evidence, and caller-supplied recency ordering evidence without reopening that completed milestone. The completed LoD path implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request planning, selected/fallback page eviction review, deterministic automatic candidate-order planning, resident page use-generation evidence, caller-supplied recency ordering, and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `review_runtime_mavg_page_streaming_evictions` / `plan_runtime_mavg_page_streaming_automatic_evictions` / `infer_runtime_mavg_resident_page_use_generations` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draws through `MeshIndexedDrawRange` and the clean-break 5-argument `rhi::IRhiCommandList::draw_indexed`, and `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`. Autonomous/background package streaming execution, runtime-inferred LRU/frequency eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, Metal readiness, benchmark superiority, and Nanite compatibility/equivalence/superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The parent stacked implementation milestone is `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation, and the active child is `mavg-gpu-culling-indirect-v1`. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request streaming planning, selected-visible/fallback-ancestor eviction protection, and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `review_runtime_mavg_page_streaming_evictions` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draw execution, `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`, and `MK_runtime_rhi` conventional package-visible MAVG mesh binding upload evidence through `mavg_conventional_upload.hpp` / `upload_runtime_mavg_conventional_mesh_binding`. The active child now adds `MK_renderer` value-only GPU culling/indirect command planning through `mavg_gpu_culling.hpp` / `plan_mavg_gpu_culling_indirect_commands`, packed indexed indirect command rows, reviewed culling bounds, fail-closed diagnostics, and D3D12/Vulkan synchronization requirement rows; autonomous background workers, async-overlap/performance, automatic eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, actual GPU culling dispatch, D3D12 `ExecuteIndirect`, Vulkan indirect draw execution, mesh shaders, deformation, ray tracing, Nanite equivalence/superiority, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`; the stacked LoD milestone is completed and follow-up MAVG slices are recorded as separate implementation plans.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md` while the stacked GPU culling planning child is active.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -77,13 +77,13 @@ Implemented v1 responsibilities:
 
 Non-responsibilities:
 
-- Renderer backend execution.
+- MAVG package-visible backend execution.
 - Streaming IO execution.
 - Runtime source import.
 - Third-party simplifier ownership.
-- Renderer submission and backend execution; CPU selection now belongs to the `MK_renderer` selector checkpoint and resident-page evidence now belongs to the `MK_runtime` bridge checkpoint in the active LoD milestone.
+- CPU selection now belongs to the `MK_renderer` selector checkpoint, resident-page evidence belongs to the `MK_runtime` bridge checkpoint, range-aware conventional indexed draw execution belongs to the RHI/renderer checkpoint, and conventional selected-cluster `MeshCommand` planning belongs to the `MK_scene_renderer` checkpoint in the active LoD milestone.
 
-The detailed LoD milestone `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md` is completed for graph, draw-ready static cook payload, CPU selector, runtime resident-page evidence, range-aware conventional indexed draws, and conventional scene submission planning. `docs/superpowers/plans/2026-06-06-mavg-page-streaming-queue-v1.md` records the first post-milestone package-streaming follow-up slice.
+The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph, draw-ready static cook payload, CPU selector, runtime resident-page evidence, range-aware conventional indexed draw, conventional scene submission planning, conventional runtime upload evidence, docs/manifest/static sync, and slice validation checkpoints are implemented.
 
 ### Runtime Selection
 
@@ -115,7 +115,7 @@ The implemented resident-page bridge files live in `MK_runtime` while shared pag
 Implemented v1 responsibilities:
 
 - Convert already-reviewed `RuntimeResourceCatalogV2` `AssetKind::mavg_cluster_graph` rows plus a caller-owned `MavgClusterGraphDocument` observer into `MavgLodResidentPageSet` rows.
-- Validate selector `MavgLodPageRequest` rows against the graph asset and known graph page indices, then preserve accepted rows as reviewed page requests for a later streaming plan.
+- Preserve selector `MavgLodPageRequest` rows as reviewed page requests for a later streaming plan.
 - Report missing catalog/graph/catalog-kind evidence without reading package files, mutating resident mount sets, executing streaming, or touching renderer/RHI handles.
 
 Non-responsibilities:
@@ -124,71 +124,64 @@ Non-responsibilities:
 - Background streaming or automatic eviction.
 - Renderer/RHI upload, residency, or native handle ownership.
 
-### Runtime Page Streaming Queue
-
-The implemented caller-reviewed page streaming queue files live in `MK_runtime` and use existing runtime package safe-point helpers:
-
-- `engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp`
-- `engine/runtime/src/mavg_page_streaming.cpp`
-
-Implemented v1 responsibilities:
-
-- Expose `RuntimeMavgPageStreamingCandidateRow`, `RuntimeMavgPageStreamingPlanResult`, and `RuntimeMavgPageStreamingDrainResult` as the public value/evidence rows for planning and safe-point drain results.
-- Convert reviewed selector `MavgLodPageRequest` rows into deterministic `RuntimeMavgPageStreamingPlanRow` package candidate rows.
-- Validate graph asset ids, graph/page membership, finite priorities, non-empty reasons, candidate graph matches, duplicate candidates, and missing candidates before any file IO.
-- Coalesce duplicate page requests by highest priority, sort queued rows deterministically by priority then page index, and report `max_queued_pages` degradation.
-- Drain one queued row at a caller-owned safe point through `commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2`.
-- Preserve live mount/catalog state when the delegated safe point rejects invalid mount ids, package load, eviction plan, budget, or catalog refresh.
-- Report explicit side-effect flags proving planner file IO, planner mount mutation, planner streaming execution, background worker execution, and renderer/RHI handle access remain false.
-- Expose `RuntimeMavgResidentPageMountRow`, `RuntimeMavgPageStreamingSelectedClusterRow`, `RuntimeMavgPageStreamingEvictionReviewResult`, `RuntimeMavgPageStreamingAutomaticEvictionPlanDesc`, `RuntimeMavgPageStreamingAutomaticEvictionPolicyKind`, `RuntimeMavgPageStreamingRecencyRow`, and `plan_runtime_mavg_page_streaming_automatic_evictions` for caller-reviewed eviction review plus deterministic resident-page candidate ordering before a page-streaming safe point.
-- Protect selected visible cluster page mounts and resident fallback ancestor page mounts before delegating to `plan_runtime_resident_package_evictions_v2`.
-- Sort default automatic eviction candidates by descending page index then ascending mount id, skip protected mounts, and report `planned_automatic_eviction_policy`, `automatic_eviction_candidate_count`, and `protected_eviction_candidate_skip_count`.
-- Expose `RuntimeMavgPageStreamingRecencyRow`, `RuntimeMavgResidentPageUseGenerationDesc`, `RuntimeMavgResidentPageUseGenerationResult`, and `infer_runtime_mavg_resident_page_use_generations` for side-effect-free resident page use-generation evidence. Selected resident pages receive the caller-provided current generation, retained unselected resident rows carry previous generations, new resident pages start cold at generation zero, and nonresident previous rows are dropped before a caller-supplied recency order consumes the rows or later LRU/frequency work is selected.
-- Support caller-supplied recency ordering through `RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency`, `resident_page_last_used_generation`, `applied_caller_supplied_recency_policy`, `recency_eviction_candidate_count`, `duplicate_recency_row_count`, and `missing_recency_row_count`; older generation values are ordered first, then page index descending and mount id ascending.
-- Reject graph mismatches, unknown selected clusters, unknown pages, invalid/duplicate/missing resident page mounts, invalid/duplicate caller-protected mounts, and protected eviction candidates without mutating resident state.
-
-Non-responsibilities:
-
-- autonomous/background package streaming workers.
-- runtime-inferred LRU/frequency eviction policy.
-- DirectStorage native queue/file IO execution.
-- Partial `.mavgpayload` byte-range page loading/schema.
-- GPU memory pressure integration.
-- Renderer/RHI upload, GPU culling, indirect draws, mesh shaders, or native handle ownership.
-
 ### Conventional Renderer Adoption
 
-The completed conventional scene-submission path avoids backend-specific GPU work and lives in `MK_scene_renderer` while using existing renderer/RHI opaque binding contracts:
+The conventional path avoids backend-specific GPU work. The selected-cluster submission planner lives in `MK_scene_renderer`; package-visible conventional upload evidence lives in `MK_runtime_rhi` and consumes already-committed package streaming/catalog state without executing streaming:
 
+- `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_conventional_upload.hpp`
+- `engine/runtime_rhi/src/mavg_conventional_upload.cpp`
 - `engine/scene_renderer/include/mirakana/scene_renderer/mavg_scene_lod.hpp`
 - `engine/scene_renderer/src/mavg_scene_lod.cpp`
 
 Implemented responsibilities:
 
-- Plan selected clusters into existing `MeshCommand` rows through `SceneGpuBindingPalette`.
-- Submit only selected cluster index ranges through `MeshIndexedDrawRange`.
-- Preserve existing `MeshGpuBinding` / `MaterialGpuBinding` ownership and opaque handle boundaries.
-- Report missing material bindings and fallback substitutions as diagnostics without exposing native/RHI handles.
+- Expose `RuntimeMavgConventionalMeshUploadDesc`, `RuntimeMavgConventionalMeshUploadResult`, and `upload_runtime_mavg_conventional_mesh_binding` as the narrow runtime-RHI MAVG conventional upload contract.
+- Validate committed package streaming evidence, live `AssetKind::mavg_cluster_graph` catalog rows, caller-owned graph documents, payload asset/handle identity, and graph draw ranges before upload side effects.
+- Upload the static MAVG payload through existing `upload_runtime_mesh` and return a renderer `MeshGpuBinding` with package-visible counters, submitted fences, and explicit non-claim flags for GPU culling, indirect draws, mesh shaders, and native handles.
+- Submit selected clusters through range-aware conventional `MeshCommand` planning using existing `MeshGpuBinding` and `MaterialGpuBinding` payloads.
+- Preserve fallback-substitution counters and missing-material fallback-color diagnostics without exposing native handles.
 
 Future responsibilities:
 
-- Automate selected cluster payload upload through existing upload/frame-graph paths if a later package-streaming or runtime-upload plan selects it.
-- Report package-visible MAVG runtime counters without mesh shader dependency.
+- Autonomous background/page package streaming workers, async overlap/performance evidence, partial `.mavgpayload` byte-range page loading/schema, automatic eviction policy, and GPU memory pressure integration.
+- GPU culling, indirect command buffers, and mesh shader paths.
 
 ### GPU Culling And Indirect
 
-Future files should start in `MK_rhi` and `MK_renderer`:
+The first value-only GPU culling planning files live in `MK_renderer`:
 
-- `engine/rhi/include/mirakana/rhi/indirect_draw.hpp`
 - `engine/renderer/include/mirakana/renderer/mavg_gpu_culling.hpp`
+- `engine/renderer/src/mavg_gpu_culling.cpp`
+
+Implemented responsibilities:
+
+- Expose `MavgGpuCullingClusterBoundsRow`, `MavgGpuCullingIndirectCommand`, `MavgGpuCullingIndirectCommandLayout`, `MavgGpuCullingSyncRequirement`, `MavgGpuCullingIndirectDesc`, `MavgGpuCullingIndirectPlan`, and `plan_mavg_gpu_culling_indirect_commands`.
+- Convert successful `MavgLodSelectionResult` rows plus reviewed culling bounds into deterministic packed indexed indirect command rows using the current conventional `draw_indexed` field order.
+- Record 20-byte five-field argument layout, 4-byte count-buffer size/value, selected/visible/culled counters, fallback-substitution provenance, and fail-closed diagnostics.
+- Return D3D12 and Vulkan compute-write-to-indirect-read synchronization requirement rows when the command producer is `compute_shader`.
+- Keep `executed_gpu_culling`, `executed_indirect_draw`, `executed_mesh_shader`, and `touched_native_handles` false.
+
+Future files should start in `MK_rhi`, `MK_renderer`, and backend-local implementations:
+
 - backend-local implementation files under `engine/rhi/d3d12` and `engine/rhi/vulkan`.
 
-Responsibilities:
+The first RHI indirect draw contract files now live in `MK_rhi`:
 
-- Backend-neutral indirect command rows.
-- Compute culling buffer contracts.
-- D3D12 and Vulkan synchronization evidence.
-- Null RHI deterministic counters.
+- `engine/rhi/src/indirect_draw.cpp`
+- `engine/rhi/src/null_rhi.cpp`
+
+Implemented RHI responsibilities:
+
+- Expose `IndexedIndirectDrawCommand`, `IndexedIndirectDrawDesc`, fixed five-word layout constants, `encode_indexed_indirect_draw_command`, and `decode_indexed_indirect_draw_command`.
+- Let Null RHI validate argument buffer/count buffer usage, 4-byte alignment, stride, and bounds, then execute decoded commands deterministically through the existing indexed draw stats path.
+- Track `indexed_indirect_draw_calls`, `indexed_indirect_commands_executed`, `indexed_indirect_count_buffer_reads`, `last_indexed_indirect_max_draw_count`, `last_indexed_indirect_executed_draw_count`, and `last_indexed_indirect_count_buffer_value`.
+- Map Vulkan buffer usage planning for indirect argument buffers while leaving native Vulkan command execution to a later backend plan.
+
+Future responsibilities:
+
+- Actual compute culling dispatch and command/count buffer writes.
+- D3D12 command signatures, resource state transitions, and `ExecuteIndirect`.
+- Vulkan indirect draw/count execution, feature gates, and synchronization commands.
 
 ### Mesh Shader Backends
 
@@ -208,13 +201,25 @@ Non-responsibilities:
 
 ### Streaming And Residency
 
-Future files should start in `MK_runtime` and `MK_runtime_rhi`.
+Implemented first-child files live in `MK_runtime`:
 
-Responsibilities:
+- `engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp`
+- `engine/runtime/src/mavg_page_streaming.cpp`
 
-- Cluster page request queue.
-- Resident page catalog.
-- Eviction that preserves visible fallback ancestors.
+Implemented responsibilities:
+
+- Expose `RuntimeMavgPageStreamingCandidateRow`, `RuntimeMavgPageStreamingPlanResult`, `RuntimeMavgPageStreamingDrainResult`, `RuntimeMavgResidentPageMountRow`, `RuntimeMavgPageStreamingSelectedClusterRow`, and `RuntimeMavgPageStreamingEvictionReviewResult` as the narrow runtime MAVG page streaming evidence rows.
+- Convert reviewed selector `MavgLodPageRequest` rows into deterministic `RuntimeMavgPageStreamingPlanRow` package candidate rows.
+- Skip already-resident pages, coalesce duplicate requests by highest priority, sort by priority/page, and apply deterministic `max_queued_pages` degradation.
+- Convert selected cluster rows plus reviewed resident page mount rows into protected visible page and fallback ancestor mount ids, then delegate caller-reviewed candidate order to `plan_runtime_resident_package_evictions_v2` without inferring an eviction policy.
+- Drain one queued row through `commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2` at a caller-owned safe point.
+- Keep zero side-effect flags for planner file IO, eviction review file IO, mount mutation, streaming execution, renderer/RHI handles, and drain background workers/RHI handles.
+
+Future responsibilities:
+
+- Partial `.mavgpayload` byte-range page package schema and loader.
+- Autonomous/background dispatch policy and async overlap evidence.
+- Automatic eviction policy beyond caller-reviewed candidate order and protected selected/fallback ancestor mount ids.
 - GPU memory policy integration.
 
 ### Deformation
