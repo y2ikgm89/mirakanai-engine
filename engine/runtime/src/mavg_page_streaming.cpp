@@ -45,6 +45,16 @@ void add_diagnostic(RuntimeMavgPageStreamingEvictionReviewResult& result, Runtim
     });
 }
 
+void add_diagnostic(RuntimeMavgResidentPageUseGenerationResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
+                    AssetId graph_asset, std::uint32_t page_index, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool has_page(const MavgClusterGraphDocument& graph, std::uint32_t page_index) noexcept {
     return std::ranges::any_of(
         graph.pages, [page_index](const MavgClusterGraphPage& page) { return page.page_index == page_index; });
@@ -169,11 +179,34 @@ void sort_plan_rows(std::vector<RuntimeMavgPageStreamingPlanRow>& rows) {
     });
 }
 
+[[nodiscard]] bool contains_page_index(const std::vector<std::uint32_t>& page_indices,
+                                       std::uint32_t page_index) noexcept {
+    return std::ranges::find(page_indices, page_index) != page_indices.end();
+}
+
 [[nodiscard]] const RuntimeMavgResidentPageMountRow*
 find_page_mount(std::span<const RuntimeMavgResidentPageMountRow> page_mounts, std::uint32_t page_index) noexcept {
     const auto found = std::ranges::find_if(
         page_mounts, [page_index](const RuntimeMavgResidentPageMountRow& row) { return row.page_index == page_index; });
     if (found == page_mounts.end()) {
+        return nullptr;
+    }
+    return &*found;
+}
+
+[[nodiscard]] bool matches_page_mount(const RuntimeMavgResidentPageMountRow& page_mount,
+                                      const RuntimeMavgPageStreamingRecencyRow& recency_row) noexcept {
+    return page_mount.graph_asset == recency_row.graph_asset && page_mount.page_index == recency_row.page_index &&
+           page_mount.mount_id == recency_row.mount_id;
+}
+
+[[nodiscard]] const RuntimeMavgPageStreamingRecencyRow*
+find_recency_row(std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows,
+                 const RuntimeMavgResidentPageMountRow& page_mount) noexcept {
+    const auto found = std::ranges::find_if(recency_rows, [&page_mount](const RuntimeMavgPageStreamingRecencyRow& row) {
+        return matches_page_mount(page_mount, row);
+    });
+    if (found == recency_rows.end()) {
         return nullptr;
     }
     return &*found;
@@ -486,6 +519,195 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
         coalesced.resize(desc.max_queued_pages);
     }
     result.queued_page_requests = std::move(coalesced);
+    return result;
+}
+
+RuntimeMavgResidentPageUseGenerationResult
+infer_runtime_mavg_resident_page_use_generations(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                 const RuntimeMavgResidentPageUseGenerationDesc& desc) {
+    RuntimeMavgResidentPageUseGenerationResult result;
+    result.input_resident_page_mount_count = desc.resident_page_mounts.size();
+    result.input_selected_cluster_count = desc.selected_clusters.size();
+
+    bool invalid_inputs = false;
+    if (desc.graph_asset.value == 0) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph_asset, desc.graph_asset, 0,
+                       "MAVG resident page use generation graph asset id must be non-zero");
+        invalid_inputs = true;
+    }
+    if (desc.graph == nullptr) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_graph, desc.graph_asset, 0,
+                       "MAVG resident page use generation graph document is required");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    const auto& graph = *desc.graph;
+    if (graph.asset != desc.graph_asset) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::graph_asset_mismatch, desc.graph_asset, 0,
+                       "MAVG resident page use generation graph document asset must match the requested graph asset");
+        invalid_inputs = true;
+    }
+    const auto validation = validate_mavg_cluster_graph(graph);
+    if (!validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph, desc.graph_asset, 0,
+                       "MAVG resident page use generation graph validation failed");
+        invalid_inputs = true;
+    }
+
+    std::vector<std::uint32_t> resident_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> resident_mount_ids;
+    for (const auto& row : desc.resident_page_mounts) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::page_mount_graph_mismatch, row.graph_asset,
+                           row.page_index,
+                           "MAVG resident page use generation mount graph asset does not match the requested graph");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!has_page(graph, row.page_index)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_page, desc.graph_asset,
+                           row.page_index, "MAVG resident page use generation row references an unknown graph page");
+            invalid_inputs = true;
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page use generation mount id must be non-zero");
+            invalid_inputs = true;
+            continue;
+        }
+        if (contains_page_index(resident_page_indices, row.page_index) ||
+            contains_mount_id(resident_mount_ids, row.mount_id)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_page_mount, desc.graph_asset,
+                           row.page_index,
+                           "MAVG resident page use generation mount rows must be unique by page and mount id");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!contains_mount_id(mount_set, row.mount_id)) {
+            ++result.missing_page_mount_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page use generation mount id is not mounted");
+            invalid_inputs = true;
+            continue;
+        }
+        resident_page_indices.push_back(row.page_index);
+        resident_mount_ids.push_back(row.mount_id);
+    }
+
+    std::vector<std::uint32_t> selected_page_indices;
+    for (const auto& selected : desc.selected_clusters) {
+        if (selected.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::selected_graph_mismatch,
+                           selected.graph_asset, 0,
+                           "MAVG resident page use generation selected cluster graph asset does not match");
+            invalid_inputs = true;
+            continue;
+        }
+        const auto* const cluster = find_cluster(graph, selected.cluster_index);
+        if (cluster == nullptr) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_cluster, desc.graph_asset, 0,
+                           "MAVG resident page use generation selected cluster references an unknown graph cluster");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!contains_page_index(resident_page_indices, cluster->page_index)) {
+            ++result.missing_page_mount_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_page_mount, desc.graph_asset,
+                           cluster->page_index,
+                           "MAVG resident page use generation selected cluster page is not resident");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!contains_page_index(selected_page_indices, cluster->page_index)) {
+            selected_page_indices.push_back(cluster->page_index);
+        }
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    bool invalid_recency = false;
+    std::vector<std::uint32_t> previous_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> previous_mount_ids;
+    for (const auto& row : desc.previous_recency_rows) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::recency_graph_mismatch, row.graph_asset,
+                           row.page_index,
+                           "MAVG resident page use generation previous recency graph asset does not match");
+            invalid_recency = true;
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, desc.graph_asset,
+                           row.page_index,
+                           "MAVG resident page use generation previous recency mount id must be non-zero");
+            invalid_recency = true;
+            continue;
+        }
+        if (contains_page_index(previous_page_indices, row.page_index) ||
+            contains_mount_id(previous_mount_ids, row.mount_id)) {
+            ++result.duplicate_recency_row_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_recency_row, desc.graph_asset,
+                           row.page_index, "MAVG resident page use generation previous recency rows must be unique");
+            invalid_recency = true;
+            continue;
+        }
+        previous_page_indices.push_back(row.page_index);
+        previous_mount_ids.push_back(row.mount_id);
+
+        const auto* const current_mount = find_page_mount(desc.resident_page_mounts, row.page_index);
+        if (current_mount == nullptr || !matches_page_mount(*current_mount, row)) {
+            ++result.dropped_nonresident_recency_row_count;
+            continue;
+        }
+        if (row.resident_page_last_used_generation > desc.current_use_generation) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::non_monotonic_use_generation,
+                           desc.graph_asset, row.page_index,
+                           "MAVG resident page use generation must be monotonic for retained resident pages");
+            invalid_recency = true;
+        }
+    }
+    if (invalid_recency) {
+        return result;
+    }
+
+    std::vector<RuntimeMavgResidentPageMountRow> ordered_mounts(desc.resident_page_mounts.begin(),
+                                                                desc.resident_page_mounts.end());
+    std::ranges::sort(ordered_mounts,
+                      [](const RuntimeMavgResidentPageMountRow& lhs, const RuntimeMavgResidentPageMountRow& rhs) {
+                          if (lhs.page_index != rhs.page_index) {
+                              return lhs.page_index < rhs.page_index;
+                          }
+                          return lhs.mount_id.value < rhs.mount_id.value;
+                      });
+
+    result.recency_rows.reserve(ordered_mounts.size());
+    for (const auto& mount : ordered_mounts) {
+        auto last_used_generation = std::uint64_t{0};
+        if (contains_page_index(selected_page_indices, mount.page_index)) {
+            last_used_generation = desc.current_use_generation;
+            ++result.touched_resident_page_count;
+        } else if (const auto* const previous = find_recency_row(desc.previous_recency_rows, mount);
+                   previous != nullptr) {
+            last_used_generation = previous->resident_page_last_used_generation;
+            ++result.carried_recency_row_count;
+        } else {
+            ++result.new_resident_page_count;
+        }
+
+        result.recency_rows.push_back(RuntimeMavgPageStreamingRecencyRow{
+            .graph_asset = mount.graph_asset,
+            .page_index = mount.page_index,
+            .mount_id = mount.mount_id,
+            .resident_page_last_used_generation = last_used_generation,
+        });
+    }
+    result.output_recency_row_count = result.recency_rows.size();
+    result.inferred_resident_page_use_generation = true;
     return result;
 }
 
