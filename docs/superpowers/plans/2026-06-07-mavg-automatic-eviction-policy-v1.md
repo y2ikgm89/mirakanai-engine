@@ -23,7 +23,7 @@ This slice introduces no third-party dependency, SDK, platform API, native handl
 - Keep the implementation pure planning until an existing safe-point commit path runs.
 - Reuse selected/fallback page protection and resident mount validation semantics from `review_runtime_mavg_page_streaming_evictions`.
 - Sort automatic candidates deterministically by descending page index, then ascending mount id.
-- Do not infer LRU/recency/frequency behavior, GPU memory pressure, renderer/RHI residency, async-overlap performance, DirectStorage native execution, or Nanite compatibility/equivalence/superiority.
+- Do not infer runtime-inferred LRU/frequency behavior, GPU memory pressure, renderer/RHI residency, async-overlap performance, DirectStorage native execution, or Nanite compatibility/equivalence/superiority.
 - Do not add third-party dependencies, native handles, compatibility shims, background workers, or package/file IO.
 
 ## Implementation
@@ -53,7 +53,7 @@ This slice introduces no third-party dependency, SDK, platform API, native handl
 
 ## Non-Claims
 
-- No LRU/recency/frequency eviction policy.
+- No runtime-inferred LRU/frequency eviction policy.
 - No GPU memory pressure integration or allocator enforcement.
 - No DirectStorage native queue/file IO execution.
 - No sustained async-overlap or performance benchmark claim.

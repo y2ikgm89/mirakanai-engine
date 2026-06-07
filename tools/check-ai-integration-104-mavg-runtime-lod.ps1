@@ -122,7 +122,7 @@ foreach ($surface in @(
             "planned_automatic_eviction_policy",
             "automatic_eviction_candidate_count",
             "protected_eviction_candidate_skip_count",
-            "LRU/recency/frequency"
+            "runtime-inferred LRU/frequency"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG automatic eviction policy evidence"
     }
