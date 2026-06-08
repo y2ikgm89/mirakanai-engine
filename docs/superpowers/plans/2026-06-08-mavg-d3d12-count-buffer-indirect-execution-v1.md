@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-d3d12-count-buffer-indirect-execution-v1`
 
-**Status:** Planned.
+**Status:** Active.
 
-**Execution State:** Draft plan-only slice published after PR #541 landed and PR #543 returned `currentActivePlan` to the production-completion master plan. Do not activate `currentActivePlan` or mutate composed manifest until the implementation worktree lands over merged `origin/main`.
+**Execution State:** Active child implemented over merged `origin/main` after PR #541 (Vulkan `vkCmdDrawIndexedIndirect` execution), PR #543 (Vulkan closeout to the selection gate), and PR #542 landed. `currentActivePlan` now points at this plan and `recommendedNextPlan.id = mavg-d3d12-count-buffer-indirect-execution-v1`. The count-buffer execution claim is that `IRhiCommandList::draw_indexed_indirect` executes `ID3D12GraphicsCommandList::ExecuteIndirect` with a non-null count resource and 4-byte-aligned `CountBufferOffset`, running `min(count_buffer_value, max_draw_count)` draws for CPU-generated upload argument and count buffers, proven by WARP-backed `MK_d3d12_rhi_tests` count-limited, zero-count, and invalid-input coverage while keeping compute-generated count/argument buffers, count-buffer Vulkan execution, actual GPU culling dispatch, mesh shaders, Metal readiness, and Nanite equivalence/superiority unclaimed.
 
 **Goal:** Extend the completed D3D12 no-count `ExecuteIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI, and proves visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming compute-generated count buffers, GPU culling dispatch, Vulkan count-buffer execution, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 

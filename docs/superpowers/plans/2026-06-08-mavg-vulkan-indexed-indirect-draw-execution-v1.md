@@ -6,7 +6,7 @@
 
 **Status:** Completed.
 
-**Execution State:** Completed through PR #541. The closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims.
+**Execution State:** Completed through PR #541. The closeout returned `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Native D3D12 count-buffer `ExecuteIndirect` execution is now owned by the follow-up D3D12 count-buffer execution plan `mavg-d3d12-count-buffer-indirect-execution-v1`.
 
 **Goal:** Implement a clean Vulkan `vkCmdDrawIndexedIndirect` execution path for `IRhiCommandList::draw_indexed_indirect` when the caller supplies a CPU-generated upload argument buffer and no count buffer, then prove visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming GPU culling dispatch, count-buffer execution, D3D12 changes, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
@@ -107,4 +107,4 @@ Out of scope:
 
 ## Non-Claims
 
-This plan does not claim count-buffer execution, compute-generated indirect buffers, actual GPU culling dispatch, public buffer state tracking, D3D12 changes, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.
+This plan does not claim count-buffer execution, count-buffer Vulkan execution, compute-generated indirect buffers, actual GPU culling dispatch, public buffer state tracking, D3D12 changes, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.

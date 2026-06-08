@@ -45,11 +45,27 @@ encode_indexed_indirect_draw_command(const IndexedIndirectDrawCommand& command) 
 
 [[nodiscard]] std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc& desc);
 
+// Decodes the 32-bit little-endian draw count from a CPU-readable upload count buffer slice. When a count buffer is
+// supplied, this value (clamped to the maximum draw count) determines how many indexed indirect draws execute.
+[[nodiscard]] std::uint32_t decode_indexed_indirect_count_buffer_value(std::span<const std::uint8_t> count_bytes);
+
+// Returns `min(count_buffer_value, desc.max_draw_count)`, the effective number of indexed indirect draws executed when
+// a count buffer is supplied. Backends clamp the supplied count to the maximum draw count for deterministic execution.
+[[nodiscard]] std::uint32_t effective_indexed_indirect_draw_count(std::uint32_t count_buffer_value,
+                                                                  const IndexedIndirectDrawDesc& desc) noexcept;
+
 [[nodiscard]] std::vector<IndexedIndirectDrawCommand>
 decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
                                       const IndexedIndirectDrawDesc& desc);
 
+// Bounded variant that decodes exactly `draw_count` commands (which must not exceed `desc.max_draw_count`). Used when a
+// count buffer limits execution below `max_draw_count`.
+[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
+decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes, const IndexedIndirectDrawDesc& desc,
+                                      std::uint32_t draw_count);
+
 void record_indexed_indirect_draw_stats(RhiStats& stats, std::span<const IndexedIndirectDrawCommand> commands,
-                                        const IndexedIndirectDrawDesc& desc) noexcept;
+                                        const IndexedIndirectDrawDesc& desc, bool count_buffer_used = false,
+                                        std::uint32_t count_buffer_value = 0) noexcept;
 
 } // namespace mirakana::rhi
