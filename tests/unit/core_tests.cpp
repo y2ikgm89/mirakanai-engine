@@ -1483,6 +1483,95 @@ MK_TEST("job execution placement policy fails closed for missing NUMA placement 
                policy.diagnostic_codes.end());
 }
 
+MK_TEST("job execution NUMA locality evidence records first touch default without manual policy") {
+    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
+        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+            .name = "core.numa_locality",
+            .workload = "sample_desktop_runtime_game",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .cpu_to_node_rows =
+                {
+                    mirakana::JobExecutionCpuToNodeRow{.logical_processor_id = 0, .numa_node_index = 0},
+                    mirakana::JobExecutionCpuToNodeRow{.logical_processor_id = 1, .numa_node_index = 1},
+                },
+            .memory_policy_scope = mirakana::JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality,
+        });
+
+    MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::ready);
+    MK_REQUIRE(evidence.ready());
+    MK_REQUIRE(evidence.first_touch_locality_default);
+    MK_REQUIRE(!evidence.manual_memory_policy_applied);
+    MK_REQUIRE(!evidence.manual_memory_policy_selected);
+    MK_REQUIRE(evidence.selected_memory_policy_scope ==
+               mirakana::JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality);
+    MK_REQUIRE(evidence.cpu_to_node_rows.size() == 2U);
+    MK_REQUIRE(evidence.diagnostics.empty());
+    MK_REQUIRE(mirakana::job_execution_numa_locality_memory_policy_scope_label(
+                   mirakana::JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality) ==
+               "first_touch_locality");
+}
+
+MK_TEST("job execution NUMA locality evidence fails closed for missing NUMA topology") {
+    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
+        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+            .name = "core.numa_locality",
+            .workload = "sample_desktop_runtime_game",
+            .numa_node_count = 2,
+            .numa_topology_known = false,
+        });
+
+    MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(!evidence.ready());
+    MK_REQUIRE(!evidence.manual_memory_policy_applied);
+    MK_REQUIRE(std::ranges::find(
+                   evidence.diagnostic_codes,
+                   mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_numa_topology) !=
+               evidence.diagnostic_codes.end());
+}
+
+MK_TEST("job execution NUMA locality evidence fails closed for missing CPU to node mapping") {
+    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
+        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+            .name = "core.numa_locality",
+            .workload = "sample_desktop_runtime_game",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+        });
+
+    MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(std::ranges::find(
+                   evidence.diagnostic_codes,
+                   mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_cpu_to_node_mapping) !=
+               evidence.diagnostic_codes.end());
+}
+
+MK_TEST("job execution NUMA locality evidence fails closed for manual policy without counters") {
+    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
+        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+            .name = "core.numa_locality",
+            .workload = "sample_desktop_runtime_game",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .cpu_to_node_rows =
+                {
+                    mirakana::JobExecutionCpuToNodeRow{.logical_processor_id = 0, .numa_node_index = 0},
+                },
+            .memory_policy_scope = mirakana::JobExecutionNumaLocalityMemoryPolicyScope::manual_host_policy,
+            .local_remote_memory_counters_available = false,
+            .nps_state_known = true,
+            .nps_state = "nps1",
+            .compare_manual_memory_policy = true,
+        });
+
+    MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(!evidence.manual_memory_policy_applied);
+    MK_REQUIRE(std::ranges::find(
+                   evidence.diagnostic_codes,
+                   mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters) !=
+               evidence.diagnostic_codes.end());
+}
+
 MK_TEST("job execution placement policy fails closed for missing hybrid core evidence") {
     const auto topology_policy =
         mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{
