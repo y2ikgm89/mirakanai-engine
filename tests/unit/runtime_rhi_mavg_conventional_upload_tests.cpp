@@ -245,14 +245,15 @@ MK_TEST("mavg conventional upload publishes package visible mesh binding for sce
 
     mirakana::SceneGpuBindingPalette gpu_bindings;
     MK_REQUIRE(gpu_bindings.try_add_mesh(upload.mesh_binding.graph_asset, upload.mesh_binding.binding));
-    MK_REQUIRE(gpu_bindings.try_add_material(graph.material_partitions[0].material, make_material_binding(device, 201)));
-    MK_REQUIRE(gpu_bindings.try_add_material(graph.material_partitions[1].material, make_material_binding(device, 301)));
+    MK_REQUIRE(
+        gpu_bindings.try_add_material(graph.material_partitions[0].material, make_material_binding(device, 201)));
+    MK_REQUIRE(
+        gpu_bindings.try_add_material(graph.material_partitions[1].material, make_material_binding(device, 301)));
 
-    const auto plan = mirakana::plan_mavg_scene_lod_mesh_commands(
-        make_mavg_upload_selection(graph.asset), graph,
-        mirakana::MavgSceneLodSubmitDesc{
-            .gpu_bindings = &gpu_bindings,
-        });
+    const auto plan = mirakana::plan_mavg_scene_lod_mesh_commands(make_mavg_upload_selection(graph.asset), graph,
+                                                                  mirakana::MavgSceneLodSubmitDesc{
+                                                                      .gpu_bindings = &gpu_bindings,
+                                                                  });
 
     MK_REQUIRE(plan.succeeded());
     MK_REQUIRE(plan.mesh_commands.size() == 2);
