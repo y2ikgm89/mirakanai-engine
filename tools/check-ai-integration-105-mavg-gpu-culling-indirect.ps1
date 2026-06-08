@@ -63,6 +63,10 @@ foreach ($surface in @(
     }
 }
 
+$aiLoopGpuCullingEvidenceText = $aiLoopFragmentText
+if ($manifest.aiOperableProductionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md") {
+    $aiLoopGpuCullingEvidenceText = (([string]$manifest.aiOperableProductionLoop.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.completedContext), $aiLoopFragmentText) -join " "
+}
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
@@ -70,7 +74,7 @@ foreach ($needle in @(
         "D3D12 ExecuteIndirect",
         "Vulkan indirect draw execution"
     )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+    Assert-ContainsText $aiLoopGpuCullingEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 }
 
 foreach ($needle in @(

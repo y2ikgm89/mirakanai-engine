@@ -336,54 +336,9 @@ void validate_buffer_texture_region(const TextureDesc& texture, const BufferText
     return alignment != 0 && value % alignment == 0;
 }
 
-[[nodiscard]] std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc& desc) {
-    if (desc.max_draw_count == 0) {
-        throw std::invalid_argument("d3d12 rhi indexed indirect draw max draw count must be non-zero");
-    }
-    if (!is_aligned_to(desc.argument_buffer_offset, indexed_indirect_draw_offset_alignment_bytes)) {
-        throw std::invalid_argument("d3d12 rhi indexed indirect draw argument offset must be 4-byte aligned");
-    }
-    if (desc.command_stride_bytes < indexed_indirect_draw_command_size_bytes ||
-        !is_aligned_to(desc.command_stride_bytes, indexed_indirect_draw_offset_alignment_bytes)) {
-        throw std::invalid_argument(
-            "d3d12 rhi indexed indirect draw command stride must be 4-byte aligned and at least the command size");
-    }
-
-    const auto last_stride_offset =
-        checked_mul_u64(static_cast<std::uint64_t>(desc.command_stride_bytes), desc.max_draw_count - 1ULL,
-                        "d3d12 rhi indexed indirect draw argument range overflowed");
-    const auto last_command_offset = checked_add_u64(desc.argument_buffer_offset, last_stride_offset,
-                                                     "d3d12 rhi indexed indirect draw argument range overflowed");
-    return checked_add_u64(last_command_offset, indexed_indirect_draw_command_size_bytes,
-                           "d3d12 rhi indexed indirect draw argument range overflowed");
-}
-
-[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
-decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
-                                      const IndexedIndirectDrawDesc& desc) {
-    std::vector<IndexedIndirectDrawCommand> commands;
-    commands.reserve(desc.max_draw_count);
-
-    for (std::uint32_t draw_index = 0; draw_index < desc.max_draw_count; ++draw_index) {
-        const auto command_offset =
-            checked_add_u64(desc.argument_buffer_offset,
-                            checked_mul_u64(static_cast<std::uint64_t>(desc.command_stride_bytes), draw_index,
-                                            "d3d12 rhi indexed indirect draw command offset overflowed"),
-                            "d3d12 rhi indexed indirect draw command offset overflowed");
-        auto command = decode_indexed_indirect_draw_command(
-            argument_bytes.subspan(static_cast<std::size_t>(command_offset), indexed_indirect_draw_command_size_bytes));
-        if (command.index_count_per_instance == 0 || command.instance_count == 0) {
-            throw std::invalid_argument("d3d12 rhi indexed indirect draw commands must have non-zero draw counts");
-        }
-        commands.push_back(command);
-    }
-
-    return commands;
-}
-
 [[nodiscard]] std::vector<IndexedIndirectDrawCommand>
 read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndirectDrawDesc& desc) {
-    const auto range_end = indexed_indirect_argument_range_end(desc);
+    const auto range_end = mirakana::rhi::indexed_indirect_argument_range_end(desc);
     const D3D12_RANGE read_range{static_cast<SIZE_T>(desc.argument_buffer_offset), static_cast<SIZE_T>(range_end)};
     void* mapped = nullptr;
     if (FAILED(resource.Map(0, &read_range, &mapped)) || mapped == nullptr) {
@@ -394,7 +349,7 @@ read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndir
         std::span<const std::uint8_t>{static_cast<const std::uint8_t*>(mapped), static_cast<std::size_t>(range_end)};
     std::vector<IndexedIndirectDrawCommand> commands;
     try {
-        commands = decode_indexed_indirect_draw_commands(mapped_bytes, desc);
+        commands = mirakana::rhi::decode_indexed_indirect_draw_commands(mapped_bytes, desc);
     } catch (...) {
         resource.Unmap(0, nullptr);
         throw;
@@ -405,8 +360,9 @@ read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndir
 }
 
 template <typename Stats>
-void record_indexed_indirect_draw_stats(Stats& stats, std::span<const IndexedIndirectDrawCommand> commands,
-                                        const IndexedIndirectDrawDesc& desc) noexcept {
+void record_device_context_indexed_indirect_draw_stats(Stats& stats,
+                                                       std::span<const IndexedIndirectDrawCommand> commands,
+                                                       const IndexedIndirectDrawDesc& desc) noexcept {
     ++stats.indexed_indirect_draw_calls;
     stats.last_indexed_indirect_max_draw_count = desc.max_draw_count;
     stats.last_indexed_indirect_executed_draw_count = static_cast<std::uint32_t>(commands.size());
@@ -3776,7 +3732,7 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
     }
     std::uint64_t argument_range_end = 0;
     try {
-        argument_range_end = indexed_indirect_argument_range_end(desc);
+        argument_range_end = mirakana::rhi::indexed_indirect_argument_range_end(desc);
     } catch (const std::exception&) {
         return false;
     }
@@ -3798,7 +3754,7 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
 
     command_record->list->ExecuteIndirect(signature, desc.max_draw_count, argument_resource,
                                           desc.argument_buffer_offset, nullptr, 0);
-    record_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc);
+    record_device_context_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc);
     return true;
 }
 
@@ -6222,7 +6178,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
                 "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload usage in v1");
         }
 
-        const auto argument_range_end = indexed_indirect_argument_range_end(desc);
+        const auto argument_range_end = mirakana::rhi::indexed_indirect_argument_range_end(desc);
         if (argument_range_end > argument_desc.size_bytes ||
             argument_range_end > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)())) {
             throw std::invalid_argument(
@@ -6234,14 +6190,14 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (argument_bytes.size() != static_cast<std::size_t>(argument_range_end)) {
             throw std::logic_error("d3d12 rhi indexed indirect draw argument buffer readback failed");
         }
-        const auto decoded_commands = decode_indexed_indirect_draw_commands(argument_bytes, desc);
+        const auto decoded_commands = mirakana::rhi::decode_indexed_indirect_draw_commands(argument_bytes, desc);
 
         observe_buffer(desc.argument_buffer);
         if (!context_->draw_indexed_indirect(native_, native_argument_buffer, desc)) {
             throw std::logic_error("d3d12 rhi indexed indirect draw failed");
         }
 
-        record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc);
+        mirakana::rhi::record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc);
         vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
     }

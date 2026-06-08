@@ -33,26 +33,6 @@ using BufferByteDifference = std::vector<std::uint8_t>::difference_type;
 [[nodiscard]] std::uint64_t checked_add(std::uint64_t lhs, std::uint64_t rhs, const char* message);
 [[nodiscard]] std::uint64_t checked_mul(std::uint64_t lhs, std::uint64_t rhs, const char* message);
 
-[[nodiscard]] std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc& desc) {
-    if (desc.max_draw_count == 0) {
-        throw std::invalid_argument("rhi indexed indirect draw max_draw_count must be non-zero");
-    }
-    if (!is_aligned_to(desc.argument_buffer_offset, indexed_indirect_draw_offset_alignment_bytes)) {
-        throw std::invalid_argument("rhi indexed indirect draw argument offset must be 4-byte aligned");
-    }
-    if (desc.command_stride_bytes < indexed_indirect_draw_command_size_bytes ||
-        desc.command_stride_bytes % indexed_indirect_draw_offset_alignment_bytes != 0U) {
-        throw std::invalid_argument("rhi indexed indirect draw command stride must be 4-byte aligned and at least 20");
-    }
-
-    const auto last_stride_offset =
-        checked_mul(static_cast<std::uint64_t>(desc.command_stride_bytes), desc.max_draw_count - 1U,
-                    "rhi indexed indirect draw argument range overflowed");
-    return checked_add(checked_add(desc.argument_buffer_offset, last_stride_offset,
-                                   "rhi indexed indirect draw argument range overflowed"),
-                       indexed_indirect_draw_command_size_bytes, "rhi indexed indirect draw argument range overflowed");
-}
-
 [[nodiscard]] std::uint32_t read_u32_le(std::span<const std::uint8_t> bytes) noexcept {
     return static_cast<std::uint32_t>(bytes[0]) | (static_cast<std::uint32_t>(bytes[1]) << 8U) |
            (static_cast<std::uint32_t>(bytes[2]) << 16U) | (static_cast<std::uint32_t>(bytes[3]) << 24U);
