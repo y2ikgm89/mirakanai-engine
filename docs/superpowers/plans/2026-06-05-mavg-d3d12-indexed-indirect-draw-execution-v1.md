@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-d3d12-indexed-indirect-draw-execution-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Stacked on the completed `mavg-rhi-indirect-draw-v1` public RHI/Null-RHI prerequisite. This child promotes only the D3D12 CPU-generated no-count indexed indirect draw execution path from unsupported to selected WARP-backed execution evidence.
+**Execution State:** Completed through PR #537 conventional upload re-land, PR #538 GPU culling plus RHI indirect contract re-land, and PR #539 D3D12 ExecuteIndirect execution re-land. The closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims.
 
 **Goal:** Implement a clean D3D12 `ExecuteIndirect` execution path for `IRhiCommandList::draw_indexed_indirect` when the caller supplies a CPU-generated upload argument buffer and no count buffer, then prove visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming GPU culling dispatch, count-buffer execution, Vulkan, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
