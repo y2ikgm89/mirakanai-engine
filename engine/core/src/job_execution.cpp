@@ -967,6 +967,13 @@ build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirst
         return recipe;
     }
 
+    // Defensive guard: invalid configuration above already rejects a zero worker count, but make the
+    // non-zero divisor explicit so static analysis can prove the modulo below is never division by zero.
+    if (desc.worker_count == 0U) {
+        recipe.status = JobExecutionNumaLocalityEvidenceStatus::invalid_configuration;
+        return recipe;
+    }
+
     recipe.chunk_rows.reserve(desc.chunk_count);
     for (std::uint32_t chunk_id = 0; chunk_id < desc.chunk_count; ++chunk_id) {
         recipe.chunk_rows.push_back(JobExecutionNumaFirstTouchChunkRow{
