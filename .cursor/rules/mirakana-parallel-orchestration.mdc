@@ -1,0 +1,60 @@
+---
+description: Parallel Cursor Task orchestration, speed discipline, and safe module boundaries.
+alwaysApply: true
+---
+
+# Parallel orchestration (Cursor)
+
+Official references: [Cursor rules](https://cursor.com/docs/rules), [subagents](https://cursor.com/docs/subagents), [Agent Skills](https://cursor.com/docs/skills). Repository detail: `docs/agent-operational-reference.md` § Parallel orchestration.
+
+## Parallelize when
+
+- 2+ **independent** problems (different test files, subsystems, or root causes).
+- Disjoint exploration (`engine/core` vs `engine/renderer` vs `editor/` vs one `games/<game>/`).
+- Read-only audit/review while the parent implements or runs validation.
+- CI log triage separate from local fix work.
+
+## Stay sequential when
+
+- The same file, migration, manifest fragment, schema, or public API family is being edited.
+- Task B needs Task A output (design, types, ownership).
+- Spec or module boundary is unresolved.
+
+## Dispatch map (`Task`)
+
+| Work | `subagent_type` | Role |
+|------|-----------------|------|
+| Codebase search / trace | `explore` | Evidence with paths and symbols |
+| git / gh / CI shell work | `shell` | Repo `tools/*.ps1` wrappers; return logs |
+| Isolated implementation | `generalPurpose` | Goal, Constraints, Done when in prompt |
+| One failing check / lane | `ci-investigator` | One failure domain per agent |
+| Coherent slice review | `code-reviewer` | After behavior is green |
+
+- Launch **independent** subagents in **one parent message**.
+- Use `run_in_background: true` for long independent work when Multitask Mode is on or the parent must coordinate.
+- Prefer `.cursor/agents/*.md` roles when they match; otherwise use built-in `subagent_type` values above.
+- Read-only roles stay `readonly: true`; only builder/fixer roles edit files.
+
+## Parallel-safe boundaries
+
+| Usually independent | Usually serialize |
+|---------------------|-------------------|
+| `engine/core/**`, `engine/platform/**`, `engine/renderer/**` | `engine/agent/manifest.fragments/**`, `schemas/**` |
+| `editor/core/**` vs `editor/src/**` shell work | Root `CMakeLists.txt`, shared `tools/common.ps1` |
+| One `games/<game>/**` lane | Same `.cpp` / `.hpp` translation unit |
+| Disjoint `tools/check-*` investigations | `AGENTS.md` / rules / skills in one editing pass |
+
+## Speed discipline
+
+- Parent: decompose (`TodoWrite`), dispatch, synthesize, verify — do not redo subagent reads.
+- Subagents: receive exact Goal, Context, Constraints, Done when; no parent chat history.
+- Context: `tools/agent-context.ps1 -ContextProfile Minimal|Standard` and targeted manifest fragments.
+- Validation: focused build/test/static loop first; one slice-close `tools/validate.ps1` (see `AGENTS.md`).
+
+## Write isolation
+
+Parallel **writes** need branch isolation: `git worktree add .worktrees/<name> -b <branch>`, then `tools/prepare-worktree.ps1` before configure. Read-only parallel dispatch does not require worktrees.
+
+## Lifecycle
+
+Consume subagent results, then close obsolete agents before spawning replacements. Synthesize evidence before claiming done.

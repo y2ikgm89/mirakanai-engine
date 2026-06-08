@@ -59,7 +59,7 @@ This is a startup-loaded router for Claude Code memory imports. Keep it short; p
 - Game naming guidance must stay synchronized: `game_name` and `new-game -Name` values match `^[a-z][a-z0-9_]*$`; source-tree paths stay lowercase snake_case; JSON manifest IDs may use ecosystem formats such as kebab-case.
 - Codex: `AGENTS.md`, `.agents/skills/`, `.codex/agents/`, `.codex/rules`.
 - Claude Code: `CLAUDE.md`, `.claude/settings.json`, `.claude/skills/`, `.claude/agents/`, and this startup-loaded rule router.
-- Cursor: `AGENTS.md`, `.cursor/rules/*.mdc`, `.cursor/skills/`, and `.cursor/agents/`. Keep Cursor `gameengine-*` skills thin except `gameengine-cursor-baseline` and `gameengine-plan-registry`.
+- Cursor: `AGENTS.md`, `.cursor/rules/*.mdc`, `.cursor/skills/`, and `.cursor/agents/`. Keep Cursor `gameengine-*` skills thin except `gameengine-cursor-baseline` and `gameengine-plan-registry`. Parallel `Task` orchestration lives in `.cursor/rules/mirakana-parallel-orchestration.mdc` and `docs/agent-operational-reference.md` § Parallel orchestration.
 - Read-only review, exploration, architecture, planning, rendering, and agent-surface audit subagents must stay read-only. Write-capable tools belong only on builder/fixer roles expected to change files.
 
 ## Documentation Sources

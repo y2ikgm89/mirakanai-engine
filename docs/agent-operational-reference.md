@@ -42,6 +42,78 @@ The visible `MK_editor` shell is a Windows-native Win32 + first-party retained U
 
 Native editor shell work must keep Win32, Direct3D 12, DXGI, and descriptor/fence ownership private to `editor/src` implementation targets. Use `tools/build-editor.ps1` for the supported dependency-free editor validation lane and keep `tools/evaluate-cpp23.ps1 -Editor` aligned with the `cpp23-desktop-editor-eval` preset. The shell remains editor/developer tooling only; runtime game UI must use first-party `mirakana_ui` contracts and must not depend on Dear ImGui, UI middleware, or SDL3.
 
+## Parallel orchestration (expanded)
+
+Official Cursor guidance: [rules](https://cursor.com/docs/rules), [subagents](https://cursor.com/docs/subagents), [Agent Skills](https://cursor.com/docs/skills). Project rule: `.cursor/rules/mirakana-parallel-orchestration.mdc` (`alwaysApply: true`).
+
+### Goal
+
+Increase throughput without weakening validation, host gates, or ownership boundaries. The parent agent coordinates; subagents receive isolated, complete prompts.
+
+### When to parallelize
+
+- Multiple unrelated failures (different test executables, static checks, or subsystems).
+- Disjoint read-only exploration across modules listed in the parallel-safe boundaries table below.
+- Review or audit work that does not block immediate implementation.
+- Hosted CI investigation while the parent runs a narrow local reproduction loop.
+
+### When to stay sequential
+
+- Shared files, migrations, manifest fragments, schemas, or one public API family.
+- Tight coupling between design and implementation.
+- Agent-surface edits (`AGENTS.md`, rules, skills, subagents, manifest fragments) that must stay behaviorally equivalent across Codex, Claude Code, and Cursor in one task.
+
+### Cursor `Task` dispatch pattern
+
+1. Decompose the slice into tasks with explicit dependencies (`TodoWrite`).
+2. Group tasks with no shared write surface or ordering requirement.
+3. Launch one subagent per independent group in a **single parent message**.
+4. Parent synthesizes results, resolves conflicts, runs focused validation, and only then claims progress.
+5. After a coherent behavior slice is green, dispatch `code-reviewer` or the matching `.cursor/agents/cpp-reviewer.md` role.
+
+| Work | Preferred surface | Notes |
+|------|-------------------|-------|
+| Trace symbols, docs, manifests | `explore` or `.cursor/agents/explorer.md` | Read-only; return paths and evidence |
+| git / gh / wrapper execution | `shell` | Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1` |
+| Disjoint implementation | `generalPurpose` or `.cursor/agents/gameplay-builder.md` | Include Goal, Context, Constraints, Done when |
+| One failing hosted lane | `ci-investigator` | One root-cause domain per agent |
+| Agent-surface drift audit | `.cursor/agents/agent-surface-auditor.md` | Read-only |
+| Architecture / rendering review | `.cursor/agents/engine-architect.md`, `rendering-auditor.md` | Read-only |
+
+Use `run_in_background: true` when Multitask Mode is active or the parent must keep coordinating while long read-only work runs.
+
+### Parallel-safe module boundaries
+
+| Usually safe in parallel | Usually serialize |
+|--------------------------|-------------------|
+| `engine/core/**` | `engine/agent/manifest.fragments/**` + `tools/compose-agent-manifest.ps1 -Write` |
+| `engine/platform/**` | `schemas/**` and JSON contract literals enforced by static checks |
+| `engine/renderer/**` | Root / shared `CMakeLists.txt` and `tools/common.ps1` |
+| `editor/core/**` vs native `editor/src/**` shell | Same translation unit (`.cpp` / `.hpp`) |
+| One `games/<game_name>/**` tree | Cross-game manifest or `games/CMakeLists.txt` registration edits |
+| Disjoint static-check investigations | `AGENTS.md`, `.cursor/rules/`, skills, and subagents in one parity pass |
+
+### Speed discipline (official + repository)
+
+- Keep parent context small: targeted `rg`, one manifest fragment, `tools/agent-context.ps1 -ContextProfile Minimal|Standard`.
+- Do not repeat subagent exploration in the parent thread.
+- Batch docs/manifest/skills sync after behavior is green unless those files are the behavior under test.
+- Use focused build/test/static loops during implementation; run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` once at slice close for C++/runtime/build/packaging/public-contract work.
+- `tools/validate.ps1` already runs independent static checks through bounded parallel PowerShell jobs; subagent parallelism complements that orchestration layer rather than replacing it.
+
+### Write isolation and GitHub Flow
+
+- Parallel file writes require isolated branches/worktrees: `git worktree add .worktrees/<name> -b <branch>`, `cd` into the worktree, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before configure.
+- Read-only parallel dispatch does not require worktrees.
+- Publication (commit, push, PR, merge, cleanup) stays sequential per task-owned branch and follows `docs/workflows.md` plus `tools/check-publication-preflight.ps1`.
+
+### Subagent lifecycle
+
+- Give each delegated task Goal, Context, Constraints, and Done when.
+- Close consumed or obsolete subagents before spawning replacements.
+- Read-only audit/review/explore roles stay read-only; write tools belong only on builder/fixer roles.
+- Synthesize subagent evidence before reporting completion.
+
 ## AI development workflow (expanded)
 
 - Start documentation navigation from `docs/README.md`.

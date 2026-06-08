@@ -7711,8 +7711,10 @@
           "url": "https://cursor.com/docs/rules",
           "appliesTo": [
             ".cursor/rules",
+            ".cursor/rules/mirakana-parallel-orchestration.mdc",
             "AGENTS.md",
-            "project rules"
+            "project rules",
+            "parallel Task orchestration"
           ]
         },
         {

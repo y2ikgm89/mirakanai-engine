@@ -40,6 +40,7 @@
 ## Development Efficiency and Scope Control
 
 - Optimize for small, high-signal context: prefer targeted `rg`/file reads, targeted manifest fragments, and `tools/agent-context.ps1 -ContextProfile Minimal` or `Standard`; load full manifests, historical plans, and broad docs only when the current decision needs them.
+- For Cursor parallel orchestration (independent `Task` dispatch, parallel-safe module boundaries, background coordination, and speed discipline), follow [`.cursor/rules/mirakana-parallel-orchestration.mdc`](.cursor/rules/mirakana-parallel-orchestration.mdc) and [docs/agent-operational-reference.md](docs/agent-operational-reference.md#parallel-orchestration-expanded).
 - Prefer official best practices, Context7, OpenAI developer docs, Anthropic docs, and project skills for current SDK/toolchain/agent behavior; do not trade correctness, security, host gates, license hygiene, or validation evidence for speed.
 - Keep the greenfield clean-break policy useful: avoid backward-compatibility shims, deprecated aliases, duplicate APIs, or migration layers unless an explicit future release policy requires them.
 - Treat plan files as capability/gap-cluster/milestone records, not PR/task-count units; keep phase behavior/API/validation gates and small steps in the active plan. Do not create dated plans for validation-only follow-up, docs/manifest/static-check sync, small cleanup, or substeps.
@@ -122,7 +123,7 @@
 - After changing agent surfaces (`tools/*.ps1` dot-source pairs, skill folders, validation scripts, rules, settings, subagents, or manifest fragments), follow **Repository consistency checklist** in `docs/workflows.md` (toolchain -> `check-agents` -> `check-ai-integration` -> `check-json-contracts` -> public API checks -> `validate.ps1`).
 - Tracked `.clangd` points at `out/build/dev`; run `tools/cmake.ps1 --preset dev` when clangd lacks a database. Use `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` only as fallback IDE flags. `MK_tools` sources live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay in `engine/tools/include/mirakana/tools/`.
 - For parallel write work, prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored; manual worktrees use setup, merged worktrees use guarded cleanup.
-- Use subagents in `.codex/agents/` and `.claude/agents/` only when explicitly asked; keep roles scoped, close completed/obsolete/no-longer-needed agents promptly after their result is consumed and before spawning replacements, and leave useful work running.
+- Use subagents in `.codex/agents/`, `.claude/agents/`, and Cursor `Task` / `.cursor/agents/` when work is independent or explicitly delegated; in Cursor, default to `.cursor/rules/mirakana-parallel-orchestration.mdc` for dispatch triggers and parallel-safe boundaries. Keep roles scoped, close completed/obsolete/no-longer-needed agents promptly after their result is consumed and before spawning replacements, and leave useful work running.
 - Every task should define: Goal, Context, Constraints, Done when.
 
 ## Production Completion Execution

@@ -15,6 +15,15 @@ disable-model-invocation: false
 3. **Thin `.cursor/skills/gameengine-*` folders** name-match `.claude/skills/` and point to the Claude skill plus Codex twin; do not duplicate large shared procedures.
 4. **Cursor project subagents** live in `.cursor/agents/*.md`, mirror `.claude/agents/` and `.codex/agents/`, use bounded scopes, keep read-only audit/review/explore roles on `readonly: true`, and set **`model: composer-2.5-fast`** via Cursor subagent frontmatter.
 
+## Parallel orchestration (Cursor `Task`)
+
+- Follow `.cursor/rules/mirakana-parallel-orchestration.mdc` (`alwaysApply: true`) and `docs/agent-operational-reference.md` § Parallel orchestration.
+- Decompose multi-step work, then launch **independent** subagents in one parent message.
+- Prefer `explore` / `.cursor/agents/explorer.md` for read-only tracing, `shell` for `tools/*.ps1`, `ci-investigator` for one failing lane, `generalPurpose` or `.cursor/agents/gameplay-builder.md` for disjoint writes, and `code-reviewer` / `.cursor/agents/cpp-reviewer.md` after a green slice.
+- Use `run_in_background: true` for long independent work when Multitask Mode is on.
+- Parallel writes need worktree isolation (`git worktree add .worktrees/<name>`, then `tools/prepare-worktree.ps1`); read-only parallel work does not.
+- Parent synthesizes subagent evidence; do not repeat their reads or claim done without focused validation.
+
 ## Cursor-first discipline
 
 - Hooks that require a Claude Code Skill tool do not apply verbatim in Cursor. Read the matching `SKILL.md` with Cursor's file reader instead.
