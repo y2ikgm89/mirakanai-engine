@@ -54,6 +54,16 @@ void append_numa_locality_evidence_diagnostic(JobExecutionNumaLocalityEvidence& 
     evidence.diagnostics.push_back(std::move(message));
 }
 
+void append_numa_locality_evidence_diagnostic(JobExecutionNumaFirstTouchLocalityRecipe& recipe,
+                                              JobExecutionNumaLocalityEvidenceDiagnosticCode code,
+                                              std::string message) {
+    if (code != JobExecutionNumaLocalityEvidenceDiagnosticCode::none &&
+        std::ranges::find(recipe.diagnostic_codes, code) == recipe.diagnostic_codes.end()) {
+        recipe.diagnostic_codes.push_back(code);
+    }
+    recipe.diagnostics.push_back(std::move(message));
+}
+
 [[nodiscard]] JobExecutionRunStatus
 status_from_diagnostics(std::span<const JobExecutionDiagnosticCode> codes) noexcept {
     if (std::ranges::find(codes, JobExecutionDiagnosticCode::invalid_configuration) != codes.end()) {
@@ -915,6 +925,48 @@ summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvi
     evidence.manual_memory_policy_selected = false;
     evidence.selected_memory_policy_scope = JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality;
     return evidence;
+}
+
+JobExecutionNumaFirstTouchLocalityRecipe build_job_execution_numa_first_touch_locality_recipe(
+    const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc) {
+    auto recipe = JobExecutionNumaFirstTouchLocalityRecipe{};
+    recipe.worker_count = desc.worker_count;
+    recipe.chunk_count = desc.chunk_count;
+    recipe.first_touch_locality_default = true;
+
+    if (desc.name.empty()) {
+        append_numa_locality_evidence_diagnostic(
+            recipe, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+            "job execution NUMA first-touch recipe requires a non-empty name");
+    }
+    if (desc.workload.empty()) {
+        append_numa_locality_evidence_diagnostic(
+            recipe, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+            "job execution NUMA first-touch recipe requires a workload name");
+    }
+    if (desc.worker_count == 0U || desc.chunk_count == 0U) {
+        append_numa_locality_evidence_diagnostic(
+            recipe, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+            "job execution NUMA first-touch recipe requires non-zero worker and chunk counts");
+    }
+
+    if (std::ranges::find(recipe.diagnostic_codes,
+                          JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration) !=
+        recipe.diagnostic_codes.end()) {
+        recipe.status = JobExecutionNumaLocalityEvidenceStatus::invalid_configuration;
+        return recipe;
+    }
+
+    recipe.chunk_rows.reserve(desc.chunk_count);
+    for (std::uint32_t chunk_id = 0; chunk_id < desc.chunk_count; ++chunk_id) {
+        recipe.chunk_rows.push_back(JobExecutionNumaFirstTouchChunkRow{
+            .chunk_id = chunk_id,
+            .assigned_worker_id = chunk_id % desc.worker_count,
+            .initialize_on_assigned_worker = true,
+        });
+    }
+    recipe.status = JobExecutionNumaLocalityEvidenceStatus::ready;
+    return recipe;
 }
 
 std::uint32_t observe_job_execution_logical_processor_count() noexcept {

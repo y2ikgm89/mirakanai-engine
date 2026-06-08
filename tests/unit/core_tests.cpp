@@ -1572,6 +1572,26 @@ MK_TEST("job execution NUMA locality evidence fails closed for manual policy wit
                evidence.diagnostic_codes.end());
 }
 
+MK_TEST("job execution NUMA first-touch recipe assigns chunk initialization to workers") {
+    const auto recipe = mirakana::build_job_execution_numa_first_touch_locality_recipe(
+        mirakana::JobExecutionNumaFirstTouchLocalityRecipeDesc{
+            .name = "core.numa_first_touch",
+            .workload = "sample_2d_desktop_runtime_package",
+            .worker_count = 2,
+            .chunk_count = 4,
+        });
+
+    MK_REQUIRE(recipe.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::ready);
+    MK_REQUIRE(recipe.ready());
+    MK_REQUIRE(recipe.first_touch_locality_default);
+    MK_REQUIRE(recipe.chunk_rows.size() == 4U);
+    MK_REQUIRE(recipe.chunk_rows[0].assigned_worker_id == 0U);
+    MK_REQUIRE(recipe.chunk_rows[1].assigned_worker_id == 1U);
+    MK_REQUIRE(recipe.chunk_rows[2].assigned_worker_id == 0U);
+    MK_REQUIRE(recipe.chunk_rows[3].assigned_worker_id == 1U);
+    MK_REQUIRE(recipe.chunk_rows[2].initialize_on_assigned_worker);
+}
+
 MK_TEST("job execution placement policy fails closed for missing hybrid core evidence") {
     const auto topology_policy =
         mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{

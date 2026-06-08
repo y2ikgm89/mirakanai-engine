@@ -145,6 +145,33 @@ struct JobExecutionNumaLocalityEvidence {
     }
 };
 
+struct JobExecutionNumaFirstTouchChunkRow {
+    std::uint32_t chunk_id{0};
+    std::uint32_t assigned_worker_id{0};
+    bool initialize_on_assigned_worker{true};
+};
+
+struct JobExecutionNumaFirstTouchLocalityRecipeDesc {
+    std::string name;
+    std::string workload;
+    std::uint32_t worker_count{0};
+    std::uint32_t chunk_count{0};
+};
+
+struct JobExecutionNumaFirstTouchLocalityRecipe {
+    JobExecutionNumaLocalityEvidenceStatus status{JobExecutionNumaLocalityEvidenceStatus::invalid_configuration};
+    std::uint32_t worker_count{0};
+    std::uint32_t chunk_count{0};
+    std::vector<JobExecutionNumaFirstTouchChunkRow> chunk_rows;
+    bool first_touch_locality_default{true};
+    std::vector<JobExecutionNumaLocalityEvidenceDiagnosticCode> diagnostic_codes;
+    std::vector<std::string> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept {
+        return status == JobExecutionNumaLocalityEvidenceStatus::ready;
+    }
+};
+
 struct JobExecutionTopologyPolicyDesc {
     std::string name;
     std::uint32_t observed_logical_processor_count{0};
@@ -335,6 +362,8 @@ select_job_execution_topology_policy(const JobExecutionTopologyPolicyDesc& desc)
 select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& desc);
 [[nodiscard]] JobExecutionNumaLocalityEvidence
 summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvidenceDesc& desc);
+[[nodiscard]] JobExecutionNumaFirstTouchLocalityRecipe build_job_execution_numa_first_touch_locality_recipe(
+    const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc);
 [[nodiscard]] std::uint32_t observe_job_execution_logical_processor_count() noexcept;
 [[nodiscard]] std::string_view
 job_execution_topology_policy_status_label(JobExecutionTopologyPolicyStatus status) noexcept;
