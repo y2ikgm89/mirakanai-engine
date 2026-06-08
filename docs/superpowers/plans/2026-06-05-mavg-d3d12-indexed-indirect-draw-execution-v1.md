@@ -108,4 +108,4 @@ Out of scope:
 
 ## Non-Claims
 
-This plan does not claim count-buffer execution, compute-generated indirect buffers, GPU culling dispatch, public buffer state tracking, Vulkan indirect draw execution, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.
+This plan does not claim count-buffer execution, compute-generated indirect buffers, GPU culling dispatch, public buffer state tracking, count-buffer Vulkan execution, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.

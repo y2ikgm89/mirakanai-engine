@@ -149,4 +149,4 @@ Null RHI execution mirrors direct indexed draw semantics after validation: each 
 
 ## Non-Claims
 
-This plan does not claim actual GPU culling dispatch, D3D12 `ExecuteIndirect` beyond the separate follow-up `mavg-d3d12-indexed-indirect-draw-execution-v1`, Vulkan indirect draw execution, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, automatic GPU residency, streaming IO execution, native handle exposure, public backend interop, Nanite compatibility, Nanite equivalence, Nanite superiority, benchmark superiority, or broad CPU/GPU/memory optimization.
+This plan does not claim actual GPU culling dispatch, D3D12 `ExecuteIndirect` beyond the separate follow-up `mavg-d3d12-indexed-indirect-draw-execution-v1`, count-buffer Vulkan execution, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, automatic GPU residency, streaming IO execution, native handle exposure, public backend interop, Nanite compatibility, Nanite equivalence, Nanite superiority, benchmark superiority, or broad CPU/GPU/memory optimization.

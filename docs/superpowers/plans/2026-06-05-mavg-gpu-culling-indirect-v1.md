@@ -139,7 +139,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 - No executed GPU culling dispatch.
 - No D3D12 `ExecuteIndirect` execution.
-- No Vulkan indirect draw execution.
+- No count-buffer Vulkan execution.
 - No mesh/task/amplification shader readiness.
 - No RHI buffer allocation, native state transition, command signature, descriptor, or native handle exposure.
 - No Metal readiness from Windows validation.

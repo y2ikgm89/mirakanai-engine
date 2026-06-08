@@ -64,7 +64,7 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG D3D12 indexed indirect draw evidence"
     }
     foreach ($needle in @(
-            "Vulkan indirect draw execution",
+            "count-buffer Vulkan execution",
             "actual GPU culling dispatch",
             "Nanite"
         )) {
@@ -86,9 +86,9 @@ foreach ($needle in @(
         "D3D12 ExecuteIndirect",
         "D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED",
         "count-buffer execution",
-        "Vulkan indirect draw execution"
+        "mavg-vulkan-indexed-indirect-draw-execution-v1"
     )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json active MAVG D3D12 indirect draw evidence"
+    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG D3D12 indirect draw evidence"
 }
 
 foreach ($needle in @(
@@ -96,7 +96,7 @@ foreach ($needle in @(
         "D3D12 ExecuteIndirect",
         "D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED",
         "public buffer-state tracking",
-        "Vulkan indirect draw execution"
+        "vkCmdDrawIndexedIndirect"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi D3D12 indirect draw evidence"
 }
@@ -109,11 +109,21 @@ foreach ($needle in @(
         "D3D12 ExecuteIndirect",
         "D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED",
         "visible WARP-backed texture readback proof",
-        "Vulkan indirect draw execution"
+        "vkCmdDrawIndexedIndirect"
     )) {
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect draw evidence"
 }
 
-foreach ($needle in @("mavg-d3d12-indexed-indirect-draw-execution-v1", "D3D12 ExecuteIndirect", "count-buffer execution", "Vulkan indirect draw execution", "PR #537-#539")) {
+foreach ($needle in @("mavg-d3d12-indexed-indirect-draw-execution-v1", "D3D12 ExecuteIndirect", "count-buffer execution", "mavg-vulkan-indexed-indirect-draw-execution-v1", "PR #537-#539")) {
     Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence + " " + [string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext) $needle "engine/agent/manifest.json recommendedNextPlan MAVG D3D12 completed prerequisite evidence"
+}
+
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG D3D12 indirect draw closeout"
+}
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG D3D12 indirect draw closeout"
+}
+foreach ($needle in @("MAVG D3D12 Indexed Indirect Draw Execution v1", "PR #539", "D3D12 ExecuteIndirect", "count-buffer execution", "mavg-vulkan-indexed-indirect-draw-execution-v1", "unsupportedProductionGaps = []")) {
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 closeout evidence"
 }

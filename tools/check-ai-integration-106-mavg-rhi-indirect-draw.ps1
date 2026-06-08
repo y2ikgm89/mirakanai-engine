@@ -104,15 +104,12 @@ foreach ($surface in @(
     foreach ($needle in @("mavg-rhi-indirect-draw-v1", "indirect_draw.hpp", "IndexedIndirectDrawDesc", "BufferUsage::indirect", "Null RHI")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG RHI indirect draw evidence"
     }
-    foreach ($needle in @("D3D12", "ExecuteIndirect", "Vulkan indirect draw execution", "Nanite")) {
+    foreach ($needle in @("D3D12", "ExecuteIndirect", "count-buffer Vulkan execution", "Nanite")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG RHI indirect draw non-claim evidence"
     }
 }
 
-$aiLoopRhiIndirectEvidenceText = $aiLoopFragmentText
-if ($manifest.aiOperableProductionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md") {
-    $aiLoopRhiIndirectEvidenceText = (([string]$manifest.aiOperableProductionLoop.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.completedContext), $aiLoopFragmentText) -join " "
-}
+$aiLoopRhiIndirectEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
 foreach ($needle in @(
         "mavg-rhi-indirect-draw-v1",
         "docs/superpowers/plans/2026-06-05-mavg-rhi-indirect-draw-v1.md",
@@ -120,7 +117,8 @@ foreach ($needle in @(
         "IndexedIndirectDrawDesc",
         "BufferUsage::indirect",
         "D3D12 ExecuteIndirect",
-        "Vulkan indirect draw execution"
+        "mavg-vulkan-indexed-indirect-draw-execution-v1",
+        "vkCmdDrawIndexedIndirect"
     )) {
     Assert-ContainsText $aiLoopRhiIndirectEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 }
@@ -132,7 +130,7 @@ foreach ($needle in @(
         "BufferUsage::indirect",
         "Null RHI",
         "D3D12 ExecuteIndirect",
-        "Vulkan indirect draw execution",
+        "vkCmdDrawIndexedIndirect",
         "Nanite equivalence/superiority"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi evidence"
@@ -153,21 +151,30 @@ foreach ($needle in @(
         "Null RHI",
         "VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT",
         "D3D12 ExecuteIndirect",
-        "Vulkan indirect draw execution",
+        "vkCmdDrawIndexedIndirect",
         "Nanite equivalence/superiority"
     )) {
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi MAVG RHI indirect draw evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at the active MAVG Vulkan indirect draw follow-up"
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG Vulkan indirect draw closeout"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-vulkan-indexed-indirect-draw-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-vulkan-indexed-indirect-draw-execution-v1 during active MAVG Vulkan indirect draw execution"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG Vulkan indirect draw closeout"
+}
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-rhi-indirect-draw-v1*") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-rhi-indirect-draw-v1 prerequisite evidence"
 }
 if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-d3d12-indexed-indirect-draw-execution-v1*") {
     Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-d3d12-indexed-indirect-draw-execution-v1 prerequisite evidence"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-rhi-indirect-draw-v1*") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-rhi-indirect-draw-v1 prerequisite evidence"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-vulkan-indexed-indirect-draw-execution-v1*") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-vulkan-indexed-indirect-draw-execution-v1 closeout evidence"
+}
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence -notlike "*mavg-d3d12-indexed-indirect-draw-execution-v1*") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence must retain mavg-d3d12-indexed-indirect-draw-execution-v1 closeout evidence"
+}
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence -notlike "*mavg-vulkan-indexed-indirect-draw-execution-v1*") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence must retain mavg-vulkan-indexed-indirect-draw-execution-v1 closeout evidence"
 }
