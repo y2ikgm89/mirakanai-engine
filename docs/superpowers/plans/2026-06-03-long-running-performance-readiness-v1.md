@@ -283,6 +283,21 @@ Full `tools/validate.ps1` is not required for this Phase 2 closeout because the 
 
 **Done When:** NUMA placement is either rejected as unnecessary for the selected workload or selected for a host-specific follow-up with measured locality evidence.
 
+**Phase 4 closeout decision:** For `games/sample_2d_desktop_runtime_package` on the reviewed single-node Windows D3D12 short-soak lane, value-only evidence and the first-touch versus manual memory-policy comparison reject manual NUMA placement. The package keeps `long_run_readiness_numa_memory_policy_recommendation=keep_first_touch_default`, `long_run_readiness_numa_manual_policy_locality_gain_per_mille=0`, and `long_run_readiness_numa_policy_applied=0`. Host-specific memory-policy execution remains a separate future slice only if a later host/workload proves measured locality gain.
+
+**Phase 4 validation evidence:**
+
+| Date | Command / PR | Result |
+| --- | --- | --- |
+| 2026-06-08 | PR #545 | Merged: value-only NUMA locality evidence rows and first-touch locality recipe with package counters. |
+| 2026-06-08 | PR #546 | Merged: first-touch versus manual memory-policy comparison with fail-closed diagnostics and package comparison counters. |
+| 2026-06-08 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass: `text-format-check: ok`, `format-check: ok`. |
+| 2026-06-08 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` + run | Pass: NUMA locality and memory-policy comparison unit tests green. |
+| 2026-06-08 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass: static guards ok; CTest 109/109 passed. |
+| 2026-06-08 | CI on PR #545 and PR #546 | Pass: Agent Static Guards, Full Repository Static Analysis (0-3), Windows MSVC, Linux, macOS, iOS. |
+
+Full `tools/validate.ps1` is required before publication because Phase 4 changes C++ runtime/package/public contract surfaces. The installed long-run readiness smoke lane is host-gated to the packaged 2D desktop runtime and is exercised in CI Windows MSVC validation rather than in every local agent session.
+
 ## Phase 5: Narrow SIMD Kernel Expansion Gate
 
 **Goal:** Continue kernel-by-kernel SIMD expansion without a broad SIMD claim.
