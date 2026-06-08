@@ -261,7 +261,13 @@ git log --oneline origin/main..<headRefOid>
 
 The second command should be empty. If it is not empty, or if a commit was pushed to the same head branch after the PR had already merged, do not assume the merged PR absorbed it; open or update a separate task-owned PR for the remaining commits. Local and remote branch cleanup must wait until this reachability check passes.
 
-9. After the PR head is reachable from `origin/main`, run guarded post-merge branch and worktree cleanup for task-owned linked worktrees that are no longer needed. The cleanup command fetches and prunes the remote, fast-forwards the local checkout on the base branch, verifies local and remote branch ancestry, then removes the merged worktree and selected branches:
+9. After the PR head is reachable from `origin/main`, run guarded post-merge branch and worktree cleanup for task-owned linked worktrees that are no longer needed. The cleanup command fetches and prunes the remote, fast-forwards the local checkout on the base branch, verifies local and remote branch ancestry, then removes the merged worktree and selected branches. GitHub `delete_branch_on_merge` is enabled on this repository, so merged PR head branches are removed on GitHub automatically; local cleanup still must run through the guarded script path. Prefer:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1 -WorktreePath <path> -HeadRefOid <headRefOid>
+```
+
+Equivalent lower-level entrypoint:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> -BaseRef origin/main -BaseBranch main -Remote origin -DeleteLocalBranch -DeleteRemoteBranch

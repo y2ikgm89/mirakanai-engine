@@ -31,7 +31,7 @@ disable-model-invocation: false
 - Use `gh pr merge --auto --merge --match-head-commit <headRefOid>` only after validation checkpoints plus PR preflight. Check `state`, `isDraft`, `baseRefName`, `headRefName`, `headRefOid`, `mergeable`, `mergeStateStatus`, `reviewDecision`, `statusCheckRollup`, `autoMergeRequest`, and `url`.
 - Runtime/C++/build/toolchain/public-contract PRs must wait for selected hosted checks to complete and `PR Gate` to report `SUCCESS`.
 - Rerun preflight after every commit or push because a stale `headRefOid` invalidates the merge decision and any guarded ready decision.
-- If `publication-preflight: blocked` appears, switch session/host context. Use `tools/remove-merged-worktree.ps1` for guarded post-merge cleanup with Windows long-path fallback inside the guarded script.
+- If `publication-preflight: blocked` appears, switch session/host context. After merge, use `tools/post-merge-task-cleanup.ps1` (preferred) or `tools/remove-merged-worktree.ps1 -DeleteLocalBranch -DeleteRemoteBranch` for guarded post-merge cleanup with Windows long-path fallback inside the guarded script; GitHub `delete_branch_on_merge` removes merged PR head branches automatically.
 - docs/agent/rules/subagent-only PRs should use lightweight static validation instead of unrelated Windows/MSVC, macOS, or full repository clang-tidy lanes.
 
 ## Validation shorthand (details in AGENTS.md)
