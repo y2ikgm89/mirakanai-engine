@@ -64,6 +64,16 @@ void append_numa_locality_evidence_diagnostic(JobExecutionNumaFirstTouchLocality
     recipe.diagnostics.push_back(std::move(message));
 }
 
+void append_numa_locality_evidence_diagnostic(JobExecutionNumaMemoryPolicyComparison& comparison,
+                                              JobExecutionNumaLocalityEvidenceDiagnosticCode code,
+                                              std::string message) {
+    if (code != JobExecutionNumaLocalityEvidenceDiagnosticCode::none &&
+        std::ranges::find(comparison.diagnostic_codes, code) == comparison.diagnostic_codes.end()) {
+        comparison.diagnostic_codes.push_back(code);
+    }
+    comparison.diagnostics.push_back(std::move(message));
+}
+
 [[nodiscard]] JobExecutionRunStatus
 status_from_diagnostics(std::span<const JobExecutionDiagnosticCode> codes) noexcept {
     if (std::ranges::find(codes, JobExecutionDiagnosticCode::invalid_configuration) != codes.end()) {
@@ -957,6 +967,13 @@ build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirst
         return recipe;
     }
 
+    // Defensive guard: invalid configuration above already rejects a zero worker count, but make the
+    // non-zero divisor explicit so static analysis can prove the modulo below is never division by zero.
+    if (desc.worker_count == 0U) {
+        recipe.status = JobExecutionNumaLocalityEvidenceStatus::invalid_configuration;
+        return recipe;
+    }
+
     recipe.chunk_rows.reserve(desc.chunk_count);
     for (std::uint32_t chunk_id = 0; chunk_id < desc.chunk_count; ++chunk_id) {
         recipe.chunk_rows.push_back(JobExecutionNumaFirstTouchChunkRow{
@@ -967,6 +984,96 @@ build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirst
     }
     recipe.status = JobExecutionNumaLocalityEvidenceStatus::ready;
     return recipe;
+}
+
+JobExecutionNumaMemoryPolicyComparison
+compare_job_execution_numa_memory_policy(const JobExecutionNumaMemoryPolicyComparisonDesc& desc) {
+    auto comparison = JobExecutionNumaMemoryPolicyComparison{};
+    comparison.workload = desc.workload;
+    comparison.first_touch_locality_default = true;
+    comparison.manual_memory_policy_applied = false;
+    comparison.recommendation = JobExecutionNumaMemoryPolicyRecommendation::keep_first_touch_default;
+
+    if (desc.name.empty()) {
+        append_numa_locality_evidence_diagnostic(
+            comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+            "job execution NUMA memory policy comparison requires a non-empty name");
+    }
+    if (desc.workload.empty()) {
+        append_numa_locality_evidence_diagnostic(
+            comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+            "job execution NUMA memory policy comparison requires a workload name");
+    }
+
+    if (std::ranges::find(comparison.diagnostic_codes,
+                          JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration) !=
+        comparison.diagnostic_codes.end()) {
+        comparison.status = JobExecutionNumaLocalityEvidenceStatus::invalid_configuration;
+        comparison.recommendation = JobExecutionNumaMemoryPolicyRecommendation::evidence_unverifiable;
+        return comparison;
+    }
+
+    if (desc.numa_node_count > 1U && !desc.numa_topology_known) {
+        append_numa_locality_evidence_diagnostic(
+            comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_numa_topology,
+            "job execution NUMA memory policy comparison needs NUMA topology before comparing placement");
+    }
+    if (desc.cpuset_restrictions_observed && !desc.cpuset_restrictions_verifiable) {
+        append_numa_locality_evidence_diagnostic(
+            comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::cpuset_restriction_unverifiable,
+            "job execution NUMA memory policy comparison cannot verify locality under observed cpuset restrictions");
+    }
+    if (!desc.nps_state_known || desc.nps_state.empty()) {
+        append_numa_locality_evidence_diagnostic(
+            comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_nps_state,
+            "job execution NUMA memory policy comparison needs NPS state before comparing manual memory policy");
+    }
+
+    const bool counters_present =
+        desc.local_remote_memory_counters_available && desc.first_touch_local_memory_bytes.has_value() &&
+        desc.first_touch_remote_memory_bytes.has_value() && desc.manual_policy_local_memory_bytes.has_value() &&
+        desc.manual_policy_remote_memory_bytes.has_value();
+    if (!counters_present) {
+        append_numa_locality_evidence_diagnostic(
+            comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters,
+            "job execution NUMA memory policy comparison needs first-touch and manual local/remote memory counters");
+    } else {
+        const std::uint64_t first_touch_total =
+            desc.first_touch_local_memory_bytes.value() + desc.first_touch_remote_memory_bytes.value();
+        const std::uint64_t manual_total =
+            desc.manual_policy_local_memory_bytes.value() + desc.manual_policy_remote_memory_bytes.value();
+        if (first_touch_total == 0ULL || manual_total == 0ULL) {
+            append_numa_locality_evidence_diagnostic(
+                comparison, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters,
+                "job execution NUMA memory policy comparison needs non-zero memory totals to compute locality");
+        } else {
+            comparison.first_touch_local_fraction_per_mille =
+                static_cast<std::uint32_t>((desc.first_touch_local_memory_bytes.value() * 1000ULL) / first_touch_total);
+            comparison.manual_policy_local_fraction_per_mille =
+                static_cast<std::uint32_t>((desc.manual_policy_local_memory_bytes.value() * 1000ULL) / manual_total);
+            comparison.locality_gain_per_mille =
+                static_cast<std::int32_t>(comparison.manual_policy_local_fraction_per_mille) -
+                static_cast<std::int32_t>(comparison.first_touch_local_fraction_per_mille);
+        }
+    }
+
+    if (!comparison.diagnostic_codes.empty()) {
+        comparison.status = JobExecutionNumaLocalityEvidenceStatus::host_evidence_required;
+        comparison.recommendation = JobExecutionNumaMemoryPolicyRecommendation::evidence_unverifiable;
+        comparison.first_touch_local_fraction_per_mille = 0U;
+        comparison.manual_policy_local_fraction_per_mille = 0U;
+        comparison.locality_gain_per_mille = 0;
+        return comparison;
+    }
+
+    comparison.status = JobExecutionNumaLocalityEvidenceStatus::ready;
+    if (comparison.locality_gain_per_mille > 0 &&
+        static_cast<std::uint32_t>(comparison.locality_gain_per_mille) >= desc.min_locality_gain_per_mille) {
+        comparison.recommendation = JobExecutionNumaMemoryPolicyRecommendation::manual_policy_followup_candidate;
+    } else {
+        comparison.recommendation = JobExecutionNumaMemoryPolicyRecommendation::keep_first_touch_default;
+    }
+    return comparison;
 }
 
 std::uint32_t observe_job_execution_logical_processor_count() noexcept {
@@ -1114,6 +1221,19 @@ std::string_view job_execution_numa_locality_evidence_diagnostic_code_label(
         return "missing_nps_state";
     case JobExecutionNumaLocalityEvidenceDiagnosticCode::cpuset_restriction_unverifiable:
         return "cpuset_restriction_unverifiable";
+    }
+    return "unknown";
+}
+
+std::string_view job_execution_numa_memory_policy_recommendation_label(
+    JobExecutionNumaMemoryPolicyRecommendation recommendation) noexcept {
+    switch (recommendation) {
+    case JobExecutionNumaMemoryPolicyRecommendation::keep_first_touch_default:
+        return "keep_first_touch_default";
+    case JobExecutionNumaMemoryPolicyRecommendation::manual_policy_followup_candidate:
+        return "manual_policy_followup_candidate";
+    case JobExecutionNumaMemoryPolicyRecommendation::evidence_unverifiable:
+        return "evidence_unverifiable";
     }
     return "unknown";
 }

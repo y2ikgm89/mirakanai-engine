@@ -172,6 +172,51 @@ struct JobExecutionNumaFirstTouchLocalityRecipe {
     }
 };
 
+enum class JobExecutionNumaMemoryPolicyRecommendation : std::uint8_t {
+    keep_first_touch_default,
+    manual_policy_followup_candidate,
+    evidence_unverifiable
+};
+
+// Value-only comparison between the first-touch locality baseline and a proposed manual NUMA
+// memory policy. It never executes a memory policy; it only classifies whether host-measured
+// locality counters justify planning a manual-policy follow-up, and fails closed when the
+// evidence is incomplete or unverifiable.
+struct JobExecutionNumaMemoryPolicyComparisonDesc {
+    std::string name;
+    std::string workload;
+    std::uint32_t numa_node_count{0};
+    bool numa_topology_known{false};
+    std::optional<std::uint64_t> first_touch_local_memory_bytes;
+    std::optional<std::uint64_t> first_touch_remote_memory_bytes;
+    std::optional<std::uint64_t> manual_policy_local_memory_bytes;
+    std::optional<std::uint64_t> manual_policy_remote_memory_bytes;
+    bool local_remote_memory_counters_available{false};
+    bool nps_state_known{false};
+    std::string nps_state;
+    bool cpuset_restrictions_observed{false};
+    bool cpuset_restrictions_verifiable{true};
+    std::uint32_t min_locality_gain_per_mille{0};
+};
+
+struct JobExecutionNumaMemoryPolicyComparison {
+    JobExecutionNumaLocalityEvidenceStatus status{JobExecutionNumaLocalityEvidenceStatus::invalid_configuration};
+    std::string workload;
+    JobExecutionNumaMemoryPolicyRecommendation recommendation{
+        JobExecutionNumaMemoryPolicyRecommendation::keep_first_touch_default};
+    bool first_touch_locality_default{true};
+    bool manual_memory_policy_applied{false};
+    std::uint32_t first_touch_local_fraction_per_mille{0};
+    std::uint32_t manual_policy_local_fraction_per_mille{0};
+    std::int32_t locality_gain_per_mille{0};
+    std::vector<JobExecutionNumaLocalityEvidenceDiagnosticCode> diagnostic_codes;
+    std::vector<std::string> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept {
+        return status == JobExecutionNumaLocalityEvidenceStatus::ready;
+    }
+};
+
 struct JobExecutionTopologyPolicyDesc {
     std::string name;
     std::uint32_t observed_logical_processor_count{0};
@@ -364,6 +409,8 @@ select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& des
 summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvidenceDesc& desc);
 [[nodiscard]] JobExecutionNumaFirstTouchLocalityRecipe
 build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc);
+[[nodiscard]] JobExecutionNumaMemoryPolicyComparison
+compare_job_execution_numa_memory_policy(const JobExecutionNumaMemoryPolicyComparisonDesc& desc);
 [[nodiscard]] std::uint32_t observe_job_execution_logical_processor_count() noexcept;
 [[nodiscard]] std::string_view
 job_execution_topology_policy_status_label(JobExecutionTopologyPolicyStatus status) noexcept;
@@ -380,6 +427,8 @@ job_execution_numa_locality_memory_policy_scope_label(JobExecutionNumaLocalityMe
 job_execution_numa_locality_evidence_status_label(JobExecutionNumaLocalityEvidenceStatus status) noexcept;
 [[nodiscard]] std::string_view job_execution_numa_locality_evidence_diagnostic_code_label(
     JobExecutionNumaLocalityEvidenceDiagnosticCode code) noexcept;
+[[nodiscard]] std::string_view job_execution_numa_memory_policy_recommendation_label(
+    JobExecutionNumaMemoryPolicyRecommendation recommendation) noexcept;
 [[nodiscard]] std::string_view job_execution_pool_status_label(JobExecutionPoolStatus status) noexcept;
 [[nodiscard]] std::string_view job_execution_run_status_label(JobExecutionRunStatus status) noexcept;
 [[nodiscard]] std::string_view job_execution_diagnostic_code_label(JobExecutionDiagnosticCode code) noexcept;
