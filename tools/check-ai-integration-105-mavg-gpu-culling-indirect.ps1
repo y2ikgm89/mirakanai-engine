@@ -58,21 +58,18 @@ foreach ($surface in @(
     foreach ($needle in @("mavg_gpu_culling.hpp", "MavgGpuCullingIndirectPlan", "plan_mavg_gpu_culling_indirect_commands", "D3D12/Vulkan", "value-only")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU culling indirect planning evidence"
     }
-    foreach ($needle in @("ExecuteIndirect", "Vulkan indirect draw execution", "mesh shaders", "Nanite")) {
+    foreach ($needle in @("ExecuteIndirect", "count-buffer Vulkan execution", "mesh shaders", "Nanite")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU culling non-claim evidence"
     }
 }
 
-$aiLoopGpuCullingEvidenceText = $aiLoopFragmentText
-if ($manifest.aiOperableProductionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md") {
-    $aiLoopGpuCullingEvidenceText = (([string]$manifest.aiOperableProductionLoop.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.completedContext), $aiLoopFragmentText) -join " "
-}
+$aiLoopGpuCullingEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
         "actual GPU culling dispatch",
         "D3D12 ExecuteIndirect",
-        "Vulkan indirect draw execution"
+        "mavg-vulkan-indexed-indirect-draw-execution-v1"
     )) {
     Assert-ContainsText $aiLoopGpuCullingEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 }

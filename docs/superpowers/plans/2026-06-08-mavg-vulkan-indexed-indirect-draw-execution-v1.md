@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-vulkan-indexed-indirect-draw-execution-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Active implementation PR over completed MAVG D3D12 Indexed Indirect Draw Execution v1. Land Vulkan `vkCmdDrawIndexedIndirect` execution, SPIR-V environment-gated visible readback tests, count-buffer fail-closed evidence, shared indirect draw stats helpers, docs/manifest/static-check sync, and focused validation before publication. Post-merge closeout returns `currentActivePlan` to the production-completion master plan in a follow-up PR.
+**Execution State:** Completed through PR #541. The closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims.
 
 **Goal:** Implement a clean Vulkan `vkCmdDrawIndexedIndirect` execution path for `IRhiCommandList::draw_indexed_indirect` when the caller supplies a CPU-generated upload argument buffer and no count buffer, then prove visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming GPU culling dispatch, count-buffer execution, D3D12 changes, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 

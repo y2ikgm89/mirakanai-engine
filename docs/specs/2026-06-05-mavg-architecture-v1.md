@@ -183,7 +183,7 @@ Future responsibilities:
 
 - Actual compute culling dispatch and command/count buffer writes.
 - D3D12 command signatures, resource state transitions, and `ExecuteIndirect`.
-- Vulkan indirect draw execution, Vulkan indirect draw/count execution, feature gates, and synchronization commands.
+- count-buffer Vulkan execution, Vulkan indirect draw/count execution, feature gates, and synchronization commands.
 
 ### Mesh Shader Backends
 
