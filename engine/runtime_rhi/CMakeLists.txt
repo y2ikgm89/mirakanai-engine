@@ -1,4 +1,5 @@
 add_library(mirakana_runtime_rhi
+    src/mavg_conventional_upload.cpp
     src/package_streaming_frame_graph.cpp
     src/runtime_upload.cpp
 )
