@@ -33,6 +33,7 @@
     "prepareWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1",
     "publicationPreflight": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch \u003Cbranch\u003E",
     "removeMergedWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath \u003Cpath\u003E [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath \u003Cpath\u003E] [-DeleteLocalBranch] [-DeleteRemoteBranch]",
+    "postMergeTaskCleanup": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1 -WorktreePath \u003Cpath\u003E [-HeadRefOid \u003CheadRefOid\u003E] [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath \u003Cpath\u003E]",
     "toolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
     "directToolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake",
     "bootstrapDeps": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
