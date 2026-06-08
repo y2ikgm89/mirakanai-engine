@@ -96,13 +96,29 @@ std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc&
                            "rhi indexed indirect draw argument range overflowed");
 }
 
-std::vector<IndexedIndirectDrawCommand>
-decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
-                                      const IndexedIndirectDrawDesc& desc) {
-    std::vector<IndexedIndirectDrawCommand> commands;
-    commands.reserve(desc.max_draw_count);
+std::uint32_t decode_indexed_indirect_count_buffer_value(std::span<const std::uint8_t> count_bytes) {
+    if (count_bytes.size() < indexed_indirect_draw_count_buffer_size_bytes) {
+        throw std::invalid_argument("rhi indexed indirect draw count buffer bytes are too small");
+    }
+    return read_u32(count_bytes, 0U);
+}
 
-    for (std::uint32_t draw_index = 0; draw_index < desc.max_draw_count; ++draw_index) {
+std::uint32_t effective_indexed_indirect_draw_count(std::uint32_t count_buffer_value,
+                                                    const IndexedIndirectDrawDesc& desc) noexcept {
+    return count_buffer_value < desc.max_draw_count ? count_buffer_value : desc.max_draw_count;
+}
+
+std::vector<IndexedIndirectDrawCommand>
+decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes, const IndexedIndirectDrawDesc& desc,
+                                      std::uint32_t draw_count) {
+    if (draw_count > desc.max_draw_count) {
+        throw std::invalid_argument("rhi indexed indirect draw count must not exceed the maximum draw count");
+    }
+
+    std::vector<IndexedIndirectDrawCommand> commands;
+    commands.reserve(draw_count);
+
+    for (std::uint32_t draw_index = 0; draw_index < draw_count; ++draw_index) {
         const auto command_offset =
             checked_add_u64(desc.argument_buffer_offset,
                             checked_mul_u64(static_cast<std::uint64_t>(desc.command_stride_bytes), draw_index,
@@ -119,12 +135,22 @@ decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_byt
     return commands;
 }
 
+std::vector<IndexedIndirectDrawCommand>
+decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
+                                      const IndexedIndirectDrawDesc& desc) {
+    return decode_indexed_indirect_draw_commands(argument_bytes, desc, desc.max_draw_count);
+}
+
 void record_indexed_indirect_draw_stats(RhiStats& stats, std::span<const IndexedIndirectDrawCommand> commands,
-                                        const IndexedIndirectDrawDesc& desc) noexcept {
+                                        const IndexedIndirectDrawDesc& desc, bool count_buffer_used,
+                                        std::uint32_t count_buffer_value) noexcept {
     ++stats.indexed_indirect_draw_calls;
+    if (count_buffer_used) {
+        ++stats.indexed_indirect_count_buffer_reads;
+    }
     stats.last_indexed_indirect_max_draw_count = desc.max_draw_count;
     stats.last_indexed_indirect_executed_draw_count = static_cast<std::uint32_t>(commands.size());
-    stats.last_indexed_indirect_count_buffer_value = desc.max_draw_count;
+    stats.last_indexed_indirect_count_buffer_value = count_buffer_used ? count_buffer_value : desc.max_draw_count;
 
     for (const auto& command : commands) {
         ++stats.draw_calls;
