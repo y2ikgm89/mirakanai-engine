@@ -114,9 +114,12 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect draw evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-draw-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-d3d12-indexed-indirect-draw-execution-v1"
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG D3D12 indirect draw closeout"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-d3d12-indexed-indirect-draw-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-d3d12-indexed-indirect-draw-execution-v1"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG D3D12 indirect draw closeout"
+}
+foreach ($needle in @("MAVG D3D12 Indexed Indirect Draw Execution v1", "PR #539", "D3D12 ExecuteIndirect", "count-buffer execution", "Vulkan indirect draw execution", "unsupportedProductionGaps = []")) {
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 closeout evidence"
 }
