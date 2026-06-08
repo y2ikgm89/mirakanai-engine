@@ -362,8 +362,8 @@ select_job_execution_topology_policy(const JobExecutionTopologyPolicyDesc& desc)
 select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& desc);
 [[nodiscard]] JobExecutionNumaLocalityEvidence
 summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvidenceDesc& desc);
-[[nodiscard]] JobExecutionNumaFirstTouchLocalityRecipe build_job_execution_numa_first_touch_locality_recipe(
-    const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc);
+[[nodiscard]] JobExecutionNumaFirstTouchLocalityRecipe
+build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc);
 [[nodiscard]] std::uint32_t observe_job_execution_logical_processor_count() noexcept;
 [[nodiscard]] std::string_view
 job_execution_topology_policy_status_label(JobExecutionTopologyPolicyStatus status) noexcept;
@@ -374,8 +374,8 @@ job_execution_topology_policy_diagnostic_code_label(JobExecutionTopologyPolicyDi
 job_execution_placement_policy_status_label(JobExecutionPlacementPolicyStatus status) noexcept;
 [[nodiscard]] std::string_view
 job_execution_placement_policy_diagnostic_code_label(JobExecutionPlacementPolicyDiagnosticCode code) noexcept;
-[[nodiscard]] std::string_view job_execution_numa_locality_memory_policy_scope_label(
-    JobExecutionNumaLocalityMemoryPolicyScope scope) noexcept;
+[[nodiscard]] std::string_view
+job_execution_numa_locality_memory_policy_scope_label(JobExecutionNumaLocalityMemoryPolicyScope scope) noexcept;
 [[nodiscard]] std::string_view
 job_execution_numa_locality_evidence_status_label(JobExecutionNumaLocalityEvidenceStatus status) noexcept;
 [[nodiscard]] std::string_view job_execution_numa_locality_evidence_diagnostic_code_label(

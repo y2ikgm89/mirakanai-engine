@@ -857,14 +857,14 @@ summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvi
     evidence.cpuset_restrictions_observed = desc.cpuset_restrictions_observed;
 
     if (desc.name.empty()) {
-        append_numa_locality_evidence_diagnostic(
-            evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
-            "job execution NUMA locality evidence requires a non-empty name");
+        append_numa_locality_evidence_diagnostic(evidence,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA locality evidence requires a non-empty name");
     }
     if (desc.workload.empty()) {
-        append_numa_locality_evidence_diagnostic(
-            evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
-            "job execution NUMA locality evidence requires a workload name");
+        append_numa_locality_evidence_diagnostic(evidence,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA locality evidence requires a workload name");
     }
 
     if (std::ranges::find(evidence.diagnostic_codes,
@@ -927,22 +927,22 @@ summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvi
     return evidence;
 }
 
-JobExecutionNumaFirstTouchLocalityRecipe build_job_execution_numa_first_touch_locality_recipe(
-    const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc) {
+JobExecutionNumaFirstTouchLocalityRecipe
+build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc) {
     auto recipe = JobExecutionNumaFirstTouchLocalityRecipe{};
     recipe.worker_count = desc.worker_count;
     recipe.chunk_count = desc.chunk_count;
     recipe.first_touch_locality_default = true;
 
     if (desc.name.empty()) {
-        append_numa_locality_evidence_diagnostic(
-            recipe, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
-            "job execution NUMA first-touch recipe requires a non-empty name");
+        append_numa_locality_evidence_diagnostic(recipe,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA first-touch recipe requires a non-empty name");
     }
     if (desc.workload.empty()) {
-        append_numa_locality_evidence_diagnostic(
-            recipe, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
-            "job execution NUMA first-touch recipe requires a workload name");
+        append_numa_locality_evidence_diagnostic(recipe,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA first-touch recipe requires a workload name");
     }
     if (desc.worker_count == 0U || desc.chunk_count == 0U) {
         append_numa_locality_evidence_diagnostic(
@@ -1071,8 +1071,8 @@ job_execution_placement_policy_diagnostic_code_label(JobExecutionPlacementPolicy
     return "unknown";
 }
 
-std::string_view job_execution_numa_locality_memory_policy_scope_label(
-    JobExecutionNumaLocalityMemoryPolicyScope scope) noexcept {
+std::string_view
+job_execution_numa_locality_memory_policy_scope_label(JobExecutionNumaLocalityMemoryPolicyScope scope) noexcept {
     switch (scope) {
     case JobExecutionNumaLocalityMemoryPolicyScope::os_default:
         return "os_default";

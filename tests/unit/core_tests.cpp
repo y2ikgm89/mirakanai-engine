@@ -1484,8 +1484,8 @@ MK_TEST("job execution placement policy fails closed for missing NUMA placement 
 }
 
 MK_TEST("job execution NUMA locality evidence records first touch default without manual policy") {
-    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
-        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+    const auto evidence =
+        mirakana::summarize_job_execution_numa_locality_evidence(mirakana::JobExecutionNumaLocalityEvidenceDesc{
             .name = "core.numa_locality",
             .workload = "sample_desktop_runtime_game",
             .numa_node_count = 2,
@@ -1513,8 +1513,8 @@ MK_TEST("job execution NUMA locality evidence records first touch default withou
 }
 
 MK_TEST("job execution NUMA locality evidence fails closed for missing NUMA topology") {
-    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
-        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+    const auto evidence =
+        mirakana::summarize_job_execution_numa_locality_evidence(mirakana::JobExecutionNumaLocalityEvidenceDesc{
             .name = "core.numa_locality",
             .workload = "sample_desktop_runtime_game",
             .numa_node_count = 2,
@@ -1524,15 +1524,14 @@ MK_TEST("job execution NUMA locality evidence fails closed for missing NUMA topo
     MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
     MK_REQUIRE(!evidence.ready());
     MK_REQUIRE(!evidence.manual_memory_policy_applied);
-    MK_REQUIRE(std::ranges::find(
-                   evidence.diagnostic_codes,
-                   mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_numa_topology) !=
+    MK_REQUIRE(std::ranges::find(evidence.diagnostic_codes,
+                                 mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_numa_topology) !=
                evidence.diagnostic_codes.end());
 }
 
 MK_TEST("job execution NUMA locality evidence fails closed for missing CPU to node mapping") {
-    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
-        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+    const auto evidence =
+        mirakana::summarize_job_execution_numa_locality_evidence(mirakana::JobExecutionNumaLocalityEvidenceDesc{
             .name = "core.numa_locality",
             .workload = "sample_desktop_runtime_game",
             .numa_node_count = 2,
@@ -1540,15 +1539,15 @@ MK_TEST("job execution NUMA locality evidence fails closed for missing CPU to no
         });
 
     MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
-    MK_REQUIRE(std::ranges::find(
-                   evidence.diagnostic_codes,
-                   mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_cpu_to_node_mapping) !=
-               evidence.diagnostic_codes.end());
+    MK_REQUIRE(
+        std::ranges::find(evidence.diagnostic_codes,
+                          mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_cpu_to_node_mapping) !=
+        evidence.diagnostic_codes.end());
 }
 
 MK_TEST("job execution NUMA locality evidence fails closed for manual policy without counters") {
-    const auto evidence = mirakana::summarize_job_execution_numa_locality_evidence(
-        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+    const auto evidence =
+        mirakana::summarize_job_execution_numa_locality_evidence(mirakana::JobExecutionNumaLocalityEvidenceDesc{
             .name = "core.numa_locality",
             .workload = "sample_desktop_runtime_game",
             .numa_node_count = 2,
@@ -1566,10 +1565,10 @@ MK_TEST("job execution NUMA locality evidence fails closed for manual policy wit
 
     MK_REQUIRE(evidence.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
     MK_REQUIRE(!evidence.manual_memory_policy_applied);
-    MK_REQUIRE(std::ranges::find(
-                   evidence.diagnostic_codes,
-                   mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters) !=
-               evidence.diagnostic_codes.end());
+    MK_REQUIRE(
+        std::ranges::find(evidence.diagnostic_codes,
+                          mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters) !=
+        evidence.diagnostic_codes.end());
 }
 
 MK_TEST("job execution NUMA first-touch recipe assigns chunk initialization to workers") {

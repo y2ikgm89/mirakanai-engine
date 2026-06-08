@@ -1855,8 +1855,8 @@ struct LongRunNumaLocalityEvidence {
 
 [[nodiscard]] LongRunNumaLocalityEvidence build_long_run_numa_locality_evidence() {
     LongRunNumaLocalityEvidence evidence;
-    evidence.summary = mirakana::summarize_job_execution_numa_locality_evidence(
-        mirakana::JobExecutionNumaLocalityEvidenceDesc{
+    evidence.summary =
+        mirakana::summarize_job_execution_numa_locality_evidence(mirakana::JobExecutionNumaLocalityEvidenceDesc{
             .name = "sample_2d.long_run_numa_locality",
             .workload = "sample_2d_desktop_runtime_package",
             .numa_node_count = 1,
@@ -1878,7 +1878,8 @@ struct LongRunNumaLocalityEvidence {
     return evidence;
 }
 
-[[nodiscard]] std::string_view long_run_numa_locality_status_name(const LongRunNumaLocalityEvidence& evidence) noexcept {
+[[nodiscard]] std::string_view
+long_run_numa_locality_status_name(const LongRunNumaLocalityEvidence& evidence) noexcept {
     return evidence.ready ? "ready" : "blocked";
 }
 
