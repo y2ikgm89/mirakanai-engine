@@ -60,9 +60,22 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/post-merge-task-cleanup.ps1"],
+    decision = "allow",
+    justification = "Preferred post-merge wrapper verifies head reachability, then delegates to guarded remove-merged-worktree cleanup.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1 -WorktreePath .worktrees/codex/example -HeadRefOid 0123456789abcdef0123456789abcdef01234567",
+    ],
+    not_match = [
+        "git worktree remove .worktrees/codex/example",
+        "Remove-Item -LiteralPath .worktrees/codex/example -Recurse -Force",
+    ],
+)
+
+prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
     decision = "allow",
-    justification = "Guarded cleanup verifies Git worktree porcelain records, clean status, branch ancestry, and reparse points before removal.",
+    justification = "Lower-level guarded cleanup verifies Git worktree porcelain records, clean status, branch ancestry, and reparse points before removal.",
     match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/codex/example -BaseRef origin/main -BaseBranch main -Remote origin -DeleteLocalBranch",
     ],
@@ -196,7 +209,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["gh", "pr", "merge", "--auto", "--merge", "--match-head-commit"],
     decision = "allow",
-    justification = "Register auto-merge only after PR preflight; branch cleanup stays in tools/remove-merged-worktree.ps1.",
+    justification = "Register auto-merge only after PR preflight; branch cleanup prefers tools/post-merge-task-cleanup.ps1.",
     match = [
         "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567",
         "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567 42",

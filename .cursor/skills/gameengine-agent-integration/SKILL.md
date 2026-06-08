@@ -17,6 +17,7 @@ paths:
   - "tools/text-format-core.ps1"
   - "tools/prepare-worktree.ps1"
   - "tools/check-publication-preflight.ps1"
+  - "tools/post-merge-task-cleanup.ps1"
   - "tools/remove-merged-worktree.ps1"
   - "tools/ready-task-pr.ps1"
   - "tools/compose-agent-manifest.ps1"

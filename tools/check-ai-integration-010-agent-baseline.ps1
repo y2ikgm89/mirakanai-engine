@@ -75,6 +75,7 @@ if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "doc
 }
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/post-merge-task-cleanup.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/remove-merged-worktree.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "fast-forwards" "AGENTS.md"
 Assert-ContainsText $agentsContent "verifies branch ancestry" "AGENTS.md"
@@ -269,6 +270,7 @@ Assert-ContainsText $workflowsContent '`PR Gate` must report `SUCCESS`' "docs/wo
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune <remote>" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "guarded post-merge branch and worktree cleanup" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "-DeleteRemoteBranch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "remote branch ancestry" "docs/workflows.md"
@@ -595,6 +597,7 @@ Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-int
 Assert-ContainsText $aiIntegrationContent "approval-capable session" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Codex app Worktree/Handoff" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "local checkout sync plus cleanup" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Git's main worktree porcelain record" "docs/ai-integration.md"
@@ -625,6 +628,7 @@ Assert-ContainsText $cursorBaselineSkillText '`PR Gate` to report `SUCCESS`' ".c
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "tools/post-merge-task-cleanup.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "Windows long-path fallback inside the guarded script" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/check-text-format.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
@@ -731,6 +735,8 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("removeMergedWorkt
     Write-Error "engine/agent/manifest.json commands missing required command: removeMergedWorktree"
 } elseif ($manifest.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch] [-DeleteRemoteBranch]") {
     Write-Error "engine/agent/manifest.json commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
+} elseif (-not $manifest.commands.PSObject.Properties.Name.Contains("postMergeTaskCleanup") -or $manifest.commands.postMergeTaskCleanup -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1 -WorktreePath <path> [-HeadRefOid <headRefOid>] [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>]") {
+    Write-Error "engine/agent/manifest.json commands.postMergeTaskCleanup must expose the preferred post-merge cleanup wrapper command"
 }
 $composeAgentManifestCmd = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 [-Write|-Verify|-SplitFromCanonical]"
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("composeAgentManifest")) {

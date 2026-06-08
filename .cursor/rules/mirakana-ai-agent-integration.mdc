@@ -1,6 +1,6 @@
 ---
 description: Agent-surface drift, manifest compose, and cross-tool integration when editing AI operable contracts.
-globs: AGENTS.md,CLAUDE.md,.agents/**,.claude/**,.cursor/**,.codex/**,.clangd,engine/agent/**,schemas/**,tools/agent-context.ps1,tools/compose-agent-manifest.ps1,tools/check-agents.ps1,tools/check-ai-integration*.ps1,tools/check-json-contracts*.ps1,tools/check-publication-preflight.ps1,tools/remove-merged-worktree.ps1,tools/ready-task-pr.ps1,docs/workflows.md,docs/ai-integration.md
+globs: AGENTS.md,CLAUDE.md,.agents/**,.claude/**,.cursor/**,.codex/**,.clangd,engine/agent/**,schemas/**,tools/agent-context.ps1,tools/compose-agent-manifest.ps1,tools/check-agents.ps1,tools/check-ai-integration*.ps1,tools/check-json-contracts*.ps1,tools/check-publication-preflight.ps1,tools/post-merge-task-cleanup.ps1,tools/remove-merged-worktree.ps1,tools/ready-task-pr.ps1,docs/workflows.md,docs/ai-integration.md
 alwaysApply: false
 ---
 

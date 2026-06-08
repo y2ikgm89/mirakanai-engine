@@ -15,6 +15,7 @@ paths:
   - "tools/check-ai-integration*.ps1"
   - "tools/check-json-contracts*.ps1"
   - "tools/check-publication-preflight.ps1"
+  - "tools/post-merge-task-cleanup.ps1"
   - "tools/remove-merged-worktree.ps1"
   - "tools/ready-task-pr.ps1"
   - "tools/static-contract-ledger.ps1"
@@ -49,7 +50,7 @@ This is a startup-loaded router for Claude Code memory imports. Keep it short; p
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` before staging, push, PR creation/update, ready conversion, merge, or cleanup. If `publication-preflight: blocked` appears, switch session/host context instead of bypassing GitHub Flow.
 - Publication temp clones are not the supported path. Use the task worktree so Git admin state, network, `gh auth status`, and PR head SHA evidence match the branch being published.
 - Use `tools/ready-task-pr.ps1` instead of raw `gh pr ready`; use `gh pr merge --auto --merge --match-head-commit <headRefOid>` instead of immediate merge; keep `--delete-branch` out of linked-worktree auto-merge commands.
-- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1` for guarded post-merge local checkout sync and cleanup; raw worktree cleanup stays reviewed.
+- Prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1` for guarded post-merge cleanup; `tools/remove-merged-worktree.ps1` remains the lower-level entrypoint. Raw worktree cleanup stays reviewed.
 - Git/GitHub authentication stays host-local. Do not add repository requirements for `GITHUB_TOKEN`, personal access tokens, or checked-in credential helper overrides.
 
 ## Cross-Tool Surfaces

@@ -23,7 +23,7 @@ When a historical Japanese note is promoted into a current doc, translate the pr
 - [Roadmap](roadmap.md): current implemented foundation, active priorities, and next work.
 - [Building](building.md): CMake presets, install layout, `find_package(Mirakanai)`, and module/import-std matrix.
 - [Testing](testing.md): validation commands, coverage expectations, and current test coverage.
-- [Workflows](workflows.md): task, validation, CI, packaging, and plan lifecycle rules.
+- [Workflows](workflows.md): task, validation, CI, packaging, plan lifecycle, and GitHub Flow post-merge cleanup (`post-merge-task-cleanup.ps1`, `delete_branch_on_merge`).
 - [Codex local environment](codex-local-environment.md): Codex app setup script and project actions for lightweight worktree setup.
 - [Agent operational reference](agent-operational-reference.md): extended validation, editor shell, plan lifecycle, production completion, and game lanes (indexed from `AGENTS.md`).
 - Optional Windows PIX host helper (operator-run, non-repo scratch dirs): [`tools/launch-pix-host-helper.ps1`](../tools/launch-pix-host-helper.ps1), summarized under [Workflows — Windows diagnostics toolchain](workflows.md#windows-diagnostics-toolchain). Default **operator PIX + coding-agent analysis** pattern: [AI integration](ai-integration.md) subsection **Recommended workflow (operator PIX, AI analysis)**.
