@@ -1591,6 +1591,138 @@ MK_TEST("job execution NUMA first-touch recipe assigns chunk initialization to w
     MK_REQUIRE(recipe.chunk_rows[2].initialize_on_assigned_worker);
 }
 
+MK_TEST("job execution NUMA memory policy comparison keeps first touch when manual shows no gain") {
+    const auto comparison =
+        mirakana::compare_job_execution_numa_memory_policy(mirakana::JobExecutionNumaMemoryPolicyComparisonDesc{
+            .name = "core.numa_compare",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .first_touch_local_memory_bytes = 900ULL,
+            .first_touch_remote_memory_bytes = 100ULL,
+            .manual_policy_local_memory_bytes = 900ULL,
+            .manual_policy_remote_memory_bytes = 100ULL,
+            .local_remote_memory_counters_available = true,
+            .nps_state_known = true,
+            .nps_state = "nps1",
+            .min_locality_gain_per_mille = 50U,
+        });
+
+    MK_REQUIRE(comparison.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::ready);
+    MK_REQUIRE(comparison.ready());
+    MK_REQUIRE(comparison.first_touch_locality_default);
+    MK_REQUIRE(!comparison.manual_memory_policy_applied);
+    MK_REQUIRE(comparison.first_touch_local_fraction_per_mille == 900U);
+    MK_REQUIRE(comparison.manual_policy_local_fraction_per_mille == 900U);
+    MK_REQUIRE(comparison.locality_gain_per_mille == 0);
+    MK_REQUIRE(comparison.recommendation ==
+               mirakana::JobExecutionNumaMemoryPolicyRecommendation::keep_first_touch_default);
+    MK_REQUIRE(mirakana::job_execution_numa_memory_policy_recommendation_label(
+                   mirakana::JobExecutionNumaMemoryPolicyRecommendation::keep_first_touch_default) ==
+               "keep_first_touch_default");
+}
+
+MK_TEST("job execution NUMA memory policy comparison flags manual follow-up when locality gain clears threshold") {
+    const auto comparison =
+        mirakana::compare_job_execution_numa_memory_policy(mirakana::JobExecutionNumaMemoryPolicyComparisonDesc{
+            .name = "core.numa_compare",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .first_touch_local_memory_bytes = 500ULL,
+            .first_touch_remote_memory_bytes = 500ULL,
+            .manual_policy_local_memory_bytes = 900ULL,
+            .manual_policy_remote_memory_bytes = 100ULL,
+            .local_remote_memory_counters_available = true,
+            .nps_state_known = true,
+            .nps_state = "nps1",
+            .min_locality_gain_per_mille = 200U,
+        });
+
+    MK_REQUIRE(comparison.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::ready);
+    MK_REQUIRE(comparison.first_touch_local_fraction_per_mille == 500U);
+    MK_REQUIRE(comparison.manual_policy_local_fraction_per_mille == 900U);
+    MK_REQUIRE(comparison.locality_gain_per_mille == 400);
+    MK_REQUIRE(comparison.recommendation ==
+               mirakana::JobExecutionNumaMemoryPolicyRecommendation::manual_policy_followup_candidate);
+    MK_REQUIRE(!comparison.manual_memory_policy_applied);
+}
+
+MK_TEST("job execution NUMA memory policy comparison fails closed for missing memory counters") {
+    const auto comparison =
+        mirakana::compare_job_execution_numa_memory_policy(mirakana::JobExecutionNumaMemoryPolicyComparisonDesc{
+            .name = "core.numa_compare",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .first_touch_local_memory_bytes = 900ULL,
+            .first_touch_remote_memory_bytes = 100ULL,
+            .local_remote_memory_counters_available = false,
+            .nps_state_known = true,
+            .nps_state = "nps1",
+        });
+
+    MK_REQUIRE(comparison.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(!comparison.ready());
+    MK_REQUIRE(comparison.recommendation ==
+               mirakana::JobExecutionNumaMemoryPolicyRecommendation::evidence_unverifiable);
+    MK_REQUIRE(comparison.locality_gain_per_mille == 0);
+    MK_REQUIRE(
+        std::ranges::find(comparison.diagnostic_codes,
+                          mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters) !=
+        comparison.diagnostic_codes.end());
+}
+
+MK_TEST("job execution NUMA memory policy comparison fails closed for missing NPS state") {
+    const auto comparison =
+        mirakana::compare_job_execution_numa_memory_policy(mirakana::JobExecutionNumaMemoryPolicyComparisonDesc{
+            .name = "core.numa_compare",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .first_touch_local_memory_bytes = 900ULL,
+            .first_touch_remote_memory_bytes = 100ULL,
+            .manual_policy_local_memory_bytes = 950ULL,
+            .manual_policy_remote_memory_bytes = 50ULL,
+            .local_remote_memory_counters_available = true,
+            .nps_state_known = false,
+        });
+
+    MK_REQUIRE(comparison.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(comparison.recommendation ==
+               mirakana::JobExecutionNumaMemoryPolicyRecommendation::evidence_unverifiable);
+    MK_REQUIRE(std::ranges::find(comparison.diagnostic_codes,
+                                 mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_nps_state) !=
+               comparison.diagnostic_codes.end());
+}
+
+MK_TEST("job execution NUMA memory policy comparison fails closed under unverifiable cpuset restrictions") {
+    const auto comparison =
+        mirakana::compare_job_execution_numa_memory_policy(mirakana::JobExecutionNumaMemoryPolicyComparisonDesc{
+            .name = "core.numa_compare",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 2,
+            .numa_topology_known = true,
+            .first_touch_local_memory_bytes = 500ULL,
+            .first_touch_remote_memory_bytes = 500ULL,
+            .manual_policy_local_memory_bytes = 900ULL,
+            .manual_policy_remote_memory_bytes = 100ULL,
+            .local_remote_memory_counters_available = true,
+            .nps_state_known = true,
+            .nps_state = "nps1",
+            .cpuset_restrictions_observed = true,
+            .cpuset_restrictions_verifiable = false,
+        });
+
+    MK_REQUIRE(comparison.status == mirakana::JobExecutionNumaLocalityEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(comparison.recommendation ==
+               mirakana::JobExecutionNumaMemoryPolicyRecommendation::evidence_unverifiable);
+    MK_REQUIRE(
+        std::ranges::find(comparison.diagnostic_codes,
+                          mirakana::JobExecutionNumaLocalityEvidenceDiagnosticCode::cpuset_restriction_unverifiable) !=
+        comparison.diagnostic_codes.end());
+}
+
 MK_TEST("job execution placement policy fails closed for missing hybrid core evidence") {
     const auto topology_policy =
         mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{

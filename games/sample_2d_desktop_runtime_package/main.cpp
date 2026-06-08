@@ -1847,9 +1847,14 @@ struct LongRunReadinessProbeResult {
 constexpr std::uint32_t kLongRunNumaLocalityWorkerCount = 2U;
 constexpr std::uint32_t kLongRunNumaLocalityChunkCount = 4U;
 
+constexpr std::uint64_t kLongRunNumaLocalityLocalMemoryBytes = 4096ULL;
+constexpr std::uint64_t kLongRunNumaLocalityRemoteMemoryBytes = 0ULL;
+constexpr std::uint32_t kLongRunNumaLocalityMinGainPerMille = 50U;
+
 struct LongRunNumaLocalityEvidence {
     mirakana::JobExecutionNumaLocalityEvidence summary;
     mirakana::JobExecutionNumaFirstTouchLocalityRecipe first_touch_recipe;
+    mirakana::JobExecutionNumaMemoryPolicyComparison memory_policy_comparison;
     bool ready{false};
 };
 
@@ -1874,7 +1879,25 @@ struct LongRunNumaLocalityEvidence {
             .worker_count = kLongRunNumaLocalityWorkerCount,
             .chunk_count = kLongRunNumaLocalityChunkCount,
         });
-    evidence.ready = evidence.summary.ready() && evidence.first_touch_recipe.ready();
+    // Single-node host baseline: first-touch already keeps all memory local, so a proposed manual
+    // policy shows no locality gain and the value-only comparison recommends keeping first-touch.
+    evidence.memory_policy_comparison =
+        mirakana::compare_job_execution_numa_memory_policy(mirakana::JobExecutionNumaMemoryPolicyComparisonDesc{
+            .name = "sample_2d.long_run_numa_memory_policy",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 1,
+            .numa_topology_known = true,
+            .first_touch_local_memory_bytes = kLongRunNumaLocalityLocalMemoryBytes,
+            .first_touch_remote_memory_bytes = kLongRunNumaLocalityRemoteMemoryBytes,
+            .manual_policy_local_memory_bytes = kLongRunNumaLocalityLocalMemoryBytes,
+            .manual_policy_remote_memory_bytes = kLongRunNumaLocalityRemoteMemoryBytes,
+            .local_remote_memory_counters_available = true,
+            .nps_state_known = true,
+            .nps_state = "nps1",
+            .min_locality_gain_per_mille = kLongRunNumaLocalityMinGainPerMille,
+        });
+    evidence.ready =
+        evidence.summary.ready() && evidence.first_touch_recipe.ready() && evidence.memory_policy_comparison.ready();
     return evidence;
 }
 
@@ -10913,6 +10936,18 @@ int main(int argc, char** argv) {
         << " long_run_readiness_numa_memory_policy_scope="
         << mirakana::job_execution_numa_locality_memory_policy_scope_label(
                long_run_numa_locality_evidence.summary.selected_memory_policy_scope)
+        << " long_run_readiness_numa_memory_policy_comparison_status="
+        << mirakana::job_execution_numa_locality_evidence_status_label(
+               long_run_numa_locality_evidence.memory_policy_comparison.status)
+        << " long_run_readiness_numa_memory_policy_recommendation="
+        << mirakana::job_execution_numa_memory_policy_recommendation_label(
+               long_run_numa_locality_evidence.memory_policy_comparison.recommendation)
+        << " long_run_readiness_numa_first_touch_local_fraction_per_mille="
+        << long_run_numa_locality_evidence.memory_policy_comparison.first_touch_local_fraction_per_mille
+        << " long_run_readiness_numa_manual_local_fraction_per_mille="
+        << long_run_numa_locality_evidence.memory_policy_comparison.manual_policy_local_fraction_per_mille
+        << " long_run_readiness_numa_manual_policy_locality_gain_per_mille="
+        << long_run_numa_locality_evidence.memory_policy_comparison.locality_gain_per_mille
         << " long_run_readiness_broad_simd_applied=0"
         << " long_run_readiness_gpu_async_overlap_applied=0"
         << " long_run_readiness_cuda_path_used=0"
