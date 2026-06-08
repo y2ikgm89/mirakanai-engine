@@ -4,7 +4,9 @@
 #include "mirakana/rhi/indirect_draw.hpp"
 
 #include <bit>
+#include <limits>
 #include <stdexcept>
+#include <vector>
 
 namespace mirakana::rhi {
 namespace {
@@ -21,6 +23,24 @@ void write_u32(std::array<std::uint8_t, indexed_indirect_draw_command_size_bytes
     return static_cast<std::uint32_t>(bytes[offset + 0U]) | (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U) |
            (static_cast<std::uint32_t>(bytes[offset + 2U]) << 16U) |
            (static_cast<std::uint32_t>(bytes[offset + 3U]) << 24U);
+}
+
+[[nodiscard]] bool is_aligned_to(std::uint64_t value, std::uint64_t alignment) noexcept {
+    return alignment != 0U && value % alignment == 0U;
+}
+
+[[nodiscard]] std::uint64_t checked_add_u64(std::uint64_t lhs, std::uint64_t rhs, const char* message) {
+    if (lhs > (std::numeric_limits<std::uint64_t>::max)() - rhs) {
+        throw std::overflow_error(message);
+    }
+    return lhs + rhs;
+}
+
+[[nodiscard]] std::uint64_t checked_mul_u64(std::uint64_t lhs, std::uint64_t rhs, const char* message) {
+    if (lhs != 0U && rhs > (std::numeric_limits<std::uint64_t>::max)() / lhs) {
+        throw std::overflow_error(message);
+    }
+    return lhs * rhs;
 }
 
 } // namespace
@@ -52,6 +72,77 @@ IndexedIndirectDrawCommand decode_indexed_indirect_draw_command(std::span<const 
         .vertex_offset = std::bit_cast<std::int32_t>(read_u32(bytes, 12U)),
         .first_instance = read_u32(bytes, 16U),
     };
+}
+
+std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc& desc) {
+    if (desc.max_draw_count == 0) {
+        throw std::invalid_argument("rhi indexed indirect draw max draw count must be non-zero");
+    }
+    if (!is_aligned_to(desc.argument_buffer_offset, indexed_indirect_draw_offset_alignment_bytes)) {
+        throw std::invalid_argument("rhi indexed indirect draw argument offset must be 4-byte aligned");
+    }
+    if (desc.command_stride_bytes < indexed_indirect_draw_command_size_bytes ||
+        !is_aligned_to(desc.command_stride_bytes, indexed_indirect_draw_offset_alignment_bytes)) {
+        throw std::invalid_argument(
+            "rhi indexed indirect draw command stride must be 4-byte aligned and at least the command size");
+    }
+
+    const auto last_stride_offset =
+        checked_mul_u64(static_cast<std::uint64_t>(desc.command_stride_bytes), desc.max_draw_count - 1ULL,
+                        "rhi indexed indirect draw argument range overflowed");
+    const auto last_command_offset = checked_add_u64(desc.argument_buffer_offset, last_stride_offset,
+                                                     "rhi indexed indirect draw argument range overflowed");
+    return checked_add_u64(last_command_offset, indexed_indirect_draw_command_size_bytes,
+                           "rhi indexed indirect draw argument range overflowed");
+}
+
+std::vector<IndexedIndirectDrawCommand>
+decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
+                                      const IndexedIndirectDrawDesc& desc) {
+    std::vector<IndexedIndirectDrawCommand> commands;
+    commands.reserve(desc.max_draw_count);
+
+    for (std::uint32_t draw_index = 0; draw_index < desc.max_draw_count; ++draw_index) {
+        const auto command_offset =
+            checked_add_u64(desc.argument_buffer_offset,
+                            checked_mul_u64(static_cast<std::uint64_t>(desc.command_stride_bytes), draw_index,
+                                            "rhi indexed indirect draw command offset overflowed"),
+                            "rhi indexed indirect draw command offset overflowed");
+        auto command = decode_indexed_indirect_draw_command(
+            argument_bytes.subspan(static_cast<std::size_t>(command_offset), indexed_indirect_draw_command_size_bytes));
+        if (command.index_count_per_instance == 0 || command.instance_count == 0) {
+            throw std::invalid_argument("rhi indexed indirect draw commands must have non-zero draw counts");
+        }
+        commands.push_back(command);
+    }
+
+    return commands;
+}
+
+void record_indexed_indirect_draw_stats(RhiStats& stats, std::span<const IndexedIndirectDrawCommand> commands,
+                                        const IndexedIndirectDrawDesc& desc) noexcept {
+    ++stats.indexed_indirect_draw_calls;
+    stats.last_indexed_indirect_max_draw_count = desc.max_draw_count;
+    stats.last_indexed_indirect_executed_draw_count = static_cast<std::uint32_t>(commands.size());
+    stats.last_indexed_indirect_count_buffer_value = desc.max_draw_count;
+
+    for (const auto& command : commands) {
+        ++stats.draw_calls;
+        ++stats.indexed_draw_calls;
+        ++stats.indexed_indirect_commands_executed;
+        if (command.instance_count > 1) {
+            ++stats.instanced_draw_calls;
+            ++stats.instanced_indexed_draw_calls;
+            stats.instanced_instances_submitted += command.instance_count;
+        }
+        stats.indices_submitted +=
+            static_cast<std::uint64_t>(command.index_count_per_instance) * command.instance_count;
+        stats.last_indexed_draw_index_count = command.index_count_per_instance;
+        stats.last_indexed_draw_instance_count = command.instance_count;
+        stats.last_indexed_draw_first_index = command.first_index;
+        stats.last_indexed_draw_vertex_offset = command.vertex_offset;
+        stats.last_indexed_draw_first_instance = command.first_instance;
+    }
 }
 
 void IRhiCommandList::draw_indexed_indirect(const IndexedIndirectDrawDesc&) {

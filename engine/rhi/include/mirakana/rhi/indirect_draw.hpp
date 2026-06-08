@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include <span>
+#include <vector>
 
 namespace mirakana::rhi {
 
@@ -41,5 +42,14 @@ struct IndexedIndirectDrawDesc {
 encode_indexed_indirect_draw_command(const IndexedIndirectDrawCommand& command) noexcept;
 
 [[nodiscard]] IndexedIndirectDrawCommand decode_indexed_indirect_draw_command(std::span<const std::uint8_t> bytes);
+
+[[nodiscard]] std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc& desc);
+
+[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
+decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
+                                      const IndexedIndirectDrawDesc& desc);
+
+void record_indexed_indirect_draw_stats(RhiStats& stats, std::span<const IndexedIndirectDrawCommand> commands,
+                                        const IndexedIndirectDrawDesc& desc) noexcept;
 
 } // namespace mirakana::rhi

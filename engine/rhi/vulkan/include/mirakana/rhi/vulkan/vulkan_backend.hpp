@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/rhi/backend_capabilities.hpp"
+#include "mirakana/rhi/indirect_draw.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
 #include <cstddef>
@@ -1541,6 +1542,10 @@ struct VulkanRuntimeVertexBufferBindingDesc {
     std::uint32_t binding{0};
 };
 
+/// Vulkan indexed indirect draw execution records indexed indirect draw commands using CPU-decoded
+/// five-word argument bytes from upload buffers. Public `IRhiCommandList::draw_indexed_indirect`
+/// updates `indexed_indirect_draw_calls`, `indexed_indirect_commands_executed`, and
+/// `last_indexed_indirect_max_draw_count` through shared RHI stats helpers.
 struct VulkanRuntimeDynamicRenderingDrawDesc {
     VulkanDynamicRenderingPlan dynamic_rendering;
     std::uint32_t image_index{0};
@@ -1555,6 +1560,11 @@ struct VulkanRuntimeDynamicRenderingDrawDesc {
     std::uint32_t index_count{0};
     std::uint32_t first_index{0};
     std::int32_t vertex_offset{0};
+    bool indexed_indirect_draw{false};
+    VulkanRuntimeBuffer* indirect_argument_buffer{nullptr};
+    std::uint64_t indirect_argument_buffer_offset{0};
+    std::uint32_t indirect_draw_count{0};
+    std::uint32_t indirect_command_stride_bytes{indexed_indirect_draw_command_stride_bytes};
     LoadAction color_load_action{LoadAction::clear};
     StoreAction color_store_action{StoreAction::store};
     ClearColorValue clear_color;
@@ -1601,6 +1611,9 @@ struct VulkanRuntimeTextureRenderingClearDesc {
     ClearDepthValue clear_depth;
 };
 
+/// Texture-target variant of the Vulkan indexed indirect draw contract. See `VulkanRuntimeDynamicRenderingDrawDesc`
+/// for `draw_indexed_indirect`, `indexed_indirect_draw_calls`, `indexed_indirect_commands_executed`, and
+/// `last_indexed_indirect_max_draw_count` stat ownership.
 struct VulkanRuntimeTextureRenderingDrawDesc {
     VulkanDynamicRenderingPlan dynamic_rendering;
     std::uint32_t vertex_count{3};
@@ -1614,6 +1627,11 @@ struct VulkanRuntimeTextureRenderingDrawDesc {
     std::uint32_t index_count{0};
     std::uint32_t first_index{0};
     std::int32_t vertex_offset{0};
+    bool indexed_indirect_draw{false};
+    VulkanRuntimeBuffer* indirect_argument_buffer{nullptr};
+    std::uint64_t indirect_argument_buffer_offset{0};
+    std::uint32_t indirect_draw_count{0};
+    std::uint32_t indirect_command_stride_bytes{indexed_indirect_draw_command_stride_bytes};
     LoadAction color_load_action{LoadAction::clear};
     StoreAction color_store_action{StoreAction::store};
     ClearColorValue clear_color;

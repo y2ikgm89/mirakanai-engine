@@ -4,6 +4,7 @@
 #include "mirakana/rhi/vulkan/vulkan_backend.hpp"
 
 #include "mirakana/rhi/gpu_debug.hpp"
+#include "mirakana/rhi/indirect_draw.hpp"
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -1122,6 +1123,8 @@ using VulkanCmdBindIndexBuffer = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer
                                                        std::uint32_t);
 using VulkanCmdDrawIndexed = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, std::uint32_t, std::uint32_t,
                                                    std::uint32_t, std::int32_t, std::uint32_t);
+using VulkanCmdDrawIndexedIndirect = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, NativeVulkanBuffer, std::uint64_t,
+                                                           std::uint32_t, std::uint32_t);
 using VulkanCmdDispatch = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, std::uint32_t, std::uint32_t, std::uint32_t);
 using VulkanCmdPipelineBarrier2 = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, const NativeVulkanDependencyInfo*);
 using VulkanQueueSubmit2 = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanQueue, std::uint32_t,
@@ -2930,6 +2933,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanCmdBindVertexBuffers cmd_bind_vertex_buffers{nullptr};
     VulkanCmdBindIndexBuffer cmd_bind_index_buffer{nullptr};
     VulkanCmdDrawIndexed cmd_draw_indexed{nullptr};
+    VulkanCmdDrawIndexedIndirect cmd_draw_indexed_indirect{nullptr};
     VulkanCmdPipelineBarrier2 cmd_pipeline_barrier2{nullptr};
     VulkanQueueSubmit2 queue_submit2{nullptr};
     VulkanQueueWaitIdle queue_wait_idle{nullptr};
@@ -5142,6 +5146,117 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             device_->stats_.instanced_instances_submitted += instance_count;
         }
         device_->stats_.vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
+    }
+
+    void draw_indexed_indirect(const IndexedIndirectDrawDesc& desc) override {
+        require_open();
+        if (!render_pass_active_) {
+            throw std::logic_error("vulkan rhi indexed indirect draw requires an active render pass");
+        }
+        if (!device_->owns_graphics_pipeline(bound_graphics_pipeline_)) {
+            throw std::logic_error("vulkan rhi indexed indirect draw requires a bound graphics pipeline");
+        }
+        if (bound_vertex_buffers_.empty()) {
+            throw std::logic_error("vulkan rhi indexed indirect draw requires a vertex buffer");
+        }
+        if (!index_buffer_bound_) {
+            throw std::logic_error("vulkan rhi indexed indirect draw requires an index buffer");
+        }
+        if (has_indexed_indirect_count_buffer(desc)) {
+            throw std::logic_error("vulkan rhi indexed indirect count buffer execution is not implemented");
+        }
+        if (!device_->owns_buffer(desc.argument_buffer)) {
+            throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer handle is unknown");
+        }
+
+        const auto& argument_desc = device_->buffer_descs_.at(desc.argument_buffer.value - 1U);
+        if (!has_flag(argument_desc.usage, BufferUsage::indirect)) {
+            throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer requires indirect usage");
+        }
+        if (!has_flag(argument_desc.usage, BufferUsage::copy_source)) {
+            throw std::invalid_argument(
+                "vulkan rhi indexed indirect draw argument buffer requires copy_source upload usage in v1");
+        }
+
+        const auto argument_range_end = indexed_indirect_argument_range_end(desc);
+        if (argument_range_end > argument_desc.size_bytes) {
+            throw std::invalid_argument(
+                "vulkan rhi indexed indirect draw argument range is outside the argument buffer");
+        }
+
+        const auto decoded_commands = read_indexed_indirect_draw_commands(
+            device_->device_, device_->buffers_.at(desc.argument_buffer.value - 1U), desc);
+
+        const auto dynamic_plan = make_dynamic_rendering_plan();
+        const auto color_load_action = color_load_action_for_next_draw();
+        const auto depth_load_action = depth_load_action_for_next_draw();
+        std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
+        vertex_buffers.reserve(bound_vertex_buffers_.size());
+        for (const auto& binding : bound_vertex_buffers_) {
+            vertex_buffers.push_back(VulkanRuntimeVertexBufferBindingDesc{
+                .buffer = &device_->buffers_.at(binding.buffer.value - 1U),
+                .offset = binding.offset,
+                .binding = binding.binding,
+            });
+        }
+
+        VulkanRuntimeDynamicRenderingDrawResult result;
+        if (active_texture_.value != 0) {
+            result = record_runtime_texture_rendering_draw(
+                device_->device_, pool_, device_->textures_.at(active_texture_.value - 1U),
+                device_->graphics_pipelines_.at(bound_graphics_pipeline_.value - 1U),
+                VulkanRuntimeTextureRenderingDrawDesc{
+                    .dynamic_rendering = dynamic_plan,
+                    .vertex_buffers = vertex_buffers,
+                    .index_buffer = &device_->buffers_.at(bound_index_buffer_.buffer.value - 1U),
+                    .index_buffer_offset = bound_index_buffer_.offset,
+                    .index_format = bound_index_buffer_.format,
+                    .indexed_indirect_draw = true,
+                    .indirect_argument_buffer = &device_->buffers_.at(desc.argument_buffer.value - 1U),
+                    .indirect_argument_buffer_offset = desc.argument_buffer_offset,
+                    .indirect_draw_count = desc.max_draw_count,
+                    .indirect_command_stride_bytes = desc.command_stride_bytes,
+                    .color_load_action = color_load_action,
+                    .color_store_action = active_render_pass_.color.store_action,
+                    .clear_color = active_render_pass_.color.clear_color,
+                    .depth_texture = active_depth_texture(),
+                    .depth_load_action = depth_load_action,
+                    .depth_store_action = active_render_pass_.depth.store_action,
+                    .clear_depth = active_render_pass_.depth.clear_depth,
+                });
+        } else {
+            const auto swapchain_index = active_swapchain_.value - 1U;
+            result = record_runtime_dynamic_rendering_draw(
+                device_->device_, pool_, device_->swapchains_.at(swapchain_index),
+                device_->graphics_pipelines_.at(bound_graphics_pipeline_.value - 1U),
+                VulkanRuntimeDynamicRenderingDrawDesc{
+                    .dynamic_rendering = dynamic_plan,
+                    .image_index = device_->swapchain_image_index_for_frame(active_swapchain_frame_),
+                    .vertex_buffers = vertex_buffers,
+                    .index_buffer = &device_->buffers_.at(bound_index_buffer_.buffer.value - 1U),
+                    .index_buffer_offset = bound_index_buffer_.offset,
+                    .index_format = bound_index_buffer_.format,
+                    .indexed_indirect_draw = true,
+                    .indirect_argument_buffer = &device_->buffers_.at(desc.argument_buffer.value - 1U),
+                    .indirect_argument_buffer_offset = desc.argument_buffer_offset,
+                    .indirect_draw_count = desc.max_draw_count,
+                    .indirect_command_stride_bytes = desc.command_stride_bytes,
+                    .color_load_action = color_load_action,
+                    .color_store_action = active_render_pass_.color.store_action,
+                    .clear_color = active_render_pass_.color.clear_color,
+                    .depth_texture = active_depth_texture(),
+                    .depth_load_action = depth_load_action,
+                    .depth_store_action = active_render_pass_.depth.store_action,
+                    .clear_depth = active_render_pass_.depth.clear_depth,
+                });
+        }
+        if (!result.recorded) {
+            throw std::logic_error("vulkan rhi indexed indirect draw recording failed: " + result.diagnostic);
+        }
+
+        rendering_recorded_ = true;
+        // VkDrawIndexedIndirectCommand fields are decoded from upload bytes; vkCmdDrawIndexedIndirect consumes them.
+        record_indexed_indirect_draw_stats(device_->stats_, decoded_commands, desc);
     }
 
     void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
@@ -7389,6 +7504,7 @@ std::vector<VulkanCommandRequest> vulkan_backend_command_requests() {
         {.name = "vkCmdBindVertexBuffers", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCmdBindIndexBuffer", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCmdDrawIndexed", .scope = VulkanCommandScope::device, .required = true},
+        {.name = "vkCmdDrawIndexedIndirect", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCreateShaderModule", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkDestroyShaderModule", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCreateDescriptorSetLayout", .scope = VulkanCommandScope::device, .required = true},
@@ -8721,6 +8837,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdBindIndexBuffer>(get_device_proc_addr(device, "vkCmdBindIndexBuffer"));
     const auto cmd_draw_indexed =
         reinterpret_cast<VulkanCmdDrawIndexed>(get_device_proc_addr(device, "vkCmdDrawIndexed"));
+    const auto cmd_draw_indexed_indirect =
+        reinterpret_cast<VulkanCmdDrawIndexedIndirect>(get_device_proc_addr(device, "vkCmdDrawIndexedIndirect"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
@@ -8816,6 +8934,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         cmd_begin_rendering == nullptr || cmd_end_rendering == nullptr || cmd_bind_pipeline == nullptr ||
         cmd_set_viewport == nullptr || cmd_set_scissor == nullptr || cmd_draw == nullptr ||
         cmd_bind_vertex_buffers == nullptr || cmd_bind_index_buffer == nullptr || cmd_draw_indexed == nullptr ||
+        cmd_draw_indexed_indirect == nullptr ||
         (synchronization2_enabled && (cmd_pipeline_barrier2 == nullptr || queue_submit2 == nullptr)) ||
         queue_wait_idle == nullptr || create_buffer == nullptr || destroy_buffer == nullptr ||
         get_buffer_memory_requirements == nullptr || create_image == nullptr || destroy_image == nullptr ||
@@ -8896,6 +9015,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_bind_vertex_buffers = cmd_bind_vertex_buffers;
     impl->cmd_bind_index_buffer = cmd_bind_index_buffer;
     impl->cmd_draw_indexed = cmd_draw_indexed;
+    impl->cmd_draw_indexed_indirect = cmd_draw_indexed_indirect;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
@@ -9087,6 +9207,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdBindIndexBuffer>(get_device_proc_addr(device, "vkCmdBindIndexBuffer"));
     const auto cmd_draw_indexed =
         reinterpret_cast<VulkanCmdDrawIndexed>(get_device_proc_addr(device, "vkCmdDrawIndexed"));
+    const auto cmd_draw_indexed_indirect =
+        reinterpret_cast<VulkanCmdDrawIndexedIndirect>(get_device_proc_addr(device, "vkCmdDrawIndexedIndirect"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
@@ -9181,6 +9303,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         cmd_begin_rendering == nullptr || cmd_end_rendering == nullptr || cmd_bind_pipeline == nullptr ||
         cmd_set_viewport == nullptr || cmd_set_scissor == nullptr || cmd_draw == nullptr ||
         cmd_bind_vertex_buffers == nullptr || cmd_bind_index_buffer == nullptr || cmd_draw_indexed == nullptr ||
+        cmd_draw_indexed_indirect == nullptr ||
         (synchronization2_enabled && (cmd_pipeline_barrier2 == nullptr || queue_submit2 == nullptr)) ||
         queue_wait_idle == nullptr || create_buffer == nullptr || destroy_buffer == nullptr ||
         get_buffer_memory_requirements == nullptr || create_image == nullptr || destroy_image == nullptr ||
@@ -9259,6 +9382,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_bind_vertex_buffers = cmd_bind_vertex_buffers;
     impl->cmd_bind_index_buffer = cmd_bind_index_buffer;
     impl->cmd_draw_indexed = cmd_draw_indexed;
+    impl->cmd_draw_indexed_indirect = cmd_draw_indexed_indirect;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
@@ -12658,12 +12782,13 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         result.diagnostic = "Vulkan dynamic rendering depth format must match plan";
         return result;
     }
-    if (desc.vertex_count == 0 || desc.instance_count == 0) {
+    if (!desc.indexed_indirect_draw && (desc.vertex_count == 0 || desc.instance_count == 0)) {
         result.diagnostic = "Vulkan draw counts are required";
         return result;
     }
     const auto uses_vertex_buffer = !desc.vertex_buffers.empty();
-    const auto indexed_draw = desc.index_count > 0;
+    const auto indexed_indirect_draw = desc.indexed_indirect_draw;
+    const auto indexed_draw = desc.index_count > 0 || indexed_indirect_draw;
     auto sorted_vertex_buffers = sorted_vertex_buffer_bindings(desc.vertex_buffers);
     if (has_duplicate_vertex_buffer_bindings(sorted_vertex_buffers)) {
         result.diagnostic = "Vulkan vertex buffer bindings must be unique";
@@ -12708,6 +12833,46 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         if (desc.index_format == IndexFormat::unknown) {
             result.diagnostic = "Vulkan indexed draw index format is required";
+            return result;
+        }
+    }
+    if (indexed_indirect_draw) {
+        if (desc.indirect_draw_count == 0) {
+            result.diagnostic = "Vulkan indexed indirect draw count is required";
+            return result;
+        }
+        if (desc.indirect_argument_buffer == nullptr || !desc.indirect_argument_buffer->owns_buffer()) {
+            result.diagnostic = "Vulkan indexed indirect draw argument buffer is required";
+            return result;
+        }
+        if (desc.indirect_argument_buffer->impl_->device_owner != device.impl_) {
+            result.diagnostic = "Vulkan indexed indirect draw argument buffer must share one runtime device";
+            return result;
+        }
+        if (!has_flag(desc.indirect_argument_buffer->usage(), BufferUsage::indirect)) {
+            result.diagnostic = "Vulkan indexed indirect draw argument buffer requires indirect usage";
+            return result;
+        }
+        if (desc.indirect_argument_buffer_offset % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+            result.diagnostic = "Vulkan indexed indirect draw argument offset must be 4-byte aligned";
+            return result;
+        }
+        if (desc.indirect_command_stride_bytes < indexed_indirect_draw_command_size_bytes ||
+            desc.indirect_command_stride_bytes % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+            result.diagnostic =
+                "Vulkan indexed indirect draw command stride must be 4-byte aligned and at least the command size";
+            return result;
+        }
+        const auto argument_range_end =
+            desc.indirect_argument_buffer_offset +
+            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            indexed_indirect_draw_command_size_bytes;
+        if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
+            result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";
+            return result;
+        }
+        if (device.impl_->cmd_draw_indexed_indirect == nullptr) {
+            result.diagnostic = "Vulkan indexed indirect draw command is unavailable";
             return result;
         }
     }
@@ -12765,6 +12930,10 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     }
     if (indexed_draw && (device.impl_->cmd_bind_index_buffer == nullptr || device.impl_->cmd_draw_indexed == nullptr)) {
         result.diagnostic = "Vulkan indexed draw commands are unavailable";
+        return result;
+    }
+    if (indexed_indirect_draw && device.impl_->cmd_draw_indexed_indirect == nullptr) {
+        result.diagnostic = "Vulkan indexed indirect draw command is unavailable";
         return result;
     }
 
@@ -12857,7 +13026,14 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
             range_begin = range_end;
         }
     }
-    if (indexed_draw) {
+    if (indexed_indirect_draw) {
+        device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
+                                            native_vulkan_index_type(desc.index_format));
+        // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirect from the argument buffer.
+        device.impl_->cmd_draw_indexed_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
+                                                desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
+                                                desc.indirect_command_stride_bytes);
+    } else if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
         device.impl_->cmd_draw_indexed(command_buffer, desc.index_count, desc.instance_count, desc.first_index,
@@ -12934,12 +13110,13 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         result.diagnostic = "Vulkan dynamic rendering image index is out of range";
         return result;
     }
-    if (desc.vertex_count == 0 || desc.instance_count == 0) {
+    if (!desc.indexed_indirect_draw && (desc.vertex_count == 0 || desc.instance_count == 0)) {
         result.diagnostic = "Vulkan draw counts are required";
         return result;
     }
     const auto uses_vertex_buffer = !desc.vertex_buffers.empty();
-    const auto indexed_draw = desc.index_count > 0;
+    const auto indexed_indirect_draw = desc.indexed_indirect_draw;
+    const auto indexed_draw = desc.index_count > 0 || indexed_indirect_draw;
     auto sorted_vertex_buffers = sorted_vertex_buffer_bindings(desc.vertex_buffers);
     if (has_duplicate_vertex_buffer_bindings(sorted_vertex_buffers)) {
         result.diagnostic = "Vulkan vertex buffer bindings must be unique";
@@ -12984,6 +13161,46 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         if (desc.index_format == IndexFormat::unknown) {
             result.diagnostic = "Vulkan indexed draw index format is required";
+            return result;
+        }
+    }
+    if (indexed_indirect_draw) {
+        if (desc.indirect_draw_count == 0) {
+            result.diagnostic = "Vulkan indexed indirect draw count is required";
+            return result;
+        }
+        if (desc.indirect_argument_buffer == nullptr || !desc.indirect_argument_buffer->owns_buffer()) {
+            result.diagnostic = "Vulkan indexed indirect draw argument buffer is required";
+            return result;
+        }
+        if (desc.indirect_argument_buffer->impl_->device_owner != device.impl_) {
+            result.diagnostic = "Vulkan indexed indirect draw argument buffer must share one runtime device";
+            return result;
+        }
+        if (!has_flag(desc.indirect_argument_buffer->usage(), BufferUsage::indirect)) {
+            result.diagnostic = "Vulkan indexed indirect draw argument buffer requires indirect usage";
+            return result;
+        }
+        if (desc.indirect_argument_buffer_offset % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+            result.diagnostic = "Vulkan indexed indirect draw argument offset must be 4-byte aligned";
+            return result;
+        }
+        if (desc.indirect_command_stride_bytes < indexed_indirect_draw_command_size_bytes ||
+            desc.indirect_command_stride_bytes % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+            result.diagnostic =
+                "Vulkan indexed indirect draw command stride must be 4-byte aligned and at least the command size";
+            return result;
+        }
+        const auto argument_range_end =
+            desc.indirect_argument_buffer_offset +
+            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            indexed_indirect_draw_command_size_bytes;
+        if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
+            result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";
+            return result;
+        }
+        if (device.impl_->cmd_draw_indexed_indirect == nullptr) {
+            result.diagnostic = "Vulkan indexed indirect draw command is unavailable";
             return result;
         }
     }
@@ -13041,6 +13258,10 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     }
     if (indexed_draw && (device.impl_->cmd_bind_index_buffer == nullptr || device.impl_->cmd_draw_indexed == nullptr)) {
         result.diagnostic = "Vulkan indexed draw commands are unavailable";
+        return result;
+    }
+    if (indexed_indirect_draw && device.impl_->cmd_draw_indexed_indirect == nullptr) {
+        result.diagnostic = "Vulkan indexed indirect draw command is unavailable";
         return result;
     }
 
@@ -13133,7 +13354,14 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
             range_begin = range_end;
         }
     }
-    if (indexed_draw) {
+    if (indexed_indirect_draw) {
+        device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
+                                            native_vulkan_index_type(desc.index_format));
+        // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirect from the argument buffer.
+        device.impl_->cmd_draw_indexed_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
+                                                desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
+                                                desc.indirect_command_stride_bytes);
+    } else if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
         device.impl_->cmd_draw_indexed(command_buffer, desc.index_count, desc.instance_count, desc.first_index,
@@ -13805,6 +14033,62 @@ record_runtime_swapchain_image_readback(VulkanRuntimeDevice& device, VulkanRunti
     result.recorded = true;
     result.diagnostic = "Vulkan swapchain image readback recorded";
     return result;
+}
+
+[[nodiscard]] std::vector<std::uint8_t> read_upload_runtime_buffer_bytes(VulkanRuntimeDevice& device,
+                                                                         VulkanRuntimeBuffer& buffer,
+                                                                         std::uint64_t byte_offset,
+                                                                         std::uint64_t byte_count) {
+    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
+        throw std::logic_error("vulkan rhi indexed indirect draw runtime device is not available");
+    }
+    if (!buffer.owns_buffer() || !buffer.owns_memory()) {
+        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer is required");
+    }
+    if (buffer.impl_->device_owner != device.impl_) {
+        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer must share one runtime device");
+    }
+    if (buffer.memory_domain() != VulkanBufferMemoryDomain::upload) {
+        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer read requires upload memory");
+    }
+    if (device.impl_->map_memory == nullptr || device.impl_->unmap_memory == nullptr) {
+        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer map commands are unavailable");
+    }
+    if (byte_offset >= buffer.byte_size()) {
+        throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer offset is out of range");
+    }
+    const auto available_byte_count = buffer.byte_size() - byte_offset;
+    if (byte_count == 0 || byte_count > available_byte_count) {
+        throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer read range is out of range");
+    }
+    if (byte_count > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer read exceeds host size");
+    }
+
+    void* mapped_memory = nullptr;
+    const auto map_result = device.impl_->map_memory(device.impl_->device, buffer.impl_->memory, byte_offset,
+                                                     byte_count, 0, &mapped_memory);
+    if (map_result != vulkan_success || mapped_memory == nullptr) {
+        throw std::logic_error(vulkan_result_diagnostic("Vulkan vkMapMemory failed", map_result));
+    }
+
+    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(byte_count));
+    std::memcpy(bytes.data(), mapped_memory, bytes.size());
+    device.impl_->unmap_memory(device.impl_->device, buffer.impl_->memory);
+    return bytes;
+}
+
+[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
+read_indexed_indirect_draw_commands(VulkanRuntimeDevice& device, VulkanRuntimeBuffer& buffer,
+                                    const IndexedIndirectDrawDesc& desc) {
+    const auto argument_range_end = indexed_indirect_argument_range_end(desc);
+    const auto byte_count = argument_range_end - desc.argument_buffer_offset;
+    const auto argument_bytes =
+        read_upload_runtime_buffer_bytes(device, buffer, desc.argument_buffer_offset, byte_count);
+    if (argument_bytes.size() != static_cast<std::size_t>(byte_count)) {
+        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer readback failed");
+    }
+    return decode_indexed_indirect_draw_commands(argument_bytes, desc);
 }
 
 VulkanRuntimeBufferWriteResult write_runtime_buffer(VulkanRuntimeDevice& device, VulkanRuntimeBuffer& buffer,
