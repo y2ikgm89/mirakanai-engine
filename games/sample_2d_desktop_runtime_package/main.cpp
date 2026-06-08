@@ -8,6 +8,7 @@
 #include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
@@ -1841,6 +1842,45 @@ struct LongRunReadinessProbeResult {
         return "budget_limited";
     }
     return "invalid";
+}
+
+constexpr std::uint32_t kLongRunNumaLocalityWorkerCount = 2U;
+constexpr std::uint32_t kLongRunNumaLocalityChunkCount = 4U;
+
+struct LongRunNumaLocalityEvidence {
+    mirakana::JobExecutionNumaLocalityEvidence summary;
+    mirakana::JobExecutionNumaFirstTouchLocalityRecipe first_touch_recipe;
+    bool ready{false};
+};
+
+[[nodiscard]] LongRunNumaLocalityEvidence build_long_run_numa_locality_evidence() {
+    LongRunNumaLocalityEvidence evidence;
+    evidence.summary =
+        mirakana::summarize_job_execution_numa_locality_evidence(mirakana::JobExecutionNumaLocalityEvidenceDesc{
+            .name = "sample_2d.long_run_numa_locality",
+            .workload = "sample_2d_desktop_runtime_package",
+            .numa_node_count = 1,
+            .numa_topology_known = true,
+            .cpu_to_node_rows =
+                {
+                    mirakana::JobExecutionCpuToNodeRow{.logical_processor_id = 0, .numa_node_index = 0},
+                },
+            .memory_policy_scope = mirakana::JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality,
+        });
+    evidence.first_touch_recipe = mirakana::build_job_execution_numa_first_touch_locality_recipe(
+        mirakana::JobExecutionNumaFirstTouchLocalityRecipeDesc{
+            .name = "sample_2d.long_run_numa_first_touch",
+            .workload = "sample_2d_desktop_runtime_package",
+            .worker_count = kLongRunNumaLocalityWorkerCount,
+            .chunk_count = kLongRunNumaLocalityChunkCount,
+        });
+    evidence.ready = evidence.summary.ready() && evidence.first_touch_recipe.ready();
+    return evidence;
+}
+
+[[nodiscard]] std::string_view
+long_run_numa_locality_status_name(const LongRunNumaLocalityEvidence& evidence) noexcept {
+    return evidence.ready ? "ready" : "blocked";
 }
 
 struct Gameplay2DConstructionPlacementProbeResult {
@@ -9875,6 +9915,7 @@ int main(int argc, char** argv) {
                                          result.frames_run == options.max_frames && game.frames() == options.max_frames;
     const auto long_run_readiness_probe = evaluate_long_run_readiness(
         options.max_frames, sandbox_package_budget_probe.chunk_bytes, 0U, long_run_shutdown_clean);
+    const auto long_run_numa_locality_evidence = build_long_run_numa_locality_evidence();
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -10859,6 +10900,19 @@ int main(int argc, char** argv) {
         << " long_run_readiness_shutdown_clean=" << (long_run_readiness_probe.shutdown_clean ? 1 : 0)
         << " long_run_readiness_linux_affinity_applied=0"
         << " long_run_readiness_numa_policy_applied=0"
+        << " long_run_readiness_numa_locality_status="
+        << long_run_numa_locality_status_name(long_run_numa_locality_evidence)
+        << " long_run_readiness_numa_locality_ready=" << (long_run_numa_locality_evidence.ready ? 1 : 0)
+        << " long_run_readiness_numa_node_count=" << long_run_numa_locality_evidence.summary.numa_node_count
+        << " long_run_readiness_numa_first_touch_default="
+        << (long_run_numa_locality_evidence.summary.first_touch_locality_default ? 1 : 0)
+        << " long_run_readiness_numa_first_touch_chunk_rows="
+        << long_run_numa_locality_evidence.first_touch_recipe.chunk_rows.size()
+        << " long_run_readiness_numa_manual_memory_policy_applied="
+        << (long_run_numa_locality_evidence.summary.manual_memory_policy_applied ? 1 : 0)
+        << " long_run_readiness_numa_memory_policy_scope="
+        << mirakana::job_execution_numa_locality_memory_policy_scope_label(
+               long_run_numa_locality_evidence.summary.selected_memory_policy_scope)
         << " long_run_readiness_broad_simd_applied=0"
         << " long_run_readiness_gpu_async_overlap_applied=0"
         << " long_run_readiness_cuda_path_used=0"

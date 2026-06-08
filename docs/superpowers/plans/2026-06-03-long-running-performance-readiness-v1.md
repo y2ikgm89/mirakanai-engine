@@ -275,8 +275,8 @@ Full `tools/validate.ps1` is not required for this Phase 2 closeout because the 
 - Add platform-specific memory-policy execution only in a separate host adapter plan if needed.
 - Update package evidence and docs with first-touch versus manual-placement status.
 
-- [ ] Record NUMA node count, CPU-to-node mapping, memory policy scope, observed local/remote memory counters where available, and package workload.
-- [ ] Add a first-touch locality recipe that initializes per-worker/per-chunk data on the worker expected to use it.
+- [x] Record NUMA node count, CPU-to-node mapping, memory policy scope, observed local/remote memory counters where available, and package workload.
+- [x] Add a first-touch locality recipe that initializes per-worker/per-chunk data on the worker expected to use it.
 - [ ] Compare first-touch baseline against any proposed manual memory policy.
 - [ ] Fail closed when cpuset restrictions, missing NUMA APIs, missing profiler counters, or missing NPS state make the claim unverifiable.
 - [ ] Only after measured need, plan host-specific memory policy execution as its own slice.

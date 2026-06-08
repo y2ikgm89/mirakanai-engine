@@ -44,6 +44,26 @@ void append_placement_policy_diagnostic(JobExecutionPlacementPolicy& policy,
     policy.diagnostics.push_back(std::move(message));
 }
 
+void append_numa_locality_evidence_diagnostic(JobExecutionNumaLocalityEvidence& evidence,
+                                              JobExecutionNumaLocalityEvidenceDiagnosticCode code,
+                                              std::string message) {
+    if (code != JobExecutionNumaLocalityEvidenceDiagnosticCode::none &&
+        std::ranges::find(evidence.diagnostic_codes, code) == evidence.diagnostic_codes.end()) {
+        evidence.diagnostic_codes.push_back(code);
+    }
+    evidence.diagnostics.push_back(std::move(message));
+}
+
+void append_numa_locality_evidence_diagnostic(JobExecutionNumaFirstTouchLocalityRecipe& recipe,
+                                              JobExecutionNumaLocalityEvidenceDiagnosticCode code,
+                                              std::string message) {
+    if (code != JobExecutionNumaLocalityEvidenceDiagnosticCode::none &&
+        std::ranges::find(recipe.diagnostic_codes, code) == recipe.diagnostic_codes.end()) {
+        recipe.diagnostic_codes.push_back(code);
+    }
+    recipe.diagnostics.push_back(std::move(message));
+}
+
 [[nodiscard]] JobExecutionRunStatus
 status_from_diagnostics(std::span<const JobExecutionDiagnosticCode> codes) noexcept {
     if (std::ranges::find(codes, JobExecutionDiagnosticCode::invalid_configuration) != codes.end()) {
@@ -818,6 +838,137 @@ JobExecutionPlacementPolicy select_job_execution_placement_policy(const JobExecu
     return policy;
 }
 
+JobExecutionNumaLocalityEvidence
+summarize_job_execution_numa_locality_evidence(const JobExecutionNumaLocalityEvidenceDesc& desc) {
+    auto evidence = JobExecutionNumaLocalityEvidence{};
+    evidence.workload = desc.workload;
+    evidence.numa_node_count = desc.numa_node_count;
+    evidence.numa_topology_known = desc.numa_topology_known;
+    evidence.cpu_to_node_rows = desc.cpu_to_node_rows;
+    evidence.requested_memory_policy_scope = desc.memory_policy_scope;
+    evidence.selected_memory_policy_scope = JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality;
+    evidence.first_touch_locality_default = true;
+    evidence.manual_memory_policy_applied = false;
+    evidence.local_memory_bytes = desc.local_memory_bytes;
+    evidence.remote_memory_bytes = desc.remote_memory_bytes;
+    evidence.local_remote_memory_counters_available = desc.local_remote_memory_counters_available;
+    evidence.nps_state_known = desc.nps_state_known;
+    evidence.nps_state = desc.nps_state;
+    evidence.cpuset_restrictions_observed = desc.cpuset_restrictions_observed;
+
+    if (desc.name.empty()) {
+        append_numa_locality_evidence_diagnostic(evidence,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA locality evidence requires a non-empty name");
+    }
+    if (desc.workload.empty()) {
+        append_numa_locality_evidence_diagnostic(evidence,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA locality evidence requires a workload name");
+    }
+
+    if (std::ranges::find(evidence.diagnostic_codes,
+                          JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration) !=
+        evidence.diagnostic_codes.end()) {
+        evidence.status = JobExecutionNumaLocalityEvidenceStatus::invalid_configuration;
+        return evidence;
+    }
+
+    if (desc.numa_node_count > 1U && !desc.numa_topology_known) {
+        append_numa_locality_evidence_diagnostic(
+            evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_numa_topology,
+            "job execution NUMA locality evidence needs NUMA topology before recording multi-node locality");
+    }
+    if (desc.numa_topology_known && desc.cpu_to_node_rows.empty()) {
+        append_numa_locality_evidence_diagnostic(
+            evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_cpu_to_node_mapping,
+            "job execution NUMA locality evidence needs CPU-to-node mapping rows");
+    }
+    if (desc.cpuset_restrictions_observed && !desc.cpuset_restrictions_verifiable) {
+        append_numa_locality_evidence_diagnostic(
+            evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::cpuset_restriction_unverifiable,
+            "job execution NUMA locality evidence cannot verify locality under observed cpuset restrictions");
+    }
+
+    const bool manual_policy_requested =
+        desc.compare_manual_memory_policy ||
+        desc.memory_policy_scope == JobExecutionNumaLocalityMemoryPolicyScope::manual_host_policy;
+    if (manual_policy_requested) {
+        evidence.manual_memory_policy_selected = true;
+        if (!desc.local_remote_memory_counters_available || !desc.local_memory_bytes.has_value() ||
+            !desc.remote_memory_bytes.has_value()) {
+            append_numa_locality_evidence_diagnostic(
+                evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters,
+                "job execution NUMA locality evidence needs local and remote memory counters before comparing "
+                "manual memory policy");
+        }
+        if (!desc.nps_state_known || desc.nps_state.empty()) {
+            append_numa_locality_evidence_diagnostic(
+                evidence, JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_nps_state,
+                "job execution NUMA locality evidence needs NPS state before comparing manual memory policy");
+        }
+    }
+
+    if (evidence.diagnostic_codes.empty()) {
+        evidence.status = JobExecutionNumaLocalityEvidenceStatus::ready;
+        if (manual_policy_requested) {
+            evidence.selected_memory_policy_scope = JobExecutionNumaLocalityMemoryPolicyScope::manual_host_policy;
+        } else if (desc.memory_policy_scope == JobExecutionNumaLocalityMemoryPolicyScope::os_default) {
+            evidence.selected_memory_policy_scope = JobExecutionNumaLocalityMemoryPolicyScope::os_default;
+        } else {
+            evidence.selected_memory_policy_scope = JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality;
+        }
+        return evidence;
+    }
+
+    evidence.status = JobExecutionNumaLocalityEvidenceStatus::host_evidence_required;
+    evidence.manual_memory_policy_selected = false;
+    evidence.selected_memory_policy_scope = JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality;
+    return evidence;
+}
+
+JobExecutionNumaFirstTouchLocalityRecipe
+build_job_execution_numa_first_touch_locality_recipe(const JobExecutionNumaFirstTouchLocalityRecipeDesc& desc) {
+    auto recipe = JobExecutionNumaFirstTouchLocalityRecipe{};
+    recipe.worker_count = desc.worker_count;
+    recipe.chunk_count = desc.chunk_count;
+    recipe.first_touch_locality_default = true;
+
+    if (desc.name.empty()) {
+        append_numa_locality_evidence_diagnostic(recipe,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA first-touch recipe requires a non-empty name");
+    }
+    if (desc.workload.empty()) {
+        append_numa_locality_evidence_diagnostic(recipe,
+                                                 JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+                                                 "job execution NUMA first-touch recipe requires a workload name");
+    }
+    if (desc.worker_count == 0U || desc.chunk_count == 0U) {
+        append_numa_locality_evidence_diagnostic(
+            recipe, JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration,
+            "job execution NUMA first-touch recipe requires non-zero worker and chunk counts");
+    }
+
+    if (std::ranges::find(recipe.diagnostic_codes,
+                          JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration) !=
+        recipe.diagnostic_codes.end()) {
+        recipe.status = JobExecutionNumaLocalityEvidenceStatus::invalid_configuration;
+        return recipe;
+    }
+
+    recipe.chunk_rows.reserve(desc.chunk_count);
+    for (std::uint32_t chunk_id = 0; chunk_id < desc.chunk_count; ++chunk_id) {
+        recipe.chunk_rows.push_back(JobExecutionNumaFirstTouchChunkRow{
+            .chunk_id = chunk_id,
+            .assigned_worker_id = chunk_id % desc.worker_count,
+            .initialize_on_assigned_worker = true,
+        });
+    }
+    recipe.status = JobExecutionNumaLocalityEvidenceStatus::ready;
+    return recipe;
+}
+
 std::uint32_t observe_job_execution_logical_processor_count() noexcept {
     return std::thread::hardware_concurrency();
 }
@@ -916,6 +1067,53 @@ job_execution_placement_policy_diagnostic_code_label(JobExecutionPlacementPolicy
         return "missing_smt_evidence";
     case JobExecutionPlacementPolicyDiagnosticCode::host_execution_required:
         return "host_execution_required";
+    }
+    return "unknown";
+}
+
+std::string_view
+job_execution_numa_locality_memory_policy_scope_label(JobExecutionNumaLocalityMemoryPolicyScope scope) noexcept {
+    switch (scope) {
+    case JobExecutionNumaLocalityMemoryPolicyScope::os_default:
+        return "os_default";
+    case JobExecutionNumaLocalityMemoryPolicyScope::first_touch_locality:
+        return "first_touch_locality";
+    case JobExecutionNumaLocalityMemoryPolicyScope::manual_host_policy:
+        return "manual_host_policy";
+    }
+    return "unknown";
+}
+
+std::string_view
+job_execution_numa_locality_evidence_status_label(JobExecutionNumaLocalityEvidenceStatus status) noexcept {
+    switch (status) {
+    case JobExecutionNumaLocalityEvidenceStatus::ready:
+        return "ready";
+    case JobExecutionNumaLocalityEvidenceStatus::invalid_configuration:
+        return "invalid_configuration";
+    case JobExecutionNumaLocalityEvidenceStatus::host_evidence_required:
+        return "host_evidence_required";
+    }
+    return "unknown";
+}
+
+std::string_view job_execution_numa_locality_evidence_diagnostic_code_label(
+    JobExecutionNumaLocalityEvidenceDiagnosticCode code) noexcept {
+    switch (code) {
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::none:
+        return "none";
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::invalid_configuration:
+        return "invalid_configuration";
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_numa_topology:
+        return "missing_numa_topology";
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_cpu_to_node_mapping:
+        return "missing_cpu_to_node_mapping";
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_local_remote_counters:
+        return "missing_local_remote_counters";
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::missing_nps_state:
+        return "missing_nps_state";
+    case JobExecutionNumaLocalityEvidenceDiagnosticCode::cpuset_restriction_unverifiable:
+        return "cpuset_restriction_unverifiable";
     }
     return "unknown";
 }
