@@ -26,7 +26,8 @@ foreach ($needle in @(
 foreach ($needle in @(
         "vkCmdDrawIndexedIndirect",
         "VkDrawIndexedIndirectCommand",
-        "read_indexed_indirect_draw_commands",
+        "read_runtime_buffer",
+        "decode_indexed_indirect_draw_commands",
         "vulkan rhi indexed indirect count buffer execution is not implemented",
         "vulkan rhi indexed indirect draw argument buffer requires copy_source upload usage in v1",
         "record_indexed_indirect_draw_stats"

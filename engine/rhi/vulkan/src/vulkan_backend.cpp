@@ -5184,8 +5184,21 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                 "vulkan rhi indexed indirect draw argument range is outside the argument buffer");
         }
 
-        const auto decoded_commands = read_indexed_indirect_draw_commands(
-            device_->device_, device_->buffers_.at(desc.argument_buffer.value - 1U), desc);
+        const auto byte_count = argument_range_end - desc.argument_buffer_offset;
+        const auto read_result =
+            read_runtime_buffer(device_->device_, device_->buffers_.at(desc.argument_buffer.value - 1U),
+                                VulkanRuntimeBufferReadDesc{
+                                    .byte_offset = desc.argument_buffer_offset,
+                                    .byte_count = byte_count,
+                                });
+        if (!read_result.read) {
+            throw std::logic_error("vulkan rhi indexed indirect draw argument buffer readback failed: " +
+                                   read_result.diagnostic);
+        }
+        const auto decoded_commands = decode_indexed_indirect_draw_commands(
+            std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(read_result.bytes.data()),
+                                          read_result.bytes.size()),
+            desc);
 
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
@@ -14035,62 +14048,6 @@ record_runtime_swapchain_image_readback(VulkanRuntimeDevice& device, VulkanRunti
     return result;
 }
 
-[[nodiscard]] std::vector<std::uint8_t> read_upload_runtime_buffer_bytes(VulkanRuntimeDevice& device,
-                                                                         VulkanRuntimeBuffer& buffer,
-                                                                         std::uint64_t byte_offset,
-                                                                         std::uint64_t byte_count) {
-    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
-        throw std::logic_error("vulkan rhi indexed indirect draw runtime device is not available");
-    }
-    if (!buffer.owns_buffer() || !buffer.owns_memory()) {
-        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer is required");
-    }
-    if (buffer.impl_->device_owner != device.impl_) {
-        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer must share one runtime device");
-    }
-    if (buffer.memory_domain() != VulkanBufferMemoryDomain::upload) {
-        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer read requires upload memory");
-    }
-    if (device.impl_->map_memory == nullptr || device.impl_->unmap_memory == nullptr) {
-        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer map commands are unavailable");
-    }
-    if (byte_offset >= buffer.byte_size()) {
-        throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer offset is out of range");
-    }
-    const auto available_byte_count = buffer.byte_size() - byte_offset;
-    if (byte_count == 0 || byte_count > available_byte_count) {
-        throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer read range is out of range");
-    }
-    if (byte_count > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
-        throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer read exceeds host size");
-    }
-
-    void* mapped_memory = nullptr;
-    const auto map_result = device.impl_->map_memory(device.impl_->device, buffer.impl_->memory, byte_offset,
-                                                     byte_count, 0, &mapped_memory);
-    if (map_result != vulkan_success || mapped_memory == nullptr) {
-        throw std::logic_error(vulkan_result_diagnostic("Vulkan vkMapMemory failed", map_result));
-    }
-
-    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(byte_count));
-    std::memcpy(bytes.data(), mapped_memory, bytes.size());
-    device.impl_->unmap_memory(device.impl_->device, buffer.impl_->memory);
-    return bytes;
-}
-
-[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
-read_indexed_indirect_draw_commands(VulkanRuntimeDevice& device, VulkanRuntimeBuffer& buffer,
-                                    const IndexedIndirectDrawDesc& desc) {
-    const auto argument_range_end = indexed_indirect_argument_range_end(desc);
-    const auto byte_count = argument_range_end - desc.argument_buffer_offset;
-    const auto argument_bytes =
-        read_upload_runtime_buffer_bytes(device, buffer, desc.argument_buffer_offset, byte_count);
-    if (argument_bytes.size() != static_cast<std::size_t>(byte_count)) {
-        throw std::logic_error("vulkan rhi indexed indirect draw argument buffer readback failed");
-    }
-    return decode_indexed_indirect_draw_commands(argument_bytes, desc);
-}
-
 VulkanRuntimeBufferWriteResult write_runtime_buffer(VulkanRuntimeDevice& device, VulkanRuntimeBuffer& buffer,
                                                     const VulkanRuntimeBufferWriteDesc& desc) {
     VulkanRuntimeBufferWriteResult result;
@@ -14165,8 +14122,9 @@ VulkanRuntimeBufferReadResult read_runtime_buffer(VulkanRuntimeDevice& device, V
         result.diagnostic = "Vulkan buffer read objects must share one runtime device";
         return result;
     }
-    if (buffer.memory_domain() != VulkanBufferMemoryDomain::readback) {
-        result.diagnostic = "Vulkan runtime buffer read requires readback memory";
+    if (buffer.memory_domain() != VulkanBufferMemoryDomain::readback &&
+        buffer.memory_domain() != VulkanBufferMemoryDomain::upload) {
+        result.diagnostic = "Vulkan runtime buffer read requires readback or upload memory";
         return result;
     }
     if (device.impl_->map_memory == nullptr || device.impl_->unmap_memory == nullptr) {

@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-vulkan-indexed-indirect-draw-execution-v1`
 
-**Status:** Completed.
+**Status:** Active.
 
-**Execution State:** Completed through validated Vulkan `vkCmdDrawIndexedIndirect` execution, SPIR-V environment-gated visible readback tests, count-buffer fail-closed evidence, shared indirect draw stats helpers, docs/manifest/static-check sync, and focused validation. Post-merge closeout returns `currentActivePlan` to the production-completion master plan in a follow-up PR.
+**Execution State:** Active implementation PR over completed MAVG D3D12 Indexed Indirect Draw Execution v1. Land Vulkan `vkCmdDrawIndexedIndirect` execution, SPIR-V environment-gated visible readback tests, count-buffer fail-closed evidence, shared indirect draw stats helpers, docs/manifest/static-check sync, and focused validation before publication. Post-merge closeout returns `currentActivePlan` to the production-completion master plan in a follow-up PR.
 
 **Goal:** Implement a clean Vulkan `vkCmdDrawIndexedIndirect` execution path for `IRhiCommandList::draw_indexed_indirect` when the caller supplies a CPU-generated upload argument buffer and no count buffer, then prove visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming GPU culling dispatch, count-buffer execution, D3D12 changes, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
@@ -107,4 +107,4 @@ Out of scope:
 
 ## Non-Claims
 
-This plan does not claim count-buffer execution, compute-generated indirect buffers, GPU culling dispatch, public buffer state tracking, D3D12 changes, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.
+This plan does not claim count-buffer execution, compute-generated indirect buffers, actual GPU culling dispatch, public buffer state tracking, D3D12 changes, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.
