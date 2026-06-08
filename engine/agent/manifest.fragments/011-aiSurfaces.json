@@ -297,6 +297,7 @@
         "tools/run-validation-recipe.ps1",
         "tools/validate-network-enet.ps1",
         "tools/ready-task-pr.ps1",
+        "tools/post-merge-task-cleanup.ps1",
         "tools/remove-merged-worktree.ps1",
         "gh pr create",
         "gh pr view",

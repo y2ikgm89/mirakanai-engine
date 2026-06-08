@@ -17,6 +17,7 @@ paths:
   - "tools/text-format-core.ps1"
   - "tools/prepare-worktree.ps1"
   - "tools/check-publication-preflight.ps1"
+  - "tools/post-merge-task-cleanup.ps1"
   - "tools/remove-merged-worktree.ps1"
   - "tools/ready-task-pr.ps1"
   - "tools/compose-agent-manifest.ps1"
@@ -48,7 +49,7 @@ Use this skill when changing agent-facing instructions, Codex/Claude/Cursor skil
 - Every tracked `tools/*.ps1` starts with `#requires -Version 7.0` then `#requires -PSEdition Core`, uses `pwsh`, stays PowerShell-parseable, avoids automatic-variable reuse, uses approved verbs, and follows `tools/common.ps1` / `tools/static-contract-common.ps1` ownership.
 - Keep `.codex/rules/*.rules` and `.claude/settings.json` narrow command/permission gates. Do not broaden permissions, bypass GitHub Flow through REST/MCP object writes, or weaken prompt-gated operations to save time.
 - Publication follows official GitHub Flow: before staging/push/PR/merge, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1`; if `publication-preflight: blocked`, stop with evidence and switch session or host context.
-- Use validated phase commits, checkpoint pushes after remote-state inspection, one PR per focused capability/gap-cluster/milestone, early draft PRs, guarded `tools/ready-task-pr.ps1` conversion, `gh pr merge --auto --merge --match-head-commit <headRefOid>` registration only after PR preflight, and guarded `tools/remove-merged-worktree.ps1` cleanup.
+- Use validated phase commits, checkpoint pushes after remote-state inspection, one PR per focused capability/gap-cluster/milestone, early draft PRs, guarded `tools/ready-task-pr.ps1` conversion, `gh pr merge --auto --merge --match-head-commit <headRefOid>` registration only after PR preflight, and guarded `tools/post-merge-task-cleanup.ps1` cleanup (delegates to `tools/remove-merged-worktree.ps1` with branch deletion flags).
 - Direct default-branch pushes are forbidden. Force-push, immediate merge, raw `gh pr ready`, raw worktree cleanup, and other PR state changes stay prompt-gated.
 - Prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree` for parallel work. Keep ignored roots, run `tools/prepare-worktree.ps1`, close completed/obsolete/no-longer-needed delegated agents after their results are consumed, and leave useful work running.
 - Use official current sources for agent/platform behavior: OpenAI developer documentation MCP or official OpenAI docs for Codex/OpenAI API/OpenAI model questions; official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents; official Cursor docs for Cursor rules, skills, agents, and 500-line rule guidance. Use Context7 MCP for live library, SDK, build-system, and toolchain documentation.

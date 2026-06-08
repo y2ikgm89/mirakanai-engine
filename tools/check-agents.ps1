@@ -390,6 +390,7 @@ if (Test-Path -LiteralPath $codexRuleRoot) {
             'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--match-head-commit"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/check-publication-preflight\.ps1"\]',
+            'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/post-merge-task-cleanup\.ps1"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/remove-merged-worktree\.ps1"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/ready-task-pr\.ps1"\]'
         )
@@ -484,6 +485,7 @@ if (Test-Path $claudeSettingsPath) {
 
     foreach ($requiredAllowEntry in @(
             "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1:*)",
             "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)",
             "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)"
         )) {

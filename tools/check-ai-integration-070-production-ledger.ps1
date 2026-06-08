@@ -1749,7 +1749,9 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Context7" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/prepare-worktree.ps1" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "tools/remove-merged-worktree.ps1" $agentIntegrationSkill
+    foreach ($postMergeSkillNeedle in @("tools/post-merge-task-cleanup.ps1", "tools/remove-merged-worktree.ps1")) {
+        Assert-ContainsText $agentIntegrationSkillText $postMergeSkillNeedle $agentIntegrationSkill
+    }
     Assert-ContainsText $agentIntegrationSkillText "tools/ready-task-pr.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
@@ -1839,7 +1841,9 @@ Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git worktree remove" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git worktree prune" ".codex/rules/gameengine.rules"
-Assert-ContainsText $codexRuleText "tools/remove-merged-worktree.ps1" ".codex/rules/gameengine.rules"
+foreach ($postMergeCodexNeedle in @("tools/post-merge-task-cleanup.ps1", "tools/remove-merged-worktree.ps1")) {
+    Assert-ContainsText $codexRuleText $postMergeCodexNeedle ".codex/rules/gameengine.rules"
+}
 Assert-ContainsText $codexRuleText "tools/ready-task-pr.ps1" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Git worktree porcelain records" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
@@ -1849,7 +1853,7 @@ Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge --auto --merge --match-head-commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "--match-head-commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'pattern = ["gh", "pr", "merge", "--auto", "--merge", "--match-head-commit"]' ".codex/rules/gameengine.rules"
-Assert-ContainsText $codexRuleText "branch cleanup stays in tools/remove-merged-worktree.ps1" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "branch cleanup prefers tools/post-merge-task-cleanup.ps1" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
@@ -1867,7 +1871,7 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("worktree") -or $claudeSettings.worktree.baseRef -ne "head") {
     Write-Error ".claude/settings.json must set worktree.baseRef to head for project subagent worktree isolation"
 }
-foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
+foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
@@ -1883,7 +1887,7 @@ foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-l
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
@@ -1954,6 +1958,7 @@ foreach ($aiAgentRuleNeedle in @(
         "publication-preflight: blocked",
         "Publication temp clones",
         "tools/ready-task-pr.ps1",
+        "tools/post-merge-task-cleanup.ps1",
         "tools/remove-merged-worktree.ps1",
         "OpenAI developer documentation MCP",
         "official Anthropic docs",
