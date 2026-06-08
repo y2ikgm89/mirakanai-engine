@@ -85,7 +85,8 @@ enum class BufferUsage : std::uint8_t {
     uniform = 1U << 2U,
     storage = 1U << 3U,
     copy_source = 1U << 4U,
-    copy_destination = 1U << 5U
+    copy_destination = 1U << 5U,
+    indirect = 1U << 6U
 };
 
 enum class TextureUsage : std::uint8_t {
@@ -457,6 +458,9 @@ struct RhiStats {
     std::uint64_t transient_texture_placed_resources_alive{0};
     std::uint64_t draw_calls{0};
     std::uint64_t indexed_draw_calls{0};
+    std::uint64_t indexed_indirect_draw_calls{0};
+    std::uint64_t indexed_indirect_commands_executed{0};
+    std::uint64_t indexed_indirect_count_buffer_reads{0};
     std::uint64_t instanced_draw_calls{0};
     std::uint64_t instanced_indexed_draw_calls{0};
     std::uint64_t compute_dispatches{0};
@@ -468,6 +472,9 @@ struct RhiStats {
     std::uint32_t last_indexed_draw_first_index{0};
     std::int32_t last_indexed_draw_vertex_offset{0};
     std::uint32_t last_indexed_draw_first_instance{0};
+    std::uint32_t last_indexed_indirect_max_draw_count{0};
+    std::uint32_t last_indexed_indirect_executed_draw_count{0};
+    std::uint32_t last_indexed_indirect_count_buffer_value{0};
     std::uint64_t compute_workgroups_x{0};
     std::uint64_t compute_workgroups_y{0};
     std::uint64_t compute_workgroups_z{0};
@@ -563,6 +570,8 @@ diagnose_pipelined_compute_graphics_async_overlap_readiness(const RhiStats& stat
                                                             const RhiPipelinedComputeGraphicsScheduleEvidence& schedule,
                                                             std::uint64_t gpu_timestamp_ticks_per_second) noexcept;
 
+struct IndexedIndirectDrawDesc;
+
 class IRhiCommandList {
   public:
     virtual ~IRhiCommandList() = default;
@@ -588,6 +597,7 @@ class IRhiCommandList {
     virtual void draw(std::uint32_t vertex_count, std::uint32_t instance_count) = 0;
     virtual void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
                               std::int32_t vertex_offset, std::uint32_t first_instance) = 0;
+    virtual void draw_indexed_indirect(const IndexedIndirectDrawDesc& desc);
     virtual void dispatch(std::uint32_t group_count_x, std::uint32_t group_count_y, std::uint32_t group_count_z) = 0;
 
     /// Sets the dynamic viewport for subsequent draws inside the active render pass.
