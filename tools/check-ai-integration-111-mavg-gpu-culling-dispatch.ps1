@@ -108,26 +108,25 @@ foreach ($surface in @(
 }
 
 foreach ($needle in @(
-        "**Status:** Active.",
-        "mavg-gpu-culling-dispatch-v1",
-        "MK_mavg_gpu_culling_dispatch_tests",
+        "**Status:** Completed.",
+        "Completed through PR #556",
+        "next-production-gap-selection",
         "dispatch_mavg_gpu_culling_indirect",
-        "mavg-vulkan-count-buffer-indirect-execution-v1",
-        "PR #553"
+        "MK_mavg_gpu_culling_dispatch_tests"
     )) {
-    Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md implementation contract"
+    Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md closeout contract"
 }
 
 foreach ($needle in @(
-        'active child plan `mavg-gpu-culling-dispatch-v1`',
-        "Follow-up actual GPU culling dispatch"
+        "mavg-gpu-culling-dispatch-v1",
+        "PR #556"
     )) {
     Assert-ContainsText $mavgVulkanCountBufferPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md sibling transition"
 }
 
 foreach ($needle in @(
-        "active child plan",
-        "mavg-gpu-culling-dispatch-v1"
+        "mavg-gpu-culling-dispatch-v1",
+        "PR #556"
     )) {
     Assert-ContainsText $mavgGpuCullingIndirectPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md sibling transition"
 }
@@ -136,25 +135,21 @@ foreach ($needle in @(
         "mavg-gpu-culling-dispatch-v1",
         "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md",
         "MAVG GPU Culling Dispatch v1",
-        "MavgGpuCullingIndirectPlan",
         "dispatch_mavg_gpu_culling_indirect",
         "MK_mavg_gpu_culling_dispatch_tests",
-        "mavg-vulkan-count-buffer-indirect-execution-v1",
-        "PR #552",
-        "PR #553"
+        "PR #556"
     )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG GPU culling dispatch implementation evidence"
+    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG GPU culling dispatch closeout evidence"
 }
 
 foreach ($needle in @(
         "MAVG GPU Culling Dispatch v1",
-        "MavgGpuCullingIndirectPlan",
         "dispatch_mavg_gpu_culling_indirect",
         "MK_mavg_gpu_culling_dispatch_tests",
         "compute-write-to-indirect-read",
-        "PR #553"
+        "PR #556"
     )) {
-    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_renderer GPU culling dispatch implementation evidence"
+    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_renderer GPU culling dispatch closeout evidence"
 }
 
 $rendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_renderer" })
@@ -162,13 +157,12 @@ if ($rendererModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must 
 $rendererManifestText = ((@($rendererModule[0].recentEvidence) -join " "), [string]$rendererModule[0].purpose) -join " "
 foreach ($needle in @(
         "MAVG GPU Culling Dispatch v1",
-        "MavgGpuCullingIndirectPlan",
         "dispatch_mavg_gpu_culling_indirect",
         "MK_mavg_gpu_culling_dispatch_tests",
         "compute-write-to-indirect-read",
-        "PR #553"
+        "PR #556"
     )) {
-    Assert-ContainsText $rendererManifestText $needle "engine/agent/manifest.json MK_renderer GPU culling dispatch implementation evidence"
+    Assert-ContainsText $rendererManifestText $needle "engine/agent/manifest.json MK_renderer GPU culling dispatch closeout evidence"
 }
 
 $rhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_rhi" })
@@ -178,17 +172,18 @@ foreach ($needle in @(
         "MAVG GPU Culling Dispatch v1",
         "dispatch_mavg_gpu_culling_indirect",
         "D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT",
-        "MK_mavg_gpu_culling_dispatch_tests"
+        "MK_mavg_gpu_culling_dispatch_tests",
+        "PR #556"
     )) {
-    Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi GPU culling dispatch implementation evidence"
+    Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi GPU culling dispatch closeout evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at MAVG GPU culling dispatch during implementation"
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG GPU culling dispatch closeout"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-gpu-culling-dispatch-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-gpu-culling-dispatch-v1 during implementation"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG GPU culling dispatch closeout"
 }
-foreach ($needle in @("MAVG GPU Culling Dispatch v1", "mavg-gpu-culling-dispatch-v1", "MavgGpuCullingIndirectPlan", "dispatch_mavg_gpu_culling_indirect", "MK_mavg_gpu_culling_dispatch_tests", "mavg-vulkan-count-buffer-indirect-execution-v1", "PR #552", "PR #553", "compute-write-to-indirect-read", "unsupportedProductionGaps = []")) {
-    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG GPU culling dispatch implementation evidence"
+foreach ($needle in @("MAVG GPU Culling Dispatch v1", "PR #556", "mavg-gpu-culling-dispatch-v1", "dispatch_mavg_gpu_culling_indirect", "MK_mavg_gpu_culling_dispatch_tests", "mavg-vulkan-count-buffer-indirect-execution-v1", "PR #552", "compute-write-to-indirect-read", "unsupportedProductionGaps = []")) {
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG GPU culling dispatch closeout evidence"
 }

@@ -68,6 +68,7 @@ foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
         "mavg-gpu-culling-dispatch-v1",
+        "PR #556",
         "plan_mavg_gpu_culling_indirect_commands",
         "MavgGpuCullingIndirectPlan",
         "mavg-vulkan-count-buffer-indirect-execution-v1"

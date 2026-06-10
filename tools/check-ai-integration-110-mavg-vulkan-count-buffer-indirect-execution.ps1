@@ -68,7 +68,7 @@ foreach ($surface in @(
     }
     foreach ($needle in @(
             "compute-generated count",
-            "actual GPU culling dispatch",
+            "compute-generated",
             "Nanite"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan count-buffer indirect non-claim evidence"
@@ -79,6 +79,7 @@ foreach ($needle in @(
         "**Status:** Completed.",
         "Completed through PR #552",
         "mavg-gpu-culling-dispatch-v1",
+        "PR #556",
         "vkCmdDrawIndexedIndirectCount",
         "mavg-d3d12-count-buffer-indirect-execution-v1"
     )) {

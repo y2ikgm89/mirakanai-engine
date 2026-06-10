@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-gpu-culling-dispatch-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Active implementation slice over merged `origin/main` after MAVG Vulkan Count-Buffer Indirect Execution v1 closeout PR #553. `dispatch_mavg_gpu_culling_indirect` in `engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp` executes the first D3D12-only compute dispatch that writes MAVG packed indexed indirect argument and count buffers from reviewed cluster rows, records compute-write-to-indirect-read synchronization, and proves visible/culled cases through WARP-backed `MK_mavg_gpu_culling_dispatch_tests` while `MK_mavg_gpu_culling_tests` retain `executed_gpu_culling=false` value-only planner evidence. Vulkan compute dispatch and compute-generated indirect consumption remain unclaimed.
+**Execution State:** Completed through PR #556 (merge commit `de14f385`). The post-land closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. `dispatch_mavg_gpu_culling_indirect` in `engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp` executes the first D3D12-only compute dispatch that writes MAVG packed indexed indirect argument and count buffers from reviewed cluster rows, records compute-write-to-indirect-read synchronization, and proves visible/culled cases through WARP-backed `MK_mavg_gpu_culling_dispatch_tests` while `MK_mavg_gpu_culling_tests` retain `executed_gpu_culling=false` value-only planner evidence. Vulkan compute dispatch and compute-generated indirect consumption remain unclaimed.
 
 **Goal:** Extend the completed value-only `mavg-gpu-culling-indirect-v1` contract with the first actual GPU compute dispatch that writes MAVG packed indexed indirect argument and count buffers on D3D12, records the required compute-write-to-indirect-read synchronization, and proves deterministic buffer contents through WARP-backed readback without claiming compute-generated indirect consumption on Vulkan, Metal compute, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
