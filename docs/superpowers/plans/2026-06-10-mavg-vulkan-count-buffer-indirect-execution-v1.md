@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-vulkan-count-buffer-indirect-execution-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Active child implemented over merged `origin/main` after activation PR #551 and Vulkan count-buffer plan draft PR #550. `currentActivePlan` points at this plan and `recommendedNextPlan.id = mavg-vulkan-count-buffer-indirect-execution-v1`. The count-buffer execution claim is that `IRhiCommandList::draw_indexed_indirect` executes `vkCmdDrawIndexedIndirectCount` with 4-byte-aligned count-buffer offsets, running `min(count_buffer_value, max_draw_count)` draws for CPU-generated upload argument and count buffers, proven by SPIR-V environment-gated `MK_backend_scaffold_tests` count-limited, zero-count, and invalid-input coverage while keeping compute-generated count/argument buffers, D3D12 changes, actual GPU culling dispatch, mesh shaders, Metal readiness, and Nanite equivalence/superiority unclaimed.
+**Execution State:** Completed through PR #552 (merge commit `a436fc7a`). The post-land closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Count-buffer Vulkan execution landed through `vkCmdDrawIndexedIndirectCount` with shared helper reuse and SPIR-V environment-gated `MK_backend_scaffold_tests` count-limited, zero-count, and invalid-input visible readback proof.
 
 **Goal:** Extend the completed Vulkan no-count `vkCmdDrawIndexedIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI through `vkCmdDrawIndexedIndirectCount`, and proves visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming compute-generated count buffers, GPU culling dispatch, D3D12 changes, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 

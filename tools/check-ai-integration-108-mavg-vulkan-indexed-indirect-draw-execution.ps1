@@ -114,6 +114,6 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi Vulkan indexed indirect draw evidence"
 }
 
-foreach ($needle in @("mavg-vulkan-indexed-indirect-draw-execution-v1", "vkCmdDrawIndexedIndirect", "count-buffer Vulkan execution", "mavg-d3d12-indexed-indirect-draw-execution-v1", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #541", "PR #547")) {
+foreach ($needle in @("mavg-vulkan-indexed-indirect-draw-execution-v1", "vkCmdDrawIndexedIndirect", "mavg-vulkan-count-buffer-indirect-execution-v1", "mavg-d3d12-indexed-indirect-draw-execution-v1", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #541", "PR #547", "PR #552")) {
     Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence + " " + [string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext) $needle "engine/agent/manifest.json recommendedNextPlan MAVG Vulkan completed prerequisite evidence"
 }
