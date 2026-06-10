@@ -2,45 +2,86 @@
 #requires -PSEdition Core
 # Chapter 113 for check-ai-integration.ps1 static contracts.
 
-$vulkanBackendSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
+$mavgGpuCullingHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/mavg_gpu_culling.hpp"
+$mavgGpuCullingSourceText = Get-AgentSurfaceText "engine/renderer/src/mavg_gpu_culling.cpp"
+$mavgGpuCullingTestsText = Get-AgentSurfaceText "tests/unit/mavg_gpu_culling_tests.cpp"
+$mavgGpuCullingDispatchTestsText = Get-AgentSurfaceText "tests/unit/mavg_gpu_culling_dispatch_tests.cpp"
 $d3d12MavgGpuCullingDispatchSourceText = Get-AgentSurfaceText "engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp"
+$vulkanMavgGpuCullingDispatchHeaderText = Get-AgentSurfaceText "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_gpu_culling_dispatch.hpp"
+$vulkanMavgGpuCullingDispatchSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_mavg_gpu_culling_dispatch.cpp"
+$vulkanBackendSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
+$mavgVulkanGpuCullingDispatchTestsText = Get-AgentSurfaceText "tests/unit/mavg_vulkan_gpu_culling_dispatch_tests.cpp"
 $mavgVulkanGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md"
-$mavgComputeGeneratedPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md"
 $mavgGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
-$aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
-$vulkanDispatchHeaderPath = Join-Path $root "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_gpu_culling_dispatch.hpp"
-$vulkanDispatchSourcePath = Join-Path $root "engine/rhi/vulkan/src/vulkan_mavg_gpu_culling_dispatch.cpp"
-$vulkanDispatchTestsPath = Join-Path $root "tests/unit/mavg_vulkan_gpu_culling_dispatch_tests.cpp"
 
 foreach ($needle in @(
-        "draw_indexed_indirect",
-        "vulkan rhi indexed indirect draw argument buffer requires copy_source upload usage in v1",
-        "vulkan rhi indexed indirect count buffer requires copy_source upload usage in v1"
+        "build_mavg_gpu_culling_dispatch_cluster_rows",
+        "encode_mavg_gpu_culling_indirect_argument_buffer_bytes",
+        "encode_mavg_gpu_culling_indirect_count_buffer_bytes"
     )) {
-    Assert-ContainsText $vulkanBackendSourceText $needle "engine/rhi/vulkan/src/vulkan_backend.cpp Vulkan GPU culling dispatch activation fail-closed copy_source contract"
+    Assert-ContainsText $mavgGpuCullingHeaderText $needle "engine/renderer/include/mirakana/renderer/mavg_gpu_culling.hpp MAVG GPU culling dispatch encode contract"
+    Assert-ContainsText $mavgGpuCullingSourceText $needle "engine/renderer/src/mavg_gpu_culling.cpp MAVG GPU culling dispatch encode helpers"
+}
+
+foreach ($needle in @(
+        "MK_REQUIRE(!plan.executed_gpu_culling)",
+        "mavg gpu culling indirect planning records backend sync requirements for compute produced commands"
+    )) {
+    Assert-ContainsText $mavgGpuCullingTestsText $needle "tests/unit/mavg_gpu_culling_tests.cpp MAVG GPU culling value-only planner coverage"
 }
 
 foreach ($needle in @(
         "dispatch_mavg_gpu_culling_indirect",
         "D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT",
-        "D3D12_RESOURCE_BARRIER_TYPE_UAV",
         "executed_gpu_culling = true"
     )) {
     Assert-ContainsText $d3d12MavgGpuCullingDispatchSourceText $needle "engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp completed D3D12 GPU culling dispatch baseline"
 }
 
-if (Test-Path -LiteralPath $vulkanDispatchHeaderPath) {
-    Write-Error "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_gpu_culling_dispatch.hpp must not exist during activation-only slice"
+foreach ($needle in @(
+        "dispatch_mavg_gpu_culling_indirect",
+        "VulkanMavgGpuCullingDispatchDesc",
+        "VulkanMavgGpuCullingDispatchResult",
+        "executed_gpu_culling"
+    )) {
+    Assert-ContainsText $vulkanMavgGpuCullingDispatchHeaderText $needle "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_gpu_culling_dispatch.hpp Vulkan MAVG GPU culling dispatch API"
 }
-if (Test-Path -LiteralPath $vulkanDispatchSourcePath) {
-    Write-Error "engine/rhi/vulkan/src/vulkan_mavg_gpu_culling_dispatch.cpp must not exist during activation-only slice"
+
+foreach ($needle in @(
+        "dispatch_mavg_gpu_culling_indirect",
+        "record_runtime_buffer_memory_barrier2",
+        "record_runtime_compute_dispatch",
+        "VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT",
+        "VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT",
+        "resource_barriers_recorded",
+        "executed_gpu_culling = true"
+    )) {
+    Assert-ContainsText $vulkanMavgGpuCullingDispatchSourceText $needle "engine/rhi/vulkan/src/vulkan_mavg_gpu_culling_dispatch.cpp Vulkan MAVG GPU culling dispatch evidence"
 }
-if (Test-Path -LiteralPath $vulkanDispatchTestsPath) {
-    Write-Error "tests/unit/mavg_vulkan_gpu_culling_dispatch_tests.cpp must not exist during activation-only slice"
+
+foreach ($needle in @(
+        "record_runtime_buffer_memory_barrier2",
+        "vulkan_pipeline_stage2_draw_indirect_bit",
+        "vulkan_access2_indirect_command_read_bit",
+        "buffer_memory_barrier_count"
+    )) {
+    Assert-ContainsText $vulkanBackendSourceText $needle "engine/rhi/vulkan/src/vulkan_backend.cpp Vulkan synchronization2 buffer barrier support"
+}
+
+foreach ($needle in @(
+        "mavg vulkan gpu culling dispatch writes visible cluster indirect bytes with configured spir-v",
+        "mavg vulkan gpu culling dispatch reduces count for culled clusters with configured spir-v",
+        "MK_REQUIRE(dispatch.executed_gpu_culling)",
+        "MK_VULKAN_TEST_MAVG_GPU_CULLING_DISPATCH_SPV",
+        "encode_mavg_gpu_culling_indirect_argument_buffer_bytes",
+        "encode_mavg_gpu_culling_indirect_count_buffer_bytes",
+        "dispatch_mavg_gpu_culling_indirect"
+    )) {
+    Assert-ContainsText $mavgVulkanGpuCullingDispatchTestsText $needle "tests/unit/mavg_vulkan_gpu_culling_dispatch_tests.cpp Vulkan MAVG GPU culling dispatch SPIR-V proof"
 }
 
 foreach ($surface in @(
@@ -54,17 +95,16 @@ foreach ($surface in @(
     foreach ($needle in @(
             "mavg-vulkan-gpu-culling-dispatch-v1",
             "Vulkan",
-            "compute dispatch",
             "dispatch_mavg_gpu_culling_indirect",
-            "fail-closed",
-            "copy_source"
+            "MK_mavg_vulkan_gpu_culling_dispatch_tests",
+            "VK_KHR_synchronization2",
+            "compute dispatch"
         )) {
-        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan GPU culling dispatch activation evidence"
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan GPU culling dispatch implementation evidence"
     }
     foreach ($needle in @(
             "Vulkan compute-generated indirect consumption",
-            "D3D12 changes",
-            "mesh shaders",
+            "compute-generated indirect consumption",
             "Nanite"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan GPU culling dispatch non-claim evidence"
@@ -74,83 +114,30 @@ foreach ($surface in @(
 foreach ($needle in @(
         "**Status:** Active.",
         "mavg-vulkan-gpu-culling-dispatch-v1",
-        "copy_source",
-        "fail-closed",
-        "mavg-d3d12-compute-generated-indirect-consumption-v1",
-        "PR #560",
-        "PR #561",
-        "MK_mavg_vulkan_gpu_culling_dispatch_tests"
+        "dispatch_mavg_gpu_culling_indirect",
+        "MK_mavg_vulkan_gpu_culling_dispatch_tests",
+        "MK_VULKAN_TEST_MAVG_GPU_CULLING_DISPATCH_SPV",
+        "mavg-gpu-culling-dispatch-v1",
+        "PR #556"
     )) {
-    Assert-ContainsText $mavgVulkanGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md activation contract"
+    Assert-ContainsText $mavgVulkanGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md implementation contract"
 }
 
 foreach ($needle in @(
         "mavg-vulkan-gpu-culling-dispatch-v1",
-        "PR #561"
-    )) {
-    Assert-ContainsText $mavgComputeGeneratedPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md sibling transition"
-}
-
-foreach ($needle in @(
-        "Planned Vulkan dispatch follow-up child",
-        "mavg-vulkan-gpu-culling-dispatch-v1",
-        "PR #560"
+        "Vulkan compute dispatch",
+        "mavg-gpu-culling-dispatch-v1",
+        "PR #556"
     )) {
     Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md sibling transition"
 }
 
 foreach ($needle in @(
-        "mavg-vulkan-gpu-culling-dispatch-v1",
-        "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md",
         "MAVG Vulkan GPU Culling Dispatch v1",
         "dispatch_mavg_gpu_culling_indirect",
-        "mavg-d3d12-compute-generated-indirect-consumption-v1",
-        "PR #560",
-        "PR #561",
-        "copy_source"
+        "MK_mavg_vulkan_gpu_culling_dispatch_tests",
+        "VK_KHR_synchronization2",
+        "mavg-vulkan-gpu-culling-dispatch-v1"
     )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG Vulkan GPU culling dispatch activation evidence"
-}
-
-foreach ($needle in @(
-        "MAVG Vulkan GPU Culling Dispatch v1",
-        "dispatch_mavg_gpu_culling_indirect",
-        "copy_source",
-        "fail-closed",
-        "PR #560"
-    )) {
-    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_renderer Vulkan GPU culling dispatch activation evidence"
-}
-
-$rendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_renderer" })
-if ($rendererModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must expose exactly one MK_renderer module" }
-$rendererManifestText = ((@($rendererModule[0].recentEvidence) -join " "), [string]$rendererModule[0].purpose) -join " "
-foreach ($needle in @(
-        "MAVG Vulkan GPU Culling Dispatch v1",
-        "dispatch_mavg_gpu_culling_indirect",
-        "copy_source",
-        "fail-closed",
-        "PR #560"
-    )) {
-    Assert-ContainsText $rendererManifestText $needle "engine/agent/manifest.json MK_renderer Vulkan GPU culling dispatch activation evidence"
-}
-
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at MAVG Vulkan GPU culling dispatch during activation"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-vulkan-gpu-culling-dispatch-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-vulkan-gpu-culling-dispatch-v1 during activation"
-}
-foreach ($needle in @(
-        "MAVG Vulkan GPU Culling Dispatch v1",
-        "mavg-vulkan-gpu-culling-dispatch-v1",
-        "dispatch_mavg_gpu_culling_indirect",
-        "mavg-d3d12-compute-generated-indirect-consumption-v1",
-        "PR #560",
-        "PR #561",
-        "copy_source",
-        "fail-closed",
-        "unsupportedProductionGaps = []"
-    )) {
-    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG Vulkan GPU culling dispatch activation evidence"
+    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi Vulkan GPU culling dispatch implementation evidence"
 }
