@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-vulkan-count-buffer-indirect-execution-v1`
 
-**Status:** Draft.
+**Status:** Active.
 
-**Execution State:** Draft plan-only slice published after D3D12 count-buffer closeout PR #549 merged. Do not activate `currentActivePlan` or mutate composed manifest until a separate activation PR lands over merged `origin/main`. Today `vulkan_backend.cpp` fail-closes when `has_indexed_indirect_count_buffer(desc)` is true.
+**Execution State:** Active activation slice over merged `origin/main` after D3D12 count-buffer closeout PR #549 and Vulkan count-buffer plan draft PR #550. Manifest activation points `currentActivePlan` and `recommendedNextPlan.id = mavg-vulkan-count-buffer-indirect-execution-v1` without landing implementation in the activation PR. Today `vulkan_backend.cpp` fail-closes when `has_indexed_indirect_count_buffer(desc)` is true and `MK_backend_scaffold_tests` retains RED count-buffer rejection coverage until the independent implementation PR lands.
 
 **Goal:** Extend the completed Vulkan no-count `vkCmdDrawIndexedIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI through `vkCmdDrawIndexedIndirectCount`, and proves visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming compute-generated count buffers, GPU culling dispatch, D3D12 changes, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
