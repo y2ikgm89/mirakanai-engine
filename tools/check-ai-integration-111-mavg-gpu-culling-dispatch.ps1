@@ -126,11 +126,14 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
-        "active follow-up child",
+        "Completed D3D12 compute-generated follow-up child",
         "mavg-d3d12-compute-generated-indirect-consumption-v1",
-        "PR #558"
+        "PR #560",
+        "Planned Vulkan dispatch follow-up child",
+        "mavg-vulkan-gpu-culling-dispatch-v1",
+        "PR #561"
     )) {
-    Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md active child sibling pointer"
+    Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md sibling transition"
 }
 
 foreach ($needle in @(
