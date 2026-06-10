@@ -65,7 +65,7 @@ foreach ($surface in @(
     }
     foreach ($needle in @(
             "count-buffer Vulkan execution",
-            "actual GPU culling dispatch",
+            "compute-generated",
             "Nanite"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan indexed indirect non-claim evidence"
