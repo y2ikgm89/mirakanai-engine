@@ -3,7 +3,10 @@
 
 #include "mirakana/renderer/mavg_gpu_culling.hpp"
 
+#include "mirakana/rhi/indirect_draw.hpp"
+
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -230,6 +233,58 @@ bool has_mavg_gpu_culling_diagnostic(const MavgGpuCullingIndirectPlan& plan,
                                      MavgGpuCullingDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics,
                                [code](const MavgGpuCullingDiagnostic& diagnostic) { return diagnostic.code == code; });
+}
+
+std::vector<MavgGpuCullingDispatchClusterRow>
+build_mavg_gpu_culling_dispatch_cluster_rows(const MavgGpuCullingIndirectDesc& desc) {
+    std::vector<MavgGpuCullingDispatchClusterRow> rows;
+    if (desc.selection == nullptr) {
+        return rows;
+    }
+
+    rows.reserve(desc.selection->selected_clusters.size());
+    for (const auto& selected : desc.selection->selected_clusters) {
+        const auto* bounds = find_bounds(desc.cluster_bounds, selected);
+        const bool visible = bounds == nullptr || bounds->visible;
+        rows.push_back(MavgGpuCullingDispatchClusterRow{
+            .index_count_per_instance = selected.index_count,
+            .instance_count = desc.instance_count,
+            .start_index_location = selected.first_index,
+            .base_vertex_location = selected.vertex_base,
+            .start_instance_location = desc.first_instance,
+            .visible = visible ? 1U : 0U,
+            .padding0 = 0U,
+            .padding1 = 0U,
+        });
+    }
+    return rows;
+}
+
+std::vector<std::uint8_t>
+encode_mavg_gpu_culling_indirect_argument_buffer_bytes(const MavgGpuCullingIndirectPlan& plan) {
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(static_cast<std::size_t>(plan.argument_buffer_size_bytes));
+    for (const auto& command : plan.commands) {
+        const auto encoded = rhi::encode_indexed_indirect_draw_command(rhi::IndexedIndirectDrawCommand{
+            .index_count_per_instance = command.index_count_per_instance,
+            .instance_count = command.instance_count,
+            .first_index = command.start_index_location,
+            .vertex_offset = command.base_vertex_location,
+            .first_instance = command.start_instance_location,
+        });
+        bytes.insert(bytes.end(), encoded.begin(), encoded.end());
+    }
+    return bytes;
+}
+
+std::array<std::uint8_t, 4>
+encode_mavg_gpu_culling_indirect_count_buffer_bytes(const MavgGpuCullingIndirectPlan& plan) {
+    std::array<std::uint8_t, 4> bytes{};
+    bytes[0] = static_cast<std::uint8_t>(plan.count_buffer_value & 0xFFU);
+    bytes[1] = static_cast<std::uint8_t>((plan.count_buffer_value >> 8U) & 0xFFU);
+    bytes[2] = static_cast<std::uint8_t>((plan.count_buffer_value >> 16U) & 0xFFU);
+    bytes[3] = static_cast<std::uint8_t>((plan.count_buffer_value >> 24U) & 0xFFU);
+    return bytes;
 }
 
 } // namespace mirakana

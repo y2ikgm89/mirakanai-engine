@@ -85,6 +85,17 @@ struct MavgGpuCullingDiagnostic {
     std::string message;
 };
 
+struct MavgGpuCullingDispatchClusterRow {
+    std::uint32_t index_count_per_instance{0};
+    std::uint32_t instance_count{0};
+    std::uint32_t start_index_location{0};
+    std::int32_t base_vertex_location{0};
+    std::uint32_t start_instance_location{0};
+    std::uint32_t visible{0};
+    std::uint32_t padding0{0};
+    std::uint32_t padding1{0};
+};
+
 struct MavgGpuCullingIndirectDesc {
     const MavgLodSelectionResult* selection{nullptr};
     std::span<const MavgGpuCullingClusterBoundsRow> cluster_bounds;
@@ -120,5 +131,14 @@ plan_mavg_gpu_culling_indirect_commands(const MavgGpuCullingIndirectDesc& desc);
 
 [[nodiscard]] bool has_mavg_gpu_culling_diagnostic(const MavgGpuCullingIndirectPlan& plan,
                                                    MavgGpuCullingDiagnosticCode code) noexcept;
+
+[[nodiscard]] std::vector<MavgGpuCullingDispatchClusterRow>
+build_mavg_gpu_culling_dispatch_cluster_rows(const MavgGpuCullingIndirectDesc& desc);
+
+[[nodiscard]] std::vector<std::uint8_t>
+encode_mavg_gpu_culling_indirect_argument_buffer_bytes(const MavgGpuCullingIndirectPlan& plan);
+
+[[nodiscard]] std::array<std::uint8_t, 4>
+encode_mavg_gpu_culling_indirect_count_buffer_bytes(const MavgGpuCullingIndirectPlan& plan);
 
 } // namespace mirakana
