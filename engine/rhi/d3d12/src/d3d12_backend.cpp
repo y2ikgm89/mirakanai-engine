@@ -3,7 +3,7 @@
 
 #include "mirakana/rhi/d3d12/d3d12_backend.hpp"
 
-#include "mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch_internal.hpp"
+#include "d3d12_mavg_gpu_culling_dispatch_internal.hpp"
 #include "mirakana/rhi/gpu_debug.hpp"
 #include "mirakana/rhi/indirect_draw.hpp"
 #include "mirakana/rhi/memory_diagnostics.hpp"

@@ -3,7 +3,7 @@
 
 #include "mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch.hpp"
 
-#include "mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch_internal.hpp"
+#include "d3d12_mavg_gpu_culling_dispatch_internal.hpp"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
