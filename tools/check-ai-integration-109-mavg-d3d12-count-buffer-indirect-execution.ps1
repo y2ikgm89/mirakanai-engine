@@ -78,7 +78,7 @@ foreach ($surface in @(
 foreach ($needle in @(
         "Completed through PR",
         "mavg-vulkan-indexed-indirect-draw-execution-v1",
-        "is now owned by the follow-up D3D12 count-buffer execution plan"
+        "completed through the follow-up D3D12 count-buffer execution plan"
     )) {
     Assert-ContainsText $mavgVulkanPlanText $needle "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md prerequisite transition"
 }
@@ -86,11 +86,12 @@ foreach ($needle in @(
 foreach ($needle in @(
         "mavg-d3d12-count-buffer-indirect-execution-v1",
         "docs/superpowers/plans/2026-06-08-mavg-d3d12-count-buffer-indirect-execution-v1.md",
+        "MAVG D3D12 Count-Buffer Indirect Execution v1",
         "ID3D12GraphicsCommandList::ExecuteIndirect",
         "CountBufferOffset",
-        "count-buffer Vulkan execution"
+        "PR #547"
     )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json active MAVG D3D12 count-buffer indirect draw evidence"
+    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG D3D12 count-buffer indirect draw closeout evidence"
 }
 
 foreach ($needle in @(
@@ -116,12 +117,12 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 count-buffer indirect draw evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-08-mavg-d3d12-count-buffer-indirect-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at the active MAVG D3D12 count-buffer indirect execution plan during execution"
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG D3D12 count-buffer indirect draw closeout"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-d3d12-count-buffer-indirect-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-d3d12-count-buffer-indirect-execution-v1 during active MAVG D3D12 count-buffer indirect execution"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG D3D12 count-buffer indirect draw closeout"
 }
-foreach ($needle in @("MAVG D3D12 Count-Buffer Indirect Execution v1", "mavg-vulkan-indexed-indirect-draw-execution-v1", "ExecuteIndirect", "CountBufferOffset", "count-buffer Vulkan execution", "unsupportedProductionGaps = []")) {
-    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 count-buffer active evidence"
+foreach ($needle in @("MAVG D3D12 Count-Buffer Indirect Execution v1", "PR #547", "mavg-d3d12-count-buffer-indirect-execution-v1", "ExecuteIndirect", "CountBufferOffset", "count-buffer Vulkan execution", "unsupportedProductionGaps = []")) {
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 count-buffer closeout evidence"
 }

@@ -6,7 +6,7 @@
 
 **Status:** Completed.
 
-**Execution State:** Completed through PR #541. The closeout returned `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Native D3D12 count-buffer `ExecuteIndirect` execution is now owned by the follow-up D3D12 count-buffer execution plan `mavg-d3d12-count-buffer-indirect-execution-v1`.
+**Execution State:** Completed through PR #541. The closeout returned `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Native D3D12 count-buffer `ExecuteIndirect` execution completed through the follow-up D3D12 count-buffer execution plan `mavg-d3d12-count-buffer-indirect-execution-v1` (PR #547).
 
 **Goal:** Implement a clean Vulkan `vkCmdDrawIndexedIndirect` execution path for `IRhiCommandList::draw_indexed_indirect` when the caller supplies a CPU-generated upload argument buffer and no count buffer, then prove visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming GPU culling dispatch, count-buffer execution, D3D12 changes, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
