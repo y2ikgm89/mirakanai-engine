@@ -137,7 +137,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 ## Non-Claims
 
-- Executed GPU culling dispatch completed through the follow-up child plan `docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md` / `mavg-gpu-culling-dispatch-v1` (PR #556).
+- Executed D3D12 GPU culling dispatch completed through the follow-up child plan `docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md` / `mavg-gpu-culling-dispatch-v1` (PR #556). Executed Vulkan GPU culling dispatch completed through sibling plan `docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md` / `mavg-vulkan-gpu-culling-dispatch-v1` (PR #563).
 - No D3D12 `ExecuteIndirect` execution.
 - No count-buffer Vulkan execution.
 - No mesh/task/amplification shader readiness.

@@ -199,4 +199,10 @@ if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -eq "next-producti
     if ($manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence -notlike "*mavg-gpu-culling-dispatch-v1*") {
         Write-Error "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence must retain mavg-gpu-culling-dispatch-v1 closeout evidence"
     }
+    if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-vulkan-gpu-culling-dispatch-v1*") {
+        Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-vulkan-gpu-culling-dispatch-v1 closeout evidence"
+    }
+    if ($manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence -notlike "*mavg-vulkan-gpu-culling-dispatch-v1*") {
+        Write-Error "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence must retain mavg-vulkan-gpu-culling-dispatch-v1 closeout evidence"
+    }
 }
