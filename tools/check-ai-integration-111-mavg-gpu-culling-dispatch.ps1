@@ -9,6 +9,7 @@ $mavgGpuCullingDispatchTestsText = Get-AgentSurfaceText "tests/unit/mavg_gpu_cul
 $d3d12MavgGpuCullingDispatchHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch.hpp"
 $d3d12MavgGpuCullingDispatchSourceText = Get-AgentSurfaceText "engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp"
 $mavgGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md"
+$mavgComputeGeneratedPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md"
 $mavgGpuCullingIndirectPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md"
 $mavgVulkanCountBufferPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
@@ -110,11 +111,26 @@ foreach ($surface in @(
 foreach ($needle in @(
         "**Status:** Completed.",
         "Completed through PR #556",
-        "next-production-gap-selection",
+        "closeout PR #557",
         "dispatch_mavg_gpu_culling_indirect",
         "MK_mavg_gpu_culling_dispatch_tests"
     )) {
     Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md closeout contract"
+}
+
+foreach ($needle in @(
+        "mavg-gpu-culling-dispatch-v1",
+        "PR #556"
+    )) {
+    Assert-ContainsText $mavgComputeGeneratedPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md sibling transition"
+}
+
+foreach ($needle in @(
+        "active follow-up child",
+        "mavg-d3d12-compute-generated-indirect-consumption-v1",
+        "PR #558"
+    )) {
+    Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md active child sibling pointer"
 }
 
 foreach ($needle in @(
@@ -129,17 +145,6 @@ foreach ($needle in @(
         "PR #556"
     )) {
     Assert-ContainsText $mavgGpuCullingIndirectPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md sibling transition"
-}
-
-foreach ($needle in @(
-        "mavg-gpu-culling-dispatch-v1",
-        "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md",
-        "MAVG GPU Culling Dispatch v1",
-        "dispatch_mavg_gpu_culling_indirect",
-        "MK_mavg_gpu_culling_dispatch_tests",
-        "PR #556"
-    )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG GPU culling dispatch closeout evidence"
 }
 
 foreach ($needle in @(
@@ -176,14 +181,4 @@ foreach ($needle in @(
         "PR #556"
     )) {
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi GPU culling dispatch closeout evidence"
-}
-
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG GPU culling dispatch closeout"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG GPU culling dispatch closeout"
-}
-foreach ($needle in @("MAVG GPU Culling Dispatch v1", "PR #556", "mavg-gpu-culling-dispatch-v1", "dispatch_mavg_gpu_culling_indirect", "MK_mavg_gpu_culling_dispatch_tests", "mavg-vulkan-count-buffer-indirect-execution-v1", "PR #552", "compute-write-to-indirect-read", "unsupportedProductionGaps = []")) {
-    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG GPU culling dispatch closeout evidence"
 }
