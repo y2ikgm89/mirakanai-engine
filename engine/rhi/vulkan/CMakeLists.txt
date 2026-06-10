@@ -1,5 +1,6 @@
 add_library(mirakana_rhi_vulkan
     src/vulkan_backend.cpp
+    src/vulkan_mavg_gpu_culling_dispatch.cpp
 )
 
 target_include_directories(mirakana_rhi_vulkan

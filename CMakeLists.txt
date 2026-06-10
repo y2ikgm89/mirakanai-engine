@@ -1151,6 +1151,17 @@ if(BUILD_TESTING)
         set_tests_properties(MK_mavg_d3d12_compute_generated_indirect_consumption_tests PROPERTIES RUN_SERIAL TRUE)
     endif()
 
+    if(TARGET MK_rhi_vulkan AND (WIN32 OR (UNIX AND NOT APPLE)))
+        add_executable(MK_mavg_vulkan_gpu_culling_dispatch_tests
+            tests/unit/mavg_vulkan_gpu_culling_dispatch_tests.cpp
+        )
+        target_link_libraries(MK_mavg_vulkan_gpu_culling_dispatch_tests PRIVATE MK_renderer MK_rhi_vulkan)
+        target_include_directories(MK_mavg_vulkan_gpu_culling_dispatch_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_mavg_vulkan_gpu_culling_dispatch_tests)
+        add_test(NAME MK_mavg_vulkan_gpu_culling_dispatch_tests COMMAND MK_mavg_vulkan_gpu_culling_dispatch_tests)
+        set_tests_properties(MK_mavg_vulkan_gpu_culling_dispatch_tests PROPERTIES RUN_SERIAL TRUE)
+    endif()
+
     if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))
         add_executable(MK_platform_native_file_watcher_tests
             tests/unit/platform_native_file_watcher_tests.cpp

@@ -481,6 +481,8 @@ struct VulkanRuntimeTextureBarrierResult;
 struct VulkanRuntimeTextureAliasingBarrierResult;
 struct VulkanRuntimeBufferCopyDesc;
 struct VulkanRuntimeBufferCopyResult;
+struct VulkanRuntimeBufferMemoryBarrierDesc;
+struct VulkanRuntimeBufferMemoryBarrierResult;
 struct VulkanRuntimeBufferTextureCopyDesc;
 struct VulkanRuntimeBufferTextureCopyResult;
 struct VulkanRuntimeTextureBufferCopyDesc;
@@ -690,6 +692,9 @@ class VulkanRuntimeDevice {
     friend VulkanRuntimeComputeDispatchResult
     record_runtime_compute_dispatch(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                     const VulkanRuntimeComputeDispatchDesc& desc);
+    friend VulkanRuntimeBufferMemoryBarrierResult
+    record_runtime_buffer_memory_barrier2(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                          const VulkanRuntimeBufferMemoryBarrierDesc& desc);
     friend VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice& device,
                                                                        const VulkanRuntimeSwapchainDesc& desc);
     friend VulkanRuntimeFrameSyncCreateResult create_runtime_frame_sync(VulkanRuntimeDevice& device,
@@ -879,6 +884,9 @@ class VulkanRuntimeCommandPool {
     friend VulkanRuntimeComputeDispatchResult
     record_runtime_compute_dispatch(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                     const VulkanRuntimeComputeDispatchDesc& desc);
+    friend VulkanRuntimeBufferMemoryBarrierResult
+    record_runtime_buffer_memory_barrier2(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                          const VulkanRuntimeBufferMemoryBarrierDesc& desc);
 };
 
 struct VulkanRuntimeCommandPoolCreateResult {
@@ -927,6 +935,9 @@ class VulkanRuntimeBuffer {
                                                                     VulkanRuntimeBuffer& source,
                                                                     VulkanRuntimeBuffer& destination,
                                                                     const VulkanRuntimeBufferCopyDesc& desc);
+    friend VulkanRuntimeBufferMemoryBarrierResult
+    record_runtime_buffer_memory_barrier2(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                          const VulkanRuntimeBufferMemoryBarrierDesc& desc);
     friend VulkanRuntimeBufferTextureCopyResult
     record_runtime_buffer_texture_copy(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                        VulkanRuntimeBuffer& source, VulkanRuntimeTexture& destination,
@@ -1742,6 +1753,22 @@ struct VulkanRuntimeBufferCopyResult {
     std::string diagnostic;
 };
 
+struct VulkanRuntimeBufferMemoryBarrierDesc {
+    VulkanRuntimeBuffer* buffer{nullptr};
+    std::uint64_t src_stage_mask{0};
+    std::uint64_t src_access_mask{0};
+    std::uint64_t dst_stage_mask{0};
+    std::uint64_t dst_access_mask{0};
+    std::uint64_t offset{0};
+    std::uint64_t size{0};
+};
+
+struct VulkanRuntimeBufferMemoryBarrierResult {
+    bool recorded{false};
+    std::uint32_t barrier_count{0};
+    std::string diagnostic;
+};
+
 struct VulkanRuntimeBufferTextureCopyDesc {
     BufferTextureCopyRegion region;
 };
@@ -2022,6 +2049,9 @@ record_runtime_compute_pipeline_binding(VulkanRuntimeDevice& device, VulkanRunti
 [[nodiscard]] VulkanRuntimeComputeDispatchResult
 record_runtime_compute_dispatch(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                 const VulkanRuntimeComputeDispatchDesc& desc);
+[[nodiscard]] VulkanRuntimeBufferMemoryBarrierResult
+record_runtime_buffer_memory_barrier2(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                      const VulkanRuntimeBufferMemoryBarrierDesc& desc);
 [[nodiscard]] std::vector<std::string> vulkan_surface_instance_extensions(RhiHostPlatform host);
 [[nodiscard]] VulkanRuntimeSurfaceSupportProbeResult
 probe_runtime_surface_support(const VulkanLoaderProbeDesc& loader_desc = {},

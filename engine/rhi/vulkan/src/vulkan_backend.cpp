@@ -149,6 +149,7 @@ inline constexpr std::uint32_t vulkan_structure_type_rendering_info = 1000044000
 inline constexpr std::uint32_t vulkan_structure_type_rendering_attachment_info = 1000044001;
 inline constexpr std::uint32_t vulkan_structure_type_pipeline_rendering_create_info = 1000044002;
 inline constexpr std::uint32_t vulkan_structure_type_memory_barrier2 = 1000314000;
+inline constexpr std::uint32_t vulkan_structure_type_buffer_memory_barrier2 = 1000314001;
 inline constexpr std::uint32_t vulkan_structure_type_image_memory_barrier2 = 1000314002;
 inline constexpr std::uint32_t vulkan_structure_type_dependency_info = 1000314003;
 inline constexpr std::uint32_t vulkan_structure_type_submit_info2 = 1000314004;
@@ -281,6 +282,7 @@ inline constexpr std::uint64_t vulkan_pipeline_stage2_fragment_shader_bit = 0x00
 inline constexpr std::uint64_t vulkan_pipeline_stage2_compute_shader_bit = 0x0000000000000800ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_color_attachment_output_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_transfer_bit = 0x0000000000001000ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_draw_indirect_bit = 0x0000000000002000ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_all_commands_bit = 0x0000000000010000ULL;
 inline constexpr std::uint64_t vulkan_access2_none = 0;
 inline constexpr std::uint64_t vulkan_access2_shader_read_bit = 0x0000000000000020ULL;
@@ -290,6 +292,7 @@ inline constexpr std::uint64_t vulkan_access2_depth_stencil_attachment_read_bit 
 inline constexpr std::uint64_t vulkan_access2_depth_stencil_attachment_write_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_access2_transfer_read_bit = 0x0000000000000800ULL;
 inline constexpr std::uint64_t vulkan_access2_transfer_write_bit = 0x0000000000001000ULL;
+inline constexpr std::uint64_t vulkan_access2_indirect_command_read_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_access2_memory_read_bit = 0x0000000000008000ULL;
 inline constexpr std::uint64_t vulkan_access2_memory_write_bit = 0x0000000000010000ULL;
 inline constexpr std::uint32_t spirv_magic_word = 0x07230203U;
@@ -885,6 +888,20 @@ struct NativeVulkanMemoryBarrier2 {
     std::uint64_t src_access_mask;
     std::uint64_t dst_stage_mask;
     std::uint64_t dst_access_mask;
+};
+
+struct NativeVulkanBufferMemoryBarrier2 {
+    std::uint32_t s_type;
+    const void* next;
+    std::uint64_t src_stage_mask;
+    std::uint64_t src_access_mask;
+    std::uint64_t dst_stage_mask;
+    std::uint64_t dst_access_mask;
+    std::uint32_t src_queue_family_index;
+    std::uint32_t dst_queue_family_index;
+    NativeVulkanBuffer buffer;
+    std::uint64_t offset;
+    std::uint64_t size;
 };
 
 struct NativeVulkanDependencyInfo {
@@ -12502,6 +12519,71 @@ VulkanRuntimeComputeDispatchResult record_runtime_compute_dispatch(VulkanRuntime
     }
     result.recorded = true;
     result.diagnostic = "Vulkan compute dispatch recorded";
+    return result;
+}
+
+VulkanRuntimeBufferMemoryBarrierResult
+record_runtime_buffer_memory_barrier2(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                      const VulkanRuntimeBufferMemoryBarrierDesc& desc) {
+    VulkanRuntimeBufferMemoryBarrierResult result;
+    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
+        result.diagnostic = "Vulkan runtime device is not available";
+        return result;
+    }
+    if (!command_pool.owns_primary_command_buffer()) {
+        result.diagnostic = "Vulkan runtime command pool is required";
+        return result;
+    }
+    if (command_pool.impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan buffer barrier objects must share one runtime device";
+        return result;
+    }
+    if (!command_pool.recording()) {
+        result.diagnostic = "Vulkan command buffer must be recording";
+        return result;
+    }
+    if (desc.buffer == nullptr || !desc.buffer->owns_buffer()) {
+        result.diagnostic = "Vulkan buffer memory barrier requires a runtime buffer";
+        return result;
+    }
+    if (desc.buffer->impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan buffer memory barrier must share the runtime device";
+        return result;
+    }
+    if (device.impl_->cmd_pipeline_barrier2 == nullptr) {
+        result.diagnostic = "Vulkan synchronization2 barrier command is unavailable";
+        return result;
+    }
+
+    const auto barrier_size = desc.size == 0U ? desc.buffer->byte_size() : desc.size;
+    const NativeVulkanBufferMemoryBarrier2 buffer_barrier{
+        .s_type = vulkan_structure_type_buffer_memory_barrier2,
+        .next = nullptr,
+        .src_stage_mask = desc.src_stage_mask,
+        .src_access_mask = desc.src_access_mask,
+        .dst_stage_mask = desc.dst_stage_mask,
+        .dst_access_mask = desc.dst_access_mask,
+        .src_queue_family_index = vulkan_queue_family_ignored,
+        .dst_queue_family_index = vulkan_queue_family_ignored,
+        .buffer = desc.buffer->impl_->buffer,
+        .offset = desc.offset,
+        .size = barrier_size,
+    };
+    const NativeVulkanDependencyInfo dependency_info{
+        .s_type = vulkan_structure_type_dependency_info,
+        .next = nullptr,
+        .dependency_flags = 0,
+        .memory_barrier_count = 0,
+        .memory_barriers = nullptr,
+        .buffer_memory_barrier_count = 1,
+        .buffer_memory_barriers = &buffer_barrier,
+        .image_memory_barrier_count = 0,
+        .image_memory_barriers = nullptr,
+    };
+    device.impl_->cmd_pipeline_barrier2(command_pool.impl_->primary_command_buffer, &dependency_info);
+    result.recorded = true;
+    result.barrier_count = 1U;
+    result.diagnostic = "Vulkan buffer memory barrier2 recorded";
     return result;
 }
 
