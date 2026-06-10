@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-gpu-culling-dispatch-v1`
 
-**Status:** Draft.
+**Status:** Active.
 
-**Execution State:** Draft plan-only slice over merged `origin/main` after MAVG Vulkan Count-Buffer Indirect Execution v1 closeout PR #553. `currentActivePlan` remains the production-completion master plan and `recommendedNextPlan.id` remains `next-production-gap-selection` until a separate activation PR lands. Do not land compute dispatch implementation in this PR.
+**Execution State:** Active activation slice over merged `origin/main` after MAVG Vulkan Count-Buffer Indirect Execution v1 closeout PR #553. Manifest activation points `currentActivePlan` and `recommendedNextPlan.id = mavg-gpu-culling-dispatch-v1` without landing implementation in the activation PR. Today `plan_mavg_gpu_culling_indirect_commands` remains value-only with `executed_gpu_culling=false` in `MK_mavg_gpu_culling_tests` and no D3D12 compute dispatch path until the independent implementation PR lands. Vulkan compute dispatch and compute-generated indirect consumption remain unclaimed.
 
 **Goal:** Extend the completed value-only `mavg-gpu-culling-indirect-v1` contract with the first actual GPU compute dispatch that writes MAVG packed indexed indirect argument and count buffers on D3D12, records the required compute-write-to-indirect-read synchronization, and proves deterministic buffer contents through WARP-backed readback without claiming compute-generated indirect consumption on Vulkan, Metal compute, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 

@@ -78,7 +78,7 @@ foreach ($surface in @(
 foreach ($needle in @(
         "**Status:** Completed.",
         "Completed through PR #552",
-        "next-production-gap-selection",
+        "mavg-gpu-culling-dispatch-v1",
         "vkCmdDrawIndexedIndirectCount",
         "mavg-d3d12-count-buffer-indirect-execution-v1"
     )) {
@@ -124,12 +124,6 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi Vulkan count-buffer execution evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG Vulkan count-buffer indirect draw closeout"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG Vulkan count-buffer indirect draw closeout"
-}
 foreach ($needle in @("MAVG Vulkan Count-Buffer Indirect Execution v1", "PR #552", "mavg-vulkan-count-buffer-indirect-execution-v1", "vkCmdDrawIndexedIndirectCount", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #547", "unsupportedProductionGaps = []")) {
     Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG Vulkan count-buffer closeout evidence"
 }

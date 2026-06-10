@@ -67,9 +67,10 @@ $aiLoopGpuCullingEvidenceText = (([string]$manifest.aiOperableProductionLoop.rec
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
-        "actual GPU culling dispatch",
-        "D3D12 ExecuteIndirect",
-        "mavg-vulkan-indexed-indirect-draw-execution-v1"
+        "mavg-gpu-culling-dispatch-v1",
+        "plan_mavg_gpu_culling_indirect_commands",
+        "MavgGpuCullingIndirectPlan",
+        "mavg-vulkan-count-buffer-indirect-execution-v1"
     )) {
     Assert-ContainsText $aiLoopGpuCullingEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 }

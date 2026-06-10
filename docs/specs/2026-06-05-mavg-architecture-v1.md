@@ -10,7 +10,7 @@ Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` after MAVG Vulkan Count-Buffer Indirect Execution v1 completed through PR #552.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md` with `recommendedNextPlan.id = mavg-gpu-culling-dispatch-v1` after MAVG Vulkan Count-Buffer Indirect Execution v1 completed through PR #552 and closeout PR #553; activation keeps actual D3D12 GPU culling compute dispatch fail-closed until the independent implementation PR lands `ID3D12GraphicsCommandList::Dispatch` with compute-write-to-indirect-read synchronization from existing `MavgGpuCullingSyncRequirement` rows and WARP-backed readback proof while Vulkan compute dispatch and compute-generated indirect consumption remain unclaimed.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
