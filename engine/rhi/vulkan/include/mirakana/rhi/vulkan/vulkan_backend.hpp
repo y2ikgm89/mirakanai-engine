@@ -1561,8 +1561,11 @@ struct VulkanRuntimeDynamicRenderingDrawDesc {
     std::uint32_t first_index{0};
     std::int32_t vertex_offset{0};
     bool indexed_indirect_draw{false};
+    bool indexed_indirect_count_buffer_draw{false};
     VulkanRuntimeBuffer* indirect_argument_buffer{nullptr};
     std::uint64_t indirect_argument_buffer_offset{0};
+    VulkanRuntimeBuffer* indirect_count_buffer{nullptr};
+    std::uint64_t indirect_count_buffer_offset{0};
     std::uint32_t indirect_draw_count{0};
     std::uint32_t indirect_command_stride_bytes{indexed_indirect_draw_command_stride_bytes};
     LoadAction color_load_action{LoadAction::clear};
@@ -1628,8 +1631,11 @@ struct VulkanRuntimeTextureRenderingDrawDesc {
     std::uint32_t first_index{0};
     std::int32_t vertex_offset{0};
     bool indexed_indirect_draw{false};
+    bool indexed_indirect_count_buffer_draw{false};
     VulkanRuntimeBuffer* indirect_argument_buffer{nullptr};
     std::uint64_t indirect_argument_buffer_offset{0};
+    VulkanRuntimeBuffer* indirect_count_buffer{nullptr};
+    std::uint64_t indirect_count_buffer_offset{0};
     std::uint32_t indirect_draw_count{0};
     std::uint32_t indirect_command_stride_bytes{indexed_indirect_draw_command_stride_bytes};
     LoadAction color_load_action{LoadAction::clear};

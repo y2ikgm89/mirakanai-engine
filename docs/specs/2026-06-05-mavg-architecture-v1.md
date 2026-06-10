@@ -10,7 +10,7 @@ Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md` with `recommendedNextPlan.id = mavg-vulkan-count-buffer-indirect-execution-v1` after MAVG D3D12 Count-Buffer Indirect Execution v1 completed through PR #547; activation keeps count-buffer Vulkan execution fail-closed until the independent implementation PR lands `vkCmdDrawIndexedIndirectCount` with shared helper reuse and SPIR-V environment-gated `MK_backend_scaffold_tests` visible readback proof.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md` with `recommendedNextPlan.id = mavg-vulkan-count-buffer-indirect-execution-v1` after MAVG D3D12 Count-Buffer Indirect Execution v1 completed through PR #547; the active child implements `vkCmdDrawIndexedIndirectCount` with shared helper reuse and SPIR-V environment-gated `MK_backend_scaffold_tests` count-limited, zero-count, and invalid-input visible readback proof.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.

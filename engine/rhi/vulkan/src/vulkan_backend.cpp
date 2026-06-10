@@ -1125,6 +1125,9 @@ using VulkanCmdDrawIndexed = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, st
                                                    std::uint32_t, std::int32_t, std::uint32_t);
 using VulkanCmdDrawIndexedIndirect = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, NativeVulkanBuffer, std::uint64_t,
                                                            std::uint32_t, std::uint32_t);
+using VulkanCmdDrawIndexedIndirectCount = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, NativeVulkanBuffer,
+                                                                std::uint64_t, NativeVulkanBuffer, std::uint64_t,
+                                                                std::uint32_t, std::uint32_t);
 using VulkanCmdDispatch = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, std::uint32_t, std::uint32_t, std::uint32_t);
 using VulkanCmdPipelineBarrier2 = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, const NativeVulkanDependencyInfo*);
 using VulkanQueueSubmit2 = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanQueue, std::uint32_t,
@@ -2934,6 +2937,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanCmdBindIndexBuffer cmd_bind_index_buffer{nullptr};
     VulkanCmdDrawIndexed cmd_draw_indexed{nullptr};
     VulkanCmdDrawIndexedIndirect cmd_draw_indexed_indirect{nullptr};
+    VulkanCmdDrawIndexedIndirectCount cmd_draw_indexed_indirect_count{nullptr};
     VulkanCmdPipelineBarrier2 cmd_pipeline_barrier2{nullptr};
     VulkanQueueSubmit2 queue_submit2{nullptr};
     VulkanQueueWaitIdle queue_wait_idle{nullptr};
@@ -4241,6 +4245,10 @@ class VulkanRhiDevice final : public IRhiDevice {
   private:
     friend class VulkanRhiCommandList;
 
+    [[nodiscard]] bool supports_indexed_indirect_count_buffer_draw() const noexcept {
+        return device_.impl_ != nullptr && device_.impl_->cmd_draw_indexed_indirect_count != nullptr;
+    }
+
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
@@ -5162,9 +5170,6 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (!index_buffer_bound_) {
             throw std::logic_error("vulkan rhi indexed indirect draw requires an index buffer");
         }
-        if (has_indexed_indirect_count_buffer(desc)) {
-            throw std::logic_error("vulkan rhi indexed indirect count buffer execution is not implemented");
-        }
         if (!device_->owns_buffer(desc.argument_buffer)) {
             throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer handle is unknown");
         }
@@ -5184,6 +5189,49 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                 "vulkan rhi indexed indirect draw argument range is outside the argument buffer");
         }
 
+        const bool count_buffer_used = has_indexed_indirect_count_buffer(desc);
+        std::uint32_t count_buffer_value = desc.max_draw_count;
+        if (count_buffer_used) {
+            if (!device_->supports_indexed_indirect_count_buffer_draw()) {
+                throw std::logic_error("vulkan rhi indexed indirect count buffer execution is not implemented");
+            }
+            if (!device_->owns_buffer(desc.count_buffer)) {
+                throw std::invalid_argument("vulkan rhi indexed indirect draw count buffer handle is unknown");
+            }
+            const auto& count_desc = device_->buffer_descs_.at(desc.count_buffer.value - 1U);
+            if (!has_flag(count_desc.usage, BufferUsage::indirect)) {
+                throw std::invalid_argument("vulkan rhi indexed indirect draw count buffer requires indirect usage");
+            }
+            if (!has_flag(count_desc.usage, BufferUsage::copy_source)) {
+                throw std::invalid_argument(
+                    "vulkan rhi indexed indirect count buffer requires copy_source upload usage in v1");
+            }
+            if (desc.count_buffer_offset % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+                throw std::invalid_argument("vulkan rhi indexed indirect count buffer offset must be 4-byte aligned");
+            }
+            if (desc.count_buffer_offset > count_desc.size_bytes ||
+                indexed_indirect_draw_count_buffer_size_bytes > count_desc.size_bytes - desc.count_buffer_offset) {
+                throw std::invalid_argument("vulkan rhi indexed indirect count range is outside the count buffer");
+            }
+
+            const auto count_read_result =
+                read_runtime_buffer(device_->device_, device_->buffers_.at(desc.count_buffer.value - 1U),
+                                    VulkanRuntimeBufferReadDesc{
+                                        .byte_offset = desc.count_buffer_offset,
+                                        .byte_count = indexed_indirect_draw_count_buffer_size_bytes,
+                                    });
+            if (!count_read_result.read ||
+                count_read_result.bytes.size() != indexed_indirect_draw_count_buffer_size_bytes) {
+                throw std::logic_error("vulkan rhi indexed indirect draw count buffer readback failed: " +
+                                       count_read_result.diagnostic);
+            }
+            count_buffer_value = decode_indexed_indirect_count_buffer_value(std::span<const std::uint8_t>(
+                reinterpret_cast<const std::uint8_t*>(count_read_result.bytes.data()), count_read_result.bytes.size()));
+        }
+
+        const std::uint32_t effective_draw_count =
+            count_buffer_used ? effective_indexed_indirect_draw_count(count_buffer_value, desc) : desc.max_draw_count;
+
         const auto byte_count = argument_range_end - desc.argument_buffer_offset;
         const auto read_result =
             read_runtime_buffer(device_->device_, device_->buffers_.at(desc.argument_buffer.value - 1U),
@@ -5198,7 +5246,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         const auto decoded_commands = decode_indexed_indirect_draw_commands(
             std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(read_result.bytes.data()),
                                           read_result.bytes.size()),
-            desc);
+            desc, effective_draw_count);
 
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
@@ -5225,8 +5273,12 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
                     .indexed_indirect_draw = true,
+                    .indexed_indirect_count_buffer_draw = count_buffer_used,
                     .indirect_argument_buffer = &device_->buffers_.at(desc.argument_buffer.value - 1U),
                     .indirect_argument_buffer_offset = desc.argument_buffer_offset,
+                    .indirect_count_buffer =
+                        count_buffer_used ? &device_->buffers_.at(desc.count_buffer.value - 1U) : nullptr,
+                    .indirect_count_buffer_offset = desc.count_buffer_offset,
                     .indirect_draw_count = desc.max_draw_count,
                     .indirect_command_stride_bytes = desc.command_stride_bytes,
                     .color_load_action = color_load_action,
@@ -5250,8 +5302,12 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
                     .indexed_indirect_draw = true,
+                    .indexed_indirect_count_buffer_draw = count_buffer_used,
                     .indirect_argument_buffer = &device_->buffers_.at(desc.argument_buffer.value - 1U),
                     .indirect_argument_buffer_offset = desc.argument_buffer_offset,
+                    .indirect_count_buffer =
+                        count_buffer_used ? &device_->buffers_.at(desc.count_buffer.value - 1U) : nullptr,
+                    .indirect_count_buffer_offset = desc.count_buffer_offset,
                     .indirect_draw_count = desc.max_draw_count,
                     .indirect_command_stride_bytes = desc.command_stride_bytes,
                     .color_load_action = color_load_action,
@@ -5269,7 +5325,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
 
         rendering_recorded_ = true;
         // VkDrawIndexedIndirectCommand fields are decoded from upload bytes; vkCmdDrawIndexedIndirect consumes them.
-        record_indexed_indirect_draw_stats(device_->stats_, decoded_commands, desc);
+        record_indexed_indirect_draw_stats(device_->stats_, decoded_commands, desc, count_buffer_used,
+                                           count_buffer_value);
     }
 
     void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
@@ -8852,6 +8909,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdDrawIndexed>(get_device_proc_addr(device, "vkCmdDrawIndexed"));
     const auto cmd_draw_indexed_indirect =
         reinterpret_cast<VulkanCmdDrawIndexedIndirect>(get_device_proc_addr(device, "vkCmdDrawIndexedIndirect"));
+    const auto cmd_draw_indexed_indirect_count = reinterpret_cast<VulkanCmdDrawIndexedIndirectCount>(
+        get_device_proc_addr(device, "vkCmdDrawIndexedIndirectCount"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
@@ -9029,6 +9088,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_bind_index_buffer = cmd_bind_index_buffer;
     impl->cmd_draw_indexed = cmd_draw_indexed;
     impl->cmd_draw_indexed_indirect = cmd_draw_indexed_indirect;
+    impl->cmd_draw_indexed_indirect_count = cmd_draw_indexed_indirect_count;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
@@ -9222,6 +9282,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdDrawIndexed>(get_device_proc_addr(device, "vkCmdDrawIndexed"));
     const auto cmd_draw_indexed_indirect =
         reinterpret_cast<VulkanCmdDrawIndexedIndirect>(get_device_proc_addr(device, "vkCmdDrawIndexedIndirect"));
+    const auto cmd_draw_indexed_indirect_count = reinterpret_cast<VulkanCmdDrawIndexedIndirectCount>(
+        get_device_proc_addr(device, "vkCmdDrawIndexedIndirectCount"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
@@ -9396,6 +9458,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_bind_index_buffer = cmd_bind_index_buffer;
     impl->cmd_draw_indexed = cmd_draw_indexed;
     impl->cmd_draw_indexed_indirect = cmd_draw_indexed_indirect;
+    impl->cmd_draw_indexed_indirect_count = cmd_draw_indexed_indirect_count;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
@@ -12888,6 +12951,34 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
             result.diagnostic = "Vulkan indexed indirect draw command is unavailable";
             return result;
         }
+        if (desc.indexed_indirect_count_buffer_draw) {
+            if (desc.indirect_count_buffer == nullptr || !desc.indirect_count_buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan indexed indirect draw count buffer is required";
+                return result;
+            }
+            if (desc.indirect_count_buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan indexed indirect draw count buffer must share one runtime device";
+                return result;
+            }
+            if (!has_flag(desc.indirect_count_buffer->usage(), BufferUsage::indirect)) {
+                result.diagnostic = "Vulkan indexed indirect draw count buffer requires indirect usage";
+                return result;
+            }
+            if (desc.indirect_count_buffer_offset % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+                result.diagnostic = "Vulkan indexed indirect count buffer offset must be 4-byte aligned";
+                return result;
+            }
+            if (desc.indirect_count_buffer_offset > desc.indirect_count_buffer->byte_size() ||
+                indexed_indirect_draw_count_buffer_size_bytes >
+                    desc.indirect_count_buffer->byte_size() - desc.indirect_count_buffer_offset) {
+                result.diagnostic = "Vulkan indexed indirect count range is outside the count buffer";
+                return result;
+            }
+            if (device.impl_->cmd_draw_indexed_indirect_count == nullptr) {
+                result.diagnostic = "Vulkan indexed indirect count buffer draw command is unavailable";
+                return result;
+            }
+        }
     }
     if (pipeline.color_format() != texture.format()) {
         result.diagnostic = "Vulkan dynamic rendering color format must match texture";
@@ -13042,10 +13133,18 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     if (indexed_indirect_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
-        // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirect from the argument buffer.
-        device.impl_->cmd_draw_indexed_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
-                                                desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
-                                                desc.indirect_command_stride_bytes);
+        if (desc.indexed_indirect_count_buffer_draw) {
+            // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirectCount.
+            device.impl_->cmd_draw_indexed_indirect_count(
+                command_buffer, desc.indirect_argument_buffer->impl_->buffer, desc.indirect_argument_buffer_offset,
+                desc.indirect_count_buffer->impl_->buffer, desc.indirect_count_buffer_offset, desc.indirect_draw_count,
+                desc.indirect_command_stride_bytes);
+        } else {
+            // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirect from the argument buffer.
+            device.impl_->cmd_draw_indexed_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
+                                                    desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
+                                                    desc.indirect_command_stride_bytes);
+        }
     } else if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
@@ -13216,6 +13315,34 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
             result.diagnostic = "Vulkan indexed indirect draw command is unavailable";
             return result;
         }
+        if (desc.indexed_indirect_count_buffer_draw) {
+            if (desc.indirect_count_buffer == nullptr || !desc.indirect_count_buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan indexed indirect draw count buffer is required";
+                return result;
+            }
+            if (desc.indirect_count_buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan indexed indirect draw count buffer must share one runtime device";
+                return result;
+            }
+            if (!has_flag(desc.indirect_count_buffer->usage(), BufferUsage::indirect)) {
+                result.diagnostic = "Vulkan indexed indirect draw count buffer requires indirect usage";
+                return result;
+            }
+            if (desc.indirect_count_buffer_offset % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+                result.diagnostic = "Vulkan indexed indirect count buffer offset must be 4-byte aligned";
+                return result;
+            }
+            if (desc.indirect_count_buffer_offset > desc.indirect_count_buffer->byte_size() ||
+                indexed_indirect_draw_count_buffer_size_bytes >
+                    desc.indirect_count_buffer->byte_size() - desc.indirect_count_buffer_offset) {
+                result.diagnostic = "Vulkan indexed indirect count range is outside the count buffer";
+                return result;
+            }
+            if (device.impl_->cmd_draw_indexed_indirect_count == nullptr) {
+                result.diagnostic = "Vulkan indexed indirect count buffer draw command is unavailable";
+                return result;
+            }
+        }
     }
     if (pipeline.color_format() != swapchain.format()) {
         result.diagnostic = "Vulkan dynamic rendering color format must match swapchain";
@@ -13370,10 +13497,18 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     if (indexed_indirect_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
-        // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirect from the argument buffer.
-        device.impl_->cmd_draw_indexed_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
-                                                desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
-                                                desc.indirect_command_stride_bytes);
+        if (desc.indexed_indirect_count_buffer_draw) {
+            // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirectCount.
+            device.impl_->cmd_draw_indexed_indirect_count(
+                command_buffer, desc.indirect_argument_buffer->impl_->buffer, desc.indirect_argument_buffer_offset,
+                desc.indirect_count_buffer->impl_->buffer, desc.indirect_count_buffer_offset, desc.indirect_draw_count,
+                desc.indirect_command_stride_bytes);
+        } else {
+            // VkDrawIndexedIndirectCommand records are consumed by vkCmdDrawIndexedIndirect from the argument buffer.
+            device.impl_->cmd_draw_indexed_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
+                                                    desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
+                                                    desc.indirect_command_stride_bytes);
+        }
     } else if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));

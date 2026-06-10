@@ -37,7 +37,6 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "vulkan rhi device executes indexed indirect draw into texture readback bytes",
-        "vulkan rhi device rejects indexed indirect count buffer execution until feature gate lands",
         "draw_indexed_indirect",
         "indexed_indirect_commands_executed",
         "indexed_indirect_count_buffer_reads",

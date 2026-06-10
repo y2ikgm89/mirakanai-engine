@@ -6,7 +6,7 @@
 
 **Status:** Active.
 
-**Execution State:** Active activation slice over merged `origin/main` after D3D12 count-buffer closeout PR #549 and Vulkan count-buffer plan draft PR #550. Manifest activation points `currentActivePlan` and `recommendedNextPlan.id = mavg-vulkan-count-buffer-indirect-execution-v1` without landing implementation in the activation PR. Today `vulkan_backend.cpp` fail-closes when `has_indexed_indirect_count_buffer(desc)` is true and `MK_backend_scaffold_tests` retains RED count-buffer rejection coverage until the independent implementation PR lands.
+**Execution State:** Active child implemented over merged `origin/main` after activation PR #551 and Vulkan count-buffer plan draft PR #550. `currentActivePlan` points at this plan and `recommendedNextPlan.id = mavg-vulkan-count-buffer-indirect-execution-v1`. The count-buffer execution claim is that `IRhiCommandList::draw_indexed_indirect` executes `vkCmdDrawIndexedIndirectCount` with 4-byte-aligned count-buffer offsets, running `min(count_buffer_value, max_draw_count)` draws for CPU-generated upload argument and count buffers, proven by SPIR-V environment-gated `MK_backend_scaffold_tests` count-limited, zero-count, and invalid-input coverage while keeping compute-generated count/argument buffers, D3D12 changes, actual GPU culling dispatch, mesh shaders, Metal readiness, and Nanite equivalence/superiority unclaimed.
 
 **Goal:** Extend the completed Vulkan no-count `vkCmdDrawIndexedIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI through `vkCmdDrawIndexedIndirectCount`, and proves visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming compute-generated count buffers, GPU culling dispatch, D3D12 changes, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
@@ -89,12 +89,12 @@ Out of scope:
 
 ## Tasks
 
-- [ ] Confirm Vulkan count-buffer official constraints through Khronos spec and retain completed no-count Vulkan and D3D12 count-buffer sibling audit references.
-- [ ] Run a read-only rendering subagent audit and split Vulkan count-buffer execution from compute-generated/D3D12 work.
-- [ ] Convert RED SPIR-V environment-gated `MK_backend_scaffold_tests` count-buffer rejection coverage into GREEN visible execution, zero-count, and invalid-input tests.
-- [ ] Implement backend-private Vulkan count-buffer validation and `vkCmdDrawIndexedIndirectCount` recording with shared helper reuse.
-- [ ] Update Vulkan RHI stats for count-buffer reads and effective executed command counts.
-- [ ] After PR #549 merge and activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
+- [x] Confirm Vulkan count-buffer official constraints through Khronos spec and retain completed no-count Vulkan and D3D12 count-buffer sibling audit references.
+- [x] Run a read-only rendering subagent audit and split Vulkan count-buffer execution from compute-generated/D3D12 work.
+- [x] Convert RED SPIR-V environment-gated `MK_backend_scaffold_tests` count-buffer rejection coverage into GREEN visible execution, zero-count, and invalid-input tests.
+- [x] Implement backend-private Vulkan count-buffer validation and `vkCmdDrawIndexedIndirectCount` recording with shared helper reuse.
+- [x] Update Vulkan RHI stats for count-buffer reads and effective executed command counts.
+- [x] After PR #549 merge and activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
 - [ ] Run focused validation plus full `tools/validate.ps1`.
 - [ ] Publish a validated PR over `codex/mavg-vulkan-count-buffer-indirect-execution-v1`.
 
