@@ -1,7 +1,0 @@
-docs(agent): close out MAVG D3D12 count-buffer indirect and return to selection gate [ai-gen]
-
-Mark mavg-d3d12-count-buffer-indirect-execution-v1 completed through PR #547,
-return currentActivePlan to the production-completion master plan, set
-recommendedNextPlan.id to next-production-gap-selection, and update manifest,
-plan registry, sibling pointers, and static checks 106/107/109 for closeout
-evidence while keeping count-buffer Vulkan execution unclaimed.
