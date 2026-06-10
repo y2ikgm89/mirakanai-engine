@@ -137,7 +137,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 ## Non-Claims
 
-- No executed GPU culling dispatch.
+- No executed GPU culling dispatch. Follow-up actual D3D12 compute dispatch is drafted in `docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md` / `mavg-gpu-culling-dispatch-v1` after MAVG Vulkan count-buffer closeout PR #553.
 - No D3D12 `ExecuteIndirect` execution.
 - No count-buffer Vulkan execution.
 - No mesh/task/amplification shader readiness.
