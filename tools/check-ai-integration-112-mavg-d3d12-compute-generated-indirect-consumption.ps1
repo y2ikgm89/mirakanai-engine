@@ -9,6 +9,7 @@ $d3d12MavgGpuCullingDispatchHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/
 $d3d12MavgGpuCullingDispatchSourceText = Get-AgentSurfaceText "engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp"
 $computeGeneratedTestsText = Get-AgentSurfaceText "tests/unit/mavg_d3d12_compute_generated_indirect_consumption_tests.cpp"
 $mavgComputeGeneratedPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md"
+$mavgVulkanGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md"
 $mavgGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
@@ -76,7 +77,8 @@ foreach ($surface in @(
             "D3D12",
             "compute-generated",
             "dispatch_mavg_gpu_culling_indirect",
-            "MK_mavg_d3d12_compute_generated_indirect_consumption_tests"
+            "MK_mavg_d3d12_compute_generated_indirect_consumption_tests",
+            "PR #560"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG D3D12 compute-generated indirect consumption implementation evidence"
     }
@@ -96,16 +98,26 @@ foreach ($needle in @(
         "MK_mavg_d3d12_compute_generated_indirect_consumption_tests",
         "leave_indirect_argument_state_for_consumption",
         "native_buffer_resource",
-        "is_compute_generated_indexed_indirect_buffer"
+        "is_compute_generated_indexed_indirect_buffer",
+        "PR #560",
+        "mavg-vulkan-gpu-culling-dispatch-v1",
+        "PR #561"
     )) {
     Assert-ContainsText $mavgComputeGeneratedPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md closeout contract"
 }
 
 foreach ($needle in @(
         "mavg-d3d12-compute-generated-indirect-consumption-v1",
-        "PR #558"
+        "PR #560"
     )) {
     Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md sibling transition"
+}
+
+foreach ($needle in @(
+        "mavg-vulkan-gpu-culling-dispatch-v1",
+        "PR #561"
+    )) {
+    Assert-ContainsText $mavgComputeGeneratedPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-d3d12-compute-generated-indirect-consumption-v1.md Vulkan sibling transition"
 }
 
 foreach ($needle in @(
@@ -114,7 +126,8 @@ foreach ($needle in @(
         "dispatch_mavg_gpu_culling_indirect",
         "leave_indirect_argument_state_for_consumption",
         "native_buffer_resource",
-        "compute-generated"
+        "compute-generated",
+        "PR #560"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_renderer compute-generated consumption closeout evidence"
 }
@@ -127,7 +140,8 @@ foreach ($needle in @(
         "MK_mavg_d3d12_compute_generated_indirect_consumption_tests",
         "dispatch_mavg_gpu_culling_indirect",
         "leave_indirect_argument_state_for_consumption",
-        "compute-generated"
+        "compute-generated",
+        "PR #560"
     )) {
     Assert-ContainsText $rendererManifestText $needle "engine/agent/manifest.json MK_renderer compute-generated consumption closeout evidence"
 }
