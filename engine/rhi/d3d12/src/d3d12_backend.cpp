@@ -3,6 +3,7 @@
 
 #include "mirakana/rhi/d3d12/d3d12_backend.hpp"
 
+#include "mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch_internal.hpp"
 #include "mirakana/rhi/gpu_debug.hpp"
 #include "mirakana/rhi/indirect_draw.hpp"
 #include "mirakana/rhi/memory_diagnostics.hpp"
@@ -1609,6 +1610,7 @@ struct DeviceContext::Impl {
     std::vector<bool> resource_placed_active;
     std::vector<ResourceRenderTargetViewRecord> resource_rtvs;
     std::vector<ResourceDepthStencilViewRecord> resource_dsvs;
+    std::vector<D3D12_RESOURCE_STATES> resource_states;
     std::vector<SwapchainRecord> swapchains;
     std::vector<DescriptorHeapRecord> descriptor_heaps;
     std::vector<RootSignatureRecord> root_signatures;
@@ -2096,6 +2098,14 @@ DeviceContext& DeviceContext::operator=(DeviceContext&&) noexcept = default;
 
 DeviceContext::~DeviceContext() = default;
 
+DeviceContext::Impl* DeviceContext::impl() noexcept {
+    return impl_.get();
+}
+
+const DeviceContext::Impl* DeviceContext::impl() const noexcept {
+    return impl_.get();
+}
+
 std::unique_ptr<DeviceContext> DeviceContext::create(const DeviceBootstrapDesc& desc) {
     auto impl = std::make_unique<Impl>();
     if (desc.enable_debug_layer) {
@@ -2188,6 +2198,7 @@ NativeResourceHandle DeviceContext::create_committed_buffer(const BufferDesc& de
     impl_->resource_placed_active.push_back(true);
     impl_->resource_rtvs.push_back(ResourceRenderTargetViewRecord{});
     impl_->resource_dsvs.push_back(ResourceDepthStencilViewRecord{});
+    impl_->resource_states.push_back(committed_buffer_initial_state(heap_type));
     ++impl_->stats.committed_buffers_created;
     ++impl_->stats.committed_resources_alive;
     return NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())};
@@ -2238,6 +2249,7 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
     impl_->resource_placed_active.push_back(true);
     impl_->resource_rtvs.push_back(std::move(rtv));
     impl_->resource_dsvs.push_back(std::move(dsv));
+    impl_->resource_states.push_back(committed_texture_initial_state(desc.usage));
     ++impl_->stats.committed_textures_created;
     ++impl_->stats.committed_resources_alive;
     return NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())};
@@ -2307,6 +2319,7 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
     impl_->resource_placed_active.push_back(false);
     impl_->resource_rtvs.push_back(std::move(rtv));
     impl_->resource_dsvs.push_back(std::move(dsv));
+    impl_->resource_states.push_back(committed_texture_initial_state(desc.usage));
     ++impl_->stats.placed_texture_heaps_created;
     ++impl_->stats.placed_textures_created;
     ++impl_->stats.placed_resources_alive;
@@ -2400,6 +2413,7 @@ std::vector<NativeResourceHandle> DeviceContext::create_placed_texture_alias_gro
         impl_->resource_placed_active.push_back(false);
         impl_->resource_rtvs.push_back(std::move(rtvs[i]));
         impl_->resource_dsvs.push_back(std::move(dsvs[i]));
+        impl_->resource_states.push_back(committed_texture_initial_state(desc.usage));
         handles.push_back(NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())});
     }
 
@@ -3741,8 +3755,53 @@ bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t
     return true;
 }
 
+void DeviceContext::set_buffer_resource_state(NativeResourceHandle buffer,
+                                              std::uint32_t d3d12_resource_state) noexcept {
+    if (!valid() || buffer.value == 0 || buffer.value > impl_->resource_states.size()) {
+        return;
+    }
+    impl_->resource_states[buffer.value - 1U] = static_cast<D3D12_RESOURCE_STATES>(d3d12_resource_state);
+}
+
+namespace {
+
+void insert_uav_barrier(ID3D12GraphicsCommandList* command_list, ID3D12Resource* resource) {
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.UAV.pResource = resource;
+    command_list->ResourceBarrier(1, &barrier);
+}
+
+bool transition_tracked_buffer_to_indirect_argument(ID3D12GraphicsCommandList* command_list, ID3D12Resource* resource,
+                                                    D3D12_RESOURCE_STATES& tracked_state) {
+    if (tracked_state == D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT) {
+        return true;
+    }
+
+    insert_uav_barrier(command_list, resource);
+    D3D12_RESOURCE_STATES before = tracked_state;
+    if (before == D3D12_RESOURCE_STATE_COMMON) {
+        before = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = resource;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Transition.StateBefore = before;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+    command_list->ResourceBarrier(1, &barrier);
+    tracked_state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+    return true;
+}
+
+} // namespace
+
 bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
-                                          NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc) {
+                                          NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc,
+                                          bool compute_generated_indirect) {
     if (!valid()) {
         return false;
     }
@@ -3791,22 +3850,47 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
                 count_desc.Width - desc.count_buffer_offset) {
             return false;
         }
+        if (!compute_generated_indirect) {
+            try {
+                count_buffer_value = read_indexed_indirect_count_buffer_value(*count_resource, desc);
+            } catch (const std::exception&) {
+                return false;
+            }
+        }
+    }
+
+    const std::uint32_t effective_draw_count =
+        compute_generated_indirect
+            ? desc.max_draw_count
+            : (count_buffer_used ? mirakana::rhi::effective_indexed_indirect_draw_count(count_buffer_value, desc)
+                                 : desc.max_draw_count);
+
+    std::vector<IndexedIndirectDrawCommand> decoded_commands;
+    if (!compute_generated_indirect) {
         try {
-            count_buffer_value = read_indexed_indirect_count_buffer_value(*count_resource, desc);
+            decoded_commands = read_indexed_indirect_draw_commands(*argument_resource, desc, effective_draw_count);
         } catch (const std::exception&) {
             return false;
         }
     }
 
-    const std::uint32_t effective_draw_count =
-        count_buffer_used ? mirakana::rhi::effective_indexed_indirect_draw_count(count_buffer_value, desc)
-                          : desc.max_draw_count;
-
-    std::vector<IndexedIndirectDrawCommand> decoded_commands;
-    try {
-        decoded_commands = read_indexed_indirect_draw_commands(*argument_resource, desc, effective_draw_count);
-    } catch (const std::exception&) {
-        return false;
+    if (compute_generated_indirect) {
+        if (argument_buffer.value == 0 || argument_buffer.value > impl_->resource_states.size()) {
+            return false;
+        }
+        if (!transition_tracked_buffer_to_indirect_argument(command_record->list.Get(), argument_resource,
+                                                            impl_->resource_states[argument_buffer.value - 1U])) {
+            return false;
+        }
+        if (count_buffer_used) {
+            if (count_buffer.value == 0 || count_buffer.value > impl_->resource_states.size()) {
+                return false;
+            }
+            if (!transition_tracked_buffer_to_indirect_argument(command_record->list.Get(), count_resource,
+                                                                impl_->resource_states[count_buffer.value - 1U])) {
+                return false;
+            }
+        }
     }
 
     ID3D12CommandSignature* signature = impl_->ensure_indexed_indirect_draw_signature(desc.command_stride_bytes);
@@ -3816,8 +3900,18 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
 
     command_record->list->ExecuteIndirect(signature, desc.max_draw_count, argument_resource,
                                           desc.argument_buffer_offset, count_resource, desc.count_buffer_offset);
-    record_device_context_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc, count_buffer_used,
-                                                      count_buffer_value);
+    if (compute_generated_indirect) {
+        ++impl_->stats.indexed_indirect_draw_calls;
+        if (count_buffer_used) {
+            ++impl_->stats.indexed_indirect_count_buffer_reads;
+        }
+        impl_->stats.last_indexed_indirect_max_draw_count = desc.max_draw_count;
+        impl_->stats.last_indexed_indirect_executed_draw_count = 0;
+        impl_->stats.last_indexed_indirect_count_buffer_value = count_buffer_used ? 0 : desc.max_draw_count;
+    } else {
+        record_device_context_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc, count_buffer_used,
+                                                          count_buffer_value);
+    }
     return true;
 }
 
@@ -6232,9 +6326,13 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (!has_flag(argument_desc.usage, BufferUsage::indirect)) {
             throw std::invalid_argument("d3d12 rhi indexed indirect draw argument buffer requires indirect usage");
         }
-        if (!has_flag(argument_desc.usage, BufferUsage::copy_source)) {
-            throw std::invalid_argument(
-                "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload usage in v1");
+
+        const bool cpu_upload_indirect = mirakana::rhi::is_cpu_upload_indexed_indirect_buffer(argument_desc.usage);
+        const bool compute_generated_indirect =
+            mirakana::rhi::is_compute_generated_indexed_indirect_buffer(argument_desc.usage);
+        if (!cpu_upload_indirect && !compute_generated_indirect) {
+            throw std::invalid_argument("d3d12 rhi indexed indirect draw argument buffer requires copy_source upload "
+                                        "usage or compute-generated indirect|storage usage");
         }
 
         const auto argument_range_end = mirakana::rhi::indexed_indirect_argument_range_end(desc);
@@ -6252,7 +6350,15 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             if (!has_flag(count_desc.usage, BufferUsage::indirect)) {
                 throw std::invalid_argument("d3d12 rhi indexed indirect draw count buffer requires indirect usage");
             }
-            if (!has_flag(count_desc.usage, BufferUsage::copy_source)) {
+            const bool count_cpu_upload = mirakana::rhi::is_cpu_upload_indexed_indirect_buffer(count_desc.usage);
+            const bool count_compute_generated =
+                mirakana::rhi::is_compute_generated_indexed_indirect_buffer(count_desc.usage);
+            if (compute_generated_indirect && !count_compute_generated) {
+                throw std::invalid_argument(
+                    "d3d12 rhi compute-generated indexed indirect draw count buffer requires indirect|storage usage "
+                    "without copy_source");
+            }
+            if (cpu_upload_indirect && !count_cpu_upload) {
                 throw std::invalid_argument(
                     "d3d12 rhi indexed indirect draw count buffer requires copy_source upload usage in v1");
             }
@@ -6267,37 +6373,54 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             }
 
             native_count_buffer = native_buffer(desc.count_buffer);
-            const auto count_bytes =
-                context_->read_buffer(native_count_buffer, desc.count_buffer_offset,
-                                      mirakana::rhi::indexed_indirect_draw_count_buffer_size_bytes);
-            if (count_bytes.size() != mirakana::rhi::indexed_indirect_draw_count_buffer_size_bytes) {
-                throw std::logic_error("d3d12 rhi indexed indirect draw count buffer readback failed");
+            if (cpu_upload_indirect) {
+                const auto count_bytes =
+                    context_->read_buffer(native_count_buffer, desc.count_buffer_offset,
+                                          mirakana::rhi::indexed_indirect_draw_count_buffer_size_bytes);
+                if (count_bytes.size() != mirakana::rhi::indexed_indirect_draw_count_buffer_size_bytes) {
+                    throw std::logic_error("d3d12 rhi indexed indirect draw count buffer readback failed");
+                }
+                count_buffer_value = mirakana::rhi::decode_indexed_indirect_count_buffer_value(count_bytes);
             }
-            count_buffer_value = mirakana::rhi::decode_indexed_indirect_count_buffer_value(count_bytes);
         }
 
         const std::uint32_t effective_draw_count =
-            count_buffer_used ? mirakana::rhi::effective_indexed_indirect_draw_count(count_buffer_value, desc)
-                              : desc.max_draw_count;
+            cpu_upload_indirect && count_buffer_used
+                ? mirakana::rhi::effective_indexed_indirect_draw_count(count_buffer_value, desc)
+                : desc.max_draw_count;
 
         const auto native_argument_buffer = native_buffer(desc.argument_buffer);
-        const auto argument_bytes = context_->read_buffer(native_argument_buffer, 0, argument_range_end);
-        if (argument_bytes.size() != static_cast<std::size_t>(argument_range_end)) {
-            throw std::logic_error("d3d12 rhi indexed indirect draw argument buffer readback failed");
+        std::vector<mirakana::rhi::IndexedIndirectDrawCommand> decoded_commands;
+        if (cpu_upload_indirect) {
+            const auto argument_bytes = context_->read_buffer(native_argument_buffer, 0, argument_range_end);
+            if (argument_bytes.size() != static_cast<std::size_t>(argument_range_end)) {
+                throw std::logic_error("d3d12 rhi indexed indirect draw argument buffer readback failed");
+            }
+            decoded_commands =
+                mirakana::rhi::decode_indexed_indirect_draw_commands(argument_bytes, desc, effective_draw_count);
         }
-        const auto decoded_commands =
-            mirakana::rhi::decode_indexed_indirect_draw_commands(argument_bytes, desc, effective_draw_count);
 
         observe_buffer(desc.argument_buffer);
         if (count_buffer_used) {
             observe_buffer(desc.count_buffer);
         }
-        if (!context_->draw_indexed_indirect(native_, native_argument_buffer, native_count_buffer, desc)) {
+        if (!context_->draw_indexed_indirect(native_, native_argument_buffer, native_count_buffer, desc,
+                                             compute_generated_indirect)) {
             throw std::logic_error("d3d12 rhi indexed indirect draw failed");
         }
 
-        mirakana::rhi::record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc, count_buffer_used,
-                                                          count_buffer_value);
+        if (cpu_upload_indirect) {
+            mirakana::rhi::record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc, count_buffer_used,
+                                                              count_buffer_value);
+        } else {
+            ++stats_->indexed_indirect_draw_calls;
+            if (count_buffer_used) {
+                ++stats_->indexed_indirect_count_buffer_reads;
+            }
+            stats_->last_indexed_indirect_max_draw_count = desc.max_draw_count;
+            stats_->last_indexed_indirect_executed_draw_count = 0;
+            stats_->last_indexed_indirect_count_buffer_value = count_buffer_used ? 0 : desc.max_draw_count;
+        }
         vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
     }
@@ -6953,6 +7076,17 @@ class D3d12RhiDevice final : public IRhiDevice {
 
     [[nodiscard]] const RhiResourceLifetimeRegistry* resource_lifetime_registry() const noexcept override {
         return &resource_lifetime_;
+    }
+
+    [[nodiscard]] NativeResourceHandle native_buffer_for_handle(BufferHandle buffer) const noexcept {
+        if (!owns_buffer(buffer)) {
+            return NativeResourceHandle{};
+        }
+        return buffer_handles_.at(buffer.value - 1U);
+    }
+
+    [[nodiscard]] DeviceContext* device_context() const noexcept {
+        return context_.get();
     }
 
     [[nodiscard]] D3d12SharedTextureExportResult export_shared_texture(TextureHandle texture) noexcept {
@@ -8393,6 +8527,45 @@ D3d12SharedTextureExportResult export_shared_texture(IRhiDevice& device, Texture
 
     return d3d12_device->export_shared_texture(texture);
 }
+
+NativeResourceHandle native_buffer_resource(IRhiDevice& device, BufferHandle buffer) noexcept {
+    auto* d3d12_device = dynamic_cast<D3d12RhiDevice*>(&device);
+    if (d3d12_device == nullptr) {
+        return NativeResourceHandle{};
+    }
+
+    return d3d12_device->native_buffer_for_handle(buffer);
+}
+
+DeviceContext* device_context_from_rhi_device(IRhiDevice& device) noexcept {
+    auto* d3d12_device = dynamic_cast<D3d12RhiDevice*>(&device);
+    if (d3d12_device == nullptr) {
+        return nullptr;
+    }
+
+    return d3d12_device->device_context();
+}
+
+namespace detail {
+
+MavgGpuCullingDeviceBinding mavg_gpu_culling_device_binding(DeviceContext& context) noexcept {
+    MavgGpuCullingDeviceBinding binding{};
+    if (auto* impl = context.impl()) {
+        binding.device = impl->device.Get();
+        binding.command_queue = impl->ensure_queue(QueueKind::compute);
+        binding.fence = impl->ensure_fence(QueueKind::compute);
+    }
+    return binding;
+}
+
+ID3D12Resource* committed_resource(DeviceContext& context, NativeResourceHandle handle) noexcept {
+    if (auto* impl = context.impl()) {
+        return impl->resource_record(handle);
+    }
+    return nullptr;
+}
+
+} // namespace detail
 
 void close_shared_texture_handle(D3d12SharedTextureHandle handle) noexcept {
     if (handle.value != 0) {

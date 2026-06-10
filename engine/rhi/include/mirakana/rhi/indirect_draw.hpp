@@ -68,4 +68,8 @@ void record_indexed_indirect_draw_stats(RhiStats& stats, std::span<const Indexed
                                         const IndexedIndirectDrawDesc& desc, bool count_buffer_used = false,
                                         std::uint32_t count_buffer_value = 0) noexcept;
 
+[[nodiscard]] bool is_cpu_upload_indexed_indirect_buffer(BufferUsage usage) noexcept;
+
+[[nodiscard]] bool is_compute_generated_indexed_indirect_buffer(BufferUsage usage) noexcept;
+
 } // namespace mirakana::rhi

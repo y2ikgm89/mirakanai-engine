@@ -30,7 +30,8 @@ foreach ($needle in @(
         "ExecuteIndirect",
         "D3D12.IndexedIndirectDrawSignature",
         "d3d12 rhi indexed indirect draw count buffer requires copy_source upload usage in v1",
-        "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload usage in v1",
+        "compute-generated indirect|storage usage",
+        "is_compute_generated_indexed_indirect_buffer",
         "record_indexed_indirect_draw_stats"
     )) {
     Assert-ContainsText $d3d12BackendSourceText $needle "engine/rhi/d3d12/src/d3d12_backend.cpp D3D12 ExecuteIndirect evidence"

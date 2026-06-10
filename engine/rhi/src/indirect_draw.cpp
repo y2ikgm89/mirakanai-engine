@@ -171,6 +171,15 @@ void record_indexed_indirect_draw_stats(RhiStats& stats, std::span<const Indexed
     }
 }
 
+bool is_cpu_upload_indexed_indirect_buffer(BufferUsage usage) noexcept {
+    return has_flag(usage, BufferUsage::indirect) && has_flag(usage, BufferUsage::copy_source);
+}
+
+bool is_compute_generated_indexed_indirect_buffer(BufferUsage usage) noexcept {
+    return has_flag(usage, BufferUsage::indirect) && has_flag(usage, BufferUsage::storage) &&
+           !has_flag(usage, BufferUsage::copy_source);
+}
+
 void IRhiCommandList::draw_indexed_indirect(const IndexedIndirectDrawDesc&) {
     throw std::logic_error("rhi indexed indirect draw is unsupported by this command list");
 }

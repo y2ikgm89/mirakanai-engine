@@ -3,6 +3,8 @@
 
 #include "mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch.hpp"
 
+#include "mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch_internal.hpp"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -298,10 +300,19 @@ void uav_barrier(ID3D12GraphicsCommandList* command_list, ID3D12Resource* resour
     return bytes;
 }
 
-} // namespace
+struct MavgGpuCullingDispatchEnvironment {
+    ID3D12Device* device{nullptr};
+    ID3D12CommandQueue* command_queue{nullptr};
+    ID3D12Fence* fence{nullptr};
+    HANDLE fence_event{nullptr};
+    bool owns_fence_event{false};
+    ID3D12Resource* external_argument_buffer{nullptr};
+    ID3D12Resource* external_count_buffer{nullptr};
+};
 
-D3d12MavgGpuCullingDispatchResult
-dispatch_mavg_gpu_culling_indirect(const D3d12MavgGpuCullingDispatchDesc& desc) noexcept {
+[[nodiscard]] D3d12MavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect_environment(const D3d12MavgGpuCullingDispatchDesc& desc,
+                                               MavgGpuCullingDispatchEnvironment& env) noexcept {
     D3d12MavgGpuCullingDispatchResult result{};
     result.visible_cluster_count = visible_cluster_count(desc.cluster_rows);
     result.culled_cluster_count = culled_cluster_count(desc.cluster_rows);
@@ -310,7 +321,8 @@ dispatch_mavg_gpu_culling_indirect(const D3d12MavgGpuCullingDispatchDesc& desc) 
     result.argument_buffer_size_bytes =
         static_cast<std::uint64_t>(result.visible_cluster_count) * static_cast<std::uint64_t>(desc.record_stride_bytes);
 
-    if (!valid_dispatch_desc(desc) || result.visible_cluster_count == 0U) {
+    if (!valid_dispatch_desc(desc) || result.visible_cluster_count == 0U || env.device == nullptr ||
+        env.command_queue == nullptr || env.fence == nullptr || env.fence_event == nullptr) {
         result.failure_stage = 1U;
         return result;
     }
@@ -322,6 +334,257 @@ dispatch_mavg_gpu_culling_indirect(const D3d12MavgGpuCullingDispatchDesc& desc) 
     const auto shader_bytecode = compile_mavg_gpu_culling_compute_shader();
     if (shader_bytecode == nullptr) {
         result.failure_stage = 3U;
+        return result;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> root_signature;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline_state;
+    if (!create_root_signature(env.device, root_signature) ||
+        !create_compute_pipeline_state(env.device, root_signature.Get(), shader_bytecode.Get(), pipeline_state)) {
+        result.failure_stage = 4U;
+        return result;
+    }
+
+    const auto cluster_count = static_cast<std::uint32_t>(desc.cluster_rows.size());
+    const auto cluster_buffer_size =
+        static_cast<std::uint64_t>(cluster_count) * d3d12_mavg_gpu_culling_dispatch_cluster_row_stride_bytes;
+    const auto argument_buffer_size = argument_allocation_bytes;
+    const auto uav_buffer_flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> cluster_default_buffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> cluster_upload_buffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> owned_argument_buffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> owned_count_buffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> constants_upload_buffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> argument_readback_buffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> count_readback_buffer;
+
+    ID3D12Resource* argument_buffer = env.external_argument_buffer;
+    ID3D12Resource* count_buffer = env.external_count_buffer;
+
+    const auto default_heap = default_heap_properties();
+    const auto upload_heap = upload_heap_properties();
+    const auto readback_heap = readback_heap_properties();
+    const auto cluster_buffer_desc = buffer_resource_desc(cluster_buffer_size);
+    const auto argument_buffer_desc = buffer_resource_desc(argument_buffer_size, uav_buffer_flags);
+    const auto count_buffer_desc = buffer_resource_desc(k_indirect_count_buffer_size_bytes, uav_buffer_flags);
+    const auto constants_buffer_desc = buffer_resource_desc(256U);
+    const auto argument_readback_desc = buffer_resource_desc(argument_buffer_size);
+    const auto count_readback_desc = buffer_resource_desc(k_indirect_count_buffer_size_bytes);
+
+    if (argument_buffer == nullptr &&
+        FAILED(env.device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &argument_buffer_desc,
+                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                                                   IID_PPV_ARGS(&owned_argument_buffer)))) {
+        result.failure_stage = 5U;
+        return result;
+    }
+    if (count_buffer == nullptr &&
+        FAILED(env.device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &count_buffer_desc,
+                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                                                   IID_PPV_ARGS(&owned_count_buffer)))) {
+        result.failure_stage = 6U;
+        return result;
+    }
+    if (argument_buffer == nullptr) {
+        argument_buffer = owned_argument_buffer.Get();
+    }
+    if (count_buffer == nullptr) {
+        count_buffer = owned_count_buffer.Get();
+    }
+
+    if (FAILED(env.device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &cluster_buffer_desc,
+                                                   D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+                                                   IID_PPV_ARGS(&cluster_default_buffer))) ||
+        FAILED(env.device->CreateCommittedResource(&upload_heap, D3D12_HEAP_FLAG_NONE, &cluster_buffer_desc,
+                                                   D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                                                   IID_PPV_ARGS(&cluster_upload_buffer))) ||
+        FAILED(env.device->CreateCommittedResource(&upload_heap, D3D12_HEAP_FLAG_NONE, &constants_buffer_desc,
+                                                   D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                                                   IID_PPV_ARGS(&constants_upload_buffer)))) {
+        result.failure_stage = 7U;
+        return result;
+    }
+
+    if (!desc.leave_indirect_argument_state_for_consumption &&
+        (FAILED(env.device->CreateCommittedResource(&readback_heap, D3D12_HEAP_FLAG_NONE, &argument_readback_desc,
+                                                    D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+                                                    IID_PPV_ARGS(&argument_readback_buffer))) ||
+         FAILED(env.device->CreateCommittedResource(&readback_heap, D3D12_HEAP_FLAG_NONE, &count_readback_desc,
+                                                    D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+                                                    IID_PPV_ARGS(&count_readback_buffer))))) {
+        result.failure_stage = 8U;
+        return result;
+    }
+
+    {
+        void* mapped = nullptr;
+        if (FAILED(cluster_upload_buffer->Map(0, nullptr, &mapped)) || mapped == nullptr) {
+            result.failure_stage = 9U;
+            return result;
+        }
+        std::memcpy(mapped, desc.cluster_rows.data(), static_cast<std::size_t>(cluster_buffer_size));
+        cluster_upload_buffer->Unmap(0, nullptr);
+    }
+
+    {
+        struct Constants {
+            std::uint32_t cluster_count;
+            std::uint32_t max_command_count;
+            std::uint32_t record_stride_bytes;
+            std::uint32_t pad;
+        };
+        Constants constants{
+            .cluster_count = cluster_count,
+            .max_command_count = desc.max_command_count,
+            .record_stride_bytes = desc.record_stride_bytes,
+            .pad = 0U,
+        };
+        void* mapped = nullptr;
+        if (FAILED(constants_upload_buffer->Map(0, nullptr, &mapped)) || mapped == nullptr) {
+            result.failure_stage = 10U;
+            return result;
+        }
+        std::memcpy(mapped, &constants, sizeof(constants));
+        constants_upload_buffer->Unmap(0, nullptr);
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list;
+    if (FAILED(env.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&allocator))) ||
+        FAILED(env.device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COMPUTE, allocator.Get(), nullptr,
+                                             IID_PPV_ARGS(&command_list)))) {
+        result.failure_stage = 11U;
+        return result;
+    }
+
+    D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
+    heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    heap_desc.NumDescriptors = 3;
+    heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptor_heap;
+    if (FAILED(env.device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&descriptor_heap)))) {
+        result.failure_stage = 12U;
+        return result;
+    }
+
+    const auto descriptor_size = env.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    const auto heap_cpu_start = descriptor_heap->GetCPUDescriptorHandleForHeapStart();
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC cluster_srv_desc{};
+    cluster_srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+    cluster_srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    cluster_srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    cluster_srv_desc.Buffer.FirstElement = 0;
+    cluster_srv_desc.Buffer.NumElements = cluster_count;
+    cluster_srv_desc.Buffer.StructureByteStride = d3d12_mavg_gpu_culling_dispatch_cluster_row_stride_bytes;
+    cluster_srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    env.device->CreateShaderResourceView(cluster_default_buffer.Get(), &cluster_srv_desc, heap_cpu_start);
+
+    const auto argument_uav_cpu = cpu_descriptor_handle(heap_cpu_start, 1U, descriptor_size);
+    D3D12_UNORDERED_ACCESS_VIEW_DESC argument_uav_desc{};
+    argument_uav_desc.Format = DXGI_FORMAT_R32_TYPELESS;
+    argument_uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+    argument_uav_desc.Buffer.FirstElement = 0;
+    argument_uav_desc.Buffer.NumElements = static_cast<UINT>(argument_buffer_size / 4U);
+    argument_uav_desc.Buffer.StructureByteStride = 0;
+    argument_uav_desc.Buffer.CounterOffsetInBytes = 0;
+    argument_uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+    env.device->CreateUnorderedAccessView(argument_buffer, nullptr, &argument_uav_desc, argument_uav_cpu);
+
+    const auto count_uav_cpu = cpu_descriptor_handle(heap_cpu_start, 2U, descriptor_size);
+    D3D12_UNORDERED_ACCESS_VIEW_DESC count_uav_desc{};
+    count_uav_desc.Format = DXGI_FORMAT_R32_TYPELESS;
+    count_uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+    count_uav_desc.Buffer.FirstElement = 0;
+    count_uav_desc.Buffer.NumElements = 1;
+    count_uav_desc.Buffer.StructureByteStride = 0;
+    count_uav_desc.Buffer.CounterOffsetInBytes = 0;
+    count_uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+    env.device->CreateUnorderedAccessView(count_buffer, nullptr, &count_uav_desc, count_uav_cpu);
+
+    command_list->CopyBufferRegion(cluster_default_buffer.Get(), 0, cluster_upload_buffer.Get(), 0,
+                                   cluster_buffer_size);
+    transition_resource(command_list.Get(), cluster_default_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, result.resource_barriers_recorded);
+
+    const auto heap_gpu_start = descriptor_heap->GetGPUDescriptorHandleForHeapStart();
+    ID3D12DescriptorHeap* heaps[] = {descriptor_heap.Get()};
+    command_list->SetDescriptorHeaps(1, heaps);
+    command_list->SetComputeRootSignature(root_signature.Get());
+    command_list->SetPipelineState(pipeline_state.Get());
+    command_list->SetComputeRootConstantBufferView(0, constants_upload_buffer->GetGPUVirtualAddress());
+    command_list->SetComputeRootDescriptorTable(1, heap_gpu_start);
+
+    command_list->Dispatch(1, 1, 1);
+    result.compute_dispatches = 1U;
+
+    uav_barrier(command_list.Get(), argument_buffer, result.resource_barriers_recorded);
+    uav_barrier(command_list.Get(), count_buffer, result.resource_barriers_recorded);
+    transition_resource(command_list.Get(), argument_buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                        D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, result.resource_barriers_recorded);
+    transition_resource(command_list.Get(), count_buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                        D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, result.resource_barriers_recorded);
+
+    if (!desc.leave_indirect_argument_state_for_consumption) {
+        transition_resource(command_list.Get(), argument_buffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                            D3D12_RESOURCE_STATE_COPY_SOURCE, result.resource_barriers_recorded);
+        transition_resource(command_list.Get(), count_buffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                            D3D12_RESOURCE_STATE_COPY_SOURCE, result.resource_barriers_recorded);
+        command_list->CopyBufferRegion(argument_readback_buffer.Get(), 0, argument_buffer, 0, argument_buffer_size);
+        command_list->CopyBufferRegion(count_readback_buffer.Get(), 0, count_buffer, 0,
+                                       k_indirect_count_buffer_size_bytes);
+    }
+
+    if (FAILED(command_list->Close())) {
+        result.failure_stage = 13U;
+        return result;
+    }
+
+    ID3D12CommandList* command_lists[] = {command_list.Get()};
+    env.command_queue->ExecuteCommandLists(1, command_lists);
+    const std::uint64_t fence_value = 1U;
+    if (FAILED(env.command_queue->Signal(env.fence, fence_value)) ||
+        !wait_for_fence(env.fence, fence_value, env.fence_event)) {
+        result.failure_stage = 14U;
+        return result;
+    }
+
+    if (desc.leave_indirect_argument_state_for_consumption) {
+        result.executed_gpu_culling = true;
+        result.succeeded = true;
+        return result;
+    }
+
+    result.count_readback_bytes =
+        readback_buffer_bytes(count_readback_buffer.Get(), k_indirect_count_buffer_size_bytes);
+    if (result.count_readback_bytes.size() != k_indirect_count_buffer_size_bytes) {
+        result.failure_stage = 15U;
+        return result;
+    }
+
+    result.count_buffer_value = static_cast<std::uint32_t>(result.count_readback_bytes[0]) |
+                                (static_cast<std::uint32_t>(result.count_readback_bytes[1]) << 8U) |
+                                (static_cast<std::uint32_t>(result.count_readback_bytes[2]) << 16U) |
+                                (static_cast<std::uint32_t>(result.count_readback_bytes[3]) << 24U);
+    result.argument_buffer_size_bytes =
+        static_cast<std::uint64_t>(result.count_buffer_value) * static_cast<std::uint64_t>(desc.record_stride_bytes);
+    result.argument_readback_bytes =
+        readback_buffer_bytes(argument_readback_buffer.Get(), result.argument_buffer_size_bytes);
+    if (result.argument_readback_bytes.size() != static_cast<std::size_t>(result.argument_buffer_size_bytes)) {
+        result.failure_stage = 16U;
+        return result;
+    }
+    result.executed_gpu_culling = true;
+    result.succeeded = true;
+    return result;
+}
+
+[[nodiscard]] D3d12MavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect_standalone(const D3d12MavgGpuCullingDispatchDesc& desc) noexcept {
+    D3d12MavgGpuCullingDispatchResult result{};
+    if (desc.external_argument_buffer.value != 0 || desc.external_count_buffer.value != 0) {
+        result.failure_stage = 30U;
         return result;
     }
 
@@ -357,220 +620,84 @@ dispatch_mavg_gpu_culling_indirect(const D3d12MavgGpuCullingDispatchDesc& desc) 
         return result;
     }
 
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> root_signature;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline_state;
-    if (!create_root_signature(device.Get(), root_signature) ||
-        !create_compute_pipeline_state(device.Get(), root_signature.Get(), shader_bytecode.Get(), pipeline_state)) {
-        CloseHandle(fence_event);
+    MavgGpuCullingDispatchEnvironment env{
+        .device = device.Get(),
+        .command_queue = command_queue.Get(),
+        .fence = fence.Get(),
+        .fence_event = fence_event,
+        .owns_fence_event = true,
+    };
+    result = dispatch_mavg_gpu_culling_indirect_environment(desc, env);
+    CloseHandle(fence_event);
+    return result;
+}
+
+[[nodiscard]] D3d12MavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect_on_rhi_device(IRhiDevice& device,
+                                                 const D3d12MavgGpuCullingDispatchDesc& desc) noexcept {
+    D3d12MavgGpuCullingDispatchResult result{};
+    if (desc.external_argument_buffer.value == 0 || desc.external_count_buffer.value == 0) {
+        result.failure_stage = 20U;
         return result;
     }
 
-    const auto cluster_count = static_cast<std::uint32_t>(desc.cluster_rows.size());
-    const auto cluster_buffer_size =
-        static_cast<std::uint64_t>(cluster_count) * d3d12_mavg_gpu_culling_dispatch_cluster_row_stride_bytes;
-    const auto argument_buffer_size = argument_allocation_bytes;
-    const auto uav_buffer_flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> cluster_default_buffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> cluster_upload_buffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> argument_buffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> count_buffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> constants_upload_buffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> argument_readback_buffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> count_readback_buffer;
-
-    const auto default_heap = default_heap_properties();
-    const auto upload_heap = upload_heap_properties();
-    const auto readback_heap = readback_heap_properties();
-    const auto cluster_buffer_desc = buffer_resource_desc(cluster_buffer_size);
-    const auto argument_buffer_desc = buffer_resource_desc(argument_buffer_size, uav_buffer_flags);
-    const auto count_buffer_desc = buffer_resource_desc(k_indirect_count_buffer_size_bytes, uav_buffer_flags);
-    const auto constants_buffer_desc = buffer_resource_desc(256U);
-    const auto argument_readback_desc = buffer_resource_desc(argument_buffer_size);
-    const auto count_readback_desc = buffer_resource_desc(k_indirect_count_buffer_size_bytes);
-
-    if (FAILED(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &cluster_buffer_desc,
-                                               D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-                                               IID_PPV_ARGS(&cluster_default_buffer))) ||
-        FAILED(device->CreateCommittedResource(&upload_heap, D3D12_HEAP_FLAG_NONE, &cluster_buffer_desc,
-                                               D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-                                               IID_PPV_ARGS(&cluster_upload_buffer))) ||
-        FAILED(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &argument_buffer_desc,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                                               IID_PPV_ARGS(&argument_buffer))) ||
-        FAILED(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &count_buffer_desc,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                                               IID_PPV_ARGS(&count_buffer))) ||
-        FAILED(device->CreateCommittedResource(&upload_heap, D3D12_HEAP_FLAG_NONE, &constants_buffer_desc,
-                                               D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-                                               IID_PPV_ARGS(&constants_upload_buffer))) ||
-        FAILED(device->CreateCommittedResource(&readback_heap, D3D12_HEAP_FLAG_NONE, &argument_readback_desc,
-                                               D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-                                               IID_PPV_ARGS(&argument_readback_buffer))) ||
-        FAILED(device->CreateCommittedResource(&readback_heap, D3D12_HEAP_FLAG_NONE, &count_readback_desc,
-                                               D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-                                               IID_PPV_ARGS(&count_readback_buffer)))) {
-        CloseHandle(fence_event);
+    DeviceContext* context = device_context_from_rhi_device(device);
+    if (context == nullptr) {
+        result.failure_stage = 21U;
         return result;
     }
 
-    {
-        void* mapped = nullptr;
-        if (FAILED(cluster_upload_buffer->Map(0, nullptr, &mapped)) || mapped == nullptr) {
-            CloseHandle(fence_event);
-            return result;
-        }
-        std::memcpy(mapped, desc.cluster_rows.data(), static_cast<std::size_t>(cluster_buffer_size));
-        cluster_upload_buffer->Unmap(0, nullptr);
-    }
-
-    {
-        struct Constants {
-            std::uint32_t cluster_count;
-            std::uint32_t max_command_count;
-            std::uint32_t record_stride_bytes;
-            std::uint32_t pad;
-        };
-        Constants constants{
-            .cluster_count = cluster_count,
-            .max_command_count = desc.max_command_count,
-            .record_stride_bytes = desc.record_stride_bytes,
-            .pad = 0U,
-        };
-        void* mapped = nullptr;
-        if (FAILED(constants_upload_buffer->Map(0, nullptr, &mapped)) || mapped == nullptr) {
-            CloseHandle(fence_event);
-            return result;
-        }
-        std::memcpy(mapped, &constants, sizeof(constants));
-        constants_upload_buffer->Unmap(0, nullptr);
-    }
-
-    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list;
-    if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&allocator))) ||
-        FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COMPUTE, allocator.Get(), nullptr,
-                                         IID_PPV_ARGS(&command_list)))) {
-        CloseHandle(fence_event);
+    const auto binding = detail::mavg_gpu_culling_device_binding(*context);
+    ID3D12Resource* argument_resource = detail::committed_resource(*context, desc.external_argument_buffer);
+    ID3D12Resource* count_resource = detail::committed_resource(*context, desc.external_count_buffer);
+    if (binding.device == nullptr || binding.command_queue == nullptr || binding.fence == nullptr ||
+        argument_resource == nullptr || count_resource == nullptr) {
+        result.failure_stage = 22U;
         return result;
     }
 
-    D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
-    heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    heap_desc.NumDescriptors = 3;
-    heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptor_heap;
-    if (FAILED(device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&descriptor_heap)))) {
-        CloseHandle(fence_event);
+    HANDLE fence_event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (fence_event == nullptr) {
+        result.failure_stage = 23U;
         return result;
     }
 
-    const auto descriptor_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    const auto heap_cpu_start = descriptor_heap->GetCPUDescriptorHandleForHeapStart();
+    D3d12MavgGpuCullingDispatchDesc integrated_desc = desc;
+    integrated_desc.leave_indirect_argument_state_for_consumption = true;
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC cluster_srv_desc{};
-    cluster_srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-    cluster_srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    cluster_srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    cluster_srv_desc.Buffer.FirstElement = 0;
-    cluster_srv_desc.Buffer.NumElements = cluster_count;
-    cluster_srv_desc.Buffer.StructureByteStride = d3d12_mavg_gpu_culling_dispatch_cluster_row_stride_bytes;
-    cluster_srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-    device->CreateShaderResourceView(cluster_default_buffer.Get(), &cluster_srv_desc, heap_cpu_start);
-
-    const auto argument_uav_cpu = cpu_descriptor_handle(heap_cpu_start, 1U, descriptor_size);
-    D3D12_UNORDERED_ACCESS_VIEW_DESC argument_uav_desc{};
-    argument_uav_desc.Format = DXGI_FORMAT_R32_TYPELESS;
-    argument_uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-    argument_uav_desc.Buffer.FirstElement = 0;
-    argument_uav_desc.Buffer.NumElements = static_cast<UINT>(argument_buffer_size / 4U);
-    argument_uav_desc.Buffer.StructureByteStride = 0;
-    argument_uav_desc.Buffer.CounterOffsetInBytes = 0;
-    argument_uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
-    device->CreateUnorderedAccessView(argument_buffer.Get(), nullptr, &argument_uav_desc, argument_uav_cpu);
-
-    const auto count_uav_cpu = cpu_descriptor_handle(heap_cpu_start, 2U, descriptor_size);
-    D3D12_UNORDERED_ACCESS_VIEW_DESC count_uav_desc{};
-    count_uav_desc.Format = DXGI_FORMAT_R32_TYPELESS;
-    count_uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-    count_uav_desc.Buffer.FirstElement = 0;
-    count_uav_desc.Buffer.NumElements = 1;
-    count_uav_desc.Buffer.StructureByteStride = 0;
-    count_uav_desc.Buffer.CounterOffsetInBytes = 0;
-    count_uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
-    device->CreateUnorderedAccessView(count_buffer.Get(), nullptr, &count_uav_desc, count_uav_cpu);
-
-    command_list->CopyBufferRegion(cluster_default_buffer.Get(), 0, cluster_upload_buffer.Get(), 0,
-                                   cluster_buffer_size);
-    transition_resource(command_list.Get(), cluster_default_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
-                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, result.resource_barriers_recorded);
-
-    const auto heap_gpu_start = descriptor_heap->GetGPUDescriptorHandleForHeapStart();
-    ID3D12DescriptorHeap* heaps[] = {descriptor_heap.Get()};
-    command_list->SetDescriptorHeaps(1, heaps);
-    command_list->SetComputeRootSignature(root_signature.Get());
-    command_list->SetPipelineState(pipeline_state.Get());
-    command_list->SetComputeRootConstantBufferView(0, constants_upload_buffer->GetGPUVirtualAddress());
-    command_list->SetComputeRootDescriptorTable(1, heap_gpu_start);
-
-    command_list->Dispatch(1, 1, 1);
-    result.compute_dispatches = 1U;
-
-    uav_barrier(command_list.Get(), argument_buffer.Get(), result.resource_barriers_recorded);
-    uav_barrier(command_list.Get(), count_buffer.Get(), result.resource_barriers_recorded);
-    transition_resource(command_list.Get(), argument_buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                        D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, result.resource_barriers_recorded);
-    transition_resource(command_list.Get(), count_buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                        D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, result.resource_barriers_recorded);
-
-    transition_resource(command_list.Get(), argument_buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-                        D3D12_RESOURCE_STATE_COPY_SOURCE, result.resource_barriers_recorded);
-    transition_resource(command_list.Get(), count_buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-                        D3D12_RESOURCE_STATE_COPY_SOURCE, result.resource_barriers_recorded);
-    command_list->CopyBufferRegion(argument_readback_buffer.Get(), 0, argument_buffer.Get(), 0, argument_buffer_size);
-    command_list->CopyBufferRegion(count_readback_buffer.Get(), 0, count_buffer.Get(), 0,
-                                   k_indirect_count_buffer_size_bytes);
-
-    if (FAILED(command_list->Close())) {
-        result.failure_stage = 10U;
-        CloseHandle(fence_event);
-        return result;
-    }
-
-    ID3D12CommandList* command_lists[] = {command_list.Get()};
-    command_queue->ExecuteCommandLists(1, command_lists);
-    const std::uint64_t fence_value = 1U;
-    if (FAILED(command_queue->Signal(fence.Get(), fence_value)) ||
-        !wait_for_fence(fence.Get(), fence_value, fence_event)) {
-        result.failure_stage = 11U;
-        CloseHandle(fence_event);
-        return result;
-    }
-
+    MavgGpuCullingDispatchEnvironment env{
+        .device = binding.device,
+        .command_queue = binding.command_queue,
+        .fence = binding.fence,
+        .fence_event = fence_event,
+        .owns_fence_event = true,
+        .external_argument_buffer = argument_resource,
+        .external_count_buffer = count_resource,
+    };
+    result = dispatch_mavg_gpu_culling_indirect_environment(integrated_desc, env);
     CloseHandle(fence_event);
 
-    result.count_readback_bytes =
-        readback_buffer_bytes(count_readback_buffer.Get(), k_indirect_count_buffer_size_bytes);
-    if (result.count_readback_bytes.size() != k_indirect_count_buffer_size_bytes) {
-        result.failure_stage = 12U;
+    if (!result.executed_gpu_culling) {
         return result;
     }
 
-    result.count_buffer_value = static_cast<std::uint32_t>(result.count_readback_bytes[0]) |
-                                (static_cast<std::uint32_t>(result.count_readback_bytes[1]) << 8U) |
-                                (static_cast<std::uint32_t>(result.count_readback_bytes[2]) << 16U) |
-                                (static_cast<std::uint32_t>(result.count_readback_bytes[3]) << 24U);
-    result.argument_buffer_size_bytes =
-        static_cast<std::uint64_t>(result.count_buffer_value) * static_cast<std::uint64_t>(desc.record_stride_bytes);
-    result.argument_readback_bytes =
-        readback_buffer_bytes(argument_readback_buffer.Get(), result.argument_buffer_size_bytes);
-    if (result.argument_readback_bytes.size() != static_cast<std::size_t>(result.argument_buffer_size_bytes)) {
-        result.failure_stage = 13U;
-        return result;
-    }
-    result.executed_gpu_culling = true;
-    result.succeeded = true;
+    context->set_buffer_resource_state(desc.external_argument_buffer,
+                                       static_cast<std::uint32_t>(D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
+    context->set_buffer_resource_state(desc.external_count_buffer,
+                                       static_cast<std::uint32_t>(D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
     return result;
+}
+
+} // namespace
+
+D3d12MavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect(const D3d12MavgGpuCullingDispatchDesc& desc) noexcept {
+    return dispatch_mavg_gpu_culling_indirect_standalone(desc);
+}
+
+D3d12MavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect(IRhiDevice& device, const D3d12MavgGpuCullingDispatchDesc& desc) noexcept {
+    return dispatch_mavg_gpu_culling_indirect_on_rhi_device(device, desc);
 }
 
 } // namespace mirakana::rhi::d3d12

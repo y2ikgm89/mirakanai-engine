@@ -468,6 +468,8 @@ struct QueueCalibratedOverlapDiagnostics {
 };
 
 class DeviceContext final {
+    struct Impl;
+
   public:
     DeviceContext(const DeviceContext&) = delete;
     DeviceContext& operator=(const DeviceContext&) = delete;
@@ -546,7 +548,9 @@ class DeviceContext final {
                                     std::uint32_t instance_count, std::uint32_t first_index, std::int32_t vertex_offset,
                                     std::uint32_t first_instance);
     [[nodiscard]] bool draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
-                                             NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc);
+                                             NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc,
+                                             bool compute_generated_indirect = false);
+    void set_buffer_resource_state(NativeResourceHandle buffer, std::uint32_t d3d12_resource_state) noexcept;
     [[nodiscard]] bool dispatch(NativeCommandListHandle commands, std::uint32_t group_count_x,
                                 std::uint32_t group_count_y, std::uint32_t group_count_z);
     [[nodiscard]] bool set_viewport(NativeCommandListHandle commands, const mirakana::rhi::ViewportDesc& viewport);
@@ -596,9 +600,10 @@ class DeviceContext final {
     [[nodiscard]] std::uint64_t gpu_timestamp_ticks_per_second() const noexcept;
     [[nodiscard]] RhiDeviceMemoryDiagnostics memory_diagnostics() const;
 
-  private:
-    struct Impl;
+    [[nodiscard]] Impl* impl() noexcept;
+    [[nodiscard]] const Impl* impl() const noexcept;
 
+  private:
     explicit DeviceContext(std::unique_ptr<Impl> impl) noexcept;
 
     std::unique_ptr<Impl> impl_;
@@ -629,6 +634,8 @@ diagnose_rhi_device_submitted_command_compute_graphics_overlap(IRhiDevice& devic
                                                                const RhiAsyncOverlapReadinessDiagnostics& schedule,
                                                                FenceValue compute_fence, FenceValue graphics_fence);
 [[nodiscard]] D3d12SharedTextureExportResult export_shared_texture(IRhiDevice& device, TextureHandle texture) noexcept;
+[[nodiscard]] NativeResourceHandle native_buffer_resource(IRhiDevice& device, BufferHandle buffer) noexcept;
+[[nodiscard]] DeviceContext* device_context_from_rhi_device(IRhiDevice& device) noexcept;
 void close_shared_texture_handle(D3d12SharedTextureHandle handle) noexcept;
 
 } // namespace mirakana::rhi::d3d12
