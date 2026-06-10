@@ -85,7 +85,7 @@ foreach ($needle in @(
         "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-draw-execution-v1.md",
         "D3D12 ExecuteIndirect",
         "D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED",
-        "count-buffer execution",
+        "mavg-d3d12-count-buffer-indirect-execution-v1",
         "mavg-vulkan-indexed-indirect-draw-execution-v1"
     )) {
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG D3D12 indirect draw evidence"
@@ -114,6 +114,16 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect draw evidence"
 }
 
-foreach ($needle in @("mavg-d3d12-indexed-indirect-draw-execution-v1", "D3D12 ExecuteIndirect", "count-buffer execution", "mavg-vulkan-indexed-indirect-draw-execution-v1", "PR #537-#539")) {
+foreach ($needle in @("mavg-d3d12-indexed-indirect-draw-execution-v1", "D3D12 ExecuteIndirect", "mavg-vulkan-indexed-indirect-draw-execution-v1", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #537-#539", "PR #547")) {
     Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence + " " + [string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext) $needle "engine/agent/manifest.json recommendedNextPlan MAVG D3D12 completed prerequisite evidence"
+}
+
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG D3D12 count-buffer indirect draw closeout"
+}
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG D3D12 count-buffer indirect draw closeout"
+}
+foreach ($needle in @("MAVG D3D12 Count-Buffer Indirect Execution v1", "PR #547", "ExecuteIndirect", "CountBufferOffset", "mavg-d3d12-count-buffer-indirect-execution-v1", "count-buffer Vulkan execution", "unsupportedProductionGaps = []")) {
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 count-buffer closeout evidence"
 }

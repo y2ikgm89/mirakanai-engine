@@ -782,7 +782,7 @@ Evidence: focused builds/CTest passed for the MAVG RHI, renderer, D3D12, backend
 After this milestone lands:
 
 - `mavg-gpu-culling-indirect-v1` completed stacked child for value-only packed indexed indirect command planning through `mavg_gpu_culling.hpp`, `MavgGpuCullingIndirectPlan`, and `plan_mavg_gpu_culling_indirect_commands`; actual compute dispatch and backend indirect execution remain follow-up.
-- `mavg-rhi-indirect-draw-v1` completed stacked child for backend-neutral indexed indirect draw contract through `indirect_draw.hpp`, `IndexedIndirectDrawDesc`, `BufferUsage::indirect`, and Null RHI deterministic execution; D3D12 `ExecuteIndirect` and count-buffer Vulkan execution remain follow-up without Nanite equivalence/superiority claims.
+- `mavg-rhi-indirect-draw-v1` completed stacked child for backend-neutral indexed indirect draw contract through `indirect_draw.hpp`, `IndexedIndirectDrawDesc`, `BufferUsage::indirect`, and Null RHI deterministic execution; count-buffer Vulkan execution remains follow-up without Nanite equivalence/superiority claims.
 - `mavg-package-streaming-residency-v1`: background/async page request execution, reviewed eviction policy, GPU memory pressure integration.
 - `mavg-mesh-shader-backends-v1`: D3D12 mesh/amplification shader path, Vulkan `VK_EXT_mesh_shader` path, strict feature gates, fallback preservation.
 - `mavg-deformable-clusters-v1`: rigid, skinned, morph, and dynamic update tiers.

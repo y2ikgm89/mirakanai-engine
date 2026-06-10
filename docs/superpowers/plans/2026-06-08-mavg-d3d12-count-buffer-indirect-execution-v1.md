@@ -4,13 +4,13 @@
 
 **Plan ID:** `mavg-d3d12-count-buffer-indirect-execution-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Active child implemented over merged `origin/main` after PR #541 (Vulkan `vkCmdDrawIndexedIndirect` execution), PR #543 (Vulkan closeout to the selection gate), and PR #542 landed. `currentActivePlan` now points at this plan and `recommendedNextPlan.id = mavg-d3d12-count-buffer-indirect-execution-v1`. The count-buffer execution claim is that `IRhiCommandList::draw_indexed_indirect` executes `ID3D12GraphicsCommandList::ExecuteIndirect` with a non-null count resource and 4-byte-aligned `CountBufferOffset`, running `min(count_buffer_value, max_draw_count)` draws for CPU-generated upload argument and count buffers, proven by WARP-backed `MK_d3d12_rhi_tests` count-limited, zero-count, and invalid-input coverage while keeping compute-generated count/argument buffers, count-buffer Vulkan execution, actual GPU culling dispatch, mesh shaders, Metal readiness, and Nanite equivalence/superiority unclaimed.
+**Execution State:** Completed through PR #547 (merge commit `731c8231`). The post-land closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Count-buffer Vulkan execution remains unclaimed.
 
-**Goal:** Extend the completed D3D12 no-count `ExecuteIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI, and proves visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming compute-generated count buffers, GPU culling dispatch, Vulkan count-buffer execution, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
+**Goal:** Extend the completed D3D12 no-count `ExecuteIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI, and proves visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming compute-generated count buffers, GPU culling dispatch, count-buffer Vulkan execution, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
-**Context:** `mavg-rhi-indirect-draw-v1` already defines `IndexedIndirectDrawDesc::count_buffer`, `indexed_indirect_draw_count_buffer_size_bytes`, Null RHI deterministic count-buffer execution (`std::min(count_buffer_value, desc.max_draw_count)`), and `indexed_indirect_count_buffer_reads` / `last_indexed_indirect_count_buffer_value` stats. `mavg-d3d12-indexed-indirect-draw-execution-v1` completed native D3D12 `ExecuteIndirect` for CPU-generated upload argument buffers with count-buffer fail-closed evidence. `mavg-vulkan-indexed-indirect-draw-execution-v1` (PR #541) completes the Vulkan no-count sibling and keeps Vulkan count-buffer execution fail-closed. D3D12 count-buffer execution is the next backend follow-up because Microsoft Learn documents the exact `ExecuteIndirect` count-buffer semantics and this repository already has WARP-backed visible readback tests plus a RED count-buffer rejection test to convert.
+**Context:** `mavg-rhi-indirect-draw-v1` already defines `IndexedIndirectDrawDesc::count_buffer`, `indexed_indirect_draw_count_buffer_size_bytes`, Null RHI deterministic count-buffer execution (`std::min(count_buffer_value, desc.max_draw_count)`), and `indexed_indirect_count_buffer_reads` / `last_indexed_indirect_count_buffer_value` stats. `mavg-d3d12-indexed-indirect-draw-execution-v1` completed native D3D12 `ExecuteIndirect` for CPU-generated upload argument buffers with count-buffer fail-closed evidence. `mavg-vulkan-indexed-indirect-draw-execution-v1` (PR #541) completed the Vulkan no-count sibling and keeps count-buffer Vulkan execution fail-closed. This child completed D3D12 count-buffer `ExecuteIndirect` execution per Microsoft Learn count-buffer semantics with WARP-backed visible readback tests converted from the prior count-buffer rejection coverage.
 
 **Constraints:**
 
@@ -90,34 +90,35 @@ Out of scope:
 
 ## Tasks
 
-- [ ] Confirm D3D12 count-buffer official constraints through Microsoft Learn and retain completed no-count sibling audit references.
-- [ ] Run a read-only rendering subagent audit and split D3D12 count-buffer execution from compute-generated/Vulkan count-buffer work.
-- [ ] Add shared RHI helper(s) for effective indexed indirect draw count and bounded command decode when a count buffer is present.
-- [ ] Convert RED `MK_d3d12_rhi_tests` count-buffer rejection coverage into GREEN visible execution, zero-count, and invalid-input tests.
-- [ ] Implement backend-private D3D12 count-buffer validation and `ExecuteIndirect` recording with non-null count resource.
-- [ ] Update D3D12 RHI stats for count-buffer reads and effective executed command counts.
-- [ ] After PR #541 merge and Vulkan closeout, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
-- [ ] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated PR over `codex/mavg-d3d12-count-buffer-indirect-execution-v1`.
+- [x] Confirm D3D12 count-buffer official constraints through Microsoft Learn and retain completed no-count sibling audit references.
+- [x] Run a read-only rendering subagent audit and split D3D12 count-buffer execution from compute-generated/Vulkan count-buffer work.
+- [x] Add shared RHI helper(s) for effective indexed indirect draw count and bounded command decode when a count buffer is present.
+- [x] Convert RED `MK_d3d12_rhi_tests` count-buffer rejection coverage into GREEN visible execution, zero-count, and invalid-input tests.
+- [x] Implement backend-private D3D12 count-buffer validation and `ExecuteIndirect` recording with non-null count resource.
+- [x] Update D3D12 RHI stats for count-buffer reads and effective executed command counts.
+- [x] After PR #541 merge and Vulkan closeout, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
+- [x] Run focused validation plus full `tools/validate.ps1`.
+- [x] Publish a validated PR over `codex/mavg-d3d12-count-buffer-indirect-execution-v1` (PR #547).
+- [x] Publish post-land closeout PR returning `currentActivePlan` to the production-completion master plan.
 
 ## Validation Evidence
 
 | Command | Evidence |
 | --- | --- |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | Pending before configure. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | Pending for the linked worktree. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pending after adding the D3D12 count-buffer static chapter and prerequisite retention checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pending after LF normalization. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pending after manifest fragment sync. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pending after formatting changed C++ and text surfaces. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Pending for the D3D12 backend/private handle boundary. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/rhi/d3d12/src/d3d12_backend.cpp,engine/rhi/src/indirect_draw.cpp,tests/unit/d3d12_rhi_tests.cpp` | Pending for changed implementation and tests. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_d3d12_rhi_tests` | Pending after D3D12 count-buffer implementation. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_d3d12_rhi_tests$"` | RED expected before implementation; GREEN expected after count-buffer path lands. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_rhi_tests MK_d3d12_rhi_tests` | Pending before adjacent CTest. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_rhi_tests\|MK_d3d12_rhi_tests"` | Pending after building adjacent test executables. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pending before publication. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | Passed 2026-06-08 before linked-worktree configure. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | Passed 2026-06-08 in the linked worktree. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed 2026-06-09 after D3D12 count-buffer static chapter 109 and prerequisite retention checks. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed 2026-06-09 after LF normalization. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed 2026-06-09 after manifest fragment sync. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed 2026-06-09 after formatting changed C++ and text surfaces. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed 2026-06-08 for the D3D12 backend/private handle boundary. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/rhi/d3d12/src/d3d12_backend.cpp,engine/rhi/src/indirect_draw.cpp,tests/unit/d3d12_rhi_tests.cpp` | Passed 2026-06-08 for changed implementation and tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_d3d12_rhi_tests` | Passed 2026-06-08 after D3D12 count-buffer implementation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_d3d12_rhi_tests$"` | GREEN 2026-06-08: count-limited, zero-count, and invalid-input coverage passed on WARP. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_rhi_tests MK_d3d12_rhi_tests` | Passed 2026-06-08 before adjacent CTest. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_rhi_tests\|MK_d3d12_rhi_tests"` | Passed 2026-06-08 after building adjacent test executables. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed 2026-06-09 before PR #547 publication; closeout re-run pending post-land sync. |
 
 ## Non-Claims
 
-This plan does not claim compute-generated count or argument buffers, GPU culling dispatch, public buffer state tracking, Vulkan count-buffer execution, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.
+This plan does not claim compute-generated count or argument buffers, GPU culling dispatch, public buffer state tracking, count-buffer Vulkan execution, Metal indirect command buffers, mesh shaders, Work Graphs, deformation, ray tracing, package-visible MAVG backend readiness, native handle exposure, benchmark superiority, Nanite compatibility, Nanite equivalence, Nanite superiority, or broad CPU/GPU/memory optimization.
