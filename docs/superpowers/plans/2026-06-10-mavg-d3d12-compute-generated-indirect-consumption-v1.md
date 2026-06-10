@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-d3d12-compute-generated-indirect-consumption-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Active activation slice over merged `origin/main` after MAVG GPU Culling Dispatch v1 closeout PR #557 and plan draft PR #558 over completed dispatch PR #556. Manifest activation points `currentActivePlan` and `recommendedNextPlan.id = mavg-d3d12-compute-generated-indirect-consumption-v1` without landing implementation in the activation PR. Today `draw_indexed_indirect` still requires `BufferUsage::copy_source` upload usage in `engine/rhi/d3d12/src/d3d12_backend.cpp` v1, no `MK_mavg_d3d12_compute_generated_indirect_consumption_tests` target exists, and D3D12 compute-generated indirect consumption remains fail-closed until the independent implementation PR lands. Vulkan compute dispatch and Vulkan compute-generated indirect consumption remain unclaimed.
+**Execution State:** Completed implementation over activation commit `d9327b69` and merged `origin/main` after MAVG GPU Culling Dispatch v1 (`mavg-gpu-culling-dispatch-v1`) through PR #556, closeout PR #557, and plan draft PR #558. D3D12 `draw_indexed_indirect` now accepts compute-generated `BufferUsage::indirect | BufferUsage::storage` argument and count buffers through `is_compute_generated_indexed_indirect_buffer`, records backend-private UAV-to-`D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT` transitions before `ExecuteIndirect`, preserves the CPU-upload `copy_source` path, adds `native_buffer_resource` and `leave_indirect_argument_state_for_consumption` on `dispatch_mavg_gpu_culling_indirect`, and proves dispatch-plus-draw visible/culled execution through WARP-backed `MK_mavg_d3d12_compute_generated_indirect_consumption_tests`. Vulkan compute dispatch and Vulkan compute-generated indirect consumption remain unclaimed.
 
 **Goal:** Close the D3D12 Phase 4 compute-to-draw gap by letting `IRhiCommandList::draw_indexed_indirect` consume GPU-written MAVG packed indexed indirect argument and count buffers produced by `dispatch_mavg_gpu_culling_indirect`, recording the required compute-write-to-indirect-read synchronization and proving visible execution through WARP-backed end-to-end tests without claiming Vulkan compute dispatch, Vulkan compute-generated indirect consumption, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 

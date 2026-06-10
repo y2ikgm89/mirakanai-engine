@@ -5100,6 +5100,98 @@ MK_TEST("d3d12 rhi device rejects count buffer without upload copy_source usage"
     MK_REQUIRE(device->stats().indexed_indirect_draw_calls == 0);
 }
 
+MK_TEST("d3d12 rhi device rejects compute generated argument buffer without storage usage") {
+    const auto vertex_bytecode = compile_triangle_vertex_shader();
+    const auto pixel_bytecode = compile_solid_orange_pixel_shader();
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto target = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto vertices = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 96,
+        .usage = mirakana::rhi::BufferUsage::vertex | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto indices = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = sizeof(std::uint32_t) * 3U,
+        .usage = mirakana::rhi::BufferUsage::index | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto argument_buffer = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+        .usage = mirakana::rhi::BufferUsage::indirect,
+    });
+    const auto count_buffer = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::rhi::indexed_indirect_draw_count_buffer_size_bytes,
+        .usage = mirakana::rhi::BufferUsage::indirect | mirakana::rhi::BufferUsage::storage,
+    });
+
+    const std::array<std::uint8_t, 12> index_bytes{0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
+    device->write_buffer(vertices, 0, std::array<std::uint8_t, 96>{});
+    device->write_buffer(indices, 0, index_bytes);
+
+    const auto layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    const auto vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = vertex_bytecode->GetBufferSize(),
+        .bytecode = vertex_bytecode->GetBufferPointer(),
+    });
+    const auto fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = pixel_bytecode->GetBufferSize(),
+        .bytecode = pixel_bytecode->GetBufferPointer(),
+    });
+    const auto pipeline = device->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = layout,
+        .vertex_shader = vertex_shader,
+        .fragment_shader = fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(target, mirakana::rhi::ResourceState::copy_source,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(pipeline);
+    commands->bind_vertex_buffer(mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 32});
+    commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
+        .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint32});
+
+    bool rejected_argument_buffer = false;
+    try {
+        commands->draw_indexed_indirect(mirakana::rhi::IndexedIndirectDrawDesc{
+            .argument_buffer = argument_buffer,
+            .argument_buffer_offset = 0,
+            .command_stride_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+            .max_draw_count = 1,
+            .count_buffer = count_buffer,
+            .count_buffer_offset = 0,
+        });
+    } catch (const std::invalid_argument&) {
+        rejected_argument_buffer = true;
+    }
+
+    MK_REQUIRE(rejected_argument_buffer);
+    MK_REQUIRE(device->stats().indexed_indirect_draw_calls == 0);
+}
+
 MK_TEST("d3d12 rhi device depth tests overlapping geometry into texture readback bytes") {
     const auto vertex_bytecode = compile_depth_order_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();

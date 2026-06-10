@@ -29,6 +29,12 @@ struct D3d12MavgGpuCullingDispatchDesc {
     std::span<const D3d12MavgGpuCullingDispatchClusterRow> cluster_rows;
     std::uint32_t max_command_count{0};
     std::uint32_t record_stride_bytes{20};
+    /// When non-zero, writes into an existing RHI-owned argument buffer instead of allocating internally.
+    NativeResourceHandle external_argument_buffer{};
+    /// When non-zero, writes into an existing RHI-owned count buffer instead of allocating internally.
+    NativeResourceHandle external_count_buffer{};
+    /// Skip COPY_SOURCE readback transitions so `draw_indexed_indirect` can consume GPU-written buffers.
+    bool leave_indirect_argument_state_for_consumption{false};
 };
 
 struct D3d12MavgGpuCullingDispatchResult {
@@ -47,5 +53,10 @@ struct D3d12MavgGpuCullingDispatchResult {
 
 [[nodiscard]] D3d12MavgGpuCullingDispatchResult
 dispatch_mavg_gpu_culling_indirect(const D3d12MavgGpuCullingDispatchDesc& desc) noexcept;
+
+/// Writes MAVG packed indirect buffers on an existing D3D12 RHI device. Requires `external_argument_buffer` and
+/// `external_count_buffer` populated through `native_buffer_resource`.
+[[nodiscard]] D3d12MavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect(IRhiDevice& device, const D3d12MavgGpuCullingDispatchDesc& desc) noexcept;
 
 } // namespace mirakana::rhi::d3d12
