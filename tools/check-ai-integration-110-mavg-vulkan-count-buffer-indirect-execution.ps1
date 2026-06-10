@@ -16,12 +16,16 @@ $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 
 foreach ($needle in @(
-        "vulkan rhi indexed indirect count buffer execution is not implemented",
-        "vkCmdDrawIndexedIndirect",
-        "read_runtime_buffer",
-        "decode_indexed_indirect_draw_commands"
+        "cmd_draw_indexed_indirect_count",
+        "vkCmdDrawIndexedIndirectCount",
+        "vulkan rhi indexed indirect count buffer requires copy_source upload usage in v1",
+        "vulkan rhi indexed indirect count buffer offset must be 4-byte aligned",
+        "vulkan rhi indexed indirect count range is outside the count buffer",
+        "supports_indexed_indirect_count_buffer_draw",
+        "decode_indexed_indirect_draw_commands",
+        "read_runtime_buffer"
     )) {
-    Assert-ContainsText $vulkanBackendSourceText $needle "engine/rhi/vulkan/src/vulkan_backend.cpp Vulkan count-buffer activation fail-closed evidence"
+    Assert-ContainsText $vulkanBackendSourceText $needle "engine/rhi/vulkan/src/vulkan_backend.cpp Vulkan count-buffer vkCmdDrawIndexedIndirectCount evidence"
 }
 
 foreach ($needle in @(
@@ -33,12 +37,16 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
-        "vulkan rhi device rejects indexed indirect count buffer execution until feature gate lands",
-        "vulkan rhi indexed indirect count buffer execution is not implemented",
+        "vulkan rhi device executes count-buffer-limited indexed indirect draw into texture readback bytes",
+        "vulkan rhi device executes zero-count indexed indirect draw without submitting visible draws",
+        "vulkan rhi device rejects count buffer without upload copy_source usage",
+        "indexed_indirect_count_buffer_reads",
+        "last_indexed_indirect_count_buffer_value",
+        "last_indexed_indirect_executed_draw_count",
         "MK_VULKAN_TEST_VERTEX_SPV",
         "MK_VULKAN_TEST_FRAGMENT_SPV"
     )) {
-    Assert-ContainsText $backendScaffoldTestsText $needle "tests/unit/backend_scaffold_tests.cpp Vulkan count-buffer activation RED coverage"
+    Assert-ContainsText $backendScaffoldTestsText $needle "tests/unit/backend_scaffold_tests.cpp Vulkan count-buffer indirect execution coverage"
 }
 
 foreach ($surface in @(
@@ -71,10 +79,9 @@ foreach ($needle in @(
         "**Status:** Active.",
         "mavg-vulkan-count-buffer-indirect-execution-v1",
         "vkCmdDrawIndexedIndirectCount",
-        "fail-closed",
         "mavg-d3d12-count-buffer-indirect-execution-v1"
     )) {
-    Assert-ContainsText $mavgVulkanCountBufferPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md activation contract"
+    Assert-ContainsText $mavgVulkanCountBufferPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md active execution contract"
 }
 
 foreach ($needle in @(
@@ -93,7 +100,7 @@ foreach ($needle in @(
         "mavg-d3d12-count-buffer-indirect-execution-v1",
         "PR #547"
     )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG Vulkan count-buffer activation evidence"
+    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG Vulkan count-buffer active evidence"
 }
 
 foreach ($needle in @(
@@ -103,7 +110,7 @@ foreach ($needle in @(
         "count-buffer Vulkan execution",
         "D3D12 changes"
     )) {
-    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi Vulkan count-buffer activation evidence"
+    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi Vulkan count-buffer execution evidence"
 }
 
 $rhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_rhi" })
@@ -116,15 +123,15 @@ foreach ($needle in @(
         "count-buffer Vulkan execution",
         "D3D12 changes"
     )) {
-    Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi Vulkan count-buffer activation evidence"
+    Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi Vulkan count-buffer execution evidence"
 }
 
 if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at MAVG Vulkan count-buffer indirect execution during activation"
+    Write-Error "engine/agent/manifest.json currentActivePlan must point at MAVG Vulkan count-buffer indirect execution during active execution"
 }
 if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-vulkan-count-buffer-indirect-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-vulkan-count-buffer-indirect-execution-v1 during activation"
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-vulkan-count-buffer-indirect-execution-v1 during active MAVG Vulkan count-buffer indirect execution"
 }
 foreach ($needle in @("MAVG Vulkan Count-Buffer Indirect Execution v1", "mavg-vulkan-count-buffer-indirect-execution-v1", "vkCmdDrawIndexedIndirectCount", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #547", "count-buffer Vulkan execution", "unsupportedProductionGaps = []")) {
-    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG Vulkan count-buffer activation evidence"
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG Vulkan count-buffer active evidence"
 }
