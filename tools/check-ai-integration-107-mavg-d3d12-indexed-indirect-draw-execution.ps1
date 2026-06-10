@@ -118,12 +118,14 @@ foreach ($needle in @("mavg-d3d12-indexed-indirect-draw-execution-v1", "D3D12 Ex
     Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence + " " + [string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext) $needle "engine/agent/manifest.json recommendedNextPlan MAVG D3D12 completed prerequisite evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG D3D12 count-buffer indirect draw closeout"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG D3D12 count-buffer indirect draw closeout"
-}
-foreach ($needle in @("MAVG D3D12 Count-Buffer Indirect Execution v1", "PR #547", "ExecuteIndirect", "CountBufferOffset", "mavg-d3d12-count-buffer-indirect-execution-v1", "count-buffer Vulkan execution", "unsupportedProductionGaps = []")) {
-    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 count-buffer closeout evidence"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+    if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG D3D12 count-buffer indirect draw closeout"
+    }
+    if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+        Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG D3D12 count-buffer indirect draw closeout"
+    }
+    foreach ($needle in @("MAVG D3D12 Count-Buffer Indirect Execution v1", "PR #547", "ExecuteIndirect", "CountBufferOffset", "mavg-d3d12-count-buffer-indirect-execution-v1", "count-buffer Vulkan execution", "unsupportedProductionGaps = []")) {
+        Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG D3D12 count-buffer closeout evidence"
+    }
 }

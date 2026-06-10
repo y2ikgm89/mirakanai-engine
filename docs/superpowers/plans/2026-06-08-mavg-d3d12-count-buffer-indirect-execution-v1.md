@@ -6,7 +6,7 @@
 
 **Status:** Completed.
 
-**Execution State:** Completed through PR #547 (merge commit `731c8231`) and post-land closeout PR #549. The closeout returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Vulkan count-buffer execution is drafted as follow-up plan `mavg-vulkan-count-buffer-indirect-execution-v1` and remains unclaimed until a separate activation and implementation slice lands.
+**Execution State:** Completed through PR #547 (merge commit `731c8231`) and post-land closeout PR #549. Follow-up Vulkan count-buffer execution is the active child plan `mavg-vulkan-count-buffer-indirect-execution-v1` after a separate activation PR lands over merged `origin/main`; implementation remains fail-closed until the independent implementation PR completes the sibling slice.
 
 **Goal:** Extend the completed D3D12 no-count `ExecuteIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI, and proves visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming compute-generated count buffers, GPU culling dispatch, count-buffer Vulkan execution, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
