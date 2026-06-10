@@ -6,7 +6,7 @@
 
 **Status:** Completed.
 
-**Execution State:** Completed through PR #552 (merge commit `a436fc7a`) and post-land closeout PR #553. Follow-up actual GPU culling dispatch is the drafted child plan `mavg-gpu-culling-dispatch-v1` over merged `origin/main`; activation and implementation remain separate PRs.
+**Execution State:** Completed through PR #552 (merge commit `a436fc7a`) and post-land closeout PR #553. The closeout returned `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` while preserving no broad MAVG/Nanite/backend readiness claims. Follow-up actual GPU culling dispatch is the drafted child plan `mavg-gpu-culling-dispatch-v1`; activation and implementation remain separate PRs.
 
 **Goal:** Extend the completed Vulkan no-count `vkCmdDrawIndexedIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI through `vkCmdDrawIndexedIndirectCount`, and proves visible indexed indirect rendering through SPIR-V environment-gated `MK_backend_scaffold_tests` without claiming compute-generated count buffers, GPU culling dispatch, D3D12 changes, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
