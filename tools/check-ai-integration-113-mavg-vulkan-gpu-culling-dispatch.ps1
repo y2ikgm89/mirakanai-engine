@@ -13,9 +13,11 @@ $vulkanBackendSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_ba
 $mavgVulkanGpuCullingDispatchTestsText = Get-AgentSurfaceText "tests/unit/mavg_vulkan_gpu_culling_dispatch_tests.cpp"
 $mavgVulkanGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md"
 $mavgGpuCullingDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md"
+$mavgGpuCullingIndirectPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
+$aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 
 foreach ($needle in @(
@@ -60,7 +62,7 @@ foreach ($needle in @(
         "resource_barriers_recorded",
         "executed_gpu_culling = true"
     )) {
-    Assert-ContainsText $vulkanMavgGpuCullingDispatchSourceText $needle "engine/rhi/vulkan/src/vulkan_mavg_gpu_culling_dispatch.cpp Vulkan MAVG GPU culling dispatch evidence"
+    Assert-ContainsText $vulkanMavgGpuCullingDispatchSourceText $needle "engine/rhi/vulkan/src/vulkan_mavg_gpu_culling_dispatch.cpp Vulkan MAVG GPU culling dispatch closeout evidence"
 }
 
 foreach ($needle in @(
@@ -100,7 +102,7 @@ foreach ($surface in @(
             "VK_KHR_synchronization2",
             "compute dispatch"
         )) {
-        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan GPU culling dispatch implementation evidence"
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan GPU culling dispatch closeout evidence"
     }
     foreach ($needle in @(
             "Vulkan compute-generated indirect consumption",
@@ -112,24 +114,39 @@ foreach ($surface in @(
 }
 
 foreach ($needle in @(
-        "**Status:** Active.",
-        "mavg-vulkan-gpu-culling-dispatch-v1",
+        "**Status:** Completed.",
+        "PR #563",
+        "next-production-gap-selection",
         "dispatch_mavg_gpu_culling_indirect",
         "MK_mavg_vulkan_gpu_culling_dispatch_tests",
-        "MK_VULKAN_TEST_MAVG_GPU_CULLING_DISPATCH_SPV",
-        "mavg-gpu-culling-dispatch-v1",
-        "PR #556"
+        "MK_VULKAN_TEST_MAVG_GPU_CULLING_DISPATCH_SPV"
     )) {
-    Assert-ContainsText $mavgVulkanGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md implementation contract"
+    Assert-ContainsText $mavgVulkanGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md closeout contract"
 }
 
 foreach ($needle in @(
         "mavg-vulkan-gpu-culling-dispatch-v1",
-        "Vulkan compute dispatch",
-        "mavg-gpu-culling-dispatch-v1",
-        "PR #556"
+        "PR #563"
     )) {
     Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md sibling transition"
+}
+
+foreach ($needle in @(
+        "mavg-vulkan-gpu-culling-dispatch-v1",
+        "PR #563"
+    )) {
+    Assert-ContainsText $mavgGpuCullingIndirectPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md sibling transition"
+}
+
+foreach ($needle in @(
+        "mavg-vulkan-gpu-culling-dispatch-v1",
+        "docs/superpowers/plans/2026-06-10-mavg-vulkan-gpu-culling-dispatch-v1.md",
+        "MAVG Vulkan GPU Culling Dispatch v1",
+        "dispatch_mavg_gpu_culling_indirect",
+        "MK_mavg_vulkan_gpu_culling_dispatch_tests",
+        "PR #563"
+    )) {
+    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG Vulkan GPU culling dispatch closeout evidence"
 }
 
 foreach ($needle in @(
@@ -137,7 +154,42 @@ foreach ($needle in @(
         "dispatch_mavg_gpu_culling_indirect",
         "MK_mavg_vulkan_gpu_culling_dispatch_tests",
         "VK_KHR_synchronization2",
-        "mavg-vulkan-gpu-culling-dispatch-v1"
+        "PR #563"
     )) {
-    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi Vulkan GPU culling dispatch implementation evidence"
+    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json MK_rhi Vulkan GPU culling dispatch closeout evidence"
+}
+
+$rendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_renderer" })
+if ($rendererModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must expose exactly one MK_renderer module" }
+$rendererManifestText = ((@($rendererModule[0].recentEvidence) -join " "), [string]$rendererModule[0].purpose) -join " "
+foreach ($needle in @(
+        "MAVG Vulkan GPU Culling Dispatch v1",
+        "dispatch_mavg_gpu_culling_indirect",
+        "MK_mavg_vulkan_gpu_culling_dispatch_tests",
+        "PR #563"
+    )) {
+    Assert-ContainsText $rendererManifestText $needle "engine/agent/manifest.json MK_renderer Vulkan GPU culling dispatch closeout evidence"
+}
+
+$rhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_rhi" })
+if ($rhiModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must expose exactly one MK_rhi module" }
+$rhiManifestText = ((@($rhiModule[0].recentEvidence) -join " "), [string]$rhiModule[0].purpose) -join " "
+foreach ($needle in @(
+        "MAVG Vulkan GPU Culling Dispatch v1",
+        "dispatch_mavg_gpu_culling_indirect",
+        "record_runtime_buffer_memory_barrier2",
+        "MK_mavg_vulkan_gpu_culling_dispatch_tests",
+        "PR #563"
+    )) {
+    Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi Vulkan GPU culling dispatch closeout evidence"
+}
+
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG Vulkan GPU culling dispatch closeout"
+}
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG Vulkan GPU culling dispatch closeout"
+}
+foreach ($needle in @("MAVG Vulkan GPU Culling Dispatch v1", "PR #563", "mavg-vulkan-gpu-culling-dispatch-v1", "dispatch_mavg_gpu_culling_indirect", "MK_mavg_vulkan_gpu_culling_dispatch_tests", "mavg-gpu-culling-dispatch-v1", "PR #556", "VK_KHR_synchronization2", "unsupportedProductionGaps = []")) {
+    Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG Vulkan GPU culling dispatch closeout evidence"
 }

@@ -100,7 +100,7 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU culling dispatch implementation evidence"
     }
     foreach ($needle in @(
-            "Vulkan compute dispatch",
+            "Vulkan compute-generated indirect consumption",
             "compute-generated indirect consumption",
             "Nanite"
         )) {
@@ -129,9 +129,8 @@ foreach ($needle in @(
         "Completed D3D12 compute-generated follow-up child",
         "mavg-d3d12-compute-generated-indirect-consumption-v1",
         "PR #560",
-        "Planned Vulkan dispatch follow-up child",
         "mavg-vulkan-gpu-culling-dispatch-v1",
-        "PR #561"
+        "PR #563"
     )) {
     Assert-ContainsText $mavgGpuCullingDispatchPlanText $needle "docs/superpowers/plans/2026-06-11-mavg-gpu-culling-dispatch-v1.md sibling transition"
 }
