@@ -6,7 +6,7 @@
 
 **Status:** Active.
 
-**Execution State:** Active activation slice over merged `origin/main` after MAVG Vulkan Count-Buffer Indirect Execution v1 closeout PR #553. Manifest activation points `currentActivePlan` and `recommendedNextPlan.id = mavg-gpu-culling-dispatch-v1` without landing implementation in the activation PR. Today `plan_mavg_gpu_culling_indirect_commands` remains value-only with `executed_gpu_culling=false` in `MK_mavg_gpu_culling_tests` and no D3D12 compute dispatch path until the independent implementation PR lands. Vulkan compute dispatch and compute-generated indirect consumption remain unclaimed.
+**Execution State:** Active implementation slice over merged `origin/main` after MAVG Vulkan Count-Buffer Indirect Execution v1 closeout PR #553. `dispatch_mavg_gpu_culling_indirect` in `engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp` executes the first D3D12-only compute dispatch that writes MAVG packed indexed indirect argument and count buffers from reviewed cluster rows, records compute-write-to-indirect-read synchronization, and proves visible/culled cases through WARP-backed `MK_mavg_gpu_culling_dispatch_tests` while `MK_mavg_gpu_culling_tests` retain `executed_gpu_culling=false` value-only planner evidence. Vulkan compute dispatch and compute-generated indirect consumption remain unclaimed.
 
 **Goal:** Extend the completed value-only `mavg-gpu-culling-indirect-v1` contract with the first actual GPU compute dispatch that writes MAVG packed indexed indirect argument and count buffers on D3D12, records the required compute-write-to-indirect-read synchronization, and proves deterministic buffer contents through WARP-backed readback without claiming compute-generated indirect consumption on Vulkan, Metal compute, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
@@ -98,9 +98,11 @@ Out of scope:
 
 | Command | Evidence |
 | --- | --- |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Required for this draft plan-only PR. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Required after activation/implementation static chapters land; not required for this draft-only PR beyond existing guards. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Required before implementation publication. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_mavg_gpu_culling_tests --output-on-failure` | PASS (value-only planner baseline retained). |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_mavg_gpu_culling_dispatch_tests --output-on-failure` | PASS (3/3 WARP-backed visible/culled readback vs CPU planner). |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Required before publication. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Required before publication. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Required before publication. |
 
 ## Non-Claims
 

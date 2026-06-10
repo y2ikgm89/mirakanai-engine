@@ -1130,6 +1130,15 @@ if(BUILD_TESTING)
         MK_apply_common_target_options(MK_d3d12_rhi_tests)
         add_test(NAME MK_d3d12_rhi_tests COMMAND MK_d3d12_rhi_tests)
         set_tests_properties(MK_d3d12_rhi_tests PROPERTIES RUN_SERIAL TRUE)
+
+        add_executable(MK_mavg_gpu_culling_dispatch_tests
+            tests/unit/mavg_gpu_culling_dispatch_tests.cpp
+        )
+        target_link_libraries(MK_mavg_gpu_culling_dispatch_tests PRIVATE MK_renderer MK_rhi_d3d12)
+        target_include_directories(MK_mavg_gpu_culling_dispatch_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_mavg_gpu_culling_dispatch_tests)
+        add_test(NAME MK_mavg_gpu_culling_dispatch_tests COMMAND MK_mavg_gpu_culling_dispatch_tests)
+        set_tests_properties(MK_mavg_gpu_culling_dispatch_tests PROPERTIES RUN_SERIAL TRUE)
     endif()
 
     if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))

@@ -159,11 +159,23 @@ Implemented responsibilities:
 - Convert successful `MavgLodSelectionResult` rows plus reviewed culling bounds into deterministic packed indexed indirect command rows using the current conventional `draw_indexed` field order.
 - Record 20-byte five-field argument layout, 4-byte count-buffer size/value, selected/visible/culled counters, fallback-substitution provenance, and fail-closed diagnostics.
 - Return D3D12 and Vulkan compute-write-to-indirect-read synchronization requirement rows when the command producer is `compute_shader`.
-- Keep `executed_gpu_culling`, `executed_indirect_draw`, `executed_mesh_shader`, and `touched_native_handles` false.
+- Keep `executed_gpu_culling`, `executed_indirect_draw`, `executed_mesh_shader`, and `touched_native_handles` false in the CPU-reference planner path.
+
+Implemented D3D12 GPU culling dispatch files now live in `MK_rhi_d3d12` and `MK_renderer`:
+
+- `engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_mavg_gpu_culling_dispatch.hpp`
+- `engine/rhi/d3d12/src/d3d12_mavg_gpu_culling_dispatch.cpp`
+- `build_mavg_gpu_culling_dispatch_cluster_rows`, `encode_mavg_gpu_culling_indirect_argument_buffer_bytes`, and `encode_mavg_gpu_culling_indirect_count_buffer_bytes` in `mavg_gpu_culling.hpp`
+
+Implemented D3D12 dispatch responsibilities:
+
+- Execute `dispatch_mavg_gpu_culling_indirect` from reviewed cluster rows and write packed indexed indirect argument/count buffer bytes through a D3D12 compute dispatch.
+- Record compute-write-to-indirect-read synchronization through D3D12 UAV barriers and `D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT` transitions without public buffer-state tracking.
+- Set `executed_gpu_culling=true` only after successful dispatch and prove visible/culled cases through WARP-backed `MK_mavg_gpu_culling_dispatch_tests`.
 
 Future files should start in `MK_rhi`, `MK_renderer`, and backend-local implementations:
 
-- backend-local implementation files under `engine/rhi/d3d12` and `engine/rhi/vulkan`.
+- backend-local Vulkan compute dispatch under `engine/rhi/vulkan`.
 
 The first RHI indirect draw contract files now live in `MK_rhi`:
 
@@ -181,8 +193,8 @@ Implemented RHI responsibilities:
 
 Future responsibilities:
 
-- Actual compute culling dispatch and command/count buffer writes.
-- D3D12 command signatures, resource state transitions, and `ExecuteIndirect`.
+- Vulkan compute culling dispatch and compute-generated indirect consumption through existing RHI paths.
+- D3D12 command signatures, resource state transitions, and `ExecuteIndirect` for compute-written buffers.
 - count-buffer Vulkan execution, Vulkan indirect draw/count execution, feature gates, and synchronization commands.
 
 ### Mesh Shader Backends

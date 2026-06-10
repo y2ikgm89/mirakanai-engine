@@ -1,5 +1,6 @@
 add_library(mirakana_rhi_d3d12
     src/d3d12_backend.cpp
+    src/d3d12_mavg_gpu_culling_dispatch.cpp
 )
 
 target_include_directories(mirakana_rhi_d3d12
@@ -13,6 +14,7 @@ target_link_libraries(mirakana_rhi_d3d12
         mirakana_rhi
     PRIVATE
         d3d12
+        d3dcompiler
         dxgi
 )
 
