@@ -6,7 +6,7 @@
 
 **Status:** Completed.
 
-**Execution State:** Completed through PR #547 (merge commit `731c8231`) and post-land closeout PR #549. Follow-up Vulkan count-buffer execution is the active child plan `mavg-vulkan-count-buffer-indirect-execution-v1` after activation PR #551 over merged `origin/main`; the independent implementation PR lands `vkCmdDrawIndexedIndirectCount` with shared helper reuse and SPIR-V environment-gated `MK_backend_scaffold_tests` count-limited, zero-count, and invalid-input coverage.
+**Execution State:** Completed through PR #547 (merge commit `731c8231`) and post-land closeout PR #549. Follow-up Vulkan count-buffer execution completed through PR #552 (`mavg-vulkan-count-buffer-indirect-execution-v1`) with `vkCmdDrawIndexedIndirectCount`, shared helper reuse, and SPIR-V environment-gated `MK_backend_scaffold_tests` count-limited, zero-count, and invalid-input coverage.
 
 **Goal:** Extend the completed D3D12 no-count `ExecuteIndirect` path so `IRhiCommandList::draw_indexed_indirect` executes when the caller supplies a CPU-generated upload count buffer plus argument buffer, records `min(count, max_draw_count)` semantics consistent with Null RHI, and proves visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming compute-generated count buffers, GPU culling dispatch, count-buffer Vulkan execution, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
