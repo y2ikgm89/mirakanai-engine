@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-streamed-cluster-gpu-upload-v1`
 
-**Status:** Published draft PR #577.
+**Status:** Completed through PR #577 / merge commit `18654786`.
 
 **Date:** 2026-06-11
 
@@ -95,4 +95,4 @@
 - [x] Run focused build/test/static checks.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1`.
-- [x] Commit, push, and open draft PR #577.
+- [x] Commit, push, open draft PR #577, pass PR Gate, and merge as `18654786`.
