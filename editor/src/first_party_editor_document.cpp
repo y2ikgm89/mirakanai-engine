@@ -167,6 +167,21 @@ make_environment_settings_rich_text_document(const EnvironmentSettingsWorkflowMo
                 },
         });
     }
+    for (std::size_t index = 0U; index < model.preview_handoff_rows.size(); ++index) {
+        const auto& row = model.preview_handoff_rows[index];
+        document.paragraphs.push_back(EditorRichTextParagraph{
+            .id = "preview." + std::to_string(index),
+            .spans =
+                {
+                    rich_text_span("recipe", "editor.text", row.recipe_id + ": "),
+                    rich_text_span("status",
+                                   row.status == EnvironmentSettingsPreviewHandoffStatus::host_gated ? "editor.warning"
+                                                                                                     : "editor.text",
+                                   row.status_label),
+                    rich_text_span("gate_count", "editor.text", " host_gates " + std::to_string(row.host_gates.size())),
+                },
+        });
+    }
     for (std::size_t index = 0U; index < model.package_draft_rows.size(); ++index) {
         const auto& row = model.package_draft_rows[index];
         document.paragraphs.push_back(EditorRichTextParagraph{

@@ -141,6 +141,62 @@ void summarize_environment_settings_rows(EnvironmentSettingsWorkflowSectionRow& 
     }
 }
 
+[[nodiscard]] std::string_view
+environment_settings_preview_handoff_status_label(EnvironmentSettingsPreviewHandoffStatus status) noexcept {
+    switch (status) {
+    case EnvironmentSettingsPreviewHandoffStatus::available:
+        return "available";
+    case EnvironmentSettingsPreviewHandoffStatus::requested:
+        return "requested";
+    case EnvironmentSettingsPreviewHandoffStatus::blocked_by_validation:
+        return "blocked_by_validation";
+    case EnvironmentSettingsPreviewHandoffStatus::host_gated:
+        return "host_gated";
+    case EnvironmentSettingsPreviewHandoffStatus::ready_for_operator_handoff:
+        return "ready_for_operator_handoff";
+    }
+    return "blocked_by_validation";
+}
+
+[[nodiscard]] EnvironmentSettingsPreviewHandoffRow
+make_environment_settings_preview_handoff_row(const EnvironmentSettingsPreviewRecipeDesc& recipe,
+                                              bool cubemap_preview_requested) {
+    EnvironmentSettingsPreviewHandoffRow row{
+        .recipe_id = recipe.recipe_id,
+        .host_gates = recipe.host_gates,
+        .requests_cubemap_capture = cubemap_preview_requested,
+    };
+
+    if (!cubemap_preview_requested) {
+        row.status = EnvironmentSettingsPreviewHandoffStatus::available;
+    } else if (!recipe.validation_available) {
+        row.status = EnvironmentSettingsPreviewHandoffStatus::blocked_by_validation;
+        row.blocked_by.push_back("validation_recipe_missing");
+    } else if (!recipe.selected) {
+        row.status = EnvironmentSettingsPreviewHandoffStatus::requested;
+        row.blocked_by.push_back("operator_recipe_selection_required");
+    } else if (!recipe.host_gates.empty() && !recipe.host_available) {
+        row.status = EnvironmentSettingsPreviewHandoffStatus::host_gated;
+        row.blocked_by = recipe.host_gates;
+    } else {
+        row.status = EnvironmentSettingsPreviewHandoffStatus::ready_for_operator_handoff;
+    }
+
+    row.status_label = std::string{environment_settings_preview_handoff_status_label(row.status)};
+    return row;
+}
+
+[[nodiscard]] std::vector<EnvironmentSettingsPreviewHandoffRow>
+make_environment_settings_preview_handoff_rows(std::span<const EnvironmentSettingsPreviewRecipeDesc> recipes,
+                                               bool cubemap_preview_requested) {
+    std::vector<EnvironmentSettingsPreviewHandoffRow> rows;
+    rows.reserve(recipes.size());
+    for (const auto& recipe : recipes) {
+        rows.push_back(make_environment_settings_preview_handoff_row(recipe, cubemap_preview_requested));
+    }
+    return rows;
+}
+
 void add_diagnostics(EnvironmentAuthoringValidationModel& model, const EnvironmentProfileValidationResult& validation) {
     for (const auto& diagnostic : validation.diagnostics) {
         model.diagnostics.push_back(EnvironmentAuthoringDiagnosticRow{
@@ -830,6 +886,8 @@ EnvironmentSettingsWorkflowModel make_environment_settings_workflow_model(const 
     model.diagnostics = inspector.diagnostics;
     model.package_draft_rows = package_draft_rows;
     model.validation_recipe_ids.assign(desc.validation_recipe_ids.begin(), desc.validation_recipe_ids.end());
+    model.preview_handoff_rows =
+        make_environment_settings_preview_handoff_rows(desc.preview_recipes, desc.cubemap_preview_requested);
 
     model.sections = {
         EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.global", .label = "Global"},
@@ -847,6 +905,11 @@ EnvironmentSettingsWorkflowModel make_environment_settings_workflow_model(const 
             section.read_only_row_count = section.row_count;
         } else {
             summarize_environment_settings_rows(section, model.rows);
+            if (section.id == "environment_settings.preview") {
+                const auto preview_rows = static_cast<std::uint32_t>(model.preview_handoff_rows.size());
+                section.row_count += preview_rows;
+                section.read_only_row_count += preview_rows;
+            }
         }
     }
 

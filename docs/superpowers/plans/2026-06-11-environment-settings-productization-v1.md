@@ -294,11 +294,11 @@ Task 3 evidence on 2026-06-11:
 
 **Files:** editor-core environment authoring files, native editor shell files, AI command/review model files only if existing models need extension, tests.
 
-- [ ] Add RED tests for preview handoff rows that connect `environment.command.capture.cubemap.request` to reviewed recipe IDs and host gates.
-- [ ] Include exact recipe/status rows for D3D12 local smoke, strict Vulkan smoke when host/toolchain gates are available, and Metal Apple-host recipe when relevant.
-- [ ] Encode whether a preview request is `available`, `requested`, `blocked_by_validation`, `host_gated`, or `ready_for_operator_handoff`.
-- [ ] Ensure preview handoff rows cannot execute package scripts or validation recipes from editor-core.
-- [ ] Ensure host-gated recipes surface blockers rather than silently passing.
+- [x] Add RED tests for preview handoff rows that connect `environment.command.capture.cubemap.request` to reviewed recipe IDs and host gates.
+- [x] Include exact recipe/status rows for D3D12 local smoke, strict Vulkan smoke when host/toolchain gates are available, and Metal Apple-host recipe when relevant.
+- [x] Encode whether a preview request is `available`, `requested`, `blocked_by_validation`, `host_gated`, or `ready_for_operator_handoff`.
+- [x] Ensure preview handoff rows cannot execute package scripts or validation recipes from editor-core.
+- [x] Ensure host-gated recipes surface blockers rather than silently passing.
 
 Focused validation:
 
@@ -306,6 +306,18 @@ Focused validation:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests MK_editor_native_shell_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_editor_environment_tests|MK_editor_native_shell_tests)$"
 ```
+
+Task 4 evidence on 2026-06-11:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests` failed with missing `EnvironmentSettingsPreviewRecipeDesc`, `EnvironmentSettingsPreviewHandoffStatus`, `preview_recipes`, `cubemap_preview_requested`, and `preview_handoff_rows`.
+- GREEN: Added preview recipe desc rows and preview handoff rows to `EnvironmentSettingsWorkflowModel`.
+- GREEN: Preview handoff status now encodes `available`, `requested`, `blocked_by_validation`, `host_gated`, and `ready_for_operator_handoff`.
+- GREEN: D3D12 preview can surface `ready_for_operator_handoff`, strict Vulkan and Metal preview rows surface `host_gated` blockers, and missing recipe rows surface `blocked_by_validation`.
+- Boundary: Preview handoff rows are value rows only. `executes_backend`, `executes_validation_recipe`, `executes_package_script`, and `exposes_native_handles` remain false.
+- RED/GREEN visible surface: `MK_editor_native_shell_tests` first failed because `editor.panel.environment_settings.workflow.paragraph.preview.0.span.status` was missing, then passed after the native Environment Settings panel rendered preview handoff rows.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`: `format: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests MK_editor_native_shell_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R "^(MK_editor_environment_tests|MK_editor_native_shell_tests)$" --output-on-failure`: passed.
 
 ## Task 5: Package Draft Workflow And Runtime Smoke Counters
 

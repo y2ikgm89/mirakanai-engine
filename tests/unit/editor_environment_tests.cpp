@@ -241,6 +241,95 @@ MK_TEST("editor environment settings workflow exposes stable section tabs and pa
     MK_REQUIRE(readiness->read_only_row_count >= 10U);
 }
 
+MK_TEST("editor environment settings preview handoff rows stay reviewed and host gated") {
+    auto document = mirakana::editor::EnvironmentAuthoringDocument::from_profile_document_v2(
+        make_editor_environment_profile_v2(), "assets/environment/outdoor.environment");
+
+    const std::array validation_recipe_ids = {std::string{"desktop-runtime-sample-game-environment-preview-d3d12"},
+                                              std::string{"desktop-runtime-sample-game-environment-preview-vulkan"},
+                                              std::string{"desktop-runtime-sample-game-environment-preview-metal"}};
+    const std::array preview_recipes = {
+        mirakana::editor::EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-d3d12",
+            .host_gates = {},
+            .validation_available = true,
+            .selected = true,
+            .host_available = true,
+        },
+        mirakana::editor::EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-vulkan",
+            .host_gates = {std::string{"vulkan-sdk"}, std::string{"strict-vulkan-host"}},
+            .validation_available = true,
+            .selected = true,
+            .host_available = false,
+        },
+        mirakana::editor::EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-metal",
+            .host_gates = {std::string{"apple-host"}, std::string{"xcode-metal-tools"}},
+            .validation_available = true,
+            .selected = true,
+            .host_available = false,
+        },
+        mirakana::editor::EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-missing",
+            .host_gates = {},
+            .validation_available = false,
+            .selected = true,
+            .host_available = false,
+        },
+        mirakana::editor::EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-review",
+            .host_gates = {},
+            .validation_available = true,
+            .selected = false,
+            .host_available = false,
+        },
+    };
+
+    const auto model =
+        mirakana::editor::make_environment_settings_workflow_model(mirakana::editor::EnvironmentSettingsWorkflowDesc{
+            .inspector =
+                mirakana::editor::EnvironmentAuthoringInspectorDesc{
+                    .document = document,
+                    .cloud_layer =
+                        mirakana::EnvironmentCloudLayerDesc{
+                            .mode = mirakana::EnvironmentCloudLayerMode::equirectangular_2d,
+                        },
+                    .volumetric_clouds_policy_available = true,
+                },
+            .cooked_profile_path = "runtime/environment/outdoor.geenv",
+            .package_index_path = "runtime/environment/outdoor.geindex",
+            .project_root_path = "games/sample",
+            .existing_runtime_files = {},
+            .validation_recipe_ids = validation_recipe_ids,
+            .preview_recipes = preview_recipes,
+            .cubemap_preview_requested = true,
+        });
+
+    MK_REQUIRE(model.preview_handoff_rows.size() == preview_recipes.size());
+    const auto& d3d12 = model.preview_handoff_rows[0];
+    const auto& vulkan = model.preview_handoff_rows[1];
+    const auto& metal = model.preview_handoff_rows[2];
+    const auto& missing = model.preview_handoff_rows[3];
+    const auto& review = model.preview_handoff_rows[4];
+
+    MK_REQUIRE(d3d12.status == mirakana::editor::EnvironmentSettingsPreviewHandoffStatus::ready_for_operator_handoff);
+    MK_REQUIRE(d3d12.status_label == "ready_for_operator_handoff");
+    MK_REQUIRE(vulkan.status == mirakana::editor::EnvironmentSettingsPreviewHandoffStatus::host_gated);
+    MK_REQUIRE(vulkan.host_gates.size() == 2U);
+    MK_REQUIRE(metal.status_label == "host_gated");
+    MK_REQUIRE(missing.status == mirakana::editor::EnvironmentSettingsPreviewHandoffStatus::blocked_by_validation);
+    MK_REQUIRE(!missing.blocked_by.empty());
+    MK_REQUIRE(review.status == mirakana::editor::EnvironmentSettingsPreviewHandoffStatus::requested);
+    for (const auto& row : model.preview_handoff_rows) {
+        MK_REQUIRE(row.requests_cubemap_capture);
+        MK_REQUIRE(!row.executes_backend);
+        MK_REQUIRE(!row.executes_validation_recipe);
+        MK_REQUIRE(!row.executes_package_script);
+        MK_REQUIRE(!row.exposes_native_handles);
+    }
+}
+
 MK_TEST("editor environment authoring exposes readiness and unsupported claim rows") {
     auto document = mirakana::editor::EnvironmentAuthoringDocument::from_profile_document_v2(
         make_editor_environment_profile_v2(), "assets/environment/outdoor.environment");

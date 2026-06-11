@@ -107,6 +107,35 @@ struct EnvironmentAuthoringInspectorModel {
     std::vector<EnvironmentAuthoringDiagnosticRow> diagnostics;
 };
 
+enum class EnvironmentSettingsPreviewHandoffStatus : std::uint8_t {
+    available = 0,
+    requested,
+    blocked_by_validation,
+    host_gated,
+    ready_for_operator_handoff,
+};
+
+struct EnvironmentSettingsPreviewRecipeDesc {
+    std::string recipe_id;
+    std::vector<std::string> host_gates;
+    bool validation_available{true};
+    bool selected{false};
+    bool host_available{false};
+};
+
+struct EnvironmentSettingsPreviewHandoffRow {
+    std::string recipe_id;
+    EnvironmentSettingsPreviewHandoffStatus status{EnvironmentSettingsPreviewHandoffStatus::available};
+    std::string status_label;
+    std::vector<std::string> host_gates;
+    std::vector<std::string> blocked_by;
+    bool requests_cubemap_capture{false};
+    bool executes_backend{false};
+    bool executes_validation_recipe{false};
+    bool executes_package_script{false};
+    bool exposes_native_handles{false};
+};
+
 struct EnvironmentSettingsWorkflowDesc {
     EnvironmentAuthoringInspectorDesc inspector;
     std::string cooked_profile_path;
@@ -114,6 +143,8 @@ struct EnvironmentSettingsWorkflowDesc {
     std::string project_root_path;
     std::span<const std::string> existing_runtime_files;
     std::span<const std::string> validation_recipe_ids;
+    std::span<const EnvironmentSettingsPreviewRecipeDesc> preview_recipes;
+    bool cubemap_preview_requested{false};
 };
 
 struct EnvironmentSettingsWorkflowSectionRow {
@@ -140,6 +171,7 @@ struct EnvironmentSettingsWorkflowModel {
     std::vector<EnvironmentAuthoringDiagnosticRow> diagnostics;
     std::vector<EnvironmentPackageRegistrationDraftRow> package_draft_rows;
     std::vector<std::string> validation_recipe_ids;
+    std::vector<EnvironmentSettingsPreviewHandoffRow> preview_handoff_rows;
 };
 
 enum class EnvironmentPackageCandidateKind : std::uint8_t {

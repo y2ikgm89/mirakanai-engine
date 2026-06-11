@@ -94,7 +94,34 @@ make_default_environment_authoring_inspector(const EnvironmentAuthoringDocument&
 make_default_environment_settings_workflow(const ProjectDocument& project,
                                            const EnvironmentAuthoringDocument& document) {
     const std::vector<std::string> existing_runtime_files{"runtime/environment/default.environment"};
-    const std::vector<std::string> validation_recipe_ids{"desktop-game-runtime", "installed-desktop-runtime"};
+    const std::vector<std::string> validation_recipe_ids{
+        "desktop-runtime-sample-game-environment-preview-d3d12",
+        "desktop-runtime-sample-game-environment-preview-vulkan",
+        "desktop-runtime-sample-game-environment-preview-metal",
+    };
+    const std::vector<EnvironmentSettingsPreviewRecipeDesc> preview_recipes{
+        EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-d3d12",
+            .host_gates = {},
+            .validation_available = true,
+            .selected = true,
+            .host_available = true,
+        },
+        EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-vulkan",
+            .host_gates = {std::string{"vulkan-sdk"}, std::string{"strict-vulkan-host"}},
+            .validation_available = true,
+            .selected = true,
+            .host_available = false,
+        },
+        EnvironmentSettingsPreviewRecipeDesc{
+            .recipe_id = "desktop-runtime-sample-game-environment-preview-metal",
+            .host_gates = {std::string{"apple-host"}, std::string{"xcode-metal-tools"}},
+            .validation_available = true,
+            .selected = true,
+            .host_available = false,
+        },
+    };
     return make_environment_settings_workflow_model(EnvironmentSettingsWorkflowDesc{
         .inspector =
             EnvironmentAuthoringInspectorDesc{
@@ -107,6 +134,8 @@ make_default_environment_settings_workflow(const ProjectDocument& project,
         .project_root_path = project.root_path,
         .existing_runtime_files = existing_runtime_files,
         .validation_recipe_ids = validation_recipe_ids,
+        .preview_recipes = preview_recipes,
+        .cubemap_preview_requested = true,
     });
 }
 

@@ -303,6 +303,8 @@ MK_TEST("editor first party document includes visible panel roots") {
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.environment_settings.workflow"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.environment_settings.workflow.paragraph.section."
                                                          "environment_settings.readiness.span.label"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.environment_settings.workflow.paragraph.preview.0.span.status"));
 }
 
 MK_TEST("editor first party document renders dock tab headers gutters and focused active panels") {
