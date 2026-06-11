@@ -1023,6 +1023,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_quality_matrix_tests)
     add_test(NAME MK_renderer_quality_matrix_tests COMMAND MK_renderer_quality_matrix_tests)
 
+    add_executable(MK_mavg_metal_capability_policy_tests
+        tests/unit/mavg_metal_capability_policy_tests.cpp
+    )
+    target_link_libraries(MK_mavg_metal_capability_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_mavg_metal_capability_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_mavg_metal_capability_policy_tests)
+    add_test(NAME MK_mavg_metal_capability_policy_tests COMMAND MK_mavg_metal_capability_policy_tests)
+
     add_executable(MK_environment_tests
         tests/unit/environment_tests.cpp
     )
