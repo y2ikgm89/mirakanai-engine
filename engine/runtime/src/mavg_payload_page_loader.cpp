@@ -268,4 +268,167 @@ load_runtime_mavg_payload_pages_from_filesystem(const RuntimeMavgPayloadFilesyst
     return result;
 }
 
+RuntimeMavgPayloadPageLoadResult
+load_runtime_mavg_payload_pages_from_direct_storage(const RuntimeMavgPayloadDirectStoragePageLoadDesc& desc) {
+    RuntimeMavgPayloadPageLoadResult result;
+    result.requested_page_count = desc.page_indices.size();
+
+    bool invalid_inputs = false;
+    if (desc.graph_asset.value == 0) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_graph_asset, desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load graph asset id must be non-zero");
+        invalid_inputs = true;
+    }
+    if (desc.graph == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::missing_graph, desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load graph document is required");
+        invalid_inputs = true;
+    }
+    if (desc.direct_storage == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::missing_direct_storage_executor,
+                       desc.graph_asset, 0, "MAVG payload DirectStorage page load requires a DirectStorage executor");
+        invalid_inputs = true;
+    }
+    if (desc.payload_path.empty()) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::missing_payload_path, desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load requires a payload path");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    const auto& graph = *desc.graph;
+    if (graph.asset != desc.graph_asset) {
+        add_diagnostic(
+            result, RuntimeMavgPayloadPageLoadDiagnosticCode::graph_asset_mismatch, desc.graph_asset, 0,
+            "MAVG payload DirectStorage page load graph document asset must match the requested graph asset");
+        invalid_inputs = true;
+    }
+    if (desc.payload_path != graph.cluster_payload_uri) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::payload_path_mismatch, desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load path must match the graph payload uri");
+        invalid_inputs = true;
+    }
+    const auto validation = validate_mavg_cluster_graph(graph);
+    if (!validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_graph, desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load graph validation failed");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+    if (desc.direct_storage->backend_kind() != ByteRangeIoBackendKind::direct_storage) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_unavailable, desc.graph_asset,
+                       0, "MAVG payload DirectStorage page load requires a DirectStorage byte-range executor");
+        return result;
+    }
+    if (!desc.direct_storage->available()) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_unavailable, desc.graph_asset,
+                       0, "MAVG payload DirectStorage page load executor is unavailable on this host");
+        return result;
+    }
+
+    const auto selected_pages = validate_requested_pages(result, graph, desc.graph_asset, desc.page_indices);
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    const auto prefix = payload_format_prefix();
+    const std::vector<ByteRangeIoReadRequest> prefix_request{
+        ByteRangeIoReadRequest{
+            .path = desc.payload_path,
+            .byte_offset = 0,
+            .byte_size = prefix.size(),
+        },
+    };
+    std::vector<ByteRangeIoReadRow> prefix_rows;
+    try {
+        result.executed_direct_storage = true;
+        prefix_rows = desc.direct_storage->read_ranges(prefix_request);
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_page_read_failed,
+                       desc.graph_asset, 0,
+                       std::string("MAVG payload DirectStorage page load byte-range read failed: ") + error.what());
+        result.loaded_pages.clear();
+        result.loaded_page_count = 0;
+        result.payload_byte_count = 0;
+        return result;
+    }
+    if (prefix_rows.size() != 1U) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_result_mismatch,
+                       desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load returned an unexpected prefix row count");
+        return result;
+    }
+    if (prefix_rows[0].path != desc.payload_path || prefix_rows[0].byte_offset != 0 ||
+        prefix_rows[0].byte_size != prefix.size() || !payload_starts_with_format(prefix_rows[0].bytes)) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_payload_format, desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load requires GameEngine.MavgClusterPayload.v1 text");
+        return result;
+    }
+
+    std::vector<ByteRangeIoReadRequest> requests;
+    requests.reserve(selected_pages.size());
+    for (const auto* const page : selected_pages) {
+        requests.push_back(ByteRangeIoReadRequest{
+            .path = desc.payload_path,
+            .byte_offset = page->byte_offset,
+            .byte_size = page->byte_size,
+        });
+    }
+
+    std::vector<ByteRangeIoReadRow> range_rows;
+    try {
+        range_rows = desc.direct_storage->read_ranges(requests);
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_page_read_failed,
+                       desc.graph_asset, 0,
+                       std::string("MAVG payload DirectStorage page load byte-range read failed: ") + error.what());
+        result.loaded_pages.clear();
+        result.loaded_page_count = 0;
+        result.payload_byte_count = prefix_rows[0].bytes.size();
+        return result;
+    }
+
+    if (range_rows.size() != requests.size()) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_result_mismatch,
+                       desc.graph_asset, 0,
+                       "MAVG payload DirectStorage page load returned an unexpected page row count");
+        return result;
+    }
+    std::vector<RuntimeMavgPayloadPageRow> loaded_pages;
+    loaded_pages.reserve(selected_pages.size());
+    for (std::size_t selected_index = 0; selected_index < selected_pages.size(); ++selected_index) {
+        const auto& request = requests[selected_index];
+        const auto& page = *selected_pages[selected_index];
+        const auto& range_row = range_rows[selected_index];
+        if (range_row.path != desc.payload_path || range_row.byte_offset != request.byte_offset ||
+            range_row.byte_size != request.byte_size || range_row.bytes.size() != request.byte_size) {
+            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_result_mismatch,
+                           desc.graph_asset, page.page_index,
+                           "MAVG payload DirectStorage page load returned a row that does not match the request");
+        }
+        loaded_pages.push_back(RuntimeMavgPayloadPageRow{
+            .graph_asset = desc.graph_asset,
+            .page_index = page.page_index,
+            .byte_offset = range_row.byte_offset,
+            .byte_size = range_row.byte_size,
+            .bytes = range_row.bytes,
+        });
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.payload_byte_count = prefix_rows[0].bytes.size();
+    for (const auto& row : range_rows) {
+        result.payload_byte_count += row.bytes.size();
+    }
+    result.loaded_pages = std::move(loaded_pages);
+    result.loaded_page_count = result.loaded_pages.size();
+    return result;
+}
+
 } // namespace mirakana::runtime
