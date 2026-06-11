@@ -12,7 +12,7 @@
 
 **Plan ID:** `environment-settings-productization-v1`
 
-**Status:** Active. Selected implementation slice in this branch. `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` points `currentActivePlan` at this plan; compose `engine/agent/manifest.json` after every manifest-fragment edit.
+**Status:** Completed locally on 2026-06-12. PR #572 candidate branch includes implementation, package smoke evidence, hosted Validate evidence, docs/manifest/static guard sync, and explicit non-claims. `currentActivePlan` returns to the production-completion master plan in the closeout change.
 
 ## Definition Of Completion
 
@@ -40,10 +40,10 @@ Already implemented and reused by this plan:
 - Task 3 added the dedicated `environment_settings` workspace/dock/native-shell panel, `NativeEditorApp::environment_settings_workflow()`, and `editor.panel.environment_settings.workflow` first-party rich text projection.
 - `docs/testing.md` states that installed environment package smokes reject broad `environment_ready=` and keep exact selected evidence rows.
 
-Not complete yet as a productized Environment Settings feature:
+Completed as a productized Environment Settings feature:
 
-- The editor-core, native panel, preview handoff, productized smoke counters, recipe registration, manifest/docs, and static guards are implemented locally.
-- Full package closeout is blocked in this session because `external/vcpkg/vcpkg.exe` is not generated and `tools/bootstrap-deps.ps1` requires an approval-capable session. The source-tree `desktop-runtime` smoke proves the new `environment_settings_productized_*` output contract, but `tools/package-desktop-runtime.ps1` / installed package validation still need to run after bootstrap.
+- The editor-core, native panel, preview handoff, productized smoke counters, recipe registration, manifest/docs, static guards, source-tree smoke, installed package validation, and package closeout are implemented and validated locally.
+- The package closeout gate passed on 2026-06-12 after bootstrapping the Microsoft vcpkg executable with `external/vcpkg/bootstrap-vcpkg.bat -disableMetrics` and running `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs ... --require-environment-settings-productized`.
 
 ## Official Source Baseline
 
@@ -358,7 +358,8 @@ Task 5 evidence on 2026-06-11:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe-plans.ps1 -RecipeName desktop-runtime-sample-game-environment-settings-productized -DryRun`: passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`: passed.
 - Direct source-tree smoke from `games/sample_desktop_runtime_game` passed and emitted `environment_settings_productized_status=ready`, `environment_settings_productized_ready=1`, `environment_settings_profile_v2_ready=1`, `environment_settings_panel_rows=12`, `environment_settings_command_rows=10`, `environment_settings_preview_request_rows=3`, `environment_settings_package_draft_rows=3`, `environment_settings_validation_recipe_rows=3`, `environment_settings_native_handle_access=0`, `environment_settings_backend_execution_from_editor=0`, `environment_settings_package_script_execution_from_editor=0`, and `environment_settings_broad_environment_ready_claimed=0`; no `environment_ready=` token was present.
-- Package gate blocker: `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs ... --require-environment-settings-productized` failed before configure because `external/vcpkg/vcpkg.exe` was missing. `tools/prepare-worktree.ps1` reported `external-vcpkg=ready`, but `vcpkg.exe` was still absent. `tools/bootstrap-deps.ps1` could not run in this session because the command policy requested approval and approval is unavailable.
+- Package gate closeout on 2026-06-12: `external/vcpkg/bootstrap-vcpkg.bat -disableMetrics` downloaded and signature-validated Microsoft `vcpkg.exe` version `2026-05-27-d5b6777d666efc1a7f491babfcdab37794c1ae3e`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-settings-productized')"`: `installed-desktop-runtime-validation: ok (sample_desktop_runtime_game)` and `desktop-runtime-package: ok (sample_desktop_runtime_game)`.
 
 ## Task 6: Static Guards And Agent Surface Sync
 
@@ -413,7 +414,7 @@ Task 6 evidence on 2026-06-11:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Run publication preflight before staging/push/PR:
+- [x] Run publication preflight before staging/push/PR:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
@@ -421,7 +422,7 @@ git diff --check
 ```
 
 - [x] Update this plan's status with exact validation evidence.
-- [ ] If this plan was selected, move `currentActivePlan` back to the production-completion master plan or the next selected plan in the same closeout change; compose the manifest and run JSON/static checks.
+- [x] If this plan was selected, move `currentActivePlan` back to the production-completion master plan or the next selected plan in the same closeout change; compose the manifest and run JSON/static checks.
 - [x] Open a focused PR with validation evidence and explicit non-claims.
 
 Task 7 in-progress evidence on 2026-06-11:
@@ -433,7 +434,10 @@ Task 7 in-progress evidence on 2026-06-11:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`: 1/1 tests passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: `format-check: ok`.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: `validate: ok`; 114/114 CTest tests passed. Diagnostic-only host gates remain Metal/Apple-host and mobile Apple gates as expected for this Windows host.
-- Productized package closeout is still not complete: `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs ... --require-environment-settings-productized` still fails before configure because `external/vcpkg/vcpkg.exe` is missing. `tools/prepare-worktree.ps1` reports `external-vcpkg=ready`, but the official/repository bootstrap entrypoint `tools/bootstrap-deps.ps1` is approval-gated in this session.
+- Hosted PR evidence after the clang-tidy fix: manual `Validate` run <https://github.com/y2ikgm89/mirakanai-engine/actions/runs/27336413371> passed all jobs for head `3c3fcdce47cd0194ac196c1453576b649eb6c8b0`, including `Full Repository Static Analysis (0)`, `Windows MSVC`, and `PR Gate`.
+- Package closeout on 2026-06-12: `external/vcpkg/bootstrap-vcpkg.bat -disableMetrics` downloaded and signature-validated Microsoft `vcpkg.exe` version `2026-05-27-d5b6777d666efc1a7f491babfcdab37794c1ae3e`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-settings-productized')"`: `installed-desktop-runtime-validation: ok (sample_desktop_runtime_game)` and `desktop-runtime-package: ok (sample_desktop_runtime_game)`.
+- Closeout manifest sync returns `currentActivePlan` to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` and `recommendedNextPlan.id` to `next-production-gap-selection`; `unsupportedProductionGaps = []` remains unchanged.
 
 ## Non-Claims
 
