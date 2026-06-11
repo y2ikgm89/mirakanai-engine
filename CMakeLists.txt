@@ -711,6 +711,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_mavg_cluster_graph_tests)
     add_test(NAME MK_mavg_cluster_graph_tests COMMAND MK_mavg_cluster_graph_tests)
 
+    add_executable(MK_mavg_ray_tracing_consistency_tests
+        tests/unit/mavg_ray_tracing_consistency_tests.cpp
+    )
+    target_link_libraries(MK_mavg_ray_tracing_consistency_tests PRIVATE MK_assets)
+    target_include_directories(MK_mavg_ray_tracing_consistency_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_mavg_ray_tracing_consistency_tests)
+    add_test(NAME MK_mavg_ray_tracing_consistency_tests COMMAND MK_mavg_ray_tracing_consistency_tests)
+
     add_executable(MK_asset_import_production_review_tests
         tests/unit/asset_import_production_review_tests.cpp
     )
