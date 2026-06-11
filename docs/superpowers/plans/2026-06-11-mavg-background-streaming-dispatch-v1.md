@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-background-streaming-dispatch-v1`
 
-**Status:** Active local child candidate. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Completed through PR #573 / merge commit `933fe6dc`. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 
 ## Context
 

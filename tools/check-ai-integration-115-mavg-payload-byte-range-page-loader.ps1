@@ -10,14 +10,19 @@ $payloadLoaderHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana
 $payloadLoaderSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_payload_page_loader.cpp"
 $pageStreamingHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp"
 $pageStreamingSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_page_streaming.cpp"
+$mavgGpuMemoryResidencyHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_gpu_memory_residency.hpp"
+$mavgGpuMemoryResidencySourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_gpu_memory_residency.cpp"
 $payloadLoaderTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_page_loader_tests.cpp"
 $pageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
+$mavgGpuMemoryResidencyTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_gpu_memory_residency_tests.cpp"
 $graphTestsText = Get-AgentSurfaceText "tests/unit/mavg_cluster_graph_tests.cpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $runtimeCmakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
+$runtimeRhiCmakeText = Get-AgentSurfaceText "engine/runtime_rhi/CMakeLists.txt"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-byte-range-page-loader-v1.md"
 $filesystemPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-filesystem-byte-range-io-v1.md"
+$gpuMemoryResidencyPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-memory-pressure-residency-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -214,6 +219,77 @@ foreach ($surface in @(
             "GPU memory pressure"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG background streaming dispatch evidence and non-claims"
+    }
+}
+
+foreach ($needle in @(
+        "RuntimeMavgGpuMemoryResidencyDesc",
+        "RuntimeMavgGpuMemoryResidencyResult",
+        "RuntimeMavgGpuMemoryResidencyDiagnosticCode",
+        "plan_runtime_mavg_gpu_memory_pressure_residency",
+        "RuntimeResourceResidencyBudgetV2",
+        "GpuMemoryPolicyPlan",
+        "proved_async_overlap_performance",
+        "invoked_direct_storage"
+    )) {
+    Assert-ContainsText $mavgGpuMemoryResidencyHeaderText $needle "MAVG GPU memory pressure residency public contract"
+}
+
+foreach ($needle in @(
+        "plan_runtime_mavg_page_streaming_automatic_evictions",
+        "max_resident_content_bytes",
+        "missing_residency_pressure_evidence",
+        "missing_package_counter_evidence",
+        "mutated_mount_set",
+        "touched_renderer_or_rhi_handles"
+    )) {
+    Assert-ContainsText $mavgGpuMemoryResidencySourceText $needle "MAVG GPU memory pressure residency implementation"
+}
+
+foreach ($needle in @(
+        "runtime rhi mavg gpu memory pressure residency plans protected recency eviction without mutation",
+        "runtime rhi mavg gpu memory pressure residency fail closes without policy evidence",
+        "plan_runtime_mavg_gpu_memory_pressure_residency",
+        "MK_REQUIRE(!result.mutated_mount_set)",
+        "MK_REQUIRE(!result.touched_renderer_or_rhi_handles)",
+        "missing_residency_pressure_evidence"
+    )) {
+    Assert-ContainsText $mavgGpuMemoryResidencyTestsText $needle "MAVG GPU memory pressure residency tests"
+}
+
+foreach ($needle in @(
+        "MK_runtime_rhi_mavg_gpu_memory_residency_tests",
+        "tests/unit/runtime_rhi_mavg_gpu_memory_residency_tests.cpp"
+    )) {
+    Assert-ContainsText $cmakeText $needle "MAVG GPU memory pressure residency CMake test target"
+}
+Assert-ContainsText $runtimeRhiCmakeText "src/mavg_gpu_memory_residency.cpp" "MAVG GPU memory pressure residency source registration"
+
+foreach ($surface in @(
+        @{ Text = $gpuMemoryResidencyPlanText; Label = "GPU memory residency implementation plan" },
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        @{ Text = $modulesFragmentText; Label = "modules fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-gpu-memory-pressure-residency-v1",
+            "MAVG GPU Memory Pressure Residency v1",
+            "mavg_gpu_memory_residency.hpp",
+            "RuntimeMavgGpuMemoryResidencyResult",
+            "plan_runtime_mavg_gpu_memory_pressure_residency",
+            "GpuMemoryPolicyPlan",
+            "RuntimeResourceResidencyBudgetV2::max_resident_content_bytes",
+            "DirectStorage",
+            "GPU upload",
+            "mesh shaders",
+            "Nanite",
+            "broad optimization"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU memory pressure residency evidence and non-claims"
     }
 }
 
