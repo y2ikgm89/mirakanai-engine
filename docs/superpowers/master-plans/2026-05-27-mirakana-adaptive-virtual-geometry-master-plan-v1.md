@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-11. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through Vulkan GPU culling dispatch, and preserves fail-closed non-claims for mesh shaders, deformation, ray tracing, benchmark superiority, broad streaming, Metal readiness, and broad optimization.
+**Latest audit:** 2026-06-11. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through local Vulkan compute-generated indirect consumption, and preserves fail-closed non-claims for mesh shaders, deformation, ray tracing, benchmark superiority, broad streaming, Metal readiness, and broad optimization.
 
 ## Master Plan Decision
 
@@ -42,12 +42,11 @@ Repository state checked during this audit:
 - Phase 1 completed through `mavg-asset-graph-v1`, including `GameEngine.MavgClusterGraph.v1`, hierarchy/error/fallback/draw-range validation, deterministic serialization, package dependency rows, static `GameEngine.MavgClusterPayload.v1` vertex/index rows, and `MK_tools` cook/package planning.
 - Phase 2 completed through the runtime LoD milestone, including `mavg_lod_selection.hpp`, `select_mavg_lod_clusters`, selected cluster rows, page requests, resident fallback substitution, budget degradation, temporal hysteresis, and fail-closed diagnostics.
 - The narrow Phase 3 conventional renderer path completed through the same milestone and follow-up closeouts: range-aware conventional indexed draws, `plan_mavg_scene_lod_mesh_commands`, and `upload_runtime_mavg_conventional_mesh_binding` provide package-visible conventional upload and submission evidence without GPU culling, indirect draw, mesh shader, or native-handle claims.
-- Phase 4 is partially implemented. Completed evidence includes value-only `mavg_gpu_culling.hpp` planning, `indirect_draw.hpp`, `IRhiCommandList::draw_indexed_indirect`, Null RHI deterministic execution, D3D12 `ExecuteIndirect`, Vulkan `vkCmdDrawIndexedIndirect`, D3D12/Vulkan count-buffer indirect execution, D3D12 GPU culling dispatch, D3D12 compute-generated indirect consumption, and Vulkan GPU culling dispatch.
+- Phase 4 is partially implemented. Completed evidence includes value-only `mavg_gpu_culling.hpp` planning, `indirect_draw.hpp`, `IRhiCommandList::draw_indexed_indirect`, Null RHI deterministic execution, D3D12 `ExecuteIndirect`, Vulkan `vkCmdDrawIndexedIndirect`, D3D12/Vulkan count-buffer indirect execution, D3D12/Vulkan GPU culling dispatch, D3D12 compute-generated indirect consumption, and local MAVG Vulkan Compute-Generated Indirect Consumption v1 through `mavg-vulkan-compute-generated-indirect-consumption-v1`, `is_compute_generated_indexed_indirect_buffer`, `external_argument_buffer`, `external_count_buffer`, `leave_indirect_argument_state_for_consumption`, backend-private synchronization2 barriers, and `MK_mavg_vulkan_compute_generated_indirect_consumption_tests`.
 - Phase 5 is partially implemented. Completed evidence includes MAVG page request planning, one-row safe-point drain through reviewed package residency, selected-visible/fallback-ancestor eviction protection, deterministic automatic candidate ordering, runtime inferred page use-generation rows, and caller-supplied recency ordering.
 
 Still unclaimed after the 2026-06-11 audit:
 
-- Vulkan compute-generated indirect consumption through existing RHI paths.
 - Autonomous/background MAVG streaming workers, async-overlap/performance proof, partial `.mavgpayload` byte-range page schema and loader, DirectStorage execution, and GPU memory pressure integration.
 - Mesh shader backends, D3D12 Work Graphs research execution, Metal MAVG readiness, deformation tiers, raster/ray tracing cluster consistency, quality governor, benchmark runner/results, Nanite compatibility/equivalence/superiority, and broad CPU/GPU/memory optimization.
 
@@ -55,7 +54,7 @@ Audit conclusions:
 
 - Keep this file as the single MAVG master roadmap. Current truth for implemented scope is also reflected in `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/specs/2026-06-05-mavg-architecture-v1.md`, and `engine/agent/manifest.json`.
 - The near-term production-facing claim has advanced from "static clustered geometry with deterministic fallback and package evidence" to "static clustered geometry with deterministic CPU LoD, conventional upload/submission evidence, selected MAVG page-residency planning, and selected D3D12/Vulkan GPU-culling/indirect evidence." This is still not a broad virtualized geometry, mesh shader, streaming, ray tracing, or benchmark-superiority claim.
-- The next implementation candidate should be a narrow follow-up from the remaining Phase 4/5 gaps, preferably Vulkan compute-generated indirect consumption or partial `.mavgpayload` byte-range page schema, selected only after a fresh child plan and validation scope are written.
+- The next implementation candidate should be a narrow follow-up from the remaining Phase 4/5 gaps, preferably partial `.mavgpayload` byte-range page schema or another unclaimed package-visible backend/streaming gap, selected only after a fresh child plan and validation scope are written.
 - Fresh C++ configure/build validation currently requires a valid official Microsoft `external/vcpkg` checkout because `CMakePresets.json` points at `external/vcpkg/scripts/buildsystems/vcpkg.cmake` with `VCPKG_MANIFEST_INSTALL=OFF`. Microsoft vcpkg documentation describes that CMake integration is enabled through the vcpkg toolchain file and that manifest installs can be integrated into configure, but this repository intentionally routes dependency installation through `tools/bootstrap-deps.ps1`; do not move package restore into configure to bypass a missing clone.
 
 ## 2026-06-05 Full Project Audit Addendum
@@ -142,7 +141,7 @@ Important gaps:
 
 - No production cluster simplification/error metric beyond deterministic static cook/root-leaf hierarchy evidence.
 - No full GPU cluster traversal or visibility-buffer path beyond selected D3D12/Vulkan GPU culling dispatch and indirect/count-buffer execution evidence.
-- No Vulkan compute-generated indirect consumption through existing RHI paths.
+- No package-visible MAVG backend readiness beyond the selected D3D12/Vulkan GPU-culling and indirect evidence.
 - No mesh shader clustered geometry path.
 - No autonomous/background cluster page streaming, partial `.mavgpayload` byte-range page schema/loading, DirectStorage execution, async-overlap proof, or GPU memory pressure integration.
 - No unified raster/ray tracing cluster payload.

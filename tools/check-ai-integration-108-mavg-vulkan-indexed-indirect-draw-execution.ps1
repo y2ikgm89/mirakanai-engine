@@ -29,7 +29,7 @@ foreach ($needle in @(
         "read_runtime_buffer",
         "decode_indexed_indirect_draw_commands",
         "vulkan rhi indexed indirect count buffer execution is not implemented",
-        "vulkan rhi indexed indirect draw argument buffer requires copy_source upload usage in v1",
+        "vulkan rhi indexed indirect draw argument buffer requires CPU-upload or compute-generated usage",
         "record_indexed_indirect_draw_stats"
     )) {
     Assert-ContainsText $vulkanBackendSourceText $needle "engine/rhi/vulkan/src/vulkan_backend.cpp Vulkan vkCmdDrawIndexedIndirect evidence"
