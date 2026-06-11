@@ -663,6 +663,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_mavg_page_streaming_tests)
     add_test(NAME MK_runtime_mavg_page_streaming_tests COMMAND MK_runtime_mavg_page_streaming_tests)
 
+    add_executable(MK_runtime_mavg_payload_page_loader_tests
+        tests/unit/runtime_mavg_payload_page_loader_tests.cpp
+    )
+    target_link_libraries(MK_runtime_mavg_payload_page_loader_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_mavg_payload_page_loader_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_mavg_payload_page_loader_tests)
+    add_test(NAME MK_runtime_mavg_payload_page_loader_tests COMMAND MK_runtime_mavg_payload_page_loader_tests)
+
     add_executable(MK_runtime_package_streaming_resident_mount_tests
         tests/unit/runtime_package_streaming_resident_mount_tests.cpp
     )
