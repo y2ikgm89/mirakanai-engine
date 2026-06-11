@@ -405,9 +405,9 @@ Task 6 evidence on 2026-06-11:
 
 **Goal:** Close the productized environment settings slice with full evidence.
 
-- [ ] Run focused tests affected by the final patch.
-- [ ] Run public API checks if public headers changed.
-- [ ] Run full validation because implementation will touch C++ editor/runtime/package contracts:
+- [x] Run focused tests affected by the final patch.
+- [x] Run public API checks if public headers changed. No public headers changed in the final clang-tidy fix.
+- [x] Run full validation because implementation will touch C++ editor/runtime/package contracts:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
@@ -420,12 +420,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 git diff --check
 ```
 
-- [ ] Update this plan's status with exact validation evidence.
+- [x] Update this plan's status with exact validation evidence.
 - [ ] If this plan was selected, move `currentActivePlan` back to the production-completion master plan or the next selected plan in the same closeout change; compose the manifest and run JSON/static checks.
-- [ ] Open a focused PR with validation evidence and explicit non-claims.
+- [x] Open a focused PR with validation evidence and explicit non-claims.
 
 Task 7 in-progress evidence on 2026-06-11:
 
+- PR #572 manual `Validate` run <https://github.com/y2ikgm89/mirakanai-engine/actions/runs/27334595068> completed with all jobs passing except `Full Repository Static Analysis (0)` / `PR Gate`; the failure was `clang-tidy` `performance-move-const-arg` for `editor/core/src/environment_authoring.cpp:438`.
+- Fixed the final `clang-tidy` finding by copying the trivially-copyable `EnvironmentWeatherKeyframeDesc` row instead of applying `std::move(row)` during weather keyframe reorder.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/core/src/environment_authoring.cpp`: `tidy-check: ok (1 files)`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`: 1/1 tests passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: `format-check: ok`.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: `validate: ok`; 114/114 CTest tests passed. Diagnostic-only host gates remain Metal/Apple-host and mobile Apple gates as expected for this Windows host.
 - Productized package closeout is still not complete: `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs ... --require-environment-settings-productized` still fails before configure because `external/vcpkg/vcpkg.exe` is missing. `tools/prepare-worktree.ps1` reports `external-vcpkg=ready`, but the official/repository bootstrap entrypoint `tools/bootstrap-deps.ps1` is approval-gated in this session.
 

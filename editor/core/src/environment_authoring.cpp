@@ -434,8 +434,7 @@ void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuth
         }
         auto row = document.weather_timeline[source];
         document.weather_timeline.erase(document.weather_timeline.begin() + static_cast<std::ptrdiff_t>(source));
-        document.weather_timeline.insert(document.weather_timeline.begin() + static_cast<std::ptrdiff_t>(target),
-                                         std::move(row));
+        document.weather_timeline.insert(document.weather_timeline.begin() + static_cast<std::ptrdiff_t>(target), row);
         return;
     }
     case EnvironmentAuthoringCommandKind::select_quality_preset:
