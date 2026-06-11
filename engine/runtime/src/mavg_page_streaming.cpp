@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -26,6 +28,16 @@ void add_diagnostic(RuntimeMavgPageStreamingPlanResult& result, RuntimeMavgPageS
 }
 
 void add_diagnostic(RuntimeMavgPageStreamingDrainResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
+                    AssetId graph_asset, std::uint32_t page_index, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimeMavgPageStreamingBackgroundLoadResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
                     AssetId graph_asset, std::uint32_t page_index, std::string message) {
     result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
         .code = code,
@@ -240,6 +252,29 @@ void copy_mount_diagnostics(RuntimeMavgPageStreamingDrainResult& result) {
     if (!result.mount_result.succeeded() && result.diagnostics.empty()) {
         add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::safe_point_failed, result.row.graph_asset,
                        result.row.page_index, "MAVG page streaming safe point failed");
+    }
+}
+
+void copy_background_load_diagnostics(RuntimeMavgPageStreamingBackgroundLoadResult& result,
+                                      const RuntimeMavgPageStreamingBackgroundLoadedRow& row) {
+    if (row.candidate_load.succeeded()) {
+        return;
+    }
+
+    if (row.candidate_load.diagnostics.empty()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::background_load_failed, row.row.graph_asset,
+                       row.row.page_index, "MAVG background page load failed without package diagnostics");
+        return;
+    }
+
+    for (const auto& diagnostic : row.candidate_load.diagnostics) {
+        auto message = std::string{"MAVG background page load failed"};
+        if (!diagnostic.message.empty()) {
+            message += ": ";
+            message += diagnostic.message;
+        }
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::background_load_failed, row.row.graph_asset,
+                       row.row.page_index, std::move(message));
     }
 }
 
@@ -874,6 +909,94 @@ RuntimeMavgPageStreamingDrainResult execute_runtime_mavg_page_streaming_request_
     result.invoked_catalog_refresh = result.mount_result.invoked_catalog_refresh;
     result.committed = result.mount_result.committed;
     copy_mount_diagnostics(result);
+    return result;
+}
+
+RuntimeMavgPageStreamingBackgroundLoadResult
+dispatch_runtime_mavg_page_streaming_background_loads(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                                      RuntimeMavgPageStreamingBackgroundLoadDesc desc) {
+    auto result = RuntimeMavgPageStreamingBackgroundLoadResult{};
+    result.input_row_count = desc.rows.size();
+
+    if (desc.rows.empty()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_background_load_rows, AssetId{}, 0,
+                       "MAVG background page streaming dispatch requires at least one queued row");
+        return result;
+    }
+
+    std::vector<std::optional<RuntimeMavgPageStreamingBackgroundLoadedRow>> loaded_rows(desc.rows.size());
+    std::vector<std::uint8_t> completed(desc.rows.size(), 0U);
+    std::mutex loaded_mutex;
+    std::mutex filesystem_mutex;
+
+    const auto worker_count = std::max<std::uint32_t>(execution_pool.worker_threads_started(), 1U);
+    const auto scratch_bytes = std::max<std::uint64_t>(desc.scratch_bytes_per_task, 1U);
+    auto batch = JobExecutionBatchDesc{};
+    batch.tasks.reserve(desc.rows.size());
+    for (std::size_t index = 0; index < desc.rows.size(); ++index) {
+        const auto row = desc.rows[index];
+        batch.tasks.push_back(JobExecutionTaskDesc{
+            .evidence =
+                JobSchedulingWorkItemRow{
+                    .job_id = "mavg_background_page_load_" + std::to_string(index),
+                    .worker_id = static_cast<std::uint32_t>(index % worker_count),
+                    .batch_size = 1,
+                    .scratch_bytes = scratch_bytes,
+                    .worker_local_output_count = 1,
+                    .merge_order = static_cast<std::uint64_t>(index),
+                },
+            .body =
+                [index, row, &filesystem, &filesystem_mutex, &loaded_mutex, &loaded_rows,
+                 &completed](JobExecutionContext& context) {
+                    auto candidate_load = [&filesystem, &filesystem_mutex, &row] {
+                        std::scoped_lock lock(filesystem_mutex);
+                        return load_runtime_package_candidate_v2(filesystem, row.candidate);
+                    }();
+                    {
+                        std::scoped_lock lock(loaded_mutex);
+                        loaded_rows[index].emplace(RuntimeMavgPageStreamingBackgroundLoadedRow{
+                            .row = row,
+                            .candidate_load = std::move(candidate_load),
+                            .worker_id = context.worker_id,
+                            .invoked_candidate_load = true,
+                        });
+                        completed[index] = 1U;
+                    }
+                },
+        });
+    }
+    batch.options.frame_index = desc.frame_index;
+    batch.options.minimum_batch_size = 1;
+    batch.options.maximum_batch_size = std::max<std::uint64_t>(desc.rows.size(), 1U);
+
+    result.execution = execution_pool.execute(batch);
+    result.dispatched_row_count = result.execution.tasks_executed;
+    result.executed_background_worker = result.execution.tasks_executed > 0U;
+    result.executed_streaming = result.executed_background_worker;
+    result.invoked_file_io = result.executed_background_worker;
+    result.invoked_candidate_load = result.executed_background_worker;
+
+    if (!result.execution.ready()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::background_dispatch_failed, AssetId{}, 0,
+                       "MAVG background page streaming dispatch did not drain successfully");
+    }
+
+    result.loaded_rows.reserve(desc.rows.size());
+    for (std::size_t index = 0; index < loaded_rows.size(); ++index) {
+        if (completed[index] == 0U) {
+            continue;
+        }
+        if (!loaded_rows[index].has_value()) {
+            continue;
+        }
+        if (loaded_rows[index]->candidate_load.succeeded()) {
+            ++result.loaded_row_count;
+        } else {
+            ++result.failed_row_count;
+            copy_background_load_diagnostics(result, *loaded_rows[index]);
+        }
+        result.loaded_rows.push_back(std::move(*loaded_rows[index]));
+    }
     return result;
 }
 

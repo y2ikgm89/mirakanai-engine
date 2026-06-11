@@ -8,7 +8,10 @@ $platformFilesystemHeaderText = Get-AgentSurfaceText "engine/platform/include/mi
 $platformFilesystemSourceText = Get-AgentSurfaceText "engine/platform/src/filesystem.cpp"
 $payloadLoaderHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_payload_page_loader.hpp"
 $payloadLoaderSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_payload_page_loader.cpp"
+$pageStreamingHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp"
+$pageStreamingSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_page_streaming.cpp"
 $payloadLoaderTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_page_loader_tests.cpp"
+$pageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
 $graphTestsText = Get-AgentSurfaceText "tests/unit/mavg_cluster_graph_tests.cpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
@@ -157,6 +160,60 @@ foreach ($surface in @(
             "load_runtime_mavg_payload_pages_from_filesystem"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG filesystem byte-range evidence"
+    }
+}
+
+foreach ($needle in @(
+        "RuntimeMavgPageStreamingBackgroundLoadDesc",
+        "RuntimeMavgPageStreamingBackgroundLoadedRow",
+        "RuntimeMavgPageStreamingBackgroundLoadResult",
+        "dispatch_runtime_mavg_page_streaming_background_loads",
+        "background_load_failed",
+        "proved_async_overlap_performance"
+    )) {
+    Assert-ContainsText $pageStreamingHeaderText $needle "MAVG background streaming dispatch public contract"
+}
+
+foreach ($needle in @(
+        "JobExecutionBatchDesc",
+        "load_runtime_package_candidate_v2",
+        "filesystem_mutex",
+        "background_dispatch_failed",
+        "background_load_failed"
+    )) {
+    Assert-ContainsText $pageStreamingSourceText $needle "MAVG background streaming dispatch implementation"
+}
+
+foreach ($needle in @(
+        "runtime mavg page streaming dispatches queued rows through background job workers",
+        "runtime mavg page streaming background dispatch reports load failures without safe point mutation",
+        "dispatch_runtime_mavg_page_streaming_background_loads",
+        "MK_REQUIRE(!dispatch.committed)",
+        "MK_REQUIRE(!dispatch.invoked_direct_storage)",
+        "MK_REQUIRE(!dispatch.applied_gpu_memory_pressure_policy)",
+        "MK_REQUIRE(!dispatch.proved_async_overlap_performance)"
+    )) {
+    Assert-ContainsText $pageStreamingTestsText $needle "MAVG background streaming dispatch tests"
+}
+
+foreach ($surface in @(
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-background-streaming-dispatch-v1",
+            "MAVG Background Streaming Dispatch v1",
+            "dispatch_runtime_mavg_page_streaming_background_loads",
+            "persistent/autonomous background",
+            "async-overlap/performance proof",
+            "DirectStorage",
+            "GPU memory pressure"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG background streaming dispatch evidence and non-claims"
     }
 }
 
