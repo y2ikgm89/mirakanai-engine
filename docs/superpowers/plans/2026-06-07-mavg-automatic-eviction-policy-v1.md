@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-automatic-eviction-policy-v1`
 
-**Status:** Completed candidate pending publication.
+**Status:** Completed.
 
 ## Goal
 

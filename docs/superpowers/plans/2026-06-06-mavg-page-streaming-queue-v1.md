@@ -56,7 +56,7 @@
 - [x] Describe the narrow page streaming queue evidence without reopening `mavg-runtime-lod-milestone-v1`.
 - [x] Run focused C++ validation for `MK_runtime_mavg_page_streaming_tests`, `MK_runtime_mavg_lod_residency_tests`, and `MK_runtime_package_streaming_resident_mount_tests`.
 - [x] Run static/agent-surface validation and full `tools/validate.ps1`.
-- [ ] Run publication preflight before staging/push/PR.
+- [x] Run publication preflight before staging/push/PR.
 
 Evidence: focused validation passed with `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, targeted build for `MK_runtime_mavg_page_streaming_tests`, `MK_runtime_mavg_lod_residency_tests`, and `MK_runtime_package_streaming_resident_mount_tests`, targeted CTest passing 3/3, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/format.ps1`, `tools/check-format.ps1`, targeted `tools/check-tidy.ps1 -Files engine/runtime/src/mavg_page_streaming.cpp,tests/unit/runtime_mavg_page_streaming_tests.cpp -ReuseExistingFileApiReply`, and `git diff --check`. Full `tools/validate.ps1` passed with `validate: ok` and CTest `107/107` passing; Apple/Metal checks remain host-gated diagnostic-only on this Windows host.
 

@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-resident-page-recency-eviction-order-v1`
 
-**Status:** Completed candidate pending publication.
+**Status:** Completed.
 
 ## Goal
 

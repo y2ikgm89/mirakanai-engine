@@ -86,7 +86,7 @@ Out of scope:
 - [x] Update D3D12 RHI stats from decoded CPU-generated argument bytes.
 - [x] Synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
 - [x] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated stacked PR over `codex/mavg-rhi-indirect-draw-v1`.
+- [x] Publish a validated stacked PR over `codex/mavg-rhi-indirect-draw-v1`.
 
 ## Validation Evidence
 
