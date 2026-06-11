@@ -18,6 +18,7 @@ Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`.
 - MAVG Cluster Streaming Residency Closeout v1 (`mavg-cluster-streaming-residency-closeout-v1`) adds `mavg_cluster_streaming_residency_closeout.hpp`, `RuntimeMavgClusterStreamingResidencyCloseoutResult`, and `plan_runtime_mavg_cluster_streaming_residency_closeout` in `MK_runtime_rhi` to compose reviewed page planning, `load_runtime_mavg_payload_pages_from_filesystem`, `dispatch_runtime_mavg_page_streaming_background_loads`, and `plan_runtime_mavg_gpu_memory_pressure_residency` into one value-level Phase 5 closeout with deterministic degradation counters. It does not claim live mount mutation, catalog refresh, DirectStorage, GPU upload, backend execution, mesh shaders, Nanite readiness, or broad optimization.
 - MAVG Cluster Streaming Safe Point Adoption v1 (`mavg-cluster-streaming-safe-point-adoption-v1`) adds `mavg_cluster_streaming_safe_point_adoption.hpp`, `RuntimeMavgClusterStreamingSafePointAdoptionResult`, and `execute_runtime_mavg_cluster_streaming_safe_point_adoption` in `MK_runtime_rhi` so successful closeout `background_load.loaded_rows` can be projected into caller-owned `RuntimeResidentPackageMountSetV2` mounts, reviewed through `plan_runtime_resident_package_evictions_v2`, refreshed into `RuntimeResidentCatalogCacheV2`, and committed only after projection succeeds. It does not claim package candidate reload, persistent/autonomous streaming services, DirectStorage, GPU upload, backend execution, renderer/RHI handle access, mesh shaders, Nanite readiness, or broad optimization.
 - MAVG Streamed Cluster GPU Upload v1 (`mavg-streamed-cluster-gpu-upload-v1`) adds `mavg_streamed_cluster_gpu_upload.hpp`, `RuntimeMavgStreamedClusterGpuUploadResult`, and `upload_runtime_mavg_streamed_cluster_pages` in `MK_runtime_rhi` so committed `RuntimeMavgClusterStreamingSafePointAdoptionResult` rows can be validated against `RuntimeResidentCatalogCacheV2` mesh residency and caller-owned page payloads before publishing page-level `MeshGpuBinding` rows through existing runtime mesh upload. It does not claim package candidate reload, persistent/autonomous streaming services, DirectStorage, backend execution, mesh shader execution, renderer/RHI native handles, async-overlap/performance proof, Nanite readiness, or broad optimization.
+- MAVG Mesh Shader Capability Planner v1 (`mavg-mesh-shader-capability-planner-v1`) adds `mavg_mesh_shader_policy.hpp`, `MavgMeshShaderCapabilityDesc`, `MavgMeshShaderCapabilityPlan`, and `plan_mavg_mesh_shader_capability` in `MK_renderer` so caller-reviewed D3D12/Vulkan capability rows can produce deterministic mesh-shader-ready or compute/indirect fallback rows with output/payload/threadgroup/combined-payload-output-memory/pipeline-statistics diagnostics. `MK_mavg_mesh_shader_policy_tests` proves reviewed-support selection, fallback on missing backend support, insufficient-limit diagnostics, D3D12 pipeline-statistics advisory diagnostics, deterministic missing-backend rows, and zero mesh shader execution / native-handle access.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -205,10 +206,12 @@ Future responsibilities:
 
 ### Mesh Shader Backends
 
-Future files should start in `shaders/`, `MK_renderer`, and backend-local `MK_rhi_*` code.
+Current value-only capability files start in `MK_renderer`; future execution files should start in `shaders/` and backend-local `MK_rhi_*` code.
 
 Responsibilities:
 
+- Represent caller-reviewed D3D12/Vulkan mesh shader support, task/amplification support, output/payload/threadgroup/combined-payload-output-memory limits, and D3D12 pipeline-statistics availability as first-party rows.
+- Select compute/indirect fallback when reviewed support or limits are insufficient.
 - D3D12 mesh shader path with feature queries and output/payload limit rows.
 - Vulkan `VK_EXT_mesh_shader` path with strict toolchain/host gates.
 - Fallback diagnostics when mesh shaders are unavailable.
@@ -216,6 +219,7 @@ Responsibilities:
 Non-responsibilities:
 
 - Making mesh shaders mandatory.
+- Executing `DispatchMesh` or `vkCmdDrawMeshTasksEXT` from the value-only policy.
 - Work Graphs as a default path.
 - Metal readiness without Apple-host proof.
 
