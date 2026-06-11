@@ -148,12 +148,9 @@ find_payload_row(std::span<const RuntimeMavgStreamedClusterPagePayloadRow> page_
     }
 
     std::uint64_t expected_index_size = 0;
-    if (!checked_byte_count(payload.index_count, mesh_index_stride_for_upload(options.index_format),
-                            expected_index_size) ||
-        static_cast<std::uint64_t>(payload.index_bytes.size()) != expected_index_size) {
-        return false;
-    }
-    return true;
+    return checked_byte_count(payload.index_count, mesh_index_stride_for_upload(options.index_format),
+                              expected_index_size) &&
+           static_cast<std::uint64_t>(payload.index_bytes.size()) == expected_index_size;
 }
 
 void reset_publication(RuntimeMavgStreamedClusterGpuUploadResult& result) {
