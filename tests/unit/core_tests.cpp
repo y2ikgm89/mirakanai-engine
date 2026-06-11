@@ -84,6 +84,11 @@
 
 namespace {
 
+[[nodiscard]] std::vector<std::byte> byte_vector(std::string_view text) {
+    const auto bytes = std::as_bytes(std::span<const char>(text.data(), text.size()));
+    return std::vector<std::byte>(bytes.begin(), bytes.end());
+}
+
 struct Position {
     float x;
     float y;
@@ -4236,6 +4241,22 @@ MK_TEST("memory filesystem stores reads and lists text files") {
     MK_REQUIRE(!fs.exists("assets/player.meta"));
 }
 
+MK_TEST("memory filesystem reads exact binary byte ranges") {
+    mirakana::MemoryFileSystem fs;
+    fs.write_text("runtime/mavg/cathedral.mavgpayload", "header\npage-zero\npage-one\n");
+
+    const auto page_zero = fs.read_binary_range("runtime/mavg/cathedral.mavgpayload", 7, 9);
+
+    MK_REQUIRE(page_zero == byte_vector("page-zero"));
+    bool rejected_out_of_bounds = false;
+    try {
+        static_cast<void>(fs.read_binary_range("runtime/mavg/cathedral.mavgpayload", 7, 900));
+    } catch (const std::out_of_range&) {
+        rejected_out_of_bounds = true;
+    }
+    MK_REQUIRE(rejected_out_of_bounds);
+}
+
 MK_TEST("file watcher backend selection prefers native and falls back to polling") {
     const auto native_choice = mirakana::choose_file_watch_backend(
         mirakana::FileWatchBackendKind::automatic,
@@ -4403,6 +4424,27 @@ MK_TEST("rooted filesystem stores reads and lists text files under a root") {
     MK_REQUIRE(files.size() == 2);
     MK_REQUIRE(files[0] == "assets/nested/enemy.meta");
     MK_REQUIRE(files[1] == "assets/player.meta");
+
+    std::filesystem::remove_all(root);
+}
+
+MK_TEST("rooted filesystem reads exact binary byte ranges without loading text") {
+    const auto root = std::filesystem::current_path() / "ge-rooted-filesystem-binary-range-test";
+    std::filesystem::remove_all(root);
+
+    mirakana::RootedFileSystem fs(root);
+    fs.write_text("runtime/mavg/cathedral.mavgpayload", "format\npage-zero\npage-one\n");
+
+    const auto page_one = fs.read_binary_range("runtime/mavg/cathedral.mavgpayload", 17, 8);
+
+    MK_REQUIRE(page_one == byte_vector("page-one"));
+    bool rejected_out_of_bounds = false;
+    try {
+        static_cast<void>(fs.read_binary_range("runtime/mavg/cathedral.mavgpayload", 17, 900));
+    } catch (const std::out_of_range&) {
+        rejected_out_of_bounds = true;
+    }
+    MK_REQUIRE(rejected_out_of_bounds);
 
     std::filesystem::remove_all(root);
 }

@@ -4,8 +4,12 @@
 #include "mirakana/platform/filesystem.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <limits>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -66,6 +70,10 @@ void validate_relative_path(std::string_view path, const char* name) {
 
 } // namespace
 
+std::vector<std::byte> IFileSystem::read_binary_range(std::string_view, std::uint64_t, std::uint64_t) const {
+    throw std::runtime_error("filesystem does not support binary byte-range reads");
+}
+
 bool MemoryFileSystem::exists(std::string_view path) const {
     return files_.find(std::string(path)) != files_.end();
 }
@@ -85,6 +93,22 @@ std::string MemoryFileSystem::read_text(std::string_view path) const {
         throw std::out_of_range("file does not exist");
     }
     return it->second;
+}
+
+std::vector<std::byte> MemoryFileSystem::read_binary_range(std::string_view path, std::uint64_t byte_offset,
+                                                           std::uint64_t byte_size) const {
+    const auto it = files_.find(std::string(path));
+    if (it == files_.end()) {
+        throw std::out_of_range("file does not exist");
+    }
+    const auto& content = it->second;
+    if (byte_offset > content.size() || byte_size > content.size() - static_cast<std::size_t>(byte_offset)) {
+        throw std::out_of_range("file byte range is out of bounds");
+    }
+    const auto begin = content.data() + static_cast<std::size_t>(byte_offset);
+    const auto range = std::span<const char>(begin, static_cast<std::size_t>(byte_size));
+    const auto bytes = std::as_bytes(range);
+    return std::vector<std::byte>(bytes.begin(), bytes.end());
 }
 
 std::vector<std::string> MemoryFileSystem::list_files(std::string_view root) const {
@@ -140,6 +164,41 @@ std::string RootedFileSystem::read_text(std::string_view path) const {
         throw std::out_of_range("file does not exist: " + std::string(path));
     }
     return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+std::vector<std::byte> RootedFileSystem::read_binary_range(std::string_view path, std::uint64_t byte_offset,
+                                                           std::uint64_t byte_size) const {
+    const auto full_path = filesystem_api_path(resolve(path));
+    std::error_code error;
+    const auto file_size = std::filesystem::file_size(full_path, error);
+    if (error) {
+        throw std::out_of_range("file does not exist: " + std::string(path));
+    }
+    if (byte_offset > file_size || byte_size > file_size - byte_offset) {
+        throw std::out_of_range("file byte range is out of bounds: " + std::string(path));
+    }
+    if (byte_offset > static_cast<std::uint64_t>(std::numeric_limits<std::streamoff>::max()) ||
+        byte_size > static_cast<std::uint64_t>(std::numeric_limits<std::streamsize>::max())) {
+        throw std::out_of_range("file byte range is too large: " + std::string(path));
+    }
+
+    std::ifstream input(full_path, std::ios::binary);
+    if (!input) {
+        throw std::out_of_range("file does not exist: " + std::string(path));
+    }
+    input.seekg(static_cast<std::streamoff>(byte_offset), std::ios::beg);
+    if (!input) {
+        throw std::runtime_error("failed to seek file: " + std::string(path));
+    }
+
+    std::vector<std::byte> bytes(static_cast<std::size_t>(byte_size));
+    if (!bytes.empty()) {
+        input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        if (input.gcount() != static_cast<std::streamsize>(bytes.size())) {
+            throw std::runtime_error("failed to read file byte range: " + std::string(path));
+        }
+    }
+    return bytes;
 }
 
 std::vector<std::string> RootedFileSystem::list_files(std::string_view root) const {

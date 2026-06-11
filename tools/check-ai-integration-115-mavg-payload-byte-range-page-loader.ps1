@@ -4,13 +4,17 @@
 
 $mavgGraphHeaderText = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp"
 $mavgGraphSourceText = Get-AgentSurfaceText "engine/assets/src/mavg_cluster_graph.cpp"
+$platformFilesystemHeaderText = Get-AgentSurfaceText "engine/platform/include/mirakana/platform/filesystem.hpp"
+$platformFilesystemSourceText = Get-AgentSurfaceText "engine/platform/src/filesystem.cpp"
 $payloadLoaderHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_payload_page_loader.hpp"
 $payloadLoaderSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_payload_page_loader.cpp"
 $payloadLoaderTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_page_loader_tests.cpp"
 $graphTestsText = Get-AgentSurfaceText "tests/unit/mavg_cluster_graph_tests.cpp"
+$coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $runtimeCmakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-byte-range-page-loader-v1.md"
+$filesystemPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-filesystem-byte-range-io-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -29,10 +33,13 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "RuntimeMavgPayloadPageLoadDesc",
+        "RuntimeMavgPayloadFilesystemPageLoadDesc",
         "RuntimeMavgPayloadPageLoadResult",
         "RuntimeMavgPayloadPageRow",
         "RuntimeMavgPayloadPageLoadDiagnosticCode",
         "load_runtime_mavg_payload_pages",
+        "load_runtime_mavg_payload_pages_from_filesystem",
+        "filesystem_read_byte_count",
         "invoked_file_io",
         "executed_background_worker",
         "executed_direct_storage",
@@ -43,8 +50,10 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "load_runtime_mavg_payload_pages_from_filesystem",
         "GameEngine.MavgClusterPayload.v1",
         "payload_starts_with_format",
+        "read_binary_range",
         "duplicate_page_request",
         "page_range_out_of_bounds",
         "std::vector<std::byte>"
@@ -53,10 +62,34 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "read_binary_range"
+    )) {
+    Assert-ContainsText $platformFilesystemHeaderText $needle "MAVG filesystem byte-range public contract"
+}
+
+foreach ($needle in @(
+        "MemoryFileSystem::read_binary_range",
+        "RootedFileSystem::read_binary_range"
+    )) {
+    Assert-ContainsText $platformFilesystemSourceText $needle "MAVG filesystem byte-range implementation"
+}
+
+foreach ($needle in @(
+        "memory filesystem reads exact binary byte ranges",
+        "rooted filesystem reads exact binary byte ranges without loading text"
+    )) {
+    Assert-ContainsText $coreTestsText $needle "MAVG filesystem byte-range platform tests"
+}
+
+foreach ($needle in @(
         "runtime mavg payload page loader copies requested byte ranges without side effects",
         "runtime mavg payload page loader rejects duplicate missing and out of bounds pages",
         "runtime mavg payload page loader rejects invalid payload format",
+        "runtime mavg filesystem payload page loader reads only format prefix and requested byte ranges",
+        "runtime mavg filesystem payload page loader rejects range failures without partial rows",
         "MK_REQUIRE(!result.invoked_file_io)",
+        "MK_REQUIRE(result.invoked_file_io)",
+        "read_text_call_count == 0",
         "MK_REQUIRE(!result.executed_background_worker)",
         "MK_REQUIRE(!result.executed_direct_storage)",
         "MK_REQUIRE(!result.touched_gpu_memory_policy)",
@@ -96,7 +129,6 @@ foreach ($surface in @(
             "mavg_payload_page_loader.hpp",
             "RuntimeMavgPayloadPageLoadResult",
             "load_runtime_mavg_payload_pages",
-            "filesystem byte-range",
             "background streaming",
             "GPU memory pressure",
             "mesh shaders",
@@ -105,6 +137,26 @@ foreach ($surface in @(
             "broad optimization"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG payload byte-range page loader evidence and non-claims"
+    }
+}
+
+foreach ($surface in @(
+        @{ Text = $filesystemPlanText; Label = "filesystem byte-range implementation plan" },
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        @{ Text = $modulesFragmentText; Label = "modules fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-payload-filesystem-byte-range-io-v1",
+            "MAVG Payload Filesystem Byte-Range IO v1",
+            "IFileSystem::read_binary_range",
+            "load_runtime_mavg_payload_pages_from_filesystem"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG filesystem byte-range evidence"
     }
 }
 

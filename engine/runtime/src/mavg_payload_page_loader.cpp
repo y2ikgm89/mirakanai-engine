@@ -13,6 +13,10 @@
 namespace mirakana::runtime {
 namespace {
 
+[[nodiscard]] std::string payload_format_prefix() {
+    return "format=" + std::string(mavg_cluster_payload_format_v1()) + "\n";
+}
+
 void add_diagnostic(RuntimeMavgPayloadPageLoadResult& result, RuntimeMavgPayloadPageLoadDiagnosticCode code,
                     AssetId graph_asset, std::uint32_t page_index, std::string message) {
     result.diagnostics.push_back(RuntimeMavgPayloadPageLoadDiagnostic{
@@ -24,7 +28,7 @@ void add_diagnostic(RuntimeMavgPayloadPageLoadResult& result, RuntimeMavgPayload
 }
 
 [[nodiscard]] bool payload_starts_with_format(std::span<const std::byte> payload_bytes) noexcept {
-    const std::string prefix = "format=" + std::string(mavg_cluster_payload_format_v1()) + "\n";
+    const std::string prefix = payload_format_prefix();
     if (payload_bytes.size() < prefix.size()) {
         return false;
     }
@@ -54,6 +58,34 @@ void add_diagnostic(RuntimeMavgPayloadPageLoadResult& result, RuntimeMavgPayload
         }
     }
     return false;
+}
+
+[[nodiscard]] std::vector<const MavgClusterGraphPage*>
+validate_requested_pages(RuntimeMavgPayloadPageLoadResult& result, const MavgClusterGraphDocument& graph,
+                         AssetId graph_asset, std::span<const std::uint32_t> page_indices) {
+    std::vector<const MavgClusterGraphPage*> selected_pages;
+    selected_pages.reserve(page_indices.size());
+    for (std::size_t request_index = 0; request_index < page_indices.size(); ++request_index) {
+        const auto page_index = page_indices[request_index];
+        if (contains_page(page_indices, page_index, request_index)) {
+            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::duplicate_page_request, graph_asset,
+                           page_index, "MAVG payload page load requests must be unique");
+            continue;
+        }
+        const auto* const page = find_page(graph, page_index);
+        if (page == nullptr) {
+            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::unknown_page, graph_asset, page_index,
+                           "MAVG payload page load request references an unknown page");
+            continue;
+        }
+        if (page->byte_offset > std::numeric_limits<std::uint64_t>::max() - page->byte_size) {
+            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::page_range_overflow, graph_asset,
+                           page_index, "MAVG payload page load byte range overflows");
+            continue;
+        }
+        selected_pages.push_back(page);
+    }
+    return selected_pages;
 }
 
 } // namespace
@@ -99,33 +131,13 @@ RuntimeMavgPayloadPageLoadResult load_runtime_mavg_payload_pages(const RuntimeMa
         return result;
     }
 
-    std::vector<const MavgClusterGraphPage*> selected_pages;
-    selected_pages.reserve(desc.page_indices.size());
-    for (std::size_t request_index = 0; request_index < desc.page_indices.size(); ++request_index) {
-        const auto page_index = desc.page_indices[request_index];
-        if (contains_page(desc.page_indices, page_index, request_index)) {
-            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::duplicate_page_request, desc.graph_asset,
-                           page_index, "MAVG payload page load requests must be unique");
-            continue;
-        }
-        const auto* const page = find_page(graph, page_index);
-        if (page == nullptr) {
-            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::unknown_page, desc.graph_asset, page_index,
-                           "MAVG payload page load request references an unknown page");
-            continue;
-        }
-        if (page->byte_offset > std::numeric_limits<std::uint64_t>::max() - page->byte_size) {
-            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::page_range_overflow, desc.graph_asset,
-                           page_index, "MAVG payload page load byte range overflows");
-            continue;
-        }
+    const auto selected_pages = validate_requested_pages(result, graph, desc.graph_asset, desc.page_indices);
+    for (const auto* const page : selected_pages) {
         const auto range_end = page->byte_offset + page->byte_size;
         if (range_end > desc.payload_bytes.size()) {
             add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::page_range_out_of_bounds, desc.graph_asset,
-                           page_index, "MAVG payload page load byte range exceeds payload bytes");
-            continue;
+                           page->page_index, "MAVG payload page load byte range exceeds payload bytes");
         }
-        selected_pages.push_back(page);
     }
     if (!result.diagnostics.empty()) {
         return result;
@@ -144,6 +156,114 @@ RuntimeMavgPayloadPageLoadResult load_runtime_mavg_payload_pages(const RuntimeMa
             .bytes = std::vector<std::byte>(page_bytes.begin(), page_bytes.end()),
         });
     }
+    result.loaded_page_count = result.loaded_pages.size();
+    return result;
+}
+
+RuntimeMavgPayloadPageLoadResult
+load_runtime_mavg_payload_pages_from_filesystem(const RuntimeMavgPayloadFilesystemPageLoadDesc& desc) {
+    RuntimeMavgPayloadPageLoadResult result;
+    result.requested_page_count = desc.page_indices.size();
+    result.invoked_file_io = desc.filesystem != nullptr;
+
+    bool invalid_inputs = false;
+    if (desc.graph_asset.value == 0) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_graph_asset, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load graph asset id must be non-zero");
+        invalid_inputs = true;
+    }
+    if (desc.graph == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::missing_graph, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load graph document is required");
+        invalid_inputs = true;
+    }
+    if (desc.filesystem == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::missing_filesystem, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load requires a filesystem");
+        invalid_inputs = true;
+    }
+    if (desc.payload_path.empty()) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::missing_payload_path, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load requires a payload path");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    const auto& graph = *desc.graph;
+    if (graph.asset != desc.graph_asset) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::graph_asset_mismatch, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load graph document asset must match the requested graph asset");
+        invalid_inputs = true;
+    }
+    if (desc.payload_path != graph.cluster_payload_uri) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::payload_path_mismatch, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load path must match the graph payload uri");
+        invalid_inputs = true;
+    }
+    const auto validation = validate_mavg_cluster_graph(graph);
+    if (!validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_graph, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load graph validation failed");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    const auto prefix = payload_format_prefix();
+    std::vector<std::byte> prefix_bytes;
+    try {
+        prefix_bytes = desc.filesystem->read_binary_range(desc.payload_path, 0, prefix.size());
+        result.filesystem_read_byte_count += prefix_bytes.size();
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_payload_format, desc.graph_asset, 0,
+                       std::string("MAVG payload filesystem page load failed to read format prefix: ") + error.what());
+        return result;
+    }
+    if (!payload_starts_with_format(prefix_bytes)) {
+        add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_payload_format, desc.graph_asset, 0,
+                       "MAVG payload filesystem page load requires GameEngine.MavgClusterPayload.v1 text");
+        return result;
+    }
+
+    const auto selected_pages = validate_requested_pages(result, graph, desc.graph_asset, desc.page_indices);
+    if (!result.diagnostics.empty()) {
+        result.payload_byte_count = result.filesystem_read_byte_count;
+        return result;
+    }
+
+    std::vector<RuntimeMavgPayloadPageRow> loaded_pages;
+    loaded_pages.reserve(selected_pages.size());
+    for (const auto* const page : selected_pages) {
+        try {
+            auto bytes = desc.filesystem->read_binary_range(desc.payload_path, page->byte_offset, page->byte_size);
+            result.filesystem_read_byte_count += bytes.size();
+            loaded_pages.push_back(RuntimeMavgPayloadPageRow{
+                .graph_asset = desc.graph_asset,
+                .page_index = page->page_index,
+                .byte_offset = page->byte_offset,
+                .byte_size = page->byte_size,
+                .bytes = std::move(bytes),
+            });
+        } catch (const std::out_of_range& error) {
+            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::page_range_out_of_bounds, desc.graph_asset,
+                           page->page_index,
+                           std::string("MAVG payload filesystem page load byte range exceeds payload bytes: ") +
+                               error.what());
+        } catch (const std::exception& error) {
+            add_diagnostic(result, RuntimeMavgPayloadPageLoadDiagnosticCode::page_range_read_failed, desc.graph_asset,
+                           page->page_index,
+                           std::string("MAVG payload filesystem page load byte-range read failed: ") + error.what());
+        }
+    }
+    result.payload_byte_count = result.filesystem_read_byte_count;
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.loaded_pages = std::move(loaded_pages);
     result.loaded_page_count = result.loaded_pages.size();
     return result;
 }

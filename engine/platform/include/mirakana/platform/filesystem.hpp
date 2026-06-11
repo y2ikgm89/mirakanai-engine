@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -18,6 +20,8 @@ class IFileSystem {
     [[nodiscard]] virtual bool exists(std::string_view path) const = 0;
     [[nodiscard]] virtual bool is_directory(std::string_view path) const = 0;
     [[nodiscard]] virtual std::string read_text(std::string_view path) const = 0;
+    [[nodiscard]] virtual std::vector<std::byte> read_binary_range(std::string_view path, std::uint64_t byte_offset,
+                                                                   std::uint64_t byte_size) const;
     [[nodiscard]] virtual std::vector<std::string> list_files(std::string_view root) const = 0;
 
     virtual void write_text(std::string_view path, std::string_view text) = 0;
@@ -30,6 +34,8 @@ class MemoryFileSystem final : public IFileSystem {
     [[nodiscard]] bool exists(std::string_view path) const override;
     [[nodiscard]] bool is_directory(std::string_view path) const override;
     [[nodiscard]] std::string read_text(std::string_view path) const override;
+    [[nodiscard]] std::vector<std::byte> read_binary_range(std::string_view path, std::uint64_t byte_offset,
+                                                           std::uint64_t byte_size) const override;
     [[nodiscard]] std::vector<std::string> list_files(std::string_view root) const override;
 
     void write_text(std::string_view path, std::string_view text) override;
@@ -47,6 +53,8 @@ class RootedFileSystem final : public IFileSystem {
     [[nodiscard]] bool exists(std::string_view path) const override;
     [[nodiscard]] bool is_directory(std::string_view path) const override;
     [[nodiscard]] std::string read_text(std::string_view path) const override;
+    [[nodiscard]] std::vector<std::byte> read_binary_range(std::string_view path, std::uint64_t byte_offset,
+                                                           std::uint64_t byte_size) const override;
     [[nodiscard]] std::vector<std::string> list_files(std::string_view root) const override;
 
     void write_text(std::string_view path, std::string_view text) override;
