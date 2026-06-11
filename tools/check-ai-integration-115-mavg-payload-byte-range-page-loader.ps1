@@ -4,6 +4,7 @@
 
 $mavgGraphHeaderText = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp"
 $mavgGraphSourceText = Get-AgentSurfaceText "engine/assets/src/mavg_cluster_graph.cpp"
+$platformByteRangeIoHeaderText = Get-AgentSurfaceText "engine/platform/include/mirakana/platform/byte_range_io.hpp"
 $platformFilesystemHeaderText = Get-AgentSurfaceText "engine/platform/include/mirakana/platform/filesystem.hpp"
 $platformFilesystemSourceText = Get-AgentSurfaceText "engine/platform/src/filesystem.cpp"
 $payloadLoaderHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_payload_page_loader.hpp"
@@ -34,6 +35,7 @@ $runtimeCmakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
 $runtimeRhiCmakeText = Get-AgentSurfaceText "engine/runtime_rhi/CMakeLists.txt"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-byte-range-page-loader-v1.md"
 $filesystemPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-filesystem-byte-range-io-v1.md"
+$directStoragePageIoPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-directstorage-page-io-execution-v1.md"
 $gpuMemoryResidencyPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-memory-pressure-residency-v1.md"
 $clusterStreamingResidencyCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-residency-closeout-v1.md"
 $clusterStreamingSafePointAdoptionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-safe-point-adoption-v1.md"
@@ -59,11 +61,16 @@ foreach ($needle in @(
 foreach ($needle in @(
         "RuntimeMavgPayloadPageLoadDesc",
         "RuntimeMavgPayloadFilesystemPageLoadDesc",
+        "RuntimeMavgPayloadDirectStoragePageLoadDesc",
         "RuntimeMavgPayloadPageLoadResult",
         "RuntimeMavgPayloadPageRow",
         "RuntimeMavgPayloadPageLoadDiagnosticCode",
         "load_runtime_mavg_payload_pages",
         "load_runtime_mavg_payload_pages_from_filesystem",
+        "load_runtime_mavg_payload_pages_from_direct_storage",
+        "direct_storage_unavailable",
+        "direct_storage_page_read_failed",
+        "direct_storage_result_mismatch",
         "filesystem_read_byte_count",
         "invoked_file_io",
         "executed_background_worker",
@@ -75,9 +82,22 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "ByteRangeIoBackendKind",
+        "direct_storage",
+        "ByteRangeIoReadRequest",
+        "ByteRangeIoReadRow",
+        "IByteRangeIoExecutor",
+        "read_ranges"
+    )) {
+    Assert-ContainsText $platformByteRangeIoHeaderText $needle "MAVG DirectStorage byte-range IO executor platform contract"
+}
+
+foreach ($needle in @(
         "load_runtime_mavg_payload_pages_from_filesystem",
+        "load_runtime_mavg_payload_pages_from_direct_storage",
         "GameEngine.MavgClusterPayload.v1",
         "payload_starts_with_format",
+        "ByteRangeIoBackendKind::direct_storage",
         "read_binary_range",
         "duplicate_page_request",
         "page_range_out_of_bounds",
@@ -112,8 +132,13 @@ foreach ($needle in @(
         "runtime mavg payload page loader rejects invalid payload format",
         "runtime mavg filesystem payload page loader reads only format prefix and requested byte ranges",
         "runtime mavg filesystem payload page loader rejects range failures without partial rows",
+        "runtime mavg directstorage payload page loader executes reviewed byte ranges without public native handles",
+        "runtime mavg directstorage payload page loader fails closed when unavailable",
+        "runtime mavg directstorage payload page loader rejects invalid payload format before page reads",
+        "runtime mavg directstorage payload page loader rejects page read failures without partial rows",
         "MK_REQUIRE(!result.invoked_file_io)",
         "MK_REQUIRE(result.invoked_file_io)",
+        "MK_REQUIRE(result.executed_direct_storage)",
         "read_text_call_count == 0",
         "MK_REQUIRE(!result.executed_background_worker)",
         "MK_REQUIRE(!result.executed_direct_storage)",
@@ -121,6 +146,30 @@ foreach ($needle in @(
         "MK_REQUIRE(!result.touched_renderer_or_rhi_handles)"
     )) {
     Assert-ContainsText $payloadLoaderTestsText $needle "MAVG runtime payload page loader tests"
+}
+
+foreach ($surface in @(
+        @{ Text = $directStoragePageIoPlanText; Label = "DirectStorage page IO plan" },
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        @{ Text = $modulesFragmentText; Label = "modules fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-directstorage-page-io-execution-v1",
+            "MAVG DirectStorage Page IO Execution v1",
+            "IByteRangeIoExecutor",
+            "ByteRangeIoBackendKind::direct_storage",
+            "RuntimeMavgPayloadDirectStoragePageLoadDesc",
+            "load_runtime_mavg_payload_pages_from_direct_storage",
+            "filesystem fallback",
+            "first-party Win32 DirectStorage SDK adapter"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG DirectStorage page IO evidence and non-claims"
+    }
 }
 
 foreach ($needle in @(
