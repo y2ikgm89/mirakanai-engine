@@ -160,6 +160,51 @@ struct RuntimeMavgPageStreamingBackgroundLoadResult {
     }
 };
 
+struct RuntimeMavgPageStreamingBackgroundServiceState {
+    AssetId graph_asset;
+    std::vector<RuntimeMavgPageStreamingPlanRow> pending_rows;
+};
+
+struct RuntimeMavgPageStreamingBackgroundServiceTickDesc {
+    AssetId graph_asset;
+    std::span<const RuntimeMavgPageStreamingPlanRow> reviewed_rows;
+    std::size_t max_pending_pages{0};
+    std::size_t max_dispatch_pages{0};
+    std::uint64_t frame_index{0};
+    std::uint64_t scratch_bytes_per_task{64};
+};
+
+struct RuntimeMavgPageStreamingBackgroundServiceTickResult {
+    RuntimeMavgPageStreamingBackgroundLoadResult dispatch;
+    std::vector<RuntimeMavgPageStreamingBackgroundLoadedRow> loaded_rows;
+    std::vector<RuntimeMavgPageStreamingDiagnostic> diagnostics;
+    std::size_t input_row_count{0};
+    std::size_t accepted_row_count{0};
+    std::size_t duplicate_pending_row_count{0};
+    std::size_t budget_dropped_request_count{0};
+    std::size_t pending_row_count_before{0};
+    std::size_t pending_row_count_after{0};
+    std::size_t dispatched_row_count{0};
+    std::size_t loaded_row_count{0};
+    std::size_t failed_row_count{0};
+    bool budget_degraded{false};
+    bool invoked_file_io{false};
+    bool invoked_candidate_load{false};
+    bool executed_streaming{false};
+    bool executed_background_worker{false};
+    bool committed{false};
+    bool mutated_mount_set{false};
+    bool invoked_catalog_refresh{false};
+    bool touched_renderer_or_rhi_handles{false};
+    bool invoked_direct_storage{false};
+    bool applied_gpu_memory_pressure_policy{false};
+    bool proved_async_overlap_performance{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && failed_row_count == 0U;
+    }
+};
+
 struct RuntimeMavgResidentPageMountRow {
     AssetId graph_asset;
     std::uint32_t page_index{0};
@@ -285,6 +330,16 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
 [[nodiscard]] RuntimeMavgPageStreamingBackgroundLoadResult
 dispatch_runtime_mavg_page_streaming_background_loads(IFileSystem& filesystem, JobExecutionPool& execution_pool,
                                                       RuntimeMavgPageStreamingBackgroundLoadDesc desc);
+
+/// Maintains caller-owned pending MAVG page rows across frames and dispatches a bounded subset through the existing
+/// background package loader. The service validates graph ownership before mutating state, coalesces duplicate pending
+/// pages, and returns loaded rows for later caller-owned safe-point adoption. It does not mount packages, refresh
+/// catalogs, execute DirectStorage, integrate GPU memory pressure, prove async overlap/performance, or touch
+/// renderer/RHI/native handles.
+[[nodiscard]] RuntimeMavgPageStreamingBackgroundServiceTickResult
+tick_runtime_mavg_page_streaming_background_service(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                                    RuntimeMavgPageStreamingBackgroundServiceState& state,
+                                                    RuntimeMavgPageStreamingBackgroundServiceTickDesc desc);
 
 /// Reviews caller-provided resident page mounts and eviction candidates before a MAVG page-streaming safe point. The
 /// function protects selected cluster pages plus resident fallback ancestors, then delegates to the existing resident
