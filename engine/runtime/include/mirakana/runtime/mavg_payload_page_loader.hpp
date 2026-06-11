@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/assets/mavg_cluster_graph.hpp"
+#include "mirakana/platform/filesystem.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -19,10 +20,14 @@ enum class RuntimeMavgPayloadPageLoadDiagnosticCode : std::uint8_t {
     graph_asset_mismatch,
     invalid_graph,
     invalid_payload_format,
+    missing_filesystem,
+    missing_payload_path,
+    payload_path_mismatch,
     unknown_page,
     duplicate_page_request,
     page_range_overflow,
     page_range_out_of_bounds,
+    page_range_read_failed,
 };
 
 struct RuntimeMavgPayloadPageLoadDiagnostic {
@@ -36,6 +41,14 @@ struct RuntimeMavgPayloadPageLoadDesc {
     AssetId graph_asset;
     const MavgClusterGraphDocument* graph{nullptr};
     std::span<const std::byte> payload_bytes;
+    std::span<const std::uint32_t> page_indices;
+};
+
+struct RuntimeMavgPayloadFilesystemPageLoadDesc {
+    AssetId graph_asset;
+    const MavgClusterGraphDocument* graph{nullptr};
+    IFileSystem* filesystem{nullptr};
+    std::string_view payload_path;
     std::span<const std::uint32_t> page_indices;
 };
 
@@ -53,6 +66,7 @@ struct RuntimeMavgPayloadPageLoadResult {
     std::size_t requested_page_count{0};
     std::size_t loaded_page_count{0};
     std::size_t payload_byte_count{0};
+    std::size_t filesystem_read_byte_count{0};
     bool invoked_file_io{false};
     bool mutated_mount_set{false};
     bool executed_background_worker{false};
@@ -70,5 +84,11 @@ struct RuntimeMavgPayloadPageLoadResult {
 /// touch GPU memory policy, or access renderer/RHI/native handles.
 [[nodiscard]] RuntimeMavgPayloadPageLoadResult
 load_runtime_mavg_payload_pages(const RuntimeMavgPayloadPageLoadDesc& desc);
+
+/// Reads reviewed MAVG payload page byte ranges from the first-party filesystem byte-range contract. This remains a
+/// narrow synchronous loader: it does not mutate resident mounts, execute background streaming, invoke DirectStorage,
+/// touch GPU memory policy, or access renderer/RHI/native handles.
+[[nodiscard]] RuntimeMavgPayloadPageLoadResult
+load_runtime_mavg_payload_pages_from_filesystem(const RuntimeMavgPayloadFilesystemPageLoadDesc& desc);
 
 } // namespace mirakana::runtime
