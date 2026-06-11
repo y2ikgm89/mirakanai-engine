@@ -95,6 +95,52 @@ void add_default_readiness_rows(EnvironmentAuthoringInspectorModel& model) {
                       "Public Backend Handles", "unsupported");
 }
 
+[[nodiscard]] bool row_id_starts_with(const EnvironmentAuthoringInspectorRow& row, std::string_view prefix) noexcept {
+    return std::string_view{row.id}.starts_with(prefix);
+}
+
+[[nodiscard]] bool belongs_to_environment_settings_section(std::string_view section_id,
+                                                           const EnvironmentAuthoringInspectorRow& row) noexcept {
+    if (section_id == "environment_settings.global") {
+        return row_id_starts_with(row, "environment.sky.") || row_id_starts_with(row, "environment.sun.") ||
+               row_id_starts_with(row, "environment.moon.") || row_id_starts_with(row, "environment.atmosphere.") ||
+               row_id_starts_with(row, "environment.fog.") || row_id_starts_with(row, "environment.cloud_layer.") ||
+               row_id_starts_with(row, "environment.precipitation.");
+    }
+    if (section_id == "environment_settings.volumes") {
+        return row.id == "environment.profile_v2.volume_count" || row_id_starts_with(row, "environment.volume.");
+    }
+    if (section_id == "environment_settings.weather") {
+        return row.id == "environment.weather.preset" || row.id == "environment.profile_v2.weather_keyframes" ||
+               row_id_starts_with(row, "environment.weather_keyframe.");
+    }
+    if (section_id == "environment_settings.quality") {
+        return row.id == "environment.quality.tier";
+    }
+    if (section_id == "environment_settings.preview") {
+        return row_id_starts_with(row, "environment.capture.");
+    }
+    if (section_id == "environment_settings.readiness") {
+        return row_id_starts_with(row, "environment.readiness.");
+    }
+    return false;
+}
+
+void summarize_environment_settings_rows(EnvironmentSettingsWorkflowSectionRow& section,
+                                         std::span<const EnvironmentAuthoringInspectorRow> rows) noexcept {
+    for (const auto& row : rows) {
+        if (!belongs_to_environment_settings_section(section.id, row)) {
+            continue;
+        }
+        ++section.row_count;
+        if (row.editable) {
+            ++section.editable_row_count;
+        } else {
+            ++section.read_only_row_count;
+        }
+    }
+}
+
 void add_diagnostics(EnvironmentAuthoringValidationModel& model, const EnvironmentProfileValidationResult& validation) {
     for (const auto& diagnostic : validation.diagnostics) {
         model.diagnostics.push_back(EnvironmentAuthoringDiagnosticRow{
@@ -643,6 +689,51 @@ make_environment_authoring_inspector_model(const EnvironmentAuthoringInspectorDe
     add_row(model, "environment.capture.cubemap.request_status", "Capture", "Cubemap Capture Request", "available",
             false);
     add_default_readiness_rows(model);
+
+    return model;
+}
+
+EnvironmentSettingsWorkflowModel make_environment_settings_workflow_model(const EnvironmentSettingsWorkflowDesc& desc) {
+    const auto inspector = make_environment_authoring_inspector_model(desc.inspector);
+    const auto package_candidates = make_environment_package_candidate_rows(
+        desc.inspector.document, desc.cooked_profile_path, desc.package_index_path);
+    const auto package_draft_rows = make_environment_package_registration_draft_rows(
+        package_candidates, desc.project_root_path, desc.existing_runtime_files);
+
+    EnvironmentSettingsWorkflowModel model;
+    model.status = inspector.status;
+    model.surface_id = "environment_settings";
+    model.profile_id = inspector.profile_id;
+    model.path = inspector.path;
+    model.dirty = inspector.dirty;
+    model.revision = inspector.revision;
+    model.saved_revision = inspector.saved_revision;
+    model.invokes_backend = inspector.invokes_backend;
+    model.exposes_native_handles = inspector.exposes_native_handles;
+    model.executes_package_scripts = inspector.executes_package_scripts;
+    model.rows = inspector.rows;
+    model.diagnostics = inspector.diagnostics;
+    model.package_draft_rows = package_draft_rows;
+    model.validation_recipe_ids.assign(desc.validation_recipe_ids.begin(), desc.validation_recipe_ids.end());
+
+    model.sections = {
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.global", .label = "Global"},
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.volumes", .label = "Volumes"},
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.weather", .label = "Weather"},
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.quality", .label = "Quality"},
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.preview", .label = "Preview"},
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.package", .label = "Package"},
+        EnvironmentSettingsWorkflowSectionRow{.id = "environment_settings.readiness", .label = "Readiness"},
+    };
+
+    for (auto& section : model.sections) {
+        if (section.id == "environment_settings.package") {
+            section.row_count = static_cast<std::uint32_t>(model.package_draft_rows.size());
+            section.read_only_row_count = section.row_count;
+        } else {
+            summarize_environment_settings_rows(section, model.rows);
+        }
+    }
 
     return model;
 }

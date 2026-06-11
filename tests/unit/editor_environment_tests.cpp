@@ -91,6 +91,15 @@ find_environment_diagnostic(const mirakana::editor::EnvironmentAuthoringValidati
     return it == model.diagnostics.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::EnvironmentSettingsWorkflowSectionRow*
+find_environment_settings_section(const mirakana::editor::EnvironmentSettingsWorkflowModel& model,
+                                  std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        model.sections,
+        [id](const mirakana::editor::EnvironmentSettingsWorkflowSectionRow& section) { return section.id == id; });
+    return it == model.sections.end() ? nullptr : &(*it);
+}
+
 [[nodiscard]] bool contains_element(const mirakana::ui::UiDocument& document, std::string_view id) {
     return document.find(mirakana::ui::ElementId{.value = std::string{id}}) != nullptr;
 }
@@ -148,6 +157,88 @@ MK_TEST("editor environment authoring emits deterministic inspector rows") {
     const auto ui = mirakana::editor::make_environment_authoring_ui_model(model);
     MK_REQUIRE(contains_element(ui, "environment_authoring.inspector.rows.environment.sky.model.value"));
     MK_REQUIRE(contains_element(ui, "environment_authoring.inspector.rows.environment.quality.tier.value"));
+}
+
+MK_TEST("editor environment settings workflow exposes stable section tabs and package summary") {
+    auto document = mirakana::editor::EnvironmentAuthoringDocument::from_profile_document_v2(
+        make_editor_environment_profile_v2(), "assets/environment/outdoor.environment");
+
+    const std::array existing_runtime_files = {std::string{"runtime/environment/outdoor.geindex"}};
+    const std::array validation_recipe_ids = {std::string{"desktop-runtime-sample-game-environment-profile-v2"},
+                                              std::string{"desktop-runtime-sample-game-environment-package-review"}};
+
+    const auto model =
+        mirakana::editor::make_environment_settings_workflow_model(mirakana::editor::EnvironmentSettingsWorkflowDesc{
+            .inspector =
+                mirakana::editor::EnvironmentAuthoringInspectorDesc{
+                    .document = document,
+                    .cloud_layer =
+                        mirakana::EnvironmentCloudLayerDesc{
+                            .mode = mirakana::EnvironmentCloudLayerMode::equirectangular_2d,
+                            .coverage = 0.7F,
+                            .opacity = 0.85F,
+                            .altitude_m = 2200.0F,
+                            .wind_velocity_mps = mirakana::Vec2{.x = 4.0F, .y = 1.0F},
+                            .cloud_map_asset_ref = "textures/clouds/storm_latlong",
+                            .flow_map_asset_ref = "textures/clouds/storm_flow",
+                        },
+                    .volumetric_clouds_policy_available = true,
+                },
+            .cooked_profile_path = "runtime/environment/outdoor.geenv",
+            .package_index_path = "runtime/environment/outdoor.geindex",
+            .project_root_path = "games/sample",
+            .existing_runtime_files = existing_runtime_files,
+            .validation_recipe_ids = validation_recipe_ids,
+        });
+
+    MK_REQUIRE(model.surface_id == "environment_settings");
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentAuthoringStatus::ready);
+    MK_REQUIRE(model.profile_id == "outdoor_storm");
+    MK_REQUIRE(model.path == "assets/environment/outdoor.environment");
+    MK_REQUIRE(!model.dirty);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(model.rows.size() >= 30U);
+    MK_REQUIRE(model.package_draft_rows.size() == 3U);
+    MK_REQUIRE(model.validation_recipe_ids.size() == validation_recipe_ids.size());
+    MK_REQUIRE(model.validation_recipe_ids[0] == "desktop-runtime-sample-game-environment-profile-v2");
+    MK_REQUIRE(std::ranges::any_of(model.rows, [](const mirakana::editor::EnvironmentAuthoringInspectorRow& row) {
+        return row.id == "environment.profile_v2.volume_count" && row.value == "1" && !row.editable;
+    }));
+    MK_REQUIRE(std::ranges::any_of(model.rows, [](const mirakana::editor::EnvironmentAuthoringInspectorRow& row) {
+        return row.id == "environment.profile_v2.weather_keyframes" && row.value == "2" && !row.editable;
+    }));
+    MK_REQUIRE(std::ranges::any_of(model.rows, [](const mirakana::editor::EnvironmentAuthoringInspectorRow& row) {
+        return row.id == "environment.quality.tier" && row.value == "high" && row.editable;
+    }));
+    MK_REQUIRE(std::ranges::any_of(model.rows, [](const mirakana::editor::EnvironmentAuthoringInspectorRow& row) {
+        return row.id == "environment.readiness.unsupported.environment_ready" && row.value == "unclaimed" &&
+               !row.editable;
+    }));
+
+    const auto* global = find_environment_settings_section(model, "environment_settings.global");
+    const auto* volumes = find_environment_settings_section(model, "environment_settings.volumes");
+    const auto* weather = find_environment_settings_section(model, "environment_settings.weather");
+    const auto* quality = find_environment_settings_section(model, "environment_settings.quality");
+    const auto* preview = find_environment_settings_section(model, "environment_settings.preview");
+    const auto* package = find_environment_settings_section(model, "environment_settings.package");
+    const auto* readiness = find_environment_settings_section(model, "environment_settings.readiness");
+    MK_REQUIRE(global != nullptr);
+    MK_REQUIRE(volumes != nullptr);
+    MK_REQUIRE(weather != nullptr);
+    MK_REQUIRE(quality != nullptr);
+    MK_REQUIRE(preview != nullptr);
+    MK_REQUIRE(package != nullptr);
+    MK_REQUIRE(readiness != nullptr);
+
+    MK_REQUIRE(global->editable_row_count > 0U);
+    MK_REQUIRE(volumes->row_count >= 6U);
+    MK_REQUIRE(weather->row_count >= 9U);
+    MK_REQUIRE(quality->row_count >= 1U);
+    MK_REQUIRE(preview->read_only_row_count == 1U);
+    MK_REQUIRE(package->row_count == 3U);
+    MK_REQUIRE(readiness->read_only_row_count >= 10U);
 }
 
 MK_TEST("editor environment authoring exposes readiness and unsupported claim rows") {

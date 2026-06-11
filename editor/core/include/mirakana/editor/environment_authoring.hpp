@@ -46,6 +46,7 @@ struct EnvironmentAuthoringValidationModel {
 };
 
 struct EnvironmentAuthoringCommandRequest;
+struct EnvironmentPackageRegistrationDraftRow;
 
 class EnvironmentAuthoringDocument {
   public:
@@ -104,6 +105,41 @@ struct EnvironmentAuthoringInspectorModel {
     bool executes_package_scripts{false};
     std::vector<EnvironmentAuthoringInspectorRow> rows;
     std::vector<EnvironmentAuthoringDiagnosticRow> diagnostics;
+};
+
+struct EnvironmentSettingsWorkflowDesc {
+    EnvironmentAuthoringInspectorDesc inspector;
+    std::string cooked_profile_path;
+    std::string package_index_path;
+    std::string project_root_path;
+    std::span<const std::string> existing_runtime_files;
+    std::span<const std::string> validation_recipe_ids;
+};
+
+struct EnvironmentSettingsWorkflowSectionRow {
+    std::string id;
+    std::string label;
+    std::uint32_t row_count{0};
+    std::uint32_t editable_row_count{0};
+    std::uint32_t read_only_row_count{0};
+};
+
+struct EnvironmentSettingsWorkflowModel {
+    EnvironmentAuthoringStatus status{EnvironmentAuthoringStatus::blocked};
+    std::string surface_id;
+    std::string profile_id;
+    std::string path;
+    bool dirty{false};
+    std::uint64_t revision{0};
+    std::uint64_t saved_revision{0};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+    std::vector<EnvironmentSettingsWorkflowSectionRow> sections;
+    std::vector<EnvironmentAuthoringInspectorRow> rows;
+    std::vector<EnvironmentAuthoringDiagnosticRow> diagnostics;
+    std::vector<EnvironmentPackageRegistrationDraftRow> package_draft_rows;
+    std::vector<std::string> validation_recipe_ids;
 };
 
 enum class EnvironmentPackageCandidateKind : std::uint8_t {
@@ -205,6 +241,8 @@ make_environment_authoring_command_action(EnvironmentAuthoringDocument& document
 make_environment_authoring_validation_model(const EnvironmentAuthoringDocument& document);
 [[nodiscard]] EnvironmentAuthoringInspectorModel
 make_environment_authoring_inspector_model(const EnvironmentAuthoringInspectorDesc& desc);
+[[nodiscard]] EnvironmentSettingsWorkflowModel
+make_environment_settings_workflow_model(const EnvironmentSettingsWorkflowDesc& desc);
 [[nodiscard]] std::vector<EditorPropertyRow>
 make_environment_authoring_editor_property_rows(const EnvironmentAuthoringInspectorModel& model);
 [[nodiscard]] mirakana::ui::UiDocument

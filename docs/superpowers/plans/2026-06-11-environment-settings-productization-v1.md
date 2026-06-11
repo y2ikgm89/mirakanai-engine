@@ -189,7 +189,7 @@ Task 0 evidence on 2026-06-11:
 
 **Files:** `environment_authoring.hpp`, `environment_authoring.cpp`, `editor_environment_tests.cpp`.
 
-- [ ] Add RED tests for a settings workflow model with stable section/tab IDs:
+- [x] Add RED tests for a settings workflow model with stable section/tab IDs:
   - `environment_settings.global`
   - `environment_settings.volumes`
   - `environment_settings.weather`
@@ -197,10 +197,10 @@ Task 0 evidence on 2026-06-11:
   - `environment_settings.preview`
   - `environment_settings.package`
   - `environment_settings.readiness`
-- [ ] The RED tests must prove the model includes profile path, dirty/revision state, profile-v2 volume count, weather keyframe count, quality preset, diagnostics, selected readiness rows, package draft summary, and unsupported broad-claim rows.
-- [ ] Add the smallest API needed, for example `EnvironmentSettingsWorkflowModel` and `make_environment_settings_workflow_model`, if existing `EnvironmentAuthoringInspectorModel` cannot represent the workflow cleanly.
-- [ ] Preserve existing `make_environment_authoring_inspector_model` and Inspector row behavior unless a RED test proves a contract should move.
-- [ ] Verify no backend execution, package-script execution, validation-recipe execution, shell execution, public native handles, Dear ImGui, SDL3, or middleware flags can become true from editor-core.
+- [x] The RED tests must prove the model includes profile path, dirty/revision state, profile-v2 volume count, weather keyframe count, quality preset, diagnostics, selected readiness rows, package draft summary, and unsupported broad-claim rows.
+- [x] Add the smallest API needed, for example `EnvironmentSettingsWorkflowModel` and `make_environment_settings_workflow_model`, if existing `EnvironmentAuthoringInspectorModel` cannot represent the workflow cleanly.
+- [x] Preserve existing `make_environment_authoring_inspector_model` and Inspector row behavior unless a RED test proves a contract should move.
+- [x] Verify no backend execution, package-script execution, validation-recipe execution, shell execution, public native handles, Dear ImGui, SDL3, or middleware flags can become true from editor-core.
 
 Focused validation:
 
@@ -208,6 +208,13 @@ Focused validation:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_editor_environment_tests$"
 ```
+
+Task 1 evidence on 2026-06-11:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests` failed with missing `EnvironmentSettingsWorkflowSectionRow`, `EnvironmentSettingsWorkflowModel`, `EnvironmentSettingsWorkflowDesc`, and `make_environment_settings_workflow_model`.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests` passed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_editor_environment_tests --output-on-failure` passed.
+- Format: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed.
 
 ## Task 2: Complete User-Visible Setting Commands
 
