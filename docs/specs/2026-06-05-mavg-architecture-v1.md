@@ -18,6 +18,7 @@ Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`.
 - MAVG Cluster Streaming Residency Closeout v1 (`mavg-cluster-streaming-residency-closeout-v1`) adds `mavg_cluster_streaming_residency_closeout.hpp`, `RuntimeMavgClusterStreamingResidencyCloseoutResult`, and `plan_runtime_mavg_cluster_streaming_residency_closeout` in `MK_runtime_rhi` to compose reviewed page planning, `load_runtime_mavg_payload_pages_from_filesystem`, `dispatch_runtime_mavg_page_streaming_background_loads`, and `plan_runtime_mavg_gpu_memory_pressure_residency` into one value-level Phase 5 closeout with deterministic degradation counters. It does not claim live mount mutation, catalog refresh, DirectStorage, GPU upload, backend execution, mesh shaders, Nanite readiness, or broad optimization.
 - MAVG Cluster Streaming Safe Point Adoption v1 (`mavg-cluster-streaming-safe-point-adoption-v1`) adds `mavg_cluster_streaming_safe_point_adoption.hpp`, `RuntimeMavgClusterStreamingSafePointAdoptionResult`, and `execute_runtime_mavg_cluster_streaming_safe_point_adoption` in `MK_runtime_rhi` so successful closeout `background_load.loaded_rows` can be projected into caller-owned `RuntimeResidentPackageMountSetV2` mounts, reviewed through `plan_runtime_resident_package_evictions_v2`, refreshed into `RuntimeResidentCatalogCacheV2`, and committed only after projection succeeds. It does not claim package candidate reload, persistent/autonomous streaming services, DirectStorage, GPU upload, backend execution, renderer/RHI handle access, mesh shaders, Nanite readiness, or broad optimization.
 - MAVG Streamed Cluster GPU Upload v1 (`mavg-streamed-cluster-gpu-upload-v1`) adds `mavg_streamed_cluster_gpu_upload.hpp`, `RuntimeMavgStreamedClusterGpuUploadResult`, and `upload_runtime_mavg_streamed_cluster_pages` in `MK_runtime_rhi` so committed `RuntimeMavgClusterStreamingSafePointAdoptionResult` rows can be validated against `RuntimeResidentCatalogCacheV2` mesh residency and caller-owned page payloads before publishing page-level `MeshGpuBinding` rows through existing runtime mesh upload. It does not claim package candidate reload, persistent/autonomous streaming services, DirectStorage, backend execution, mesh shader execution, renderer/RHI native handles, async-overlap/performance proof, Nanite readiness, or broad optimization.
+- MAVG Deformation Tier Diagnostics v1 (`mavg-deformation-tier-diagnostics-v1`) adds `mavg_deformation.hpp`, `MavgDeformationTierDiagnosticsDesc`, `MavgDeformationTierDiagnosticsResult`, and `plan_mavg_deformation_tier_diagnostics` in `MK_assets` so caller-reviewed `MavgClusterGraphDocument` rows can be classified into Tier 0 static, Tier 1 rigid, Tier 2 skinned, Tier 3 morph, and Tier 4 dynamic displacement support/fallback diagnostics. It supports static/rigid rows without runtime refit, requires conservative bone bounds for skinned rows and delta bounds for morph rows, and keeps dynamic displacement fallback-only without runtime upload/refit, renderer/RHI execution, DirectStorage, background streaming, mesh shader execution, Metal readiness, Nanite equivalence/superiority, or broad optimization.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -257,6 +258,21 @@ Tiers:
 - Tier 4: runtime displacement/destruction with bounded dynamic update policy.
 
 Unsupported tiers must fall back to conventional rendering with diagnostics.
+
+Implemented asset-level responsibilities:
+
+- Expose `MavgDeformationClusterRow`, `MavgSkinnedClusterBoundsRow`, `MavgMorphClusterDeltaBoundsRow`, `MavgDeformationTierDiagnosticsResult`, and `plan_mavg_deformation_tier_diagnostics`.
+- Classify static and rigid clusters as ready without runtime refit.
+- Classify skinned clusters as ready only when caller-reviewed conservative bone bounds have finite extents, non-negative displacement radius, and positive influencing bone count.
+- Classify morph clusters as ready only when caller-reviewed delta bounds are finite and have a non-negative delta radius.
+- Classify dynamic displacement/destruction as fallback-only with explicit diagnostics.
+- Return deterministic row order and duplicate/unknown-cluster diagnostics without touching renderer/RHI handles, runtime upload, DirectStorage, background streaming, mesh shaders, or optimization systems.
+
+Future responsibilities:
+
+- Runtime deformation upload/refit policy rows in `MK_runtime_rhi`.
+- Package evidence for selected skinned and morph MAVG samples.
+- Renderer/RHI and backend evidence for deformable cluster execution.
 
 ### Ray Tracing
 

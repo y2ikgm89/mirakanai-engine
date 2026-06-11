@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-11. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Cluster Streaming Safe Point Adoption v1 / PR #576 merge commit `7810ca10`, records MAVG Streamed Cluster GPU Upload v1 as the current narrow child, and preserves fail-closed non-claims for persistent/autonomous background streaming services, async-overlap/performance proof, DirectStorage execution, backend draw execution, mesh shaders, deformation, ray tracing, benchmark superiority, Metal readiness, and broad optimization.
+**Latest audit:** 2026-06-12. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Cluster Streaming Safe Point Adoption v1 / PR #576 merge commit `7810ca10`, records MAVG Streamed Cluster GPU Upload v1 as a published narrow child, records MAVG Deformation Tier Diagnostics v1 as the asset-level Phase 7 diagnostics child, and preserves fail-closed non-claims for persistent/autonomous background streaming services, async-overlap/performance proof, DirectStorage execution, backend draw execution, mesh shaders, runtime deformation upload/refit, ray tracing, benchmark superiority, Metal readiness, and broad optimization.
 
 ## Master Plan Decision
 
@@ -48,7 +48,7 @@ Repository state checked during this audit:
 Still unclaimed after the 2026-06-11 audit:
 
 - Persistent/autonomous MAVG streaming services, async-overlap/performance proof, DirectStorage execution, backend draw execution, mesh shader execution, and broad GPU memory pressure enforcement beyond value-only `RuntimeResourceResidencyBudgetV2::max_resident_content_bytes` resident byte-budget eviction planning.
-- Mesh shader backends, D3D12 Work Graphs research execution, Metal MAVG readiness, deformation tiers, raster/ray tracing cluster consistency, quality governor, benchmark runner/results, Nanite compatibility/equivalence/superiority, and broad CPU/GPU/memory optimization.
+- Mesh shader backends, D3D12 Work Graphs research execution, Metal MAVG readiness, deformation runtime upload/refit and package evidence beyond the asset-level tier diagnostics value contract, raster/ray tracing cluster consistency, quality governor, benchmark runner/results, Nanite compatibility/equivalence/superiority, and broad CPU/GPU/memory optimization.
 
 Audit conclusions:
 
@@ -510,6 +510,8 @@ git diff --check
 - Deformation tier diagnostics.
 - Runtime update/refit policy rows.
 - Package evidence for selected skinned and morph cluster samples.
+
+**Asset-level checkpoint evidence:** MAVG Deformation Tier Diagnostics v1 (`mavg-deformation-tier-diagnostics-v1`) adds `mavg_deformation.hpp`, `MavgDeformationTierDiagnosticsResult`, and `plan_mavg_deformation_tier_diagnostics` in `MK_assets` so Tier 0 static, Tier 1 rigid, Tier 2 skinned, Tier 3 morph, and Tier 4 dynamic displacement cluster rows have deterministic support/fallback diagnostics before runtime upload/refit work. This checkpoint does not claim runtime deformation upload/refit, package-visible skinned/morph sample evidence, renderer/RHI execution, backend draw execution, mesh shaders, DirectStorage, background streaming, async-overlap/performance proof, Metal readiness, Nanite equivalence/superiority, or broad optimization.
 
 **Done when:**
 
