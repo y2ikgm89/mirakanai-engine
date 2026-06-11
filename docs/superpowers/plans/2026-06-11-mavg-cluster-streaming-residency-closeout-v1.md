@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-cluster-streaming-residency-closeout-v1`
 
-**Status:** Active local child candidate rebased onto `origin/main` after PR #574 merged.
+**Status:** Published draft PR #575 after rebasing onto `origin/main` after PR #574 merged.
 
 ## Context
 
@@ -49,7 +49,7 @@ Completed prerequisites:
 - [x] Update manifest fragments and compose `engine/agent/manifest.json`; do not hand-edit the composed manifest.
 - [x] Run focused tests, static guards, public API checks, full `tools/validate.ps1`, and `git diff --check`.
 - [x] After PR #574 merges, rebase onto `origin/main` and rerun drift-sensitive checks.
-- [ ] Run publication preflight and publish this closeout branch.
+- [x] Run publication preflight and publish this closeout branch as draft PR #575.
 
 ## Validation Evidence
 
