@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-cluster-streaming-safe-point-adoption-v1`
 
-**Status:** Stacked local child candidate based on draft PR #575. Rebase onto `origin/main` after PR #575 merges before publishing.
+**Status:** Published as draft PR #576 after PR #575 merged and this branch rebased onto `origin/main`.
 
 ## Context
 
