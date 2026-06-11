@@ -21,6 +21,12 @@ namespace mirakana {
 namespace {
 
 constexpr std::string_view mavg_cluster_graph_format = "GameEngine.MavgClusterGraph.v1";
+constexpr std::string_view mavg_cluster_payload_format = "GameEngine.MavgClusterPayload.v1";
+
+struct PageByteRange {
+    std::uint64_t begin{0};
+    std::uint64_t end{0};
+};
 
 [[nodiscard]] bool valid_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos &&
@@ -303,6 +309,10 @@ std::string_view mavg_cluster_graph_format_v1() noexcept {
     return mavg_cluster_graph_format;
 }
 
+std::string_view mavg_cluster_payload_format_v1() noexcept {
+    return mavg_cluster_payload_format;
+}
+
 MavgClusterGraphValidationResult validate_mavg_cluster_graph(const MavgClusterGraphDocument& document) {
     std::vector<MavgClusterGraphDiagnostic> diagnostics;
     if (document.asset.value == 0) {
@@ -344,15 +354,38 @@ MavgClusterGraphValidationResult validate_mavg_cluster_graph(const MavgClusterGr
 
     const auto known_clusters = cluster_index_set(document.clusters);
     std::unordered_set<std::uint32_t> seen_pages;
+    std::vector<PageByteRange> page_byte_ranges;
     for (const auto& page : document.pages) {
         if (!seen_pages.insert(page.page_index).second) {
             add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::duplicate_page_index, document.asset,
                            "page.index", "mavg cluster graph page index is duplicated");
         }
+        if (page.byte_size > 0U) {
+            if (page.byte_offset > std::numeric_limits<std::uint64_t>::max() - page.byte_size) {
+                add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::invalid_page_byte_range, document.asset,
+                               "page.byte_range", "mavg cluster graph page byte range overflows");
+            } else {
+                page_byte_ranges.push_back(
+                    PageByteRange{.begin = page.byte_offset, .end = page.byte_offset + page.byte_size});
+            }
+        }
         if (page.byte_size == 0U || (document.page_size_bytes != 0U && page.byte_size > document.page_size_bytes) ||
             !cluster_range_is_known(page.first_cluster, page.cluster_count, known_clusters)) {
             add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::invalid_page_cluster_range, document.asset,
                            "page.cluster_range", "mavg cluster graph page cluster range is invalid");
+        }
+    }
+    std::ranges::sort(page_byte_ranges, [](const PageByteRange& lhs, const PageByteRange& rhs) {
+        if (lhs.begin != rhs.begin) {
+            return lhs.begin < rhs.begin;
+        }
+        return lhs.end < rhs.end;
+    });
+    for (std::size_t index = 1; index < page_byte_ranges.size(); ++index) {
+        if (page_byte_ranges[index].begin < page_byte_ranges[index - 1U].end) {
+            add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::invalid_page_byte_range, document.asset,
+                           "page.byte_range", "mavg cluster graph page byte ranges must not overlap");
+            break;
         }
     }
 
