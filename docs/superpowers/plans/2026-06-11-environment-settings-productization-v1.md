@@ -35,12 +35,13 @@ Already implemented and reused by this plan:
 - `Environment Production Excellence v1` is retained evidence with completed Phases 0-8. It records selected D3D12/Vulkan/Metal-host-gated environment rendering/package evidence, material weathering evidence, weather-audio mixer/render evidence, first-party editor Inspector rows, and fail-closed quality-budget counters.
 - `editor/core/include/mirakana/editor/environment_authoring.hpp` already exposes `EnvironmentAuthoringDocument`, `EnvironmentAuthoringInspectorModel`, `EnvironmentAuthoringCommandPlan`, `make_environment_authoring_inspector_model`, `make_environment_authoring_ui_model`, `make_environment_package_candidate_rows`, and package registration draft rows.
 - `tests/unit/editor_environment_tests.cpp` already proves clean-break profile-v2 load/save/undo/dirty behavior, retained Inspector rows, reviewed commands for volume/weather/quality/cubemap request, package registration draft review, and native editor Inspector projection without Dear ImGui, SDL3, backend execution, package-script execution, or native handles.
+- Task 1 added `EnvironmentSettingsWorkflowModel` and the deterministic Global, Volumes, Weather, Quality, Preview, Package, and Readiness section rows.
+- Task 2 completed command coverage for volume edit and weather keyframe add/remove/reorder, and extended unsafe command rejection to validation-recipe and shell-execution requests.
+- Task 3 added the dedicated `environment_settings` workspace/dock/native-shell panel, `NativeEditorApp::environment_settings_workflow()`, and `editor.panel.environment_settings.workflow` first-party rich text projection.
 - `docs/testing.md` states that installed environment package smokes reject broad `environment_ready=` and keep exact selected evidence rows.
 
 Not complete yet as a productized Environment Settings feature:
 
-- No dedicated `environment_settings` first-party panel exists in the editor dock/workspace catalog.
-- Existing environment rows are primarily projected through the Inspector; there is no complete settings workflow model with tabs/sections for Global, Volumes, Weather, Quality, Preview, Package, and Readiness.
 - Preview request rows are value-level review rows; there is no productized operator handoff model that connects a preview request to reviewed validation recipe choices and package smoke evidence.
 - Package registration drafts exist, but the visible workflow and package validation counters do not yet prove the end-to-end settings workflow as one productized feature.
 - There is no narrow final status/counter family such as `environment_settings_productized_*` to say the settings workflow is ready while keeping broad `environment_ready` rejected.
@@ -100,9 +101,9 @@ Source implications for this repo:
 | Claim | Current state | Promotion target |
 | --- | --- | --- |
 | `environment_profile_v2_status` | Selected package evidence exists. | Reused as prerequisite; no new parser or compatibility shim. |
-| `environment_authoring_core_status` | Inspector rows and reviewed commands exist. | Extend only if RED tests expose missing user-visible settings commands; preserve no backend execution and no native handles. |
-| `environment_settings_panel_status` | Missing. | Dedicated first-party native panel registered in workspace/dock catalog with stable row IDs and tests. |
-| `environment_settings_workflow_status` | Missing. | Global, Volumes, Weather, Quality, Preview, Package, and Readiness sections/tabs represented in a deterministic UI/workflow model. |
+| `environment_authoring_core_status` | Implemented in Task 2 with complete visible command coverage for this settings surface. | Preserve no backend execution and no native handles through static guards and package evidence. |
+| `environment_settings_panel_status` | Implemented in Task 3 in workspace/dock/native shell. | Add static/package evidence before final ready claim. |
+| `environment_settings_workflow_status` | Implemented in Task 1 and rendered in Task 3. | Add preview/package/status counters before final ready claim. |
 | `environment_settings_preview_request_status` | Value-level cubemap request exists. | Operator-reviewed preview handoff rows map requests to exact validation recipe choices without executing backend work in editor-core. |
 | `environment_settings_package_draft_status` | Package candidate/draft rows exist. | Visible workflow and package validation counters prove source/cooked/index drafts, duplicate/unsafe path rejection, and existing runtime-file handling. |
 | `environment_settings_quality_budget_status` | Selected quality-budget counters exist. | Panel exposes preset, budget row count, diagnostics, violations, and broad optimization/environment-ready non-claims. |
@@ -258,12 +259,12 @@ Task 2 evidence on 2026-06-11:
 
 **Files:** `workspace.hpp`, `workspace.cpp`, `editor_dock_layout.hpp`, `editor_dock_layout.cpp`, native editor shell files, `editor_native_shell_tests.cpp`, `editor_environment_tests.cpp`.
 
-- [ ] Add RED tests proving `PanelId::environment_settings`, `panel_id_to_string`, serialization/deserialization, default workspace state, and dock catalog registration.
-- [ ] Add RED native shell tests proving `app.has_native_panel("environment_settings")` and a stable `editor.panel.environment_settings` UI root exists.
-- [ ] Compose the Environment Settings panel from the workflow model with first-party `mirakana::ui` elements and stable element IDs.
-- [ ] Keep the existing Inspector projection as context rows; do not remove current Inspector tests.
-- [ ] Ensure panel visibility and layout changes do not resize or mutate unrelated panels unexpectedly.
-- [ ] Verify no Dear ImGui, SDL3, UI middleware, public native handles, or backend execution are introduced.
+- [x] Add RED tests proving `PanelId::environment_settings`, `panel_id_to_string`, serialization/deserialization, default workspace state, and dock catalog registration.
+- [x] Add RED native shell tests proving `app.has_native_panel("environment_settings")` and a stable `editor.panel.environment_settings` UI root exists.
+- [x] Compose the Environment Settings panel from the workflow model with first-party `mirakana::ui` elements and stable element IDs.
+- [x] Keep the existing Inspector projection as context rows; do not remove current Inspector tests.
+- [x] Ensure panel visibility and layout changes do not resize or mutate unrelated panels unexpectedly.
+- [x] Verify no Dear ImGui, SDL3, UI middleware, public native handles, or backend execution are introduced.
 
 Focused validation:
 
@@ -271,6 +272,21 @@ Focused validation:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests MK_editor_native_shell_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_editor_environment_tests|MK_editor_native_shell_tests)$"
 ```
+
+Task 3 evidence on 2026-06-11:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` failed because `PanelId::environment_settings` was not defined, proving the new workspace/native-shell tests targeted missing panel registration.
+- GREEN: Added `PanelId::environment_settings`, workspace token serialization/deserialization, default hidden workspace state, dock catalog row, and default right-stack dock tab.
+- GREEN: `NativeEditorApp` now exposes `environment_settings_workflow()` and enables the Environment Settings panel in the native default workspace.
+- GREEN: `make_first_party_editor_document` now renders `editor.panel.environment_settings` and `editor.panel.environment_settings.workflow` from `EnvironmentSettingsWorkflowModel` as read-only first-party rich text.
+- Boundary: Existing Inspector environment rows remain intact. The new panel uses editor-core value rows only and does not introduce Dear ImGui, SDL3, UI middleware, public native handles, backend execution, package-script execution, validation-recipe execution, or arbitrary shell execution.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`: `format: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R "^(MK_editor_core_tests|MK_editor_native_shell_tests)$" --output-on-failure`: passed after updating the panel-count smoke counter expectation from 11 to 12.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests MK_editor_native_shell_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R "^(MK_editor_environment_tests|MK_editor_native_shell_tests)$" --output-on-failure`: passed.
 
 ## Task 4: Preview And Validation Handoff Rows
 

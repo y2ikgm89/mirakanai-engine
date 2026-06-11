@@ -265,7 +265,7 @@ MK_TEST("editor native shell no-user-config disables first-party shell persisten
 MK_TEST("editor native shell app exposes the core backed panel set") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
-    MK_REQUIRE(app.native_panel_count() == 11U);
+    MK_REQUIRE(app.native_panel_count() == 12U);
     MK_REQUIRE(app.has_native_panel("main_menu"));
     MK_REQUIRE(app.has_native_panel("scene"));
     MK_REQUIRE(app.has_native_panel("inspector"));
@@ -276,6 +276,7 @@ MK_TEST("editor native shell app exposes the core backed panel set") {
     MK_REQUIRE(app.has_native_panel("profiler"));
     MK_REQUIRE(app.has_native_panel("timeline"));
     MK_REQUIRE(app.has_native_panel("project_settings"));
+    MK_REQUIRE(app.has_native_panel("environment_settings"));
     MK_REQUIRE(app.has_native_panel("viewport"));
 }
 
@@ -298,6 +299,10 @@ MK_TEST("editor first party document includes visible panel roots") {
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.profiler"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.timeline"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.project_settings"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.environment_settings"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.environment_settings.workflow"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.environment_settings.workflow.paragraph.section."
+                                                         "environment_settings.readiness.span.label"));
 }
 
 MK_TEST("editor first party document renders dock tab headers gutters and focused active panels") {
@@ -334,10 +339,10 @@ MK_TEST("editor first party document renders dock tab headers gutters and focuse
     MK_REQUIRE(viewport_panel != nullptr);
     MK_REQUIRE(viewport_panel->style.background_token == "editor.panel.focused");
     MK_REQUIRE(shell_document.focused_element.value == "editor.dock.dock.viewport_stack.tab.viewport");
-    MK_REQUIRE(shell_document.tab_header_count == 11U);
+    MK_REQUIRE(shell_document.tab_header_count == 12U);
     MK_REQUIRE(shell_document.split_gutter_count == 3U);
     MK_REQUIRE(shell_document.active_panel_count == 4U);
-    MK_REQUIRE(shell_document.focusable_dock_control_count == 11U);
+    MK_REQUIRE(shell_document.focusable_dock_control_count == 12U);
     MK_REQUIRE(shell_document.docking_status == "single_window_ready");
 }
 
@@ -369,8 +374,8 @@ MK_TEST("editor first party document disables hidden dock tab commands") {
     MK_REQUIRE(!resources_tab->enabled);
     MK_REQUIRE(resources_tab->style.background_token == "editor.dock.tab.disabled");
     MK_REQUIRE(resources_panel == nullptr);
-    MK_REQUIRE(shell_document.tab_header_count == 11U);
-    MK_REQUIRE(shell_document.focusable_dock_control_count == 10U);
+    MK_REQUIRE(shell_document.tab_header_count == 12U);
+    MK_REQUIRE(shell_document.focusable_dock_control_count == 11U);
 }
 
 MK_TEST("editor first party document keeps stable semantic element ids") {
@@ -613,15 +618,15 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(counters.ui == "first_party");
     MK_REQUIRE(!counters.imgui_enabled);
     MK_REQUIRE(counters.backend == "d3d12");
-    MK_REQUIRE(counters.panel_count == 11U);
+    MK_REQUIRE(counters.panel_count == 12U);
     MK_REQUIRE(!counters.sdl3_enabled);
     MK_REQUIRE(!counters.viewport_native_handles_exposed);
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
     MK_REQUIRE(counters.docking_status == "single_window_ready");
-    MK_REQUIRE(counters.dock_tab_header_count == 11U);
+    MK_REQUIRE(counters.dock_tab_header_count == 12U);
     MK_REQUIRE(counters.dock_split_gutter_count == 3U);
     MK_REQUIRE(counters.dock_active_panel_count == 4U);
-    MK_REQUIRE(counters.dock_focusable_control_count == 11U);
+    MK_REQUIRE(counters.dock_focusable_control_count == 12U);
 }
 
 MK_TEST("editor first party win32 host result defaults to explicit no backend") {

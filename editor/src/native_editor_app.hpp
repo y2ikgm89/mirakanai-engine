@@ -115,6 +115,7 @@ class NativeEditorApp {
     [[nodiscard]] const ProjectDocument& project() const noexcept;
     [[nodiscard]] const SceneAuthoringDocument& scene_document() const noexcept;
     [[nodiscard]] const EnvironmentAuthoringDocument& environment_authoring_document() const noexcept;
+    [[nodiscard]] const EnvironmentSettingsWorkflowModel& environment_settings_workflow() const noexcept;
     [[nodiscard]] std::span<const EnvironmentAuthoringInspectorRow>
     environment_authoring_inspector_rows() const noexcept;
     [[nodiscard]] std::span<const EditorPropertyRow> inspector_rows() const noexcept;

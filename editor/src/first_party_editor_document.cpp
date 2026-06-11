@@ -130,6 +130,61 @@ void append_rich_text_document(ui::UiDocument& document, const ui::ElementId& pa
     }
 }
 
+[[nodiscard]] EditorRichTextSpan rich_text_span(std::string id, std::string style_token, std::string text) {
+    return EditorRichTextSpan{.id = std::move(id), .style_token = std::move(style_token), .text = std::move(text)};
+}
+
+[[nodiscard]] std::string environment_authoring_status_label(EnvironmentAuthoringStatus status) {
+    return status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked";
+}
+
+[[nodiscard]] EditorRichTextDocument
+make_environment_settings_rich_text_document(const EnvironmentSettingsWorkflowModel& model, std::string document_id) {
+    EditorRichTextDocument document;
+    document.id = std::move(document_id);
+    document.paragraphs.push_back(EditorRichTextParagraph{
+        .id = "status",
+        .spans =
+            {
+                rich_text_span("label", "editor.text", "Status: "),
+                rich_text_span("value",
+                               model.status == EnvironmentAuthoringStatus::ready ? "editor.info" : "editor.warning",
+                               environment_authoring_status_label(model.status)),
+                rich_text_span("path", "editor.text", " path " + model.path),
+            },
+    });
+    for (const auto& section : model.sections) {
+        document.paragraphs.push_back(EditorRichTextParagraph{
+            .id = "section." + section.id,
+            .spans =
+                {
+                    rich_text_span("label", "editor.text", section.label + ": "),
+                    rich_text_span("rows", "editor.text", "rows " + std::to_string(section.row_count)),
+                    rich_text_span("editable", "editor.info",
+                                   " editable " + std::to_string(section.editable_row_count)),
+                    rich_text_span("readonly", "editor.text",
+                                   " readonly " + std::to_string(section.read_only_row_count)),
+                },
+        });
+    }
+    for (std::size_t index = 0U; index < model.package_draft_rows.size(); ++index) {
+        const auto& row = model.package_draft_rows[index];
+        document.paragraphs.push_back(EditorRichTextParagraph{
+            .id = "package." + std::to_string(index),
+            .spans =
+                {
+                    rich_text_span("kind", "editor.text",
+                                   std::string{environment_package_candidate_kind_label(row.kind)} + ": "),
+                    rich_text_span("status", "editor.text",
+                                   std::string{environment_package_registration_draft_status_label(row.status)}),
+                    rich_text_span("path", "editor.text", " " + row.candidate_path),
+                },
+        });
+    }
+    document.unsupported_capabilities = make_editor_rich_text_low_level_unsupported_capabilities();
+    return document;
+}
+
 void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, std::string_view panel_id,
                          const ui::ElementId& panel_root) {
     const std::string prefix = "editor.panel." + std::string{panel_id};
@@ -153,6 +208,11 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
         append_label(document, panel_root, prefix + ".status",
                      "project settings diagnostics " + std::to_string(app.project_settings_errors().size()));
         append_text_field(document, panel_root, app.text_input_state());
+    } else if (panel_id == "environment_settings") {
+        append_rich_text_document(
+            document, panel_root,
+            make_environment_settings_rich_text_document(app.environment_settings_workflow(),
+                                                         "editor.panel.environment_settings.workflow"));
     }
 }
 
@@ -162,6 +222,8 @@ make_first_party_editor_rich_text_documents(const NativeEditorApp& app) {
         make_editor_console_rich_text_document(app.console_rows(), "editor.panel.console.rich_text"),
         make_editor_ai_command_panel_rich_text_document(app.ai_commands(), "editor.panel.ai_commands.rich_text"),
         make_editor_inspector_rich_text_document(app.inspector_rows(), "editor.panel.inspector.rich_text"),
+        make_environment_settings_rich_text_document(app.environment_settings_workflow(),
+                                                     "editor.panel.environment_settings.workflow"),
     };
 }
 

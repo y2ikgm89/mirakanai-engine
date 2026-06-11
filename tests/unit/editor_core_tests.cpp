@@ -402,7 +402,7 @@ MK_TEST("editor workspace creates required default panels") {
 
     MK_REQUIRE(workspace.project().name == "sample");
     MK_REQUIRE(workspace.project().root_path == "games/sample");
-    MK_REQUIRE(workspace.panel_count() == 11);
+    MK_REQUIRE(workspace.panel_count() == 12);
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::scene));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::inspector));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::assets));
@@ -412,6 +412,9 @@ MK_TEST("editor workspace creates required default panels") {
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::ai_commands));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::input_rebinding));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
+    MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::environment_settings));
+    MK_REQUIRE(mirakana::editor::panel_id_to_string(mirakana::editor::PanelId::environment_settings) ==
+               "environment_settings");
 }
 
 MK_TEST("editor workspace toggles optional panels") {
@@ -424,6 +427,7 @@ MK_TEST("editor workspace toggles optional panels") {
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::project_settings));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::timeline));
+    MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::environment_settings));
 
     workspace.set_panel_visible(mirakana::editor::PanelId::resources, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::ai_commands, true);
@@ -431,6 +435,7 @@ MK_TEST("editor workspace toggles optional panels") {
     workspace.set_panel_visible(mirakana::editor::PanelId::profiler, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::project_settings, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::timeline, true);
+    workspace.set_panel_visible(mirakana::editor::PanelId::environment_settings, true);
 
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::resources));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::ai_commands));
@@ -438,6 +443,7 @@ MK_TEST("editor workspace toggles optional panels") {
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::project_settings));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::timeline));
+    MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::environment_settings));
 }
 
 MK_TEST("editor workspace serializes and restores panel state") {
@@ -458,10 +464,12 @@ MK_TEST("editor workspace serializes and restores panel state") {
     workspace.set_panel_visible(mirakana::editor::PanelId::resources, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::ai_commands, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::input_rebinding, true);
+    workspace.set_panel_visible(mirakana::editor::PanelId::environment_settings, true);
     const auto serialized_with_resources = mirakana::editor::serialize_workspace(workspace);
     MK_REQUIRE(serialized_with_resources.contains("panel.resources=visible"));
     MK_REQUIRE(serialized_with_resources.contains("panel.ai_commands=visible"));
     MK_REQUIRE(serialized_with_resources.contains("panel.input_rebinding=visible"));
+    MK_REQUIRE(serialized_with_resources.contains("panel.environment_settings=visible"));
     MK_REQUIRE(serialized.contains("panel.profiler=visible"));
 
     const auto restored = mirakana::editor::deserialize_workspace(serialized_with_resources);
@@ -472,6 +480,7 @@ MK_TEST("editor workspace serializes and restores panel state") {
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::ai_commands));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::input_rebinding));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::profiler));
+    MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::environment_settings));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::scene));
     MK_REQUIRE(restored.dock_layout().root_id == "dock.root");
     MK_REQUIRE(restored.dock_layout().focused_panel_id == "viewport");
@@ -528,12 +537,15 @@ MK_TEST("editor core dock layout validates split tab stacks focus and unsupporte
 
     const auto* root = mirakana::editor::find_editor_dock_node(layout, "dock.root");
     const auto* viewport = mirakana::editor::find_editor_dock_node(layout, "dock.viewport_stack");
+    const auto* right = mirakana::editor::find_editor_dock_node(layout, "dock.right_stack");
     MK_REQUIRE(root != nullptr);
     MK_REQUIRE(root->kind == mirakana::editor::EditorDockNodeKind::split);
     MK_REQUIRE(root->children.size() == 3U);
     MK_REQUIRE(viewport != nullptr);
     MK_REQUIRE(viewport->kind == mirakana::editor::EditorDockNodeKind::tab_stack);
     MK_REQUIRE(viewport->active_tab_id == "viewport");
+    MK_REQUIRE(right != nullptr);
+    MK_REQUIRE(std::ranges::find(right->tabs, "environment_settings") != right->tabs.end());
 
     bool has_text_shape_gate = false;
     for (const auto& capability : layout.unsupported_capabilities) {
@@ -550,8 +562,9 @@ MK_TEST("editor core dock panel catalog aligns shell chrome native shell and wor
     const auto* main_menu = mirakana::editor::find_editor_dock_panel(catalog, "main_menu");
     const auto* input_rebinding = mirakana::editor::find_editor_dock_panel(catalog, "input_rebinding");
     const auto* viewport = mirakana::editor::find_editor_dock_panel(catalog, "viewport");
+    const auto* environment_settings = mirakana::editor::find_editor_dock_panel(catalog, "environment_settings");
 
-    MK_REQUIRE(catalog.size() == 12U);
+    MK_REQUIRE(catalog.size() == 13U);
     MK_REQUIRE(main_menu != nullptr);
     MK_REQUIRE(main_menu->shell_chrome);
     MK_REQUIRE(!main_menu->workspace_panel);
@@ -563,6 +576,11 @@ MK_TEST("editor core dock panel catalog aligns shell chrome native shell and wor
     MK_REQUIRE(viewport != nullptr);
     MK_REQUIRE(viewport->workspace_panel);
     MK_REQUIRE(viewport->native_shell_panel);
+    MK_REQUIRE(environment_settings != nullptr);
+    MK_REQUIRE(environment_settings->workspace_id == mirakana::editor::PanelId::environment_settings);
+    MK_REQUIRE(environment_settings->label == "Environment Settings");
+    MK_REQUIRE(environment_settings->workspace_panel);
+    MK_REQUIRE(environment_settings->native_shell_panel);
 }
 
 MK_TEST("editor core dock layout rejects invalid graph and unsafe middleware tokens") {

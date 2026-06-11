@@ -32,7 +32,7 @@ struct PanelToken {
     std::string_view token;
 };
 
-constexpr std::array<PanelToken, 11> panel_tokens{{
+constexpr std::array<PanelToken, 12> panel_tokens{{
     PanelToken{.id = PanelId::scene, .token = "scene"},
     PanelToken{.id = PanelId::inspector, .token = "inspector"},
     PanelToken{.id = PanelId::assets, .token = "assets"},
@@ -44,6 +44,7 @@ constexpr std::array<PanelToken, 11> panel_tokens{{
     PanelToken{.id = PanelId::profiler, .token = "profiler"},
     PanelToken{.id = PanelId::project_settings, .token = "project_settings"},
     PanelToken{.id = PanelId::timeline, .token = "timeline"},
+    PanelToken{.id = PanelId::environment_settings, .token = "environment_settings"},
 }};
 
 PanelId panel_id_from_string(std::string_view token) {
@@ -305,6 +306,7 @@ Workspace Workspace::create_default(ProjectInfo project) {
         PanelState{.id = PanelId::profiler, .visible = false},
         PanelState{.id = PanelId::project_settings, .visible = false},
         PanelState{.id = PanelId::timeline, .visible = false},
+        PanelState{.id = PanelId::environment_settings, .visible = false},
     };
     workspace.dock_layout_ = make_default_editor_dock_layout();
     return workspace;

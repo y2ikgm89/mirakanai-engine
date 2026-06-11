@@ -39,6 +39,7 @@ namespace {
     workspace.set_panel_visible(PanelId::profiler, true);
     workspace.set_panel_visible(PanelId::project_settings, true);
     workspace.set_panel_visible(PanelId::timeline, true);
+    workspace.set_panel_visible(PanelId::environment_settings, true);
     workspace.set_panel_visible(PanelId::input_rebinding, false);
     return workspace;
 }
@@ -86,6 +87,26 @@ make_default_environment_authoring_inspector(const EnvironmentAuthoringDocument&
         .document = document,
         .cloud_layer = make_default_environment_cloud_layer(),
         .volumetric_clouds_policy_available = true,
+    });
+}
+
+[[nodiscard]] EnvironmentSettingsWorkflowModel
+make_default_environment_settings_workflow(const ProjectDocument& project,
+                                           const EnvironmentAuthoringDocument& document) {
+    const std::vector<std::string> existing_runtime_files{"runtime/environment/default.environment"};
+    const std::vector<std::string> validation_recipe_ids{"desktop-game-runtime", "installed-desktop-runtime"};
+    return make_environment_settings_workflow_model(EnvironmentSettingsWorkflowDesc{
+        .inspector =
+            EnvironmentAuthoringInspectorDesc{
+                .document = document,
+                .cloud_layer = make_default_environment_cloud_layer(),
+                .volumetric_clouds_policy_available = true,
+            },
+        .cooked_profile_path = "runtime/environment/default.environment",
+        .package_index_path = project.source_registry_path,
+        .project_root_path = project.root_path,
+        .existing_runtime_files = existing_runtime_files,
+        .validation_recipe_ids = validation_recipe_ids,
     });
 }
 
@@ -302,6 +323,7 @@ struct NativeEditorApp::Impl {
         : project(make_default_project_document()), workspace(make_default_workspace(project)),
           scene(make_default_scene_document()), environment_authoring(make_default_environment_authoring_document()),
           environment_authoring_inspector(make_default_environment_authoring_inspector(environment_authoring)),
+          environment_settings_workflow(make_default_environment_settings_workflow(project, environment_authoring)),
           inspector_rows(make_default_inspector_rows(project, environment_authoring_inspector)),
           asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
@@ -329,6 +351,7 @@ struct NativeEditorApp::Impl {
     SceneAuthoringDocument scene;
     EnvironmentAuthoringDocument environment_authoring;
     EnvironmentAuthoringInspectorModel environment_authoring_inspector;
+    EnvironmentSettingsWorkflowModel environment_settings_workflow;
     std::vector<EditorPropertyRow> inspector_rows;
     std::vector<EditorAssetListRow> asset_rows;
     std::vector<EditorDiagnosticRow> console_rows;
@@ -438,6 +461,10 @@ const SceneAuthoringDocument& NativeEditorApp::scene_document() const noexcept {
 
 const EnvironmentAuthoringDocument& NativeEditorApp::environment_authoring_document() const noexcept {
     return impl_->environment_authoring;
+}
+
+const EnvironmentSettingsWorkflowModel& NativeEditorApp::environment_settings_workflow() const noexcept {
+    return impl_->environment_settings_workflow;
 }
 
 std::span<const EnvironmentAuthoringInspectorRow>

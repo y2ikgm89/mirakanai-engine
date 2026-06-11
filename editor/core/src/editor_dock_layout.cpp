@@ -255,6 +255,12 @@ std::vector<EditorDockPanelCatalogRow> editor_dock_panel_catalog() {
                                   .shell_chrome = false,
                                   .workspace_panel = true,
                                   .native_shell_panel = true},
+        EditorDockPanelCatalogRow{.id = "environment_settings",
+                                  .label = "Environment Settings",
+                                  .workspace_id = PanelId::environment_settings,
+                                  .shell_chrome = false,
+                                  .workspace_panel = true,
+                                  .native_shell_panel = true},
     };
 }
 
@@ -344,7 +350,7 @@ EditorDockLayout make_default_editor_dock_layout() {
             .axis = EditorDockSplitAxis::horizontal,
             .split_ratio = 0.5F,
             .children = {},
-            .tabs = {"inspector", "ai_commands", "project_settings"},
+            .tabs = {"inspector", "ai_commands", "project_settings", "environment_settings"},
             .active_tab_id = "inspector",
         },
     };
