@@ -12,7 +12,7 @@
 
 **Plan ID:** `environment-settings-productization-v1`
 
-**Status:** Candidate focused plan. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Active. Selected implementation slice in this branch. `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` points `currentActivePlan` at this plan; compose `engine/agent/manifest.json` after every manifest-fragment edit.
 
 ## Definition Of Completion
 
@@ -142,22 +142,22 @@ Expected files for implementation. A task may touch fewer files if RED tests pro
 - Generate `engine/agent/manifest.json` only when manifest fragments change.
 - Update this plan's status after selection.
 
-- [ ] Confirm the worktree is isolated and clean:
+- [x] Confirm the worktree is isolated and clean:
 
 ```powershell
 git status --short --branch
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal
 ```
 
-- [ ] Re-audit current environment evidence with targeted searches:
+- [x] Re-audit current environment evidence with targeted searches:
 
 ```powershell
 rg -n "environment_settings|environment_ready|environment_profile_v2|environment_authoring|environment_material_weathering|environment_audio_playback|environment_lighting" editor engine tests tools docs games
 ```
 
-- [ ] Re-open the official docs listed in this plan for any area being changed.
-- [ ] Rerun Context7 lookups for the documentation touched by the phase. If Context7 auth is still invalid, record the blocker and official-doc fallback evidence in this task section.
-- [ ] If selected, set `currentActivePlan` and `recommendedNextPlan` to this plan, compose the manifest, and run:
+- [x] Re-open the official docs listed in this plan for any area being changed.
+- [x] Rerun Context7 lookups for the documentation touched by the phase. If Context7 auth is still invalid, record the blocker and official-doc fallback evidence in this task section.
+- [x] If selected, set `currentActivePlan` and `recommendedNextPlan` to this plan, compose the manifest, and run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -168,6 +168,20 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 ```
 
 Expected: this plan becomes the selected implementation slice without claiming new runtime behavior.
+
+Task 0 evidence on 2026-06-11:
+
+- `git status --short --branch`: clean linked worktree on `codex/environment-settings-productization-plan...origin/codex/environment-settings-productization-plan`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal`: confirmed pre-selection `currentActivePlan` was the production-completion master plan and `recommendedNextPlan.id = next-production-gap-selection`.
+- Targeted `rg` audit confirmed `environment_settings_*` exists only in this plan, while existing `environment_authoring`, `environment_profile_v2`, `environment_material_weathering`, `environment_audio_playback`, `environment_lighting`, and broad `environment_ready` rejection evidence already exist in editor/runtime/docs/tools.
+- Context7 `resolve_library_id` for Godot documentation failed again with `Invalid or expired OAuth token. Please re-authenticate to obtain a new token.` Implementation proceeds from official docs only until Context7 auth is fixed.
+- Official docs re-opened for this slice: Unreal Environment Light Mixer / Using the Light Mixer, Unity HDRP Visual Environment / Volume Profile / UI Toolkit custom Inspector, and Godot Environment and post-processing / custom post-processing. The implementation implication remains a dedicated first-party environment settings panel/workflow over profile/volume rows, undo-safe command planning, explicit quality-budget separation, and no backend-readiness inference.
+- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` now selects `environment-settings-productization-v1`, with retained static-check legacy context preserved instead of deleting historical MAVG/frame-graph/selection-gate evidence.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`: wrote `engine/agent/manifest.json`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: `json-contract-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: `ai-integration-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: `agent-config-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`: `text-format-check: ok`.
 
 ## Task 1: Environment Settings Workflow Model
 

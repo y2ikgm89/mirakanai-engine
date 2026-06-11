@@ -160,9 +160,8 @@ foreach ($surface in @(
     }
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must remain the production-completion master plan after MAVG payload byte-range page loader closeout"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must remain next-production-gap-selection after MAVG payload byte-range page loader closeout"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+    if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        Write-Error "engine/agent/manifest.json currentActivePlan must remain the production-completion master plan after MAVG payload byte-range page loader closeout"
+    }
 }

@@ -90,9 +90,8 @@ foreach ($surface in @(
     }
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG Vulkan compute-generated indirect consumption closeout"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG Vulkan compute-generated indirect consumption closeout"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+    if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG Vulkan compute-generated indirect consumption closeout"
+    }
 }
