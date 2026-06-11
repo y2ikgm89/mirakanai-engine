@@ -14,10 +14,13 @@ $mavgGpuMemoryResidencyHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/inc
 $mavgGpuMemoryResidencySourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_gpu_memory_residency.cpp"
 $mavgClusterStreamingResidencyCloseoutHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_cluster_streaming_residency_closeout.hpp"
 $mavgClusterStreamingResidencyCloseoutSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_cluster_streaming_residency_closeout.cpp"
+$mavgClusterStreamingSafePointAdoptionHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_cluster_streaming_safe_point_adoption.hpp"
+$mavgClusterStreamingSafePointAdoptionSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_cluster_streaming_safe_point_adoption.cpp"
 $payloadLoaderTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_page_loader_tests.cpp"
 $pageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
 $mavgGpuMemoryResidencyTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_gpu_memory_residency_tests.cpp"
 $mavgClusterStreamingResidencyCloseoutTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_cluster_streaming_residency_closeout_tests.cpp"
+$mavgClusterStreamingSafePointAdoptionTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_cluster_streaming_safe_point_adoption_tests.cpp"
 $graphTestsText = Get-AgentSurfaceText "tests/unit/mavg_cluster_graph_tests.cpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
@@ -27,6 +30,7 @@ $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload
 $filesystemPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-filesystem-byte-range-io-v1.md"
 $gpuMemoryResidencyPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-memory-pressure-residency-v1.md"
 $clusterStreamingResidencyCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-residency-closeout-v1.md"
+$clusterStreamingSafePointAdoptionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-safe-point-adoption-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -373,6 +377,91 @@ foreach ($surface in @(
             "broad optimization"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG cluster streaming residency closeout evidence and non-claims"
+    }
+}
+
+foreach ($needle in @(
+        "RuntimeMavgClusterStreamingSafePointAdoptionDesc",
+        "RuntimeMavgClusterStreamingSafePointAdoptionResult",
+        "RuntimeMavgClusterStreamingSafePointAdoptionDiagnosticCode",
+        "RuntimeMavgClusterStreamingSafePointAdoptionMountRow",
+        "execute_runtime_mavg_cluster_streaming_safe_point_adoption",
+        "invoked_candidate_load",
+        "invoked_gpu_upload",
+        "executed_backend",
+        "proved_async_overlap_performance"
+    )) {
+    Assert-ContainsText $mavgClusterStreamingSafePointAdoptionHeaderText $needle "MAVG cluster streaming safe-point adoption public contract"
+}
+
+foreach ($needle in @(
+        "background_load.loaded_rows",
+        "plan_runtime_resident_package_evictions_v2",
+        "RuntimeResidentCatalogCacheV2",
+        "closeout_failed",
+        "missing_loaded_rows",
+        "invalid_mount_row",
+        "duplicate_mount_row",
+        "duplicate_mount_id",
+        "mutated_mount_set",
+        "invoked_direct_storage",
+        "proved_async_overlap_performance"
+    )) {
+    Assert-ContainsText $mavgClusterStreamingSafePointAdoptionSourceText $needle "MAVG cluster streaming safe-point adoption implementation"
+}
+
+foreach ($needle in @(
+        "runtime rhi mavg cluster streaming safe point adoption commits loaded rows with reviewed evictions",
+        "runtime rhi mavg cluster streaming safe point adoption fails closed before mutation",
+        "runtime rhi mavg cluster streaming safe point adoption rejects duplicate mount rows before mutation",
+        "runtime rhi mavg cluster streaming safe point adoption keeps projected rows uncommitted on eviction failure",
+        "execute_runtime_mavg_cluster_streaming_safe_point_adoption",
+        "MK_REQUIRE(!result.invoked_candidate_load)",
+        "MK_REQUIRE(result.mutated_mount_set)",
+        "closeout_failed",
+        "duplicate_mount_row",
+        "eviction_plan_failed"
+    )) {
+    Assert-ContainsText $mavgClusterStreamingSafePointAdoptionTestsText $needle "MAVG cluster streaming safe-point adoption tests"
+}
+
+foreach ($needle in @(
+        "MK_runtime_rhi_mavg_cluster_streaming_safe_point_adoption_tests",
+        "tests/unit/runtime_rhi_mavg_cluster_streaming_safe_point_adoption_tests.cpp"
+    )) {
+    Assert-ContainsText $cmakeText $needle "MAVG cluster streaming safe-point adoption CMake test target"
+}
+Assert-ContainsText $runtimeRhiCmakeText "src/mavg_cluster_streaming_safe_point_adoption.cpp" "MAVG cluster streaming safe-point adoption source registration"
+
+foreach ($surface in @(
+        @{ Text = $clusterStreamingSafePointAdoptionPlanText; Label = "cluster streaming safe-point adoption implementation plan" },
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        @{ Text = $modulesFragmentText; Label = "modules fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-cluster-streaming-safe-point-adoption-v1",
+            "MAVG Cluster Streaming Safe Point Adoption v1",
+            "mavg_cluster_streaming_safe_point_adoption.hpp",
+            "RuntimeMavgClusterStreamingSafePointAdoptionResult",
+            "execute_runtime_mavg_cluster_streaming_safe_point_adoption",
+            "background_load.loaded_rows",
+            "RuntimeResidentPackageMountSetV2",
+            "RuntimeResidentCatalogCacheV2",
+            "plan_runtime_resident_package_evictions_v2",
+            "DirectStorage",
+            "GPU upload",
+            "backend execution",
+            "async-overlap/performance proof",
+            "mesh shaders",
+            "Nanite",
+            "broad optimization"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG cluster streaming safe-point adoption evidence and non-claims"
     }
 }
 
