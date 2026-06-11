@@ -173,9 +173,13 @@ struct EnvironmentPackageRegistrationDraftRow {
 
 enum class EnvironmentAuthoringCommandKind : std::uint8_t {
     add_volume = 0,
+    edit_volume,
     remove_volume,
     reorder_volume,
+    add_weather_keyframe,
     edit_weather_keyframe,
+    remove_weather_keyframe,
+    reorder_weather_keyframe,
     select_quality_preset,
     request_cubemap_capture,
 };
@@ -203,6 +207,8 @@ struct EnvironmentAuthoringCommandRequest {
     EnvironmentQualityPreset quality_preset{EnvironmentQualityPreset::medium};
     bool request_backend_execution{false};
     bool request_package_script_execution{false};
+    bool request_validation_recipe_execution{false};
+    bool request_shell_execution{false};
     bool request_native_handle_access{false};
     std::string label;
 };

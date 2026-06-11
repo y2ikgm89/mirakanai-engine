@@ -277,12 +277,20 @@ void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     switch (request.kind) {
     case EnvironmentAuthoringCommandKind::add_volume:
         return "Add Environment Volume";
+    case EnvironmentAuthoringCommandKind::edit_volume:
+        return "Edit Environment Volume";
     case EnvironmentAuthoringCommandKind::remove_volume:
         return "Remove Environment Volume";
     case EnvironmentAuthoringCommandKind::reorder_volume:
         return "Reorder Environment Volume";
+    case EnvironmentAuthoringCommandKind::add_weather_keyframe:
+        return "Add Weather Keyframe";
     case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
         return "Edit Weather Keyframe";
+    case EnvironmentAuthoringCommandKind::remove_weather_keyframe:
+        return "Remove Weather Keyframe";
+    case EnvironmentAuthoringCommandKind::reorder_weather_keyframe:
+        return "Reorder Weather Keyframe";
     case EnvironmentAuthoringCommandKind::select_quality_preset:
         return "Select Environment Quality";
     case EnvironmentAuthoringCommandKind::request_cubemap_capture:
@@ -295,12 +303,20 @@ void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     switch (kind) {
     case EnvironmentAuthoringCommandKind::add_volume:
         return "environment.command.volume.add";
+    case EnvironmentAuthoringCommandKind::edit_volume:
+        return "environment.command.volume.edit";
     case EnvironmentAuthoringCommandKind::remove_volume:
         return "environment.command.volume.remove";
     case EnvironmentAuthoringCommandKind::reorder_volume:
         return "environment.command.volume.reorder";
+    case EnvironmentAuthoringCommandKind::add_weather_keyframe:
+        return "environment.command.weather_keyframe.add";
     case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
         return "environment.command.weather_keyframe.edit";
+    case EnvironmentAuthoringCommandKind::remove_weather_keyframe:
+        return "environment.command.weather_keyframe.remove";
+    case EnvironmentAuthoringCommandKind::reorder_weather_keyframe:
+        return "environment.command.weather_keyframe.reorder";
     case EnvironmentAuthoringCommandKind::select_quality_preset:
         return "environment.command.quality_preset.select";
     case EnvironmentAuthoringCommandKind::request_cubemap_capture:
@@ -314,6 +330,13 @@ void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuth
     case EnvironmentAuthoringCommandKind::add_volume:
         document.volumes.push_back(request.volume);
         return;
+    case EnvironmentAuthoringCommandKind::edit_volume: {
+        const auto index = find_volume_index_by_id(document, request.volume_id);
+        if (index < document.volumes.size()) {
+            document.volumes[index] = request.volume;
+        }
+        return;
+    }
     case EnvironmentAuthoringCommandKind::remove_volume: {
         const auto index = find_volume_index_by_id(document, request.volume_id);
         if (index < document.volumes.size()) {
@@ -332,11 +355,33 @@ void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuth
         document.volumes.insert(document.volumes.begin() + static_cast<std::ptrdiff_t>(target), std::move(row));
         return;
     }
+    case EnvironmentAuthoringCommandKind::add_weather_keyframe:
+        document.weather_timeline.push_back(request.weather_keyframe);
+        return;
     case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
         if (request.weather_keyframe_index < document.weather_timeline.size()) {
             document.weather_timeline[request.weather_keyframe_index] = request.weather_keyframe;
         }
         return;
+    case EnvironmentAuthoringCommandKind::remove_weather_keyframe:
+        if (request.weather_keyframe_index < document.weather_timeline.size()) {
+            document.weather_timeline.erase(document.weather_timeline.begin() +
+                                            static_cast<std::ptrdiff_t>(request.weather_keyframe_index));
+        }
+        return;
+    case EnvironmentAuthoringCommandKind::reorder_weather_keyframe: {
+        const auto source = static_cast<std::size_t>(request.source_index);
+        const auto target = static_cast<std::size_t>(request.target_index);
+        if (source >= document.weather_timeline.size() || target >= document.weather_timeline.size() ||
+            source == target) {
+            return;
+        }
+        auto row = document.weather_timeline[source];
+        document.weather_timeline.erase(document.weather_timeline.begin() + static_cast<std::ptrdiff_t>(source));
+        document.weather_timeline.insert(document.weather_timeline.begin() + static_cast<std::ptrdiff_t>(target),
+                                         std::move(row));
+        return;
+    }
     case EnvironmentAuthoringCommandKind::select_quality_preset:
         document.quality_preset = request.quality_preset;
         return;
@@ -485,11 +530,12 @@ EnvironmentAuthoringCommandPlan plan_environment_authoring_command(const Environ
     };
 
     if (request.request_backend_execution || request.request_package_script_execution ||
+        request.request_validation_recipe_execution || request.request_shell_execution ||
         request.request_native_handle_access) {
         plan.status = EnvironmentAuthoringCommandStatus::rejected_unsafe_execution;
-        add_command_diagnostic(
-            plan, "unsafe_execution",
-            "environment authoring commands cannot execute backend work, package scripts, or native handle access");
+        add_command_diagnostic(plan, "unsafe_execution",
+                               "environment authoring commands cannot execute backend work, package scripts, "
+                               "validation recipes, shell commands, or native handle access");
         return plan;
     }
 
@@ -516,6 +562,28 @@ EnvironmentAuthoringCommandPlan plan_environment_authoring_command(const Environ
         }
         return plan;
     }
+    case EnvironmentAuthoringCommandKind::edit_volume: {
+        plan.mutates_document = true;
+        const auto index = find_volume_index_by_id(profile, request.volume_id);
+        if (index >= profile.volumes.size()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_not_found;
+            add_command_diagnostic(plan, "volume_not_found", "environment volume id was not found");
+        } else if (request.volume.id.empty()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "empty_volume_id", "environment volume id must not be empty");
+        } else {
+            auto copy = profile;
+            copy.volumes[index] = request.volume;
+            const auto validation = validate_environment_profile_v2(copy);
+            if (validation.succeeded()) {
+                accept_command(plan);
+            } else {
+                plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+                add_command_diagnostic(plan, "invalid_volume", "environment volume validation failed");
+            }
+        }
+        return plan;
+    }
     case EnvironmentAuthoringCommandKind::remove_volume:
         plan.mutates_document = true;
         if (!volume_id_exists(profile, request.volume_id)) {
@@ -538,6 +606,19 @@ EnvironmentAuthoringCommandPlan plan_environment_authoring_command(const Environ
             accept_command(plan);
         }
         return plan;
+    case EnvironmentAuthoringCommandKind::add_weather_keyframe: {
+        plan.mutates_document = true;
+        auto copy = profile;
+        copy.weather_timeline.push_back(request.weather_keyframe);
+        const auto validation = validate_environment_profile_v2(copy);
+        if (validation.succeeded()) {
+            accept_command(plan);
+        } else {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "invalid_weather_keyframe", "weather keyframe validation failed");
+        }
+        return plan;
+    }
     case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
         plan.mutates_document = true;
         if (request.weather_keyframe_index >= profile.weather_timeline.size()) {
@@ -553,6 +634,40 @@ EnvironmentAuthoringCommandPlan plan_environment_authoring_command(const Environ
                 plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
                 add_command_diagnostic(plan, "invalid_weather_keyframe", "weather keyframe validation failed");
             }
+        }
+        return plan;
+    case EnvironmentAuthoringCommandKind::remove_weather_keyframe:
+        plan.mutates_document = true;
+        if (request.weather_keyframe_index >= profile.weather_timeline.size()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_not_found;
+            add_command_diagnostic(plan, "weather_keyframe_not_found", "weather keyframe index was not found");
+        } else {
+            auto copy = profile;
+            copy.weather_timeline.erase(copy.weather_timeline.begin() +
+                                        static_cast<std::ptrdiff_t>(request.weather_keyframe_index));
+            const auto validation = validate_environment_profile_v2(copy);
+            if (validation.succeeded()) {
+                accept_command(plan);
+            } else {
+                plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+                add_command_diagnostic(plan, "invalid_weather_timeline", "weather timeline validation failed");
+            }
+        }
+        return plan;
+    case EnvironmentAuthoringCommandKind::reorder_weather_keyframe:
+        plan.mutates_document = true;
+        if (request.source_index >= profile.weather_timeline.size() ||
+            request.target_index >= profile.weather_timeline.size()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_not_found;
+            add_command_diagnostic(plan, "weather_keyframe_index_not_found",
+                                   "weather keyframe reorder index was not found");
+        } else if (request.source_index == request.target_index) {
+            plan.mutates_document = false;
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "weather_keyframe_reorder_noop",
+                                   "weather keyframe reorder requires distinct indexes");
+        } else {
+            accept_command(plan);
         }
         return plan;
     case EnvironmentAuthoringCommandKind::select_quality_preset: {

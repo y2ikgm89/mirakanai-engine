@@ -438,6 +438,29 @@ MK_TEST("editor environment authoring plans and applies reviewed profile v2 comm
                   })));
     MK_REQUIRE(document.profile_document_v2().volumes[0].id == "snow_ridge");
 
+    auto edited_volume = document.profile_document_v2().volumes[1];
+    edited_volume.priority = 55;
+    edited_volume.blend_weight = 0.35F;
+    const auto edit_volume_plan = mirakana::editor::plan_environment_authoring_command(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::edit_volume,
+                      .volume = edited_volume,
+                      .volume_id = "storm_front",
+                      .label = "Edit Storm Front Volume",
+                  });
+    MK_REQUIRE(edit_volume_plan.status == mirakana::editor::EnvironmentAuthoringCommandStatus::accepted);
+    MK_REQUIRE(edit_volume_plan.command_id == "environment.command.volume.edit");
+    MK_REQUIRE(edit_volume_plan.mutates_document);
+    MK_REQUIRE(undo_stack.execute(mirakana::editor::make_environment_authoring_command_action(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::edit_volume,
+                      .volume = edited_volume,
+                      .volume_id = "storm_front",
+                      .label = "Edit Storm Front Volume",
+                  })));
+    MK_REQUIRE(document.profile_document_v2().volumes[1].priority == 55);
+    MK_REQUIRE(document.profile_document_v2().volumes[1].blend_weight == 0.35F);
+
     auto evening = document.profile_document_v2().weather_timeline[1];
     evening.weather = mirakana::EnvironmentWeatherKind::snow;
     evening.precipitation = mirakana::EnvironmentPrecipitationKind::snow;
@@ -452,6 +475,62 @@ MK_TEST("editor environment authoring plans and applies reviewed profile v2 comm
     MK_REQUIRE(document.profile_document_v2().weather_timeline[1].weather == mirakana::EnvironmentWeatherKind::snow);
     MK_REQUIRE(document.profile_document_v2().weather_timeline[1].quality_preset ==
                mirakana::EnvironmentQualityPreset::ultra);
+
+    auto noon = document.profile_document_v2().weather_timeline[0];
+    noon.time_of_day_hours = 12.0F;
+    noon.weather = mirakana::EnvironmentWeatherKind::clear;
+    noon.precipitation = mirakana::EnvironmentPrecipitationKind::none;
+    const auto add_weather_plan = mirakana::editor::plan_environment_authoring_command(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::add_weather_keyframe,
+                      .weather_keyframe = noon,
+                      .label = "Add Noon Weather",
+                  });
+    MK_REQUIRE(add_weather_plan.status == mirakana::editor::EnvironmentAuthoringCommandStatus::accepted);
+    MK_REQUIRE(add_weather_plan.command_id == "environment.command.weather_keyframe.add");
+    MK_REQUIRE(add_weather_plan.mutates_document);
+    MK_REQUIRE(undo_stack.execute(mirakana::editor::make_environment_authoring_command_action(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::add_weather_keyframe,
+                      .weather_keyframe = noon,
+                      .label = "Add Noon Weather",
+                  })));
+    MK_REQUIRE(document.profile_document_v2().weather_timeline.size() == 3U);
+
+    const auto reorder_weather_plan = mirakana::editor::plan_environment_authoring_command(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::reorder_weather_keyframe,
+                      .source_index = 2U,
+                      .target_index = 0U,
+                      .label = "Move Noon Weather",
+                  });
+    MK_REQUIRE(reorder_weather_plan.status == mirakana::editor::EnvironmentAuthoringCommandStatus::accepted);
+    MK_REQUIRE(reorder_weather_plan.command_id == "environment.command.weather_keyframe.reorder");
+    MK_REQUIRE(undo_stack.execute(mirakana::editor::make_environment_authoring_command_action(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::reorder_weather_keyframe,
+                      .source_index = 2U,
+                      .target_index = 0U,
+                      .label = "Move Noon Weather",
+                  })));
+    MK_REQUIRE(document.profile_document_v2().weather_timeline[0].time_of_day_hours == 12.0F);
+
+    const auto remove_weather_plan = mirakana::editor::plan_environment_authoring_command(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::remove_weather_keyframe,
+                      .weather_keyframe_index = 0U,
+                      .label = "Remove Noon Weather",
+                  });
+    MK_REQUIRE(remove_weather_plan.status == mirakana::editor::EnvironmentAuthoringCommandStatus::accepted);
+    MK_REQUIRE(remove_weather_plan.command_id == "environment.command.weather_keyframe.remove");
+    MK_REQUIRE(undo_stack.execute(mirakana::editor::make_environment_authoring_command_action(
+        document, mirakana::editor::EnvironmentAuthoringCommandRequest{
+                      .kind = mirakana::editor::EnvironmentAuthoringCommandKind::remove_weather_keyframe,
+                      .weather_keyframe_index = 0U,
+                      .label = "Remove Noon Weather",
+                  })));
+    MK_REQUIRE(document.profile_document_v2().weather_timeline.size() == 2U);
+    MK_REQUIRE(document.profile_document_v2().weather_timeline[0].time_of_day_hours != 12.0F);
 
     MK_REQUIRE(undo_stack.execute(mirakana::editor::make_environment_authoring_command_action(
         document, mirakana::editor::EnvironmentAuthoringCommandRequest{
@@ -494,6 +573,8 @@ MK_TEST("editor environment authoring cubemap capture command is reviewed but ne
                       .kind = mirakana::editor::EnvironmentAuthoringCommandKind::request_cubemap_capture,
                       .request_backend_execution = true,
                       .request_package_script_execution = true,
+                      .request_validation_recipe_execution = true,
+                      .request_shell_execution = true,
                       .request_native_handle_access = true,
                       .label = "Unsafe Capture",
                   });

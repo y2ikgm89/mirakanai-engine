@@ -222,16 +222,16 @@ Task 1 evidence on 2026-06-11:
 
 **Files:** `environment_authoring.hpp`, `environment_authoring.cpp`, `editor_environment_tests.cpp`.
 
-- [ ] Add RED tests for command coverage across:
+- [x] Add RED tests for command coverage across:
   - global profile replacement through existing undoable profile edit action,
   - volume add/remove/reorder/edit,
   - weather keyframe add/remove/edit/reorder if missing,
   - quality preset selection,
   - cubemap/preview request,
   - package draft review request if represented as a command.
-- [ ] If current code lacks a visible command that a real settings surface needs, add a clean-break command kind and deterministic `environment.command.*` ID.
-- [ ] Reject unsafe requests with diagnostics if they request backend execution, package-script execution, validation-recipe execution, arbitrary shell execution, or native-handle access.
-- [ ] Keep read-only readiness rows non-editable and test that they cannot be mutated through settings commands.
+- [x] If current code lacks a visible command that a real settings surface needs, add a clean-break command kind and deterministic `environment.command.*` ID.
+- [x] Reject unsafe requests with diagnostics if they request backend execution, package-script execution, validation-recipe execution, arbitrary shell execution, or native-handle access.
+- [x] Keep read-only readiness rows non-editable and test that they cannot be mutated through settings commands.
 
 Focused validation:
 
@@ -239,6 +239,18 @@ Focused validation:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_editor_environment_tests$"
 ```
+
+Task 2 evidence on 2026-06-11:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests` failed with missing `EnvironmentAuthoringCommandKind::edit_volume`, `add_weather_keyframe`, `reorder_weather_keyframe`, and `remove_weather_keyframe`, proving the tests covered absent user-visible settings commands.
+- GREEN: Added clean-break command kinds and stable IDs `environment.command.volume.edit`, `environment.command.weather_keyframe.add`, `environment.command.weather_keyframe.remove`, and `environment.command.weather_keyframe.reorder`.
+- GREEN: `plan_environment_authoring_command` now rejects backend execution, package-script execution, validation-recipe execution, arbitrary shell execution, and native-handle access with the `unsafe_execution` diagnostic.
+- Boundary: Package draft review remains represented by deterministic package registration draft rows rather than a mutating settings command. Readiness rows remain read-only and are not exposed through `EnvironmentAuthoringCommandKind`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`: `format: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_editor_environment_tests --output-on-failure`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`: passed.
 
 ## Task 3: Dedicated Native Environment Settings Panel
 
