@@ -244,6 +244,18 @@ MK_TEST("mavg cluster graph rejects duplicate pages and unknown child references
         has_diagnostic_code(validation.diagnostics, mirakana::MavgClusterGraphDiagnosticCode::unknown_child_cluster));
 }
 
+MK_TEST("mavg cluster graph rejects overlapping page byte ranges") {
+    auto document = make_valid_document();
+    document.pages[1].byte_offset = 128;
+    document.pages[1].byte_size = 512;
+
+    const auto validation = mirakana::validate_mavg_cluster_graph(document);
+
+    MK_REQUIRE(!validation.valid());
+    MK_REQUIRE(
+        has_diagnostic_code(validation.diagnostics, mirakana::MavgClusterGraphDiagnosticCode::invalid_page_byte_range));
+}
+
 MK_TEST("mavg cluster graph rejects invalid lod hierarchy fallback and draw metadata") {
     auto cycle = make_valid_document();
     cycle.clusters[0].has_parent = true;

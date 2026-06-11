@@ -88,6 +88,7 @@ enum class MavgClusterGraphDiagnosticCode : std::uint8_t {
     invalid_page_size_bytes,
     missing_page,
     duplicate_page_index,
+    invalid_page_byte_range,
     invalid_page_cluster_range,
     missing_material_partition,
     invalid_material_asset,
@@ -128,6 +129,7 @@ struct MavgClusterGraphValidationResult {
 };
 
 [[nodiscard]] std::string_view mavg_cluster_graph_format_v1() noexcept;
+[[nodiscard]] std::string_view mavg_cluster_payload_format_v1() noexcept;
 [[nodiscard]] MavgClusterGraphValidationResult validate_mavg_cluster_graph(const MavgClusterGraphDocument& document);
 [[nodiscard]] MavgClusterGraphDocument canonicalize_mavg_cluster_graph(MavgClusterGraphDocument document);
 [[nodiscard]] std::string serialize_mavg_cluster_graph_document(const MavgClusterGraphDocument& document);
