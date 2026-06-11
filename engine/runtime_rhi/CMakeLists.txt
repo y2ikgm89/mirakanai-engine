@@ -4,6 +4,7 @@ add_library(mirakana_runtime_rhi
     src/mavg_conventional_upload.cpp
     src/mavg_gpu_memory_residency.cpp
     src/mavg_streamed_cluster_gpu_upload.cpp
+    src/mavg_streaming_upload_overlap_evidence.cpp
     src/package_streaming_frame_graph.cpp
     src/runtime_upload.cpp
 )
