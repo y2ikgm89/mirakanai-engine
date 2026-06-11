@@ -16,11 +16,14 @@ $mavgClusterStreamingResidencyCloseoutHeaderText = Get-AgentSurfaceText "engine/
 $mavgClusterStreamingResidencyCloseoutSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_cluster_streaming_residency_closeout.cpp"
 $mavgClusterStreamingSafePointAdoptionHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_cluster_streaming_safe_point_adoption.hpp"
 $mavgClusterStreamingSafePointAdoptionSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_cluster_streaming_safe_point_adoption.cpp"
+$mavgStreamedClusterGpuUploadHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_streamed_cluster_gpu_upload.hpp"
+$mavgStreamedClusterGpuUploadSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_streamed_cluster_gpu_upload.cpp"
 $payloadLoaderTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_page_loader_tests.cpp"
 $pageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
 $mavgGpuMemoryResidencyTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_gpu_memory_residency_tests.cpp"
 $mavgClusterStreamingResidencyCloseoutTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_cluster_streaming_residency_closeout_tests.cpp"
 $mavgClusterStreamingSafePointAdoptionTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_cluster_streaming_safe_point_adoption_tests.cpp"
+$mavgStreamedClusterGpuUploadTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_streamed_cluster_gpu_upload_tests.cpp"
 $graphTestsText = Get-AgentSurfaceText "tests/unit/mavg_cluster_graph_tests.cpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
@@ -31,6 +34,7 @@ $filesystemPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-ma
 $gpuMemoryResidencyPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-memory-pressure-residency-v1.md"
 $clusterStreamingResidencyCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-residency-closeout-v1.md"
 $clusterStreamingSafePointAdoptionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-safe-point-adoption-v1.md"
+$streamedClusterGpuUploadPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-streamed-cluster-gpu-upload-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -462,6 +466,103 @@ foreach ($surface in @(
             "broad optimization"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG cluster streaming safe-point adoption evidence and non-claims"
+    }
+}
+
+foreach ($needle in @(
+        "RuntimeMavgStreamedClusterGpuUploadDesc",
+        "RuntimeMavgStreamedClusterGpuUploadResult",
+        "RuntimeMavgStreamedClusterGpuUploadDiagnosticCode",
+        "RuntimeMavgStreamedClusterPagePayloadRow",
+        "RuntimeMavgStreamedClusterPageBindingRow",
+        "upload_runtime_mavg_streamed_cluster_pages",
+        "has_runtime_mavg_streamed_cluster_gpu_upload_diagnostic",
+        "invoked_candidate_load",
+        "mutated_streaming_state",
+        "invoked_direct_storage",
+        "executed_backend",
+        "executed_mesh_shader",
+        "touched_native_handles",
+        "proved_async_overlap_performance"
+    )) {
+    Assert-ContainsText $mavgStreamedClusterGpuUploadHeaderText $needle "MAVG streamed cluster GPU upload public contract"
+}
+
+foreach ($needle in @(
+        "upload_runtime_mesh",
+        "make_runtime_mesh_gpu_binding",
+        "wait_for_runtime_uploads_on_queue",
+        "runtime_resource_record_v2",
+        "adoption_not_committed",
+        "graph_asset_mismatch",
+        "page_payload_mismatch",
+        "payload_handle_mismatch",
+        "mesh_payload_invalid",
+        "page_not_resident",
+        "cluster_range_outside_payload",
+        "mutated_streaming_state",
+        "executed_mesh_shader"
+    )) {
+    Assert-ContainsText $mavgStreamedClusterGpuUploadSourceText $needle "MAVG streamed cluster GPU upload implementation"
+}
+
+foreach ($needle in @(
+        "mavg streamed cluster gpu upload publishes page mesh bindings after committed safe point adoption",
+        "mavg streamed cluster gpu upload rejects uncommitted safe point adoption before gpu upload",
+        "mavg streamed cluster gpu upload rejects graph asset mismatch before gpu upload",
+        "mavg streamed cluster gpu upload rejects resident handle mismatch before gpu upload",
+        "mavg streamed cluster gpu upload rejects page payloads missing from resident catalog",
+        "mavg streamed cluster gpu upload does not publish partial bindings when a later page is invalid",
+        "mavg streamed cluster gpu upload rejects cluster draw ranges outside page payload",
+        "upload_runtime_mavg_streamed_cluster_pages",
+        "MK_REQUIRE(upload.package_visible)",
+        "MK_REQUIRE(!upload.invoked_candidate_load)",
+        "MK_REQUIRE(!upload.mutated_streaming_state)",
+        "MK_REQUIRE(!upload.invoked_direct_storage)",
+        "MK_REQUIRE(!upload.executed_backend)",
+        "MK_REQUIRE(!upload.executed_mesh_shader)",
+        "MK_REQUIRE(!upload.touched_native_handles)",
+        "MK_REQUIRE(!upload.proved_async_overlap_performance)"
+    )) {
+    Assert-ContainsText $mavgStreamedClusterGpuUploadTestsText $needle "MAVG streamed cluster GPU upload tests"
+}
+
+foreach ($needle in @(
+        "MK_runtime_rhi_mavg_streamed_cluster_gpu_upload_tests",
+        "tests/unit/runtime_rhi_mavg_streamed_cluster_gpu_upload_tests.cpp"
+    )) {
+    Assert-ContainsText $cmakeText $needle "MAVG streamed cluster GPU upload CMake test target"
+}
+Assert-ContainsText $runtimeRhiCmakeText "src/mavg_streamed_cluster_gpu_upload.cpp" "MAVG streamed cluster GPU upload source registration"
+
+foreach ($surface in @(
+        @{ Text = $streamedClusterGpuUploadPlanText; Label = "streamed cluster GPU upload implementation plan" },
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        @{ Text = $modulesFragmentText; Label = "modules fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-streamed-cluster-gpu-upload-v1",
+            "MAVG Streamed Cluster GPU Upload v1",
+            "mavg_streamed_cluster_gpu_upload.hpp",
+            "RuntimeMavgStreamedClusterGpuUploadResult",
+            "upload_runtime_mavg_streamed_cluster_pages",
+            "RuntimeMavgClusterStreamingSafePointAdoptionResult",
+            "RuntimeResidentCatalogCacheV2",
+            "MeshGpuBinding",
+            "DirectStorage",
+            "backend execution",
+            "async-overlap/performance proof",
+            "mesh shaders",
+            "native handles",
+            "Nanite",
+            "broad optimization"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG streamed cluster GPU upload evidence and non-claims"
     }
 }
 
