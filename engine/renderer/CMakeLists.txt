@@ -22,6 +22,7 @@ add_library(mirakana_renderer
     src/gpu_memory_policy.cpp
     src/mavg_gpu_culling.cpp
     src/mavg_lod_selection.cpp
+    src/mavg_quality_governor.cpp
     src/scene_scale_policy.cpp
     src/shadow_map.cpp
     src/sprite_batch.cpp

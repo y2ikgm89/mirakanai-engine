@@ -268,7 +268,8 @@ Phase 0 records methodology and current evidence only:
 
 - Existing conventional renderer and package evidence remains the baseline until MAVG code exists.
 - Existing environment and performance foundation rows are prerequisites for later benchmark scenes.
-- No current MAVG runtime or renderer counter exists.
+- MAVG Quality Governor Benchmark Harness v1 (`mavg-quality-governor-benchmark-harness-v1`) now provides renderer-side value rows through `mavg_quality_governor.hpp`, `MavgQualityGovernorResult`, `MavgQualityGovernorCounterRow`, `MavgQualityGovernorLimits`, `evaluate_mavg_quality_governor`, and `has_mavg_quality_governor_diagnostic`, plus the metadata-only `tools/benchmark-mavg.ps1` dry-run harness. The harness emits `mavg-benchmark-harness:` rows with `executes_benchmark=false`, `writes_artifacts=false`, `invokes_profiler=false`, and `native_handles=false`. These rows budget future benchmark evidence and reject unsupported claims, but they are not measured benchmark results.
+- Non-claims remain unchanged: no benchmark superiority, Nanite compatibility/equivalence/superiority, broad CPU/GPU/memory optimization, backend parity, Metal readiness, mesh shader execution, deformation readiness, ray-tracing readiness, DirectStorage execution, persistent/autonomous streaming services, or async-overlap proof.
 - No current result proves a Nanite-like or Nanite-exceeding claim.
 
 ## Validation
@@ -286,6 +287,7 @@ git diff --check
 Future benchmark runner updates add:
 
 ```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\benchmark-mavg.ps1 -PlanId mavg-quality-governor-benchmark-harness-v1 -SceneId scene-a-static-dense -PackageTarget sample_desktop_runtime_game -ValidationRecipe default -BenchmarkCommand dry-run
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev

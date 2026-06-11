@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-11. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Cluster Streaming Safe Point Adoption v1 / PR #576 merge commit `7810ca10`, records MAVG Streamed Cluster GPU Upload v1 as the current narrow child, and preserves fail-closed non-claims for persistent/autonomous background streaming services, async-overlap/performance proof, DirectStorage execution, backend draw execution, mesh shaders, deformation, ray tracing, benchmark superiority, Metal readiness, and broad optimization.
+**Latest audit:** 2026-06-12. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Cluster Streaming Safe Point Adoption v1 / PR #576 merge commit `7810ca10`, records MAVG Streamed Cluster GPU Upload v1 as a published draft child, adds MAVG Quality Governor Benchmark Harness v1 as the current narrow Phase 9 budget/dry-run harness child, and preserves fail-closed non-claims for persistent/autonomous background streaming services, async-overlap/performance proof, DirectStorage execution, backend draw execution, mesh shaders, deformation, ray tracing, benchmark superiority, Metal readiness, and broad optimization.
 
 ## Master Plan Decision
 
@@ -30,6 +30,14 @@ Reasons:
 - The "Nanite-exceeding" claim is a final integrated benchmark claim, not a useful early implementation target.
 
 Use this file as the roadmap and decision contract. Create focused child plans under `docs/superpowers/plans/YYYY-MM-DD-mavg-<phase>.md` when executing a phase.
+
+## 2026-06-12 Progress Audit Addendum
+
+MAVG Quality Governor Benchmark Harness v1 (`mavg-quality-governor-benchmark-harness-v1`) adds a narrow Phase 9 budget and evidence gate without adding measured benchmark results. The implementation introduces `engine/renderer/include/mirakana/renderer/mavg_quality_governor.hpp`, `engine/renderer/src/mavg_quality_governor.cpp`, `MavgQualityGovernorResult`, `MavgQualityGovernorCounterRow`, `MavgQualityGovernorLimits`, `evaluate_mavg_quality_governor`, `has_mavg_quality_governor_diagnostic`, `MK_mavg_quality_governor_tests`, and `tools/benchmark-mavg.ps1`.
+
+This child can classify caller-supplied rows by scene, package target, validation recipe, benchmark command, backend, feature kind, host gate, backend-local evidence, no-hole/fallback evidence, RT consistency evidence, budget counters, unsupported claim flags, deterministic ordering, and replay hash. Metal rows and explicit host-gated rows remain `host_evidence_required`, and the dry-run harness emits deterministic `mavg-benchmark-harness:` metadata rows only. It records `executes_benchmark=false`, `writes_artifacts=false`, `invokes_profiler=false`, and `native_handles=false`.
+
+Still unclaimed after this addendum: benchmark execution/results, benchmark superiority, Nanite compatibility/equivalence/superiority, broad CPU/GPU/memory optimization, backend parity, Metal readiness, mesh shader execution, deformation readiness, ray-tracing readiness, DirectStorage execution, persistent/autonomous streaming services, and async-overlap/performance proof.
 
 ## 2026-06-11 Progress Audit Addendum
 
