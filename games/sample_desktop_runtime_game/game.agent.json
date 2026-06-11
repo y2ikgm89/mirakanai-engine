@@ -138,6 +138,7 @@
         "scene-rendering",
         "renderer-quality",
         "runtime-ui",
+        "environment-settings-productized",
         "environment-profile-package",
         "physical-sky-package",
         "physical-sky-vulkan-package",
@@ -196,6 +197,7 @@
         "desktop-runtime-sample-game-environment-material-weathering",
         "desktop-runtime-sample-game-environment-audio-playback",
         "desktop-runtime-sample-game-environment-profile-package",
+        "desktop-runtime-sample-game-environment-settings-productized",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -219,6 +221,13 @@
           "evidence": "The selected environment profile package smoke reports environment_profile_v2_status=ready, environment_profile_v2_ready=1, positive environment_profile_v2_volume_rows, positive environment_profile_v2_weather_keyframes, environment_profile_v2_quality_preset=high, environment_profile_v2_diagnostics=0, environment_profile_v2_legacy_v1_accepted=0, package file/index-entry/scene-reference/scene-required/scene-dependency/dependency-edge counters, environment_profile_source_parsing=0, and no broad environment_ready claim without renderer/RHI execution, Vulkan, Metal, package evidence beyond selected profile dependency counters, backend parity, or broad optimization.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-profile-package"
+          ]
+        },
+        {
+          "id": "environment-settings-productized-evidence",
+          "evidence": "The selected environment settings productized smoke reports environment_settings_productized_status=ready, environment_settings_productized_ready=1, environment_settings_profile_v2_ready=1, positive environment_settings_panel_rows, positive environment_settings_command_rows, positive environment_settings_preview_request_rows, positive environment_settings_package_draft_rows, positive environment_settings_validation_recipe_rows, zero environment_settings_native_handle_access, zero environment_settings_backend_execution_from_editor, zero environment_settings_package_script_execution_from_editor, and environment_settings_broad_environment_ready_claimed=0 without claiming renderer backend parity, package-script execution from editor-core, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-settings-productized"
           ]
         },
         {
@@ -1899,6 +1908,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-profile-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-profile')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-settings-productized",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-settings-productized')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",

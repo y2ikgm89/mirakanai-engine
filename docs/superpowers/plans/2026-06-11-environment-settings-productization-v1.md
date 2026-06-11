@@ -42,10 +42,8 @@ Already implemented and reused by this plan:
 
 Not complete yet as a productized Environment Settings feature:
 
-- Preview request rows are value-level review rows; there is no productized operator handoff model that connects a preview request to reviewed validation recipe choices and package smoke evidence.
-- Package registration drafts exist, but the visible workflow and package validation counters do not yet prove the end-to-end settings workflow as one productized feature.
-- There is no narrow final status/counter family such as `environment_settings_productized_*` to say the settings workflow is ready while keeping broad `environment_ready` rejected.
-- Static checks do not yet guard the new productized settings row IDs, workflow non-claims, or broad-ready rejection as a feature-level contract.
+- The editor-core, native panel, preview handoff, productized smoke counters, recipe registration, manifest/docs, and static guards are implemented locally.
+- Full package closeout is blocked in this session because `external/vcpkg/vcpkg.exe` is not generated and `tools/bootstrap-deps.ps1` requires an approval-capable session. The source-tree `desktop-runtime` smoke proves the new `environment_settings_productized_*` output contract, but `tools/package-desktop-runtime.ps1` / installed package validation still need to run after bootstrap.
 
 ## Official Source Baseline
 
@@ -325,7 +323,7 @@ Task 4 evidence on 2026-06-11:
 
 **Files:** `games/sample_desktop_runtime_game/main.cpp`, `game.agent.json`, package/validation PowerShell scripts, editor environment tests.
 
-- [ ] Add RED package smoke expectations for narrow productization counters:
+- [x] Add RED package smoke expectations for narrow productization counters:
   - `environment_settings_productized_status=ready`
   - `environment_settings_productized_ready=1`
   - `environment_settings_profile_v2_ready=1`
@@ -338,17 +336,29 @@ Task 4 evidence on 2026-06-11:
   - `environment_settings_backend_execution_from_editor=0`
   - `environment_settings_package_script_execution_from_editor=0`
   - `environment_settings_broad_environment_ready_claimed=0`
-- [ ] Add or update validation recipe entries for a selected installed smoke such as `desktop-runtime-sample-game-environment-settings-productized`.
-- [ ] Ensure the recipe reuses existing environment profile, quality budget, lighting, precipitation, material weathering, and audio evidence instead of duplicating renderer logic.
-- [ ] Keep validation failure messages concrete for missing panel rows, missing package drafts, unsafe editor execution flags, missing selected evidence, and unexpected broad-ready claims.
-- [ ] Update `game.agent.json` with exact evidence text and non-claims.
+- [x] Add or update validation recipe entries for a selected installed smoke such as `desktop-runtime-sample-game-environment-settings-productized`.
+- [x] Ensure the recipe reuses existing environment profile, quality budget, lighting, precipitation, material weathering, and audio evidence instead of duplicating renderer logic.
+- [x] Keep validation failure messages concrete for missing panel rows, missing package drafts, unsafe editor execution flags, missing selected evidence, and unexpected broad-ready claims.
+- [x] Update `game.agent.json` with exact evidence text and non-claims.
 
 Focused validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_desktop_runtime_game
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-environment-settings-productized')
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-settings-productized')"
 ```
+
+Task 5 evidence on 2026-06-11:
+
+- Added `--require-environment-settings-productized` to `sample_desktop_runtime_game`; it implies `--require-environment-profile` and emits `environment_settings_productized_status`, `environment_settings_productized_ready`, profile-v2 readiness, positive panel/command/preview/package/validation counters, and zero native-handle/backend-execution/package-script/broad-ready counters.
+- Added installed validation assertions in `tools/validate-installed-desktop-runtime.ps1` for the full `environment_settings_productized_*` contract and for rejecting any broad `environment_ready=` field.
+- Added `Get-SampleDesktopRuntimeGameEnvironmentSettingsProductizedSmokeArgs` and the `desktop-runtime-sample-game-environment-settings-productized` dry-run recipe plan.
+- Updated `games/sample_desktop_runtime_game/game.agent.json` with `environment-settings-productized`, the new recipe id, and `environment-settings-productized-evidence`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`: `validation-recipe-runner-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe-plans.ps1 -RecipeName desktop-runtime-sample-game-environment-settings-productized -DryRun`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`: passed.
+- Direct source-tree smoke from `games/sample_desktop_runtime_game` passed and emitted `environment_settings_productized_status=ready`, `environment_settings_productized_ready=1`, `environment_settings_profile_v2_ready=1`, `environment_settings_panel_rows=12`, `environment_settings_command_rows=10`, `environment_settings_preview_request_rows=3`, `environment_settings_package_draft_rows=3`, `environment_settings_validation_recipe_rows=3`, `environment_settings_native_handle_access=0`, `environment_settings_backend_execution_from_editor=0`, `environment_settings_package_script_execution_from_editor=0`, and `environment_settings_broad_environment_ready_claimed=0`; no `environment_ready=` token was present.
+- Package gate blocker: `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs ... --require-environment-settings-productized` failed before configure because `external/vcpkg/vcpkg.exe` was missing. `tools/prepare-worktree.ps1` reported `external-vcpkg=ready`, but `vcpkg.exe` was still absent. `tools/bootstrap-deps.ps1` could not run in this session because the command policy requested approval and approval is unavailable.
 
 ## Task 6: Static Guards And Agent Surface Sync
 
@@ -356,17 +366,17 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 
 **Files:** docs, manifest fragments, generated manifest, static checks, plan registry.
 
-- [ ] Update `docs/testing.md` with the exact `environment_settings_productized_*` recipe and counters.
-- [ ] Update `docs/current-capabilities.md` and `docs/roadmap.md` with the new ready claim and non-claims.
-- [ ] Update `docs/superpowers/plans/README.md` from candidate to active/completed status as appropriate.
-- [ ] Update `engine/agent/manifest.fragments/009-validationRecipes.json` and other relevant fragments; run `tools/compose-agent-manifest.ps1 -Write`.
-- [ ] Add focused static checks for:
+- [x] Update `docs/testing.md` with the exact `environment_settings_productized_*` recipe and counters.
+- [x] Update `docs/current-capabilities.md` and `docs/roadmap.md` with the new ready claim and non-claims.
+- [x] Update `docs/superpowers/plans/README.md` from candidate to active/completed status as appropriate.
+- [x] Update `engine/agent/manifest.fragments/009-validationRecipes.json` and other relevant fragments; run `tools/compose-agent-manifest.ps1 -Write`.
+- [x] Add focused static checks for:
   - Environment Settings panel row IDs.
   - Productized settings package recipe ID.
   - `environment_settings_broad_environment_ready_claimed=0`.
   - Continued rejection or absence of broad `environment_ready=` status.
   - No Dear ImGui/SDL3/native-handle claims.
-- [ ] Keep Codex/Claude/Cursor agent surfaces synchronized only if durable workflow guidance changes.
+- [x] Keep Codex/Claude/Cursor agent surfaces synchronized only if durable workflow guidance changes.
 
 Focused validation:
 
@@ -377,6 +387,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 ```
+
+Task 6 evidence on 2026-06-11:
+
+- Updated `docs/testing.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, and `docs/superpowers/plans/README.md` with the narrow Environment Settings Productization ready claim and non-claims.
+- Updated `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, and composed `engine/agent/manifest.json`.
+- Added `tools/check-ai-integration-116-environment-settings-productization.ps1` to guard the panel IDs, workflow model, command IDs, productized recipe ID, broad-ready rejection, package validation assertions, docs, game manifest, and composed manifest.
+- Updated `.agents/skills/editor-change/SKILL.md`, `.claude/skills/gameengine-editor/SKILL.md`, and `.cursor/skills/gameengine-editor/SKILL.md` with the Environment Settings productization contract.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`: wrote `engine/agent/manifest.json`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: `json-contract-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: `ai-integration-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: `agent-config-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: `format-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`: `text-format-check: ok`.
 
 ## Task 7: Final Validation, Closeout, And Publication
 
@@ -400,6 +423,11 @@ git diff --check
 - [ ] Update this plan's status with exact validation evidence.
 - [ ] If this plan was selected, move `currentActivePlan` back to the production-completion master plan or the next selected plan in the same closeout change; compose the manifest and run JSON/static checks.
 - [ ] Open a focused PR with validation evidence and explicit non-claims.
+
+Task 7 in-progress evidence on 2026-06-11:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: `validate: ok`; 114/114 CTest tests passed. Diagnostic-only host gates remain Metal/Apple-host and mobile Apple gates as expected for this Windows host.
+- Productized package closeout is still not complete: `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs ... --require-environment-settings-productized` still fails before configure because `external/vcpkg/vcpkg.exe` is missing. `tools/prepare-worktree.ps1` reports `external-vcpkg=ready`, but the official/repository bootstrap entrypoint `tools/bootstrap-deps.ps1` is approval-gated in this session.
 
 ## Non-Claims
 

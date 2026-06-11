@@ -293,6 +293,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagEnvironmentProfile = New-RunnerDiagnostic -Severity 'info' -Code 'package-evidence-reviewed' -Message 'Environment profile package validation is restricted to the reviewed sample_desktop_runtime_game package lane and proves cooked profile/index/scene dependency evidence without claiming renderer backend execution, Vulkan, Metal, rain readiness, or broad environment_ready.' -ValidationRecipe $RecipeName
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentProfile)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-settings-productized') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentSettingsProductizedSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentSettings = New-RunnerDiagnostic -Severity 'info' -Code 'package-evidence-reviewed' -Message 'Environment settings productized validation is restricted to the reviewed sample_desktop_runtime_game package lane and proves first-party settings panel, workflow command, preview handoff, package draft, validation recipe, and zero unsafe editor execution counters without claiming renderer backend parity or broad environment_ready.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentSettings)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-generated-material-shader-scaffold-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_generated_desktop_runtime_material_shader_package' } else { $SelectedGameTarget }
         $pkgArgs = @('-GameTarget', $target)

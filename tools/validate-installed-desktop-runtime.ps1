@@ -176,6 +176,7 @@ $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-profile"
+$requiresEnvironmentSettingsProductized = @($SmokeArgs) -contains "--require-environment-settings-productized"
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -223,6 +224,9 @@ if ($requiresMemoryDiagnostics) {
 }
 if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
     $requiresDebugProfilingPolicy = $true
+}
+if ($requiresEnvironmentSettingsProductized) {
+    $requiresEnvironmentProfile = $true
 }
 if ($requiresEnvironmentFogEvidence) {
     $requiresPostprocess = $true
@@ -1063,6 +1067,37 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
         if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment profile package evidence."
+        }
+    }
+    if ($requiresEnvironmentSettingsProductized) {
+        $expectedEnvironmentSettingsFields = @{
+            "environment_settings_productized_status" = "ready"
+            "environment_settings_productized_ready" = "1"
+            "environment_settings_profile_v2_ready" = "1"
+            "environment_settings_native_handle_access" = "0"
+            "environment_settings_backend_execution_from_editor" = "0"
+            "environment_settings_package_script_execution_from_editor" = "0"
+            "environment_settings_broad_environment_ready_claimed" = "0"
+        }
+        foreach ($field in $expectedEnvironmentSettingsFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedEnvironmentSettingsFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove environment settings productized field: $field=$($expectedEnvironmentSettingsFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "environment_settings_panel_rows",
+                "environment_settings_command_rows",
+                "environment_settings_preview_request_rows",
+                "environment_settings_package_draft_rows",
+                "environment_settings_validation_recipe_rows"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove environment settings productized positive count: $field"
+            }
+        }
+        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            Write-Error "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment settings productization evidence."
         }
     }
     if ($requiresNativeUiOverlay) {

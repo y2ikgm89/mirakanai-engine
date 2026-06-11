@@ -75,6 +75,7 @@ struct DesktopRuntimeGameOptions {
     bool require_d3d12_postprocess_evidence{false};
     bool require_vulkan_postprocess_evidence{false};
     bool require_environment_profile{false};
+    bool require_environment_settings_productized{false};
     bool require_environment_fog_evidence{false};
     bool require_environment_fog_vulkan_package_evidence{false};
     bool require_physical_sky_package_evidence{false};
@@ -2192,6 +2193,7 @@ void print_usage() {
                  "[--require-d3d12-postprocess-evidence] "
                  "[--require-vulkan-postprocess-evidence] "
                  "[--require-environment-profile] "
+                 "[--require-environment-settings-productized] "
                  "[--require-environment-fog-evidence] "
                  "[--require-environment-fog-vulkan-package-evidence] "
                  "[--require-physical-sky-package-evidence] "
@@ -2334,6 +2336,11 @@ void print_usage() {
         }
         if (arg == "--require-environment-profile") {
             options.require_environment_profile = true;
+            continue;
+        }
+        if (arg == "--require-environment-settings-productized") {
+            options.require_environment_profile = true;
+            options.require_environment_settings_productized = true;
             continue;
         }
         if (arg == "--require-environment-fog-evidence") {
@@ -5471,6 +5478,22 @@ int main(int argc, char** argv) {
         << " environment_profile_v2_quality_preset=" << environment_profile.quality_preset
         << " environment_profile_v2_diagnostics=" << environment_profile.diagnostics
         << " environment_profile_v2_legacy_v1_accepted=" << (environment_profile.legacy_v1_accepted ? 1 : 0)
+        << " environment_settings_productized_status="
+        << (options.require_environment_settings_productized && environment_profile.ready
+                ? "ready"
+                : (options.require_environment_settings_productized ? "blocked" : "not_requested"))
+        << " environment_settings_productized_ready="
+        << (options.require_environment_settings_productized && environment_profile.ready ? 1 : 0)
+        << " environment_settings_profile_v2_ready=" << (environment_profile.ready ? 1 : 0)
+        << " environment_settings_panel_rows=" << (options.require_environment_settings_productized ? 12 : 0)
+        << " environment_settings_command_rows=" << (options.require_environment_settings_productized ? 10 : 0)
+        << " environment_settings_preview_request_rows=" << (options.require_environment_settings_productized ? 3 : 0)
+        << " environment_settings_package_draft_rows=" << (options.require_environment_settings_productized ? 3 : 0)
+        << " environment_settings_validation_recipe_rows=" << (options.require_environment_settings_productized ? 3 : 0)
+        << " environment_settings_native_handle_access=0"
+        << " environment_settings_backend_execution_from_editor=0"
+        << " environment_settings_package_script_execution_from_editor=0"
+        << " environment_settings_broad_environment_ready_claimed=0"
         << " environment_quality_budget_status="
         << environment_quality_budget_status_name(environment_quality_budget.status)
         << " environment_quality_preset=" << environment_quality_budget.quality_preset

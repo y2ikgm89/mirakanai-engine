@@ -25,15 +25,10 @@ Reviewed rich-text commands use `<rich_text_document_id>.copy_selection_plain_te
 shell evidence in the Claude/Codex editor skills.
 
 Environment authoring row and command contracts live in the Claude/Codex editor skills. Keep `GameEngine.EnvironmentProfile.v2`,
-`environment.profile_v2.volume_count`, `environment.profile_v2.weather_keyframes`, `environment.volume.<index>.id`,
-`environment.volume.<index>.shape`, `environment.volume.<index>.priority`, `environment.volume.<index>.blend_weight`,
-`environment.volume.<index>.fade_distance_m`, `environment.weather_keyframe.<index>.time_of_day_hours`,
-`environment.weather_keyframe.<index>.weather`, `environment.weather_keyframe.<index>.precipitation`,
-`environment.weather_keyframe.<index>.quality_preset`, `environment.quality.tier`, `environment.capture.cubemap.request_status`,
-`environment.command.volume.add`, `environment.command.volume.remove`, `environment.command.volume.reorder`,
-`environment.command.weather_keyframe.edit`, `environment.command.quality_preset.select`, `environment.command.capture.cubemap.request`,
-and `environment.readiness.*` rows editor-core value-only; do not claim backend execution, validation recipe execution, package scripts,
-native handles, Dear ImGui, SDL3, or broad `environment_ready`.
+`environment.command.*`, `environment.readiness.*`, `EnvironmentSettingsWorkflowModel`, `make_environment_settings_workflow_model`,
+the first-party `environment_settings` panel, reviewed preview/package rows, and `environment_settings_productized_status=ready`
+editor-core value-only. Keep `environment_settings_broad_environment_ready_claimed=0`; do not claim backend execution, validation
+recipe execution, package scripts, package-script execution from editor-core, native handles, Dear ImGui, SDL3, or broad `environment_ready`.
 
 When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 

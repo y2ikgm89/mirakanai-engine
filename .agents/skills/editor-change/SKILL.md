@@ -54,9 +54,14 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `environment.readiness.physical_sky.package_status`, `environment.readiness.backend.metal_status`, and
   `environment.readiness.unsupported.environment_ready` from `make_environment_authoring_inspector_model`; reviewed command ids
   `environment.command.volume.add`, `environment.command.volume.remove`, `environment.command.volume.reorder`,
-  `environment.command.weather_keyframe.edit`, `environment.command.quality_preset.select`, and
-  `environment.command.capture.cubemap.request` are editor-core value rows only. Do not treat them as backend/package/validation
-  execution, public handle exposure, or broad `environment_ready`.
+  `environment.command.volume.edit`, `environment.command.weather_keyframe.add`,
+  `environment.command.weather_keyframe.remove`, `environment.command.weather_keyframe.edit`,
+  `environment.command.weather_keyframe.reorder`, `environment.command.quality_preset.select`, and
+  `environment.command.capture.cubemap.request` are editor-core value rows only. Environment Settings productization uses
+  `EnvironmentSettingsWorkflowModel`, `make_environment_settings_workflow_model`, the first-party `environment_settings`
+  panel, reviewed preview handoff rows, package draft rows, and the narrow `environment_settings_productized_status=ready`
+  smoke contract with `environment_settings_broad_environment_ready_claimed=0`. Do not treat these rows as backend/package/
+  validation execution, package-script execution from editor-core, public handle exposure, or broad `environment_ready`.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.
