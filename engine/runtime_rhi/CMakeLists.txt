@@ -1,4 +1,5 @@
 add_library(mirakana_runtime_rhi
+    src/mavg_cluster_streaming_residency_closeout.cpp
     src/mavg_conventional_upload.cpp
     src/mavg_gpu_memory_residency.cpp
     src/package_streaming_frame_graph.cpp
