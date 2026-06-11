@@ -47,6 +47,17 @@ void add_diagnostic(RuntimeMavgPageStreamingBackgroundLoadResult& result, Runtim
     });
 }
 
+void add_diagnostic(RuntimeMavgPageStreamingBackgroundServiceTickResult& result,
+                    RuntimeMavgPageStreamingDiagnosticCode code, AssetId graph_asset, std::uint32_t page_index,
+                    std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
 void add_diagnostic(RuntimeMavgPageStreamingEvictionReviewResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
                     AssetId graph_asset, std::uint32_t page_index, std::string message) {
     result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
@@ -275,6 +286,12 @@ void copy_background_load_diagnostics(RuntimeMavgPageStreamingBackgroundLoadResu
         }
         add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::background_load_failed, row.row.graph_asset,
                        row.row.page_index, std::move(message));
+    }
+}
+
+void copy_background_load_diagnostics(RuntimeMavgPageStreamingBackgroundServiceTickResult& result) {
+    for (const auto& diagnostic : result.dispatch.diagnostics) {
+        result.diagnostics.push_back(diagnostic);
     }
 }
 
@@ -997,6 +1014,112 @@ dispatch_runtime_mavg_page_streaming_background_loads(IFileSystem& filesystem, J
         }
         result.loaded_rows.push_back(std::move(*loaded_rows[index]));
     }
+    return result;
+}
+
+RuntimeMavgPageStreamingBackgroundServiceTickResult
+tick_runtime_mavg_page_streaming_background_service(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                                    RuntimeMavgPageStreamingBackgroundServiceState& state,
+                                                    RuntimeMavgPageStreamingBackgroundServiceTickDesc desc) {
+    auto result = RuntimeMavgPageStreamingBackgroundServiceTickResult{};
+    result.input_row_count = desc.reviewed_rows.size();
+    result.pending_row_count_before = state.pending_rows.size();
+
+    if (desc.graph_asset.value == 0) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph_asset, desc.graph_asset, 0,
+                       "MAVG background page streaming service graph asset id must be non-zero");
+    }
+    if (state.graph_asset.value == 0 || state.graph_asset != desc.graph_asset) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::graph_asset_mismatch, state.graph_asset, 0,
+                       "MAVG background page streaming service state graph asset must match the tick graph asset");
+    }
+    for (const auto& row : state.pending_rows) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::request_graph_mismatch, row.graph_asset,
+                           row.page_index, "MAVG background page streaming pending row graph asset is mismatched");
+        }
+    }
+    for (const auto& row : desc.reviewed_rows) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::request_graph_mismatch, row.graph_asset,
+                           row.page_index, "MAVG background page streaming reviewed row graph asset is mismatched");
+        }
+    }
+    if (!result.diagnostics.empty()) {
+        result.pending_row_count_after = state.pending_rows.size();
+        return result;
+    }
+
+    auto next_pending = state.pending_rows;
+    for (const auto& row : desc.reviewed_rows) {
+        const auto duplicate =
+            std::ranges::find_if(next_pending, [&row](const RuntimeMavgPageStreamingPlanRow& pending) {
+                return pending.graph_asset == row.graph_asset && pending.page_index == row.page_index;
+            });
+        if (duplicate != next_pending.end()) {
+            ++result.duplicate_pending_row_count;
+            if (row.priority > duplicate->priority) {
+                duplicate->priority = row.priority;
+                duplicate->reason = row.reason;
+                duplicate->candidate = row.candidate;
+            }
+            continue;
+        }
+
+        if (desc.max_pending_pages > 0U && next_pending.size() >= desc.max_pending_pages) {
+            result.budget_degraded = true;
+            ++result.budget_dropped_request_count;
+            continue;
+        }
+
+        next_pending.push_back(row);
+        ++result.accepted_row_count;
+    }
+    sort_plan_rows(next_pending);
+
+    const auto dispatch_count =
+        desc.max_dispatch_pages > 0U ? std::min(desc.max_dispatch_pages, next_pending.size()) : next_pending.size();
+    if (dispatch_count == 0U) {
+        state.pending_rows = std::move(next_pending);
+        result.pending_row_count_after = state.pending_rows.size();
+        return result;
+    }
+
+    std::vector<RuntimeMavgPageStreamingPlanRow> dispatch_rows;
+    dispatch_rows.reserve(dispatch_count);
+    for (std::size_t index = 0; index < dispatch_count; ++index) {
+        dispatch_rows.push_back(next_pending[index]);
+    }
+
+    result.dispatch =
+        dispatch_runtime_mavg_page_streaming_background_loads(filesystem, execution_pool,
+                                                              RuntimeMavgPageStreamingBackgroundLoadDesc{
+                                                                  .rows = dispatch_rows,
+                                                                  .frame_index = desc.frame_index,
+                                                                  .scratch_bytes_per_task = desc.scratch_bytes_per_task,
+                                                              });
+    result.loaded_rows = std::move(result.dispatch.loaded_rows);
+    result.dispatched_row_count = result.dispatch.dispatched_row_count;
+    result.loaded_row_count = result.dispatch.loaded_row_count;
+    result.failed_row_count = result.dispatch.failed_row_count;
+    result.invoked_file_io = result.dispatch.invoked_file_io;
+    result.invoked_candidate_load = result.dispatch.invoked_candidate_load;
+    result.executed_streaming = result.dispatch.executed_streaming;
+    result.executed_background_worker = result.dispatch.executed_background_worker;
+    result.committed = result.dispatch.committed;
+    result.mutated_mount_set = result.dispatch.mutated_mount_set;
+    result.invoked_catalog_refresh = result.dispatch.invoked_catalog_refresh;
+    result.touched_renderer_or_rhi_handles = result.dispatch.touched_renderer_or_rhi_handles;
+    result.invoked_direct_storage = result.dispatch.invoked_direct_storage;
+    result.applied_gpu_memory_pressure_policy = result.dispatch.applied_gpu_memory_pressure_policy;
+    result.proved_async_overlap_performance = result.dispatch.proved_async_overlap_performance;
+    copy_background_load_diagnostics(result);
+
+    if (result.executed_background_worker) {
+        next_pending.erase(next_pending.begin(), next_pending.begin() + static_cast<std::ptrdiff_t>(dispatch_count));
+    }
+    state.pending_rows = std::move(next_pending);
+    result.pending_row_count_after = state.pending_rows.size();
     return result;
 }
 

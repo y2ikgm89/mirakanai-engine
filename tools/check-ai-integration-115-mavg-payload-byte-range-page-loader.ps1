@@ -38,6 +38,7 @@ $gpuMemoryResidencyPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-
 $clusterStreamingResidencyCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-residency-closeout-v1.md"
 $clusterStreamingSafePointAdoptionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-safe-point-adoption-v1.md"
 $streamedClusterGpuUploadPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-streamed-cluster-gpu-upload-v1.md"
+$persistentBackgroundStreamingServicePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-persistent-background-streaming-service-v1.md"
 $streamedClusterBackendDrawPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-streamed-cluster-backend-draw-execution-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
@@ -189,6 +190,9 @@ foreach ($needle in @(
         "RuntimeMavgPageStreamingBackgroundLoadedRow",
         "RuntimeMavgPageStreamingBackgroundLoadResult",
         "dispatch_runtime_mavg_page_streaming_background_loads",
+        "RuntimeMavgPageStreamingBackgroundServiceState",
+        "RuntimeMavgPageStreamingBackgroundServiceTickResult",
+        "tick_runtime_mavg_page_streaming_background_service",
         "background_load_failed",
         "proved_async_overlap_performance"
     )) {
@@ -199,6 +203,9 @@ foreach ($needle in @(
         "JobExecutionBatchDesc",
         "load_runtime_package_candidate_v2",
         "filesystem_mutex",
+        "duplicate_pending_row_count",
+        "pending_row_count_after",
+        "tick_runtime_mavg_page_streaming_background_service",
         "background_dispatch_failed",
         "background_load_failed"
     )) {
@@ -208,7 +215,12 @@ foreach ($needle in @(
 foreach ($needle in @(
         "runtime mavg page streaming dispatches queued rows through background job workers",
         "runtime mavg page streaming background dispatch reports load failures without safe point mutation",
+        "runtime mavg page streaming background service dispatches bounded rows across ticks",
+        "runtime mavg page streaming background service coalesces duplicate pending rows",
+        "runtime mavg page streaming background service rejects graph mismatches without state mutation",
+        "runtime mavg page streaming background service idle tick avoids worker dispatch",
         "dispatch_runtime_mavg_page_streaming_background_loads",
+        "tick_runtime_mavg_page_streaming_background_service",
         "MK_REQUIRE(!dispatch.committed)",
         "MK_REQUIRE(!dispatch.invoked_direct_storage)",
         "MK_REQUIRE(!dispatch.applied_gpu_memory_pressure_policy)",
@@ -218,6 +230,7 @@ foreach ($needle in @(
 }
 
 foreach ($surface in @(
+        @{ Text = $persistentBackgroundStreamingServicePlanText; Label = "persistent background streaming service plan" },
         @{ Text = $planRegistryText; Label = "plan registry" },
         @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
         @{ Text = $roadmapText; Label = "roadmap" },
@@ -228,8 +241,11 @@ foreach ($surface in @(
     foreach ($needle in @(
             "mavg-background-streaming-dispatch-v1",
             "MAVG Background Streaming Dispatch v1",
+            "mavg-persistent-background-streaming-service-v1",
+            "MAVG Persistent Background Streaming Service v1",
             "dispatch_runtime_mavg_page_streaming_background_loads",
-            "persistent/autonomous background",
+            "tick_runtime_mavg_page_streaming_background_service",
+            "autonomous",
             "async-overlap/performance proof",
             "DirectStorage",
             "GPU memory pressure"
