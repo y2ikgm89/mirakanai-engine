@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-vulkan-compute-generated-indirect-consumption-v1`
 
-**Status:** Completed locally; publication PR pending. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Completed through PR #567 / merge commit `9c6b681f`. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 
 ## Context
 
@@ -148,7 +148,7 @@ Expected after implementation: all selected tests pass, with SPIR-V dependent ca
 - [x] Record the exact ready claim: Vulkan `draw_indexed_indirect` can consume MAVG compute-generated argument/count buffers from the completed Vulkan dispatch path with backend-private synchronization2 barriers.
 - [x] Keep non-claims explicit: mesh shaders, Metal, ray tracing, deformation, benchmark superiority, Nanite compatibility/equivalence/superiority, GPU memory pressure, background streaming, and broad optimization.
 - [x] Return `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection` in the closeout commit.
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
