@@ -7,8 +7,10 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime_rhi/mavg_streamed_cluster_gpu_upload.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/scene/render_packet.hpp"
+#include "mirakana/scene_renderer/mavg_scene_lod.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 
 #include <cstddef>
@@ -165,6 +167,21 @@ make_runtime_scene_gpu_upload_execution_report(const RuntimeSceneGpuBindingResul
 
 [[nodiscard]] RuntimeSceneGpuUploadExecutionResult
 execute_runtime_scene_gpu_upload(const RuntimeSceneGpuUploadExecutionDesc& desc);
+
+struct RuntimeMavgStreamedSceneLodSubmitDesc {
+    Transform3D transform;
+    Color fallback_color{.r = 1.0F, .g = 1.0F, .b = 1.0F, .a = 1.0F};
+    /// Non-owning, call-bound palette. Matching material bindings are copied into the returned MeshCommand rows.
+    const SceneGpuBindingPalette* material_bindings{nullptr};
+    /// Non-owning, call-bound upload result. Matching page bindings are copied into the returned MeshCommand rows.
+    const runtime_rhi::RuntimeMavgStreamedClusterGpuUploadResult* streamed_upload{nullptr};
+    std::uint32_t instance_count{1};
+};
+
+[[nodiscard]] MavgSceneLodSubmitResult
+plan_runtime_mavg_streamed_scene_lod_mesh_commands(const MavgLodSelectionResult& selection,
+                                                   const MavgClusterGraphDocument& graph,
+                                                   const RuntimeMavgStreamedSceneLodSubmitDesc& desc);
 
 enum class RuntimeSceneGpuSafePointTeardownStatus : std::uint8_t {
     skipped_binding_failed = 0,

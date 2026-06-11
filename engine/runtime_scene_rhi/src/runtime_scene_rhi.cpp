@@ -52,6 +52,103 @@ void add_failure(RuntimeSceneGpuBindingResult& result, AssetId asset, std::strin
     }
 }
 
+void add_mavg_scene_lod_diagnostic(MavgSceneLodSubmitResult& result, MavgSceneLodDiagnosticCode code,
+                                   std::uint32_t cluster_index, AssetId asset, std::string message) {
+    result.diagnostics.push_back(MavgSceneLodDiagnostic{
+        .code = code,
+        .cluster_index = cluster_index,
+        .asset = asset,
+        .message = std::move(message),
+    });
+}
+
+void reject_mavg_scene_lod(MavgSceneLodSubmitResult& result, MavgSceneLodDiagnosticCode code,
+                           std::uint32_t cluster_index, AssetId asset, std::string message) {
+    add_mavg_scene_lod_diagnostic(result, code, cluster_index, asset, std::move(message));
+    result.rejected = true;
+    result.mesh_commands.clear();
+    result.submitted_cluster_count = 0;
+    result.fallback_substitution_count = 0;
+    result.missing_material_binding_count = 0;
+}
+
+[[nodiscard]] const MavgClusterGraphCluster* find_mavg_cluster_by_index(const MavgClusterGraphDocument& graph,
+                                                                        std::uint32_t cluster_index) noexcept {
+    for (const auto& cluster : graph.clusters) {
+        if (cluster.cluster_index == cluster_index) {
+            return &cluster;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] bool selected_mavg_cluster_matches_graph(const MavgLodSelectedCluster& selected,
+                                                       const MavgClusterGraphCluster& cluster,
+                                                       const MavgClusterGraphDocument& graph) noexcept {
+    return selected.graph_asset == graph.asset && selected.page_index == cluster.page_index &&
+           selected.lod_level == cluster.lod_level && selected.material_partition == cluster.material_partition &&
+           selected.first_index == cluster.first_index && selected.index_count == cluster.index_count &&
+           selected.vertex_base == cluster.vertex_base;
+}
+
+[[nodiscard]] bool mavg_material_partition_contains_cluster(const MavgClusterGraphMaterialPartition& partition,
+                                                            std::uint32_t cluster_index) noexcept {
+    return cluster_index >= partition.first_cluster &&
+           cluster_index - partition.first_cluster < partition.cluster_count;
+}
+
+[[nodiscard]] const runtime_rhi::RuntimeMavgStreamedClusterPageBindingRow*
+find_mavg_streamed_page_binding(const runtime_rhi::RuntimeMavgStreamedClusterGpuUploadResult& upload,
+                                AssetId graph_asset, std::uint32_t page_index) noexcept {
+    const auto it = std::ranges::find_if(
+        upload.page_bindings,
+        [graph_asset, page_index](const runtime_rhi::RuntimeMavgStreamedClusterPageBindingRow& row) {
+            return row.graph_asset == graph_asset && row.page_index == page_index;
+        });
+    return it == upload.page_bindings.end() ? nullptr : &*it;
+}
+
+[[nodiscard]] bool is_mavg_streamed_page_binding_drawable(const MeshGpuBinding& binding) noexcept {
+    return binding.owner_device != nullptr && binding.vertex_buffer.value != 0 && binding.index_buffer.value != 0 &&
+           binding.vertex_stride != 0 && binding.vertex_count != 0 && binding.index_count != 0 &&
+           binding.index_format != rhi::IndexFormat::unknown;
+}
+
+[[nodiscard]] bool selected_mavg_cluster_fits_page_binding(const MavgLodSelectedCluster& selected,
+                                                           const MeshGpuBinding& binding) noexcept {
+    if (selected.index_count == 0) {
+        return false;
+    }
+    const auto first_index = static_cast<std::uint64_t>(selected.first_index);
+    const auto index_count = static_cast<std::uint64_t>(selected.index_count);
+    return first_index <= static_cast<std::uint64_t>(binding.index_count) &&
+           index_count <= static_cast<std::uint64_t>(binding.index_count) - first_index;
+}
+
+[[nodiscard]] MeshCommand make_mavg_streamed_page_command(
+    const MavgLodSelectedCluster& selected, const MavgClusterGraphMaterialPartition& partition,
+    const runtime_rhi::RuntimeMavgStreamedClusterPageBindingRow& page_binding, MaterialGpuBinding material_binding,
+    const RuntimeMavgStreamedSceneLodSubmitDesc& desc) noexcept {
+    return MeshCommand{
+        .transform = desc.transform,
+        .color = desc.fallback_color,
+        .mesh = page_binding.page_asset,
+        .material = partition.material,
+        .world_from_node = desc.transform.matrix(),
+        .mesh_binding = page_binding.binding,
+        .material_binding = material_binding,
+        .instance_count = desc.instance_count,
+        .indexed_range =
+            MeshIndexedDrawRange{
+                .enabled = true,
+                .first_index = selected.first_index,
+                .index_count = selected.index_count,
+                .vertex_base = selected.vertex_base,
+                .first_instance = 0,
+            },
+    };
+}
+
 [[nodiscard]] RuntimeSceneMeshGpuResource* find_mesh_upload(RuntimeSceneGpuBindingResult& result,
                                                             AssetId mesh) noexcept {
     const auto it = std::ranges::find_if(
@@ -774,6 +871,101 @@ RuntimeSceneGpuUploadExecutionResult execute_runtime_scene_gpu_upload(const Runt
     result.bindings =
         build_runtime_scene_gpu_binding_palette(*desc.device, *desc.package, *desc.packet, desc.binding_options);
     result.report = make_runtime_scene_gpu_upload_execution_report(result.bindings);
+    return result;
+}
+
+MavgSceneLodSubmitResult
+plan_runtime_mavg_streamed_scene_lod_mesh_commands(const MavgLodSelectionResult& selection,
+                                                   const MavgClusterGraphDocument& graph,
+                                                   const RuntimeMavgStreamedSceneLodSubmitDesc& desc) {
+    MavgSceneLodSubmitResult result;
+
+    const auto graph_validation = validate_mavg_cluster_graph(graph);
+    if (!graph_validation.valid()) {
+        reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::invalid_graph, 0, graph.asset,
+                              graph_validation.diagnostics.empty() ? "invalid MAVG cluster graph"
+                                                                   : graph_validation.diagnostics.front().message);
+        return result;
+    }
+
+    if (!selection.succeeded()) {
+        reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::invalid_selection, 0, graph.asset,
+                              "MAVG LOD selection has fatal diagnostics");
+        return result;
+    }
+
+    if (desc.streamed_upload == nullptr) {
+        reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::missing_streamed_upload, 0, graph.asset,
+                              "runtime MAVG streamed scene LOD submission requires a streamed upload result");
+        return result;
+    }
+
+    if (!desc.streamed_upload->succeeded()) {
+        reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::streamed_upload_not_ready, 0, graph.asset,
+                              "runtime MAVG streamed scene LOD submission requires ready streamed page GPU bindings");
+        return result;
+    }
+
+    result.mesh_commands.reserve(selection.selected_clusters.size());
+    for (const auto& selected : selection.selected_clusters) {
+        const auto* cluster = find_mavg_cluster_by_index(graph, selected.cluster_index);
+        if (cluster == nullptr || !selected_mavg_cluster_matches_graph(selected, *cluster, graph)) {
+            reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::invalid_selected_cluster, selected.cluster_index,
+                                  selected.graph_asset, "MAVG selected cluster does not match the cluster graph");
+            return result;
+        }
+
+        if (selected.material_partition >= graph.material_partitions.size()) {
+            reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::invalid_material_partition,
+                                  selected.cluster_index, graph.asset,
+                                  "MAVG selected cluster references an unknown material partition");
+            return result;
+        }
+
+        const auto& partition = graph.material_partitions[selected.material_partition];
+        if (!mavg_material_partition_contains_cluster(partition, selected.cluster_index)) {
+            reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::invalid_material_partition,
+                                  selected.cluster_index, partition.material,
+                                  "MAVG selected cluster is outside its material partition");
+            return result;
+        }
+
+        const auto* page_binding =
+            find_mavg_streamed_page_binding(*desc.streamed_upload, graph.asset, selected.page_index);
+        if (page_binding == nullptr || !is_mavg_streamed_page_binding_drawable(page_binding->binding) ||
+            !selected_mavg_cluster_fits_page_binding(selected, page_binding->binding)) {
+            reject_mavg_scene_lod(result, MavgSceneLodDiagnosticCode::missing_streamed_page_binding,
+                                  selected.cluster_index, selected.graph_asset,
+                                  "runtime MAVG streamed scene LOD submission is missing a drawable page GPU binding");
+            return result;
+        }
+
+        MaterialGpuBinding material_binding;
+        if (desc.material_bindings != nullptr) {
+            if (const auto* found = desc.material_bindings->find_material(partition.material); found != nullptr) {
+                material_binding = *found;
+            }
+        }
+        if (material_binding.pipeline_layout.value == 0 && material_binding.descriptor_set.value == 0) {
+            ++result.missing_material_binding_count;
+            add_mavg_scene_lod_diagnostic(result, MavgSceneLodDiagnosticCode::missing_material_binding,
+                                          selected.cluster_index, partition.material,
+                                          "runtime MAVG streamed scene LOD submission is missing a material GPU "
+                                          "binding");
+        }
+
+        if (selected.fallback_substitution) {
+            ++result.fallback_substitution_count;
+            add_mavg_scene_lod_diagnostic(result, MavgSceneLodDiagnosticCode::fallback_substitution,
+                                          selected.cluster_index, selected.graph_asset,
+                                          "MAVG selected cluster used a resident fallback substitution");
+        }
+
+        result.mesh_commands.push_back(
+            make_mavg_streamed_page_command(selected, partition, *page_binding, material_binding, desc));
+        ++result.submitted_cluster_count;
+    }
+
     return result;
 }
 
