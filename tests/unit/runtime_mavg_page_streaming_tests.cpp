@@ -5,8 +5,10 @@
 
 #include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/mavg_cluster_graph.hpp"
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/runtime/mavg_page_streaming.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -185,6 +187,16 @@ void mount_resident_page(mirakana::runtime::RuntimeResidentPackageMountSetV2& mo
 }
 
 [[nodiscard]] bool has_diagnostic(const mirakana::runtime::RuntimeMavgPageStreamingEvictionReviewResult& result,
+                                  mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode code) {
+    for (const auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool has_diagnostic(const mirakana::runtime::RuntimeMavgPageStreamingBackgroundLoadResult& result,
                                   mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode code) {
     for (const auto& diagnostic : result.diagnostics) {
         if (diagnostic.code == code) {
@@ -487,6 +499,136 @@ MK_TEST("runtime mavg page streaming drain rejects invalid mount id before mutat
     MK_REQUIRE(!catalog_cache.has_value());
     MK_REQUIRE(!drain.executed_background_worker);
     MK_REQUIRE(!drain.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg page streaming dispatches queued rows through background job workers") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const auto page_one_asset = mirakana::AssetId::from_name("mavg/page-streaming/page-1-payload");
+    const auto page_two_asset = mirakana::AssetId::from_name("mavg/page-streaming/page-2-payload");
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 1, 4.0F, "visible-middle"),
+        make_request(graph.asset, 2, 8.0F, "visible-near"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 1),
+        make_streaming_candidate(graph.asset, 2),
+    };
+    auto filesystem = mirakana::MemoryFileSystem{};
+    write_page_package(filesystem, 1, page_one_asset, mirakana::AssetKind::mesh, "page one payload");
+    write_page_package(filesystem, 2, page_two_asset, mirakana::AssetKind::mesh, "page two payload");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "runtime.mavg.background_streaming",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 73,
+    });
+
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.queued_page_requests.size() == 2U);
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_page_streaming_background_loads(
+        filesystem, pool,
+        mirakana::runtime::RuntimeMavgPageStreamingBackgroundLoadDesc{
+            .rows = plan.queued_page_requests,
+            .frame_index = 73,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(dispatch.input_row_count == 2U);
+    MK_REQUIRE(dispatch.dispatched_row_count == 2U);
+    MK_REQUIRE(dispatch.loaded_row_count == 2U);
+    MK_REQUIRE(dispatch.failed_row_count == 0U);
+    MK_REQUIRE(dispatch.invoked_file_io);
+    MK_REQUIRE(dispatch.invoked_candidate_load);
+    MK_REQUIRE(dispatch.executed_streaming);
+    MK_REQUIRE(dispatch.executed_background_worker);
+    MK_REQUIRE(dispatch.execution.status == mirakana::JobExecutionRunStatus::ready);
+    MK_REQUIRE(dispatch.execution.worker_threads_started == 2U);
+    MK_REQUIRE(dispatch.execution.tasks_executed == 2U);
+    MK_REQUIRE(dispatch.loaded_rows.size() == 2U);
+    MK_REQUIRE(dispatch.loaded_rows[0].row.page_index == 2U);
+    MK_REQUIRE(dispatch.loaded_rows[0].candidate_load.loaded_record_count == 1U);
+    MK_REQUIRE(dispatch.loaded_rows[1].row.page_index == 1U);
+    MK_REQUIRE(dispatch.loaded_rows[1].candidate_load.loaded_record_count == 1U);
+    MK_REQUIRE(std::ranges::any_of(dispatch.loaded_rows, [](const auto& row) { return row.worker_id == 0U; }));
+    MK_REQUIRE(std::ranges::any_of(dispatch.loaded_rows, [](const auto& row) { return row.worker_id == 1U; }));
+    MK_REQUIRE(!dispatch.committed);
+    MK_REQUIRE(!dispatch.mutated_mount_set);
+    MK_REQUIRE(!dispatch.invoked_catalog_refresh);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(!dispatch.invoked_direct_storage);
+    MK_REQUIRE(!dispatch.applied_gpu_memory_pressure_policy);
+    MK_REQUIRE(!dispatch.proved_async_overlap_performance);
+    MK_REQUIRE(mount_set.mounts().empty());
+    MK_REQUIRE(!catalog_cache.has_value());
+}
+
+MK_TEST("runtime mavg page streaming background dispatch reports load failures without safe point mutation") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 2, 8.0F, "visible-near"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 2),
+    };
+    auto filesystem = mirakana::MemoryFileSystem{};
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "runtime.mavg.background_streaming.failure",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 74,
+    });
+
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_page_streaming_background_loads(
+        filesystem, pool,
+        mirakana::runtime::RuntimeMavgPageStreamingBackgroundLoadDesc{
+            .rows = plan.queued_page_requests,
+            .frame_index = 74,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(!dispatch.succeeded());
+    MK_REQUIRE(dispatch.dispatched_row_count == 1U);
+    MK_REQUIRE(dispatch.loaded_row_count == 0U);
+    MK_REQUIRE(dispatch.failed_row_count == 1U);
+    MK_REQUIRE(dispatch.invoked_file_io);
+    MK_REQUIRE(dispatch.invoked_candidate_load);
+    MK_REQUIRE(dispatch.executed_background_worker);
+    MK_REQUIRE(dispatch.execution.status == mirakana::JobExecutionRunStatus::ready);
+    MK_REQUIRE(
+        has_diagnostic(dispatch, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::background_load_failed));
+    MK_REQUIRE(!dispatch.committed);
+    MK_REQUIRE(!dispatch.mutated_mount_set);
+    MK_REQUIRE(!dispatch.invoked_catalog_refresh);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(!dispatch.invoked_direct_storage);
+    MK_REQUIRE(!dispatch.applied_gpu_memory_pressure_policy);
+    MK_REQUIRE(!dispatch.proved_async_overlap_performance);
 }
 
 MK_TEST("runtime mavg page streaming eviction review protects selected pages and fallback ancestors") {

@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-payload-filesystem-byte-range-io-v1`
 
-**Status:** Active local child candidate. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Completed through PR #570 / merge commit `ab6b8b3`. Not selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 
 ## Context
 

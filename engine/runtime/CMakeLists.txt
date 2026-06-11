@@ -41,6 +41,7 @@ target_include_directories(mirakana_runtime
 
 target_link_libraries(mirakana_runtime
     PUBLIC
+        MK_core
         mirakana_assets
         mirakana_platform
         mirakana_physics

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/assets/mavg_cluster_graph.hpp"
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
 
 #include <cstddef>
@@ -42,6 +43,9 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     duplicate_recency_row,
     missing_recency_row,
     non_monotonic_use_generation,
+    missing_background_load_rows,
+    background_dispatch_failed,
+    background_load_failed,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -115,6 +119,44 @@ struct RuntimeMavgPageStreamingDrainResult {
 
     [[nodiscard]] bool succeeded() const noexcept {
         return diagnostics.empty() && mount_result.succeeded();
+    }
+};
+
+struct RuntimeMavgPageStreamingBackgroundLoadDesc {
+    std::span<const RuntimeMavgPageStreamingPlanRow> rows;
+    std::uint64_t frame_index{0};
+    std::uint64_t scratch_bytes_per_task{64};
+};
+
+struct RuntimeMavgPageStreamingBackgroundLoadedRow {
+    RuntimeMavgPageStreamingPlanRow row;
+    RuntimePackageCandidateLoadResultV2 candidate_load;
+    std::uint32_t worker_id{0};
+    bool invoked_candidate_load{false};
+};
+
+struct RuntimeMavgPageStreamingBackgroundLoadResult {
+    std::vector<RuntimeMavgPageStreamingBackgroundLoadedRow> loaded_rows;
+    JobExecutionRunResult execution;
+    std::vector<RuntimeMavgPageStreamingDiagnostic> diagnostics;
+    std::size_t input_row_count{0};
+    std::size_t dispatched_row_count{0};
+    std::size_t loaded_row_count{0};
+    std::size_t failed_row_count{0};
+    bool invoked_file_io{false};
+    bool invoked_candidate_load{false};
+    bool executed_streaming{false};
+    bool executed_background_worker{false};
+    bool committed{false};
+    bool mutated_mount_set{false};
+    bool invoked_catalog_refresh{false};
+    bool touched_renderer_or_rhi_handles{false};
+    bool invoked_direct_storage{false};
+    bool applied_gpu_memory_pressure_policy{false};
+    bool proved_async_overlap_performance{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && execution.ready() && failed_row_count == 0U;
     }
 };
 
@@ -235,6 +277,14 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
 [[nodiscard]] RuntimeMavgPageStreamingDrainResult execute_runtime_mavg_page_streaming_request_safe_point(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     RuntimeMavgPageStreamingDrainDesc desc);
+
+/// Dispatches reviewed MAVG page package candidate loads onto a caller-owned first-party job execution pool. The
+/// helper performs package candidate file IO on workers and returns loaded package rows for a later caller-owned safe
+/// point; it does not mount packages, refresh catalogs, execute DirectStorage, integrate GPU memory pressure, prove
+/// async overlap/performance, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimeMavgPageStreamingBackgroundLoadResult
+dispatch_runtime_mavg_page_streaming_background_loads(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                                      RuntimeMavgPageStreamingBackgroundLoadDesc desc);
 
 /// Reviews caller-provided resident page mounts and eviction candidates before a MAVG page-streaming safe point. The
 /// function protects selected cluster pages plus resident fallback ancestors, then delegates to the existing resident
