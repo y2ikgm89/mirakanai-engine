@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-streamed-cluster-gpu-upload-v1`
 
-**Status:** Active implementation slice.
+**Status:** Published draft PR #577.
 
 **Date:** 2026-06-11
 
@@ -95,4 +95,4 @@
 - [x] Run focused build/test/static checks.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1`.
-- [ ] Commit, push, and open a draft PR.
+- [x] Commit, push, and open draft PR #577.
