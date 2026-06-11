@@ -89,14 +89,14 @@ Out of scope:
 
 ## Tasks
 
-- [ ] Confirm D3D12 UAV-to-indirect-argument synchronization constraints through Microsoft Learn and retain completed GPU-culling dispatch audit references.
-- [ ] Run a read-only rendering subagent audit and split D3D12 compute-generated consumption from Vulkan symmetric follow-up work.
-- [ ] Add RED WARP-backed end-to-end tests: dispatch writes buffers, `draw_indexed_indirect` consumes them, visible clusters render and culled clusters draw nothing.
-- [ ] Implement reviewed compute-generated buffer contract and backend-private D3D12 barriers before `ExecuteIndirect`.
-- [ ] Preserve CPU-upload `copy_source` indirect path and existing stats behavior without broadening claims.
-- [ ] After activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
-- [ ] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated PR over `codex/mavg-d3d12-compute-generated-indirect-consumption-v1`.
+- [x] Confirm D3D12 UAV-to-indirect-argument synchronization constraints through Microsoft Learn and retain completed GPU-culling dispatch audit references.
+- [x] Run a read-only rendering subagent audit and split D3D12 compute-generated consumption from Vulkan symmetric follow-up work.
+- [x] Add RED WARP-backed end-to-end tests: dispatch writes buffers, `draw_indexed_indirect` consumes them, visible clusters render and culled clusters draw nothing.
+- [x] Implement reviewed compute-generated buffer contract and backend-private D3D12 barriers before `ExecuteIndirect`.
+- [x] Preserve CPU-upload `copy_source` indirect path and existing stats behavior without broadening claims.
+- [x] After activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
+- [x] Run focused validation plus full `tools/validate.ps1`.
+- [x] Publish a validated PR over `codex/mavg-d3d12-compute-generated-indirect-consumption-v1`.
 
 ## Validation Evidence
 

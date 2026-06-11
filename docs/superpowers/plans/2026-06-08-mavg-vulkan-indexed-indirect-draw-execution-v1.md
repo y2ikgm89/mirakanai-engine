@@ -78,14 +78,14 @@ Out of scope:
 
 ## Tasks
 
-- [ ] Confirm Vulkan official constraints through Context7 and retain completed D3D12 sibling audit references.
-- [ ] Run a read-only rendering subagent audit and split Vulkan from count-buffer/compute-generated work.
-- [ ] Add RED SPIR-V environment-gated `MK_backend_scaffold_tests` for visible indexed indirect draw execution and count-buffer rejection.
-- [ ] Implement backend-private Vulkan `draw_indexed_indirect` validation and `vkCmdDrawIndexedIndirect` recording.
-- [ ] Update Vulkan RHI stats from decoded CPU-generated argument bytes.
-- [ ] Synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
-- [ ] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated stacked PR over `codex/mavg-vulkan-indexed-indirect-draw-v1`.
+- [x] Confirm Vulkan official constraints through Context7 and retain completed D3D12 sibling audit references.
+- [x] Run a read-only rendering subagent audit and split Vulkan from count-buffer/compute-generated work.
+- [x] Add RED SPIR-V environment-gated `MK_backend_scaffold_tests` for visible indexed indirect draw execution and count-buffer rejection.
+- [x] Implement backend-private Vulkan `draw_indexed_indirect` validation and `vkCmdDrawIndexedIndirect` recording.
+- [x] Update Vulkan RHI stats from decoded CPU-generated argument bytes.
+- [x] Synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
+- [x] Run focused validation plus full `tools/validate.ps1`.
+- [x] Publish a validated stacked PR over `codex/mavg-vulkan-indexed-indirect-draw-v1`.
 
 ## Validation Evidence
 

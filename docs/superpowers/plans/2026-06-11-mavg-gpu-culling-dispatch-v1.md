@@ -86,13 +86,13 @@ Out of scope:
 
 ## Tasks
 
-- [ ] Confirm D3D12 compute-to-indirect synchronization constraints through Microsoft Learn and retain completed GPU-culling planner audit references.
-- [ ] Run a read-only rendering subagent audit and split D3D12 compute dispatch from Vulkan/compute-generated indirect consumption work.
-- [ ] Add RED WARP-backed dispatch/readback tests for visible and culled MAVG cluster cases.
-- [ ] Implement backend-private D3D12 compute dispatch writing packed argument/count buffers with required synchronization.
-- [ ] After activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
-- [ ] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated PR over `codex/mavg-gpu-culling-dispatch-v1`.
+- [x] Confirm D3D12 compute-to-indirect synchronization constraints through Microsoft Learn and retain completed GPU-culling planner audit references.
+- [x] Run a read-only rendering subagent audit and split D3D12 compute dispatch from Vulkan/compute-generated indirect consumption work.
+- [x] Add RED WARP-backed dispatch/readback tests for visible and culled MAVG cluster cases.
+- [x] Implement backend-private D3D12 compute dispatch writing packed argument/count buffers with required synchronization.
+- [x] After activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
+- [x] Run focused validation plus full `tools/validate.ps1`.
+- [x] Publish a validated PR over `codex/mavg-gpu-culling-dispatch-v1`.
 
 ## Validation Evidence
 

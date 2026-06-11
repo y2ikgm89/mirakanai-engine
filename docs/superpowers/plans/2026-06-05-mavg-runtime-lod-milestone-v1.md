@@ -746,7 +746,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 git diff --check
 ```
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1

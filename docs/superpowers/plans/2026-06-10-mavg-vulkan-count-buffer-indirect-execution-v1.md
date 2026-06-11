@@ -95,8 +95,8 @@ Out of scope:
 - [x] Implement backend-private Vulkan count-buffer validation and `vkCmdDrawIndexedIndirectCount` recording with shared helper reuse.
 - [x] Update Vulkan RHI stats for count-buffer reads and effective executed command counts.
 - [x] After PR #549 merge and activation PR, synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
-- [ ] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated PR over `codex/mavg-vulkan-count-buffer-indirect-execution-v1`.
+- [x] Run focused validation plus full `tools/validate.ps1`.
+- [x] Publish a validated PR over `codex/mavg-vulkan-count-buffer-indirect-execution-v1`.
 
 ## Validation Evidence
 

@@ -96,8 +96,8 @@ Out of scope:
 - [x] Add SPIR-V environment-gated dispatch/readback tests for visible and culled MAVG cluster cases.
 - [x] Implement backend-private Vulkan compute dispatch writing packed argument/count buffers with required `VK_KHR_synchronization2` barriers.
 - [x] Synchronize docs, plan registry, architecture spec, `004-modules.json` evidence, and static checks (`check-ai-integration-113`); keep `010-aiOperableProductionLoop.json` activation/closeout for a separate PR.
-- [ ] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated PR over `codex/mavg-vulkan-gpu-culling-dispatch-v1`.
+- [x] Run focused validation plus full `tools/validate.ps1`.
+- [x] Publish a validated PR over `codex/mavg-vulkan-gpu-culling-dispatch-v1`.
 
 ## Validation Evidence
 
