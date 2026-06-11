@@ -12,9 +12,12 @@ $pageStreamingHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana
 $pageStreamingSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_page_streaming.cpp"
 $mavgGpuMemoryResidencyHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_gpu_memory_residency.hpp"
 $mavgGpuMemoryResidencySourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_gpu_memory_residency.cpp"
+$mavgClusterStreamingResidencyCloseoutHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_cluster_streaming_residency_closeout.hpp"
+$mavgClusterStreamingResidencyCloseoutSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_cluster_streaming_residency_closeout.cpp"
 $payloadLoaderTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_page_loader_tests.cpp"
 $pageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
 $mavgGpuMemoryResidencyTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_gpu_memory_residency_tests.cpp"
+$mavgClusterStreamingResidencyCloseoutTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_cluster_streaming_residency_closeout_tests.cpp"
 $graphTestsText = Get-AgentSurfaceText "tests/unit/mavg_cluster_graph_tests.cpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
@@ -23,6 +26,7 @@ $runtimeRhiCmakeText = Get-AgentSurfaceText "engine/runtime_rhi/CMakeLists.txt"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-byte-range-page-loader-v1.md"
 $filesystemPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-payload-filesystem-byte-range-io-v1.md"
 $gpuMemoryResidencyPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-gpu-memory-pressure-residency-v1.md"
+$clusterStreamingResidencyCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-cluster-streaming-residency-closeout-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -290,6 +294,85 @@ foreach ($surface in @(
             "broad optimization"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU memory pressure residency evidence and non-claims"
+    }
+}
+
+foreach ($needle in @(
+        "RuntimeMavgClusterStreamingResidencyCloseoutDesc",
+        "RuntimeMavgClusterStreamingResidencyCloseoutResult",
+        "RuntimeMavgClusterStreamingResidencyCloseoutDiagnosticCode",
+        "plan_runtime_mavg_cluster_streaming_residency_closeout",
+        "payload_loaded_page_count",
+        "background_loaded_row_count",
+        "deterministic_degradation_row_count",
+        "preserved_visible_geometry_without_holes",
+        "invoked_gpu_upload",
+        "executed_backend"
+    )) {
+    Assert-ContainsText $mavgClusterStreamingResidencyCloseoutHeaderText $needle "MAVG cluster streaming residency closeout public contract"
+}
+
+foreach ($needle in @(
+        "plan_runtime_mavg_page_streaming_requests",
+        "load_runtime_mavg_payload_pages_from_filesystem",
+        "dispatch_runtime_mavg_page_streaming_background_loads",
+        "plan_runtime_mavg_gpu_memory_pressure_residency",
+        "payload_page_load_failed",
+        "background_load_failed",
+        "gpu_memory_residency_failed",
+        "mutated_mount_set",
+        "invoked_direct_storage",
+        "proved_async_overlap_performance"
+    )) {
+    Assert-ContainsText $mavgClusterStreamingResidencyCloseoutSourceText $needle "MAVG cluster streaming residency closeout implementation"
+}
+
+foreach ($needle in @(
+        "runtime rhi mavg cluster streaming residency closeout composes payload background and memory pressure evidence",
+        "runtime rhi mavg cluster streaming residency closeout fail closes payload range errors before mutation",
+        "plan_runtime_mavg_cluster_streaming_residency_closeout",
+        "MK_REQUIRE(result.preserved_visible_geometry_without_holes)",
+        "MK_REQUIRE(!result.invoked_gpu_upload)",
+        "payload_page_load_failed"
+    )) {
+    Assert-ContainsText $mavgClusterStreamingResidencyCloseoutTestsText $needle "MAVG cluster streaming residency closeout tests"
+}
+
+foreach ($needle in @(
+        "MK_runtime_rhi_mavg_cluster_streaming_residency_closeout_tests",
+        "tests/unit/runtime_rhi_mavg_cluster_streaming_residency_closeout_tests.cpp"
+    )) {
+    Assert-ContainsText $cmakeText $needle "MAVG cluster streaming residency closeout CMake test target"
+}
+Assert-ContainsText $runtimeRhiCmakeText "src/mavg_cluster_streaming_residency_closeout.cpp" "MAVG cluster streaming residency closeout source registration"
+
+foreach ($surface in @(
+        @{ Text = $clusterStreamingResidencyCloseoutPlanText; Label = "cluster streaming residency closeout implementation plan" },
+        @{ Text = $planRegistryText; Label = "plan registry" },
+        @{ Text = $currentCapabilitiesText; Label = "current capabilities" },
+        @{ Text = $roadmapText; Label = "roadmap" },
+        @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
+        @{ Text = $masterPlanText; Label = "MAVG master plan" },
+        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        @{ Text = $modulesFragmentText; Label = "modules fragment" }
+    )) {
+    foreach ($needle in @(
+            "mavg-cluster-streaming-residency-closeout-v1",
+            "MAVG Cluster Streaming Residency Closeout v1",
+            "mavg_cluster_streaming_residency_closeout.hpp",
+            "RuntimeMavgClusterStreamingResidencyCloseoutResult",
+            "plan_runtime_mavg_cluster_streaming_residency_closeout",
+            "load_runtime_mavg_payload_pages_from_filesystem",
+            "dispatch_runtime_mavg_page_streaming_background_loads",
+            "plan_runtime_mavg_gpu_memory_pressure_residency",
+            "deterministic degradation",
+            "DirectStorage",
+            "GPU upload",
+            "mesh shaders",
+            "Nanite",
+            "broad optimization"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG cluster streaming residency closeout evidence and non-claims"
     }
 }
 
