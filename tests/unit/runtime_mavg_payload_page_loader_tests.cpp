@@ -33,6 +33,12 @@ struct RangeReadCall {
     std::uint64_t byte_size{0};
 };
 
+struct DirectStorageReadCall {
+    std::string path;
+    std::uint64_t byte_offset{0};
+    std::uint64_t byte_size{0};
+};
+
 class RecordingRangeFileSystem final : public mirakana::IFileSystem {
   public:
     RecordingRangeFileSystem(std::string payload_path, std::string payload)
@@ -91,6 +97,65 @@ class RecordingRangeFileSystem final : public mirakana::IFileSystem {
   private:
     std::string payload_path_;
     std::string payload_;
+};
+
+class RecordingDirectStorageExecutor final : public mirakana::IByteRangeIoExecutor {
+  public:
+    RecordingDirectStorageExecutor(std::string payload_path, std::string payload, bool available = true)
+        : payload_path_(std::move(payload_path)), payload_(std::move(payload)), available_(available) {}
+
+    [[nodiscard]] mirakana::ByteRangeIoBackendKind backend_kind() const noexcept override {
+        return mirakana::ByteRangeIoBackendKind::direct_storage;
+    }
+
+    [[nodiscard]] bool available() const noexcept override {
+        return available_;
+    }
+
+    [[nodiscard]] std::vector<mirakana::ByteRangeIoReadRow>
+    read_ranges(std::span<const mirakana::ByteRangeIoReadRequest> requests) override {
+        const bool after_prefix_call = !calls.empty();
+        if (fail_after_prefix && after_prefix_call) {
+            throw std::runtime_error("DirectStorage page read failed");
+        }
+        std::vector<mirakana::ByteRangeIoReadRow> rows;
+        rows.reserve(requests.size());
+        for (const auto& request : requests) {
+            calls.push_back(DirectStorageReadCall{
+                .path = std::string(request.path),
+                .byte_offset = request.byte_offset,
+                .byte_size = request.byte_size,
+            });
+            if (request.path != payload_path_) {
+                throw std::runtime_error("unexpected DirectStorage payload path");
+            }
+            if (request.byte_offset > payload_.size() ||
+                request.byte_size > payload_.size() - static_cast<std::size_t>(request.byte_offset)) {
+                throw std::out_of_range("DirectStorage range outside payload");
+            }
+            const auto begin = payload_.begin() + static_cast<std::ptrdiff_t>(request.byte_offset);
+            const auto end = begin + static_cast<std::ptrdiff_t>(request.byte_size);
+            const auto row_byte_size = mismatch_page_row_bytes && after_prefix_call && request.byte_size > 0U
+                                           ? static_cast<std::size_t>(request.byte_size - 1U)
+                                           : static_cast<std::size_t>(end - begin);
+            rows.push_back(mirakana::ByteRangeIoReadRow{
+                .path = std::string(request.path),
+                .byte_offset = request.byte_offset,
+                .byte_size = request.byte_size,
+                .bytes = byte_copy(std::string_view(&*begin, row_byte_size)),
+            });
+        }
+        return rows;
+    }
+
+    std::vector<DirectStorageReadCall> calls;
+    bool fail_after_prefix{false};
+    bool mismatch_page_row_bytes{false};
+
+  private:
+    std::string payload_path_;
+    std::string payload_;
+    bool available_{true};
 };
 
 [[nodiscard]] mirakana::MavgClusterGraphDocument make_graph(const std::string& payload) {
@@ -323,6 +388,163 @@ MK_TEST("runtime mavg filesystem payload page loader rejects range failures with
     MK_REQUIRE(result.invoked_file_io);
     MK_REQUIRE(!result.executed_background_worker);
     MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg directstorage payload page loader executes reviewed byte ranges without public native handles") {
+    const std::string payload = "format=GameEngine.MavgClusterPayload.v1\npage0-cluster-bytes\npage1-cluster-bytes\n";
+    const auto graph = make_graph(payload);
+    RecordingDirectStorageExecutor direct_storage(graph.cluster_payload_uri, payload);
+    const std::array<std::uint32_t, 2> requested_pages{1, 0};
+    const auto expected_prefix_byte_count = std::string("format=GameEngine.MavgClusterPayload.v1\n").size();
+
+    const auto result = mirakana::runtime::load_runtime_mavg_payload_pages_from_direct_storage(
+        mirakana::runtime::RuntimeMavgPayloadDirectStoragePageLoadDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .direct_storage = &direct_storage,
+            .payload_path = graph.cluster_payload_uri,
+            .page_indices = requested_pages,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.loaded_pages.size() == 2);
+    MK_REQUIRE(result.loaded_pages[0].page_index == 1);
+    MK_REQUIRE(result.loaded_pages[0].bytes == byte_copy("page1-cluster-bytes"));
+    MK_REQUIRE(result.loaded_pages[1].page_index == 0);
+    MK_REQUIRE(result.loaded_pages[1].bytes == byte_copy("page0-cluster-bytes"));
+    MK_REQUIRE(result.requested_page_count == 2);
+    MK_REQUIRE(result.loaded_page_count == 2);
+    MK_REQUIRE(result.payload_byte_count == expected_prefix_byte_count + 19U + 19U);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(result.executed_direct_storage);
+    MK_REQUIRE(!result.touched_gpu_memory_policy);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(direct_storage.calls.size() == 3);
+    MK_REQUIRE(direct_storage.calls[0].byte_offset == 0);
+    MK_REQUIRE(direct_storage.calls[0].byte_size == expected_prefix_byte_count);
+    MK_REQUIRE(direct_storage.calls[1].byte_offset == graph.pages[1].byte_offset);
+    MK_REQUIRE(direct_storage.calls[1].byte_size == graph.pages[1].byte_size);
+    MK_REQUIRE(direct_storage.calls[2].byte_offset == graph.pages[0].byte_offset);
+    MK_REQUIRE(direct_storage.calls[2].byte_size == graph.pages[0].byte_size);
+}
+
+MK_TEST("runtime mavg directstorage payload page loader fails closed when unavailable") {
+    const std::string payload = "format=GameEngine.MavgClusterPayload.v1\npage0-cluster-bytes\npage1-cluster-bytes\n";
+    const auto graph = make_graph(payload);
+    RecordingDirectStorageExecutor direct_storage(graph.cluster_payload_uri, payload, false);
+    const std::array<std::uint32_t, 1> requested_pages{0};
+
+    const auto result = mirakana::runtime::load_runtime_mavg_payload_pages_from_direct_storage(
+        mirakana::runtime::RuntimeMavgPayloadDirectStoragePageLoadDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .direct_storage = &direct_storage,
+            .payload_path = graph.cluster_payload_uri,
+            .page_indices = requested_pages,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.loaded_pages.empty());
+    MK_REQUIRE(has_diagnostic_code(
+        result.diagnostics, mirakana::runtime::RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_unavailable));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.executed_direct_storage);
+    MK_REQUIRE(!result.touched_gpu_memory_policy);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(direct_storage.calls.empty());
+}
+
+MK_TEST("runtime mavg directstorage payload page loader rejects invalid payload format before page reads") {
+    const std::string payload = "format=GameEngine.UnknownPayload.v1\npage0-cluster-bytes\npage1-cluster-bytes\n";
+    const auto graph = make_graph(payload);
+    RecordingDirectStorageExecutor direct_storage(graph.cluster_payload_uri, payload);
+    const std::array<std::uint32_t, 1> requested_pages{0};
+
+    const auto result = mirakana::runtime::load_runtime_mavg_payload_pages_from_direct_storage(
+        mirakana::runtime::RuntimeMavgPayloadDirectStoragePageLoadDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .direct_storage = &direct_storage,
+            .payload_path = graph.cluster_payload_uri,
+            .page_indices = requested_pages,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.loaded_pages.empty());
+    MK_REQUIRE(has_diagnostic_code(
+        result.diagnostics, mirakana::runtime::RuntimeMavgPayloadPageLoadDiagnosticCode::invalid_payload_format));
+    MK_REQUIRE(result.executed_direct_storage);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_gpu_memory_policy);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(direct_storage.calls.size() == 1);
+    MK_REQUIRE(direct_storage.calls[0].byte_offset == 0);
+}
+
+MK_TEST("runtime mavg directstorage payload page loader rejects page read failures without partial rows") {
+    const std::string payload = "format=GameEngine.MavgClusterPayload.v1\npage0-cluster-bytes\npage1-cluster-bytes\n";
+    const auto graph = make_graph(payload);
+    RecordingDirectStorageExecutor direct_storage(graph.cluster_payload_uri, payload);
+    direct_storage.fail_after_prefix = true;
+    const std::array<std::uint32_t, 1> requested_pages{0};
+
+    const auto result = mirakana::runtime::load_runtime_mavg_payload_pages_from_direct_storage(
+        mirakana::runtime::RuntimeMavgPayloadDirectStoragePageLoadDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .direct_storage = &direct_storage,
+            .payload_path = graph.cluster_payload_uri,
+            .page_indices = requested_pages,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.loaded_pages.empty());
+    MK_REQUIRE(has_diagnostic_code(
+        result.diagnostics,
+        mirakana::runtime::RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_page_read_failed));
+    MK_REQUIRE(result.executed_direct_storage);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_gpu_memory_policy);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(direct_storage.calls.size() == 1);
+}
+
+MK_TEST("runtime mavg directstorage payload page loader rejects mismatched result rows without partial rows") {
+    const std::string payload = "format=GameEngine.MavgClusterPayload.v1\npage0-cluster-bytes\npage1-cluster-bytes\n";
+    const auto graph = make_graph(payload);
+    RecordingDirectStorageExecutor direct_storage(graph.cluster_payload_uri, payload);
+    direct_storage.mismatch_page_row_bytes = true;
+    const std::array<std::uint32_t, 1> requested_pages{0};
+
+    const auto result = mirakana::runtime::load_runtime_mavg_payload_pages_from_direct_storage(
+        mirakana::runtime::RuntimeMavgPayloadDirectStoragePageLoadDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .direct_storage = &direct_storage,
+            .payload_path = graph.cluster_payload_uri,
+            .page_indices = requested_pages,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.loaded_pages.empty());
+    MK_REQUIRE(has_diagnostic_code(
+        result.diagnostics,
+        mirakana::runtime::RuntimeMavgPayloadPageLoadDiagnosticCode::direct_storage_result_mismatch));
+    MK_REQUIRE(result.executed_direct_storage);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_gpu_memory_policy);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(direct_storage.calls.size() == 2);
 }
 
 int main() {

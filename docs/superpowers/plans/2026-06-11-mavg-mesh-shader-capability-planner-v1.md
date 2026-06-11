@@ -1,4 +1,4 @@
-# MAVG Mesh Shader Capability Planner v1 Implementation Plan
+# 2026-06-11 MAVG Mesh Shader Capability Planner v1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -9,6 +9,22 @@
 **Tech Stack:** C++23, `MK_renderer`, CMake/CTest, PowerShell validation tools, official DirectX Mesh Shader and Vulkan `VK_EXT_mesh_shader` constraints.
 
 ---
+
+## Context
+
+MAVG has completed value-only GPU culling and indirect draw planning plus selected D3D12/Vulkan indirect execution evidence, but mesh shader readiness is still unclaimed. This slice records caller-reviewed capability and limit evidence only; it does not execute mesh shaders.
+
+## Constraints
+
+- Keep the implementation in `MK_renderer` value rows and tests.
+- Do not add shaders, backend command execution, PSO creation, public native handles, Work Graphs, Metal readiness, Nanite claims, or broad backend readiness.
+- Preserve compute/indirect fallback diagnostics for missing or insufficient D3D12/Vulkan support.
+
+## Done When
+
+- `MK_mavg_mesh_shader_policy_tests` proves ready, fallback, limit, duplicate-row, pipeline-statistics, and no-execution/no-native-handle behavior.
+- Docs, plan registry, manifest fragment, generated manifest, and static checks describe the narrow value-only claim and non-claims.
+- Focused build/test and full `tools/validate.ps1` pass before publication.
 
 ## Scope
 

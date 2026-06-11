@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/assets/mavg_cluster_graph.hpp"
+#include "mirakana/platform/byte_range_io.hpp"
 #include "mirakana/platform/filesystem.hpp"
 
 #include <cstddef>
@@ -23,11 +24,15 @@ enum class RuntimeMavgPayloadPageLoadDiagnosticCode : std::uint8_t {
     missing_filesystem,
     missing_payload_path,
     payload_path_mismatch,
+    missing_direct_storage_executor,
+    direct_storage_unavailable,
     unknown_page,
     duplicate_page_request,
     page_range_overflow,
     page_range_out_of_bounds,
     page_range_read_failed,
+    direct_storage_page_read_failed,
+    direct_storage_result_mismatch,
 };
 
 struct RuntimeMavgPayloadPageLoadDiagnostic {
@@ -60,6 +65,14 @@ struct RuntimeMavgPayloadPageRow {
     std::vector<std::byte> bytes;
 };
 
+struct RuntimeMavgPayloadDirectStoragePageLoadDesc {
+    AssetId graph_asset;
+    const MavgClusterGraphDocument* graph{nullptr};
+    IByteRangeIoExecutor* direct_storage{nullptr};
+    std::string_view payload_path;
+    std::span<const std::uint32_t> page_indices;
+};
+
 struct RuntimeMavgPayloadPageLoadResult {
     std::vector<RuntimeMavgPayloadPageRow> loaded_pages;
     std::vector<RuntimeMavgPayloadPageLoadDiagnostic> diagnostics;
@@ -90,5 +103,12 @@ load_runtime_mavg_payload_pages(const RuntimeMavgPayloadPageLoadDesc& desc);
 /// touch GPU memory policy, or access renderer/RHI/native handles.
 [[nodiscard]] RuntimeMavgPayloadPageLoadResult
 load_runtime_mavg_payload_pages_from_filesystem(const RuntimeMavgPayloadFilesystemPageLoadDesc& desc);
+
+/// Executes reviewed MAVG payload page byte ranges through a caller-owned DirectStorage page read executor. The runtime
+/// boundary is host-gated and native-handle-free: DirectStorage SDK objects stay behind the executor, unavailable hosts
+/// fail closed, and this API does not mutate residency, run background workers, touch GPU memory policy, or access
+/// renderer/RHI handles.
+[[nodiscard]] RuntimeMavgPayloadPageLoadResult
+load_runtime_mavg_payload_pages_from_direct_storage(const RuntimeMavgPayloadDirectStoragePageLoadDesc& desc);
 
 } // namespace mirakana::runtime

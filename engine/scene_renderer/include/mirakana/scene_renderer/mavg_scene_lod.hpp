@@ -22,6 +22,9 @@ enum class MavgSceneLodDiagnosticCode : std::uint8_t {
     invalid_material_partition,
     missing_material_binding,
     fallback_substitution,
+    missing_streamed_upload,
+    streamed_upload_not_ready,
+    missing_streamed_page_binding,
 };
 
 struct MavgSceneLodDiagnostic {
