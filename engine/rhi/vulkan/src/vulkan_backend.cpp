@@ -5,6 +5,7 @@
 
 #include "mirakana/rhi/gpu_debug.hpp"
 #include "mirakana/rhi/indirect_draw.hpp"
+#include "mirakana/rhi/vulkan/vulkan_mavg_gpu_culling_dispatch.hpp"
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -4261,6 +4262,8 @@ class VulkanRhiDevice final : public IRhiDevice {
 
   private:
     friend class VulkanRhiCommandList;
+    friend VulkanMavgGpuCullingDispatchResult
+    dispatch_mavg_gpu_culling_indirect(IRhiDevice& device, const VulkanMavgGpuCullingDispatchDesc& desc) noexcept;
 
     [[nodiscard]] bool supports_indexed_indirect_count_buffer_draw() const noexcept {
         return device_.impl_ != nullptr && device_.impl_->cmd_draw_indexed_indirect_count != nullptr;
@@ -5195,9 +5198,11 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (!has_flag(argument_desc.usage, BufferUsage::indirect)) {
             throw std::invalid_argument("vulkan rhi indexed indirect draw argument buffer requires indirect usage");
         }
-        if (!has_flag(argument_desc.usage, BufferUsage::copy_source)) {
+        const bool compute_generated_argument = is_compute_generated_indexed_indirect_buffer(argument_desc.usage);
+        const bool cpu_upload_argument = is_cpu_upload_indexed_indirect_buffer(argument_desc.usage);
+        if (!cpu_upload_argument && !compute_generated_argument) {
             throw std::invalid_argument(
-                "vulkan rhi indexed indirect draw argument buffer requires copy_source upload usage in v1");
+                "vulkan rhi indexed indirect draw argument buffer requires CPU-upload or compute-generated usage");
         }
 
         const auto argument_range_end = indexed_indirect_argument_range_end(desc);
@@ -5219,9 +5224,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             if (!has_flag(count_desc.usage, BufferUsage::indirect)) {
                 throw std::invalid_argument("vulkan rhi indexed indirect draw count buffer requires indirect usage");
             }
-            if (!has_flag(count_desc.usage, BufferUsage::copy_source)) {
+            const bool compute_generated_count = is_compute_generated_indexed_indirect_buffer(count_desc.usage);
+            const bool cpu_upload_count = is_cpu_upload_indexed_indirect_buffer(count_desc.usage);
+            if (compute_generated_count != compute_generated_argument) {
                 throw std::invalid_argument(
-                    "vulkan rhi indexed indirect count buffer requires copy_source upload usage in v1");
+                    "vulkan rhi indexed indirect argument and count buffers must share one generation mode");
+            }
+            if (!cpu_upload_count && !compute_generated_count) {
+                throw std::invalid_argument(
+                    "vulkan rhi indexed indirect count buffer requires CPU-upload or compute-generated usage");
             }
             if (desc.count_buffer_offset % indexed_indirect_draw_offset_alignment_bytes != 0U) {
                 throw std::invalid_argument("vulkan rhi indexed indirect count buffer offset must be 4-byte aligned");
@@ -5231,39 +5242,45 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                 throw std::invalid_argument("vulkan rhi indexed indirect count range is outside the count buffer");
             }
 
-            const auto count_read_result =
-                read_runtime_buffer(device_->device_, device_->buffers_.at(desc.count_buffer.value - 1U),
-                                    VulkanRuntimeBufferReadDesc{
-                                        .byte_offset = desc.count_buffer_offset,
-                                        .byte_count = indexed_indirect_draw_count_buffer_size_bytes,
-                                    });
-            if (!count_read_result.read ||
-                count_read_result.bytes.size() != indexed_indirect_draw_count_buffer_size_bytes) {
-                throw std::logic_error("vulkan rhi indexed indirect draw count buffer readback failed: " +
-                                       count_read_result.diagnostic);
+            if (!compute_generated_argument) {
+                const auto count_read_result =
+                    read_runtime_buffer(device_->device_, device_->buffers_.at(desc.count_buffer.value - 1U),
+                                        VulkanRuntimeBufferReadDesc{
+                                            .byte_offset = desc.count_buffer_offset,
+                                            .byte_count = indexed_indirect_draw_count_buffer_size_bytes,
+                                        });
+                if (!count_read_result.read ||
+                    count_read_result.bytes.size() != indexed_indirect_draw_count_buffer_size_bytes) {
+                    throw std::logic_error("vulkan rhi indexed indirect draw count buffer readback failed: " +
+                                           count_read_result.diagnostic);
+                }
+                count_buffer_value = decode_indexed_indirect_count_buffer_value(
+                    std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(count_read_result.bytes.data()),
+                                                  count_read_result.bytes.size()));
             }
-            count_buffer_value = decode_indexed_indirect_count_buffer_value(std::span<const std::uint8_t>(
-                reinterpret_cast<const std::uint8_t*>(count_read_result.bytes.data()), count_read_result.bytes.size()));
         }
 
         const std::uint32_t effective_draw_count =
             count_buffer_used ? effective_indexed_indirect_draw_count(count_buffer_value, desc) : desc.max_draw_count;
 
-        const auto byte_count = argument_range_end - desc.argument_buffer_offset;
-        const auto read_result =
-            read_runtime_buffer(device_->device_, device_->buffers_.at(desc.argument_buffer.value - 1U),
-                                VulkanRuntimeBufferReadDesc{
-                                    .byte_offset = desc.argument_buffer_offset,
-                                    .byte_count = byte_count,
-                                });
-        if (!read_result.read) {
-            throw std::logic_error("vulkan rhi indexed indirect draw argument buffer readback failed: " +
-                                   read_result.diagnostic);
+        std::vector<IndexedIndirectDrawCommand> decoded_commands;
+        if (!compute_generated_argument) {
+            const auto byte_count = argument_range_end - desc.argument_buffer_offset;
+            const auto read_result =
+                read_runtime_buffer(device_->device_, device_->buffers_.at(desc.argument_buffer.value - 1U),
+                                    VulkanRuntimeBufferReadDesc{
+                                        .byte_offset = desc.argument_buffer_offset,
+                                        .byte_count = byte_count,
+                                    });
+            if (!read_result.read) {
+                throw std::logic_error("vulkan rhi indexed indirect draw argument buffer readback failed: " +
+                                       read_result.diagnostic);
+            }
+            decoded_commands = decode_indexed_indirect_draw_commands(
+                std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(read_result.bytes.data()),
+                                              read_result.bytes.size()),
+                desc, effective_draw_count);
         }
-        const auto decoded_commands = decode_indexed_indirect_draw_commands(
-            std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(read_result.bytes.data()),
-                                          read_result.bytes.size()),
-            desc, effective_draw_count);
 
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
@@ -5341,9 +5358,20 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         }
 
         rendering_recorded_ = true;
-        // VkDrawIndexedIndirectCommand fields are decoded from upload bytes; vkCmdDrawIndexedIndirect consumes them.
-        record_indexed_indirect_draw_stats(device_->stats_, decoded_commands, desc, count_buffer_used,
-                                           count_buffer_value);
+        if (compute_generated_argument) {
+            ++device_->stats_.indexed_indirect_draw_calls;
+            if (count_buffer_used) {
+                ++device_->stats_.indexed_indirect_count_buffer_reads;
+            }
+            device_->stats_.last_indexed_indirect_max_draw_count = desc.max_draw_count;
+            device_->stats_.last_indexed_indirect_executed_draw_count = 0U;
+            device_->stats_.last_indexed_indirect_count_buffer_value = count_buffer_used ? 0U : desc.max_draw_count;
+        } else {
+            // VkDrawIndexedIndirectCommand fields are decoded from upload bytes; vkCmdDrawIndexedIndirect consumes
+            // them.
+            record_indexed_indirect_draw_stats(device_->stats_, decoded_commands, desc, count_buffer_used,
+                                               count_buffer_value);
+        }
     }
 
     void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
@@ -10637,6 +10665,278 @@ std::unique_ptr<IRhiDevice> create_rhi_device(VulkanRuntimeDevice device,
         return nullptr;
     }
     return std::make_unique<VulkanRhiDevice>(std::move(device));
+}
+
+VulkanMavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect(IRhiDevice& device, const VulkanMavgGpuCullingDispatchDesc& desc) noexcept {
+    VulkanMavgGpuCullingDispatchResult result{};
+    result.visible_cluster_count = static_cast<std::uint32_t>(std::ranges::count_if(
+        desc.cluster_rows, [](const VulkanMavgGpuCullingDispatchClusterRow& row) { return row.visible != 0U; }));
+    result.culled_cluster_count = static_cast<std::uint32_t>(desc.cluster_rows.size()) - result.visible_cluster_count;
+    result.argument_buffer_size_bytes =
+        static_cast<std::uint64_t>(result.visible_cluster_count) * static_cast<std::uint64_t>(desc.record_stride_bytes);
+
+    if (desc.external_argument_buffer.value == 0 || desc.external_count_buffer.value == 0) {
+        result.failure_stage = 20U;
+        return result;
+    }
+    auto* vulkan_device = dynamic_cast<VulkanRhiDevice*>(&device);
+    if (vulkan_device == nullptr) {
+        result.failure_stage = 21U;
+        return result;
+    }
+    if (!vulkan_device->owns_buffer(desc.external_argument_buffer) ||
+        !vulkan_device->owns_buffer(desc.external_count_buffer)) {
+        result.failure_stage = 22U;
+        return result;
+    }
+    if (desc.max_command_count == 0U || desc.record_stride_bytes < indexed_indirect_draw_command_size_bytes ||
+        desc.record_stride_bytes % indexed_indirect_draw_offset_alignment_bytes != 0U || desc.cluster_rows.empty() ||
+        desc.compute_shader_spirv.empty() || result.visible_cluster_count == 0U ||
+        result.visible_cluster_count > desc.max_command_count) {
+        result.failure_stage = 23U;
+        return result;
+    }
+
+    const auto& argument_desc = vulkan_device->buffer_descs_.at(desc.external_argument_buffer.value - 1U);
+    const auto& count_desc = vulkan_device->buffer_descs_.at(desc.external_count_buffer.value - 1U);
+    if (!is_compute_generated_indexed_indirect_buffer(argument_desc.usage) ||
+        !is_compute_generated_indexed_indirect_buffer(count_desc.usage)) {
+        result.failure_stage = 24U;
+        return result;
+    }
+    const auto argument_allocation_bytes =
+        static_cast<std::uint64_t>(desc.max_command_count) * static_cast<std::uint64_t>(desc.record_stride_bytes);
+    if (argument_desc.size_bytes < argument_allocation_bytes ||
+        count_desc.size_bytes < indexed_indirect_draw_count_buffer_size_bytes) {
+        result.failure_stage = 25U;
+        return result;
+    }
+
+    const auto spirv_byte_size = desc.compute_shader_spirv.size_bytes();
+    const auto validation = validate_spirv_shader_artifact(VulkanSpirvShaderArtifactDesc{
+        .stage = ShaderStage::compute,
+        .bytecode = desc.compute_shader_spirv.data(),
+        .bytecode_size = spirv_byte_size,
+    });
+    if (!validation.valid) {
+        result.failure_stage = 26U;
+        return result;
+    }
+
+    auto& runtime_device = vulkan_device->device_;
+    const auto cluster_count = static_cast<std::uint32_t>(desc.cluster_rows.size());
+    const auto cluster_buffer_size =
+        static_cast<std::uint64_t>(cluster_count) * vulkan_mavg_gpu_culling_dispatch_cluster_row_stride_bytes;
+
+    auto cluster_device_buffer =
+        create_runtime_buffer(runtime_device, VulkanRuntimeBufferDesc{
+                                                  .buffer =
+                                                      BufferDesc{
+                                                          .size_bytes = cluster_buffer_size,
+                                                          .usage = BufferUsage::storage | BufferUsage::copy_destination,
+                                                      },
+                                                  .memory_domain = VulkanBufferMemoryDomain::device_local,
+                                              });
+    auto cluster_upload_buffer =
+        create_runtime_buffer(runtime_device, VulkanRuntimeBufferDesc{
+                                                  .buffer =
+                                                      BufferDesc{
+                                                          .size_bytes = cluster_buffer_size,
+                                                          .usage = BufferUsage::copy_source,
+                                                      },
+                                                  .memory_domain = VulkanBufferMemoryDomain::upload,
+                                              });
+    auto constants_buffer =
+        create_runtime_buffer(runtime_device, VulkanRuntimeBufferDesc{
+                                                  .buffer =
+                                                      BufferDesc{
+                                                          .size_bytes = 256U,
+                                                          .usage = BufferUsage::uniform | BufferUsage::copy_source,
+                                                      },
+                                                  .memory_domain = VulkanBufferMemoryDomain::upload,
+                                              });
+    if (!cluster_device_buffer.created || !cluster_upload_buffer.created || !constants_buffer.created) {
+        result.failure_stage = 27U;
+        return result;
+    }
+
+    const auto cluster_bytes = std::span<const std::uint8_t>(
+        reinterpret_cast<const std::uint8_t*>(desc.cluster_rows.data()), static_cast<std::size_t>(cluster_buffer_size));
+    if (!write_runtime_buffer(runtime_device, cluster_upload_buffer.buffer,
+                              VulkanRuntimeBufferWriteDesc{.byte_offset = 0, .bytes = cluster_bytes})
+             .written) {
+        result.failure_stage = 28U;
+        return result;
+    }
+
+    struct Constants {
+        std::uint32_t cluster_count;
+        std::uint32_t max_command_count;
+        std::uint32_t record_stride_bytes;
+        std::uint32_t pad;
+    };
+    const Constants constants{
+        .cluster_count = cluster_count,
+        .max_command_count = desc.max_command_count,
+        .record_stride_bytes = desc.record_stride_bytes,
+        .pad = 0U,
+    };
+    const auto constants_bytes =
+        std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(&constants), sizeof(Constants));
+    if (!write_runtime_buffer(runtime_device, constants_buffer.buffer,
+                              VulkanRuntimeBufferWriteDesc{.byte_offset = 0, .bytes = constants_bytes})
+             .written) {
+        result.failure_stage = 29U;
+        return result;
+    }
+
+    auto shader_module = create_runtime_shader_module(runtime_device, VulkanRuntimeShaderModuleDesc{
+                                                                          .stage = ShaderStage::compute,
+                                                                          .bytecode = desc.compute_shader_spirv.data(),
+                                                                          .bytecode_size = spirv_byte_size,
+                                                                      });
+    if (!shader_module.created) {
+        result.failure_stage = 30U;
+        return result;
+    }
+
+    DescriptorSetLayoutDesc descriptor_layout_desc;
+    descriptor_layout_desc.bindings = {
+        DescriptorBindingDesc{
+            .binding = 0, .type = DescriptorType::storage_buffer, .count = 1, .stages = ShaderStageVisibility::compute},
+        DescriptorBindingDesc{
+            .binding = 1, .type = DescriptorType::storage_buffer, .count = 1, .stages = ShaderStageVisibility::compute},
+        DescriptorBindingDesc{
+            .binding = 2, .type = DescriptorType::storage_buffer, .count = 1, .stages = ShaderStageVisibility::compute},
+        DescriptorBindingDesc{
+            .binding = 3, .type = DescriptorType::uniform_buffer, .count = 1, .stages = ShaderStageVisibility::compute},
+    };
+    auto descriptor_layout = create_runtime_descriptor_set_layout(
+        runtime_device, VulkanRuntimeDescriptorSetLayoutDesc{.layout = descriptor_layout_desc});
+    auto descriptor_set = create_runtime_descriptor_set(runtime_device, descriptor_layout.layout);
+    auto pipeline_layout = create_runtime_pipeline_layout(
+        runtime_device, VulkanRuntimePipelineLayoutDesc{.descriptor_set_layouts = {&descriptor_layout.layout}});
+    auto compute_pipeline = create_runtime_compute_pipeline(
+        runtime_device, pipeline_layout.layout, shader_module.module,
+        VulkanRuntimeComputePipelineDesc{.entry_point = desc.compute_shader_entry_point});
+    if (!descriptor_layout.created || !descriptor_set.created || !pipeline_layout.created ||
+        !compute_pipeline.created) {
+        result.failure_stage = 31U;
+        return result;
+    }
+
+    auto& argument_buffer = vulkan_device->buffers_.at(desc.external_argument_buffer.value - 1U);
+    auto& count_buffer = vulkan_device->buffers_.at(desc.external_count_buffer.value - 1U);
+    const auto update_descriptor = [&runtime_device](VulkanRuntimeDescriptorSet& set, std::uint32_t binding,
+                                                     DescriptorType type, VulkanRuntimeBuffer& buffer) {
+        return update_runtime_descriptor_set(runtime_device, set,
+                                             VulkanRuntimeDescriptorWriteDesc{
+                                                 .binding = binding,
+                                                 .array_element = 0,
+                                                 .buffers =
+                                                     {
+                                                         VulkanRuntimeDescriptorBufferResource{
+                                                             .type = type,
+                                                             .buffer = &buffer,
+                                                         },
+                                                     },
+                                             })
+            .updated;
+    };
+    if (!update_descriptor(descriptor_set.set, 0U, DescriptorType::storage_buffer, cluster_device_buffer.buffer) ||
+        !update_descriptor(descriptor_set.set, 1U, DescriptorType::storage_buffer, argument_buffer) ||
+        !update_descriptor(descriptor_set.set, 2U, DescriptorType::storage_buffer, count_buffer) ||
+        !update_descriptor(descriptor_set.set, 3U, DescriptorType::uniform_buffer, constants_buffer.buffer)) {
+        result.failure_stage = 32U;
+        return result;
+    }
+
+    auto command_pool = create_runtime_command_pool(runtime_device);
+    if (!command_pool.created || !command_pool.pool.begin_primary_command_buffer()) {
+        result.failure_stage = 33U;
+        return result;
+    }
+    if (!record_runtime_buffer_copy(runtime_device, command_pool.pool, cluster_upload_buffer.buffer,
+                                    cluster_device_buffer.buffer,
+                                    VulkanRuntimeBufferCopyDesc{
+                                        .region =
+                                            BufferCopyRegion{
+                                                .source_offset = 0,
+                                                .destination_offset = 0,
+                                                .size_bytes = cluster_buffer_size,
+                                            },
+                                    })
+             .recorded) {
+        result.failure_stage = 34U;
+        return result;
+    }
+
+    constexpr std::uint32_t k_compute_pipeline_bind_point = 1U;
+    if (!record_runtime_compute_pipeline_binding(runtime_device, command_pool.pool, compute_pipeline.pipeline)
+             .recorded ||
+        !record_runtime_descriptor_set_binding(
+             runtime_device, command_pool.pool, pipeline_layout.layout, descriptor_set.set,
+             VulkanRuntimeDescriptorSetBindDesc{.first_set = 0U, .pipeline_bind_point = k_compute_pipeline_bind_point})
+             .recorded ||
+        !record_runtime_compute_dispatch(runtime_device, command_pool.pool,
+                                         VulkanRuntimeComputeDispatchDesc{.group_count_x = 1})
+             .recorded) {
+        result.failure_stage = 35U;
+        return result;
+    }
+    result.compute_dispatches = 1U;
+
+    const auto record_barrier = [&runtime_device, &command_pool, &result](VulkanRuntimeBuffer& buffer) {
+        const auto barrier =
+            record_runtime_buffer_memory_barrier2(runtime_device, command_pool.pool,
+                                                  VulkanRuntimeBufferMemoryBarrierDesc{
+                                                      .buffer = &buffer,
+                                                      .src_stage_mask = vulkan_pipeline_stage2_compute_shader_bit,
+                                                      .src_access_mask = vulkan_access2_shader_write_bit,
+                                                      .dst_stage_mask = vulkan_pipeline_stage2_draw_indirect_bit,
+                                                      .dst_access_mask = vulkan_access2_indirect_command_read_bit,
+                                                  });
+        if (barrier.recorded) {
+            result.resource_barriers_recorded += barrier.barrier_count;
+        }
+        return barrier.recorded;
+    };
+    if (!record_barrier(argument_buffer) || !record_barrier(count_buffer)) {
+        result.failure_stage = 36U;
+        return result;
+    }
+
+    if (!command_pool.pool.end_primary_command_buffer()) {
+        result.failure_stage = 37U;
+        return result;
+    }
+    auto frame_sync =
+        create_runtime_frame_sync(runtime_device, VulkanRuntimeFrameSyncDesc{.create_image_available_semaphore = false,
+                                                                             .create_render_finished_semaphore = false,
+                                                                             .create_in_flight_fence = true,
+                                                                             .start_in_flight_fence_signaled = false});
+    if (!frame_sync.created) {
+        result.failure_stage = 38U;
+        return result;
+    }
+    const auto submit =
+        submit_runtime_command_buffer(runtime_device, command_pool.pool, frame_sync.sync,
+                                      VulkanRuntimeCommandBufferSubmitDesc{.wait_image_available_semaphore = false,
+                                                                           .signal_render_finished_semaphore = false,
+                                                                           .signal_in_flight_fence = true,
+                                                                           .wait_for_graphics_queue_idle = true});
+    if (!submit.submitted) {
+        result.failure_stage = 39U;
+        return result;
+    }
+
+    result.count_buffer_value = result.visible_cluster_count;
+    result.argument_buffer_size_bytes =
+        static_cast<std::uint64_t>(result.visible_cluster_count) * static_cast<std::uint64_t>(desc.record_stride_bytes);
+    result.executed_gpu_culling = true;
+    result.succeeded = true;
+    return result;
 }
 
 VulkanRuntimeCommandPoolCreateResult create_runtime_command_pool(VulkanRuntimeDevice& device,

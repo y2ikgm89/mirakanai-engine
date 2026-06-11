@@ -18,7 +18,7 @@ $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004
 foreach ($needle in @(
         "cmd_draw_indexed_indirect_count",
         "vkCmdDrawIndexedIndirectCount",
-        "vulkan rhi indexed indirect count buffer requires copy_source upload usage in v1",
+        "vulkan rhi indexed indirect count buffer requires CPU-upload or compute-generated usage",
         "vulkan rhi indexed indirect count buffer offset must be 4-byte aligned",
         "vulkan rhi indexed indirect count range is outside the count buffer",
         "supports_indexed_indirect_count_buffer_draw",
@@ -67,7 +67,7 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG Vulkan count-buffer indirect execution evidence"
     }
     foreach ($needle in @(
-            "compute-generated count",
+            "package-visible MAVG backend readiness",
             "compute-generated",
             "Nanite"
         )) {

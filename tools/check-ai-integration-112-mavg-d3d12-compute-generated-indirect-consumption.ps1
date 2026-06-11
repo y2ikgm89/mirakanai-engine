@@ -84,7 +84,7 @@ foreach ($surface in @(
     }
     foreach ($needle in @(
             "Vulkan compute dispatch",
-            "Vulkan compute-generated",
+            "MAVG Vulkan Compute-Generated",
             "mesh shaders",
             "Nanite"
         )) {

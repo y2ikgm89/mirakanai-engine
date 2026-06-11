@@ -30,6 +30,12 @@ struct VulkanMavgGpuCullingDispatchDesc {
     std::span<const VulkanMavgGpuCullingDispatchClusterRow> cluster_rows;
     std::uint32_t max_command_count{0};
     std::uint32_t record_stride_bytes{20};
+    /// When non-zero, writes into an existing RHI-owned argument buffer instead of allocating internally.
+    BufferHandle external_argument_buffer{};
+    /// When non-zero, writes into an existing RHI-owned count buffer instead of allocating internally.
+    BufferHandle external_count_buffer{};
+    /// Skip COPY_SOURCE readback transitions so `draw_indexed_indirect` can consume GPU-written buffers.
+    bool leave_indirect_argument_state_for_consumption{false};
 };
 
 struct VulkanMavgGpuCullingDispatchResult {
@@ -48,5 +54,10 @@ struct VulkanMavgGpuCullingDispatchResult {
 
 [[nodiscard]] VulkanMavgGpuCullingDispatchResult
 dispatch_mavg_gpu_culling_indirect(const VulkanMavgGpuCullingDispatchDesc& desc) noexcept;
+
+/// Writes MAVG packed indirect buffers on an existing Vulkan RHI device. Requires `external_argument_buffer` and
+/// `external_count_buffer` to be RHI-owned buffers created with `BufferUsage::indirect | BufferUsage::storage`.
+[[nodiscard]] VulkanMavgGpuCullingDispatchResult
+dispatch_mavg_gpu_culling_indirect(IRhiDevice& device, const VulkanMavgGpuCullingDispatchDesc& desc) noexcept;
 
 } // namespace mirakana::rhi::vulkan

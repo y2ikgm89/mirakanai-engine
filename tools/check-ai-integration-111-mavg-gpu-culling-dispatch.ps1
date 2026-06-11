@@ -100,8 +100,8 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU culling dispatch implementation evidence"
     }
     foreach ($needle in @(
-            "Vulkan compute-generated indirect consumption",
-            "compute-generated indirect consumption",
+            "package-visible MAVG backend readiness",
+            "Compute-Generated Indirect Consumption",
             "Nanite"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG GPU culling dispatch non-claim evidence"
