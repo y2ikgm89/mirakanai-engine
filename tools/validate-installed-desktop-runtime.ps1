@@ -197,6 +197,7 @@ $requiresEnvironmentVolumetricCloudRendererExecution = @($SmokeArgs) -contains "
 $requiresEnvironmentVolumetricCloudVulkanRendererExecution = @($SmokeArgs) -contains "--require-environment-volumetric-cloud-vulkan-renderer-execution"
 $requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-environment-material-weathering"
 $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environment-audio-playback"
+$requiresEnvironmentReadyAggregate = @($SmokeArgs) -contains "--require-environment-ready-aggregate"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -318,6 +319,27 @@ if ($requiresEnvironmentMaterialWeathering) {
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
+if ($requiresEnvironmentReadyAggregate) {
+    $requiresEnvironmentProfile = $true
+    $requiresD3d12Renderer = $true
+    $requiresSceneGpuBindings = $true
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+    $requiresEnvironmentFogEvidence = $true
+    $requiresPhysicalSkyPackageEvidence = $true
+    $requiresEnvironmentLightingPackageEvidence = $true
+    $requiresEnvironmentLightingRendererExecution = $true
+    $requiresCloudLayerPackageEvidence = $true
+    $requiresCloudLayerRendererExecution = $true
+    $requiresEnvironmentPrecipitationPackageEvidence = $true
+    $requiresEnvironmentPrecipitationRendererExecution = $true
+    $requiresEnvironmentVolumetricFogPackageEvidence = $true
+    $requiresEnvironmentVolumetricCloudPackageEvidence = $true
+    $requiresEnvironmentVolumetricCloudRendererExecution = $true
+    $requiresEnvironmentMaterialWeathering = $true
+    $requiresEnvironmentAudioPlayback = $true
+}
 $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentFogEvidence -or
     $requiresEnvironmentFogVulkanPackageEvidence -or
@@ -387,6 +409,9 @@ $requiresProductionTileRenderer = @($SmokeArgs) -contains "--require-production-
 $requiresWin32RuntimeHost = @($SmokeArgs) -contains "--require-win32-runtime-host"
 $requiresWin32D3d12Presentation = @($SmokeArgs) -contains "--require-win32-d3d12-presentation"
 $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
+if ($requiresEnvironmentReadyAggregate) {
+    $requiresD3d12Renderer = $true
+}
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresProceduralGeneration = @($SmokeArgs) -contains "--require-procedural-generation"
 $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
@@ -1061,7 +1086,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove environment profile v2 positive count: $field"
             }
         }
-        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
+        if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment profile package evidence."
         }
     }
@@ -4706,7 +4731,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentFogVulkanPackageEvidence) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan environment fog package evidence."
             }
             $expectedEnvironmentFogVulkanFields = @{
@@ -4732,7 +4757,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresPhysicalSkyPackageEvidence) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for physical sky package evidence."
             }
             $expectedPhysicalSkyFields = @{
@@ -4761,7 +4786,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresPhysicalSkyVulkanPackageEvidence) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan physical sky package evidence."
             }
             Assert-InstalledDesktopRuntimeStatusFields `
@@ -4788,7 +4813,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
         }
         if ($requiresEnvironmentLightingPackageEvidence) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment lighting package evidence."
             }
             $expectedEnvironmentLightingRendererUploadStatus = "not_requested"
@@ -4884,7 +4909,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentLightingVulkanRendererExecution) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan environment IBL renderer execution evidence."
             }
             $expectedEnvironmentLightingVulkanFields = @{
@@ -4926,7 +4951,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentVolumetricFogPackageEvidence) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for volumetric fog package evidence."
             }
             $expectedEnvironmentVolumetricFogFields = @{
@@ -4956,7 +4981,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentVolumetricFogVulkanRendererExecution) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan volumetric fog renderer execution evidence."
             }
             $expectedEnvironmentVolumetricFogVulkanFields = @{
@@ -4994,7 +5019,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentVolumetricCloudPackageEvidence) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for volumetric cloud package evidence."
             }
             $expectedEnvironmentVolumetricCloudFields = @{
@@ -5064,7 +5089,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentVolumetricCloudVulkanRendererExecution) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan volumetric cloud renderer execution."
             }
             $expectedEnvironmentVolumetricCloudVulkanFields = @{
@@ -5234,7 +5259,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentPrecipitationVulkanRendererExecution) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan environment precipitation renderer execution evidence."
             }
             $expectedEnvironmentPrecipitationVulkanFields = @{
@@ -5284,7 +5309,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentAudioPlayback) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment audio playback evidence."
             }
             $expectedEnvironmentAudioPlaybackFields = @{
@@ -5381,7 +5406,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
         if ($requiresEnvironmentMaterialWeathering) {
-            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for material weathering evidence."
             }
             $expectedEnvironmentMaterialWeatheringFields = @{
@@ -5427,7 +5452,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         -RequiresDirectionalShadow $requiresDirectionalShadow `
         -RequiresPostprocessDepthInput $requiresPostprocessDepthInput
     if ($requiresAnyEnvironmentQualityBudget) {
-        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+        if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
             Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment quality budget evidence."
         }
         $expectedEnvironmentQualityBudgetRows = 0
@@ -5579,6 +5604,24 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 Write-Error "Installed desktop runtime smoke status line did not prove non-negative environment quality budget field: $field"
             }
         }
+    }
+    if ($requiresEnvironmentReadyAggregate) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment ready aggregate" `
+            -ExpectedFields @{
+                "environment_ready_status" = "ready"
+                "environment_ready" = "1"
+                "environment_ready_profile_v2" = "1"
+                "environment_ready_d3d12_primary" = "1"
+                "environment_ready_vulkan_strict" = "0"
+                "environment_ready_metal_host" = "0"
+                "environment_ready_backend_parity" = "0"
+                "environment_ready_broad_optimization_claimed" = "0"
+                "environment_ready_native_handle_access" = "0"
+                "environment_ready_diagnostics" = "0"
+            }
     }
     if ($requiresFramegraphExecutionEvidence) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {

@@ -609,6 +609,19 @@ function Get-SampleDesktopRuntimeGameEnvironmentProfileSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameEnvironmentReadyAggregateSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-environment-ready-aggregate'
+    )
+}
+
 function Get-GeneratedMaterialShaderScaffoldPackageVulkanSmokeArgs {
     return @(
         '--smoke',
