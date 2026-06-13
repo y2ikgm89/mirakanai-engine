@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-commercial-excellence-v1`
 
-**Status:** Candidate milestone plan. This plan is not selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until a separate selection slice intentionally updates `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composes `engine/agent/manifest.json`, and passes the required static checks.
+**Status:** Active. Phase 0 intentionally updates `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composes `engine/agent/manifest.json`, and records the registry/docs pointer only; it does not claim strict Vulkan aggregate readiness, Metal host aggregate readiness, backend parity, all-platform readiness, broad optimization, OpenEXR/KTX/Basis asset-pipeline readiness, AAA preset-library readiness, physical weather simulation readiness, or artist-workflow readiness.
 
 **Goal:** Promote the completed selected D3D12-primary environment aggregate into a commercial environment capability set with strict Vulkan aggregate readiness, Apple-host Metal aggregate readiness, backend parity, exact all-platform readiness rows, measured broad optimization evidence, a licensed AAA preset asset library, OpenEXR/KTX/Basis production asset pipeline, physically modeled weather simulation, and advanced artist workflow support. Every claim must be backed by backend-local package-visible counters, validation recipes, official-source constraints, dependency/legal records, and hosted or host-gated evidence. No broad claim may be inferred from another backend, host, sample, asset, or adjacent row.
 
@@ -115,12 +115,12 @@ Source implications:
 - `docs/current-capabilities.md`
 - static checks only when new selected-plan literals need enforcement
 
-- [ ] Confirm no unrelated local edits will be staged.
-- [ ] Set `currentActivePlan` to `docs/superpowers/plans/2026-06-13-environment-commercial-excellence-v1.md`.
-- [ ] Set `recommendedNextPlan.id` to `environment-commercial-excellence-v1`.
-- [ ] Keep `unsupportedProductionGaps = []` unless a specific newly selected gap is deliberately represented.
-- [ ] Record that this selection does not claim strict Vulkan, Metal, backend parity, all-platform, broad optimization, asset-pipeline, AAA asset library, physical weather simulation, or artist-workflow readiness.
-- [ ] Run:
+- [x] Confirm no unrelated local edits will be staged.
+- [x] Set `currentActivePlan` to `docs/superpowers/plans/2026-06-13-environment-commercial-excellence-v1.md`.
+- [x] Set `recommendedNextPlan.id` to `environment-commercial-excellence-v1`.
+- [x] Keep `unsupportedProductionGaps = []` unless a specific newly selected gap is deliberately represented.
+- [x] Record that this selection does not claim strict Vulkan, Metal, backend parity, all-platform, broad optimization, asset-pipeline, AAA asset library, physical weather simulation, or artist-workflow readiness.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -130,6 +130,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 ```
 
 **Done when:** The manifest and registry point to this plan, no runtime behavior changed, non-claims are explicit, and static checks pass.
+
+**Phase 0 local evidence:** This selection slice updates only manifest/docs/registry surfaces and composed manifest output. It keeps `unsupportedProductionGaps = []` and does not modify runtime, renderer, backend, asset-pipeline, performance, simulation, platform, or editor implementation files.
 
 ## Phase 1: Readiness Taxonomy And Static Guard Foundation
 

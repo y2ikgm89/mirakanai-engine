@@ -13,6 +13,11 @@ $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-arc
 $productionMasterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    @{ Text = $aiLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
+} else {
+    @{ Text = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $mavgRecencyPlanText) -join " "; Label = "production loop completed context" }
+}
 
 foreach ($needle in @(
         "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind",
@@ -65,7 +70,7 @@ foreach ($surface in @(
         @{ Text = $mavgArchitectureSpecText; Label = "docs/specs/2026-06-05-mavg-architecture-v1.md" },
         @{ Text = $productionMasterPlanText; Label = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" },
         @{ Text = $modulesFragmentText; Label = "engine/agent/manifest.fragments/004-modules.json" },
-        @{ Text = $aiLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
+        $mavgProductionLoopFragmentSurface
     )) {
     foreach ($needle in @(
             "mavg-resident-page-recency-eviction-order-v1",

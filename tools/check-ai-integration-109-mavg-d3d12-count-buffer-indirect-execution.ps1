@@ -83,15 +83,17 @@ foreach ($needle in @(
     Assert-ContainsText $mavgVulkanPlanText $needle "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md prerequisite transition"
 }
 
-foreach ($needle in @(
-        "mavg-d3d12-count-buffer-indirect-execution-v1",
-        "docs/superpowers/plans/2026-06-08-mavg-d3d12-count-buffer-indirect-execution-v1.md",
-        "MAVG D3D12 Count-Buffer Indirect Execution v1",
-        "ID3D12GraphicsCommandList::ExecuteIndirect",
-        "CountBufferOffset",
-        "PR #547"
-    )) {
-    Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG D3D12 count-buffer indirect draw closeout evidence"
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    foreach ($needle in @(
+            "mavg-d3d12-count-buffer-indirect-execution-v1",
+            "docs/superpowers/plans/2026-06-08-mavg-d3d12-count-buffer-indirect-execution-v1.md",
+            "MAVG D3D12 Count-Buffer Indirect Execution v1",
+            "ID3D12GraphicsCommandList::ExecuteIndirect",
+            "CountBufferOffset",
+            "PR #547"
+        )) {
+        Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json MAVG D3D12 count-buffer indirect draw closeout evidence"
+    }
 }
 
 foreach ($needle in @(

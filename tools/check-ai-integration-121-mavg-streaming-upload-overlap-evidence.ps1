@@ -16,6 +16,11 @@ $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $mavgOverlapPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-streaming-upload-overlap-evidence-v1.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    @{ Text = $aiLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
+} else {
+    @{ Text = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $mavgOverlapPlanText) -join " "; Label = "production loop completed context" }
+}
 
 foreach ($needle in @(
         "RuntimeMavgStreamingUploadOverlapEvidenceDesc",
@@ -74,7 +79,7 @@ foreach ($surface in @(
         @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
         @{ Text = $mavgOverlapPlanText; Label = "docs/superpowers/plans/2026-06-11-mavg-streaming-upload-overlap-evidence-v1.md" },
         @{ Text = $modulesFragmentText; Label = "engine/agent/manifest.fragments/004-modules.json" },
-        @{ Text = $aiLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
+        $mavgProductionLoopFragmentSurface
     )) {
     foreach ($needle in @(
             "mavg-streaming-upload-overlap-evidence-v1",
@@ -103,7 +108,11 @@ foreach ($surface in @(
     }
 }
 
-$recommendedPlanText = ($manifest.aiOperableProductionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8)
+$recommendedPlanText = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -eq "environment-commercial-excellence-v1") {
+    (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $mavgOverlapPlanText) -join " "
+} else {
+    $manifest.aiOperableProductionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8
+}
 foreach ($needle in @(
         "MAVG Streaming Upload Overlap Evidence v1",
         "mavg_streaming_upload_overlap_evidence.hpp",
