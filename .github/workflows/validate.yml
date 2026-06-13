@@ -224,6 +224,10 @@ jobs:
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
+      - name: Validate optional asset importers
+        shell: pwsh
+        run: ./tools/build-asset-importers.ps1
+
       - name: Validate native desktop editor
         shell: pwsh
         run: ./tools/build-editor.ps1
@@ -273,6 +277,7 @@ jobs:
           include-hidden-files: false
           path: |
             out/build/dev/Testing/**/*.log
+            out/build/asset-importers/Testing/**/*.log
           if-no-files-found: warn
 
   windows-cpp23:
