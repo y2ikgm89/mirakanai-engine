@@ -245,6 +245,7 @@ Assert-TextContains "engine/agent/manifest.json" "validateNetworkEnet" "engine m
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_ASSET_IMPORTERS" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(SPNG CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(fastgltf CONFIG\)" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(OpenEXR CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Ktx CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_PHYSICS_JOLT" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Jolt CONFIG\)" "Mirakanai package config"

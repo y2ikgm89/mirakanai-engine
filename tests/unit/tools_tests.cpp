@@ -22,6 +22,7 @@
 #include "mirakana/tools/asset_import_adapters.hpp"
 #include "mirakana/tools/asset_import_tool.hpp"
 #include "mirakana/tools/asset_package_tool.hpp"
+#include "mirakana/tools/environment_texture_source_review.hpp"
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/gltf_mesh_inspect.hpp"
 #include "mirakana/tools/gltf_morph_animation_import.hpp"
@@ -7676,6 +7677,28 @@ MK_TEST("default external asset import adapters expose optional feature boundary
         MK_REQUIRE(result.failures.size() == 1);
         MK_REQUIRE(result.failures[0].diagnostic.find("asset-importers feature is disabled") != std::string::npos);
     }
+}
+
+MK_TEST("openexr environment texture source review fails closed without asset importers") {
+    if (mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+    const auto result = mirakana::review_openexr_texture_source_metadata(mirakana::OpenExrTextureSourceReviewRequest{
+        .source_file_path = std::filesystem::path{"source/textures/environment/studio.exr"},
+        .source_path = "source/textures/environment/studio.exr",
+        .source_hash = "sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+        .provenance_id = "provenance.environment.studio",
+        .license_id = "LicenseRef-Proprietary",
+        .scene_linear_intent = true,
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.source.has_value());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code ==
+               mirakana::OpenExrTextureSourceReviewDiagnosticCode::asset_importers_disabled);
+    MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
 }
 
 MK_TEST("default external asset import adapters decode audited dependency formats when enabled") {

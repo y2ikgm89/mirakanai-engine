@@ -4,6 +4,7 @@ add_library(MK_tools_asset OBJECT
     asset_runtime_package_hot_reload_tool.cpp
     asset_import_tool.cpp
     asset_package_tool.cpp
+    environment_texture_source_review.cpp
     morph_mesh_cpu_source_bridge.cpp
     registered_source_asset_cook_package_tool.cpp
     source_asset_registration_tool.cpp

@@ -40,7 +40,7 @@
       "platform": "desktop",
       "status": "validated-optional",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
-      "notes": "Builds MK_tools with optional libspng, fastgltf, and miniaudio importer adapters and runs importer-capable tests."
+      "notes": "Builds MK_tools with optional libspng, fastgltf, OpenEXR, KTX Software, and miniaudio importer/review adapters and runs importer-capable tests."
     },
     {
       "name": "windows-cpack-zip",

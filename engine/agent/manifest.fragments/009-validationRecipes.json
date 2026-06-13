@@ -333,7 +333,7 @@
     {
       "name": "asset-importers",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
-      "purpose": "Validate optional PNG, glTF, and common audio source importer adapters behind MK_tools."
+      "purpose": "Validate optional PNG, glTF, OpenEXR source metadata review, KTX/Basis, and common audio source importer adapters behind MK_tools."
     },
     {
       "name": "physics-jolt",
