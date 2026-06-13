@@ -496,6 +496,7 @@ Assert-ContainsAll $windowsJob @(
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
+    "run: ./tools/build-asset-importers.ps1",
     "run: ./tools/build-editor.ps1",
     "run: ./tools/validate-network-enet.ps1",
     "Save vcpkg package cache",
@@ -518,6 +519,7 @@ Assert-ContainsAll $windowsJob @(
     "retention-days: 14",
     "include-hidden-files: false",
     "out/build/dev/Testing/**/*.log",
+    "out/build/asset-importers/Testing/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml windows job"
 
