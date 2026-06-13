@@ -25,6 +25,9 @@ namespace mirakana {
 namespace {
 
 constexpr std::string_view texture_source_format = "GameEngine.TextureSource.v1";
+constexpr std::string_view texture_source_format_v2 = "GameEngine.TextureSource.v2";
+constexpr std::string_view texture_cook_metadata_format_v1 = "GameEngine.CookedTextureMetadata.v1";
+constexpr std::string_view environment_asset_source_format_v1 = "GameEngine.EnvironmentAssetSource.v1";
 constexpr std::string_view mesh_source_format = "GameEngine.MeshSource.v2";
 constexpr std::string_view audio_source_format = "GameEngine.AudioSource.v1";
 constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource.v1";
@@ -104,6 +107,15 @@ constexpr std::uint32_t max_audio_channel_count = 64;
     return parsed;
 }
 
+[[nodiscard]] std::int32_t parse_i32(std::string_view value, std::string_view diagnostic_name) {
+    std::int32_t parsed = 0;
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        throw std::invalid_argument(std::string(diagnostic_name) + " integer value is invalid");
+    }
+    return parsed;
+}
+
 [[nodiscard]] bool parse_bool(std::string_view value, std::string_view diagnostic_name) {
     if (value == "true") {
         return true;
@@ -116,6 +128,203 @@ constexpr std::uint32_t max_audio_channel_count = 64;
 
 [[nodiscard]] const char* bool_text(bool value) noexcept {
     return value ? "true" : "false";
+}
+
+[[nodiscard]] bool clean_text_token(std::string_view value) noexcept {
+    if (value.empty()) {
+        return false;
+    }
+    return value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos &&
+           value.find('\0') == std::string_view::npos;
+}
+
+[[nodiscard]] bool hex_digit(char value) noexcept {
+    return (value >= '0' && value <= '9') || (value >= 'a' && value <= 'f') || (value >= 'A' && value <= 'F');
+}
+
+[[nodiscard]] bool sha256_token(std::string_view value) noexcept {
+    constexpr std::string_view prefix = "sha256:";
+    return value.starts_with(prefix) && value.size() == prefix.size() + 64U && clean_text_token(value) &&
+           std::ranges::all_of(value.substr(prefix.size()), hex_digit);
+}
+
+[[nodiscard]] bool texture_window_valid(const TextureSourceWindowV2& window) noexcept {
+    return window.max_x >= window.min_x && window.max_y >= window.min_y;
+}
+
+[[nodiscard]] std::uint32_t checked_window_extent(std::int32_t min_value, std::int32_t max_value) noexcept {
+    if (max_value < min_value) {
+        return 0;
+    }
+    const auto extent = static_cast<std::int64_t>(max_value) - static_cast<std::int64_t>(min_value) + 1;
+    if (extent <= 0 || extent > std::numeric_limits<std::uint32_t>::max()) {
+        return 0;
+    }
+    return static_cast<std::uint32_t>(extent);
+}
+
+[[nodiscard]] std::uint32_t texture_window_width(const TextureSourceWindowV2& window) noexcept {
+    return checked_window_extent(window.min_x, window.max_x);
+}
+
+[[nodiscard]] std::uint32_t texture_window_height(const TextureSourceWindowV2& window) noexcept {
+    return checked_window_extent(window.min_y, window.max_y);
+}
+
+[[nodiscard]] std::string texture_window_text(const TextureSourceWindowV2& window) {
+    return std::to_string(window.min_x) + "," + std::to_string(window.min_y) + "," + std::to_string(window.max_x) +
+           "," + std::to_string(window.max_y);
+}
+
+[[nodiscard]] TextureSourceWindowV2 parse_texture_window(std::string_view value, std::string_view diagnostic_name) {
+    std::size_t begin = 0;
+    std::size_t field_index = 0;
+    std::int32_t fields[4] = {};
+    while (begin <= value.size()) {
+        if (field_index >= 4U) {
+            throw std::invalid_argument(std::string(diagnostic_name) + " window has too many fields");
+        }
+        const auto end = value.find(',', begin);
+        const auto field = value.substr(begin, end == std::string_view::npos ? std::string_view::npos : end - begin);
+        fields[field_index++] = parse_i32(field, diagnostic_name);
+        if (end == std::string_view::npos) {
+            break;
+        }
+        begin = end + 1U;
+    }
+    if (field_index != 4U) {
+        throw std::invalid_argument(std::string(diagnostic_name) + " window has too few fields");
+    }
+    return TextureSourceWindowV2{.min_x = fields[0], .min_y = fields[1], .max_x = fields[2], .max_y = fields[3]};
+}
+
+[[nodiscard]] bool openexr_review_valid(const TextureSourceDocumentV2& document) noexcept {
+    const auto& review = document.openexr;
+    if (document.color_space != TextureColorSpaceV2::scene_linear || !review.scene_linear_intent) {
+        return false;
+    }
+    if (!texture_window_valid(review.data_window) || !texture_window_valid(review.display_window)) {
+        return false;
+    }
+    if (texture_window_width(review.data_window) != document.width ||
+        texture_window_height(review.data_window) != document.height) {
+        return false;
+    }
+    if (!clean_text_token(review.channel_list) || review.channel_count == 0) {
+        return false;
+    }
+    if (review.pixel_encoding != TexturePixelEncodingV2::float16 &&
+        review.pixel_encoding != TexturePixelEncodingV2::float32) {
+        return false;
+    }
+    if (review.multipart || review.deep) {
+        return false;
+    }
+    return review.chromaticities_recorded;
+}
+
+[[nodiscard]] bool ktx2_basis_review_valid(const TextureSourceDocumentV2& document) noexcept {
+    const auto& review = document.ktx2_basis;
+    if (!clean_text_token(review.vk_format) || review.level_count == 0 || review.layer_count == 0) {
+        return false;
+    }
+    if (review.face_count != 1U && review.face_count != 6U) {
+        return false;
+    }
+    if (review.supercompression != TextureCompressionKindV2::basis_lz &&
+        review.supercompression != TextureCompressionKindV2::uastc) {
+        return false;
+    }
+    if (review.basis_codec != TexturePixelEncodingV2::basis_etc1s &&
+        review.basis_codec != TexturePixelEncodingV2::basis_uastc) {
+        return false;
+    }
+    return review.requires_transcoding;
+}
+
+[[nodiscard]] std::uint32_t texture_source_v2_mip_count(const TextureSourceDocumentV2& document) noexcept {
+    if (document.source_kind == TextureSourceKindV2::ktx2_basis) {
+        return document.ktx2_basis.level_count;
+    }
+    return 1U;
+}
+
+[[nodiscard]] bool texture_cook_backend_known(TextureCookBackendV1 backend) noexcept {
+    switch (backend) {
+    case TextureCookBackendV1::d3d12:
+    case TextureCookBackendV1::vulkan:
+    case TextureCookBackendV1::metal_macos:
+    case TextureCookBackendV1::vulkan_android:
+    case TextureCookBackendV1::metal_ios:
+        return true;
+    case TextureCookBackendV1::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint8_t texture_cook_backend_sort_key(TextureCookBackendV1 backend) noexcept {
+    return static_cast<std::uint8_t>(backend);
+}
+
+[[nodiscard]] bool texture_cook_backend_decision_valid(const TextureCookBackendDecisionV1& decision) noexcept {
+    if (!texture_cook_backend_known(decision.backend) || !clean_text_token(decision.device_format) ||
+        decision.compression == TextureCompressionKindV2::unknown ||
+        decision.transcode == TextureCookTranscodeKindV1::unknown || decision.estimated_gpu_bytes == 0) {
+        return false;
+    }
+    if ((!decision.supported || !decision.host_validated) && !clean_text_token(decision.diagnostic)) {
+        return false;
+    }
+    if (decision.supported && decision.host_validated && !decision.diagnostic.empty()) {
+        return false;
+    }
+    return true;
+}
+
+[[nodiscard]] bool has_required_texture_cook_backends(const std::vector<TextureCookBackendDecisionV1>& decisions) {
+    bool d3d12 = false;
+    bool vulkan = false;
+    bool metal_macos = false;
+    bool vulkan_android = false;
+    bool metal_ios = false;
+    for (const auto& decision : decisions) {
+        switch (decision.backend) {
+        case TextureCookBackendV1::d3d12:
+            if (d3d12) {
+                return false;
+            }
+            d3d12 = true;
+            break;
+        case TextureCookBackendV1::vulkan:
+            if (vulkan) {
+                return false;
+            }
+            vulkan = true;
+            break;
+        case TextureCookBackendV1::metal_macos:
+            if (metal_macos) {
+                return false;
+            }
+            metal_macos = true;
+            break;
+        case TextureCookBackendV1::vulkan_android:
+            if (vulkan_android) {
+                return false;
+            }
+            vulkan_android = true;
+            break;
+        case TextureCookBackendV1::metal_ios:
+            if (metal_ios) {
+                return false;
+            }
+            metal_ios = true;
+            break;
+        case TextureCookBackendV1::unknown:
+            return false;
+        }
+    }
+    return d3d12 && vulkan && metal_macos && vulkan_android && metal_ios;
 }
 
 [[nodiscard]] std::uint8_t hex_value(char value, std::string_view diagnostic_name) {
@@ -453,6 +662,44 @@ bool is_valid_texture_source_document(const TextureSourceDocument& document) noe
                                     static_cast<std::uint64_t>(texture_source_bytes_per_pixel(document.pixel_format)));
 }
 
+bool is_valid_texture_source_document_v2(const TextureSourceDocumentV2& document) noexcept {
+    if (!clean_text_token(document.source_path) || !sha256_token(document.source_hash) ||
+        !clean_text_token(document.provenance_id) || !clean_text_token(document.license_id)) {
+        return false;
+    }
+    if (document.width == 0 || document.height == 0 || document.width > max_texture_extent ||
+        document.height > max_texture_extent || document.color_space == TextureColorSpaceV2::unknown ||
+        document.sampler_class == TextureSamplerClassV2::unknown) {
+        return false;
+    }
+
+    switch (document.source_kind) {
+    case TextureSourceKindV2::openexr:
+        return openexr_review_valid(document);
+    case TextureSourceKindV2::ktx2_basis:
+        return ktx2_basis_review_valid(document);
+    case TextureSourceKindV2::unknown:
+        break;
+    }
+    return false;
+}
+
+bool is_valid_texture_cook_metadata_document_v1(const TextureCookMetadataDocumentV1& document) noexcept {
+    if (!is_valid_texture_source_document_v2(document.source) || document.estimated_source_bytes == 0 ||
+        document.estimated_decoded_bytes == 0 || document.backend_decisions.size() != 5U ||
+        !has_required_texture_cook_backends(document.backend_decisions)) {
+        return false;
+    }
+    return std::ranges::all_of(document.backend_decisions, texture_cook_backend_decision_valid);
+}
+
+bool is_valid_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document) noexcept {
+    return clean_text_token(document.environment_profile_source_path) &&
+           clean_text_token(document.radiance_texture_source_path) && clean_text_token(document.provenance_id) &&
+           clean_text_token(document.license_id) && document.requires_scene_linear_radiance &&
+           document.texture_source_v2_required;
+}
+
 bool is_valid_mesh_source_document(const MeshSourceDocument& document) noexcept {
     if (document.vertex_count == 0 || document.index_count == 0) {
         return false;
@@ -557,6 +804,230 @@ std::uint64_t texture_source_uncompressed_bytes(const TextureSourceDocument& doc
     }
     return static_cast<std::uint64_t>(document.width) * static_cast<std::uint64_t>(document.height) *
            static_cast<std::uint64_t>(texture_source_bytes_per_pixel(document.pixel_format));
+}
+
+std::string_view texture_source_kind_name_v2(TextureSourceKindV2 kind) noexcept {
+    switch (kind) {
+    case TextureSourceKindV2::openexr:
+        return "openexr";
+    case TextureSourceKindV2::ktx2_basis:
+        return "ktx2_basis";
+    case TextureSourceKindV2::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TextureSourceKindV2 parse_texture_source_kind_v2(std::string_view value) {
+    if (value == "openexr") {
+        return TextureSourceKindV2::openexr;
+    }
+    if (value == "ktx2_basis") {
+        return TextureSourceKindV2::ktx2_basis;
+    }
+    throw std::invalid_argument("texture source v2 kind is unsupported");
+}
+
+std::string_view texture_color_space_name_v2(TextureColorSpaceV2 color_space) noexcept {
+    switch (color_space) {
+    case TextureColorSpaceV2::srgb:
+        return "srgb";
+    case TextureColorSpaceV2::scene_linear:
+        return "scene_linear";
+    case TextureColorSpaceV2::linear_data:
+        return "linear_data";
+    case TextureColorSpaceV2::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TextureColorSpaceV2 parse_texture_color_space_v2(std::string_view value) {
+    if (value == "srgb") {
+        return TextureColorSpaceV2::srgb;
+    }
+    if (value == "scene_linear") {
+        return TextureColorSpaceV2::scene_linear;
+    }
+    if (value == "linear_data") {
+        return TextureColorSpaceV2::linear_data;
+    }
+    throw std::invalid_argument("texture source v2 color space is unsupported");
+}
+
+std::string_view texture_sampler_class_name_v2(TextureSamplerClassV2 sampler_class) noexcept {
+    switch (sampler_class) {
+    case TextureSamplerClassV2::color:
+        return "color";
+    case TextureSamplerClassV2::normal:
+        return "normal";
+    case TextureSamplerClassV2::data:
+        return "data";
+    case TextureSamplerClassV2::environment_radiance:
+        return "environment_radiance";
+    case TextureSamplerClassV2::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TextureSamplerClassV2 parse_texture_sampler_class_v2(std::string_view value) {
+    if (value == "color") {
+        return TextureSamplerClassV2::color;
+    }
+    if (value == "normal") {
+        return TextureSamplerClassV2::normal;
+    }
+    if (value == "data") {
+        return TextureSamplerClassV2::data;
+    }
+    if (value == "environment_radiance") {
+        return TextureSamplerClassV2::environment_radiance;
+    }
+    throw std::invalid_argument("texture source v2 sampler class is unsupported");
+}
+
+std::string_view texture_pixel_encoding_name_v2(TexturePixelEncodingV2 encoding) noexcept {
+    switch (encoding) {
+    case TexturePixelEncodingV2::uint8_unorm:
+        return "uint8_unorm";
+    case TexturePixelEncodingV2::float16:
+        return "float16";
+    case TexturePixelEncodingV2::float32:
+        return "float32";
+    case TexturePixelEncodingV2::basis_etc1s:
+        return "basis_etc1s";
+    case TexturePixelEncodingV2::basis_uastc:
+        return "basis_uastc";
+    case TexturePixelEncodingV2::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TexturePixelEncodingV2 parse_texture_pixel_encoding_v2(std::string_view value) {
+    if (value == "uint8_unorm") {
+        return TexturePixelEncodingV2::uint8_unorm;
+    }
+    if (value == "float16") {
+        return TexturePixelEncodingV2::float16;
+    }
+    if (value == "float32") {
+        return TexturePixelEncodingV2::float32;
+    }
+    if (value == "basis_etc1s") {
+        return TexturePixelEncodingV2::basis_etc1s;
+    }
+    if (value == "basis_uastc") {
+        return TexturePixelEncodingV2::basis_uastc;
+    }
+    throw std::invalid_argument("texture source v2 pixel encoding is unsupported");
+}
+
+std::string_view texture_compression_kind_name_v2(TextureCompressionKindV2 compression) noexcept {
+    switch (compression) {
+    case TextureCompressionKindV2::none:
+        return "none";
+    case TextureCompressionKindV2::basis_lz:
+        return "basis_lz";
+    case TextureCompressionKindV2::uastc:
+        return "uastc";
+    case TextureCompressionKindV2::bc6h:
+        return "bc6h";
+    case TextureCompressionKindV2::bc7:
+        return "bc7";
+    case TextureCompressionKindV2::astc_4x4:
+        return "astc_4x4";
+    case TextureCompressionKindV2::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TextureCompressionKindV2 parse_texture_compression_kind_v2(std::string_view value) {
+    if (value == "none") {
+        return TextureCompressionKindV2::none;
+    }
+    if (value == "basis_lz") {
+        return TextureCompressionKindV2::basis_lz;
+    }
+    if (value == "uastc") {
+        return TextureCompressionKindV2::uastc;
+    }
+    if (value == "bc6h") {
+        return TextureCompressionKindV2::bc6h;
+    }
+    if (value == "bc7") {
+        return TextureCompressionKindV2::bc7;
+    }
+    if (value == "astc_4x4") {
+        return TextureCompressionKindV2::astc_4x4;
+    }
+    throw std::invalid_argument("texture source v2 compression kind is unsupported");
+}
+
+std::string_view texture_cook_backend_name_v1(TextureCookBackendV1 backend) noexcept {
+    switch (backend) {
+    case TextureCookBackendV1::d3d12:
+        return "d3d12";
+    case TextureCookBackendV1::vulkan:
+        return "vulkan";
+    case TextureCookBackendV1::metal_macos:
+        return "metal_macos";
+    case TextureCookBackendV1::vulkan_android:
+        return "vulkan_android";
+    case TextureCookBackendV1::metal_ios:
+        return "metal_ios";
+    case TextureCookBackendV1::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TextureCookBackendV1 parse_texture_cook_backend_v1(std::string_view value) {
+    if (value == "d3d12") {
+        return TextureCookBackendV1::d3d12;
+    }
+    if (value == "vulkan") {
+        return TextureCookBackendV1::vulkan;
+    }
+    if (value == "metal_macos") {
+        return TextureCookBackendV1::metal_macos;
+    }
+    if (value == "vulkan_android") {
+        return TextureCookBackendV1::vulkan_android;
+    }
+    if (value == "metal_ios") {
+        return TextureCookBackendV1::metal_ios;
+    }
+    throw std::invalid_argument("texture cook backend is unsupported");
+}
+
+std::string_view texture_cook_transcode_kind_name_v1(TextureCookTranscodeKindV1 transcode) noexcept {
+    switch (transcode) {
+    case TextureCookTranscodeKindV1::not_required:
+        return "not_required";
+    case TextureCookTranscodeKindV1::offline_policy:
+        return "offline_policy";
+    case TextureCookTranscodeKindV1::basis_transcode_policy:
+        return "basis_transcode_policy";
+    case TextureCookTranscodeKindV1::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+TextureCookTranscodeKindV1 parse_texture_cook_transcode_kind_v1(std::string_view value) {
+    if (value == "not_required") {
+        return TextureCookTranscodeKindV1::not_required;
+    }
+    if (value == "offline_policy") {
+        return TextureCookTranscodeKindV1::offline_policy;
+    }
+    if (value == "basis_transcode_policy") {
+        return TextureCookTranscodeKindV1::basis_transcode_policy;
+    }
+    throw std::invalid_argument("texture cook transcode kind is unsupported");
 }
 
 std::string_view audio_source_sample_format_name(AudioSourceSampleFormat sample_format) noexcept {
@@ -687,6 +1158,206 @@ TextureSourceDocument deserialize_texture_source_document(std::string_view text)
     };
     if (!is_valid_texture_source_document(document)) {
         throw std::invalid_argument("texture source document is invalid");
+    }
+    return document;
+}
+
+std::string serialize_texture_source_document_v2(const TextureSourceDocumentV2& document) {
+    if (!is_valid_texture_source_document_v2(document)) {
+        throw std::invalid_argument("texture source v2 document is invalid");
+    }
+    std::ostringstream output;
+    output << "format=" << texture_source_format_v2 << '\n';
+    output << "texture.source_path=" << document.source_path << '\n';
+    output << "texture.source_hash=" << document.source_hash << '\n';
+    output << "texture.provenance_id=" << document.provenance_id << '\n';
+    output << "texture.license_id=" << document.license_id << '\n';
+    output << "texture.source_kind=" << texture_source_kind_name_v2(document.source_kind) << '\n';
+    output << "texture.width=" << document.width << '\n';
+    output << "texture.height=" << document.height << '\n';
+    output << "texture.color_space=" << texture_color_space_name_v2(document.color_space) << '\n';
+    output << "texture.sampler_class=" << texture_sampler_class_name_v2(document.sampler_class) << '\n';
+    if (document.source_kind == TextureSourceKindV2::openexr) {
+        output << "openexr.data_window=" << texture_window_text(document.openexr.data_window) << '\n';
+        output << "openexr.display_window=" << texture_window_text(document.openexr.display_window) << '\n';
+        output << "openexr.channel_list=" << document.openexr.channel_list << '\n';
+        output << "openexr.pixel_encoding=" << texture_pixel_encoding_name_v2(document.openexr.pixel_encoding) << '\n';
+        output << "openexr.channel_count=" << document.openexr.channel_count << '\n';
+        output << "openexr.chromaticities_recorded=" << bool_text(document.openexr.chromaticities_recorded) << '\n';
+        output << "openexr.scene_linear_intent=" << bool_text(document.openexr.scene_linear_intent) << '\n';
+        output << "openexr.multipart=" << bool_text(document.openexr.multipart) << '\n';
+        output << "openexr.deep=" << bool_text(document.openexr.deep) << '\n';
+        output << "openexr.tiled=" << bool_text(document.openexr.tiled) << '\n';
+    } else if (document.source_kind == TextureSourceKindV2::ktx2_basis) {
+        output << "ktx2.vk_format=" << document.ktx2_basis.vk_format << '\n';
+        output << "ktx2.level_count=" << document.ktx2_basis.level_count << '\n';
+        output << "ktx2.layer_count=" << document.ktx2_basis.layer_count << '\n';
+        output << "ktx2.face_count=" << document.ktx2_basis.face_count << '\n';
+        output << "ktx2.supercompression=" << texture_compression_kind_name_v2(document.ktx2_basis.supercompression)
+               << '\n';
+        output << "ktx2.basis_codec=" << texture_pixel_encoding_name_v2(document.ktx2_basis.basis_codec) << '\n';
+        output << "ktx2.requires_transcoding=" << bool_text(document.ktx2_basis.requires_transcoding) << '\n';
+    }
+    return output.str();
+}
+
+TextureSourceDocumentV2 deserialize_texture_source_document_v2(std::string_view text) {
+    const auto values = parse_key_values(text, "texture source v2");
+    const auto& format = required_value(values, "format", "texture source v2");
+    if (format == texture_source_format) {
+        throw std::invalid_argument("texture source v2 rejects legacy GameEngine.TextureSource.v1");
+    }
+    if (format != texture_source_format_v2) {
+        throw std::invalid_argument("texture source v2 format is unsupported");
+    }
+
+    TextureSourceDocumentV2 document{
+        .source_path = required_value(values, "texture.source_path", "texture source v2"),
+        .source_hash = required_value(values, "texture.source_hash", "texture source v2"),
+        .provenance_id = required_value(values, "texture.provenance_id", "texture source v2"),
+        .license_id = required_value(values, "texture.license_id", "texture source v2"),
+        .source_kind = parse_texture_source_kind_v2(required_value(values, "texture.source_kind", "texture source v2")),
+        .width = parse_u32(required_value(values, "texture.width", "texture source v2"), "texture source v2"),
+        .height = parse_u32(required_value(values, "texture.height", "texture source v2"), "texture source v2"),
+        .color_space = parse_texture_color_space_v2(required_value(values, "texture.color_space", "texture source v2")),
+        .sampler_class =
+            parse_texture_sampler_class_v2(required_value(values, "texture.sampler_class", "texture source v2")),
+        .openexr = {},
+        .ktx2_basis = {},
+    };
+
+    if (document.source_kind == TextureSourceKindV2::openexr) {
+        document.openexr = TextureOpenExrSourceReviewV2{
+            .data_window = parse_texture_window(required_value(values, "openexr.data_window", "texture source v2"),
+                                                "texture source v2"),
+            .display_window = parse_texture_window(
+                required_value(values, "openexr.display_window", "texture source v2"), "texture source v2"),
+            .channel_list = required_value(values, "openexr.channel_list", "texture source v2"),
+            .pixel_encoding =
+                parse_texture_pixel_encoding_v2(required_value(values, "openexr.pixel_encoding", "texture source v2")),
+            .channel_count =
+                parse_u32(required_value(values, "openexr.channel_count", "texture source v2"), "texture source v2"),
+            .chromaticities_recorded = parse_bool(
+                required_value(values, "openexr.chromaticities_recorded", "texture source v2"), "texture source v2"),
+            .scene_linear_intent = parse_bool(
+                required_value(values, "openexr.scene_linear_intent", "texture source v2"), "texture source v2"),
+            .multipart =
+                parse_bool(required_value(values, "openexr.multipart", "texture source v2"), "texture source v2"),
+            .deep = parse_bool(required_value(values, "openexr.deep", "texture source v2"), "texture source v2"),
+            .tiled = parse_bool(required_value(values, "openexr.tiled", "texture source v2"), "texture source v2"),
+        };
+    } else if (document.source_kind == TextureSourceKindV2::ktx2_basis) {
+        document.ktx2_basis = TextureKtx2BasisSourceReviewV2{
+            .vk_format = required_value(values, "ktx2.vk_format", "texture source v2"),
+            .level_count =
+                parse_u32(required_value(values, "ktx2.level_count", "texture source v2"), "texture source v2"),
+            .layer_count =
+                parse_u32(required_value(values, "ktx2.layer_count", "texture source v2"), "texture source v2"),
+            .face_count =
+                parse_u32(required_value(values, "ktx2.face_count", "texture source v2"), "texture source v2"),
+            .supercompression =
+                parse_texture_compression_kind_v2(required_value(values, "ktx2.supercompression", "texture source v2")),
+            .basis_codec =
+                parse_texture_pixel_encoding_v2(required_value(values, "ktx2.basis_codec", "texture source v2")),
+            .requires_transcoding = parse_bool(required_value(values, "ktx2.requires_transcoding", "texture source v2"),
+                                               "texture source v2"),
+        };
+    }
+
+    if (!is_valid_texture_source_document_v2(document)) {
+        throw std::invalid_argument("texture source v2 document is invalid");
+    }
+    return document;
+}
+
+std::string serialize_texture_cook_metadata_document_v1(const TextureCookMetadataDocumentV1& document) {
+    if (!is_valid_texture_cook_metadata_document_v1(document)) {
+        throw std::invalid_argument("texture cook metadata v1 document is invalid");
+    }
+    auto decisions = document.backend_decisions;
+    std::ranges::sort(decisions, [](const auto& lhs, const auto& rhs) {
+        return texture_cook_backend_sort_key(lhs.backend) < texture_cook_backend_sort_key(rhs.backend);
+    });
+
+    std::uint32_t unsupported_host_diagnostic_count = 0;
+    for (const auto& decision : decisions) {
+        if (!decision.host_validated || !decision.supported) {
+            ++unsupported_host_diagnostic_count;
+        }
+    }
+
+    std::ostringstream output;
+    output << "format=" << texture_cook_metadata_format_v1 << '\n';
+    output << "source.format=" << texture_source_format_v2 << '\n';
+    output << "source.path=" << document.source.source_path << '\n';
+    output << "source.hash=" << document.source.source_hash << '\n';
+    output << "source.provenance_id=" << document.source.provenance_id << '\n';
+    output << "source.license_id=" << document.source.license_id << '\n';
+    output << "source.kind=" << texture_source_kind_name_v2(document.source.source_kind) << '\n';
+    output << "texture.width=" << document.source.width << '\n';
+    output << "texture.height=" << document.source.height << '\n';
+    output << "texture.color_space=" << texture_color_space_name_v2(document.source.color_space) << '\n';
+    output << "texture.sampler_class=" << texture_sampler_class_name_v2(document.source.sampler_class) << '\n';
+    output << "texture.mip_count=" << texture_source_v2_mip_count(document.source) << '\n';
+    output << "texture.estimated_source_bytes=" << document.estimated_source_bytes << '\n';
+    output << "texture.estimated_decoded_bytes=" << document.estimated_decoded_bytes << '\n';
+    output << "texture.backend_policy_count=" << decisions.size() << '\n';
+    for (std::size_t index = 0; index < decisions.size(); ++index) {
+        const auto& decision = decisions[index];
+        const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
+        output << prefix << "backend=" << texture_cook_backend_name_v1(decision.backend) << '\n';
+        output << prefix << "device_format=" << decision.device_format << '\n';
+        output << prefix << "compression=" << texture_compression_kind_name_v2(decision.compression) << '\n';
+        output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision.transcode) << '\n';
+        output << prefix << "estimated_gpu_bytes=" << decision.estimated_gpu_bytes << '\n';
+        output << prefix << "supported=" << bool_text(decision.supported) << '\n';
+        output << prefix << "host_validated=" << bool_text(decision.host_validated) << '\n';
+        if (!decision.diagnostic.empty()) {
+            output << prefix << "diagnostic=" << decision.diagnostic << '\n';
+        }
+    }
+    output << "texture.unsupported_host_diagnostic_count=" << unsupported_host_diagnostic_count << '\n';
+    return output.str();
+}
+
+std::string serialize_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document) {
+    if (!is_valid_environment_asset_source_document_v1(document)) {
+        throw std::invalid_argument("environment asset source v1 document is invalid");
+    }
+    std::ostringstream output;
+    output << "format=" << environment_asset_source_format_v1 << '\n';
+    output << "environment.profile_source_path=" << document.environment_profile_source_path << '\n';
+    output << "environment.radiance_texture_source_path=" << document.radiance_texture_source_path << '\n';
+    output << "environment.provenance_id=" << document.provenance_id << '\n';
+    output << "environment.license_id=" << document.license_id << '\n';
+    output << "environment.requires_scene_linear_radiance=" << bool_text(document.requires_scene_linear_radiance)
+           << '\n';
+    output << "environment.texture_source_v2_required=" << bool_text(document.texture_source_v2_required) << '\n';
+    return output.str();
+}
+
+EnvironmentAssetSourceDocumentV1 deserialize_environment_asset_source_document_v1(std::string_view text) {
+    const auto values = parse_key_values(text, "environment asset source v1");
+    if (required_value(values, "format", "environment asset source v1") != environment_asset_source_format_v1) {
+        throw std::invalid_argument("environment asset source v1 format is unsupported");
+    }
+
+    EnvironmentAssetSourceDocumentV1 document{
+        .environment_profile_source_path =
+            required_value(values, "environment.profile_source_path", "environment asset source v1"),
+        .radiance_texture_source_path =
+            required_value(values, "environment.radiance_texture_source_path", "environment asset source v1"),
+        .provenance_id = required_value(values, "environment.provenance_id", "environment asset source v1"),
+        .license_id = required_value(values, "environment.license_id", "environment asset source v1"),
+        .requires_scene_linear_radiance = parse_bool(
+            required_value(values, "environment.requires_scene_linear_radiance", "environment asset source v1"),
+            "environment asset source v1"),
+        .texture_source_v2_required =
+            parse_bool(required_value(values, "environment.texture_source_v2_required", "environment asset source v1"),
+                       "environment asset source v1"),
+    };
+    if (!is_valid_environment_asset_source_document_v1(document)) {
+        throw std::invalid_argument("environment asset source v1 document is invalid");
     }
     return document;
 }

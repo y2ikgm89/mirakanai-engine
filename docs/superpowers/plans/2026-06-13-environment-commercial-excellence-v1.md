@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-commercial-excellence-v1`
 
-**Status:** Active. Phase 0 intentionally updates `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composes `engine/agent/manifest.json`, and records the registry/docs pointer only; it does not claim strict Vulkan aggregate readiness, Metal host aggregate readiness, backend parity, all-platform readiness, broad optimization, OpenEXR/KTX/Basis asset-pipeline readiness, AAA preset-library readiness, physical weather simulation readiness, or artist-workflow readiness.
+**Status:** Active. Phase 0 selected the milestone, Phase 1 added the readiness taxonomy, Phase 2 added optional OpenEXR dependency/legal/bootstrap gates, and Phase 3 slice 1 adds descriptor-level asset/cook metadata contracts only. This does not claim strict Vulkan aggregate readiness, Metal host aggregate readiness, backend parity, all-platform readiness, broad optimization, OpenEXR/KTX/Basis asset-pipeline readiness, AAA preset-library readiness, physical weather simulation readiness, or artist-workflow readiness.
 
 **Goal:** Promote the completed selected D3D12-primary environment aggregate into a commercial environment capability set with strict Vulkan aggregate readiness, Apple-host Metal aggregate readiness, backend parity, exact all-platform readiness rows, measured broad optimization evidence, a licensed AAA preset asset library, OpenEXR/KTX/Basis production asset pipeline, physically modeled weather simulation, and advanced artist workflow support. Every claim must be backed by backend-local package-visible counters, validation recipes, official-source constraints, dependency/legal records, and hosted or host-gated evidence. No broad claim may be inferred from another backend, host, sample, asset, or adjacent row.
 
@@ -222,14 +222,21 @@ Phase 2 implementation notes:
 - `games/sample_desktop_runtime_game/runtime/assets/`
 - `games/sample_desktop_runtime_game/game.agent.json`
 
-- [ ] Add clean-break source asset descriptors for `GameEngine.TextureSource.v2` and `GameEngine.EnvironmentAssetSource.v1`.
-- [ ] Reject legacy descriptors explicitly with diagnostics instead of compatibility parsing.
+- [x] Add clean-break source asset descriptors for `GameEngine.TextureSource.v2` and `GameEngine.EnvironmentAssetSource.v1`.
+- [x] Reject legacy descriptors explicitly with diagnostics instead of compatibility parsing.
 - [ ] For OpenEXR, validate data window, display window, channel list, pixel type, multipart/deep/tiled flags, color metadata, and scene-linear intent.
 - [ ] For KTX2/Basis, validate container metadata, levels, layers, faces, supercompression, Basis requirement, and intended sampler class.
 - [ ] Add device/backend format-selection policy rows for D3D12, Vulkan, Metal, Android Vulkan, and iOS Metal.
 - [ ] Cook deterministic `.geasset` metadata with source hash, license/provenance id, color space, compression/transcoding choice, mip count, memory estimate, and unsupported-host diagnostics.
 - [ ] Add package smokes proving selected EXR and KTX2/Basis assets can be reviewed, cooked, installed, and referenced by environment packages.
 - [ ] Run optional dependency bootstrap validation, focused asset tests, package smoke, and full `tools/validate.ps1` if C++ runtime/build/public contracts changed.
+
+Phase 3 slice 1 implementation notes:
+
+- `MK_assets` now exposes clean-break value contracts for `TextureSourceDocumentV2`, `EnvironmentAssetSourceDocumentV1`, `TextureCookMetadataDocumentV1`, backend policy rows, and deterministic serializers for `GameEngine.TextureSource.v2`, `GameEngine.EnvironmentAssetSource.v1`, and `GameEngine.CookedTextureMetadata.v1`.
+- The slice validates descriptor-level OpenEXR scene-linear intent, data/display windows, channel metadata, pixel encoding, multipart/deep exclusion, chromaticity recording, and KTX2/Basis level/layer/face/supercompression/transcode intent. It does not read EXR/KTX binaries, invoke OpenEXR or KTX tools, transcode Basis data, or write cooked payload bytes.
+- Cook metadata rows serialize D3D12, Vulkan, macOS Metal, Android Vulkan, and iOS Metal format policies with support, host-validation, estimated GPU byte, and diagnostic fields. These are policy metadata rows only; they do not promote backend readiness, GPU upload readiness, platform readiness, or `environment_asset_pipeline_openexr_ktx_basis_ready`.
+- Focused TDD evidence: `MK_asset_environment_source_pipeline_tests` first failed to compile before the new public contracts existed, then passed after implementation with `tools/cmake.ps1 --build --preset dev --target MK_asset_environment_source_pipeline_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_environment_source_pipeline_tests`.
 
 **Done when:** The selected asset pipeline imports and cooks HDR and compressed texture assets with deterministic metadata, legal provenance, backend format decisions, and package evidence.
 
