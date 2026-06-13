@@ -16,11 +16,96 @@ enum class TextureSourcePixelFormat : std::uint8_t { unknown, r8_unorm, rg8_unor
 
 enum class AudioSourceSampleFormat : std::uint8_t { unknown, pcm16, float32 };
 
+enum class TextureSourceKindV2 : std::uint8_t { unknown, openexr, ktx2_basis };
+
+enum class TextureColorSpaceV2 : std::uint8_t { unknown, srgb, scene_linear, linear_data };
+
+enum class TextureSamplerClassV2 : std::uint8_t { unknown, color, normal, data, environment_radiance };
+
+enum class TexturePixelEncodingV2 : std::uint8_t { unknown, uint8_unorm, float16, float32, basis_etc1s, basis_uastc };
+
+enum class TextureCompressionKindV2 : std::uint8_t { unknown, none, basis_lz, uastc, bc6h, bc7, astc_4x4 };
+
+enum class TextureCookBackendV1 : std::uint8_t { unknown, d3d12, vulkan, metal_macos, vulkan_android, metal_ios };
+
+enum class TextureCookTranscodeKindV1 : std::uint8_t { unknown, not_required, offline_policy, basis_transcode_policy };
+
 struct TextureSourceDocument {
     std::uint32_t width{0};
     std::uint32_t height{0};
     TextureSourcePixelFormat pixel_format{TextureSourcePixelFormat::unknown};
     std::vector<std::uint8_t> bytes;
+};
+
+struct TextureSourceWindowV2 {
+    std::int32_t min_x{0};
+    std::int32_t min_y{0};
+    std::int32_t max_x{-1};
+    std::int32_t max_y{-1};
+};
+
+struct TextureOpenExrSourceReviewV2 {
+    TextureSourceWindowV2 data_window;
+    TextureSourceWindowV2 display_window;
+    std::string channel_list;
+    TexturePixelEncodingV2 pixel_encoding{TexturePixelEncodingV2::unknown};
+    std::uint32_t channel_count{0};
+    bool chromaticities_recorded{false};
+    bool scene_linear_intent{false};
+    bool multipart{false};
+    bool deep{false};
+    bool tiled{false};
+};
+
+struct TextureKtx2BasisSourceReviewV2 {
+    std::string vk_format;
+    std::uint32_t level_count{0};
+    std::uint32_t layer_count{0};
+    std::uint32_t face_count{0};
+    TextureCompressionKindV2 supercompression{TextureCompressionKindV2::unknown};
+    TexturePixelEncodingV2 basis_codec{TexturePixelEncodingV2::unknown};
+    bool requires_transcoding{false};
+};
+
+struct TextureSourceDocumentV2 {
+    std::string source_path;
+    std::string source_hash;
+    std::string provenance_id;
+    std::string license_id;
+    TextureSourceKindV2 source_kind{TextureSourceKindV2::unknown};
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    TextureColorSpaceV2 color_space{TextureColorSpaceV2::unknown};
+    TextureSamplerClassV2 sampler_class{TextureSamplerClassV2::unknown};
+    TextureOpenExrSourceReviewV2 openexr;
+    TextureKtx2BasisSourceReviewV2 ktx2_basis;
+};
+
+struct TextureCookBackendDecisionV1 {
+    TextureCookBackendV1 backend{TextureCookBackendV1::unknown};
+    std::string device_format;
+    TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
+    TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
+    std::uint64_t estimated_gpu_bytes{0};
+    bool supported{false};
+    bool host_validated{false};
+    std::string diagnostic;
+};
+
+struct TextureCookMetadataDocumentV1 {
+    TextureSourceDocumentV2 source;
+    std::vector<TextureCookBackendDecisionV1> backend_decisions;
+    std::uint64_t estimated_source_bytes{0};
+    std::uint64_t estimated_decoded_bytes{0};
+};
+
+struct EnvironmentAssetSourceDocumentV1 {
+    std::string environment_profile_source_path;
+    std::string radiance_texture_source_path;
+    std::string provenance_id;
+    std::string license_id;
+    bool requires_scene_linear_radiance{false};
+    bool texture_source_v2_required{false};
 };
 
 struct MeshSourceDocument {
@@ -122,6 +207,10 @@ struct MorphMeshCpuSourceDocument {
 };
 
 [[nodiscard]] bool is_valid_texture_source_document(const TextureSourceDocument& document) noexcept;
+[[nodiscard]] bool is_valid_texture_source_document_v2(const TextureSourceDocumentV2& document) noexcept;
+[[nodiscard]] bool is_valid_texture_cook_metadata_document_v1(const TextureCookMetadataDocumentV1& document) noexcept;
+[[nodiscard]] bool
+is_valid_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document) noexcept;
 [[nodiscard]] bool is_valid_mesh_source_document(const MeshSourceDocument& document) noexcept;
 
 /// Interleaved vertex stride for `MeshSourceDocument` payloads (`nullopt` when flags are inconsistent).
@@ -140,6 +229,21 @@ is_valid_animation_transform_binding_source_document(const AnimationTransformBin
 [[nodiscard]] std::uint32_t texture_source_bytes_per_pixel(TextureSourcePixelFormat pixel_format);
 [[nodiscard]] std::uint64_t texture_source_uncompressed_bytes(const TextureSourceDocument& document);
 
+[[nodiscard]] std::string_view texture_source_kind_name_v2(TextureSourceKindV2 kind) noexcept;
+[[nodiscard]] TextureSourceKindV2 parse_texture_source_kind_v2(std::string_view value);
+[[nodiscard]] std::string_view texture_color_space_name_v2(TextureColorSpaceV2 color_space) noexcept;
+[[nodiscard]] TextureColorSpaceV2 parse_texture_color_space_v2(std::string_view value);
+[[nodiscard]] std::string_view texture_sampler_class_name_v2(TextureSamplerClassV2 sampler_class) noexcept;
+[[nodiscard]] TextureSamplerClassV2 parse_texture_sampler_class_v2(std::string_view value);
+[[nodiscard]] std::string_view texture_pixel_encoding_name_v2(TexturePixelEncodingV2 encoding) noexcept;
+[[nodiscard]] TexturePixelEncodingV2 parse_texture_pixel_encoding_v2(std::string_view value);
+[[nodiscard]] std::string_view texture_compression_kind_name_v2(TextureCompressionKindV2 compression) noexcept;
+[[nodiscard]] TextureCompressionKindV2 parse_texture_compression_kind_v2(std::string_view value);
+[[nodiscard]] std::string_view texture_cook_backend_name_v1(TextureCookBackendV1 backend) noexcept;
+[[nodiscard]] TextureCookBackendV1 parse_texture_cook_backend_v1(std::string_view value);
+[[nodiscard]] std::string_view texture_cook_transcode_kind_name_v1(TextureCookTranscodeKindV1 transcode) noexcept;
+[[nodiscard]] TextureCookTranscodeKindV1 parse_texture_cook_transcode_kind_v1(std::string_view value);
+
 [[nodiscard]] std::string_view audio_source_sample_format_name(AudioSourceSampleFormat sample_format) noexcept;
 [[nodiscard]] AudioSourceSampleFormat parse_audio_source_sample_format(std::string_view value);
 [[nodiscard]] std::uint32_t audio_source_bytes_per_sample(AudioSourceSampleFormat sample_format);
@@ -151,6 +255,12 @@ animation_transform_binding_component_name(AnimationTransformBindingComponent co
 
 [[nodiscard]] std::string serialize_texture_source_document(const TextureSourceDocument& document);
 [[nodiscard]] TextureSourceDocument deserialize_texture_source_document(std::string_view text);
+[[nodiscard]] std::string serialize_texture_source_document_v2(const TextureSourceDocumentV2& document);
+[[nodiscard]] TextureSourceDocumentV2 deserialize_texture_source_document_v2(std::string_view text);
+[[nodiscard]] std::string serialize_texture_cook_metadata_document_v1(const TextureCookMetadataDocumentV1& document);
+[[nodiscard]] std::string
+serialize_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document);
+[[nodiscard]] EnvironmentAssetSourceDocumentV1 deserialize_environment_asset_source_document_v1(std::string_view text);
 
 [[nodiscard]] std::string serialize_mesh_source_document(const MeshSourceDocument& document);
 [[nodiscard]] MeshSourceDocument deserialize_mesh_source_document(std::string_view text);
