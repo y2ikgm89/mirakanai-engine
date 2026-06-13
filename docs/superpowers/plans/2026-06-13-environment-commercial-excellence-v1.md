@@ -174,22 +174,33 @@ Phase 1 implementation notes:
 **Files:**
 
 - `vcpkg.json`
+- `engine/tools/CMakeLists.txt`
 - `tools/bootstrap-deps.ps1`
 - `CMakePresets.json` only if a repository-supported optional preset is required
 - `docs/dependencies.md`
 - `docs/legal-and-licensing.md`
 - `THIRD_PARTY_NOTICES.md`
 - `docs/testing.md`
+- `tools/check-dependency-policy.ps1`
 - `tools/check-ai-integration-030-runtime-rendering.ps1`
 - `tools/check-json-contracts-030-tooling-contracts.ps1`
 
-- [ ] Use `license-audit` before selecting package names or redistributable assets.
-- [ ] Add optional vcpkg manifest features for OpenEXR and KTX/Basis support, or record an explicit official-source reason if a dependency is not available through vcpkg.
-- [ ] Keep CMake configure side-effect-free with `VCPKG_MANIFEST_INSTALL=OFF`; dependency installation remains only in `tools/bootstrap-deps.ps1`.
-- [ ] Record license, version, registry baseline, notice, redistribution, patent/compression, and binary-distribution implications.
-- [ ] Add validation that default builds do not require optional codec packages.
-- [ ] Add validation that selected optional codec builds fail with a clear missing-dependency blocker when dependencies are not bootstrapped.
-- [ ] Run dependency/legal/static checks and a focused default configure/build lane.
+- [x] Use `license-audit` before selecting package names or redistributable assets.
+- [x] Add optional vcpkg manifest features for OpenEXR and KTX/Basis support, or record an explicit official-source reason if a dependency is not available through vcpkg.
+- [x] Keep CMake configure side-effect-free with `VCPKG_MANIFEST_INSTALL=OFF`; dependency installation remains only in `tools/bootstrap-deps.ps1`.
+- [x] Record license, version, registry baseline, notice, redistribution, patent/compression, and binary-distribution implications.
+- [x] Add validation that default builds do not require optional codec packages.
+- [x] Add validation that selected optional codec builds fail with a clear missing-dependency blocker when dependencies are not bootstrapped.
+- [x] Run dependency/legal/static checks and a focused default configure/build lane.
+
+Phase 2 implementation notes:
+
+- `vcpkg.json` now keeps default `dependencies` empty and adds `openexr` to the existing optional `asset-importers` feature alongside libspng, fastgltf, KTX Software, and miniaudio.
+- `engine/tools/CMakeLists.txt` requires `find_package(OpenEXR CONFIG REQUIRED)` only when `MK_ENABLE_ASSET_IMPORTERS=ON`; it does not link OpenEXR into public or installed Mirakanai package config targets yet.
+- `THIRD_PARTY_NOTICES.md`, `docs/dependencies.md`, and `docs/legal-and-licensing.md` record OpenEXR 3.4.12, Imath 3.2.2, libdeflate 1.25, and OpenJPH 0.27.2 port 1 from vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476`.
+- `tools/check-dependency-policy.ps1` now fails closed when the OpenEXR dependency, docs, legal policy, notices, or CMake optional configure gate drift.
+- Local validation passed on 2026-06-13: `tools/check-dependency-policy.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-text-format.ps1`, `tools/check-agents.ps1`, `git diff --check`, `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev`, and `tools/ctest.ps1 --preset dev --output-on-failure`.
+- `tools/bootstrap-deps.ps1` was attempted locally but the session command policy rejected it with approval required while approvals were unavailable. Existing `vcpkg_installed` did not contain OpenEXR, and `tools/build-asset-importers.ps1` failed at optional configure with a missing bootstrapped package blocker before any CMake-side package installation.
 
 **Done when:** Optional dependencies are legally recorded, bootstrap-owned, default-off, fail-closed, and documented without importing or cooking assets yet.
 

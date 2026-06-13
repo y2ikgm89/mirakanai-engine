@@ -38,7 +38,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 
 The repository PowerShell wrappers configure vcpkg through official process environment variables before optional dependency steps. `VCPKG_DOWNLOADS` points at `out/vcpkg/downloads`, `VCPKG_DEFAULT_BINARY_CACHE` points at `out/vcpkg/binary-cache`, and `VCPKG_BINARY_SOURCES` is set to a file provider over that binary cache. This keeps optional dependency downloads and binary packages out of user-global locations and avoids relying on sandbox-inherited cache state.
 
-`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
+`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. The `asset-importers` feature owns the optional PNG, glTF, OpenEXR, KTX2/Basis, and common-audio package set. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
 
 GitHub Actions restores the gitignored `external/vcpkg` tool checkout before calling `bootstrap-deps`, then checks out the `vcpkg.json` `builtin-baseline` commit. Local hosts must still provide or restore `external/vcpkg` before running optional vcpkg-backed lanes.
 
@@ -86,10 +86,11 @@ Optional **same-build** loading of an editor game module driver uses the Windows
 
 - `libspng` for PNG decoding
 - `fastgltf` for glTF 2.0 parsing
+- `openexr` for OpenEXR HDR scene-linear source review and the future EXR importer adapter
 - `ktx` / KTX Software for KTX2/Basis texture container review and offline transcode-target planning
 - `miniaudio` for WAV/MP3/FLAC audio decoding
 
-This feature is linked only when `MK_ENABLE_ASSET_IMPORTERS=ON` through the `asset-importers` CMake preset. `MK_tools` owns the optional adapters and converts source files into first-party source documents before cooked artifacts are written. Audited PNG bytes decode to RGBA8 `TextureSourceDocument` through `mirakana::decode_audited_png_rgba8` (`mirakana/tools/source_image_decode.hpp`), shared with `PngTextureExternalAssetImporter` and the optional `PngImageDecodingAdapter` bridge for `mirakana::ui::IImageDecodingAdapter`. KTX Software is selected only as an optional dependency/legal record for reviewed KTX2/Basis container validation and offline transcode-target planning evidence; the current KTX2/Basis package smoke does not load KTX files, run Basis transcoding/compression tools, upload GPU textures, or expose KTX/native handles. The dependency-free packed UI atlas bridge (`author_packed_ui_atlas_from_decoded_images`, `plan_packed_ui_atlas_package_update`) consumes already validated `ImageDecodeResult` rows and emits first-party `GameEngine.CookedTexture.v1` plus `GameEngine.UiAtlas.v1` package artifacts without adding a new dependency. The dependency-free glyph atlas bridge (`author_packed_ui_glyph_atlas_from_rasterized_glyphs`, `plan_packed_ui_glyph_atlas_package_update`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`) consumes already-rasterized RGBA8 glyph pixels and emits first-party cooked glyph atlas package metadata without adding a font, shaping, rasterization, platform SDK, or renderer upload dependency. Runtime/game code must consume cooked assets and must not parse external source formats directly.
+This feature is installed only by `tools/bootstrap-deps.ps1`; current optional adapter targets find or link external packages only when `MK_ENABLE_ASSET_IMPORTERS=ON` through the `asset-importers` CMake preset. `MK_tools` owns the optional adapters and converts source files into first-party source documents before cooked artifacts are written. Audited PNG bytes decode to RGBA8 `TextureSourceDocument` through `mirakana::decode_audited_png_rgba8` (`mirakana/tools/source_image_decode.hpp`), shared with `PngTextureExternalAssetImporter` and the optional `PngImageDecodingAdapter` bridge for `mirakana::ui::IImageDecodingAdapter`. OpenEXR is selected in this phase as an optional dependency/legal/bootstrap gate for future HDR scene-linear source import; `MK_ENABLE_ASSET_IMPORTERS=ON` now requires `find_package(OpenEXR CONFIG REQUIRED)` so missing bootstrap fails at optional configure with an explicit missing-package blocker. The current repository still does not load EXR files, expose OpenEXR headers or types through public APIs, link OpenEXR from installed Mirakanai package config targets, run OpenEXR tools, or claim `environment_asset_pipeline_openexr_ktx_basis_ready`. KTX Software is selected only as an optional dependency/legal record for reviewed KTX2/Basis container validation and offline transcode-target planning evidence; the current KTX2/Basis package smoke does not load KTX files, run Basis transcoding/compression tools, upload GPU textures, or expose KTX/native handles. The dependency-free packed UI atlas bridge (`author_packed_ui_atlas_from_decoded_images`, `plan_packed_ui_atlas_package_update`) consumes already validated `ImageDecodeResult` rows and emits first-party `GameEngine.CookedTexture.v1` plus `GameEngine.UiAtlas.v1` package artifacts without adding a new dependency. The dependency-free glyph atlas bridge (`author_packed_ui_glyph_atlas_from_rasterized_glyphs`, `plan_packed_ui_glyph_atlas_package_update`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`) consumes already-rasterized RGBA8 glyph pixels and emits first-party cooked glyph atlas package metadata without adding a font, shaping, rasterization, platform SDK, or renderer upload dependency. Runtime/game code must consume cooked assets and must not parse external source formats directly.
 
 Installed SDKs built with `MK_ENABLE_ASSET_IMPORTERS=ON` advertise `Mirakanai_HAS_ASSET_IMPORTERS` in `MirakanaiConfig.cmake` and resolve `SPNG`, `fastgltf`, and `Ktx` before loading exported Mirakanai targets. `miniaudio` remains a private header-only implementation dependency of the optional adapter build.
 
@@ -171,6 +172,10 @@ Validated local package versions:
 | --- | --- | --- |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
+| OpenEXR | 3.4.12 | Optional `asset-importers` dependency/legal/bootstrap gate for future HDR scene-linear EXR source review |
+| Imath | 3.2.2 | Optional `asset-importers` build output through OpenEXR |
+| libdeflate | 1.25 | Optional `asset-importers` build output through OpenEXR |
+| OpenJPH | 0.27.2 port 1 | Optional `asset-importers` build output through OpenEXR |
 | KTX Software | 4.4.2 | Optional `MK_tools` KTX2/Basis texture review dependency/legal evidence |
 | Zstandard | 1.5.7 | Optional `MK_tools` build output through KTX Software |
 | OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
@@ -187,7 +192,7 @@ Validated local package versions:
 | vcpkg-cmake | 2024-04-23 | vcpkg CMake helper |
 | vcpkg-cmake-config | 2024-05-23 | vcpkg CMake config helper |
 
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, OpenEXR/KTX/Basis dependency/legal records remain present, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
 
 ## Official References
 
@@ -198,6 +203,12 @@ Validated local package versions:
 - Text Rendering with Direct2D and DirectWrite: https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-and-directwrite
 - libspng: https://libspng.org/
 - fastgltf: https://github.com/spnda/fastgltf
+- OpenEXR: https://www.openexr.com/
+- OpenEXR technical introduction: https://openexr.com/en/latest/TechnicalIntroduction.html
+- OpenEXR scene linear: https://openexr.com/en/latest/SceneLinear.html
+- Imath: https://github.com/AcademySoftwareFoundation/Imath
+- libdeflate: https://github.com/ebiggers/libdeflate
+- OpenJPH: https://github.com/aous72/OpenJPH
 - KTX Software: https://github.com/KhronosGroup/KTX-Software
 - miniaudio: https://miniaud.io/
 - Jolt Physics: https://github.com/jrouwe/JoltPhysics
@@ -231,6 +242,10 @@ Validated local package versions:
 
 - libspng is BSD-2-Clause.
 - fastgltf is MIT and currently pulls `simdjson` through vcpkg.
+- OpenEXR is BSD-3-Clause and is kept behind the optional `asset-importers` lane as a dependency/legal/bootstrap gate for future HDR scene-linear source import. Its vcpkg `tools` feature is not selected by the repository manifest, and this phase does not claim EXR file loading, OpenEXR tool execution, runtime source parsing, public OpenEXR types, or `environment_asset_pipeline_openexr_ktx_basis_ready`.
+- Imath is BSD-3-Clause and is pulled through OpenEXR.
+- libdeflate is MIT and is pulled through OpenEXR for DEFLATE-related support.
+- OpenJPH is BSD-2-Clause and is pulled through OpenEXR; its vcpkg `tools` feature is not selected by the repository manifest.
 - KTX Software is primarily Apache-2.0 for repository-unique files and ships an upstream `LICENSES/*` bundle including a non-open Ericsson `LicenseRef-ETCSLA` special case recorded by its copyright file; it is kept behind the optional `asset-importers` lane.
 - Zstandard is BSD-3-Clause OR GPL-2.0-only and is pulled through KTX Software.
 - Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.

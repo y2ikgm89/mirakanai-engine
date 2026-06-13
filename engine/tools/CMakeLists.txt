@@ -1,6 +1,7 @@
 if(MK_ENABLE_ASSET_IMPORTERS)
     find_package(SPNG CONFIG REQUIRED)
     find_package(fastgltf CONFIG REQUIRED)
+    find_package(OpenEXR CONFIG REQUIRED)
     find_package(Ktx CONFIG REQUIRED)
     find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h" REQUIRED)
 endif()
