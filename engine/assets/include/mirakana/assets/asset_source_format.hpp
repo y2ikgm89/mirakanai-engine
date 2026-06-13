@@ -99,6 +99,15 @@ struct TextureCookMetadataDocumentV1 {
     std::uint64_t estimated_decoded_bytes{0};
 };
 
+struct EnvironmentTextureGeassetMetadataDocumentV1 {
+    std::string geasset_path;
+    TextureCookMetadataDocumentV1 cook_metadata;
+    std::uint32_t mip_count{0};
+    std::uint64_t max_estimated_gpu_bytes{0};
+    std::uint32_t unsupported_host_diagnostic_count{0};
+    bool metadata_only{true};
+};
+
 struct EnvironmentAssetSourceDocumentV1 {
     std::string environment_profile_source_path;
     std::string radiance_texture_source_path;
@@ -209,6 +218,8 @@ struct MorphMeshCpuSourceDocument {
 [[nodiscard]] bool is_valid_texture_source_document(const TextureSourceDocument& document) noexcept;
 [[nodiscard]] bool is_valid_texture_source_document_v2(const TextureSourceDocumentV2& document) noexcept;
 [[nodiscard]] bool is_valid_texture_cook_metadata_document_v1(const TextureCookMetadataDocumentV1& document) noexcept;
+[[nodiscard]] bool is_valid_environment_texture_geasset_metadata_document_v1(
+    const EnvironmentTextureGeassetMetadataDocumentV1& document) noexcept;
 [[nodiscard]] bool
 is_valid_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document) noexcept;
 [[nodiscard]] bool is_valid_mesh_source_document(const MeshSourceDocument& document) noexcept;
@@ -258,6 +269,8 @@ animation_transform_binding_component_name(AnimationTransformBindingComponent co
 [[nodiscard]] std::string serialize_texture_source_document_v2(const TextureSourceDocumentV2& document);
 [[nodiscard]] TextureSourceDocumentV2 deserialize_texture_source_document_v2(std::string_view text);
 [[nodiscard]] std::string serialize_texture_cook_metadata_document_v1(const TextureCookMetadataDocumentV1& document);
+[[nodiscard]] std::string
+serialize_environment_texture_geasset_metadata_document_v1(const EnvironmentTextureGeassetMetadataDocumentV1& document);
 [[nodiscard]] std::string
 serialize_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document);
 [[nodiscard]] EnvironmentAssetSourceDocumentV1 deserialize_environment_asset_source_document_v1(std::string_view text);

@@ -216,6 +216,44 @@ MK_TEST("texture cook metadata serializes backend policy rows and host diagnosti
     MK_REQUIRE(text.contains("texture.unsupported_host_diagnostic_count=4\n"));
 }
 
+MK_TEST("environment texture geasset metadata serializes deterministic cook provenance") {
+    const mirakana::EnvironmentTextureGeassetMetadataDocumentV1 document{
+        .geasset_path = "runtime/assets/environment/studio.texture.geasset",
+        .cook_metadata =
+            mirakana::TextureCookMetadataDocumentV1{
+                .source = make_openexr_source(),
+                .backend_decisions = make_backend_decisions(),
+                .estimated_source_bytes = 8'388'608,
+                .estimated_decoded_bytes = 12'582'912,
+            },
+        .mip_count = 1,
+        .max_estimated_gpu_bytes = 16'777'216,
+        .unsupported_host_diagnostic_count = 4,
+        .metadata_only = true,
+    };
+
+    MK_REQUIRE(mirakana::is_valid_environment_texture_geasset_metadata_document_v1(document));
+    const auto text = mirakana::serialize_environment_texture_geasset_metadata_document_v1(document);
+
+    MK_REQUIRE(text.starts_with("format=GameEngine.EnvironmentTextureGeassetMetadata.v1\n"));
+    MK_REQUIRE(text.contains("asset.path=runtime/assets/environment/studio.texture.geasset\n"));
+    MK_REQUIRE(text.contains("asset.kind=environment_texture\n"));
+    MK_REQUIRE(text.contains("asset.payload=metadata_only\n"));
+    MK_REQUIRE(text.contains("source.hash=sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff\n"));
+    MK_REQUIRE(text.contains("source.provenance_id=provenance.environment.studio\n"));
+    MK_REQUIRE(text.contains("source.license_id=LicenseRef-Proprietary\n"));
+    MK_REQUIRE(text.contains("texture.color_space=scene_linear\n"));
+    MK_REQUIRE(text.contains("texture.mip_count=1\n"));
+    MK_REQUIRE(text.contains("texture.backend.0.compression=bc6h\n"));
+    MK_REQUIRE(text.contains("texture.backend.0.transcode=offline_policy\n"));
+    MK_REQUIRE(text.contains("texture.max_estimated_gpu_bytes=16777216\n"));
+    MK_REQUIRE(text.contains("texture.unsupported_host_diagnostic_count=4\n"));
+
+    auto invalid = document;
+    invalid.geasset_path = "../studio.texture.geasset";
+    MK_REQUIRE(!mirakana::is_valid_environment_texture_geasset_metadata_document_v1(invalid));
+}
+
 MK_TEST("environment asset source requires texture source v2 radiance provenance") {
     const mirakana::EnvironmentAssetSourceDocumentV1 document{
         .environment_profile_source_path = "source/environment/default_outdoor.geenv",
