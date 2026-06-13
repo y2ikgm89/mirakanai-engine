@@ -299,6 +299,10 @@ $sampleEnvironmentProfileDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-s
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-profile", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentProfileDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-profile-package"
 }
+$sampleEnvironmentReadyAggregateDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-ready-aggregate" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-ready-aggregate", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentReadyAggregateDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-ready-aggregate"
+}
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
 $materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-scene-shaders", "--require-material-graph-authoring")) {

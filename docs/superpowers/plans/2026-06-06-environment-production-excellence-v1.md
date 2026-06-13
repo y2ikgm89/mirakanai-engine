@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-production-excellence-v1`
 
-**Status:** Retained evidence. Superseded as the active selected milestone by `mavg-research-legal-benchmark-baseline-v1` in this branch. Phases 0-8 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution, strict Vulkan physical-sky package, strict Vulkan volumetric-fog renderer execution, strict Vulkan volumetric-cloud renderer execution, and strict Vulkan IBL renderer execution candidates; Phase 6 completed selected Apple-host Metal environment feature evidence through `renderer-metal-apple-host-evidence` with generated `environment_feature_evidence.metallib`, selected `metal_environment_*` counters, seven ready feature rows, and zero native-handle access; Phase 8 completed fail-closed `MK_environment` quality-budget enforcement with `environment_quality_preset`, `environment_quality_budget_violations`, and `environment_quality_budget_broad_optimization_claimed` package counters. Later exact gates remain future environment follow-up and are not active in this MAVG branch.
+**Status:** Retained evidence. Superseded as the active selected milestone by `mavg-research-legal-benchmark-baseline-v1` in this branch. Phases 0-8 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution, strict Vulkan physical-sky package, strict Vulkan volumetric-fog renderer execution, strict Vulkan volumetric-cloud renderer execution, and strict Vulkan IBL renderer execution candidates; Phase 6 completed selected Apple-host Metal environment feature evidence through `renderer-metal-apple-host-evidence` with generated `environment_feature_evidence.metallib`, selected `metal_environment_*` counters, seven ready feature rows, and zero native-handle access; Phase 8 completed fail-closed `MK_environment` quality-budget enforcement with `environment_quality_preset`, `environment_quality_budget_violations`, and `environment_quality_budget_broad_optimization_claimed` package counters. On 2026-06-13, Phase 9 added the selected D3D12 primary `environment_ready` aggregate through `desktop-runtime-sample-game-environment-ready-aggregate`; this is not backend parity, strict Vulkan aggregate readiness, Metal host readiness, broad optimization, snow-by-inference, or all-platform readiness.
 
 **Goal:** Promote the completed environment foundation into a production-grade, backend-evidence-backed environment settings system for sky, atmosphere, fog, volumetrics, clouds, rain, snow, storms, IBL, runtime cubemap capture, local volumes, material weathering, audio cues, editor authoring, quality budgets, and exact `environment_ready` aggregation.
 
@@ -41,12 +41,12 @@ Pre-Phase-0 audit proven state:
 
 Unclaimed by design:
 
-- Broad aggregate `environment_ready`.
+- Backend-parity or all-platform aggregate `environment_ready`.
 - Broad environment backend parity.
 - Broad CPU/GPU/memory optimization.
-- Renderer cubemap upload and runtime cubemap capture.
-- Vulkan/Metal precipitation execution.
-- Vulkan volumetric fog/cloud execution beyond the selected strict package lanes, Metal volumetric fog, and Metal volumetric cloud execution.
+- Broad reusable renderer cubemap upload and runtime cubemap capture outside the selected D3D12/Vulkan IBL renderer-execution lanes.
+- Vulkan precipitation execution beyond the selected strict rain lane and Metal precipitation execution outside the selected Apple-host evidence recipe.
+- Vulkan volumetric fog/cloud execution beyond the selected strict package lanes, Metal volumetric fog outside the selected Apple-host evidence recipe, and Metal volumetric cloud execution outside the selected Apple-host evidence recipe.
 - Metal actual environment readiness without Apple-host execution or the reviewed `renderer-metal-apple-host-evidence` counters.
 - Broad material weathering beyond the selected D3D12 package-visible material wetness/snow accumulation evidence row.
 - Physical endpoint playback execution for weather remains unclaimed; Phase 4 proves only selected `MK_environment` trigger rows consumed by the `MK_audio` mixer/render lane with zero environment-owned device, device IO, or native-handle access.
@@ -60,10 +60,10 @@ Product-scope references:
 
 - Unreal Engine environmental light, fog, clouds, sky, and atmosphere: <https://dev.epicgames.com/documentation/en-us/unreal-engine/environmental-light-with-fog-clouds-sky-and-atmosphere-in-unreal-engine>
 - Unreal Engine Volumetric Cloud component: <https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US>
-- Unreal Engine Sky Atmosphere: <https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere?application_version=4.27>
-- Unity HDRP Volume Profile and Volume Overrides: <https://docs.unity3d.com/ja/Packages/com.unity.render-pipelines.high-definition%4010.5/manual/Volume-Profile.html> and <https://docs.unity3d.com/ja/Packages/com.unity.render-pipelines.high-definition%4010.5/manual/Volume-Components.html>
-- Godot stable Environment and post-processing: <https://docs.godotengine.org/en/stable/learning/features/3d/environment_and_post_processing.html>
-- Godot volumetric fog and fog volumes: <https://docs.godotengine.org/en/latest/tutorials/3d/volumetric_fog.html>
+- Unreal Engine Sky Atmosphere Component: <https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere-component-in-unreal-engine>
+- Unity HDRP Visual Environment and Volume Profile/Overrides: <https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/visual-environment-volume-override-reference.html>, <https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/understand-volumes.html>, and <https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/understand-clouds.html>
+- Godot stable Environment and post-processing: <https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html>
+- Godot stable volumetric fog, fog volumes, and FogVolume: <https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html> and <https://docs.godotengine.org/en/stable/classes/class_fogvolume.html>
 
 Implementation-source references:
 
@@ -89,11 +89,25 @@ Context7 checks performed on 2026-06-06:
 - `/websites/learn_microsoft_en-us` resolved Microsoft Learn but returned broad results; use the Microsoft Learn D3D12 pages listed above as the authoritative D3D12 source.
 - `/websites/developer_apple_cn` resolved Apple Developer docs but returned broad results; use the Apple Developer Metal pages listed above as the authoritative Metal source.
 
+Official-source refresh performed on 2026-06-13 for planning-quality hardening:
+
+- Context7 `/khronosgroup/vulkan-docs` confirmed `VkImageMemoryBarrier2KHR` / `VkDependencyInfoKHR` synchronization2 patterns for attachment-to-shader-read and compute/transfer-to-shader-read transitions, layout validation constraints tied to image usage flags, dynamic-rendering layout constraints, and validation-layer-driven evidence expectations.
+- Context7 `/websites/learn_microsoft_en-us_windows_win32_direct3d12` confirmed D3D12 application-owned resource-state tracking through `ID3D12GraphicsCommandList::ResourceBarrier`, texture upload through upload heaps before shader-readable transitions, descriptor/SRV evidence, fences, and debug-layer/GPU-based-validation requirements.
+- Context7 `/websites/cmake_cmake_help` confirmed `add_custom_command` must declare generated `OUTPUT`, `BYPRODUCTS`, `DEPENDS`, and `VERBATIM`, and that shared generated shader outputs need a single producer custom target to avoid parallel-generation races.
+- Official web checks confirmed Unreal Engine 5.7 Sky Atmosphere keeps physically based atmosphere, time-of-day, two atmospheric directional lights, sky-light capture, height-fog integration, and LUT/sample-budget constraints as product-scope inputs; Unity HDRP 17 Visual Environment/Volumes/Clouds keep sky, clouds, and ambient lighting under Volume/Profile overrides; Godot stable keeps Environment/post-processing and volumetric fog/FogVolume support renderer-scoped with performance/quality constraints; Apple Metal docs keep resource synchronization, texture type, and texture usage proof as Apple-host implementation requirements.
+
+Future Phase 9 source freshness gate:
+
+- Before implementing or claiming Phase 9, re-run Context7 for Vulkan, D3D12, and CMake, then re-open the official Unreal, Unity HDRP, Godot stable, Apple Metal, Microsoft Learn, Khronos, and CMake pages used by the aggregate.
+- Record the exact refresh date, selected library ids or official URLs, and source implications in this plan or its successor before editing code.
+- If official guidance changes an implementation constraint, update the affected docs, manifest fragments, validation recipes, static checks, and non-claims in the same slice.
+- Do not use product-engine docs as implementation source code. Use them only to validate product concepts such as volume/profile authoring, global/local environment composition, sky/cloud/fog separation, quality controls, and renderer-specific support boundaries.
+
 Source implications for this plan:
 
-- Unreal, Unity, and Godot are product-scope references only. They justify a volume/profile/editor-authoring model, but this repository implements first-party contracts.
-- D3D12 evidence must track descriptor heap/table use, resource states, transitions, upload/readback heaps, fences, and debug-layer/GBV diagnostics in backend-private code.
-- Vulkan evidence must use explicit image layouts, synchronization2 barriers, descriptor safe points, SPIR-V validation, validation layers, and strict host/toolchain gates.
+- Unreal, Unity, and Godot are product-scope references only. They justify a volume/profile/editor-authoring model, local/global fog or environment volumes, separated visual sky/cloud and lighting intent, and renderer-specific support boundaries, but this repository implements first-party contracts.
+- D3D12 evidence must track descriptor heap/table use, SRV/cube view shape, resource states, transitions, upload/readback heaps, fences, and debug-layer/GBV diagnostics in backend-private code.
+- Vulkan evidence must use explicit image usage flags, image layouts, synchronization2 barriers, descriptor safe points, SPIR-V validation, validation layers, and strict host/toolchain gates.
 - Metal evidence must run on Apple hosts with actual command queue, render/compute pipeline, texture, cube/HDR resource, and synchronization proof. Windows-side rows are host-gate declarations only.
 - CMake shader/code generation must declare outputs, byproducts, dependencies, and `VERBATIM`; shared generated outputs need a single producer target to avoid races.
 
@@ -138,10 +152,10 @@ When selected, each gate must be framed as an AI-operable engine capability that
 
 | Claim | Current state | Promotion target |
 | --- | --- | --- |
-| `environment_profile_v2_status` | Missing | Clean-break v2 profile rows with global profile, local volumes, priority, blend weight, weather timeline, quality preset, and deterministic package IO. |
-| Local environment volumes | Missing | Box, sphere, and global rows with priority, fade distance, blend mode, deterministic sorted evaluation, diagnostics, and editor projection. |
-| Runtime cubemap capture | Unclaimed | D3D12 primary offscreen six-face capture path with framegraph passes, readback checksum, zero native handle leakage, and package-visible counters. |
-| Renderer cubemap upload | Unclaimed | D3D12 texture-cube upload/SRV/sampling proof with reflection, irradiance, radiance mip metadata, debug-layer clean run, and readback. |
+| `environment_profile_v2_status` | Selected profile package evidence ready | Clean-break v2 profile rows with global profile, local volumes, priority, blend weight, weather timeline, quality preset, deterministic package IO, legacy v1 rejection, and no broad `environment_ready` claim. |
+| Local environment volumes | Selected profile/editor evidence ready | Box, sphere, and global rows with priority, fade distance, blend weight, deterministic sorted evaluation, diagnostics, and editor projection. |
+| Runtime cubemap capture | Selected D3D12/Vulkan IBL renderer-execution evidence ready for the sample lane | Keep broad reusable runtime cubemap capture unclaimed until a selected aggregate or API plan proves the exact row with framegraph passes, readback checksum, zero native handle leakage, and package-visible counters. |
+| Renderer cubemap upload | Selected D3D12/Vulkan IBL renderer-execution evidence ready for the sample lane | Keep broad renderer cubemap upload unclaimed until a selected aggregate or API plan proves texture-cube upload/SRV/sampling, reflection, irradiance, radiance mip metadata, validation-clean execution, and readback for the exact row. |
 | IBL Vulkan proof | Selected strict renderer execution ready | Strict Vulkan cube image/view/sampler/upload/readback proof with synchronization2 layout transitions, `spirv-val` artifacts, shader sampling/readback, runtime cubemap capture readback checksum, zero diagnostics, and zero native-handle access for the selected sample lane. Broader Vulkan IBL readiness remains unclaimed. |
 | IBL Metal proof | Selected Apple-host recipe evidence ready | Apple-host texture cube/HDR/pipeline proof through `renderer-metal-apple-host-evidence`; broader Metal/backend parity remains unclaimed. |
 | Material wetness | Selected D3D12 package evidence ready | First-party material-weathering rows, renderer material parameter binding, package counters, zero source-material mutation unless explicitly authored. Broad backend parity remains unclaimed. |
@@ -151,7 +165,7 @@ When selected, each gate must be framed as an AI-operable engine capability that
 | Vulkan volumetric fog | Selected strict renderer execution ready | Strict compute storage-buffer path with synchronization2 barrier evidence, package recipe, positive dispatch/readback counters, and zero native-handle access for the selected sample lane. Broader Vulkan volumetric-fog readiness remains unclaimed. |
 | Vulkan volumetric cloud | Selected strict renderer execution ready | Strict compute/render path with synchronization2 barriers, package recipe, positive raymarch/readback counters, and zero native-handle access. Broad cloud readiness and Metal remain unclaimed. |
 | Metal environment execution | Selected Apple-host recipe evidence ready | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization/readback evidence for selected features through `renderer-metal-apple-host-evidence`; Windows evidence still cannot promote Metal. |
-| Editor environment authoring | Read-only readiness rows | First-party authoring panels for profile v2, volume stack, weather timeline, quality presets, and readiness reports without backend execution from editor core. |
+| Editor environment authoring | Selected Phase 7 ready | First-party authoring rows for profile v2, volume stack, weather timeline, quality presets, cubemap capture request, and readiness reports without backend execution from editor core. |
 | Quality budgets | Selected Phase 8 ready | Profile-driven `MK_environment` quality presets with fail-closed budgets for samples, raymarch steps, particles, transient GPU bytes, framegraph passes, barriers, texture uploads, draws, compute dispatches, diagnostics, native-handle access, and broad optimization claims. |
 | Broad `environment_ready` | Unclaimed | Aggregate recipe only after all selected exact rows pass and static checks enforce the aggregate definition. |
 
@@ -363,7 +377,7 @@ Phase 3 closeout: the selected D3D12 package lane now proves material wetness an
 
 - [x] Add RED tests for environment-to-audio trigger planning: rain loop, snow ambience, thunder one-shot, wind loop.
 - [x] Add RED tests that `MK_environment` does not own audio devices and only emits value rows.
-- [ ] Add package counters:
+- [x] Add package counters:
 
 ```text
 environment_audio_playback_status=ready
@@ -410,11 +424,11 @@ Phase 4 closeout: the selected D3D12 package lane now proves `MK_environment` we
 
 **Files:** Vulkan backend, renderer policies, shader compile wrappers, `tests/unit/backend_scaffold_tests.cpp`, package recipes, sample manifest/docs.
 
-- [ ] Add SPIR-V artifact compile wrappers only for selected features that need new fixtures.
-- [ ] Add RED Vulkan tests for precipitation particle/depth/sampler descriptors, volumetric fog compute to shader-read transition, volumetric cloud texture sampling/raymarch, and IBL cube sampling.
-- [ ] Use synchronization2 image barriers for compute-write to fragment-read and transfer-write to shader-read transitions.
-- [ ] Require `spirv-val`, DXC SPIR-V CodeGen, Vulkan runtime, and validation-layer readiness.
-- [ ] Add strict package recipes:
+- [x] Add SPIR-V artifact compile wrappers only for selected features that need new fixtures.
+- [x] Add RED Vulkan tests for precipitation particle/depth/sampler descriptors, volumetric fog compute to shader-read transition, volumetric cloud texture sampling/raymarch, and IBL cube sampling.
+- [x] Use synchronization2 image barriers for compute-write to fragment-read and transfer-write to shader-read transitions.
+- [x] Require `spirv-val`, DXC SPIR-V CodeGen, Vulkan runtime, and validation-layer readiness.
+- [x] Add strict package recipes:
 
 ```text
 desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution
@@ -424,8 +438,8 @@ desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution
 desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution
 ```
 
-- [ ] Add backend-local counters with `vulkan_` prefixes and `native_handle_access=0`.
-- [ ] Preserve Metal and broad backend parity non-claims.
+- [x] Add backend-local counters with `vulkan_` prefixes and `native_handle_access=0`.
+- [x] Preserve Metal and broad backend parity non-claims.
 
 Expected: Vulkan rows become ready only when strict Vulkan host/toolchain/package proof passes.
 
@@ -586,13 +600,16 @@ Phase 8 result: `MK_environment` now exposes `EnvironmentQualityBudgetLimitsDesc
 
 ## Phase 9: Exact `environment_ready` Aggregate
 
-**Goal:** Add the broad aggregate only after all selected exact rows have evidence.
+**Goal:** Add the selected D3D12 primary aggregate only after all selected exact rows have evidence.
 
-**Files:** package validation, sample manifest, docs, manifest fragments, static checks.
+**Files:** `games/sample_desktop_runtime_game/main.cpp`, `tools/validate-installed-desktop-runtime.ps1`, `tools/package-desktop-runtime.ps1`, `tools/validation-recipe-core.ps1`, `tools/run-validation-recipe-plans.ps1`, `games/sample_desktop_runtime_game/game.agent.json`, `engine/agent/manifest.fragments/008-packagingTargets.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.fragments/014-gameCodeGuidance.json`, composed `engine/agent/manifest.json`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/testing.md`, `docs/superpowers/plans/README.md`, `tools/check-ai-integration-030-runtime-rendering.ps1`, `tools/check-json-contracts-030-tooling-contracts.ps1`, and `tools/check-json-contracts-040-agent-surfaces.ps1`.
 
-- [ ] Add aggregate validator requiring every selected exact row from this plan.
-- [ ] Add package flag `--require-environment-ready-aggregate`.
-- [ ] Add package counters:
+- [x] Re-run the 2026-06-13 official-source freshness gate and record the refreshed source ids/URLs, date, and implications before editing code.
+- [x] Add RED installed-validation tests or script assertions showing `--require-environment-ready-aggregate` fails when the package flag is not implemented, and add validator assertions that reject diagnostics, native-handle access, broad optimization, or implied backend parity for the selected aggregate.
+- [x] Add a package-side aggregate row builder that reads only already-emitted selected evidence rows; it must not execute renderer/RHI/audio/editor/package scripts or infer success from plan text.
+- [x] Add aggregate validator requiring every selected D3D12 primary exact row used by this aggregate.
+- [x] Add package flag `--require-environment-ready-aggregate`.
+- [x] Add package counters:
 
 ```text
 environment_ready_status=ready
@@ -604,13 +621,27 @@ environment_ready_metal_host=<0|1>
 environment_ready_backend_parity=<0|1>
 environment_ready_broad_optimization_claimed=0
 environment_ready_native_handle_access=0
+environment_ready_diagnostics=0
 ```
 
-- [ ] If Vulkan or Metal is not selected for the aggregate host, the aggregate must say `backend_parity=0` and must not claim cross-backend parity.
-- [ ] Add static checks so future docs cannot claim `environment_ready` without the aggregate definition and package evidence.
-- [ ] Close the milestone by returning `currentActivePlan` to the master selection gate or selecting the next active plan.
+- [x] If Vulkan or Metal is not selected for the aggregate host, the aggregate must say `backend_parity=0` and must not claim cross-backend parity.
+- [x] Require `environment_quality_budget_status=ready`, `environment_quality_budget_violations=0`, `environment_quality_budget_broad_optimization_claimed=0`, and `environment_quality_budget_broad_environment_ready_claimed=0` before setting `environment_ready=1`.
+- [x] Require profile v2 package evidence, local volume rows, weather keyframe rows, quality preset evidence, selected D3D12 primary rows, selected strict Vulkan rows only when the host gate is acknowledged and executed, selected Apple-host Metal rows only from `renderer-metal-apple-host-evidence`, and zero public native-handle exposure; this candidate sets `vulkan_strict=0`, `metal_host=0`, and `backend_parity=0`.
+- [x] Add static checks so future docs cannot claim `environment_ready` without the aggregate definition and package evidence.
+- [x] Compose the manifest after fragment edits and verify validation recipes and game manifest surfaces describe the same ready/non-ready truth.
+- [x] Close this retained milestone evidence without changing the active MAVG plan selection.
 
-Expected: `environment_ready` has one exact, enforceable meaning.
+Phase 9 focused validation evidence on 2026-06-13:
+
+- TDD RED: `sample_desktop_runtime_game.exe --smoke --max-frames 1 --require-scene-package runtime/sample_desktop_runtime_game.geindex --require-config runtime/sample_desktop_runtime_game.config --require-environment-ready-aggregate` failed before implementation with `unknown argument: --require-environment-ready-aggregate`.
+- `tools/check-toolchain.ps1`: pass.
+- `tools/cmake.ps1 --preset desktop-runtime`: pass.
+- `tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`: pass.
+- `tools/check-validation-recipe-runner.ps1`: pass.
+- `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-ready-aggregate')`: pass.
+- Installed sample counter extraction reports `environment_ready_status=ready`, `environment_ready=1`, `environment_ready_profile_v2=1`, `environment_ready_d3d12_primary=1`, `environment_ready_vulkan_strict=0`, `environment_ready_metal_host=0`, `environment_ready_backend_parity=0`, `environment_ready_broad_optimization_claimed=0`, `environment_ready_native_handle_access=0`, and `environment_ready_diagnostics=0`.
+
+Expected: `environment_ready` has one exact, enforceable meaning for this plan: all selected D3D12 primary environment profile, weather, renderer, backend, audio, material, and quality-budget evidence rows are present and diagnostic-clean for the selected package lane, while strict Vulkan aggregate readiness, Metal host readiness, backend parity, broad optimization, deferred asset pipelines, physical endpoint audio playback, all-platform parity, snow-by-inference, and public native handles remain unclaimed unless their own exact rows are selected and proven.
 
 ## Required Validation At Phase Close
 
@@ -662,6 +693,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 
 The milestone is complete only when:
 
+- The source freshness gate has been rerun for the phase being closed, and the plan records the official source date plus Context7 library ids or official URLs used.
 - Phase 0 has selected the plan or the operator explicitly keeps it as proposed.
 - Every selected implementation phase has passing focused tests, package smokes, docs, manifest fragments, static checks, and full `tools/validate.ps1` evidence.
 - Hosted PR checks pass for each merged PR.
