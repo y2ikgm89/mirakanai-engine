@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -42,6 +43,15 @@ void add_diagnostic(std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& diagnos
         .code = code,
         .message = std::move(message),
         .path = std::move(path),
+    });
+}
+
+void add_diagnostic(std::vector<TextureBackendFormatPolicyDiagnostic>& diagnostics,
+                    TextureBackendFormatPolicyDiagnosticCode code, std::string message, TextureCookBackendV1 backend) {
+    diagnostics.push_back(TextureBackendFormatPolicyDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .backend = std::string{texture_cook_backend_name_v1(backend)},
     });
 }
 
@@ -116,6 +126,237 @@ void validate_request(std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& diagn
         add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
                        "KTX2/Basis review requires explicit Basis Universal intent", request.source_path);
     }
+}
+
+[[nodiscard]] bool official_api_matches_backend(const TextureBackendFormatEvidenceRowV1& row) noexcept {
+    switch (row.backend) {
+    case TextureCookBackendV1::d3d12:
+        return row.official_api.contains("ID3D12Device::CheckFeatureSupport") &&
+               row.official_api.contains("D3D12_FEATURE_FORMAT_SUPPORT");
+    case TextureCookBackendV1::vulkan:
+    case TextureCookBackendV1::vulkan_android:
+        return row.official_api.contains("vkGetPhysicalDeviceFormatProperties2");
+    case TextureCookBackendV1::metal_macos:
+    case TextureCookBackendV1::metal_ios:
+        return row.official_api.contains("Metal Feature Set Tables") && row.official_api.contains("MTLPixelFormat");
+    case TextureCookBackendV1::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] std::vector<TextureCookBackendV1> required_texture_cook_backends() {
+    return {TextureCookBackendV1::d3d12, TextureCookBackendV1::vulkan, TextureCookBackendV1::metal_macos,
+            TextureCookBackendV1::vulkan_android, TextureCookBackendV1::metal_ios};
+}
+
+[[nodiscard]] std::uint64_t checked_mul(std::uint64_t lhs, std::uint64_t rhs) noexcept {
+    if (rhs != 0 && lhs > (std::numeric_limits<std::uint64_t>::max)() / rhs) {
+        return 0;
+    }
+    return lhs * rhs;
+}
+
+[[nodiscard]] std::uint64_t estimate_rgba16_float_bytes(std::uint32_t width, std::uint32_t height) noexcept {
+    return checked_mul(checked_mul(width, height), 8U);
+}
+
+[[nodiscard]] std::uint64_t estimate_rgba8_bytes(std::uint32_t width, std::uint32_t height) noexcept {
+    return checked_mul(checked_mul(width, height), 4U);
+}
+
+[[nodiscard]] std::uint64_t estimate_block4x4_bytes(const TextureSourceDocumentV2& source) noexcept {
+    const auto levels = source.source_kind == TextureSourceKindV2::ktx2_basis ? source.ktx2_basis.level_count : 1U;
+    const auto layers = source.source_kind == TextureSourceKindV2::ktx2_basis ? source.ktx2_basis.layer_count : 1U;
+    const auto faces = source.source_kind == TextureSourceKindV2::ktx2_basis ? source.ktx2_basis.face_count : 1U;
+
+    std::uint64_t total = 0;
+    for (std::uint32_t level = 0; level < levels; ++level) {
+        const auto level_width = std::max(1U, source.width >> level);
+        const auto level_height = std::max(1U, source.height >> level);
+        const auto blocks_w = (level_width + 3U) / 4U;
+        const auto blocks_h = (level_height + 3U) / 4U;
+        const auto level_bytes = checked_mul(checked_mul(blocks_w, blocks_h), 16U);
+        total += level_bytes;
+    }
+    return checked_mul(checked_mul(total, layers), faces);
+}
+
+[[nodiscard]] std::uint64_t estimate_source_bytes(const TextureSourceDocumentV2& source) noexcept {
+    switch (source.source_kind) {
+    case TextureSourceKindV2::openexr: {
+        const auto bytes_per_channel = source.openexr.pixel_encoding == TexturePixelEncodingV2::float16 ? 2U : 4U;
+        return checked_mul(checked_mul(checked_mul(source.width, source.height), source.openexr.channel_count),
+                           bytes_per_channel);
+    }
+    case TextureSourceKindV2::ktx2_basis:
+        return std::max<std::uint64_t>(estimate_block4x4_bytes(source), 1U);
+    case TextureSourceKindV2::unknown:
+        break;
+    }
+    return 0;
+}
+
+[[nodiscard]] bool source_requires_cube_support(const TextureSourceDocumentV2& source) noexcept {
+    return source.source_kind == TextureSourceKindV2::ktx2_basis && source.ktx2_basis.face_count == 6U;
+}
+
+struct TextureBackendFormatSelection {
+    std::string device_format;
+    TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
+    TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
+    std::uint64_t estimated_gpu_bytes{0};
+    bool requires_rgba16_float{false};
+    bool requires_bc7_rgba{false};
+    bool requires_astc_4x4_rgba{false};
+};
+
+[[nodiscard]] TextureBackendFormatSelection select_backend_format(const TextureSourceDocumentV2& source,
+                                                                  TextureCookBackendV1 backend) {
+    if (source.source_kind == TextureSourceKindV2::openexr) {
+        switch (backend) {
+        case TextureCookBackendV1::d3d12:
+            return {"DXGI_FORMAT_R16G16B16A16_FLOAT",
+                    TextureCompressionKindV2::none,
+                    TextureCookTranscodeKindV1::offline_policy,
+                    estimate_rgba16_float_bytes(source.width, source.height),
+                    true,
+                    false,
+                    false};
+        case TextureCookBackendV1::vulkan:
+        case TextureCookBackendV1::vulkan_android:
+            return {"VK_FORMAT_R16G16B16A16_SFLOAT",
+                    TextureCompressionKindV2::none,
+                    TextureCookTranscodeKindV1::offline_policy,
+                    estimate_rgba16_float_bytes(source.width, source.height),
+                    true,
+                    false,
+                    false};
+        case TextureCookBackendV1::metal_macos:
+        case TextureCookBackendV1::metal_ios:
+            return {"MTLPixelFormatRGBA16Float",
+                    TextureCompressionKindV2::none,
+                    TextureCookTranscodeKindV1::offline_policy,
+                    estimate_rgba16_float_bytes(source.width, source.height),
+                    true,
+                    false,
+                    false};
+        case TextureCookBackendV1::unknown:
+            break;
+        }
+    }
+
+    if (source.source_kind == TextureSourceKindV2::ktx2_basis) {
+        const bool srgb = source.color_space == TextureColorSpaceV2::srgb;
+        switch (backend) {
+        case TextureCookBackendV1::d3d12:
+            return {srgb ? "DXGI_FORMAT_BC7_UNORM_SRGB" : "DXGI_FORMAT_BC7_UNORM",
+                    TextureCompressionKindV2::bc7,
+                    TextureCookTranscodeKindV1::basis_transcode_policy,
+                    estimate_block4x4_bytes(source),
+                    false,
+                    true,
+                    false};
+        case TextureCookBackendV1::vulkan:
+            return {srgb ? "VK_FORMAT_BC7_SRGB_BLOCK" : "VK_FORMAT_BC7_UNORM_BLOCK",
+                    TextureCompressionKindV2::bc7,
+                    TextureCookTranscodeKindV1::basis_transcode_policy,
+                    estimate_block4x4_bytes(source),
+                    false,
+                    true,
+                    false};
+        case TextureCookBackendV1::metal_macos:
+            return {srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                    TextureCompressionKindV2::astc_4x4,
+                    TextureCookTranscodeKindV1::basis_transcode_policy,
+                    estimate_block4x4_bytes(source),
+                    false,
+                    false,
+                    true};
+        case TextureCookBackendV1::vulkan_android:
+            return {srgb ? "VK_FORMAT_ASTC_4x4_SRGB_BLOCK" : "VK_FORMAT_ASTC_4x4_UNORM_BLOCK",
+                    TextureCompressionKindV2::astc_4x4,
+                    TextureCookTranscodeKindV1::basis_transcode_policy,
+                    estimate_block4x4_bytes(source),
+                    false,
+                    false,
+                    true};
+        case TextureCookBackendV1::metal_ios:
+            return {srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                    TextureCompressionKindV2::astc_4x4,
+                    TextureCookTranscodeKindV1::basis_transcode_policy,
+                    estimate_block4x4_bytes(source),
+                    false,
+                    false,
+                    true};
+        case TextureCookBackendV1::unknown:
+            break;
+        }
+    }
+
+    return {};
+}
+
+[[nodiscard]] const TextureBackendFormatEvidenceRowV1*
+find_backend_evidence(std::vector<TextureBackendFormatPolicyDiagnostic>& diagnostics,
+                      const std::vector<TextureBackendFormatEvidenceRowV1>& evidence, TextureCookBackendV1 backend) {
+    const TextureBackendFormatEvidenceRowV1* found = nullptr;
+    for (const auto& row : evidence) {
+        if (row.backend != backend) {
+            continue;
+        }
+        if (found != nullptr) {
+            add_diagnostic(diagnostics, TextureBackendFormatPolicyDiagnosticCode::invalid_backend_evidence,
+                           "duplicate backend format evidence row", backend);
+            return nullptr;
+        }
+        found = &row;
+    }
+    return found;
+}
+
+[[nodiscard]] bool evidence_supports_selection(const TextureBackendFormatEvidenceRowV1& evidence,
+                                               const TextureSourceDocumentV2& source,
+                                               const TextureBackendFormatSelection& selection) noexcept {
+    if (!evidence.host_validated || !evidence.sampled_2d || !evidence.transfer_dst) {
+        return false;
+    }
+    if (source_requires_cube_support(source) && !evidence.texture_cube) {
+        return false;
+    }
+    if (selection.requires_rgba16_float) {
+        return evidence.rgba16_float;
+    }
+    if (selection.requires_bc7_rgba) {
+        return evidence.bc7_rgba;
+    }
+    if (selection.requires_astc_4x4_rgba) {
+        return evidence.astc_4x4_rgba;
+    }
+    return false;
+}
+
+[[nodiscard]] std::string missing_backend_format_diagnostic(const TextureBackendFormatEvidenceRowV1* evidence,
+                                                            const TextureBackendFormatSelection& selection) {
+    if (evidence == nullptr) {
+        return "missing host/device format evidence";
+    }
+    if (!evidence->host_validated) {
+        return "backend format evidence is not host validated";
+    }
+    if (!evidence->sampled_2d || !evidence->transfer_dst) {
+        return "backend format evidence must include sampled 2D texture and upload/transfer-destination support";
+    }
+    if (selection.requires_rgba16_float && !evidence->rgba16_float) {
+        return "backend does not report RGBA16 float texture support";
+    }
+    if (selection.requires_bc7_rgba && !evidence->bc7_rgba) {
+        return "backend does not report BC7 RGBA texture support";
+    }
+    if (selection.requires_astc_4x4_rgba && !evidence->astc_4x4_rgba) {
+        return "backend does not report ASTC 4x4 RGBA texture support";
+    }
+    return "backend format evidence does not satisfy selected texture policy";
 }
 
 #if MK_HAS_ASSET_IMPORTERS
@@ -523,6 +764,103 @@ review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequ
     }
     return result;
 #endif
+}
+
+TextureBackendFormatPolicyResultV1
+plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1& request) {
+    TextureBackendFormatPolicyResultV1 result;
+
+    if (!is_valid_texture_source_document_v2(request.source)) {
+        add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::unsupported_source,
+                       "texture backend format policy requires a valid GameEngine.TextureSource.v2 source",
+                       TextureCookBackendV1::unknown);
+        return result;
+    }
+    if (!request.require_all_backends) {
+        add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::invalid_request,
+                       "texture backend format policy requires all commercial backend rows",
+                       TextureCookBackendV1::unknown);
+        return result;
+    }
+    if (request.source.source_kind == TextureSourceKindV2::openexr &&
+        request.source.sampler_class != TextureSamplerClassV2::environment_radiance) {
+        add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::unsupported_source,
+                       "OpenEXR backend format policy is restricted to environment radiance textures",
+                       TextureCookBackendV1::unknown);
+        return result;
+    }
+    if (request.source.source_kind == TextureSourceKindV2::ktx2_basis &&
+        !request.source.ktx2_basis.requires_transcoding) {
+        add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::unsupported_source,
+                       "KTX2/Basis backend format policy requires an explicit Basis transcode requirement",
+                       TextureCookBackendV1::unknown);
+        return result;
+    }
+
+    TextureCookMetadataDocumentV1 metadata{
+        .source = request.source,
+        .backend_decisions = {},
+        .estimated_source_bytes = estimate_source_bytes(request.source),
+        .estimated_decoded_bytes = request.source.source_kind == TextureSourceKindV2::openexr
+                                       ? estimate_rgba16_float_bytes(request.source.width, request.source.height)
+                                       : estimate_rgba8_bytes(request.source.width, request.source.height),
+    };
+
+    for (const auto backend : required_texture_cook_backends()) {
+        const auto selection = select_backend_format(request.source, backend);
+        const auto* evidence = find_backend_evidence(result.diagnostics, request.backend_evidence, backend);
+        bool supported = false;
+        bool host_validated = false;
+        std::string diagnostic;
+
+        if (selection.device_format.empty()) {
+            diagnostic = "backend has no selected device format for this texture source";
+            add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::unsupported_backend_format,
+                           diagnostic, backend);
+        } else if (evidence == nullptr) {
+            diagnostic = missing_backend_format_diagnostic(evidence, selection);
+            add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::missing_backend_evidence,
+                           diagnostic, backend);
+        } else if (!clean_text_token(evidence->evidence_id) || !clean_text_token(evidence->official_api) ||
+                   !official_api_matches_backend(*evidence)) {
+            host_validated = evidence->host_validated;
+            diagnostic = "backend evidence must name the official format-support API or feature table used";
+            add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::invalid_backend_evidence,
+                           diagnostic, backend);
+        } else {
+            host_validated = evidence->host_validated;
+            supported = evidence_supports_selection(*evidence, request.source, selection);
+            if (!supported) {
+                diagnostic = missing_backend_format_diagnostic(evidence, selection);
+                add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::unsupported_backend_format,
+                               diagnostic, backend);
+            }
+        }
+
+        metadata.backend_decisions.push_back(TextureCookBackendDecisionV1{
+            .backend = backend,
+            .device_format = selection.device_format.empty() ? "unsupported" : selection.device_format,
+            .compression = selection.compression == TextureCompressionKindV2::unknown ? TextureCompressionKindV2::none
+                                                                                      : selection.compression,
+            .transcode = selection.transcode == TextureCookTranscodeKindV1::unknown
+                             ? TextureCookTranscodeKindV1::offline_policy
+                             : selection.transcode,
+            .estimated_gpu_bytes = selection.estimated_gpu_bytes == 0U ? 1U : selection.estimated_gpu_bytes,
+            .supported = supported,
+            .host_validated = supported && host_validated,
+            .diagnostic = supported ? std::string{} : std::move(diagnostic),
+        });
+    }
+
+    if (!is_valid_texture_cook_metadata_document_v1(metadata)) {
+        add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::invalid_request,
+                       "backend format policy output does not satisfy GameEngine.CookedTextureMetadata.v1",
+                       TextureCookBackendV1::unknown);
+        return result;
+    }
+
+    result.metadata = std::move(metadata);
+    return result;
 }
 
 } // namespace mirakana

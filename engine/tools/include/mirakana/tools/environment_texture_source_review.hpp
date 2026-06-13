@@ -32,6 +32,15 @@ enum class Ktx2BasisTextureSourceReviewDiagnosticCode : std::uint8_t {
     invalid_ktx_metadata,
 };
 
+enum class TextureBackendFormatPolicyDiagnosticCode : std::uint8_t {
+    none,
+    invalid_request,
+    unsupported_source,
+    missing_backend_evidence,
+    unsupported_backend_format,
+    invalid_backend_evidence,
+};
+
 struct OpenExrTextureSourceReviewDiagnostic {
     OpenExrTextureSourceReviewDiagnosticCode code{OpenExrTextureSourceReviewDiagnosticCode::none};
     std::string message;
@@ -42,6 +51,25 @@ struct Ktx2BasisTextureSourceReviewDiagnostic {
     Ktx2BasisTextureSourceReviewDiagnosticCode code{Ktx2BasisTextureSourceReviewDiagnosticCode::none};
     std::string message;
     std::string path;
+};
+
+struct TextureBackendFormatPolicyDiagnostic {
+    TextureBackendFormatPolicyDiagnosticCode code{TextureBackendFormatPolicyDiagnosticCode::none};
+    std::string message;
+    std::string backend;
+};
+
+struct TextureBackendFormatEvidenceRowV1 {
+    TextureCookBackendV1 backend{TextureCookBackendV1::unknown};
+    std::string evidence_id;
+    std::string official_api;
+    bool host_validated{false};
+    bool sampled_2d{false};
+    bool transfer_dst{false};
+    bool texture_cube{false};
+    bool rgba16_float{false};
+    bool bc7_rgba{false};
+    bool astc_4x4_rgba{false};
 };
 
 struct OpenExrTextureSourceReviewRequest {
@@ -65,6 +93,12 @@ struct Ktx2BasisTextureSourceReviewRequest {
     bool basis_required{true};
 };
 
+struct TextureBackendFormatPolicyRequestV1 {
+    TextureSourceDocumentV2 source;
+    std::vector<TextureBackendFormatEvidenceRowV1> backend_evidence;
+    bool require_all_backends{true};
+};
+
 struct OpenExrTextureSourceReviewResult {
     std::optional<TextureSourceDocumentV2> source;
     std::vector<OpenExrTextureSourceReviewDiagnostic> diagnostics;
@@ -83,11 +117,22 @@ struct Ktx2BasisTextureSourceReviewResult {
     }
 };
 
+struct TextureBackendFormatPolicyResultV1 {
+    std::optional<TextureCookMetadataDocumentV1> metadata;
+    std::vector<TextureBackendFormatPolicyDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return metadata.has_value() && diagnostics.empty();
+    }
+};
+
 [[nodiscard]] bool has_openexr_texture_source_review() noexcept;
 [[nodiscard]] OpenExrTextureSourceReviewResult
 review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& request);
 [[nodiscard]] bool has_ktx2_basis_texture_source_review() noexcept;
 [[nodiscard]] Ktx2BasisTextureSourceReviewResult
 review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequest& request);
+[[nodiscard]] TextureBackendFormatPolicyResultV1
+plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1& request);
 
 } // namespace mirakana

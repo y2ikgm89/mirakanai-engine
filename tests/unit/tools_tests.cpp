@@ -7864,6 +7864,156 @@ MK_TEST("ktx2 basis texture source review fails closed without asset importers")
     MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
 }
 
+MK_TEST("texture backend format policy fails closed without official backend evidence") {
+    const mirakana::TextureSourceDocumentV2 source{
+        .source_path = "source/textures/environment/studio.exr",
+        .source_hash = "sha256:3333444455556666777788889999aaaabbbbccccddddeeeeffff000011112222",
+        .provenance_id = "provenance.environment.studio",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::openexr,
+        .width = 4U,
+        .height = 2U,
+        .color_space = mirakana::TextureColorSpaceV2::scene_linear,
+        .sampler_class = mirakana::TextureSamplerClassV2::environment_radiance,
+        .openexr =
+            mirakana::TextureOpenExrSourceReviewV2{
+                .data_window = mirakana::TextureSourceWindowV2{.min_x = 0, .min_y = 0, .max_x = 3, .max_y = 1},
+                .display_window = mirakana::TextureSourceWindowV2{.min_x = 0, .min_y = 0, .max_x = 3, .max_y = 1},
+                .channel_list = "R:float,G:float,B:float",
+                .pixel_encoding = mirakana::TexturePixelEncodingV2::float32,
+                .channel_count = 3U,
+                .chromaticities_recorded = true,
+                .scene_linear_intent = true,
+            },
+    };
+
+    const auto result = mirakana::plan_texture_backend_format_policy_v1(mirakana::TextureBackendFormatPolicyRequestV1{
+        .source = source,
+        .backend_evidence = {},
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.metadata.has_value());
+    MK_REQUIRE(result.diagnostics.size() == 5U);
+    MK_REQUIRE(result.metadata->backend_decisions.size() == 5U);
+    for (const auto& decision : result.metadata->backend_decisions) {
+        MK_REQUIRE(!decision.supported);
+        MK_REQUIRE(!decision.host_validated);
+        MK_REQUIRE(!decision.diagnostic.empty());
+        MK_REQUIRE(decision.device_format.find("16") != std::string::npos);
+    }
+    const auto serialized = mirakana::serialize_texture_cook_metadata_document_v1(*result.metadata);
+    MK_REQUIRE(serialized.find("texture.backend_policy_count=5\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("texture.unsupported_host_diagnostic_count=5\n") != std::string::npos);
+}
+
+MK_TEST("texture backend format policy records all platform ktx basis transcode targets") {
+    const mirakana::TextureSourceDocumentV2 source{
+        .source_path = "source/textures/environment/studio.ktx2",
+        .source_hash = "sha256:444455556666777788889999aaaabbbbccccddddeeeeffff0000111122223333",
+        .provenance_id = "provenance.environment.studio",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::ktx2_basis,
+        .width = 8U,
+        .height = 8U,
+        .color_space = mirakana::TextureColorSpaceV2::srgb,
+        .sampler_class = mirakana::TextureSamplerClassV2::color,
+        .ktx2_basis =
+            mirakana::TextureKtx2BasisSourceReviewV2{
+                .vk_format = "VK_FORMAT_UNDEFINED",
+                .level_count = 2U,
+                .layer_count = 1U,
+                .face_count = 1U,
+                .supercompression = mirakana::TextureCompressionKindV2::basis_lz,
+                .basis_codec = mirakana::TexturePixelEncodingV2::basis_etc1s,
+                .requires_transcoding = true,
+            },
+    };
+    const std::vector<mirakana::TextureBackendFormatEvidenceRowV1> evidence{
+        mirakana::TextureBackendFormatEvidenceRowV1{
+            .backend = mirakana::TextureCookBackendV1::d3d12,
+            .evidence_id = "host.windows.d3d12.format-support",
+            .official_api = "ID3D12Device::CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT)",
+            .host_validated = true,
+            .sampled_2d = true,
+            .transfer_dst = true,
+            .bc7_rgba = true,
+        },
+        mirakana::TextureBackendFormatEvidenceRowV1{
+            .backend = mirakana::TextureCookBackendV1::vulkan,
+            .evidence_id = "host.linux.vulkan.format-properties2",
+            .official_api = "vkGetPhysicalDeviceFormatProperties2 optimalTilingFeatures",
+            .host_validated = true,
+            .sampled_2d = true,
+            .transfer_dst = true,
+            .bc7_rgba = true,
+        },
+        mirakana::TextureBackendFormatEvidenceRowV1{
+            .backend = mirakana::TextureCookBackendV1::metal_macos,
+            .evidence_id = "host.macos.metal.pixel-format-table",
+            .official_api = "Metal Feature Set Tables MTLPixelFormat texture read",
+            .host_validated = true,
+            .sampled_2d = true,
+            .transfer_dst = true,
+            .astc_4x4_rgba = true,
+        },
+        mirakana::TextureBackendFormatEvidenceRowV1{
+            .backend = mirakana::TextureCookBackendV1::vulkan_android,
+            .evidence_id = "host.android.vulkan.format-properties2",
+            .official_api = "vkGetPhysicalDeviceFormatProperties2 optimalTilingFeatures",
+            .host_validated = true,
+            .sampled_2d = true,
+            .transfer_dst = true,
+            .astc_4x4_rgba = true,
+        },
+        mirakana::TextureBackendFormatEvidenceRowV1{
+            .backend = mirakana::TextureCookBackendV1::metal_ios,
+            .evidence_id = "host.ios.metal.pixel-format-table",
+            .official_api = "Metal Feature Set Tables MTLPixelFormat texture read",
+            .host_validated = true,
+            .sampled_2d = true,
+            .transfer_dst = true,
+            .astc_4x4_rgba = true,
+        },
+    };
+
+    const auto result = mirakana::plan_texture_backend_format_policy_v1(mirakana::TextureBackendFormatPolicyRequestV1{
+        .source = source,
+        .backend_evidence = evidence,
+    });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.metadata.has_value());
+    MK_REQUIRE(mirakana::is_valid_texture_cook_metadata_document_v1(*result.metadata));
+    MK_REQUIRE(result.metadata->estimated_decoded_bytes == 256U);
+
+    const auto decision_for =
+        [&](mirakana::TextureCookBackendV1 backend) -> const mirakana::TextureCookBackendDecisionV1& {
+        const auto it = std::ranges::find_if(result.metadata->backend_decisions,
+                                             [backend](const auto& decision) { return decision.backend == backend; });
+        MK_REQUIRE(it != result.metadata->backend_decisions.end());
+        return *it;
+    };
+
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::d3d12).device_format == "DXGI_FORMAT_BC7_UNORM_SRGB");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::vulkan).device_format == "VK_FORMAT_BC7_SRGB_BLOCK");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::metal_macos).device_format ==
+               "MTLPixelFormatASTC_4x4_sRGB");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::vulkan_android).device_format ==
+               "VK_FORMAT_ASTC_4x4_SRGB_BLOCK");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::metal_ios).device_format == "MTLPixelFormatASTC_4x4_sRGB");
+    for (const auto& decision : result.metadata->backend_decisions) {
+        MK_REQUIRE(decision.supported);
+        MK_REQUIRE(decision.host_validated);
+        MK_REQUIRE(decision.compression == (decision.backend == mirakana::TextureCookBackendV1::d3d12 ||
+                                                    decision.backend == mirakana::TextureCookBackendV1::vulkan
+                                                ? mirakana::TextureCompressionKindV2::bc7
+                                                : mirakana::TextureCompressionKindV2::astc_4x4));
+        MK_REQUIRE(decision.transcode == mirakana::TextureCookTranscodeKindV1::basis_transcode_policy);
+        MK_REQUIRE(decision.estimated_gpu_bytes == 80U);
+    }
+}
+
 MK_TEST("openexr environment texture source review maps real file metadata when importers are enabled") {
     if (!mirakana::external_asset_importers_available()) {
         return;
