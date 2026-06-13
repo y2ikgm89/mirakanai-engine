@@ -41,6 +41,12 @@ enum class TextureBackendFormatPolicyDiagnosticCode : std::uint8_t {
     invalid_backend_evidence,
 };
 
+enum class EnvironmentTextureGeassetMetadataDiagnosticCode : std::uint8_t {
+    none,
+    invalid_request,
+    invalid_cook_metadata,
+};
+
 struct OpenExrTextureSourceReviewDiagnostic {
     OpenExrTextureSourceReviewDiagnosticCode code{OpenExrTextureSourceReviewDiagnosticCode::none};
     std::string message;
@@ -57,6 +63,12 @@ struct TextureBackendFormatPolicyDiagnostic {
     TextureBackendFormatPolicyDiagnosticCode code{TextureBackendFormatPolicyDiagnosticCode::none};
     std::string message;
     std::string backend;
+};
+
+struct EnvironmentTextureGeassetMetadataDiagnostic {
+    EnvironmentTextureGeassetMetadataDiagnosticCode code{EnvironmentTextureGeassetMetadataDiagnosticCode::none};
+    std::string message;
+    std::string path;
 };
 
 struct TextureBackendFormatEvidenceRowV1 {
@@ -99,6 +111,12 @@ struct TextureBackendFormatPolicyRequestV1 {
     bool require_all_backends{true};
 };
 
+struct EnvironmentTextureGeassetMetadataRequestV1 {
+    std::string geasset_path;
+    TextureCookMetadataDocumentV1 cook_metadata;
+    bool metadata_only{true};
+};
+
 struct OpenExrTextureSourceReviewResult {
     std::optional<TextureSourceDocumentV2> source;
     std::vector<OpenExrTextureSourceReviewDiagnostic> diagnostics;
@@ -126,6 +144,15 @@ struct TextureBackendFormatPolicyResultV1 {
     }
 };
 
+struct EnvironmentTextureGeassetMetadataResultV1 {
+    std::optional<EnvironmentTextureGeassetMetadataDocumentV1> metadata;
+    std::vector<EnvironmentTextureGeassetMetadataDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return metadata.has_value() && diagnostics.empty();
+    }
+};
+
 [[nodiscard]] bool has_openexr_texture_source_review() noexcept;
 [[nodiscard]] OpenExrTextureSourceReviewResult
 review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& request);
@@ -134,5 +161,7 @@ review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& 
 review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequest& request);
 [[nodiscard]] TextureBackendFormatPolicyResultV1
 plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1& request);
+[[nodiscard]] EnvironmentTextureGeassetMetadataResultV1
+plan_environment_texture_geasset_metadata_v1(const EnvironmentTextureGeassetMetadataRequestV1& request);
 
 } // namespace mirakana

@@ -8014,6 +8014,61 @@ MK_TEST("texture backend format policy records all platform ktx basis transcode 
     }
 }
 
+MK_TEST("environment texture geasset metadata planner records unsupported host diagnostics") {
+    const mirakana::TextureSourceDocumentV2 source{
+        .source_path = "source/textures/environment/studio.exr",
+        .source_hash = "sha256:3333444455556666777788889999aaaabbbbccccddddeeeeffff000011112222",
+        .provenance_id = "provenance.environment.studio",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::openexr,
+        .width = 4U,
+        .height = 2U,
+        .color_space = mirakana::TextureColorSpaceV2::scene_linear,
+        .sampler_class = mirakana::TextureSamplerClassV2::environment_radiance,
+        .openexr =
+            mirakana::TextureOpenExrSourceReviewV2{
+                .data_window = mirakana::TextureSourceWindowV2{.min_x = 0, .min_y = 0, .max_x = 3, .max_y = 1},
+                .display_window = mirakana::TextureSourceWindowV2{.min_x = 0, .min_y = 0, .max_x = 3, .max_y = 1},
+                .channel_list = "R:float,G:float,B:float",
+                .pixel_encoding = mirakana::TexturePixelEncodingV2::float32,
+                .channel_count = 3U,
+                .chromaticities_recorded = true,
+                .scene_linear_intent = true,
+            },
+    };
+
+    const auto policy = mirakana::plan_texture_backend_format_policy_v1(mirakana::TextureBackendFormatPolicyRequestV1{
+        .source = source,
+        .backend_evidence = {},
+    });
+    MK_REQUIRE(policy.metadata.has_value());
+
+    const auto result =
+        mirakana::plan_environment_texture_geasset_metadata_v1(mirakana::EnvironmentTextureGeassetMetadataRequestV1{
+            .geasset_path = "runtime/assets/environment/studio.texture.geasset",
+            .cook_metadata = *policy.metadata,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.metadata.has_value());
+    MK_REQUIRE(result.metadata->mip_count == 1U);
+    MK_REQUIRE(result.metadata->max_estimated_gpu_bytes == 64U);
+    MK_REQUIRE(result.metadata->unsupported_host_diagnostic_count == 5U);
+    const auto serialized = mirakana::serialize_environment_texture_geasset_metadata_document_v1(*result.metadata);
+    MK_REQUIRE(serialized.find("asset.payload=metadata_only\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("texture.unsupported_host_diagnostic_count=5\n") != std::string::npos);
+
+    const auto invalid =
+        mirakana::plan_environment_texture_geasset_metadata_v1(mirakana::EnvironmentTextureGeassetMetadataRequestV1{
+            .geasset_path = "../studio.texture.geasset",
+            .cook_metadata = *policy.metadata,
+        });
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(invalid.diagnostics.size() == 1U);
+    MK_REQUIRE(invalid.diagnostics[0].code ==
+               mirakana::EnvironmentTextureGeassetMetadataDiagnosticCode::invalid_request);
+}
+
 MK_TEST("openexr environment texture source review maps real file metadata when importers are enabled") {
     if (!mirakana::external_asset_importers_available()) {
         return;

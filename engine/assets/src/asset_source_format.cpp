@@ -27,6 +27,8 @@ namespace {
 constexpr std::string_view texture_source_format = "GameEngine.TextureSource.v1";
 constexpr std::string_view texture_source_format_v2 = "GameEngine.TextureSource.v2";
 constexpr std::string_view texture_cook_metadata_format_v1 = "GameEngine.CookedTextureMetadata.v1";
+constexpr std::string_view environment_texture_geasset_metadata_format_v1 =
+    "GameEngine.EnvironmentTextureGeassetMetadata.v1";
 constexpr std::string_view environment_asset_source_format_v1 = "GameEngine.EnvironmentAssetSource.v1";
 constexpr std::string_view mesh_source_format = "GameEngine.MeshSource.v2";
 constexpr std::string_view audio_source_format = "GameEngine.AudioSource.v1";
@@ -146,6 +148,28 @@ constexpr std::uint32_t max_audio_channel_count = 64;
     constexpr std::string_view prefix = "sha256:";
     return value.starts_with(prefix) && value.size() == prefix.size() + 64U && clean_text_token(value) &&
            std::ranges::all_of(value.substr(prefix.size()), hex_digit);
+}
+
+[[nodiscard]] bool safe_package_relative_path(std::string_view value, std::string_view suffix) noexcept {
+    if (!clean_text_token(value) || !value.ends_with(suffix) || value.starts_with('/') ||
+        value.find('\\') != std::string_view::npos || value.find(':') != std::string_view::npos ||
+        value.find(';') != std::string_view::npos) {
+        return false;
+    }
+
+    std::size_t begin = 0;
+    while (begin <= value.size()) {
+        const auto end = value.find('/', begin);
+        const auto segment = value.substr(begin, end == std::string_view::npos ? std::string_view::npos : end - begin);
+        if (segment.empty() || segment == "." || segment == "..") {
+            return false;
+        }
+        if (end == std::string_view::npos) {
+            break;
+        }
+        begin = end + 1U;
+    }
+    return true;
 }
 
 [[nodiscard]] bool texture_window_valid(const TextureSourceWindowV2& window) noexcept {
@@ -325,6 +349,26 @@ constexpr std::uint32_t max_audio_channel_count = 64;
         }
     }
     return d3d12 && vulkan && metal_macos && vulkan_android && metal_ios;
+}
+
+[[nodiscard]] std::uint64_t
+max_estimated_texture_gpu_bytes(const std::vector<TextureCookBackendDecisionV1>& decisions) noexcept {
+    std::uint64_t max_bytes = 0;
+    for (const auto& decision : decisions) {
+        max_bytes = std::max(max_bytes, decision.estimated_gpu_bytes);
+    }
+    return max_bytes;
+}
+
+[[nodiscard]] std::uint32_t
+unsupported_texture_host_diagnostic_count(const std::vector<TextureCookBackendDecisionV1>& decisions) noexcept {
+    std::uint32_t count = 0;
+    for (const auto& decision : decisions) {
+        if (!decision.host_validated || !decision.supported) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 [[nodiscard]] std::uint8_t hex_value(char value, std::string_view diagnostic_name) {
@@ -691,6 +735,25 @@ bool is_valid_texture_cook_metadata_document_v1(const TextureCookMetadataDocumen
         return false;
     }
     return std::ranges::all_of(document.backend_decisions, texture_cook_backend_decision_valid);
+}
+
+bool is_valid_environment_texture_geasset_metadata_document_v1(
+    const EnvironmentTextureGeassetMetadataDocumentV1& document) noexcept {
+    if (!safe_package_relative_path(document.geasset_path, ".geasset") ||
+        !is_valid_texture_cook_metadata_document_v1(document.cook_metadata) || !document.metadata_only) {
+        return false;
+    }
+    if (document.mip_count != texture_source_v2_mip_count(document.cook_metadata.source)) {
+        return false;
+    }
+    if (document.max_estimated_gpu_bytes != max_estimated_texture_gpu_bytes(document.cook_metadata.backend_decisions)) {
+        return false;
+    }
+    if (document.unsupported_host_diagnostic_count !=
+        unsupported_texture_host_diagnostic_count(document.cook_metadata.backend_decisions)) {
+        return false;
+    }
+    return true;
 }
 
 bool is_valid_environment_asset_source_document_v1(const EnvironmentAssetSourceDocumentV1& document) noexcept {
@@ -1317,6 +1380,55 @@ std::string serialize_texture_cook_metadata_document_v1(const TextureCookMetadat
         }
     }
     output << "texture.unsupported_host_diagnostic_count=" << unsupported_host_diagnostic_count << '\n';
+    return output.str();
+}
+
+std::string serialize_environment_texture_geasset_metadata_document_v1(
+    const EnvironmentTextureGeassetMetadataDocumentV1& document) {
+    if (!is_valid_environment_texture_geasset_metadata_document_v1(document)) {
+        throw std::invalid_argument("environment texture geasset metadata v1 document is invalid");
+    }
+    auto decisions = document.cook_metadata.backend_decisions;
+    std::ranges::sort(decisions, [](const auto& lhs, const auto& rhs) {
+        return texture_cook_backend_sort_key(lhs.backend) < texture_cook_backend_sort_key(rhs.backend);
+    });
+
+    const auto& source = document.cook_metadata.source;
+    std::ostringstream output;
+    output << "format=" << environment_texture_geasset_metadata_format_v1 << '\n';
+    output << "asset.path=" << document.geasset_path << '\n';
+    output << "asset.kind=environment_texture\n";
+    output << "asset.payload=metadata_only\n";
+    output << "source.format=" << texture_source_format_v2 << '\n';
+    output << "source.path=" << source.source_path << '\n';
+    output << "source.hash=" << source.source_hash << '\n';
+    output << "source.provenance_id=" << source.provenance_id << '\n';
+    output << "source.license_id=" << source.license_id << '\n';
+    output << "source.kind=" << texture_source_kind_name_v2(source.source_kind) << '\n';
+    output << "texture.width=" << source.width << '\n';
+    output << "texture.height=" << source.height << '\n';
+    output << "texture.color_space=" << texture_color_space_name_v2(source.color_space) << '\n';
+    output << "texture.sampler_class=" << texture_sampler_class_name_v2(source.sampler_class) << '\n';
+    output << "texture.mip_count=" << document.mip_count << '\n';
+    output << "texture.estimated_source_bytes=" << document.cook_metadata.estimated_source_bytes << '\n';
+    output << "texture.estimated_decoded_bytes=" << document.cook_metadata.estimated_decoded_bytes << '\n';
+    output << "texture.max_estimated_gpu_bytes=" << document.max_estimated_gpu_bytes << '\n';
+    output << "texture.backend_policy_count=" << decisions.size() << '\n';
+    for (std::size_t index = 0; index < decisions.size(); ++index) {
+        const auto& decision = decisions[index];
+        const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
+        output << prefix << "backend=" << texture_cook_backend_name_v1(decision.backend) << '\n';
+        output << prefix << "device_format=" << decision.device_format << '\n';
+        output << prefix << "compression=" << texture_compression_kind_name_v2(decision.compression) << '\n';
+        output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision.transcode) << '\n';
+        output << prefix << "estimated_gpu_bytes=" << decision.estimated_gpu_bytes << '\n';
+        output << prefix << "supported=" << bool_text(decision.supported) << '\n';
+        output << prefix << "host_validated=" << bool_text(decision.host_validated) << '\n';
+        if (!decision.diagnostic.empty()) {
+            output << prefix << "diagnostic=" << decision.diagnostic << '\n';
+        }
+    }
+    output << "texture.unsupported_host_diagnostic_count=" << document.unsupported_host_diagnostic_count << '\n';
     return output.str();
 }
 

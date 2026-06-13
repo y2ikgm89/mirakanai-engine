@@ -55,6 +55,15 @@ void add_diagnostic(std::vector<TextureBackendFormatPolicyDiagnostic>& diagnosti
     });
 }
 
+void add_diagnostic(std::vector<EnvironmentTextureGeassetMetadataDiagnostic>& diagnostics,
+                    EnvironmentTextureGeassetMetadataDiagnosticCode code, std::string message, std::string path = {}) {
+    diagnostics.push_back(EnvironmentTextureGeassetMetadataDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .path = std::move(path),
+    });
+}
+
 [[nodiscard]] bool clean_text_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos &&
            value.find('\0') == std::string_view::npos;
@@ -68,6 +77,28 @@ void add_diagnostic(std::vector<TextureBackendFormatPolicyDiagnostic>& diagnosti
     constexpr std::string_view prefix = "sha256:";
     return value.starts_with(prefix) && value.size() == prefix.size() + 64U && clean_text_token(value) &&
            std::ranges::all_of(value.substr(prefix.size()), hex_digit);
+}
+
+[[nodiscard]] bool safe_package_relative_path(std::string_view value, std::string_view suffix) noexcept {
+    if (!clean_text_token(value) || !value.ends_with(suffix) || value.starts_with('/') ||
+        value.find('\\') != std::string_view::npos || value.find(':') != std::string_view::npos ||
+        value.find(';') != std::string_view::npos) {
+        return false;
+    }
+
+    std::size_t begin = 0;
+    while (begin <= value.size()) {
+        const auto end = value.find('/', begin);
+        const auto segment = value.substr(begin, end == std::string_view::npos ? std::string_view::npos : end - begin);
+        if (segment.empty() || segment == "." || segment == "..") {
+            return false;
+        }
+        if (end == std::string_view::npos) {
+            break;
+        }
+        begin = end + 1U;
+    }
+    return true;
 }
 
 void validate_request(std::vector<OpenExrTextureSourceReviewDiagnostic>& diagnostics,
@@ -195,6 +226,33 @@ void validate_request(std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& diagn
         break;
     }
     return 0;
+}
+
+[[nodiscard]] std::uint32_t source_mip_count(const TextureSourceDocumentV2& source) noexcept {
+    if (source.source_kind == TextureSourceKindV2::ktx2_basis) {
+        return source.ktx2_basis.level_count;
+    }
+    return 1U;
+}
+
+[[nodiscard]] std::uint64_t
+max_estimated_gpu_bytes(const std::vector<TextureCookBackendDecisionV1>& decisions) noexcept {
+    std::uint64_t max_bytes = 0;
+    for (const auto& decision : decisions) {
+        max_bytes = std::max(max_bytes, decision.estimated_gpu_bytes);
+    }
+    return max_bytes;
+}
+
+[[nodiscard]] std::uint32_t
+unsupported_host_diagnostic_count(const std::vector<TextureCookBackendDecisionV1>& decisions) noexcept {
+    std::uint32_t count = 0;
+    for (const auto& decision : decisions) {
+        if (!decision.host_validated || !decision.supported) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 [[nodiscard]] bool source_requires_cube_support(const TextureSourceDocumentV2& source) noexcept {
@@ -856,6 +914,50 @@ plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1&
         add_diagnostic(result.diagnostics, TextureBackendFormatPolicyDiagnosticCode::invalid_request,
                        "backend format policy output does not satisfy GameEngine.CookedTextureMetadata.v1",
                        TextureCookBackendV1::unknown);
+        return result;
+    }
+
+    result.metadata = std::move(metadata);
+    return result;
+}
+
+EnvironmentTextureGeassetMetadataResultV1
+plan_environment_texture_geasset_metadata_v1(const EnvironmentTextureGeassetMetadataRequestV1& request) {
+    EnvironmentTextureGeassetMetadataResultV1 result;
+
+    if (!safe_package_relative_path(request.geasset_path, ".geasset")) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetMetadataDiagnosticCode::invalid_request,
+                       "environment texture geasset path must be a safe package-relative .geasset path",
+                       request.geasset_path);
+    }
+    if (!request.metadata_only) {
+        add_diagnostic(
+            result.diagnostics, EnvironmentTextureGeassetMetadataDiagnosticCode::invalid_request,
+            "environment texture geasset metadata planning is metadata-only and does not write payload bytes",
+            request.geasset_path);
+    }
+    if (!is_valid_texture_cook_metadata_document_v1(request.cook_metadata)) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetMetadataDiagnosticCode::invalid_cook_metadata,
+                       "environment texture geasset metadata requires valid GameEngine.CookedTextureMetadata.v1 input",
+                       request.geasset_path);
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    EnvironmentTextureGeassetMetadataDocumentV1 metadata{
+        .geasset_path = request.geasset_path,
+        .cook_metadata = request.cook_metadata,
+        .mip_count = source_mip_count(request.cook_metadata.source),
+        .max_estimated_gpu_bytes = max_estimated_gpu_bytes(request.cook_metadata.backend_decisions),
+        .unsupported_host_diagnostic_count = unsupported_host_diagnostic_count(request.cook_metadata.backend_decisions),
+        .metadata_only = true,
+    };
+
+    if (!is_valid_environment_texture_geasset_metadata_document_v1(metadata)) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetMetadataDiagnosticCode::invalid_cook_metadata,
+                       "environment texture geasset metadata output does not satisfy deterministic metadata contract",
+                       request.geasset_path);
         return result;
     }
 
