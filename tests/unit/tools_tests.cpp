@@ -61,6 +61,8 @@
 #include <OpenEXR/ImfHeader.h>
 #include <OpenEXR/ImfOutputFile.h>
 #include <OpenEXR/ImfStandardAttributes.h>
+#include <ktx.h>
+#include <vkformat_enum.h>
 #endif
 
 #include <algorithm>
@@ -298,6 +300,34 @@ class ScopedTestFile final {
     std::filesystem::path path_;
 };
 
+class ScopedKtxTexture2 final {
+  public:
+    explicit ScopedKtxTexture2(ktxTexture2* texture) noexcept : texture_(texture) {}
+
+    ScopedKtxTexture2(const ScopedKtxTexture2&) = delete;
+    ScopedKtxTexture2& operator=(const ScopedKtxTexture2&) = delete;
+
+    ~ScopedKtxTexture2() {
+        if (texture_ != nullptr) {
+            ktxTexture_Destroy(ktxTexture(texture_));
+        }
+    }
+
+    [[nodiscard]] ktxTexture2* get() const noexcept {
+        return texture_;
+    }
+
+  private:
+    ktxTexture2* texture_{nullptr};
+};
+
+void require_ktx_success(KTX_error_code code, std::string_view operation) {
+    if (code != KTX_SUCCESS) {
+        const char* const text = ktxErrorString(code);
+        throw std::runtime_error(std::string{operation} + " failed: " + (text == nullptr ? "unknown KTX error" : text));
+    }
+}
+
 void write_openexr_environment_texture_fixture(const std::filesystem::path& path) {
     namespace exr = OPENEXR_IMF_NAMESPACE;
     namespace imath = IMATH_NAMESPACE;
@@ -327,6 +357,45 @@ void write_openexr_environment_texture_fixture(const std::filesystem::path& path
     exr::OutputFile file{path.string().c_str(), header};
     file.setFrameBuffer(frame_buffer);
     file.writePixels(height);
+}
+
+void write_ktx2_basis_texture_fixture(const std::filesystem::path& path) {
+    constexpr std::uint32_t width = 4;
+    constexpr std::uint32_t height = 4;
+
+    ktxTextureCreateInfo create_info{};
+    create_info.vkFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    create_info.baseWidth = width;
+    create_info.baseHeight = height;
+    create_info.baseDepth = 1;
+    create_info.numDimensions = 2;
+    create_info.numLevels = 1;
+    create_info.numLayers = 1;
+    create_info.numFaces = 1;
+    create_info.isArray = KTX_FALSE;
+    create_info.generateMipmaps = KTX_FALSE;
+
+    ktxTexture2* raw_texture = nullptr;
+    require_ktx_success(ktxTexture2_Create(&create_info, KTX_TEXTURE_CREATE_ALLOC_STORAGE, &raw_texture),
+                        "ktxTexture2_Create");
+    ScopedKtxTexture2 texture{raw_texture};
+
+    std::array<std::uint8_t, width * height * 4U> pixels{};
+    for (std::uint32_t y = 0; y < height; ++y) {
+        for (std::uint32_t x = 0; x < width; ++x) {
+            const auto index = static_cast<std::size_t>((y * width + x) * 4U);
+            pixels[index + 0U] = static_cast<std::uint8_t>(32U + x * 32U);
+            pixels[index + 1U] = static_cast<std::uint8_t>(48U + y * 32U);
+            pixels[index + 2U] = static_cast<std::uint8_t>(96U + (x + y) * 16U);
+            pixels[index + 3U] = 255U;
+        }
+    }
+
+    require_ktx_success(ktxTexture_SetImageFromMemory(ktxTexture(texture.get()), 0, 0, 0, pixels.data(), pixels.size()),
+                        "ktxTexture_SetImageFromMemory");
+    require_ktx_success(ktxTexture2_CompressBasis(texture.get(), 128U), "ktxTexture2_CompressBasis");
+    require_ktx_success(ktxTexture_WriteToNamedFile(ktxTexture(texture.get()), path.string().c_str()),
+                        "ktxTexture_WriteToNamedFile");
 }
 #endif
 
@@ -7769,6 +7838,31 @@ MK_TEST("openexr environment texture source review fails closed without asset im
     MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
 }
 
+MK_TEST("ktx2 basis texture source review fails closed without asset importers") {
+    if (mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+    const auto result =
+        mirakana::review_ktx2_basis_texture_source_metadata(mirakana::Ktx2BasisTextureSourceReviewRequest{
+            .source_file_path = std::filesystem::path{"source/textures/environment/studio.ktx2"},
+            .source_path = "source/textures/environment/studio.ktx2",
+            .source_hash = "sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+            .provenance_id = "provenance.environment.studio",
+            .license_id = "LicenseRef-Proprietary",
+            .color_space = mirakana::TextureColorSpaceV2::srgb,
+            .sampler_class = mirakana::TextureSamplerClassV2::color,
+            .basis_required = true,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.source.has_value());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code ==
+               mirakana::Ktx2BasisTextureSourceReviewDiagnosticCode::asset_importers_disabled);
+    MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
+}
+
 MK_TEST("openexr environment texture source review maps real file metadata when importers are enabled") {
     if (!mirakana::external_asset_importers_available()) {
         return;
@@ -7812,6 +7906,46 @@ MK_TEST("openexr environment texture source review maps real file metadata when 
     MK_REQUIRE(!source.openexr.multipart);
     MK_REQUIRE(!source.openexr.deep);
     MK_REQUIRE(!source.openexr.tiled);
+#endif
+}
+
+MK_TEST("ktx2 basis texture source review maps real file metadata when importers are enabled") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+#if MK_TESTS_HAS_ASSET_IMPORTERS
+    const ScopedTestFile fixture{std::filesystem::current_path() / "mk_ktx2_basis_environment_review_fixture.ktx2"};
+    write_ktx2_basis_texture_fixture(fixture.path());
+
+    const auto result =
+        mirakana::review_ktx2_basis_texture_source_metadata(mirakana::Ktx2BasisTextureSourceReviewRequest{
+            .source_file_path = fixture.path(),
+            .source_path = "source/textures/environment/studio.ktx2",
+            .source_hash = "sha256:22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111",
+            .provenance_id = "provenance.environment.studio",
+            .license_id = "LicenseRef-Proprietary",
+            .color_space = mirakana::TextureColorSpaceV2::srgb,
+            .sampler_class = mirakana::TextureSamplerClassV2::color,
+            .basis_required = true,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.source.has_value());
+
+    const auto& source = *result.source;
+    MK_REQUIRE(source.source_kind == mirakana::TextureSourceKindV2::ktx2_basis);
+    MK_REQUIRE(source.width == 4U);
+    MK_REQUIRE(source.height == 4U);
+    MK_REQUIRE(source.color_space == mirakana::TextureColorSpaceV2::srgb);
+    MK_REQUIRE(source.sampler_class == mirakana::TextureSamplerClassV2::color);
+    MK_REQUIRE(source.ktx2_basis.vk_format == "VK_FORMAT_UNDEFINED");
+    MK_REQUIRE(source.ktx2_basis.level_count == 1U);
+    MK_REQUIRE(source.ktx2_basis.layer_count == 1U);
+    MK_REQUIRE(source.ktx2_basis.face_count == 1U);
+    MK_REQUIRE(source.ktx2_basis.supercompression == mirakana::TextureCompressionKindV2::basis_lz);
+    MK_REQUIRE(source.ktx2_basis.basis_codec == mirakana::TexturePixelEncodingV2::basis_etc1s);
+    MK_REQUIRE(source.ktx2_basis.requires_transcoding);
 #endif
 }
 

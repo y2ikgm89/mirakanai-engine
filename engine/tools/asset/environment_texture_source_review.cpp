@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -20,6 +21,8 @@
 #include <OpenEXR/ImfStandardAttributes.h>
 #include <OpenEXR/ImfTestFile.h>
 #include <OpenEXR/ImfTiledInputFile.h>
+#include <ktx.h>
+#include <vkformat_enum.h>
 #endif
 
 namespace mirakana {
@@ -28,6 +31,15 @@ namespace {
 void add_diagnostic(std::vector<OpenExrTextureSourceReviewDiagnostic>& diagnostics,
                     OpenExrTextureSourceReviewDiagnosticCode code, std::string message, std::string path = {}) {
     diagnostics.push_back(OpenExrTextureSourceReviewDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .path = std::move(path),
+    });
+}
+
+void add_diagnostic(std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& diagnostics,
+                    Ktx2BasisTextureSourceReviewDiagnosticCode code, std::string message, std::string path = {}) {
+    diagnostics.push_back(Ktx2BasisTextureSourceReviewDiagnostic{
         .code = code,
         .message = std::move(message),
         .path = std::move(path),
@@ -78,11 +90,50 @@ void validate_request(std::vector<OpenExrTextureSourceReviewDiagnostic>& diagnos
     }
 }
 
+void validate_request(std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& diagnostics,
+                      const Ktx2BasisTextureSourceReviewRequest& request) {
+    if (request.source_file_path.empty()) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
+                       "KTX2/Basis source file path is missing");
+    }
+    if (!clean_text_token(request.source_path)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
+                       "KTX2/Basis source path must be a non-empty text token");
+    }
+    if (!sha256_token(request.source_hash)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
+                       "KTX2/Basis source hash must be a sha256 token", request.source_path);
+    }
+    if (!clean_text_token(request.provenance_id) || !clean_text_token(request.license_id)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
+                       "KTX2/Basis provenance and license ids must be non-empty text tokens", request.source_path);
+    }
+    if (request.color_space == TextureColorSpaceV2::unknown ||
+        request.sampler_class == TextureSamplerClassV2::unknown) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
+                       "KTX2/Basis review requires explicit color space and sampler class intent", request.source_path);
+    }
+    if (!request.basis_required) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request,
+                       "KTX2/Basis review requires explicit Basis Universal intent", request.source_path);
+    }
+}
+
 #if MK_HAS_ASSET_IMPORTERS
 struct OpenExrChannelRow {
     std::string name;
     TexturePixelEncodingV2 encoding{TexturePixelEncodingV2::unknown};
 };
+
+struct KtxTexture2Deleter {
+    void operator()(ktxTexture2* texture) const noexcept {
+        if (texture != nullptr) {
+            ktxTexture_Destroy(ktxTexture(texture));
+        }
+    }
+};
+
+using UniqueKtxTexture2 = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
 
 [[nodiscard]] TextureSourceWindowV2 source_window_from_box(const IMATH_NAMESPACE::Box2i& box) noexcept {
     return TextureSourceWindowV2{
@@ -153,6 +204,122 @@ struct OpenExrChannelRow {
         output << rows[index].name << ':' << pixel_encoding_channel_name(rows[index].encoding);
     }
     return output.str();
+}
+
+[[nodiscard]] std::string ktx_error_text(KTX_error_code code) {
+    const char* const text = ktxErrorString(code);
+    return text == nullptr ? "unknown KTX error" : std::string{text};
+}
+
+[[nodiscard]] std::string vk_format_name(ktx_uint32_t format) {
+    if (format == VK_FORMAT_UNDEFINED) {
+        return "VK_FORMAT_UNDEFINED";
+    }
+    std::ostringstream output;
+    output << "VK_FORMAT_" << format;
+    return output.str();
+}
+
+[[nodiscard]] bool color_transfer_matches_intent(khr_df_transfer_e transfer, TextureColorSpaceV2 color_space) noexcept {
+    switch (color_space) {
+    case TextureColorSpaceV2::srgb:
+        return transfer == KHR_DF_TRANSFER_SRGB;
+    case TextureColorSpaceV2::scene_linear:
+    case TextureColorSpaceV2::linear_data:
+        return transfer == KHR_DF_TRANSFER_LINEAR;
+    case TextureColorSpaceV2::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] TextureSourceDocumentV2
+make_source_document_from_ktx2(std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& diagnostics,
+                               const Ktx2BasisTextureSourceReviewRequest& request, ktxTexture2& texture) {
+    const ktxTexture* const base = ktxTexture(&texture);
+    if (texture.isVideo || base->numDimensions != 2U || base->baseDepth != 1U || base->baseWidth == 0U ||
+        base->baseHeight == 0U || base->numLevels == 0U || base->numLayers == 0U ||
+        (base->numFaces != 1U && base->numFaces != 6U)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::unsupported_ktx_layout,
+                       "KTX2/Basis review supports non-video 2D textures or cubemaps with explicit levels, layers, "
+                       "and 1 or 6 faces",
+                       request.source_path);
+        return {};
+    }
+
+    if (texture.vkFormat != VK_FORMAT_UNDEFINED || !ktxTexture2_NeedsTranscoding(&texture)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::unsupported_ktx_format,
+                       "KTX2/Basis review requires a Basis Universal texture that needs transcoding before GPU upload",
+                       request.source_path);
+        return {};
+    }
+
+    const auto transfer = ktxTexture2_GetTransferFunction_e(&texture);
+    if (!color_transfer_matches_intent(transfer, request.color_space)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_ktx_metadata,
+                       "KTX2 transfer function does not match the requested color-space intent", request.source_path);
+        return {};
+    }
+
+    const auto color_model = ktxTexture2_GetColorModel_e(&texture);
+    TextureCompressionKindV2 supercompression{TextureCompressionKindV2::unknown};
+    TexturePixelEncodingV2 basis_codec{TexturePixelEncodingV2::unknown};
+    switch (color_model) {
+    case KHR_DF_MODEL_ETC1S:
+        if (texture.supercompressionScheme != KTX_SS_BASIS_LZ) {
+            add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_ktx_metadata,
+                           "KTX2 ETC1S Basis Universal textures must use BasisLZ supercompression",
+                           request.source_path);
+            return {};
+        }
+        supercompression = TextureCompressionKindV2::basis_lz;
+        basis_codec = TexturePixelEncodingV2::basis_etc1s;
+        break;
+    case KHR_DF_MODEL_UASTC:
+        if (texture.supercompressionScheme != KTX_SS_NONE && texture.supercompressionScheme != KTX_SS_ZSTD) {
+            add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_ktx_metadata,
+                           "KTX2 UASTC Basis Universal textures must use no supercompression or Zstd",
+                           request.source_path);
+            return {};
+        }
+        supercompression = TextureCompressionKindV2::uastc;
+        basis_codec = TexturePixelEncodingV2::basis_uastc;
+        break;
+    default:
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::unsupported_ktx_format,
+                       "KTX2/Basis review supports ETC1S and UASTC color models only", request.source_path);
+        return {};
+    }
+
+    const TextureSourceDocumentV2 document{
+        .source_path = request.source_path,
+        .source_hash = request.source_hash,
+        .provenance_id = request.provenance_id,
+        .license_id = request.license_id,
+        .source_kind = TextureSourceKindV2::ktx2_basis,
+        .width = base->baseWidth,
+        .height = base->baseHeight,
+        .color_space = request.color_space,
+        .sampler_class = request.sampler_class,
+        .openexr = {},
+        .ktx2_basis =
+            TextureKtx2BasisSourceReviewV2{
+                .vk_format = vk_format_name(texture.vkFormat),
+                .level_count = base->numLevels,
+                .layer_count = base->numLayers,
+                .face_count = base->numFaces,
+                .supercompression = supercompression,
+                .basis_codec = basis_codec,
+                .requires_transcoding = true,
+            },
+    };
+
+    if (!is_valid_texture_source_document_v2(document)) {
+        add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_ktx_metadata,
+                       "KTX2/Basis metadata does not satisfy GameEngine.TextureSource.v2 contract",
+                       request.source_path);
+    }
+    return document;
 }
 
 [[nodiscard]] std::vector<OpenExrChannelRow>
@@ -261,6 +428,14 @@ bool has_openexr_texture_source_review() noexcept {
 #endif
 }
 
+bool has_ktx2_basis_texture_source_review() noexcept {
+#if MK_HAS_ASSET_IMPORTERS
+    return true;
+#else
+    return false;
+#endif
+}
+
 OpenExrTextureSourceReviewResult
 review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& request) {
     OpenExrTextureSourceReviewResult result;
@@ -311,6 +486,41 @@ review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& 
                        std::string{"failed to read OpenEXR source metadata: "} + error.what(), request.source_path);
         return result;
     }
+#endif
+}
+
+Ktx2BasisTextureSourceReviewResult
+review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequest& request) {
+    Ktx2BasisTextureSourceReviewResult result;
+
+#if !MK_HAS_ASSET_IMPORTERS
+    add_diagnostic(result.diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::asset_importers_disabled,
+                   "asset-importers feature is disabled; KTX2/Basis source metadata review is unavailable",
+                   request.source_path);
+    return result;
+#else
+    validate_request(result.diagnostics, request);
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    ktxTexture2* raw_texture = nullptr;
+    const auto native_path = request.source_file_path.string();
+    const auto create_result =
+        ktxTexture2_CreateFromNamedFile(native_path.c_str(), KTX_TEXTURE_CREATE_NO_FLAGS, &raw_texture);
+    if (create_result != KTX_SUCCESS) {
+        add_diagnostic(result.diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::ktx_read_failed,
+                       "failed to read KTX2/Basis source metadata: " + ktx_error_text(create_result),
+                       request.source_path);
+        return result;
+    }
+
+    UniqueKtxTexture2 texture{raw_texture};
+    auto document = make_source_document_from_ktx2(result.diagnostics, request, *texture);
+    if (result.diagnostics.empty()) {
+        result.source = std::move(document);
+    }
+    return result;
 #endif
 }
 
