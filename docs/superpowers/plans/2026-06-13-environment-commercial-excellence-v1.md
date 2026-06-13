@@ -150,12 +150,20 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 - `docs/roadmap.md`
 - this plan and `docs/superpowers/plans/README.md`
 
-- [ ] Add manifest rows for every target claim id in the Target Claim Matrix with `ready`, `host-gated`, or `unsupported` state and exact validation recipe id.
-- [ ] Add unsupported adjacent rows for unconditional all-platform parity, broad renderer quality, public native handles, unlicensed assets, unreviewed content mutation, compatibility parsers, and default optional-codec dependencies.
-- [ ] Add static checks that fail if broad readiness rows are set without their required backend/platform/asset/performance evidence rows.
-- [ ] Add package counter naming rules for every new claim id.
-- [ ] Add docs that explain exact readiness versus host-gated readiness.
-- [ ] Run focused JSON and AI integration checks.
+- [x] Add manifest rows for every target claim id in the Target Claim Matrix with `ready`, `host-gated`, or `unsupported` state and exact validation recipe id.
+- [x] Add unsupported adjacent rows for unconditional all-platform parity, broad renderer quality, public native handles, unlicensed assets, unreviewed content mutation, compatibility parsers, and default optional-codec dependencies.
+- [x] Add static checks that fail if broad readiness rows are set without their required backend/platform/asset/performance evidence rows.
+- [x] Add package counter naming rules for every new claim id.
+- [x] Add docs that explain exact readiness versus host-gated readiness.
+- [x] Run focused JSON and AI integration checks.
+
+Phase 1 implementation notes:
+
+- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` now owns `environmentCommercialClaimMatrix` and `environmentCommercialUnsupportedAdjacentClaims`.
+- `schemas/engine-agent/ai-operable-production-loop.schema.json` requires the new taxonomy rows and keeps `ready`, `host-gated`, and `unsupported` as a dedicated clean-break claim-state enum.
+- `tools/check-json-contracts-010-engine-manifest.ps1` now fails closed on missing/duplicate claim ids, unknown validation recipes, invalid state, non-canonical package counters, unknown dependencies, broad ready claims before dependency readiness, adjacent non-claim drift, and accidental `unsupportedProductionGaps` repopulation.
+- `engine/agent/manifest.fragments/014-gameCodeGuidance.json`, `docs/current-capabilities.md`, `docs/roadmap.md`, and `docs/superpowers/plans/README.md` explain exact readiness versus host-gated or unsupported readiness.
+- Focused validation passed on 2026-06-13: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-text-format.ps1`, `tools/check-agents.ps1`, and `git diff --check`.
 
 **Done when:** The repository can represent every planned claim and non-claim before implementation starts, and static checks fail closed for overbroad readiness.
 
