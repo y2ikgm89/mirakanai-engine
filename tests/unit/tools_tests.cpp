@@ -50,6 +50,19 @@
 #include "mirakana/tools/ui_atlas_tool.hpp"
 #include "mirakana/ui/ui.hpp"
 
+#ifndef MK_TESTS_HAS_ASSET_IMPORTERS
+#define MK_TESTS_HAS_ASSET_IMPORTERS 0
+#endif
+
+#if MK_TESTS_HAS_ASSET_IMPORTERS
+#include <OpenEXR/ImfChannelList.h>
+#include <OpenEXR/ImfChromaticities.h>
+#include <OpenEXR/ImfFrameBuffer.h>
+#include <OpenEXR/ImfHeader.h>
+#include <OpenEXR/ImfOutputFile.h>
+#include <OpenEXR/ImfStandardAttributes.h>
+#endif
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -61,7 +74,9 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -261,6 +276,59 @@ class ThrowingWriteFileSystem final : public mirakana::IFileSystem {
     }
     return result;
 }
+
+#if MK_TESTS_HAS_ASSET_IMPORTERS
+class ScopedTestFile final {
+  public:
+    explicit ScopedTestFile(std::filesystem::path path) : path_(std::move(path)) {
+        std::error_code ignored;
+        std::filesystem::remove(path_, ignored);
+    }
+
+    ~ScopedTestFile() {
+        std::error_code ignored;
+        std::filesystem::remove(path_, ignored);
+    }
+
+    [[nodiscard]] const std::filesystem::path& path() const noexcept {
+        return path_;
+    }
+
+  private:
+    std::filesystem::path path_;
+};
+
+void write_openexr_environment_texture_fixture(const std::filesystem::path& path) {
+    namespace exr = OPENEXR_IMF_NAMESPACE;
+    namespace imath = IMATH_NAMESPACE;
+
+    constexpr int width = 2;
+    constexpr int height = 2;
+
+    std::array<float, width * height> red{1.0F, 0.75F, 0.5F, 0.25F};
+    std::array<float, width * height> green{0.0F, 0.25F, 0.5F, 0.75F};
+    std::array<float, width * height> blue{0.125F, 0.25F, 0.5F, 1.0F};
+
+    exr::Header header{width, height};
+    header.displayWindow() = imath::Box2i{imath::V2i{0, 0}, imath::V2i{3, 3}};
+    header.channels().insert("R", exr::Channel{exr::FLOAT});
+    header.channels().insert("G", exr::Channel{exr::FLOAT});
+    header.channels().insert("B", exr::Channel{exr::FLOAT});
+    exr::addChromaticities(header, exr::Chromaticities{});
+
+    exr::FrameBuffer frame_buffer;
+    frame_buffer.insert(
+        "R", exr::Slice{exr::FLOAT, reinterpret_cast<char*>(red.data()), sizeof(float), sizeof(float) * width});
+    frame_buffer.insert(
+        "G", exr::Slice{exr::FLOAT, reinterpret_cast<char*>(green.data()), sizeof(float), sizeof(float) * width});
+    frame_buffer.insert(
+        "B", exr::Slice{exr::FLOAT, reinterpret_cast<char*>(blue.data()), sizeof(float), sizeof(float) * width});
+
+    exr::OutputFile file{path.string().c_str(), header};
+    file.setFrameBuffer(frame_buffer);
+    file.writePixels(height);
+}
+#endif
 
 void append_le_u16(std::string& output, std::uint16_t value) {
     output.push_back(static_cast<char>(value & 0xFFU));
@@ -7699,6 +7767,52 @@ MK_TEST("openexr environment texture source review fails closed without asset im
     MK_REQUIRE(result.diagnostics[0].code ==
                mirakana::OpenExrTextureSourceReviewDiagnosticCode::asset_importers_disabled);
     MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
+}
+
+MK_TEST("openexr environment texture source review maps real file metadata when importers are enabled") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+#if MK_TESTS_HAS_ASSET_IMPORTERS
+    const ScopedTestFile fixture{std::filesystem::current_path() / "mk_openexr_environment_review_fixture.exr"};
+    write_openexr_environment_texture_fixture(fixture.path());
+
+    const auto result = mirakana::review_openexr_texture_source_metadata(mirakana::OpenExrTextureSourceReviewRequest{
+        .source_file_path = fixture.path(),
+        .source_path = "source/textures/environment/studio.exr",
+        .source_hash = "sha256:111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000",
+        .provenance_id = "provenance.environment.studio",
+        .license_id = "LicenseRef-Proprietary",
+        .scene_linear_intent = true,
+    });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.source.has_value());
+
+    const auto& source = *result.source;
+    MK_REQUIRE(source.source_kind == mirakana::TextureSourceKindV2::openexr);
+    MK_REQUIRE(source.width == 2U);
+    MK_REQUIRE(source.height == 2U);
+    MK_REQUIRE(source.color_space == mirakana::TextureColorSpaceV2::scene_linear);
+    MK_REQUIRE(source.sampler_class == mirakana::TextureSamplerClassV2::environment_radiance);
+    MK_REQUIRE(source.openexr.data_window.min_x == 0);
+    MK_REQUIRE(source.openexr.data_window.min_y == 0);
+    MK_REQUIRE(source.openexr.data_window.max_x == 1);
+    MK_REQUIRE(source.openexr.data_window.max_y == 1);
+    MK_REQUIRE(source.openexr.display_window.min_x == 0);
+    MK_REQUIRE(source.openexr.display_window.min_y == 0);
+    MK_REQUIRE(source.openexr.display_window.max_x == 3);
+    MK_REQUIRE(source.openexr.display_window.max_y == 3);
+    MK_REQUIRE(source.openexr.channel_list == "R:float,G:float,B:float");
+    MK_REQUIRE(source.openexr.pixel_encoding == mirakana::TexturePixelEncodingV2::float32);
+    MK_REQUIRE(source.openexr.channel_count == 3U);
+    MK_REQUIRE(source.openexr.chromaticities_recorded);
+    MK_REQUIRE(source.openexr.scene_linear_intent);
+    MK_REQUIRE(!source.openexr.multipart);
+    MK_REQUIRE(!source.openexr.deep);
+    MK_REQUIRE(!source.openexr.tiled);
+#endif
 }
 
 MK_TEST("default external asset import adapters decode audited dependency formats when enabled") {

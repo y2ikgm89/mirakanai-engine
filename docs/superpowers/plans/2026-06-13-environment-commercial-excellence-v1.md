@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-commercial-excellence-v1`
 
-**Status:** Active. Phase 0 selected the milestone, Phase 1 added the readiness taxonomy, Phase 2 added optional OpenEXR dependency/legal/bootstrap gates, Phase 3 slice 1 added descriptor-level asset/cook metadata contracts, Phase 3 slice 2 added optional-gated OpenEXR environment source metadata review APIs only, and Phase 3 slice 3 adds the hosted Windows `asset-importers` validation lane. This does not claim strict Vulkan aggregate readiness, Metal host aggregate readiness, backend parity, all-platform readiness, broad optimization, OpenEXR/KTX/Basis asset-pipeline readiness, AAA preset-library readiness, physical weather simulation readiness, or artist-workflow readiness.
+**Status:** Active. Phase 0 selected the milestone, Phase 1 added the readiness taxonomy, Phase 2 added optional OpenEXR dependency/legal/bootstrap gates, Phase 3 slice 1 added descriptor-level asset/cook metadata contracts, Phase 3 slice 2 added optional-gated OpenEXR environment source metadata review APIs only, Phase 3 slice 3 added the hosted Windows `asset-importers` validation lane, and Phase 3 slice 4 adds real OpenEXR binary metadata review evidence. This does not claim strict Vulkan aggregate readiness, Metal host aggregate readiness, backend parity, all-platform readiness, broad optimization, OpenEXR/KTX/Basis asset-pipeline readiness, AAA preset-library readiness, physical weather simulation readiness, or artist-workflow readiness.
 
 **Goal:** Promote the completed selected D3D12-primary environment aggregate into a commercial environment capability set with strict Vulkan aggregate readiness, Apple-host Metal aggregate readiness, backend parity, exact all-platform readiness rows, measured broad optimization evidence, a licensed AAA preset asset library, OpenEXR/KTX/Basis production asset pipeline, physically modeled weather simulation, and advanced artist workflow support. Every claim must be backed by backend-local package-visible counters, validation recipes, official-source constraints, dependency/legal records, and hosted or host-gated evidence. No broad claim may be inferred from another backend, host, sample, asset, or adjacent row.
 
@@ -224,7 +224,7 @@ Phase 2 implementation notes:
 
 - [x] Add clean-break source asset descriptors for `GameEngine.TextureSource.v2` and `GameEngine.EnvironmentAssetSource.v1`.
 - [x] Reject legacy descriptors explicitly with diagnostics instead of compatibility parsing.
-- [ ] For OpenEXR, validate data window, display window, channel list, pixel type, multipart/deep/tiled flags, color metadata, and scene-linear intent through a bootstrapped `asset-importers` lane.
+- [x] For OpenEXR, validate data window, display window, channel list, pixel type, multipart/deep/tiled flags, color metadata, and scene-linear intent through a bootstrapped `asset-importers` lane.
 - [ ] For KTX2/Basis, validate container metadata, levels, layers, faces, supercompression, Basis requirement, and intended sampler class.
 - [ ] Add device/backend format-selection policy rows for D3D12, Vulkan, Metal, Android Vulkan, and iOS Metal.
 - [ ] Cook deterministic `.geasset` metadata with source hash, license/provenance id, color space, compression/transcoding choice, mip count, memory estimate, and unsupported-host diagnostics.
@@ -250,6 +250,13 @@ Phase 3 slice 3 implementation notes:
 - `.github/workflows/validate.yml` now runs `tools/build-asset-importers.ps1` in the hosted Windows MSVC job after `tools/bootstrap-deps.ps1` and default validation, using the official GitHub Actions `run` step with `shell: pwsh`.
 - `tools/check-ci-matrix.ps1` now fails closed if the hosted Windows workflow stops running `tools/build-asset-importers.ps1` or stops uploading `out/build/asset-importers/Testing/**/*.log` on failure.
 - This is a validation-surface slice only. It proves the optional dependency lane is wired into hosted PR evidence, but it does not add new EXR/KTX/Basis pixel decode behavior, KTX/Basis transcoding, cooked payload writing, package smoke counters, runtime texture upload, backend format selection execution, or `environment_asset_pipeline_openexr_ktx_basis_ready` promotion.
+
+Phase 3 slice 4 implementation notes:
+
+- `MK_tools_tests` now links OpenEXR only when `MK_ENABLE_ASSET_IMPORTERS=ON` and compiles a test-only writer guarded by `MK_TESTS_HAS_ASSET_IMPORTERS`.
+- The new asset-importers-only test writes a real 2x2 RGB FLOAT scanline OpenEXR file using the official `Header`, `ChannelList`, `OutputFile`, `FrameBuffer`, `Slice`, and `addChromaticities` APIs, then runs `review_openexr_texture_source_metadata` against that file.
+- The test validates `GameEngine.TextureSource.v2` metadata for source path/hash/provenance/license, data window, display window, channel list, float32 pixel encoding, channel count, chromaticities, scene-linear intent, and explicit non-multipart/non-deep/non-tiled flags. It still does not decode OpenEXR pixels into engine texture payloads, transcode KTX/Basis data, cook `.geasset` bytes, run runtime package smokes, upload GPU textures, execute backend format selection, or promote `environment_asset_pipeline_openexr_ktx_basis_ready`.
+- Local default validation on 2026-06-14 passed `tools/check-format.ps1`, `tools/check-ci-matrix.ps1`, `git diff --check`, `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_tools_tests`, and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests`. Local `tools/cmake.ps1 --preset asset-importers` remains blocked by the unbootstrapped local optional dependency tree at missing `SPNGConfig.cmake`; hosted PR Windows MSVC `asset-importers` evidence is required for this slice.
 
 **Done when:** The selected asset pipeline imports and cooks HDR and compressed texture assets with deterministic metadata, legal provenance, backend format decisions, and package evidence.
 
