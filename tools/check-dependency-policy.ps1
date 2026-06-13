@@ -119,7 +119,7 @@ foreach ($dependency in $assetImporters.dependencies) {
     }
 }
 
-foreach ($dependencyName in @("libspng", "fastgltf", "ktx", "miniaudio")) {
+foreach ($dependencyName in @("libspng", "fastgltf", "openexr", "ktx", "miniaudio")) {
     if ($assetImporterDependencyNames -notcontains $dependencyName) {
         Write-Error "asset-importers feature must declare dependency: $dependencyName"
     }
@@ -173,15 +173,24 @@ if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| KTX Software \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| OpenEXR \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Imath \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| libdeflate \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| OpenJPH \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "network-enet" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "KTX Software" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "OpenEXR" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Imath" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "libdeflate" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "OpenJPH" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "ENet" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "KTX Software" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "OpenEXR" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
 Assert-TextContains "CMakePresets.json" "physics-jolt" "CMake presets"
@@ -228,6 +237,7 @@ Assert-TextDoesNotContain "tools/bootstrap-deps.ps1" "--x-feature=desktop-gui" "
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=asset-importers" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=physics-jolt" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=network-enet" "bootstrap dependencies"
+Assert-TextContains "engine/tools/CMakeLists.txt" "find_package\(OpenEXR CONFIG REQUIRED\)" "asset-importers configure dependency gate"
 
 Assert-TextContains "engine/agent/manifest.json" "buildAssetImporters" "engine manifest commands"
 Assert-TextContains "engine/agent/manifest.json" "validatePhysicsJolt" "engine manifest commands"
