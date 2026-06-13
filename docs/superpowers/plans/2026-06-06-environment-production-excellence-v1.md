@@ -111,10 +111,19 @@ Source implications for this plan:
 - Broad `environment_ready` is the final aggregate after exact rows pass. It is not a synonym for "some environment features are ready."
 - Dear ImGui, SDL3, Qt, Slint, RmlUi, UI middleware, public native handles, and compatibility shims are forbidden for this milestone.
 - OpenEXR, KTX, Basis, source-image decoder, or HDR importer dependencies are excluded unless a phase begins with `license-audit`, `vcpkg.json`, dependency docs, legal notices, package evidence, and validation.
+- Deferred broad scope gates are future first-party AI-operable engine capabilities, not feature-copy checklists from other engines. External SDKs or audited dependencies may sit behind private adapters only after their dependency/legal gates pass; public contracts, evidence rows, reviewed commands, package recipes, and unsupported-claim boundaries remain MIRAIKANAI-owned.
 
 ## Deferred Broad Scope Gates
 
 These items are included in this plan as explicit future gates so they are not mistaken for forgotten work. They are not required to complete `environment-production-excellence-v1`, and Phase 9 must not promote any of them unless a new focused plan selects the item and proves the exact claim.
+
+When selected, each gate must be framed as an AI-operable engine capability that lets an agent safely plan, edit, validate, or hand off game-production work through structured engine surfaces. A future plan for any row below must define:
+
+- A stable capability id and explicit ready/host-gated/unsupported rows in the composed agent manifest.
+- Input schema or profile/package format that an AI agent can inspect and edit deterministically.
+- Reviewed command boundaries with dry-run output before any mutation and revision-checked apply semantics where mutation is allowed.
+- Package-visible counters, validation recipes, and static checks proving the exact claim.
+- Unsupported adjacent claims and handoff reasons when the requested game-production task exceeds the selected capability.
 
 | Item | Treatment in this plan | Required future selection evidence |
 | --- | --- | --- |
@@ -645,6 +654,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 - No broad renderer quality claim from environment-specific renderer evidence.
 - No broad optimization, backend parity, Metal readiness, Vulkan readiness, or `environment_ready` claim without exact evidence.
 - No unconditional all-platform parity. Every platform/backend must have its own selected validation recipe and host/toolchain evidence.
+- No unstructured AI mutation path for deferred gates; future broad capabilities must use schema-backed inputs, reviewed commands, package counters, validation recipes, and explicit unsupported handoff rows.
 - No material source mutation from runtime weather unless a future authored-material mutation plan explicitly selects it.
 - No audio device ownership in environment code.
 
@@ -657,7 +667,7 @@ The milestone is complete only when:
 - Hosted PR checks pass for each merged PR.
 - `currentActivePlan`, `recommendedNextPlan`, registry, roadmap, current capabilities, master-plan backlog, manifest fragments, composed manifest, and static checks all describe the same ready/non-ready truth.
 - Broad `environment_ready` is either still unclaimed with explicit counters, or claimed only through Phase 9 aggregate evidence.
-- The deferred broad scope gates remain recorded as future work unless separately selected: OpenEXR/KTX/Basis asset pipeline, AAA preset asset library, complete weather fluid simulation, broad renderer quality, broad CPU/GPU/memory optimization, and all-platform unconditional parity.
+- The deferred broad scope gates remain recorded as future AI-operable capability work unless separately selected with schema/profile inputs, reviewed dry-run/apply commands where mutation is allowed, package-visible evidence counters, validation recipes, static checks, unsupported adjacent claims, and handoff reasons: OpenEXR/KTX/Basis asset pipeline, AAA preset asset library, complete weather fluid simulation, broad renderer quality, broad CPU/GPU/memory optimization, and all-platform unconditional parity.
 - No untracked temporary files, generated scratch output, stale branch/worktree assumptions, Dear ImGui/SDL3 dependencies, native handle leaks, or dependency/legal drift remain.
 
 ## Plan Self-Review
