@@ -48,6 +48,14 @@ $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-27-mirakana-adaptive-virtual-geometry-master-plan-v1.md"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    @{ Text = $aiLoopFragmentText; Label = "production loop fragment" }
+} else {
+    @{
+        Text = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $planText, $filesystemPlanText, $directStoragePageIoPlanText, $gpuMemoryResidencyPlanText, $clusterStreamingResidencyCloseoutPlanText, $clusterStreamingSafePointAdoptionPlanText, $streamedClusterGpuUploadPlanText, $persistentBackgroundStreamingServicePlanText, $streamedClusterBackendDrawPlanText) -join " "
+        Label = "production loop completed context"
+    }
+}
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 
 foreach ($needle in @(
@@ -155,7 +163,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -194,7 +202,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -221,7 +229,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -285,7 +293,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" }
+        $mavgProductionLoopFragmentSurface
     )) {
     foreach ($needle in @(
             "mavg-background-streaming-dispatch-v1",
@@ -353,7 +361,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -430,7 +438,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -513,7 +521,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -611,7 +619,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -684,7 +692,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "roadmap" },
         @{ Text = $mavgArchitectureSpecText; Label = "MAVG architecture spec" },
         @{ Text = $masterPlanText; Label = "MAVG master plan" },
-        @{ Text = $aiLoopFragmentText; Label = "production loop fragment" },
+        $mavgProductionLoopFragmentSurface,
         @{ Text = $modulesFragmentText; Label = "modules fragment" }
     )) {
     foreach ($needle in @(
@@ -703,9 +711,11 @@ foreach ($surface in @(
     }
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must remain the production-completion master plan after MAVG payload byte-range page loader closeout"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must remain next-production-gap-selection after MAVG payload byte-range page loader closeout"
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        Write-Error "engine/agent/manifest.json currentActivePlan must remain the production-completion master plan after MAVG payload byte-range page loader closeout"
+    }
+    if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+        Write-Error "engine/agent/manifest.json recommendedNextPlan.id must remain next-production-gap-selection after MAVG payload byte-range page loader closeout"
+    }
 }

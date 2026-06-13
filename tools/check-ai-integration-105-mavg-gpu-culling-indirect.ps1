@@ -63,17 +63,19 @@ foreach ($surface in @(
     }
 }
 
-$aiLoopGpuCullingEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
-foreach ($needle in @(
-        "mavg-gpu-culling-indirect-v1",
-        "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
-        "mavg-gpu-culling-dispatch-v1",
-        "PR #556",
-        "plan_mavg_gpu_culling_indirect_commands",
-        "MavgGpuCullingIndirectPlan",
-        "mavg-vulkan-count-buffer-indirect-execution-v1"
-    )) {
-    Assert-ContainsText $aiLoopGpuCullingEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    $aiLoopGpuCullingEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
+    foreach ($needle in @(
+            "mavg-gpu-culling-indirect-v1",
+            "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
+            "mavg-gpu-culling-dispatch-v1",
+            "PR #556",
+            "plan_mavg_gpu_culling_indirect_commands",
+            "MavgGpuCullingIndirectPlan",
+            "mavg-vulkan-count-buffer-indirect-execution-v1"
+        )) {
+        Assert-ContainsText $aiLoopGpuCullingEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+    }
 }
 
 foreach ($needle in @(

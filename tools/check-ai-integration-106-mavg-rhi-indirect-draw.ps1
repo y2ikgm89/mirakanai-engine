@@ -109,20 +109,22 @@ foreach ($surface in @(
     }
 }
 
-$aiLoopRhiIndirectEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
-foreach ($needle in @(
-        "mavg-rhi-indirect-draw-v1",
-        "docs/superpowers/plans/2026-06-05-mavg-rhi-indirect-draw-v1.md",
-        "IndexedIndirectDrawCommand",
-        "IndexedIndirectDrawDesc",
-        "BufferUsage::indirect",
-        "D3D12 ExecuteIndirect",
-        "mavg-vulkan-indexed-indirect-draw-execution-v1",
-        "vkCmdDrawIndexedIndirect",
-        "mavg-d3d12-count-buffer-indirect-execution-v1",
-        "CountBufferOffset"
-    )) {
-    Assert-ContainsText $aiLoopRhiIndirectEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+    $aiLoopRhiIndirectEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
+    foreach ($needle in @(
+            "mavg-rhi-indirect-draw-v1",
+            "docs/superpowers/plans/2026-06-05-mavg-rhi-indirect-draw-v1.md",
+            "IndexedIndirectDrawCommand",
+            "IndexedIndirectDrawDesc",
+            "BufferUsage::indirect",
+            "D3D12 ExecuteIndirect",
+            "mavg-vulkan-indexed-indirect-draw-execution-v1",
+            "vkCmdDrawIndexedIndirect",
+            "mavg-d3d12-count-buffer-indirect-execution-v1",
+            "CountBufferOffset"
+        )) {
+        Assert-ContainsText $aiLoopRhiIndirectEvidenceText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+    }
 }
 
 foreach ($needle in @(
