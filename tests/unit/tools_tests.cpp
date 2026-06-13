@@ -62,7 +62,6 @@
 #include <OpenEXR/ImfOutputFile.h>
 #include <OpenEXR/ImfStandardAttributes.h>
 #include <ktx.h>
-#include <vkformat_enum.h>
 #endif
 
 #include <algorithm>
@@ -280,6 +279,8 @@ class ThrowingWriteFileSystem final : public mirakana::IFileSystem {
 }
 
 #if MK_TESTS_HAS_ASSET_IMPORTERS
+constexpr ktx_uint32_t kKtxFixtureVkFormatR8G8B8A8Srgb = 43U;
+
 class ScopedTestFile final {
   public:
     explicit ScopedTestFile(std::filesystem::path path) : path_(std::move(path)) {
@@ -364,7 +365,7 @@ void write_ktx2_basis_texture_fixture(const std::filesystem::path& path) {
     constexpr std::uint32_t height = 4;
 
     ktxTextureCreateInfo create_info{};
-    create_info.vkFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    create_info.vkFormat = kKtxFixtureVkFormatR8G8B8A8Srgb;
     create_info.baseWidth = width;
     create_info.baseHeight = height;
     create_info.baseDepth = 1;

@@ -22,7 +22,6 @@
 #include <OpenEXR/ImfTestFile.h>
 #include <OpenEXR/ImfTiledInputFile.h>
 #include <ktx.h>
-#include <vkformat_enum.h>
 #endif
 
 namespace mirakana {
@@ -135,6 +134,8 @@ struct KtxTexture2Deleter {
 
 using UniqueKtxTexture2 = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
 
+constexpr ktx_uint32_t kKtxVkFormatUndefined = 0U;
+
 [[nodiscard]] TextureSourceWindowV2 source_window_from_box(const IMATH_NAMESPACE::Box2i& box) noexcept {
     return TextureSourceWindowV2{
         .min_x = box.min.x,
@@ -212,7 +213,7 @@ using UniqueKtxTexture2 = std::unique_ptr<ktxTexture2, KtxTexture2Deleter>;
 }
 
 [[nodiscard]] std::string vk_format_name(ktx_uint32_t format) {
-    if (format == VK_FORMAT_UNDEFINED) {
+    if (format == kKtxVkFormatUndefined) {
         return "VK_FORMAT_UNDEFINED";
     }
     std::ostringstream output;
@@ -247,7 +248,7 @@ make_source_document_from_ktx2(std::vector<Ktx2BasisTextureSourceReviewDiagnosti
         return {};
     }
 
-    if (texture.vkFormat != VK_FORMAT_UNDEFINED || !ktxTexture2_NeedsTranscoding(&texture)) {
+    if (texture.vkFormat != kKtxVkFormatUndefined || !ktxTexture2_NeedsTranscoding(&texture)) {
         add_diagnostic(diagnostics, Ktx2BasisTextureSourceReviewDiagnosticCode::unsupported_ktx_format,
                        "KTX2/Basis review requires a Basis Universal texture that needs transcoding before GPU upload",
                        request.source_path);
