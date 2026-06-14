@@ -16,6 +16,7 @@
     "packageSurfaces",
     "unsupportedProductionGaps",
     "environmentCommercialClaimMatrix",
+    "environmentPlatformReadinessRows",
     "environmentCommercialUnsupportedAdjacentClaims",
     "hostGates",
     "validationRecipeMap",
@@ -393,6 +394,78 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "requiredEvidence": { "type": "string", "minLength": 1 },
+          "forbiddenInference": { "type": "string", "minLength": 1 },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "environmentPlatformReadinessRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "claimId",
+          "state",
+          "hostOs",
+          "backend",
+          "runtimeTarget",
+          "runtimeSample",
+          "requiredSdks",
+          "requiredCompilers",
+          "requiredValidationTools",
+          "validationRecipeIds",
+          "featureSet",
+          "packageSmoke",
+          "packageCounters",
+          "hostGate",
+          "blockerReason",
+          "forbiddenInference",
+          "notes"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "claimId": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["ready", "host-gated", "unsupported"] },
+          "hostOs": { "type": "string", "minLength": 1 },
+          "backend": { "type": "string", "minLength": 1 },
+          "runtimeTarget": { "type": "string", "minLength": 1 },
+          "runtimeSample": { "type": "string", "minLength": 1 },
+          "requiredSdks": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "requiredCompilers": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "requiredValidationTools": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "validationRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "featureSet": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "packageSmoke": { "type": "string", "minLength": 1 },
+          "packageCounters": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "hostGate": { "type": "string", "minLength": 1 },
+          "blockerReason": { "type": "string", "minLength": 1 },
           "forbiddenInference": { "type": "string", "minLength": 1 },
           "notes": { "type": "string", "minLength": 1 }
         }

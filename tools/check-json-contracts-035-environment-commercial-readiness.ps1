@@ -6,7 +6,7 @@ $engineForEnvironmentCommercial = Read-Json "engine/agent/manifest.json"
 $environmentCommercialSchema = Read-Json "schemas/engine-agent/ai-operable-production-loop.schema.json"
 $environmentCommercialLoop = $engineForEnvironmentCommercial.aiOperableProductionLoop
 
-foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentCommercialUnsupportedAdjacentClaims")) {
+foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentCommercialUnsupportedAdjacentClaims")) {
     if (@($environmentCommercialSchema.required) -notcontains $requiredSchemaField) {
         Write-Error "ai-operable-production-loop.schema.json must require $requiredSchemaField"
     }
@@ -26,6 +26,7 @@ $expectedEnvironmentCommercialClaimIds = @(
     "environment_metal_host_aggregate_ready",
     "environment_backend_parity_ready",
     "environment_platform_windows_d3d12_ready",
+    "environment_platform_windows_vulkan_ready",
     "environment_platform_linux_vulkan_ready",
     "environment_platform_macos_metal_ready",
     "environment_platform_ios_metal_ready",
@@ -42,6 +43,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_metal_host_aggregate_ready = "host-gated"
     environment_backend_parity_ready = "unsupported"
     environment_platform_windows_d3d12_ready = "ready"
+    environment_platform_windows_vulkan_ready = "host-gated"
     environment_platform_linux_vulkan_ready = "host-gated"
     environment_platform_macos_metal_ready = "host-gated"
     environment_platform_ios_metal_ready = "host-gated"
@@ -123,6 +125,104 @@ foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend
     }
 }
 
+$expectedEnvironmentPlatformReadinessRows = @(
+    @{
+        id = "environment_platform_windows_d3d12"
+        claimId = "environment_platform_windows_d3d12_ready"
+        state = "ready"
+        needles = @("Windows SDK", "Direct3D 12", "--require-environment-platform-readiness", "environment_platform_windows_d3d12_ready=1", "Vulkan", "Metal", "Android", "iOS")
+    },
+    @{
+        id = "environment_platform_windows_vulkan"
+        claimId = "environment_platform_windows_vulkan_ready"
+        state = "host-gated"
+        needles = @("Vulkan SDK", "validation layers", "SPIR-V", "D3D12", "environment_platform_windows_vulkan_ready=0")
+    },
+    @{
+        id = "environment_platform_linux_vulkan"
+        claimId = "environment_platform_linux_vulkan_ready"
+        state = "host-gated"
+        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "environment_platform_linux_vulkan_ready=0")
+    },
+    @{
+        id = "environment_platform_macos_metal"
+        claimId = "environment_platform_macos_metal_ready"
+        state = "host-gated"
+        needles = @("Xcode", "Metal", "Windows", "environment_platform_macos_metal_ready=0")
+    },
+    @{
+        id = "environment_platform_ios_metal"
+        claimId = "environment_platform_ios_metal_ready"
+        state = "host-gated"
+        needles = @("Xcode", "simulator", "signing", "macOS desktop Metal", "environment_platform_ios_metal_ready=0")
+    },
+    @{
+        id = "environment_platform_android_vulkan"
+        claimId = "environment_platform_android_vulkan_ready"
+        state = "host-gated"
+        needles = @("Android SDK", "NDK", "Vulkan", "desktop Vulkan", "environment_platform_android_vulkan_ready=0")
+    },
+    @{
+        id = "environment_platform_unconditional_all_platform"
+        claimId = "environment_unconditional_all_platform_parity_ready"
+        state = "unsupported"
+        needles = @("permanent non-claim", "environment_all_platform_unconditional_ready=0", "all-platform")
+    }
+)
+$environmentPlatformReadinessRows = @($environmentCommercialLoop.environmentPlatformReadinessRows)
+if ($environmentPlatformReadinessRows.Count -ne $expectedEnvironmentPlatformReadinessRows.Count) {
+    Write-Error "engine manifest environmentPlatformReadinessRows must contain exactly $($expectedEnvironmentPlatformReadinessRows.Count) rows"
+}
+$environmentPlatformReadinessRowsById = @{}
+foreach ($platformRow in $environmentPlatformReadinessRows) {
+    Assert-Properties $platformRow @("id", "claimId", "state", "hostOs", "backend", "runtimeTarget", "runtimeSample", "requiredSdks", "requiredCompilers", "requiredValidationTools", "validationRecipeIds", "featureSet", "packageSmoke", "packageCounters", "hostGate", "blockerReason", "forbiddenInference", "notes") "engine manifest environmentPlatformReadinessRows"
+    $platformRowId = [string]$platformRow.id
+    if ($environmentPlatformReadinessRowsById.ContainsKey($platformRowId)) {
+        Write-Error "engine manifest environmentPlatformReadinessRows duplicate row id: $platformRowId"
+    }
+    $environmentPlatformReadinessRowsById[$platformRowId] = $platformRow
+    if (-not $environmentCommercialClaimsById.ContainsKey([string]$platformRow.claimId) -and
+        [string]$platformRow.claimId -ne "environment_unconditional_all_platform_parity_ready") {
+        Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' references unknown claim id: $($platformRow.claimId)"
+    }
+    foreach ($arrayProperty in @("requiredSdks", "requiredCompilers", "requiredValidationTools", "validationRecipeIds", "featureSet", "packageCounters")) {
+        if (@($platformRow.$arrayProperty).Count -eq 0) {
+            Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' must have at least one $arrayProperty row"
+        }
+    }
+    foreach ($recipeId in @($platformRow.validationRecipeIds)) {
+        if (-not $environmentCommercialValidationRecipeNames.ContainsKey([string]$recipeId)) {
+            Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' references unknown validation recipe: $recipeId"
+        }
+    }
+    if ([string]$platformRow.state -eq "ready" -and [string]$platformRow.blockerReason -ne "none") {
+        Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' ready rows must use blockerReason=none"
+    }
+    if ([string]$platformRow.state -ne "ready" -and [string]$platformRow.blockerReason -eq "none") {
+        Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' non-ready rows must record a blockerReason"
+    }
+}
+foreach ($expectedPlatformRow in $expectedEnvironmentPlatformReadinessRows) {
+    $platformRowId = [string]$expectedPlatformRow.id
+    if (-not $environmentPlatformReadinessRowsById.ContainsKey($platformRowId)) {
+        Write-Error "engine manifest environmentPlatformReadinessRows missing row id: $platformRowId"
+        continue
+    }
+    $platformRow = $environmentPlatformReadinessRowsById[$platformRowId]
+    if ([string]$platformRow.claimId -ne [string]$expectedPlatformRow.claimId) {
+        Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' must map to $($expectedPlatformRow.claimId), not $($platformRow.claimId)"
+    }
+    if ([string]$platformRow.state -ne [string]$expectedPlatformRow.state) {
+        Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' must remain $($expectedPlatformRow.state), not $($platformRow.state)"
+    }
+    $platformRowText = [string]::Join(" ", @($platformRow.requiredSdks) + @($platformRow.requiredCompilers) + @($platformRow.requiredValidationTools) + @($platformRow.validationRecipeIds) + @($platformRow.featureSet) + @($platformRow.packageCounters) + @([string]$platformRow.packageSmoke, [string]$platformRow.hostGate, [string]$platformRow.blockerReason, [string]$platformRow.forbiddenInference, [string]$platformRow.notes))
+    foreach ($needle in @($expectedPlatformRow.needles)) {
+        if (-not $platformRowText.Contains([string]$needle)) {
+            Write-Error "engine manifest environmentPlatformReadinessRows '$platformRowId' missing official/host-gated needle: $needle"
+        }
+    }
+}
+
 $expectedAdjacentEnvironmentCommercialClaims = @(
     "environment_unconditional_all_platform_parity_ready",
     "environment_broad_renderer_quality_ready",
@@ -171,5 +271,11 @@ $environmentBackendParityGuidance = [string]$engineForEnvironmentCommercial.game
 foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", "EnvironmentBackendParityRequest", "plan_environment_backend_parity", "normalized feature ids", "same profile revision", "same preset pack revision", "counter semantics", "host_evidence_required", "environment_backend_parity_ready=0")) {
     if (-not $environmentBackendParityGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentBackendParityPhase7 missing: $needle"
+    }
+}
+$environmentPlatformReadinessGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8
+foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_all_platform_unconditional_ready=0")) {
+    if (-not $environmentPlatformReadinessGuidance.Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8 missing: $needle"
     }
 }

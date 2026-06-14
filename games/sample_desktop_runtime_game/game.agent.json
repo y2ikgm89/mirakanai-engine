@@ -160,6 +160,7 @@
         "environment-material-weathering",
         "environment-audio-playback",
         "environment-preset-library-package",
+        "environment-platform-readiness",
         "environment-quality-budget-evidence",
         "animation",
         "framegraph-multiqueue",
@@ -201,6 +202,7 @@
         "desktop-runtime-sample-game-environment-ready-aggregate",
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
+        "desktop-runtime-sample-game-environment-platform-readiness",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -245,6 +247,13 @@
           "evidence": "The selected environment backend parity package smoke reports --require-environment-backend-parity, environment_backend_parity_status=host_evidence_required, environment_backend_parity_ready=0, environment_backend_parity_required_backends=3, environment_backend_parity_required_features=7, environment_backend_parity_rows=21, environment_backend_parity_ready_rows=14, environment_backend_parity_host_gated_rows=7, environment_backend_parity_host_validated_backends=2, environment_backend_parity_d3d12_primary=1, environment_backend_parity_vulkan_strict=1, environment_backend_parity_metal_host=0, environment_backend_parity_requires_metal_host_evidence=1, environment_backend_parity_diagnostics=0, environment_backend_parity_native_handle_access=0, environment_backend_parity_invoked_gpu_commands=0, and a positive replay hash without promoting all-platform, commercial, broad optimization, backend-parity-ready, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-backend-parity"
+          ]
+        },
+        {
+          "id": "environment-platform-readiness-host-gated-map",
+          "evidence": "The selected environment platform readiness package smoke reports --require-environment-platform-readiness, environment_platform_readiness_status=host_evidence_required, environment_platform_readiness_ready=0, environment_platform_readiness_rows=6, environment_platform_readiness_ready_rows=1, environment_platform_readiness_host_gated_rows=5, environment_platform_windows_d3d12_ready=1, environment_platform_windows_vulkan_ready=0, environment_platform_linux_vulkan_ready=0, environment_platform_macos_metal_ready=0, environment_platform_ios_metal_ready=0, environment_platform_android_vulkan_ready=0, environment_platform_requires_windows_vulkan_host_evidence=1, environment_platform_requires_linux_vulkan_host_evidence=1, environment_platform_requires_macos_metal_host_evidence=1, environment_platform_requires_ios_metal_host_evidence=1, environment_platform_requires_android_vulkan_host_evidence=1, environment_all_platform_unconditional_ready=0, environment_platform_diagnostics=0, environment_platform_native_handle_access=0, environment_platform_invoked_gpu_commands=0, and a positive replay hash without promoting all-platform, commercial, broad optimization, backend-parity-ready, or broad environment_ready claims.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-platform-readiness"
           ]
         },
         {
@@ -429,7 +438,8 @@
             "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution",
             "desktop-runtime-sample-game-environment-ready-aggregate",
             "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
-            "desktop-runtime-sample-game-environment-backend-parity"
+            "desktop-runtime-sample-game-environment-backend-parity",
+            "desktop-runtime-sample-game-environment-platform-readiness"
           ]
         },
         {
@@ -468,6 +478,7 @@
         "renderer-rhi-residency",
         "broad-vulkan-environment-readiness",
         "environment-backend-parity",
+        "all-platform-environment-readiness",
         "broad-environment-ready",
         "metal-readiness"
       ]
@@ -1820,7 +1831,8 @@
         "desktop-runtime-sample-game-environment-profile-package",
         "desktop-runtime-sample-game-environment-ready-aggregate",
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
-        "desktop-runtime-sample-game-environment-backend-parity"
+        "desktop-runtime-sample-game-environment-backend-parity",
+        "desktop-runtime-sample-game-environment-platform-readiness"
       ],
       "broadImporterExecution": "unsupported",
       "broadDependencyCooking": "unsupported",
@@ -1985,6 +1997,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-backend-parity",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-backend-parity')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-platform-readiness",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-platform-readiness')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",

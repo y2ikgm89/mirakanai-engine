@@ -1442,7 +1442,7 @@ Assert-RegisteredSourceAssetCookTarget `
     @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor", "sample/desktop-runtime/cloud-flow", "sample/desktop-runtime/environment/ibl-cubemap") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-preset-library-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-preset-library-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate", "desktop-runtime-sample-game-environment-backend-parity", "desktop-runtime-sample-game-environment-platform-readiness")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }
@@ -1461,7 +1461,7 @@ foreach ($needle in @(
     "textured UI sprite atlas",
     "GameEngine.EnvironmentPresetPack.v1",
     "--require-environment-preset-library-package",
-    "--require-environment-vulkan-strict-aggregate",
+    "--require-environment-vulkan-strict-aggregate", "--require-environment-platform-readiness",
     "environment_preset_library_package_status=ready",
     "environment_vulkan_strict_aggregate_status=ready",
     "environment_vulkan_strict_aggregate_descriptor_set_bindings=15",
@@ -1469,6 +1469,8 @@ foreach ($needle in @(
     "environment_vulkan_strict_aggregate_spirv_validation_ready=1", "environment_vulkan_strict_aggregate_validation_layers_ready=1", "environment_vulkan_strict_aggregate_device_features_ready=1", "environment_vulkan_strict_aggregate_toolchain_rows=6",
     "environment_vulkan_strict_aggregate_resource_usage_layout_ready=1",
     "environment_vulkan_strict_aggregate_resource_usage_layout_rows=20",
+    "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_d3d12_ready=1",
+    "environment_platform_windows_vulkan_ready=0", "environment_all_platform_unconditional_ready=0",
     "--require-environment-texture-asset-pipeline-package",
     "environment_texture_asset_pipeline_package_status=ready",
     "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
