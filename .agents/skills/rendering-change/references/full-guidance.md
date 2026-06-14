@@ -95,6 +95,13 @@ router says the current task needs detailed API names, detailed validation lanes
   `renderer-metal-apple-host-evidence` and may emit `environment_metal_host_aggregate_ready=1` only after Apple-host renderer Metal evidence
   succeeds; it must keep backend parity, all-platform readiness, broad optimization, commercial readiness, and broad `environment_ready`
   unclaimed.
+- For Environment Commercial Excellence v1 backend parity work, use `EnvironmentBackendParityRequest`, `EnvironmentBackendParityRow`,
+  `EnvironmentBackendParityCounterExpectation`, `EnvironmentBackendParityPlan`, and `plan_environment_backend_parity` in `MK_renderer`.
+  D3D12 primary, strict Vulkan aggregate, and Apple-host Metal rows must share the same profile revision, preset pack revision, package
+  revision, normalized feature ids, quality tier/budget class, resource class, output tolerance class, package counter ids/semantics,
+  unsupported-row list, and zero diagnostics before parity can be ready. Host-gated rows, fallback/native-handle evidence,
+  cross-backend inference, feature-count-only comparisons, stale revisions, and nonzero diagnostics must not emit package-visible
+  `environment_backend_parity_ready=1`.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`,
   `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner
   may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy,
