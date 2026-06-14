@@ -995,6 +995,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_environment_weather_tests)
     add_test(NAME MK_environment_weather_tests COMMAND MK_environment_weather_tests)
 
+    add_executable(MK_environment_weather_simulation_tests
+        tests/unit/environment_weather_simulation_tests.cpp
+    )
+    target_link_libraries(MK_environment_weather_simulation_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_weather_simulation_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_weather_simulation_tests)
+    add_test(NAME MK_environment_weather_simulation_tests COMMAND MK_environment_weather_simulation_tests)
+
     add_executable(MK_environment_material_weathering_tests
         tests/unit/environment_material_weathering_tests.cpp
     )

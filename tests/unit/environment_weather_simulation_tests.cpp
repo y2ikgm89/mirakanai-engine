@@ -1,0 +1,172 @@
+// SPDX-FileCopyrightText: 2026 GameEngine contributors
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+#include "test_framework.hpp"
+
+#include "mirakana/environment/weather_simulation.hpp"
+
+#include <cmath>
+#include <limits>
+
+namespace {
+
+[[nodiscard]] bool nearly_equal(const double lhs, const double rhs, const double epsilon = 0.000001) noexcept {
+    return std::fabs(lhs - rhs) <= epsilon;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_single_cell_desc() {
+    const auto saturation = mirakana::environment_weather_saturation_vapor_kg_per_m2(10.0F, 1000.0F, 1000.0F);
+
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 1U;
+    desc.height = 1U;
+    desc.cell_area_m2 = 25.0F;
+    desc.mixing_height_m = 1000.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 1.0F;
+    desc.max_timestep_s = 1.0F;
+    desc.deterministic_seed = 42U;
+    desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
+        .temperature_celsius = 10.0F,
+        .vapor_water_kg_per_m2 = saturation + 0.2F,
+        .cloud_water_kg_per_m2 = 0.1F,
+        .surface_water_kg_per_m2 = 2.0F,
+    });
+    desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{});
+    return desc;
+}
+
+} // namespace
+
+MK_TEST("environment weather simulation condenses supersaturated vapor and conserves water") {
+    const auto desc = make_single_cell_desc();
+    const auto saturation = mirakana::environment_weather_saturation_vapor_kg_per_m2(10.0F, 1000.0F, 1000.0F);
+
+    const auto plan = mirakana::simulate_environment_weather_cpu_reference(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentWeatherSimulationStatus::stepped);
+    MK_REQUIRE(plan.determinism == mirakana::EnvironmentWeatherSimulationDeterminism::deterministic);
+    MK_REQUIRE(plan.fallback_cpu_reference_used);
+    MK_REQUIRE(!plan.invokes_gpu);
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.physical_weather_ready);
+    MK_REQUIRE(plan.cell_rows.size() == 1U);
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].saturation_vapor_kg_per_m2, saturation));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].condensed_kg_per_m2, 0.2));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].state.vapor_water_kg_per_m2, saturation));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].state.cloud_water_kg_per_m2, 0.3));
+    MK_REQUIRE(plan.total_condensed_kg > 0.0);
+    MK_REQUIRE(plan.total_precipitated_kg == 0.0);
+    MK_REQUIRE(plan.water_conservation_error_kg <= 0.00001);
+    MK_REQUIRE(plan.max_cell_water_conservation_error_kg_per_m2 <= 0.000001);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("environment weather simulation moves surface evaporation and precipitation without creating water") {
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 1U;
+    desc.height = 1U;
+    desc.cell_area_m2 = 4.0F;
+    desc.mixing_height_m = 800.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 1.0F;
+    desc.max_timestep_s = 1.0F;
+    desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
+        .temperature_celsius = 4.0F,
+        .vapor_water_kg_per_m2 = 0.1F,
+        .cloud_water_kg_per_m2 = 1.0F,
+        .surface_water_kg_per_m2 = 2.0F,
+    });
+    desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{
+        .surface_evaporation_kg_per_m2_s = 0.2F,
+        .temperature_delta_celsius_per_s = 0.0F,
+        .cloud_precipitation_rate_per_s = 0.5F,
+    });
+
+    const auto plan = mirakana::simulate_environment_weather_cpu_reference(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.cell_rows.size() == 1U);
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].evaporated_kg_per_m2, 0.2));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].precipitated_kg_per_m2, 0.5));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].state.vapor_water_kg_per_m2, 0.3));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].state.cloud_water_kg_per_m2, 0.5));
+    MK_REQUIRE(nearly_equal(plan.cell_rows[0].state.surface_water_kg_per_m2, 2.3));
+    MK_REQUIRE(nearly_equal(plan.total_evaporated_kg, 0.8));
+    MK_REQUIRE(nearly_equal(plan.total_precipitated_kg, 2.0));
+    MK_REQUIRE(plan.water_conservation_error_kg <= 0.00001);
+}
+
+MK_TEST("environment weather simulation clamps timestep and replays deterministically") {
+    auto desc = make_single_cell_desc();
+    desc.requested_timestep_s = 10.0F;
+    desc.max_timestep_s = 0.25F;
+    desc.forcing_rows[0].cloud_precipitation_rate_per_s = 1.0F;
+
+    const auto first = mirakana::simulate_environment_weather_cpu_reference(desc);
+    const auto second = mirakana::simulate_environment_weather_cpu_reference(desc);
+
+    MK_REQUIRE(first.succeeded());
+    MK_REQUIRE(first.timestep_clamped);
+    MK_REQUIRE(first.effective_timestep_s == 0.25F);
+    MK_REQUIRE(first.replay_hash == second.replay_hash);
+    MK_REQUIRE(first.total_water_before_kg == second.total_water_before_kg);
+    MK_REQUIRE(first.total_water_after_kg == second.total_water_after_kg);
+}
+
+MK_TEST("environment weather simulation fails closed for invalid input and unsupported side effects") {
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 0U;
+    desc.height = 1U;
+    desc.cell_area_m2 = 0.0F;
+    desc.mixing_height_m = std::numeric_limits<float>::quiet_NaN();
+    desc.air_pressure_hpa = 2.0F;
+    desc.requested_timestep_s = -1.0F;
+    desc.max_timestep_s = 0.0F;
+    desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
+        .temperature_celsius = std::numeric_limits<float>::quiet_NaN(),
+        .vapor_water_kg_per_m2 = -1.0F,
+        .cloud_water_kg_per_m2 = -1.0F,
+        .surface_water_kg_per_m2 = -1.0F,
+    });
+    desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{
+        .surface_evaporation_kg_per_m2_s = -0.1F,
+        .temperature_delta_celsius_per_s = std::numeric_limits<float>::quiet_NaN(),
+        .cloud_precipitation_rate_per_s = 1000.0F,
+    });
+    desc.request_gpu_acceleration = true;
+    desc.request_backend_execution = true;
+    desc.request_native_handle_access = true;
+    desc.request_physical_weather_ready_claim = true;
+
+    const auto plan = mirakana::simulate_environment_weather_cpu_reference(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentWeatherSimulationStatus::blocked);
+    MK_REQUIRE(!plan.invokes_gpu);
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.physical_weather_ready);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::invalid_grid));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::invalid_timestep));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::invalid_cell_state));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::invalid_forcing));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::unsupported_gpu_acceleration));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::unsupported_backend_execution));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::unsupported_native_handle_access));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::unsupported_physical_weather_ready_claim));
+}
+
+int main() {
+    return mirakana::test::run_all();
+}

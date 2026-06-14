@@ -6,7 +6,7 @@ $engineForEnvironmentCommercial = Read-Json "engine/agent/manifest.json"
 $environmentCommercialSchema = Read-Json "schemas/engine-agent/ai-operable-production-loop.schema.json"
 $environmentCommercialLoop = $engineForEnvironmentCommercial.aiOperableProductionLoop
 
-foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentOptimizationMeasurementWorkloadRows", "environmentCommercialUnsupportedAdjacentClaims")) {
+foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentOptimizationMeasurementWorkloadRows", "environmentPhysicalWeatherSimulationRows", "environmentCommercialUnsupportedAdjacentClaims")) {
     if (@($environmentCommercialSchema.required) -notcontains $requiredSchemaField) {
         Write-Error "ai-operable-production-loop.schema.json must require $requiredSchemaField"
     }
@@ -331,6 +331,68 @@ foreach ($expectedOptimizationRow in $expectedEnvironmentOptimizationRows) {
     }
 }
 
+$expectedEnvironmentPhysicalWeatherRows = @(
+    @{
+        id = "environment_weather_simulation_cpu_reference_foundation"
+        claimId = "environment_physical_weather_simulation_ready"
+        state = "ready"
+        determinism = "deterministic"
+        needles = @("single-step deterministic", "MK_environment", "NWS vapor-pressure formula", "EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "water conservation error bounds", "timestep clamping", "deterministic replay hash", "environment_physical_weather_simulation_ready stays 0", "no package-visible counters", "GPU acceleration", "backend execution", "native handle access", "artist controls")
+    }
+)
+$environmentPhysicalWeatherRows = @($environmentCommercialLoop.environmentPhysicalWeatherSimulationRows)
+if ($environmentPhysicalWeatherRows.Count -ne $expectedEnvironmentPhysicalWeatherRows.Count) {
+    Write-Error "engine manifest environmentPhysicalWeatherSimulationRows must contain exactly $($expectedEnvironmentPhysicalWeatherRows.Count) rows"
+}
+$environmentPhysicalWeatherRowsById = @{}
+foreach ($weatherRow in $environmentPhysicalWeatherRows) {
+    Assert-Properties $weatherRow @("id", "claimId", "state", "model", "runtimeTarget", "determinism", "validationRecipeIds", "stateVariables", "stabilityConstraints", "validatedEvidence", "packageVisibility", "blockerReason", "forbiddenInference", "notes") "engine manifest environmentPhysicalWeatherSimulationRows"
+    $weatherRowId = [string]$weatherRow.id
+    if ($environmentPhysicalWeatherRowsById.ContainsKey($weatherRowId)) {
+        Write-Error "engine manifest environmentPhysicalWeatherSimulationRows duplicate row id: $weatherRowId"
+    }
+    $environmentPhysicalWeatherRowsById[$weatherRowId] = $weatherRow
+    if ([string]$weatherRow.claimId -ne "environment_physical_weather_simulation_ready") {
+        Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' must map to environment_physical_weather_simulation_ready"
+    }
+    foreach ($arrayProperty in @("validationRecipeIds", "stateVariables", "stabilityConstraints", "validatedEvidence")) {
+        if (@($weatherRow.$arrayProperty).Count -eq 0) {
+            Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' must have at least one $arrayProperty row"
+        }
+    }
+    foreach ($recipeId in @($weatherRow.validationRecipeIds)) {
+        if (-not $environmentCommercialValidationRecipeNames.ContainsKey([string]$recipeId)) {
+            Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' references unknown validation recipe: $recipeId"
+        }
+    }
+}
+foreach ($expectedWeatherRow in $expectedEnvironmentPhysicalWeatherRows) {
+    $weatherRowId = [string]$expectedWeatherRow.id
+    if (-not $environmentPhysicalWeatherRowsById.ContainsKey($weatherRowId)) {
+        Write-Error "engine manifest environmentPhysicalWeatherSimulationRows missing row id: $weatherRowId"
+        continue
+    }
+    $weatherRow = $environmentPhysicalWeatherRowsById[$weatherRowId]
+    if ([string]$weatherRow.claimId -ne [string]$expectedWeatherRow.claimId) {
+        Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' must map to $($expectedWeatherRow.claimId), not $($weatherRow.claimId)"
+    }
+    if ([string]$weatherRow.state -ne [string]$expectedWeatherRow.state) {
+        Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' must remain $($expectedWeatherRow.state), not $($weatherRow.state)"
+    }
+    if ([string]$weatherRow.determinism -ne [string]$expectedWeatherRow.determinism) {
+        Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' must remain $($expectedWeatherRow.determinism), not $($weatherRow.determinism)"
+    }
+    if ([string]$environmentCommercialClaimsById["environment_physical_weather_simulation_ready"].state -ne "unsupported") {
+        Write-Error "engine manifest environment_physical_weather_simulation_ready must remain unsupported after the CPU reference foundation row"
+    }
+    $weatherRowText = [string]::Join(" ", @([string]$weatherRow.model, [string]$weatherRow.runtimeTarget, [string]$weatherRow.determinism) + @($weatherRow.validationRecipeIds) + @($weatherRow.stateVariables) + @($weatherRow.stabilityConstraints) + @($weatherRow.validatedEvidence) + @([string]$weatherRow.packageVisibility, [string]$weatherRow.blockerReason, [string]$weatherRow.forbiddenInference, [string]$weatherRow.notes))
+    foreach ($needle in @($expectedWeatherRow.needles)) {
+        if (-not $weatherRowText.Contains([string]$needle)) {
+            Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' missing CPU reference needle: $needle"
+        }
+    }
+}
+
 $expectedAdjacentEnvironmentCommercialClaims = @(
     "environment_unconditional_all_platform_parity_ready",
     "environment_broad_renderer_quality_ready",
@@ -391,5 +453,11 @@ $environmentOptimizationMeasurementGuidance = [string]$engineForEnvironmentComme
 foreach ($needle in @("desktop-runtime-sample-game-environment-optimization-measurement", "environmentOptimizationMeasurementWorkloadRows", "EnvironmentOptimizationMeasurementRequest", "plan_environment_optimization_measurement", "preset_pack_flythrough", "storm_precipitation", "dense_volumetric_fog", "volumetric_cloud_sunset", "snowfield_material_weathering", "weather_simulation_stress", "asset_library_cold_load", "environment_optimization_measurement_status=host_evidence_required", "environment_optimization_measurement_required_workloads=7", "environment_broad_optimization_ready=0")) {
     if (-not $environmentOptimizationMeasurementGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentOptimizationMeasurementPhase9 missing: $needle"
+    }
+}
+$environmentPhysicalWeatherGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10
+foreach ($needle in @("EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "NWS vapor-pressure formula", "effective_timestep_s", "water", "deterministic replay hash", "GPU acceleration", "backend execution", "native handle access", "environment_physical_weather_simulation_ready=1 may be inferred")) {
+    if (-not $environmentPhysicalWeatherGuidance.Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10 missing: $needle"
     }
 }
