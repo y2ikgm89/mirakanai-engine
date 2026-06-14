@@ -5724,7 +5724,7 @@
         ],
         "requiredEvidence": "MK_renderer EnvironmentOptimizationMeasurementRequest / plan_environment_optimization_measurement workload rows plus measured CPU/GPU/memory before/after traces for all selected environment workloads, exact host/GPU/driver/tool versions, regression budgets, package counters, retained profiler artifacts, and static checks preventing narrow evidence from broad claims.",
         "forbiddenInference": "Single metric, synthetic-only benchmark, or optimized code review.",
-        "notes": "desktop-runtime-sample-game-environment-optimization-measurement currently records five D3D12 before/after package-visible rows for preset_pack_flythrough, storm_precipitation, dense_volumetric_fog, volumetric_cloud_sunset, and snowfield_material_weathering while keeping environment_broad_optimization_ready=0. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and regression guards are complete."
+        "notes": "desktop-runtime-sample-game-environment-optimization-measurement currently records six D3D12 before/after package-visible rows for preset_pack_flythrough, storm_precipitation, dense_volumetric_fog, volumetric_cloud_sunset, snowfield_material_weathering, and weather_simulation_stress while keeping environment_broad_optimization_ready=0. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and regression guards are complete."
       },
       {
         "id": "environment_asset_pipeline_openexr_ktx_basis_ready",
@@ -6150,26 +6150,26 @@
         "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
           "environment_optimization_measurement_status=host_evidence_required",
-          "environment_optimization_measurement_workload_rows=5",
+          "environment_optimization_measurement_workload_rows=6",
           "environment_optimization_measurement_required_workloads=7",
-          "environment_optimization_measurement_measured_workloads=5",
-          "environment_optimization_measurement_before_after_pairs=5",
+          "environment_optimization_measurement_measured_workloads=6",
+          "environment_optimization_measurement_before_after_pairs=6",
           "environment_optimization_measurement_backend=d3d12",
           "environment_optimization_measurement_profile=preset_pack_flythrough",
-          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress",
           "environment_optimization_preset_pack_flythrough_ready=1",
           "environment_optimization_storm_precipitation_ready=1",
           "environment_optimization_dense_volumetric_fog_ready=1",
           "environment_optimization_volumetric_cloud_sunset_ready=1",
           "environment_optimization_snowfield_material_weathering_ready=1",
-          "environment_optimization_measurement_regression_budget_rows=5",
+          "environment_optimization_measurement_regression_budget_rows=6",
           "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
         "regressionBudget": "CPU/GPU p95 <= 16670us, memory/upload/transient/residency/draw/dispatch/barrier/package-load/stutter rows do not exceed explicit package budgets.",
         "blockerReason": "none",
         "forbiddenInference": "Five D3D12 rows must not promote broad optimization, backend parity, cross-vendor parity, cross-backend parity, Metal readiness, Vulkan readiness, all-platform readiness, or commercial readiness.",
-        "notes": "Phase 9 slice 5 keeps the preset_pack_flythrough row ready while the package smoke now also carries storm precipitation, dense volumetric fog, volumetric cloud sunset, and snowfield material weathering evidence. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and static guards are complete."
+        "notes": "Phase 9 slice 6 keeps the preset_pack_flythrough row ready while the package smoke now also carries storm precipitation, dense volumetric fog, volumetric cloud sunset, snowfield material weathering, and weather simulation stress evidence. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and static guards are complete."
       },
       {
         "id": "environment_optimization_storm_precipitation_d3d12",
@@ -6197,12 +6197,12 @@
         "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
           "environment_optimization_measurement_status=host_evidence_required",
-          "environment_optimization_measurement_workload_rows=5",
+          "environment_optimization_measurement_workload_rows=6",
           "environment_optimization_measurement_required_workloads=7",
-          "environment_optimization_measurement_measured_workloads=5",
-          "environment_optimization_measurement_before_after_pairs=5",
+          "environment_optimization_measurement_measured_workloads=6",
+          "environment_optimization_measurement_before_after_pairs=6",
           "environment_optimization_measurement_backend=d3d12",
-          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress",
           "environment_optimization_storm_precipitation_ready=1",
           "environment_optimization_storm_precipitation_cpu_frame_p95_before_us=18200",
           "environment_optimization_storm_precipitation_cpu_frame_p95_after_us=17000",
@@ -6213,14 +6213,14 @@
           "environment_optimization_dense_volumetric_fog_ready=1",
           "environment_optimization_volumetric_cloud_sunset_ready=1",
           "environment_optimization_snowfield_material_weathering_ready=1",
-          "environment_optimization_measurement_regression_budget_rows=5",
+          "environment_optimization_measurement_regression_budget_rows=6",
           "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
         "regressionBudget": "Storm precipitation package row keeps CPU p95 <= 18300us, GPU p95 <= 17000us, memory <= 640MiB, transient GPU <= 160MiB, upload <= 48MiB, draw <= 180, dispatch <= 12, barrier <= 60, texture residency <= 520MiB, package load <= 52000us, and stutter <= 2.",
         "blockerReason": "none",
         "forbiddenInference": "preset_pack_flythrough evidence, rain feature readiness, renderer execution counters alone, or any non-D3D12 backend inference.",
-        "notes": "Phase 9 slice 5 retains direct D3D12 storm precipitation before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because two workload rows and backend parity evidence are still host-gated."
+        "notes": "Phase 9 slice 6 retains direct D3D12 storm precipitation before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because one workload row and backend parity evidence are still host-gated."
       },
       {
         "id": "environment_optimization_dense_volumetric_fog_d3d12",
@@ -6249,12 +6249,12 @@
         "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
           "environment_optimization_measurement_status=host_evidence_required",
-          "environment_optimization_measurement_workload_rows=5",
+          "environment_optimization_measurement_workload_rows=6",
           "environment_optimization_measurement_required_workloads=7",
-          "environment_optimization_measurement_measured_workloads=5",
-          "environment_optimization_measurement_before_after_pairs=5",
+          "environment_optimization_measurement_measured_workloads=6",
+          "environment_optimization_measurement_before_after_pairs=6",
           "environment_optimization_measurement_backend=d3d12",
-          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress",
           "environment_optimization_dense_volumetric_fog_ready=1",
           "environment_optimization_dense_volumetric_fog_cpu_frame_p95_before_us=17600",
           "environment_optimization_dense_volumetric_fog_cpu_frame_p95_after_us=16500",
@@ -6272,14 +6272,14 @@
           "environment_optimization_dense_volumetric_fog_stutter_frames_after=1",
           "environment_optimization_volumetric_cloud_sunset_ready=1",
           "environment_optimization_snowfield_material_weathering_ready=1",
-          "environment_optimization_measurement_regression_budget_rows=5",
+          "environment_optimization_measurement_regression_budget_rows=6",
           "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
         "regressionBudget": "Dense volumetric fog package row keeps CPU p95 <= 17700us, GPU p95 <= 16400us, memory <= 704MiB, transient GPU <= 224MiB, upload <= 36MiB, draw <= 130, dispatch <= 24, barrier <= 72, texture residency <= 608MiB, package load <= 54000us, and stutter <= 2.",
         "blockerReason": "none",
         "forbiddenInference": "preset_pack_flythrough evidence, storm precipitation evidence, fog feature readiness, renderer execution counters alone, or any non-D3D12 backend inference.",
-        "notes": "Phase 9 slice 5 retains direct D3D12 dense volumetric fog before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because two workload rows and backend parity evidence are still host-gated."
+        "notes": "Phase 9 slice 6 retains direct D3D12 dense volumetric fog before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because one workload row and backend parity evidence are still host-gated."
       },
       {
         "id": "environment_optimization_volumetric_cloud_sunset_d3d12",
@@ -6308,12 +6308,12 @@
         "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
           "environment_optimization_measurement_status=host_evidence_required",
-          "environment_optimization_measurement_workload_rows=5",
+          "environment_optimization_measurement_workload_rows=6",
           "environment_optimization_measurement_required_workloads=7",
-          "environment_optimization_measurement_measured_workloads=5",
-          "environment_optimization_measurement_before_after_pairs=5",
+          "environment_optimization_measurement_measured_workloads=6",
+          "environment_optimization_measurement_before_after_pairs=6",
           "environment_optimization_measurement_backend=d3d12",
-          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress",
           "environment_optimization_volumetric_cloud_sunset_ready=1",
           "environment_optimization_volumetric_cloud_sunset_cpu_frame_p95_before_us=18800",
           "environment_optimization_volumetric_cloud_sunset_cpu_frame_p95_after_us=17600",
@@ -6330,14 +6330,14 @@
           "environment_optimization_volumetric_cloud_sunset_stutter_frames_before=3",
           "environment_optimization_volumetric_cloud_sunset_stutter_frames_after=2",
           "environment_optimization_snowfield_material_weathering_ready=1",
-          "environment_optimization_measurement_regression_budget_rows=5",
+          "environment_optimization_measurement_regression_budget_rows=6",
           "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
         "regressionBudget": "Volumetric cloud sunset package row keeps CPU p95 <= 18900us, GPU p95 <= 17600us, memory <= 768MiB, transient GPU <= 256MiB, upload <= 64MiB, draw <= 150, dispatch <= 28, barrier <= 84, texture residency <= 672MiB, package load <= 60000us, and stutter <= 3.",
         "blockerReason": "none",
         "forbiddenInference": "preset_pack_flythrough evidence, storm precipitation evidence, dense fog evidence, volumetric cloud renderer execution counters alone, or any non-D3D12 backend inference.",
-        "notes": "Phase 9 slice 5 retains direct D3D12 volumetric cloud sunset before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because two workload rows and backend parity evidence are still host-gated."
+        "notes": "Phase 9 slice 6 retains direct D3D12 volumetric cloud sunset before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because one workload row and backend parity evidence are still host-gated."
       },
       {
         "id": "environment_optimization_snowfield_material_weathering_d3d12",
@@ -6365,12 +6365,12 @@
         "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
           "environment_optimization_measurement_status=host_evidence_required",
-          "environment_optimization_measurement_workload_rows=5",
+          "environment_optimization_measurement_workload_rows=6",
           "environment_optimization_measurement_required_workloads=7",
-          "environment_optimization_measurement_measured_workloads=5",
-          "environment_optimization_measurement_before_after_pairs=5",
+          "environment_optimization_measurement_measured_workloads=6",
+          "environment_optimization_measurement_before_after_pairs=6",
           "environment_optimization_measurement_backend=d3d12",
-          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress",
           "environment_optimization_snowfield_material_weathering_ready=1",
           "environment_optimization_snowfield_material_weathering_cpu_frame_p95_before_us=16900",
           "environment_optimization_snowfield_material_weathering_cpu_frame_p95_after_us=15800",
@@ -6386,19 +6386,19 @@
           "environment_optimization_snowfield_material_weathering_barrier_count_after=56",
           "environment_optimization_snowfield_material_weathering_stutter_frames_before=2",
           "environment_optimization_snowfield_material_weathering_stutter_frames_after=1",
-          "environment_optimization_measurement_regression_budget_rows=5",
+          "environment_optimization_measurement_regression_budget_rows=6",
           "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
         "regressionBudget": "Snowfield material weathering package row keeps CPU p95 <= 17000us, GPU p95 <= 15800us, memory <= 704MiB, transient GPU <= 192MiB, upload <= 42MiB, draw <= 164, dispatch <= 16, barrier <= 64, texture residency <= 608MiB, package load <= 53000us, and stutter <= 2.",
         "blockerReason": "none",
         "forbiddenInference": "snow package evidence, material weathering feature readiness, rain precipitation evidence, or any non-D3D12 backend inference.",
-        "notes": "Phase 9 slice 5 records direct D3D12 snowfield material weathering before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because two workload rows and backend parity evidence are still host-gated."
+        "notes": "Phase 9 slice 6 retains direct D3D12 snowfield material weathering before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because one workload row and backend parity evidence are still host-gated."
       },
       {
         "id": "environment_optimization_weather_simulation_stress_d3d12",
         "claimId": "environment_broad_optimization_ready",
-        "state": "host-gated",
+        "state": "ready",
         "backend": "d3d12",
         "workload": "weather_simulation_stress",
         "runtimeTarget": "sample_desktop_runtime_game",
@@ -6419,15 +6419,38 @@
           "D3D12 timestamp query",
           "repository package counters"
         ],
-        "packageSmoke": "future weather simulation stress optimization measurement smoke",
+        "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
+          "environment_optimization_measurement_status=host_evidence_required",
+          "environment_optimization_measurement_workload_rows=6",
           "environment_optimization_measurement_required_workloads=7",
+          "environment_optimization_measurement_measured_workloads=6",
+          "environment_optimization_measurement_before_after_pairs=6",
+          "environment_optimization_measurement_backend=d3d12",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress",
+          "environment_optimization_weather_simulation_stress_ready=1",
+          "environment_optimization_weather_simulation_stress_cpu_frame_p95_before_us=19600",
+          "environment_optimization_weather_simulation_stress_cpu_frame_p95_after_us=18100",
+          "environment_optimization_weather_simulation_stress_gpu_frame_p95_before_us=18400",
+          "environment_optimization_weather_simulation_stress_gpu_frame_p95_after_us=16900",
+          "environment_optimization_weather_simulation_stress_memory_peak_before_bytes=872415232",
+          "environment_optimization_weather_simulation_stress_memory_peak_after_bytes=847249408",
+          "environment_optimization_weather_simulation_stress_transient_gpu_before_bytes=301989888",
+          "environment_optimization_weather_simulation_stress_transient_gpu_after_bytes=268435456",
+          "environment_optimization_weather_simulation_stress_dispatch_count_before=36",
+          "environment_optimization_weather_simulation_stress_dispatch_count_after=32",
+          "environment_optimization_weather_simulation_stress_barrier_count_before=96",
+          "environment_optimization_weather_simulation_stress_barrier_count_after=84",
+          "environment_optimization_weather_simulation_stress_stutter_frames_before=4",
+          "environment_optimization_weather_simulation_stress_stutter_frames_after=2",
+          "environment_optimization_measurement_regression_budget_rows=6",
+          "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
-        "regressionBudget": "Requires explicit before/after weather simulation stress budgets before ready.",
-        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
-        "forbiddenInference": "weather feature counters or audio playback counters alone.",
-        "notes": "Host-gated until weather simulation stress workload evidence is measured directly."
+        "regressionBudget": "Weather simulation stress package row keeps CPU p95 <= 19800us, GPU p95 <= 18600us, memory <= 832MiB, transient GPU <= 288MiB, upload <= 72MiB, draw <= 172, dispatch <= 36, barrier <= 96, texture residency <= 736MiB, package load <= 64000us, and stutter <= 4.",
+        "blockerReason": "none",
+        "forbiddenInference": "weather feature counters, authored weather timelines, audio playback counters, rain/snow/fog/cloud rendering evidence, or any non-D3D12 backend inference.",
+        "notes": "Phase 9 slice 6 records direct D3D12 weather simulation stress before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because one workload row and backend parity evidence are still host-gated."
       },
       {
         "id": "environment_optimization_asset_library_cold_load_d3d12",
