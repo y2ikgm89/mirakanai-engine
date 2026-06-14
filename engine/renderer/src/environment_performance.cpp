@@ -340,6 +340,8 @@ void summarize(EnvironmentOptimizationMeasurementPlan& plan) {
         plan, EnvironmentOptimizationWorkload::dense_volumetric_fog, rhi::BackendKind::d3d12);
     plan.d3d12_volumetric_cloud_sunset_measured = has_ready_backend_workload(
         plan, EnvironmentOptimizationWorkload::volumetric_cloud_sunset, rhi::BackendKind::d3d12);
+    plan.d3d12_snowfield_material_weathering_measured = has_ready_backend_workload(
+        plan, EnvironmentOptimizationWorkload::snowfield_material_weathering, rhi::BackendKind::d3d12);
     const auto every_required_workload_ready = std::ranges::all_of(
         kRequiredWorkloads, [&plan](const auto workload) { return has_ready_workload(plan, workload); });
     plan.environment_broad_optimization_ready = every_required_workload_ready && plan.environment_backend_parity_ready;
