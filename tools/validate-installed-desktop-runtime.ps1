@@ -177,9 +177,11 @@ $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-pos
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
+$requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
-    $requiresEnvironmentPresetLibraryPackage
+    $requiresEnvironmentPresetLibraryPackage -or
+    $requiresEnvironmentVulkanStrictAggregate
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -344,6 +346,18 @@ if ($requiresEnvironmentReadyAggregate) {
     $requiresEnvironmentMaterialWeathering = $true
     $requiresEnvironmentAudioPlayback = $true
 }
+if ($requiresEnvironmentVulkanStrictAggregate) {
+    $requiresEnvironmentProfile = $true
+    $requiresEnvironmentFogVulkanPackageEvidence = $true
+    $requiresPhysicalSkyVulkanPackageEvidence = $true
+    $requiresEnvironmentLightingVulkanRendererExecution = $true
+    $requiresEnvironmentVolumetricFogVulkanRendererExecution = $true
+    $requiresEnvironmentVolumetricCloudVulkanRendererExecution = $true
+    $requiresEnvironmentPrecipitationVulkanRendererExecution = $true
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresVulkanPostprocessEvidence = $true
+}
 $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentFogEvidence -or
     $requiresEnvironmentFogVulkanPackageEvidence -or
@@ -353,6 +367,7 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentVolumetricFogVulkanRendererExecution -or
     $requiresEnvironmentLightingPackageEvidence -or
     $requiresEnvironmentLightingRendererExecution -or
+    $requiresEnvironmentLightingVulkanRendererExecution -or
     $requiresCloudLayerPackageEvidence -or
     $requiresCloudLayerRendererExecution -or
     $requiresEnvironmentPrecipitationPackageEvidence -or
@@ -5566,6 +5581,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             $expectedEnvironmentQualityBudgetIblFaces = 6
             $expectedEnvironmentQualityBudgetIblMips = 5
         }
+        if ($requiresEnvironmentLightingVulkanRendererExecution) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetTextureUploads += 1
+            $expectedEnvironmentQualityBudgetIblFaces = 6
+            $expectedEnvironmentQualityBudgetIblMips = 5
+        }
         if ($requiresEnvironmentMaterialWeathering) {
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
@@ -5677,6 +5698,44 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_ready_native_handle_access" = "0"
                 "environment_ready_diagnostics" = "0"
             }
+    }
+    if ($requiresEnvironmentVulkanStrictAggregate) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment Vulkan strict aggregate" `
+            -ExpectedFields @{
+                "environment_vulkan_strict_aggregate_status" = "ready"
+                "environment_vulkan_strict_aggregate_ready" = "1"
+                "environment_vulkan_strict_aggregate_profile_v2" = "1"
+                "environment_vulkan_strict_aggregate_selected_backend" = "vulkan"
+                "environment_vulkan_strict_aggregate_postprocess" = "1"
+                "environment_vulkan_strict_aggregate_fog" = "1"
+                "environment_vulkan_strict_aggregate_physical_sky" = "1"
+                "environment_vulkan_strict_aggregate_lighting" = "1"
+                "environment_vulkan_strict_aggregate_volumetric_fog" = "1"
+                "environment_vulkan_strict_aggregate_volumetric_cloud" = "1"
+                "environment_vulkan_strict_aggregate_precipitation" = "1"
+                "environment_vulkan_strict_aggregate_quality_budget" = "1"
+                "environment_vulkan_strict_aggregate_feature_rows" = "6"
+                "environment_vulkan_strict_aggregate_descriptor_set_bindings" = "15"
+                "environment_vulkan_strict_aggregate_native_handle_access" = "0"
+                "environment_vulkan_strict_aggregate_d3d12_fallback" = "0"
+                "environment_vulkan_strict_aggregate_metal_fallback" = "0"
+                "environment_vulkan_strict_aggregate_backend_parity" = "0"
+                "environment_vulkan_strict_aggregate_broad_optimization_claimed" = "0"
+                "environment_vulkan_strict_aggregate_diagnostics" = "0"
+            }
+        foreach ($field in @(
+                "environment_vulkan_strict_aggregate_synchronization2_barriers",
+                "environment_vulkan_strict_aggregate_renderer_draws",
+                "environment_vulkan_strict_aggregate_compute_dispatches",
+                "environment_vulkan_strict_aggregate_texture_uploads",
+                "environment_vulkan_strict_aggregate_readback_rows")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove positive environment Vulkan strict aggregate field: $field"
+            }
+        }
     }
     if ($requiresFramegraphExecutionEvidence) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {

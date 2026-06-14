@@ -303,6 +303,10 @@ $sampleEnvironmentReadyAggregateDryRun = Assert-DryRunRecipe -Recipe "desktop-ru
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-ready-aggregate", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentReadyAggregateDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-ready-aggregate"
 }
+$sampleEnvironmentVulkanStrictAggregateDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-vulkan-strict-aggregate" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-vulkan-strict-aggregate", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentVulkanStrictAggregateDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-vulkan-strict-aggregate"
+}
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
 $materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-scene-shaders", "--require-material-graph-authoring")) {
@@ -357,6 +361,11 @@ if ($missingVulkanVolumetricFogGate.status -ne "rejected" -or @($missingVulkanVo
 $missingVulkanIblGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution") -ExpectedExitCode 2
 if ($missingVulkanIblGate.status -ne "rejected" -or @($missingVulkanIblGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "strict Vulkan IBL renderer execution recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingVulkanEnvironmentAggregateGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate") -ExpectedExitCode 2
+if ($missingVulkanEnvironmentAggregateGate.status -ne "rejected" -or @($missingVulkanEnvironmentAggregateGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan environment aggregate recipe must require vulkan-strict acknowledgement before execute"
 }
 
 $missingMaterialVulkanGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict") -ExpectedExitCode 2
