@@ -1351,6 +1351,17 @@ struct EnvironmentVulkanStrictAggregateEvidence {
     std::uint32_t feature_rows{0};
     std::uint32_t descriptor_set_bindings{0};
     std::uint32_t synchronization2_barriers{0};
+    bool toolchain_ready{false};
+    bool vulkan_sdk_tools_ready{false};
+    bool dxc_spirv_codegen_ready{false};
+    bool spirv_validation_ready{false};
+    bool validation_layers_ready{false};
+    bool device_features_ready{false};
+    std::uint32_t toolchain_rows{0};
+    std::uint32_t missing_toolchain_rows{0};
+    std::uint32_t missing_validation_layer_rows{0};
+    std::uint32_t missing_spirv_validation_rows{0};
+    std::uint32_t unsupported_feature_device_rows{0};
     bool resource_usage_layout_ready{false};
     std::uint32_t resource_usage_layout_rows{0};
     std::uint32_t attachment_usage_layout_rows{0};
@@ -2234,6 +2245,30 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
                                          environment_volumetric_fog_vulkan.synchronization2_barriers +
                                          environment_volumetric_cloud_vulkan.synchronization2_barriers +
                                          environment_precipitation_vulkan.synchronization2_barriers;
+    const bool dynamic_rendering_ready = report.vulkan_dynamic_rendering_ready;
+    const bool synchronization2_ready = report.vulkan_synchronization2_ready;
+    evidence.validation_layers_ready =
+        report.vulkan_strict_validation_requested && report.vulkan_validation_layers_ready;
+    evidence.device_features_ready = dynamic_rendering_ready && synchronization2_ready;
+    evidence.spirv_validation_ready = report.vulkan_spirv_validation_ready;
+    evidence.dxc_spirv_codegen_ready = evidence.spirv_validation_ready && evidence.postprocess_ready &&
+                                       evidence.fog_ready && evidence.physical_sky_ready && evidence.lighting_ready &&
+                                       evidence.volumetric_fog_ready && evidence.volumetric_cloud_ready &&
+                                       evidence.precipitation_ready;
+    evidence.vulkan_sdk_tools_ready =
+        evidence.vulkan_backend_selected && evidence.dxc_spirv_codegen_ready && evidence.spirv_validation_ready;
+    evidence.toolchain_rows = 6U;
+    evidence.missing_validation_layer_rows = report.vulkan_missing_validation_layer_rows;
+    evidence.missing_spirv_validation_rows = report.vulkan_missing_spirv_validation_rows;
+    evidence.unsupported_feature_device_rows = report.vulkan_unsupported_feature_device_rows;
+    evidence.missing_toolchain_rows =
+        (evidence.vulkan_sdk_tools_ready ? 0U : 1U) + (evidence.dxc_spirv_codegen_ready ? 0U : 1U) +
+        (evidence.spirv_validation_ready ? 0U : 1U) + (evidence.validation_layers_ready ? 0U : 1U) +
+        (dynamic_rendering_ready ? 0U : 1U) + (synchronization2_ready ? 0U : 1U);
+    evidence.toolchain_ready = evidence.toolchain_rows == 6U && evidence.missing_toolchain_rows == 0U &&
+                               evidence.missing_validation_layer_rows == 0U &&
+                               evidence.missing_spirv_validation_rows == 0U &&
+                               evidence.unsupported_feature_device_rows == 0U && evidence.device_features_ready;
     evidence.renderer_draws =
         environment_volumetric_cloud_vulkan.renderer_draws + environment_precipitation_vulkan.renderer_draws;
     evidence.compute_dispatches = environment_volumetric_fog_vulkan.compute_dispatches;
@@ -2314,6 +2349,10 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     add_required(evidence.feature_rows == 6U);
     add_required(evidence.descriptor_set_bindings >= 15U);
     add_required(evidence.synchronization2_barriers > 0U);
+    add_required(evidence.toolchain_ready);
+    add_required(evidence.validation_layers_ready);
+    add_required(evidence.spirv_validation_ready);
+    add_required(evidence.device_features_ready);
     add_required(evidence.renderer_draws > 0U);
     add_required(evidence.compute_dispatches > 0U);
     add_required(evidence.texture_uploads > 0U);
@@ -5205,6 +5244,7 @@ int main(int argc, char** argv) {
             .native_ui_overlay_atlas_asset =
                 options.require_native_ui_textured_sprite_atlas ? ui_atlas_metadata.atlas_page : mirakana::AssetId{},
             .enable_native_ui_overlay_textures = options.require_native_ui_textured_sprite_atlas,
+            .enable_strict_validation = options.require_environment_vulkan_strict_aggregate,
         });
     }
 
@@ -7028,6 +7068,28 @@ int main(int argc, char** argv) {
             << " environment_vulkan_strict_aggregate_feature_rows=" << environment_vulkan_strict_aggregate.feature_rows
             << " environment_vulkan_strict_aggregate_descriptor_set_bindings="
             << environment_vulkan_strict_aggregate.descriptor_set_bindings
+            << " environment_vulkan_strict_aggregate_toolchain_ready="
+            << (environment_vulkan_strict_aggregate.toolchain_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready="
+            << (environment_vulkan_strict_aggregate.vulkan_sdk_tools_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready="
+            << (environment_vulkan_strict_aggregate.dxc_spirv_codegen_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_spirv_validation_ready="
+            << (environment_vulkan_strict_aggregate.spirv_validation_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_validation_layers_ready="
+            << (environment_vulkan_strict_aggregate.validation_layers_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_device_features_ready="
+            << (environment_vulkan_strict_aggregate.device_features_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_toolchain_rows="
+            << environment_vulkan_strict_aggregate.toolchain_rows
+            << " environment_vulkan_strict_aggregate_missing_toolchain_rows="
+            << environment_vulkan_strict_aggregate.missing_toolchain_rows
+            << " environment_vulkan_strict_aggregate_missing_validation_layer_rows="
+            << environment_vulkan_strict_aggregate.missing_validation_layer_rows
+            << " environment_vulkan_strict_aggregate_missing_spirv_validation_rows="
+            << environment_vulkan_strict_aggregate.missing_spirv_validation_rows
+            << " environment_vulkan_strict_aggregate_unsupported_feature_device_rows="
+            << environment_vulkan_strict_aggregate.unsupported_feature_device_rows
             << " environment_vulkan_strict_aggregate_synchronization2_barriers="
             << environment_vulkan_strict_aggregate.synchronization2_barriers
             << " environment_vulkan_strict_aggregate_resource_usage_layout_ready="

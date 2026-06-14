@@ -1340,6 +1340,9 @@ foreach ($needle in @(
     "environment_preset_library_sample_consumption_evidence",
     "environment_preset_library_aaa_ready_claimed",
     "environment_preset_library_diagnostics",
+    "environment_vulkan_strict_aggregate_toolchain_ready", "environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready", "environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready", "environment_vulkan_strict_aggregate_spirv_validation_ready",
+    "environment_vulkan_strict_aggregate_validation_layers_ready", "environment_vulkan_strict_aggregate_device_features_ready", "environment_vulkan_strict_aggregate_toolchain_rows", "environment_vulkan_strict_aggregate_missing_toolchain_rows",
+    "environment_vulkan_strict_aggregate_missing_validation_layer_rows", "environment_vulkan_strict_aggregate_missing_spirv_validation_rows", "environment_vulkan_strict_aggregate_unsupported_feature_device_rows",
     "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment preset library package evidence."
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
@@ -1462,6 +1465,8 @@ foreach ($needle in @(
     "environment_preset_library_package_status=ready",
     "environment_vulkan_strict_aggregate_status=ready",
     "environment_vulkan_strict_aggregate_descriptor_set_bindings=15",
+    "environment_vulkan_strict_aggregate_toolchain_ready=1", "environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready=1", "environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready=1",
+    "environment_vulkan_strict_aggregate_spirv_validation_ready=1", "environment_vulkan_strict_aggregate_validation_layers_ready=1", "environment_vulkan_strict_aggregate_device_features_ready=1", "environment_vulkan_strict_aggregate_toolchain_rows=6",
     "environment_vulkan_strict_aggregate_resource_usage_layout_ready=1",
     "environment_vulkan_strict_aggregate_resource_usage_layout_rows=20",
     "--require-environment-texture-asset-pipeline-package",
@@ -1540,6 +1545,9 @@ foreach ($needle in @(
     "environment_vulkan_strict_aggregate_status=",
     "environment_vulkan_strict_aggregate_ready=",
     "environment_vulkan_strict_aggregate_descriptor_set_bindings=",
+    "environment_vulkan_strict_aggregate_toolchain_ready=", "environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready=", "environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready=", "environment_vulkan_strict_aggregate_spirv_validation_ready=",
+    "environment_vulkan_strict_aggregate_validation_layers_ready=", "environment_vulkan_strict_aggregate_device_features_ready=", "environment_vulkan_strict_aggregate_toolchain_rows=", "environment_vulkan_strict_aggregate_missing_toolchain_rows=",
+    "environment_vulkan_strict_aggregate_missing_validation_layer_rows=", "environment_vulkan_strict_aggregate_missing_spirv_validation_rows=", "environment_vulkan_strict_aggregate_unsupported_feature_device_rows=",
     "environment_vulkan_strict_aggregate_synchronization2_barriers=",
     "environment_vulkan_strict_aggregate_resource_usage_layout_ready=",
     "environment_vulkan_strict_aggregate_resource_usage_layout_rows=",
