@@ -1389,6 +1389,7 @@ foreach ($packageFile in @(
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
     "runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
     "runtime/assets/desktop_runtime/environment_ibl.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
     "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
     "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
     "runtime/assets/desktop_runtime/default_outdoor.geenv",
@@ -1441,6 +1442,7 @@ foreach ($needle in @(
     "package streaming remains unsupported",
     "native GPU runtime UI overlay",
     "textured UI sprite atlas",
+    "GameEngine.EnvironmentPresetPack.v1",
     "--require-environment-texture-asset-pipeline-package",
     "environment_texture_asset_pipeline_package_status=ready",
     "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
@@ -1469,6 +1471,27 @@ Assert-ContainsText $sample3dIndexText "kind=ui_atlas" "games/sample_desktop_run
 Assert-ContainsText $sample3dIndexText "kind=ui_atlas_texture" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=animation_quaternion_clip" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=environment_texture" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
+Assert-ContainsText $sample3dIndexText "kind=environment_preset_pack" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
+$sample3dEnvironmentPresetPackText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_presets.gepresetpack"
+foreach ($needle in @(
+    "format=GameEngine.EnvironmentPresetPack.v1",
+    "pack.provenance_id=provenance.environment.sample_commercial_presets",
+    "pack.license_id=LicenseRef-Proprietary",
+    "pack.package_size_budget_bytes=12000",
+    "pack.installed_size_budget_bytes=12000",
+    "pack.decoded_memory_budget_bytes=56000",
+    "pack.gpu_memory_budget_bytes=44000",
+    "pack.required_backend_feature_row.0=environment_platform_windows_d3d12_ready",
+    "preset.0.id=clear_noon",
+    "preset.1.id=overcast_storm",
+    "preset.2.id=night_moonlit",
+    "preset.3.id=snowfield",
+    "preset.4.id=foggy_valley",
+    "preset.5.id=cinematic_sunset",
+    "preset.6.id=indoor_to_outdoor_transition"
+)) {
+    Assert-ContainsText $sample3dEnvironmentPresetPackText $needle "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_presets.gepresetpack"
+}
 $sample3dMainText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/main.cpp"
 foreach ($needle in @(
     "mirakana/ui/ui.hpp",

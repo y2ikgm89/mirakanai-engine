@@ -607,6 +607,10 @@ void validate_supported_properties(std::vector<SceneV2RuntimePackageMigrationDia
         return "physics_collision_scene";
     case AssetKind::environment_profile:
         return "environment_profile";
+    case AssetKind::environment_preset_pack:
+        return "environment_preset_pack";
+    case AssetKind::mavg_cluster_graph:
+        return "mavg_cluster_graph";
     case AssetKind::unknown:
         break;
     }

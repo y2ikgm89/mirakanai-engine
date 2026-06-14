@@ -276,6 +276,9 @@ RuntimeDiagnosticReport inspect_runtime_asset_package(const RuntimeAssetPackage&
         }
         case AssetKind::script:
         case AssetKind::shader:
+        case AssetKind::environment_profile:
+        case AssetKind::environment_preset_pack:
+        case AssetKind::mavg_cluster_graph:
         case AssetKind::unknown:
             report.diagnostics.push_back(make_record_error(RuntimeDiagnosticDomain::payload, record,
                                                            "runtime asset record kind is unsupported"));

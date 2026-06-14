@@ -87,6 +87,8 @@ namespace {
     case AssetKind::ui_atlas:
     case AssetKind::tilemap:
     case AssetKind::physics_collision_scene:
+    case AssetKind::environment_preset_pack:
+    case AssetKind::mavg_cluster_graph:
         break;
     }
     return AssetImportActionKind::unknown;

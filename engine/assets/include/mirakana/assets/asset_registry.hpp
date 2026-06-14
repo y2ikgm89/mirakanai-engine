@@ -46,6 +46,7 @@ enum class AssetKind : std::uint8_t {
     tilemap,
     physics_collision_scene,
     environment_profile,
+    environment_preset_pack,
     mavg_cluster_graph,
 };
 

@@ -1,6 +1,7 @@
 add_library(mirakana_environment
     src/cloud_layer.cpp
     src/environment_io.cpp
+    src/environment_preset_pack.cpp
     src/environment_profile.cpp
     src/environment_quality_budget.cpp
     src/material_weathering.cpp

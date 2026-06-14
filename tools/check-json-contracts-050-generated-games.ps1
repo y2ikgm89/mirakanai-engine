@@ -1158,17 +1158,7 @@ if ($null -eq $sample3dManifestEntry) {
             Write-Error "$sample3dManifestPath packagingTargets missing $target"
         }
     }
-    foreach ($packageFile in @(
-        "runtime/sample_desktop_runtime_game.config",
-        "runtime/sample_desktop_runtime_game.geindex",
-        "runtime/assets/desktop_runtime/base_color.texture.geasset",
-        "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
-        "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
-        "runtime/assets/desktop_runtime/hud.uiatlas",
-        "runtime/assets/desktop_runtime/skinned_triangle.skinned_mesh",
-        "runtime/assets/desktop_runtime/unlit.material",
-        "runtime/assets/desktop_runtime/packaged_scene.scene"
-    )) {
+    foreach ($packageFile in @("runtime/sample_desktop_runtime_game.config", "runtime/sample_desktop_runtime_game.geindex", "runtime/assets/desktop_runtime/base_color.texture.geasset", "runtime/assets/desktop_runtime/environment_presets.gepresetpack", "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset", "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset", "runtime/assets/desktop_runtime/hud.uiatlas", "runtime/assets/desktop_runtime/skinned_triangle.skinned_mesh", "runtime/assets/desktop_runtime/unlit.material", "runtime/assets/desktop_runtime/packaged_scene.scene")) {
         if (@($sample3dManifest.runtimePackageFiles) -notcontains $packageFile) {
             Write-Error "$sample3dManifestPath runtimePackageFiles missing $packageFile"
         }
@@ -1195,6 +1185,7 @@ if ($null -eq $sample3dManifestEntry) {
         "package streaming remains unsupported",
         "native GPU runtime UI overlay",
         "textured UI sprite atlas",
+        "GameEngine.EnvironmentPresetPack.v1",
         "--require-environment-texture-asset-pipeline-package",
         "environment_texture_asset_pipeline_package_status=ready",
         "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
@@ -1218,9 +1209,16 @@ if ($null -eq $sample3dManifestEntry) {
     }
     $sample3dIndexPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
     $sample3dIndexText = Get-Content -LiteralPath $sample3dIndexPath -Raw
-    foreach ($needle in @("kind=ui_atlas", "kind=ui_atlas_texture", "kind=environment_texture")) {
+    foreach ($needle in @("kind=ui_atlas", "kind=ui_atlas_texture", "kind=environment_texture", "kind=environment_preset_pack")) {
         if (-not $sample3dIndexText.Contains($needle)) {
-            Write-Error "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex missing UI atlas package row: $needle"
+            Write-Error "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex missing sample 3D package row: $needle"
+        }
+    }
+    $sample3dEnvironmentPresetPackPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_presets.gepresetpack"
+    $sample3dEnvironmentPresetPackText = Get-Content -LiteralPath $sample3dEnvironmentPresetPackPath -Raw
+    foreach ($needle in @("format=GameEngine.EnvironmentPresetPack.v1", "pack.provenance_id=provenance.environment.sample_commercial_presets", "pack.license_id=LicenseRef-Proprietary", "pack.package_size_budget_bytes=12000", "pack.installed_size_budget_bytes=12000", "pack.decoded_memory_budget_bytes=56000", "pack.gpu_memory_budget_bytes=44000", "pack.required_backend_feature_row.0=environment_platform_windows_d3d12_ready", "preset.0.id=clear_noon", "preset.1.id=overcast_storm", "preset.2.id=night_moonlit", "preset.3.id=snowfield", "preset.4.id=foggy_valley", "preset.5.id=cinematic_sunset", "preset.6.id=indoor_to_outdoor_transition")) {
+        if (-not $sample3dEnvironmentPresetPackText.Contains($needle)) {
+            Write-Error "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_presets.gepresetpack missing preset governance text: $needle"
         }
     }
     $sample3dMainPath = Join-Path $root "games/sample_desktop_runtime_game/main.cpp"

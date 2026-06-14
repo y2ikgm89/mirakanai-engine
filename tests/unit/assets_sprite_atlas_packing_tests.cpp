@@ -159,6 +159,32 @@ MK_TEST("cooked package index records environment texture dependency edges") {
     MK_REQUIRE(parsed.dependencies[1].kind == mirakana::AssetDependencyKind::environment_texture);
 }
 
+MK_TEST("cooked package index accepts environment preset pack assets") {
+    const auto preset_pack = mirakana::AssetId::from_name("environment/presets/sample_commercial_pack");
+    std::vector<mirakana::AssetCookedArtifact> artifacts;
+    artifacts.push_back(mirakana::AssetCookedArtifact{
+        .asset = preset_pack,
+        .kind = mirakana::AssetKind::environment_preset_pack,
+        .path = "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+        .content = "format=GameEngine.EnvironmentPresetPack.v1\n"
+                   "pack.id=sample_environment_commercial_presets\n"
+                   "pack.provenance_id=provenance.environment.sample_commercial_presets\n"
+                   "pack.license_id=LicenseRef-Proprietary\n",
+        .source_revision = 1U,
+        .dependencies = {},
+    });
+
+    const auto index = mirakana::build_asset_cooked_package_index(std::move(artifacts), {});
+    MK_REQUIRE(index.entries.size() == 1U);
+    MK_REQUIRE(index.entries[0].kind == mirakana::AssetKind::environment_preset_pack);
+
+    const auto serialized = mirakana::serialize_asset_cooked_package_index(index);
+    MK_REQUIRE(serialized.find("entry.0.kind=environment_preset_pack\n") != std::string::npos);
+    const auto parsed = mirakana::deserialize_asset_cooked_package_index(serialized);
+    MK_REQUIRE(parsed.entries.size() == 1U);
+    MK_REQUIRE(parsed.entries[0].kind == mirakana::AssetKind::environment_preset_pack);
+}
+
 int main() {
     return mirakana::test::run_all();
 }

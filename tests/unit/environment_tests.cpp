@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include "mirakana/environment/environment_io.hpp"
+#include "mirakana/environment/environment_preset_pack.hpp"
 #include "mirakana/environment/environment_profile.hpp"
 #include "mirakana/environment/environment_quality_budget.hpp"
 
@@ -414,6 +415,179 @@ MK_TEST("environment profile v2 validation rejects invalid local volume shape an
         validation, mirakana::EnvironmentProfileDiagnosticCode::invalid_volume_shape));
     MK_REQUIRE(mirakana::has_environment_profile_diagnostic(
         validation, mirakana::EnvironmentProfileDiagnosticCode::invalid_volume_fade));
+}
+
+MK_TEST("environment preset pack serializes required commercial governance rows") {
+    mirakana::EnvironmentPresetPackDocumentV1 document{};
+    document.id = "sample_environment_commercial_presets";
+    document.provenance_id = "provenance.environment.sample_commercial_presets";
+    document.license_id = "LicenseRef-Proprietary";
+    document.art_direction = "first_party_desktop_runtime_environment_reference";
+    document.quality_tier = mirakana::EnvironmentQualityPreset::high;
+    document.package_size_budget_bytes = 12000U;
+    document.installed_size_budget_bytes = 12000U;
+    document.decoded_memory_budget_bytes = 56000U;
+    document.gpu_memory_budget_bytes = 44000U;
+    document.required_backend_feature_rows = {"environment_platform_windows_d3d12_ready"};
+    document.presets = {
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "clear_noon",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "clean_high_sun_reference",
+            .sky_atmosphere_values = "physical_atmosphere:sun_lux_100000",
+            .fog_cloud_weather_timeline = "clear_none_low_fog",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
+            .material_weathering_ref = "material_weathering.dry",
+            .audio_trigger_intent = "ambient.daylight.clear",
+            .quality_budget_id = "environment.quality.high.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::high,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 4096U,
+            .estimated_gpu_memory_bytes = 2048U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "overcast_storm",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "dense_overcast_storm_front",
+            .sky_atmosphere_values = "physical_atmosphere:muted_sun_scatter",
+            .fog_cloud_weather_timeline = "storm_rain_high_clouds",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
+            .material_weathering_ref = "material_weathering.wet",
+            .audio_trigger_intent = "ambient.storm.rain",
+            .quality_budget_id = "environment.quality.high.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::high,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 8192U,
+            .estimated_gpu_memory_bytes = 4096U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "night_moonlit",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "cool_moonlit_low_key_reference",
+            .sky_atmosphere_values = "physical_atmosphere:moon_lux_0_25",
+            .fog_cloud_weather_timeline = "clear_night_light_fog",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
+            .material_weathering_ref = "material_weathering.dry",
+            .audio_trigger_intent = "ambient.night.insects",
+            .quality_budget_id = "environment.quality.medium.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::medium,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 4096U,
+            .estimated_gpu_memory_bytes = 2048U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "snowfield",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "high_albedo_snowfield_reference",
+            .sky_atmosphere_values = "physical_atmosphere:cold_scatter",
+            .fog_cloud_weather_timeline = "snow_medium_clouds",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
+            .material_weathering_ref = "material_weathering.snow",
+            .audio_trigger_intent = "ambient.snow.wind",
+            .quality_budget_id = "environment.quality.high.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::high,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 8192U,
+            .estimated_gpu_memory_bytes = 4096U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "foggy_valley",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "layered_local_fog_valley",
+            .sky_atmosphere_values = "physical_atmosphere:aerial_perspective",
+            .fog_cloud_weather_timeline = "foggy_low_clouds",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
+            .material_weathering_ref = "material_weathering.damp",
+            .audio_trigger_intent = "ambient.valley.mist",
+            .quality_budget_id = "environment.quality.high.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::high,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 8192U,
+            .estimated_gpu_memory_bytes = 4096U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "cinematic_sunset",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "warm_low_sun_cinematic_reference",
+            .sky_atmosphere_values = "physical_atmosphere:low_sun_warm_scatter",
+            .fog_cloud_weather_timeline = "sunset_cloud_layer_light_fog",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
+            .material_weathering_ref = "material_weathering.dry",
+            .audio_trigger_intent = "ambient.sunset.wind",
+            .quality_budget_id = "environment.quality.ultra.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::ultra,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 8192U,
+            .estimated_gpu_memory_bytes = 4096U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+        mirakana::EnvironmentPresetPackPresetV1{
+            .id = "indoor_to_outdoor_transition",
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "exposure_transition_reference",
+            .sky_atmosphere_values = "physical_atmosphere:dynamic_ambient_reference",
+            .fog_cloud_weather_timeline = "clear_transition_volume",
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
+            .material_weathering_ref = "material_weathering.mixed",
+            .audio_trigger_intent = "ambient.transition.doorway",
+            .quality_budget_id = "environment.quality.medium.selected",
+            .quality_tier = mirakana::EnvironmentQualityPreset::medium,
+            .package_size_bytes = 1024U,
+            .installed_size_bytes = 1024U,
+            .estimated_decoded_memory_bytes = 4096U,
+            .estimated_gpu_memory_bytes = 2048U,
+            .validation_recipe_id = "desktop-game-runtime",
+        },
+    };
+
+    const auto validation = mirakana::validate_environment_preset_pack_v1(document);
+    MK_REQUIRE(validation.succeeded());
+
+    const auto serialized = mirakana::serialize_environment_preset_pack_v1(document);
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.EnvironmentPresetPack.v1\n"));
+    MK_REQUIRE(serialized.contains("pack.provenance_id=provenance.environment.sample_commercial_presets\n"));
+    MK_REQUIRE(serialized.contains("pack.required_backend_feature_row.0=environment_platform_windows_d3d12_ready\n"));
+    MK_REQUIRE(serialized.contains("preset.6.id=indoor_to_outdoor_transition\n"));
+    MK_REQUIRE(serialized.contains("preset.6.audio_trigger_intent=ambient.transition.doorway\n"));
+
+    const auto round_trip = mirakana::deserialize_environment_preset_pack_v1(serialized);
+    MK_REQUIRE(round_trip.presets.size() == 7U);
+    MK_REQUIRE(round_trip.presets[1].id == "overcast_storm");
+    MK_REQUIRE(round_trip.presets[5].quality_tier == mirakana::EnvironmentQualityPreset::ultra);
+    MK_REQUIRE(mirakana::serialize_environment_preset_pack_v1(round_trip) == serialized);
+}
+
+MK_TEST("environment preset pack rejects missing provenance budgets and required presets") {
+    mirakana::EnvironmentPresetPackDocumentV1 document{};
+    document.id = "sample_environment_commercial_presets";
+    document.license_id = "LicenseRef-Proprietary";
+    document.art_direction = "first_party_desktop_runtime_environment_reference";
+    document.quality_tier = mirakana::EnvironmentQualityPreset::high;
+    document.required_backend_feature_rows = {"environment_platform_windows_d3d12_ready"};
+    document.presets.push_back(mirakana::EnvironmentPresetPackPresetV1{.id = "clear_noon"});
+
+    const auto validation = mirakana::validate_environment_preset_pack_v1(document);
+
+    MK_REQUIRE(!validation.succeeded());
+    MK_REQUIRE(mirakana::has_environment_preset_pack_diagnostic(
+        validation, mirakana::EnvironmentPresetPackDiagnosticCode::missing_provenance_id));
+    MK_REQUIRE(mirakana::has_environment_preset_pack_diagnostic(
+        validation, mirakana::EnvironmentPresetPackDiagnosticCode::invalid_budget));
+    MK_REQUIRE(mirakana::has_environment_preset_pack_diagnostic(
+        validation, mirakana::EnvironmentPresetPackDiagnosticCode::missing_required_preset));
+    MK_REQUIRE(mirakana::has_environment_preset_pack_diagnostic(
+        validation, mirakana::EnvironmentPresetPackDiagnosticCode::missing_profile_reference));
 }
 
 int main() {

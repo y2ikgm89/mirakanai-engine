@@ -560,6 +560,13 @@
           "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve first-party IBL metadata package evidence and renderer-upload non-claim counters."
         },
         {
+          "id": "runtime-assets-desktop-runtime-environment-presets-gepresetpack",
+          "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+          "generatedBy": "environment-commercial-excellence-v1-preset-pack-governance",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve first-party provenance/license/budget metadata and AAA preset-library non-claim counters."
+        },
+        {
           "id": "runtime-assets-desktop-runtime-environment-radiance-exr-texture-geasset",
           "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
           "generatedBy": "environment-commercial-excellence-v1-asset-pipeline-package-smoke",
@@ -1646,6 +1653,7 @@
       "GameEngine.AnimationQuaternionClipSource.v1",
       "GameEngine.Material.v1",
       "GameEngine.EnvironmentProfile.v2",
+      "GameEngine.EnvironmentPresetPack.v1",
       "GameEngine.EnvironmentTextureGeassetMetadata.v1",
       "GameEngine.SourceAssetRegistry.v1",
       "GameEngine.Scene.v2",
@@ -1666,6 +1674,7 @@
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
     "runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
     "runtime/assets/desktop_runtime/environment_ibl.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
     "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
     "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
     "runtime/assets/desktop_runtime/default_outdoor.geenv",
