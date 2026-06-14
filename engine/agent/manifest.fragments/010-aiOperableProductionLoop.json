@@ -5713,6 +5713,7 @@
         "id": "environment_broad_optimization_ready",
         "state": "unsupported",
         "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement",
           "installed-2d-performance-baseline-smoke",
           "host-cpu-profiling-matrix",
           "host-optional-gpu-compute-review"
@@ -5721,9 +5722,9 @@
         "dependsOn": [
           "environment_backend_parity_ready"
         ],
-        "requiredEvidence": "Measured CPU/GPU/memory before/after traces for selected environment workloads, exact host/GPU/driver/tool versions, regression budgets, package counters, and static checks preventing narrow evidence from broad claims.",
+        "requiredEvidence": "MK_renderer EnvironmentOptimizationMeasurementRequest / plan_environment_optimization_measurement workload rows plus measured CPU/GPU/memory before/after traces for all selected environment workloads, exact host/GPU/driver/tool versions, regression budgets, package counters, retained profiler artifacts, and static checks preventing narrow evidence from broad claims.",
         "forbiddenInference": "Single metric, synthetic-only benchmark, or optimized code review.",
-        "notes": "Current performance evidence is narrow and must not become a broad optimization claim."
+        "notes": "desktop-runtime-sample-game-environment-optimization-measurement currently records one D3D12 preset_pack_flythrough before/after package-visible row and keeps environment_broad_optimization_ready=0. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and regression guards are complete."
       },
       {
         "id": "environment_asset_pipeline_openexr_ktx_basis_ready",
@@ -6116,6 +6117,253 @@
         "blockerReason": "permanent non-claim until a future architecture decision replaces exact platform rows; all-platform readiness must remain derived from explicit row evidence, not a broad aggregate.",
         "forbiddenInference": "Any all-platform claim inferred from one ready row, one backend, one host, backend parity review-only rows, or commercial readiness plans.",
         "notes": "This unsupported row keeps all-platform readiness as a permanent non-claim in Phase 8 slice 1."
+      }
+    ],
+    "environmentOptimizationMeasurementWorkloadRows": [
+      {
+        "id": "environment_optimization_preset_pack_flythrough_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "ready",
+        "backend": "d3d12",
+        "workload": "preset_pack_flythrough",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "cpu_frame_p95_before_after_us",
+          "gpu_frame_p95_before_after_us",
+          "memory_peak_before_after_bytes",
+          "transient_gpu_before_after_bytes",
+          "upload_before_after_bytes",
+          "draw_dispatch_barrier_before_after_counts",
+          "texture_residency_before_after_bytes",
+          "package_load_before_after_us",
+          "stutter_frames_before_after"
+        ],
+        "requiredTools": [
+          "repository package counters",
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query"
+        ],
+        "packageSmoke": "--require-environment-optimization-measurement",
+        "packageCounters": [
+          "environment_optimization_measurement_status=host_evidence_required",
+          "environment_optimization_measurement_workload_rows=1",
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_optimization_measurement_before_after_pairs=1",
+          "environment_optimization_measurement_backend=d3d12",
+          "environment_optimization_measurement_profile=preset_pack_flythrough",
+          "environment_optimization_measurement_regression_budget_rows=1",
+          "environment_optimization_measurement_over_budget=0",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "CPU/GPU p95 <= 16670us, memory/upload/transient/residency/draw/dispatch/barrier/package-load/stutter rows do not exceed explicit package budgets.",
+        "blockerReason": "none",
+        "forbiddenInference": "A single D3D12 flythrough row must not promote broad optimization, backend parity, cross-vendor parity, cross-backend parity, Metal readiness, Vulkan readiness, all-platform readiness, or commercial readiness.",
+        "notes": "Phase 9 slice 1 records the first package-visible before/after measurement row and regression-budget counter contract. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and static guards are complete."
+      },
+      {
+        "id": "environment_optimization_storm_precipitation_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "host-gated",
+        "backend": "d3d12",
+        "workload": "storm_precipitation",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "cpu_gpu_frame_time",
+          "precipitation_upload_bytes",
+          "draw_dispatch_barrier_counts",
+          "memory_peak",
+          "stutter_budget"
+        ],
+        "requiredTools": [
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query",
+          "repository package counters"
+        ],
+        "packageSmoke": "future storm precipitation optimization measurement smoke",
+        "packageCounters": [
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "Requires explicit before/after storm precipitation budgets before ready.",
+        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
+        "forbiddenInference": "preset_pack_flythrough evidence, rain feature readiness, or renderer execution counters alone.",
+        "notes": "Host-gated until storm precipitation workload evidence is measured directly."
+      },
+      {
+        "id": "environment_optimization_dense_volumetric_fog_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "host-gated",
+        "backend": "d3d12",
+        "workload": "dense_volumetric_fog",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "cpu_gpu_frame_time",
+          "froxel_transient_gpu_bytes",
+          "compute_dispatch_count",
+          "barrier_count",
+          "memory_peak",
+          "stutter_budget"
+        ],
+        "requiredTools": [
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query",
+          "repository package counters"
+        ],
+        "packageSmoke": "future dense volumetric fog optimization measurement smoke",
+        "packageCounters": [
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "Requires explicit before/after volumetric fog compute budgets before ready.",
+        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
+        "forbiddenInference": "volumetric fog feature readiness or shader/package execution counters alone.",
+        "notes": "Host-gated until dense volumetric fog workload evidence is measured directly."
+      },
+      {
+        "id": "environment_optimization_volumetric_cloud_sunset_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "host-gated",
+        "backend": "d3d12",
+        "workload": "volumetric_cloud_sunset",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "cpu_gpu_frame_time",
+          "volume_texture_residency",
+          "draw_dispatch_barrier_counts",
+          "transient_gpu_bytes",
+          "memory_peak",
+          "stutter_budget"
+        ],
+        "requiredTools": [
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query",
+          "repository package counters"
+        ],
+        "packageSmoke": "future volumetric cloud sunset optimization measurement smoke",
+        "packageCounters": [
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "Requires explicit before/after volumetric cloud sunset budgets before ready.",
+        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
+        "forbiddenInference": "volumetric cloud renderer execution counters alone.",
+        "notes": "Host-gated until volumetric cloud sunset workload evidence is measured directly."
+      },
+      {
+        "id": "environment_optimization_snowfield_material_weathering_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "host-gated",
+        "backend": "d3d12",
+        "workload": "snowfield_material_weathering",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "cpu_gpu_frame_time",
+          "material_update_upload_bytes",
+          "draw_dispatch_barrier_counts",
+          "memory_peak",
+          "stutter_budget"
+        ],
+        "requiredTools": [
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query",
+          "repository package counters"
+        ],
+        "packageSmoke": "future snowfield material weathering optimization measurement smoke",
+        "packageCounters": [
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "Requires explicit before/after snowfield material weathering budgets before ready.",
+        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
+        "forbiddenInference": "snow package evidence, material weathering feature readiness, or rain evidence.",
+        "notes": "Host-gated until snowfield material weathering workload evidence is measured directly."
+      },
+      {
+        "id": "environment_optimization_weather_simulation_stress_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "host-gated",
+        "backend": "d3d12",
+        "workload": "weather_simulation_stress",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "cpu_gpu_frame_time",
+          "weather_system_update_cost",
+          "audio_weather_event_cost",
+          "draw_dispatch_barrier_counts",
+          "memory_peak",
+          "stutter_budget"
+        ],
+        "requiredTools": [
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query",
+          "repository package counters"
+        ],
+        "packageSmoke": "future weather simulation stress optimization measurement smoke",
+        "packageCounters": [
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "Requires explicit before/after weather simulation stress budgets before ready.",
+        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
+        "forbiddenInference": "weather feature counters or audio playback counters alone.",
+        "notes": "Host-gated until weather simulation stress workload evidence is measured directly."
+      },
+      {
+        "id": "environment_optimization_asset_library_cold_load_d3d12",
+        "claimId": "environment_broad_optimization_ready",
+        "state": "host-gated",
+        "backend": "d3d12",
+        "workload": "asset_library_cold_load",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-optimization-measurement"
+        ],
+        "requiredMetrics": [
+          "package_load_time",
+          "upload_bytes",
+          "texture_residency_bytes",
+          "memory_peak",
+          "stutter_budget"
+        ],
+        "requiredTools": [
+          "Windows Performance Recorder",
+          "PIX Timing Capture",
+          "D3D12 timestamp query",
+          "repository package counters"
+        ],
+        "packageSmoke": "future asset library cold-load optimization measurement smoke",
+        "packageCounters": [
+          "environment_optimization_measurement_required_workloads=7",
+          "environment_broad_optimization_ready=0"
+        ],
+        "regressionBudget": "Requires explicit before/after asset-library cold-load budgets before ready.",
+        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
+        "forbiddenInference": "preset metadata, package installation, or asset-library browsing rows alone.",
+        "notes": "Host-gated until asset-library cold-load workload evidence is measured directly."
       }
     ],
     "environmentCommercialUnsupportedAdjacentClaims": [

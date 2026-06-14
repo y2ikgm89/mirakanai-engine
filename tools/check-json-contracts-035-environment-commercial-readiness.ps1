@@ -6,7 +6,7 @@ $engineForEnvironmentCommercial = Read-Json "engine/agent/manifest.json"
 $environmentCommercialSchema = Read-Json "schemas/engine-agent/ai-operable-production-loop.schema.json"
 $environmentCommercialLoop = $engineForEnvironmentCommercial.aiOperableProductionLoop
 
-foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentCommercialUnsupportedAdjacentClaims")) {
+foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentOptimizationMeasurementWorkloadRows", "environmentCommercialUnsupportedAdjacentClaims")) {
     if (@($environmentCommercialSchema.required) -notcontains $requiredSchemaField) {
         Write-Error "ai-operable-production-loop.schema.json must require $requiredSchemaField"
     }
@@ -113,6 +113,14 @@ if ($null -eq $backendParityClaim -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("preset pack revision") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("counter semantics")) {
     Write-Error "engine manifest environment_backend_parity_ready must require the MK_renderer environment parity matrix contract"
+}
+$broadOptimizationClaim = $environmentCommercialClaimsById["environment_broad_optimization_ready"]
+if ($null -eq $broadOptimizationClaim -or
+    @($broadOptimizationClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-optimization-measurement" -or
+    -not [string]$broadOptimizationClaim.requiredEvidence.Contains("plan_environment_optimization_measurement") -or
+    -not [string]$broadOptimizationClaim.requiredEvidence.Contains("before/after traces") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_broad_optimization_ready=0")) {
+    Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract without ready promotion"
 }
 foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend_parity_ready", "environment_broad_optimization_ready", "environment_aaa_preset_library_ready", "environment_physical_weather_simulation_ready", "environment_artist_workflow_ready")) {
     $broadClaim = $environmentCommercialClaimsById[$broadClaimId]
@@ -223,6 +231,106 @@ foreach ($expectedPlatformRow in $expectedEnvironmentPlatformReadinessRows) {
     }
 }
 
+$expectedEnvironmentOptimizationRows = @(
+    @{
+        id = "environment_optimization_preset_pack_flythrough_d3d12"
+        workload = "preset_pack_flythrough"
+        state = "ready"
+        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "environment_optimization_measurement_before_after_pairs=1", "environment_broad_optimization_ready=0")
+    },
+    @{
+        id = "environment_optimization_storm_precipitation_d3d12"
+        workload = "storm_precipitation"
+        state = "host-gated"
+        needles = @("storm precipitation", "before/after", "regression thresholds", "environment_broad_optimization_ready=0")
+    },
+    @{
+        id = "environment_optimization_dense_volumetric_fog_d3d12"
+        workload = "dense_volumetric_fog"
+        state = "host-gated"
+        needles = @("volumetric fog", "compute", "before/after", "environment_broad_optimization_ready=0")
+    },
+    @{
+        id = "environment_optimization_volumetric_cloud_sunset_d3d12"
+        workload = "volumetric_cloud_sunset"
+        state = "host-gated"
+        needles = @("volumetric cloud", "sunset", "before/after", "environment_broad_optimization_ready=0")
+    },
+    @{
+        id = "environment_optimization_snowfield_material_weathering_d3d12"
+        workload = "snowfield_material_weathering"
+        state = "host-gated"
+        needles = @("snowfield", "material weathering", "before/after", "environment_broad_optimization_ready=0")
+    },
+    @{
+        id = "environment_optimization_weather_simulation_stress_d3d12"
+        workload = "weather_simulation_stress"
+        state = "host-gated"
+        needles = @("weather simulation", "before/after", "regression thresholds", "environment_broad_optimization_ready=0")
+    },
+    @{
+        id = "environment_optimization_asset_library_cold_load_d3d12"
+        workload = "asset_library_cold_load"
+        state = "host-gated"
+        needles = @("asset-library cold-load", "package_load", "before/after", "environment_broad_optimization_ready=0")
+    }
+)
+$environmentOptimizationRows = @($environmentCommercialLoop.environmentOptimizationMeasurementWorkloadRows)
+if ($environmentOptimizationRows.Count -ne $expectedEnvironmentOptimizationRows.Count) {
+    Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows must contain exactly $($expectedEnvironmentOptimizationRows.Count) rows"
+}
+$environmentOptimizationRowsById = @{}
+foreach ($optimizationRow in $environmentOptimizationRows) {
+    Assert-Properties $optimizationRow @("id", "claimId", "state", "backend", "workload", "runtimeTarget", "validationRecipeIds", "requiredMetrics", "requiredTools", "packageSmoke", "packageCounters", "regressionBudget", "blockerReason", "forbiddenInference", "notes") "engine manifest environmentOptimizationMeasurementWorkloadRows"
+    $optimizationRowId = [string]$optimizationRow.id
+    if ($environmentOptimizationRowsById.ContainsKey($optimizationRowId)) {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows duplicate row id: $optimizationRowId"
+    }
+    $environmentOptimizationRowsById[$optimizationRowId] = $optimizationRow
+    if ([string]$optimizationRow.claimId -ne "environment_broad_optimization_ready") {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' must map to environment_broad_optimization_ready"
+    }
+    if ([string]$optimizationRow.backend -ne "d3d12") {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' must remain d3d12 for Phase 9 slice 1"
+    }
+    foreach ($arrayProperty in @("validationRecipeIds", "requiredMetrics", "requiredTools", "packageCounters")) {
+        if (@($optimizationRow.$arrayProperty).Count -eq 0) {
+            Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' must have at least one $arrayProperty row"
+        }
+    }
+    foreach ($recipeId in @($optimizationRow.validationRecipeIds)) {
+        if (-not $environmentCommercialValidationRecipeNames.ContainsKey([string]$recipeId)) {
+            Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' references unknown validation recipe: $recipeId"
+        }
+    }
+    if ([string]$optimizationRow.state -eq "ready" -and [string]$optimizationRow.blockerReason -ne "none") {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' ready rows must use blockerReason=none"
+    }
+    if ([string]$optimizationRow.state -ne "ready" -and [string]$optimizationRow.blockerReason -eq "none") {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' non-ready rows must record a blockerReason"
+    }
+}
+foreach ($expectedOptimizationRow in $expectedEnvironmentOptimizationRows) {
+    $optimizationRowId = [string]$expectedOptimizationRow.id
+    if (-not $environmentOptimizationRowsById.ContainsKey($optimizationRowId)) {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows missing row id: $optimizationRowId"
+        continue
+    }
+    $optimizationRow = $environmentOptimizationRowsById[$optimizationRowId]
+    if ([string]$optimizationRow.workload -ne [string]$expectedOptimizationRow.workload) {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' must map to workload $($expectedOptimizationRow.workload), not $($optimizationRow.workload)"
+    }
+    if ([string]$optimizationRow.state -ne [string]$expectedOptimizationRow.state) {
+        Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' must remain $($expectedOptimizationRow.state), not $($optimizationRow.state)"
+    }
+    $optimizationRowText = [string]::Join(" ", @($optimizationRow.validationRecipeIds) + @($optimizationRow.requiredMetrics) + @($optimizationRow.requiredTools) + @($optimizationRow.packageCounters) + @([string]$optimizationRow.packageSmoke, [string]$optimizationRow.regressionBudget, [string]$optimizationRow.blockerReason, [string]$optimizationRow.forbiddenInference, [string]$optimizationRow.notes))
+    foreach ($needle in @($expectedOptimizationRow.needles)) {
+        if (-not $optimizationRowText.Contains([string]$needle)) {
+            Write-Error "engine manifest environmentOptimizationMeasurementWorkloadRows '$optimizationRowId' missing measurement needle: $needle"
+        }
+    }
+}
+
 $expectedAdjacentEnvironmentCommercialClaims = @(
     "environment_unconditional_all_platform_parity_ready",
     "environment_broad_renderer_quality_ready",
@@ -277,5 +385,11 @@ $environmentPlatformReadinessGuidance = [string]$engineForEnvironmentCommercial.
 foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_all_platform_unconditional_ready=0")) {
     if (-not $environmentPlatformReadinessGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8 missing: $needle"
+    }
+}
+$environmentOptimizationMeasurementGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentOptimizationMeasurementPhase9
+foreach ($needle in @("desktop-runtime-sample-game-environment-optimization-measurement", "environmentOptimizationMeasurementWorkloadRows", "EnvironmentOptimizationMeasurementRequest", "plan_environment_optimization_measurement", "preset_pack_flythrough", "storm_precipitation", "dense_volumetric_fog", "volumetric_cloud_sunset", "snowfield_material_weathering", "weather_simulation_stress", "asset_library_cold_load", "environment_optimization_measurement_status=host_evidence_required", "environment_optimization_measurement_required_workloads=7", "environment_broad_optimization_ready=0")) {
+    if (-not $environmentOptimizationMeasurementGuidance.Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEnvironmentOptimizationMeasurementPhase9 missing: $needle"
     }
 }

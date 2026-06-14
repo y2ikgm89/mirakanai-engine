@@ -180,12 +180,14 @@ $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-en
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
 $requiresEnvironmentPlatformReadiness = @($SmokeArgs) -contains "--require-environment-platform-readiness"
+$requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require-environment-optimization-measurement"
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
     $requiresEnvironmentBackendParity -or
-    $requiresEnvironmentPlatformReadiness
+    $requiresEnvironmentPlatformReadiness -or
+    $requiresEnvironmentOptimizationMeasurement
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -209,7 +211,8 @@ $requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-envi
 $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environment-audio-playback"
 $requiresEnvironmentReadyAggregate = (@($SmokeArgs) -contains "--require-environment-ready-aggregate") -or
     $requiresEnvironmentBackendParity -or
-    $requiresEnvironmentPlatformReadiness
+    $requiresEnvironmentPlatformReadiness -or
+    $requiresEnvironmentOptimizationMeasurement
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -5768,6 +5771,56 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_platform_readiness_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment platform readiness replay hash."
+        }
+    }
+    if ($requiresEnvironmentOptimizationMeasurement) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment optimization measurement" `
+            -ExpectedFields @{
+                "environment_optimization_measurement_status" = "host_evidence_required"
+                "environment_optimization_measurement_ready" = "0"
+                "environment_optimization_measurement_workload_rows" = "1"
+                "environment_optimization_measurement_required_workloads" = "7"
+                "environment_optimization_measurement_measured_workloads" = "1"
+                "environment_optimization_measurement_before_after_pairs" = "1"
+                "environment_optimization_measurement_backend" = "d3d12"
+                "environment_optimization_measurement_profile" = "preset_pack_flythrough"
+                "environment_optimization_measurement_warmup_frames" = "30"
+                "environment_optimization_measurement_sample_frames" = "120"
+                "environment_optimization_measurement_cpu_frame_p95_before_us" = "16000"
+                "environment_optimization_measurement_cpu_frame_p95_after_us" = "15000"
+                "environment_optimization_measurement_gpu_frame_p95_before_us" = "14000"
+                "environment_optimization_measurement_gpu_frame_p95_after_us" = "13200"
+                "environment_optimization_measurement_memory_peak_before_bytes" = "536870912"
+                "environment_optimization_measurement_memory_peak_after_bytes" = "524288000"
+                "environment_optimization_measurement_transient_gpu_before_bytes" = "134217728"
+                "environment_optimization_measurement_transient_gpu_after_bytes" = "117440512"
+                "environment_optimization_measurement_upload_before_bytes" = "33554432"
+                "environment_optimization_measurement_upload_after_bytes" = "25165824"
+                "environment_optimization_measurement_draw_count_before" = "120"
+                "environment_optimization_measurement_draw_count_after" = "110"
+                "environment_optimization_measurement_dispatch_count_before" = "8"
+                "environment_optimization_measurement_dispatch_count_after" = "8"
+                "environment_optimization_measurement_barrier_count_before" = "42"
+                "environment_optimization_measurement_barrier_count_after" = "36"
+                "environment_optimization_measurement_texture_residency_before_bytes" = "402653184"
+                "environment_optimization_measurement_texture_residency_after_bytes" = "377487360"
+                "environment_optimization_measurement_package_load_before_us" = "45000"
+                "environment_optimization_measurement_package_load_after_us" = "40000"
+                "environment_optimization_measurement_stutter_frames_before" = "1"
+                "environment_optimization_measurement_stutter_frames_after" = "0"
+                "environment_optimization_measurement_regression_budget_rows" = "1"
+                "environment_optimization_measurement_over_budget" = "0"
+                "environment_optimization_measurement_backend_parity_ready" = "0"
+                "environment_broad_optimization_ready" = "0"
+                "environment_optimization_measurement_native_handle_access" = "0"
+                "environment_optimization_measurement_invoked_gpu_commands" = "0"
+                "environment_optimization_measurement_diagnostics" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_optimization_measurement_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment optimization measurement replay hash."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {
