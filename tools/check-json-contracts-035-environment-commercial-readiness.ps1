@@ -97,6 +97,11 @@ foreach ($claimRow in $environmentCommercialClaimRows) {
         }
     }
 }
+$metalAggregateClaim = $environmentCommercialClaimsById["environment_metal_host_aggregate_ready"]
+if ($null -eq $metalAggregateClaim -or
+    @($metalAggregateClaim.validationRecipeIds) -notcontains "renderer-metal-environment-aggregate-apple-host-evidence") {
+    Write-Error "engine manifest environment_metal_host_aggregate_ready must reference the dedicated renderer-metal-environment-aggregate-apple-host-evidence validation recipe"
+}
 foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend_parity_ready", "environment_broad_optimization_ready", "environment_aaa_preset_library_ready", "environment_physical_weather_simulation_ready", "environment_artist_workflow_ready")) {
     $broadClaim = $environmentCommercialClaimsById[$broadClaimId]
     if ($null -ne $broadClaim -and [string]$broadClaim.state -eq "ready") {

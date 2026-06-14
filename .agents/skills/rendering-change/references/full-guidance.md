@@ -91,6 +91,10 @@ router says the current task needs detailed API names, detailed validation lanes
   and emit selected `metal_environment_*` counters for runtime, command queue, metallib, render/compute pipeline, render pass, cube HDR,
   depth texture, particle buffer, synchronization/readback, seven ready rows, and zero native-handle access. D3D12/Vulkan proof and native
   handles must not promote Metal environment readiness, and this recipe does not claim broad backend parity or broad `environment_ready`.
+  Commercial environment aggregate claims must use `renderer-metal-environment-aggregate-apple-host-evidence`, which delegates to
+  `renderer-metal-apple-host-evidence` and may emit `environment_metal_host_aggregate_ready=1` only after Apple-host renderer Metal evidence
+  succeeds; it must keep backend parity, all-platform readiness, broad optimization, commercial readiness, and broad `environment_ready`
+  unclaimed.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`,
   `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner
   may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy,
