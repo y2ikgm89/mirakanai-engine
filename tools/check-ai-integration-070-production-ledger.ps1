@@ -1389,6 +1389,8 @@ foreach ($packageFile in @(
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
     "runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
     "runtime/assets/desktop_runtime/environment_ibl.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
     "runtime/assets/desktop_runtime/default_outdoor.geenv",
     "runtime/assets/desktop_runtime/triangle.mesh",
     "runtime/assets/desktop_runtime/packaged_pose.animation_quaternion_clip",
@@ -1422,7 +1424,7 @@ Assert-RegisteredSourceAssetCookTarget `
     @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor", "sample/desktop-runtime/cloud-flow", "sample/desktop-runtime/environment/ibl-cubemap") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }
@@ -1439,6 +1441,9 @@ foreach ($needle in @(
     "package streaming remains unsupported",
     "native GPU runtime UI overlay",
     "textured UI sprite atlas",
+    "--require-environment-texture-asset-pipeline-package",
+    "environment_texture_asset_pipeline_package_status=ready",
+    "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
     "production text/font/image/atlas/accessibility remains unsupported",
     "public native or RHI handle access remains unsupported",
     "general production renderer quality remains unsupported"
@@ -1463,6 +1468,7 @@ $sample3dIndexText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/run
 Assert-ContainsText $sample3dIndexText "kind=ui_atlas" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=ui_atlas_texture" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=animation_quaternion_clip" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
+Assert-ContainsText $sample3dIndexText "kind=environment_texture" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 $sample3dMainText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/main.cpp"
 foreach ($needle in @(
     "mirakana/ui/ui.hpp",
@@ -1470,6 +1476,9 @@ foreach ($needle in @(
     "mirakana/animation/skeleton.hpp",
     "--require-native-ui-overlay",
     "--require-native-ui-textured-sprite-atlas",
+    "--require-environment-texture-asset-pipeline-package",
+    "environment_texture_asset_pipeline_package_status=",
+    "environment_texture_asset_pipeline_backend_policy_rows=",
     "--require-quaternion-animation",
     "runtime_animation_quaternion_clip_payload",
     "make_animation_joint_tracks_3d_from_f32_bytes",

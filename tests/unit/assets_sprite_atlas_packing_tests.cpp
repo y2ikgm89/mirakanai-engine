@@ -106,6 +106,59 @@ MK_TEST("cooked package index accepts environment profile assets") {
     MK_REQUIRE(parsed.entries[0].kind == mirakana::AssetKind::environment_profile);
 }
 
+MK_TEST("cooked package index records environment texture dependency edges") {
+    const auto environment = mirakana::AssetId::from_name("environment/default_outdoor");
+    const auto radiance = mirakana::AssetId::from_name("environment/textures/studio_radiance_exr");
+    const auto skybox = mirakana::AssetId::from_name("environment/textures/studio_skybox_basis");
+    std::vector<mirakana::AssetCookedArtifact> artifacts;
+    artifacts.push_back(mirakana::AssetCookedArtifact{
+        .asset = environment,
+        .kind = mirakana::AssetKind::environment_profile,
+        .path = "runtime/environment/default_outdoor.geenv",
+        .content = "format=GameEngine.CookedEnvironmentProfile.v2\nasset.kind=environment_profile\n",
+        .source_revision = 1U,
+        .dependencies = {radiance, skybox},
+    });
+    artifacts.push_back(mirakana::AssetCookedArtifact{
+        .asset = radiance,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/environment/studio_radiance.texture.geasset",
+        .content = "format=GameEngine.EnvironmentTextureGeassetMetadata.v1\nasset.kind=environment_texture\n",
+        .source_revision = 1U,
+        .dependencies = {},
+    });
+    artifacts.push_back(mirakana::AssetCookedArtifact{
+        .asset = skybox,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/environment/studio_skybox.texture.geasset",
+        .content = "format=GameEngine.EnvironmentTextureGeassetMetadata.v1\nasset.kind=environment_texture\n",
+        .source_revision = 1U,
+        .dependencies = {},
+    });
+
+    const auto index = mirakana::build_asset_cooked_package_index(
+        std::move(artifacts), {mirakana::AssetDependencyEdge{
+                                   .asset = environment,
+                                   .dependency = radiance,
+                                   .kind = mirakana::AssetDependencyKind::environment_texture,
+                                   .path = "runtime/environment/default_outdoor.geenv",
+                               },
+                               mirakana::AssetDependencyEdge{
+                                   .asset = environment,
+                                   .dependency = skybox,
+                                   .kind = mirakana::AssetDependencyKind::environment_texture,
+                                   .path = "runtime/environment/default_outdoor.geenv",
+                               }});
+    const auto serialized = mirakana::serialize_asset_cooked_package_index(index);
+    MK_REQUIRE(serialized.find("dependency.0.kind=environment_texture\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("dependency.1.kind=environment_texture\n") != std::string::npos);
+
+    const auto parsed = mirakana::deserialize_asset_cooked_package_index(serialized);
+    MK_REQUIRE(parsed.dependencies.size() == 2U);
+    MK_REQUIRE(parsed.dependencies[0].kind == mirakana::AssetDependencyKind::environment_texture);
+    MK_REQUIRE(parsed.dependencies[1].kind == mirakana::AssetDependencyKind::environment_texture);
+}
+
 int main() {
     return mirakana::test::run_all();
 }

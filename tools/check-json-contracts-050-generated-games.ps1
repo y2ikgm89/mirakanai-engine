@@ -1162,6 +1162,8 @@ if ($null -eq $sample3dManifestEntry) {
         "runtime/sample_desktop_runtime_game.config",
         "runtime/sample_desktop_runtime_game.geindex",
         "runtime/assets/desktop_runtime/base_color.texture.geasset",
+        "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
+        "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
         "runtime/assets/desktop_runtime/hud.uiatlas",
         "runtime/assets/desktop_runtime/skinned_triangle.skinned_mesh",
         "runtime/assets/desktop_runtime/unlit.material",
@@ -1193,6 +1195,9 @@ if ($null -eq $sample3dManifestEntry) {
         "package streaming remains unsupported",
         "native GPU runtime UI overlay",
         "textured UI sprite atlas",
+        "--require-environment-texture-asset-pipeline-package",
+        "environment_texture_asset_pipeline_package_status=ready",
+        "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
         "production text/font/image/atlas/accessibility remains unsupported",
         "public native or RHI handle access remains unsupported",
         "general production renderer quality remains unsupported"
@@ -1213,7 +1218,7 @@ if ($null -eq $sample3dManifestEntry) {
     }
     $sample3dIndexPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
     $sample3dIndexText = Get-Content -LiteralPath $sample3dIndexPath -Raw
-    foreach ($needle in @("kind=ui_atlas", "kind=ui_atlas_texture")) {
+    foreach ($needle in @("kind=ui_atlas", "kind=ui_atlas_texture", "kind=environment_texture")) {
         if (-not $sample3dIndexText.Contains($needle)) {
             Write-Error "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex missing UI atlas package row: $needle"
         }
@@ -1225,6 +1230,9 @@ if ($null -eq $sample3dManifestEntry) {
         "mirakana/ui_renderer/ui_renderer.hpp",
         "--require-native-ui-overlay",
         "--require-native-ui-textured-sprite-atlas",
+        "--require-environment-texture-asset-pipeline-package",
+        "environment_texture_asset_pipeline_package_status=",
+        "environment_texture_asset_pipeline_backend_policy_rows=",
         "plan_scene_mesh_draws",
         "camera_primary=",
         "camera_controller_ticks=",

@@ -48,6 +48,7 @@
 #include <string_view>
 #include <system_error>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -96,6 +97,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_volumetric_cloud_vulkan_renderer_execution{false};
     bool require_environment_material_weathering{false};
     bool require_environment_audio_playback{false};
+    bool require_environment_texture_asset_pipeline_package{false};
     bool require_environment_ready_aggregate{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
@@ -182,6 +184,10 @@ constexpr std::string_view kRuntimeEnvironmentVolumetricCloudVulkanFragmentShade
 constexpr std::string_view kRuntimeEnvironmentProfilePath{"runtime/assets/desktop_runtime/default_outdoor.geenv"};
 constexpr std::string_view kRuntimeEnvironmentIblCubemapPath{
     "runtime/assets/desktop_runtime/environment_ibl.texture.geasset"};
+constexpr std::string_view kRuntimeEnvironmentRadianceExrPath{
+    "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset"};
+constexpr std::string_view kRuntimeEnvironmentSkyboxBasisPath{
+    "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset"};
 constexpr std::string_view kRuntimeEnvironmentIblSampleVertexShaderPath{
     "shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.dxil"};
 constexpr std::string_view kRuntimeEnvironmentIblSampleFragmentShaderPath{
@@ -488,6 +494,14 @@ sample_environment_volumetric_cloud_lights() noexcept {
 
 [[nodiscard]] mirakana::AssetId packaged_environment_ibl_cubemap_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/environment/ibl-cubemap");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_radiance_exr_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/environment/radiance-exr");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_skybox_basis_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/environment/skybox-basis");
 }
 
 [[nodiscard]] mirakana::AssetId packaged_material_asset_id() {
@@ -811,6 +825,209 @@ evaluate_environment_profile_package(bool requested,
 
     evidence.status = EnvironmentProfilePackageStatus::ready;
     evidence.ready = true;
+    return evidence;
+}
+
+enum class EnvironmentTextureAssetPipelinePackageStatus : std::uint8_t {
+    not_requested,
+    missing_package,
+    missing_texture_record,
+    invalid_texture_record,
+    missing_profile_record,
+    missing_profile_dependency,
+    missing_dependency_edge,
+    ready,
+};
+
+struct EnvironmentTextureAssetPipelinePackageEvidence {
+    EnvironmentTextureAssetPipelinePackageStatus status{EnvironmentTextureAssetPipelinePackageStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    std::size_t package_index_entries{0};
+    std::size_t metadata_records{0};
+    std::size_t metadata_only_records{0};
+    std::size_t openexr_records{0};
+    std::size_t ktx2_basis_records{0};
+    std::size_t source_hash_rows{0};
+    std::size_t provenance_rows{0};
+    std::size_t license_rows{0};
+    std::size_t backend_policy_rows{0};
+    std::size_t unsupported_host_diagnostics{0};
+    std::size_t environment_profile_dependency_refs{0};
+    std::size_t environment_texture_dependency_edges{0};
+    bool pixel_decode_invoked{false};
+    bool basis_runtime_transcode_invoked{false};
+    bool gpu_upload_invoked{false};
+    bool broad_asset_pipeline_ready{false};
+    std::size_t diagnostics{0};
+};
+
+[[nodiscard]] std::string_view
+environment_texture_asset_pipeline_package_status_name(EnvironmentTextureAssetPipelinePackageStatus status) noexcept {
+    switch (status) {
+    case EnvironmentTextureAssetPipelinePackageStatus::not_requested:
+        return "not_requested";
+    case EnvironmentTextureAssetPipelinePackageStatus::missing_package:
+        return "missing_package";
+    case EnvironmentTextureAssetPipelinePackageStatus::missing_texture_record:
+        return "missing_texture_record";
+    case EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record:
+        return "invalid_texture_record";
+    case EnvironmentTextureAssetPipelinePackageStatus::missing_profile_record:
+        return "missing_profile_record";
+    case EnvironmentTextureAssetPipelinePackageStatus::missing_profile_dependency:
+        return "missing_profile_dependency";
+    case EnvironmentTextureAssetPipelinePackageStatus::missing_dependency_edge:
+        return "missing_dependency_edge";
+    case EnvironmentTextureAssetPipelinePackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::optional<std::uint32_t> parse_metadata_u32(std::string_view content, std::string_view key) noexcept {
+    const auto begin = content.find(key);
+    if (begin == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto value_begin = begin + key.size();
+    const auto value_end = content.find('\n', value_begin);
+    const auto value = content.substr(value_begin, value_end == std::string_view::npos ? std::string_view::npos
+                                                                                       : value_end - value_begin);
+    std::uint32_t parsed{};
+    const auto* const first = value.data();
+    const auto* const last = value.data() + value.size();
+    const auto result = std::from_chars(first, last, parsed);
+    if (result.ec != std::errc{} || result.ptr != last) {
+        return std::nullopt;
+    }
+    return parsed;
+}
+
+[[nodiscard]] std::size_t metadata_backend_policy_rows(std::string_view content) noexcept {
+    const auto count = parse_metadata_u32(content, "texture.backend_policy_count=");
+    return count.has_value() ? *count : 0U;
+}
+
+[[nodiscard]] std::size_t metadata_unsupported_host_diagnostics(std::string_view content) noexcept {
+    const auto count = parse_metadata_u32(content, "texture.unsupported_host_diagnostic_count=");
+    return count.has_value() ? *count : 0U;
+}
+
+[[nodiscard]] bool has_record_dependency(const mirakana::runtime::RuntimeAssetRecord& record,
+                                         mirakana::AssetId dependency) noexcept {
+    return std::ranges::find(record.dependencies, dependency) != record.dependencies.end();
+}
+
+[[nodiscard]] bool has_environment_texture_dependency_edge(const mirakana::runtime::RuntimeAssetPackage& package,
+                                                           mirakana::AssetId texture) noexcept {
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    return std::ranges::any_of(package.dependency_edges(), [environment_asset, texture](const auto& edge) {
+        return edge.asset == environment_asset && edge.dependency == texture &&
+               edge.kind == mirakana::AssetDependencyKind::environment_texture &&
+               edge.path == kRuntimeEnvironmentProfilePath;
+    });
+}
+
+[[nodiscard]] bool is_environment_texture_metadata_record(const mirakana::runtime::RuntimeAssetRecord& record,
+                                                          std::string_view expected_path,
+                                                          std::string_view expected_source_kind) noexcept {
+    const std::string_view content{record.content};
+    return record.kind == mirakana::AssetKind::texture && record.path == expected_path &&
+           content.starts_with("format=GameEngine.EnvironmentTextureGeassetMetadata.v1\n") &&
+           content.find("asset.kind=environment_texture\n") != std::string_view::npos &&
+           content.find("asset.payload=metadata_only\n") != std::string_view::npos &&
+           content.find("source.format=GameEngine.TextureSource.v2\n") != std::string_view::npos &&
+           content.find(std::string{"source.kind="} + std::string{expected_source_kind} + "\n") !=
+               std::string_view::npos &&
+           content.find("source.hash=sha256:") != std::string_view::npos &&
+           content.find("source.provenance_id=provenance.environment.") != std::string_view::npos &&
+           content.find("source.license_id=LicenseRef-Proprietary\n") != std::string_view::npos &&
+           metadata_backend_policy_rows(content) == 5U && metadata_unsupported_host_diagnostics(content) == 4U;
+}
+
+[[nodiscard]] EnvironmentTextureAssetPipelinePackageEvidence evaluate_environment_texture_asset_pipeline_package(
+    bool requested, const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    EnvironmentTextureAssetPipelinePackageEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+    if (!runtime_package.has_value()) {
+        evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_package;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    const auto* environment_record = runtime_package->find(packaged_environment_profile_asset_id());
+    if (environment_record == nullptr) {
+        evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_profile_record;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    const std::array expected_records{
+        std::tuple{packaged_environment_radiance_exr_asset_id(), kRuntimeEnvironmentRadianceExrPath,
+                   std::string_view{"openexr"}},
+        std::tuple{packaged_environment_skybox_basis_asset_id(), kRuntimeEnvironmentSkyboxBasisPath,
+                   std::string_view{"ktx2_basis"}},
+    };
+
+    for (const auto& [asset, path, source_kind] : expected_records) {
+        const auto* record = runtime_package->find(asset);
+        if (record == nullptr) {
+            evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_texture_record;
+            evidence.diagnostics = 1U;
+            return evidence;
+        }
+        evidence.package_index_entries += 1U;
+        if (!is_environment_texture_metadata_record(*record, path, source_kind)) {
+            evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
+            evidence.diagnostics = 1U;
+            return evidence;
+        }
+
+        const std::string_view content{record->content};
+        evidence.metadata_records += 1U;
+        evidence.metadata_only_records +=
+            content.find("asset.payload=metadata_only\n") != std::string_view::npos ? 1U : 0U;
+        evidence.openexr_records += source_kind == "openexr" ? 1U : 0U;
+        evidence.ktx2_basis_records += source_kind == "ktx2_basis" ? 1U : 0U;
+        evidence.source_hash_rows += content.find("source.hash=sha256:") != std::string_view::npos ? 1U : 0U;
+        evidence.provenance_rows +=
+            content.find("source.provenance_id=provenance.environment.") != std::string_view::npos ? 1U : 0U;
+        evidence.license_rows +=
+            content.find("source.license_id=LicenseRef-Proprietary\n") != std::string_view::npos ? 1U : 0U;
+        evidence.backend_policy_rows += metadata_backend_policy_rows(content);
+        evidence.unsupported_host_diagnostics += metadata_unsupported_host_diagnostics(content);
+        evidence.environment_profile_dependency_refs += has_record_dependency(*environment_record, asset) ? 1U : 0U;
+        evidence.environment_texture_dependency_edges +=
+            has_environment_texture_dependency_edge(*runtime_package, asset) ? 1U : 0U;
+    }
+
+    if (evidence.environment_profile_dependency_refs != expected_records.size()) {
+        evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_profile_dependency;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+    if (evidence.environment_texture_dependency_edges != expected_records.size()) {
+        evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_dependency_edge;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    evidence.status = EnvironmentTextureAssetPipelinePackageStatus::ready;
+    evidence.ready = evidence.package_index_entries == 2U && evidence.metadata_records == 2U &&
+                     evidence.metadata_only_records == 2U && evidence.openexr_records == 1U &&
+                     evidence.ktx2_basis_records == 1U && evidence.source_hash_rows == 2U &&
+                     evidence.provenance_rows == 2U && evidence.license_rows == 2U &&
+                     evidence.backend_policy_rows == 10U && evidence.unsupported_host_diagnostics == 8U &&
+                     !evidence.pixel_decode_invoked && !evidence.basis_runtime_transcode_invoked &&
+                     !evidence.gpu_upload_invoked && !evidence.broad_asset_pipeline_ready;
+    if (!evidence.ready) {
+        evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
+        evidence.diagnostics = 1U;
+    }
     return evidence;
 }
 
@@ -2323,6 +2540,7 @@ void print_usage() {
                  "[--require-environment-volumetric-cloud-vulkan-renderer-execution] "
                  "[--require-environment-material-weathering] "
                  "[--require-environment-audio-playback] "
+                 "[--require-environment-texture-asset-pipeline-package] "
                  "[--require-environment-ready-aggregate] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
@@ -2650,6 +2868,11 @@ void print_usage() {
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_precipitation_package_evidence = true;
             options.require_environment_audio_playback = true;
+            continue;
+        }
+        if (arg == "--require-environment-texture-asset-pipeline-package") {
+            options.require_environment_profile = true;
+            options.require_environment_texture_asset_pipeline_package = true;
             continue;
         }
         if (arg == "--require-environment-ready-aggregate") {
@@ -4880,6 +5103,8 @@ int main(int argc, char** argv) {
     const bool environment_quality_budget_required = environment_quality_budget_requested(options);
     const auto environment_profile = evaluate_environment_profile_package(
         options.require_environment_profile || environment_quality_budget_required, runtime_package);
+    const auto environment_texture_asset_pipeline = evaluate_environment_texture_asset_pipeline_package(
+        options.require_environment_texture_asset_pipeline_package, runtime_package);
     const auto environment_ibl_renderer_execution =
         mirakana::evaluate_win32_desktop_presentation_environment_ibl_renderer_execution(
             mirakana::Win32DesktopPresentationEnvironmentIblRendererExecutionDesc{
@@ -5593,6 +5818,41 @@ int main(int argc, char** argv) {
         << " environment_profile_v2_quality_preset=" << environment_profile.quality_preset
         << " environment_profile_v2_diagnostics=" << environment_profile.diagnostics
         << " environment_profile_v2_legacy_v1_accepted=" << (environment_profile.legacy_v1_accepted ? 1 : 0)
+        << " environment_texture_asset_pipeline_package_status="
+        << environment_texture_asset_pipeline_package_status_name(environment_texture_asset_pipeline.status)
+        << " environment_texture_asset_pipeline_package_ready=" << (environment_texture_asset_pipeline.ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_package_requested="
+        << (environment_texture_asset_pipeline.requested ? 1 : 0)
+        << " environment_texture_asset_pipeline_package_index_entries="
+        << environment_texture_asset_pipeline.package_index_entries
+        << " environment_texture_asset_pipeline_metadata_records="
+        << environment_texture_asset_pipeline.metadata_records
+        << " environment_texture_asset_pipeline_metadata_only_records="
+        << environment_texture_asset_pipeline.metadata_only_records
+        << " environment_texture_asset_pipeline_openexr_records=" << environment_texture_asset_pipeline.openexr_records
+        << " environment_texture_asset_pipeline_ktx2_basis_records="
+        << environment_texture_asset_pipeline.ktx2_basis_records
+        << " environment_texture_asset_pipeline_source_hash_rows="
+        << environment_texture_asset_pipeline.source_hash_rows
+        << " environment_texture_asset_pipeline_provenance_rows=" << environment_texture_asset_pipeline.provenance_rows
+        << " environment_texture_asset_pipeline_license_rows=" << environment_texture_asset_pipeline.license_rows
+        << " environment_texture_asset_pipeline_backend_policy_rows="
+        << environment_texture_asset_pipeline.backend_policy_rows
+        << " environment_texture_asset_pipeline_unsupported_host_diagnostics="
+        << environment_texture_asset_pipeline.unsupported_host_diagnostics
+        << " environment_texture_asset_pipeline_profile_dependency_refs="
+        << environment_texture_asset_pipeline.environment_profile_dependency_refs
+        << " environment_texture_asset_pipeline_dependency_edges="
+        << environment_texture_asset_pipeline.environment_texture_dependency_edges
+        << " environment_texture_asset_pipeline_pixel_decode_invoked="
+        << (environment_texture_asset_pipeline.pixel_decode_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_basis_runtime_transcode_invoked="
+        << (environment_texture_asset_pipeline.basis_runtime_transcode_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_gpu_upload_invoked="
+        << (environment_texture_asset_pipeline.gpu_upload_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_broad_ready="
+        << (environment_texture_asset_pipeline.broad_asset_pipeline_ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_diagnostics=" << environment_texture_asset_pipeline.diagnostics
         << " environment_quality_budget_status="
         << environment_quality_budget_status_name(environment_quality_budget.status)
         << " environment_quality_preset=" << environment_quality_budget.quality_preset
@@ -6486,6 +6746,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_profile && !environment_profile.ready) {
+            return 3;
+        }
+        if (options.require_environment_texture_asset_pipeline_package && !environment_texture_asset_pipeline.ready) {
             return 3;
         }
         if (options.require_environment_fog_evidence && !environment_fog.ready) {

@@ -175,7 +175,8 @@ $requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-i
 $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan-instanced-draw-evidence"
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
-$requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-profile"
+$requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
+$requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or $requiresEnvironmentTextureAssetPipelinePackage
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -1089,6 +1090,34 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment profile package evidence."
         }
+    }
+    if ($requiresEnvironmentTextureAssetPipelinePackage) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline package" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_package_status" = "ready"
+                "environment_texture_asset_pipeline_package_ready" = "1"
+                "environment_texture_asset_pipeline_package_requested" = "1"
+                "environment_texture_asset_pipeline_package_index_entries" = "2"
+                "environment_texture_asset_pipeline_metadata_records" = "2"
+                "environment_texture_asset_pipeline_metadata_only_records" = "2"
+                "environment_texture_asset_pipeline_openexr_records" = "1"
+                "environment_texture_asset_pipeline_ktx2_basis_records" = "1"
+                "environment_texture_asset_pipeline_source_hash_rows" = "2"
+                "environment_texture_asset_pipeline_provenance_rows" = "2"
+                "environment_texture_asset_pipeline_license_rows" = "2"
+                "environment_texture_asset_pipeline_backend_policy_rows" = "10"
+                "environment_texture_asset_pipeline_unsupported_host_diagnostics" = "8"
+                "environment_texture_asset_pipeline_profile_dependency_refs" = "2"
+                "environment_texture_asset_pipeline_dependency_edges" = "2"
+                "environment_texture_asset_pipeline_pixel_decode_invoked" = "0"
+                "environment_texture_asset_pipeline_basis_runtime_transcode_invoked" = "0"
+                "environment_texture_asset_pipeline_gpu_upload_invoked" = "0"
+                "environment_texture_asset_pipeline_broad_ready" = "0"
+                "environment_texture_asset_pipeline_diagnostics" = "0"
+            }
     }
     if ($requiresNativeUiOverlay) {
         foreach ($field in @("ui_overlay_requested", "ui_overlay_status", "ui_overlay_ready", "ui_overlay_sprites_submitted", "ui_overlay_draws")) {
