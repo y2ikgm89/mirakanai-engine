@@ -152,6 +152,7 @@ struct EnvironmentOptimizationMeasurementPlan {
     std::uint64_t replay_hash{0U};
     bool d3d12_preset_pack_flythrough_measured{false};
     bool d3d12_storm_precipitation_measured{false};
+    bool d3d12_dense_volumetric_fog_measured{false};
     bool environment_backend_parity_ready{false};
     bool environment_broad_optimization_ready{false};
     bool invoked_gpu_commands{false};

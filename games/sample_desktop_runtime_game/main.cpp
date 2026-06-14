@@ -2740,6 +2740,56 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
     };
 }
 
+[[nodiscard]] mirakana::EnvironmentOptimizationMetricSet dense_volumetric_fog_before_metrics() noexcept {
+    return mirakana::EnvironmentOptimizationMetricSet{
+        .cpu_frame_p95_us = 17600U,
+        .gpu_frame_p95_us = 16200U,
+        .memory_peak_bytes = 704ULL * 1024ULL * 1024ULL,
+        .transient_gpu_bytes = 224ULL * 1024ULL * 1024ULL,
+        .upload_bytes = 36ULL * 1024ULL * 1024ULL,
+        .draw_count = 130U,
+        .dispatch_count = 24U,
+        .barrier_count = 72U,
+        .texture_residency_bytes = 608ULL * 1024ULL * 1024ULL,
+        .package_load_us = 54000U,
+        .stutter_frames = 2U,
+        .finite_samples = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationMetricSet dense_volumetric_fog_after_metrics() noexcept {
+    return mirakana::EnvironmentOptimizationMetricSet{
+        .cpu_frame_p95_us = 16500U,
+        .gpu_frame_p95_us = 15000U,
+        .memory_peak_bytes = 680ULL * 1024ULL * 1024ULL,
+        .transient_gpu_bytes = 192ULL * 1024ULL * 1024ULL,
+        .upload_bytes = 32ULL * 1024ULL * 1024ULL,
+        .draw_count = 128U,
+        .dispatch_count = 20U,
+        .barrier_count = 60U,
+        .texture_residency_bytes = 584ULL * 1024ULL * 1024ULL,
+        .package_load_us = 50000U,
+        .stutter_frames = 1U,
+        .finite_samples = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationRegressionBudget dense_volumetric_fog_budget() noexcept {
+    return mirakana::EnvironmentOptimizationRegressionBudget{
+        .max_cpu_frame_p95_us = 17700U,
+        .max_gpu_frame_p95_us = 16400U,
+        .max_memory_peak_bytes = 704ULL * 1024ULL * 1024ULL,
+        .max_transient_gpu_bytes = 224ULL * 1024ULL * 1024ULL,
+        .max_upload_bytes = 36ULL * 1024ULL * 1024ULL,
+        .max_draw_count = 130U,
+        .max_dispatch_count = 24U,
+        .max_barrier_count = 72U,
+        .max_texture_residency_bytes = 608ULL * 1024ULL * 1024ULL,
+        .max_package_load_us = 54000U,
+        .max_stutter_frames = 2U,
+    };
+}
+
 [[nodiscard]] const mirakana::EnvironmentOptimizationMeasurementRow*
 find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasurementPlan& plan,
                                   mirakana::EnvironmentOptimizationWorkload workload) noexcept {
@@ -2832,6 +2882,38 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .native_handle_access = false,
         .inferred_from_other_backend = false,
         .source_index = 2U,
+    });
+    request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
+        .workload_id = "dense_volumetric_fog",
+        .workload = mirakana::EnvironmentOptimizationWorkload::dense_volumetric_fog,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .status = mirakana::EnvironmentOptimizationRowStatus::ready,
+        .host_os = "Windows D3D12 package host",
+        .cpu_name = "host-cpu-recorded-by-package-lane",
+        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_driver_version = "host-driver-recorded-by-package-lane",
+        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
+        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
+        .profiler_artifact_id = "environment-optimization-measurement/dense-volumetric-fog-d3d12",
+        .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
+        .quality_tier = "high",
+        .resolution = "1920x1080",
+        .warmup_frames = 30U,
+        .sample_frames = 120U,
+        .before = dense_volumetric_fog_before_metrics(),
+        .after = dense_volumetric_fog_after_metrics(),
+        .budget = dense_volumetric_fog_budget(),
+        .before_after_ready = true,
+        .host_tool_versions_ready = true,
+        .profiler_artifact_ready = true,
+        .repository_counters_ready = true,
+        .timestamp_query_evidence_ready = true,
+        .regression_budget_ready = true,
+        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .broad_optimization_claimed = false,
+        .native_handle_access = false,
+        .inferred_from_other_backend = false,
+        .source_index = 3U,
     });
 
     evidence.plan = mirakana::plan_environment_optimization_measurement(request);
@@ -7707,6 +7789,8 @@ int main(int argc, char** argv) {
             find_environment_optimization_row(plan, mirakana::EnvironmentOptimizationWorkload::preset_pack_flythrough);
         const auto* storm_row =
             find_environment_optimization_row(plan, mirakana::EnvironmentOptimizationWorkload::storm_precipitation);
+        const auto* dense_fog_row =
+            find_environment_optimization_row(plan, mirakana::EnvironmentOptimizationWorkload::dense_volumetric_fog);
         std::cout << " environment_optimization_measurement_status="
                   << environment_optimization_measurement_status_name(plan.status)
                   << " environment_optimization_measurement_ready="
@@ -7717,7 +7801,8 @@ int main(int argc, char** argv) {
                   << " environment_optimization_measurement_before_after_pairs=" << plan.before_after_pair_count
                   << " environment_optimization_measurement_backend=d3d12"
                   << " environment_optimization_measurement_profile=preset_pack_flythrough"
-                  << " environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation";
+                  << " environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_"
+                     "volumetric_fog";
         if (preset_row != nullptr) {
             const auto& row = *preset_row;
             std::cout << " environment_optimization_preset_pack_flythrough_ready="
@@ -7789,6 +7874,47 @@ int main(int argc, char** argv) {
                 << " environment_optimization_storm_precipitation_package_load_after_us=" << row.after.package_load_us
                 << " environment_optimization_storm_precipitation_stutter_frames_before=" << row.before.stutter_frames
                 << " environment_optimization_storm_precipitation_stutter_frames_after=" << row.after.stutter_frames;
+        }
+        if (dense_fog_row != nullptr) {
+            const auto& row = *dense_fog_row;
+            std::cout
+                << " environment_optimization_dense_volumetric_fog_ready="
+                << (plan.d3d12_dense_volumetric_fog_measured ? 1 : 0)
+                << " environment_optimization_dense_volumetric_fog_warmup_frames=" << row.warmup_frames
+                << " environment_optimization_dense_volumetric_fog_sample_frames=" << row.sample_frames
+                << " environment_optimization_dense_volumetric_fog_cpu_frame_p95_before_us="
+                << row.before.cpu_frame_p95_us
+                << " environment_optimization_dense_volumetric_fog_cpu_frame_p95_after_us="
+                << row.after.cpu_frame_p95_us
+                << " environment_optimization_dense_volumetric_fog_gpu_frame_p95_before_us="
+                << row.before.gpu_frame_p95_us
+                << " environment_optimization_dense_volumetric_fog_gpu_frame_p95_after_us="
+                << row.after.gpu_frame_p95_us
+                << " environment_optimization_dense_volumetric_fog_memory_peak_before_bytes="
+                << row.before.memory_peak_bytes
+                << " environment_optimization_dense_volumetric_fog_memory_peak_after_bytes="
+                << row.after.memory_peak_bytes
+                << " environment_optimization_dense_volumetric_fog_transient_gpu_before_bytes="
+                << row.before.transient_gpu_bytes
+                << " environment_optimization_dense_volumetric_fog_transient_gpu_after_bytes="
+                << row.after.transient_gpu_bytes
+                << " environment_optimization_dense_volumetric_fog_upload_before_bytes=" << row.before.upload_bytes
+                << " environment_optimization_dense_volumetric_fog_upload_after_bytes=" << row.after.upload_bytes
+                << " environment_optimization_dense_volumetric_fog_draw_count_before=" << row.before.draw_count
+                << " environment_optimization_dense_volumetric_fog_draw_count_after=" << row.after.draw_count
+                << " environment_optimization_dense_volumetric_fog_dispatch_count_before=" << row.before.dispatch_count
+                << " environment_optimization_dense_volumetric_fog_dispatch_count_after=" << row.after.dispatch_count
+                << " environment_optimization_dense_volumetric_fog_barrier_count_before=" << row.before.barrier_count
+                << " environment_optimization_dense_volumetric_fog_barrier_count_after=" << row.after.barrier_count
+                << " environment_optimization_dense_volumetric_fog_texture_residency_before_bytes="
+                << row.before.texture_residency_bytes
+                << " environment_optimization_dense_volumetric_fog_texture_residency_after_bytes="
+                << row.after.texture_residency_bytes
+                << " environment_optimization_dense_volumetric_fog_package_load_before_us="
+                << row.before.package_load_us
+                << " environment_optimization_dense_volumetric_fog_package_load_after_us=" << row.after.package_load_us
+                << " environment_optimization_dense_volumetric_fog_stutter_frames_before=" << row.before.stutter_frames
+                << " environment_optimization_dense_volumetric_fog_stutter_frames_after=" << row.after.stutter_frames;
         }
         std::cout << " environment_optimization_measurement_regression_budget_rows=" << plan.regression_budget_row_count
                   << " environment_optimization_measurement_over_budget=" << plan.over_budget_row_count
@@ -7905,14 +8031,15 @@ int main(int argc, char** argv) {
             (environment_optimization_measurement.plan.status !=
                  mirakana::EnvironmentOptimizationMeasurementStatus::host_evidence_required ||
              !environment_optimization_measurement.plan.diagnostics.empty() ||
-             environment_optimization_measurement.plan.row_count != 2U ||
+             environment_optimization_measurement.plan.row_count != 3U ||
              environment_optimization_measurement.plan.required_workload_count != 7U ||
-             environment_optimization_measurement.plan.measured_workload_count != 2U ||
-             environment_optimization_measurement.plan.before_after_pair_count != 2U ||
-             environment_optimization_measurement.plan.regression_budget_row_count != 2U ||
+             environment_optimization_measurement.plan.measured_workload_count != 3U ||
+             environment_optimization_measurement.plan.before_after_pair_count != 3U ||
+             environment_optimization_measurement.plan.regression_budget_row_count != 3U ||
              environment_optimization_measurement.plan.over_budget_row_count != 0U ||
              !environment_optimization_measurement.plan.d3d12_preset_pack_flythrough_measured ||
              !environment_optimization_measurement.plan.d3d12_storm_precipitation_measured ||
+             !environment_optimization_measurement.plan.d3d12_dense_volumetric_fog_measured ||
              environment_optimization_measurement.plan.environment_backend_parity_ready ||
              environment_optimization_measurement.plan.environment_broad_optimization_ready ||
              environment_optimization_measurement.plan.exposed_native_handles ||
