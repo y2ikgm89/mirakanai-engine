@@ -380,6 +380,8 @@ std::string_view environment_package_candidate_kind_label(EnvironmentPackageCand
         return "profile_cooked";
     case EnvironmentPackageCandidateKind::package_index:
         return "package_index";
+    case EnvironmentPackageCandidateKind::preset_pack:
+        return "preset_pack";
     }
     return "profile_source";
 }
@@ -693,6 +695,90 @@ mirakana::ui::UiDocument make_environment_authoring_ui_model(const EnvironmentAu
     return document;
 }
 
+EnvironmentPresetLibraryModel make_environment_preset_library_model(const EnvironmentPresetLibraryDesc& desc) {
+    EnvironmentPresetLibraryModel model;
+    model.pack_id = desc.pack.id;
+    model.profile_id = desc.pack.id;
+    model.path = desc.path;
+
+    const auto validation = validate_environment_preset_pack_v1(desc.pack);
+    model.status = validation.succeeded() ? EnvironmentAuthoringStatus::ready : EnvironmentAuthoringStatus::blocked;
+
+    add_readiness_row(model, "environment.preset_library.pack.id", "Preset Library", "Pack Id", desc.pack.id);
+    add_readiness_row(model, "environment.preset_library.pack.provenance_id", "Preset Library", "Provenance",
+                      desc.pack.provenance_id);
+    add_readiness_row(model, "environment.preset_library.pack.license_id", "Preset Library", "License",
+                      desc.pack.license_id);
+    add_readiness_row(model, "environment.preset_library.pack.art_direction", "Preset Library", "Art Direction",
+                      desc.pack.art_direction);
+    add_readiness_row(model, "environment.preset_library.pack.quality_tier", "Preset Library", "Quality Tier",
+                      std::string{environment_quality_preset_name(desc.pack.quality_tier)});
+    add_readiness_row(model, "environment.preset_library.pack.preset_count", "Preset Library", "Preset Count",
+                      format_uint(desc.pack.presets.size()));
+    add_readiness_row(model, "environment.preset_library.pack.package_size_budget_bytes", "Budget",
+                      "Package Budget Bytes", std::to_string(desc.pack.package_size_budget_bytes));
+    add_readiness_row(model, "environment.preset_library.pack.installed_size_budget_bytes", "Budget",
+                      "Installed Budget Bytes", std::to_string(desc.pack.installed_size_budget_bytes));
+    add_readiness_row(model, "environment.preset_library.pack.decoded_memory_budget_bytes", "Budget",
+                      "Decoded Memory Budget Bytes", std::to_string(desc.pack.decoded_memory_budget_bytes));
+    add_readiness_row(model, "environment.preset_library.pack.gpu_memory_budget_bytes", "Budget",
+                      "GPU Memory Budget Bytes", std::to_string(desc.pack.gpu_memory_budget_bytes));
+    add_readiness_row(model, "environment.preset_library.package.index_registered", "Package Evidence",
+                      "Package Index Registered", bool_text(desc.package_index_registered));
+    add_readiness_row(model, "environment.preset_library.package.runtime_path", "Package Evidence", "Runtime Path",
+                      desc.runtime_package_path);
+    add_readiness_row(model, "environment.preset_library.sample.consumption_evidence", "Package Evidence",
+                      "Sample Consumption", desc.sample_consumption_evidence ? "ready" : "missing");
+
+    for (std::size_t index = 0U; index < desc.pack.presets.size(); ++index) {
+        const auto& preset = desc.pack.presets[index];
+        const auto prefix = std::string{"environment.preset_library.preset."} + std::to_string(index) + ".";
+        add_readiness_row(model, prefix + "id", "Presets", "Preset " + std::to_string(index) + " Id", preset.id);
+        add_readiness_row(model, prefix + "profile_asset_path", "Presets",
+                          "Preset " + std::to_string(index) + " Profile", preset.profile_asset_path);
+        add_readiness_row(model, prefix + "quality_tier", "Presets", "Preset " + std::to_string(index) + " Quality",
+                          std::string{environment_quality_preset_name(preset.quality_tier)});
+        add_readiness_row(model, prefix + "validation_recipe_id", "Presets",
+                          "Preset " + std::to_string(index) + " Validation", preset.validation_recipe_id);
+    }
+
+    add_readiness_row(model, "environment.readiness.unsupported.environment_aaa_preset_library_ready",
+                      "Unsupported Claims", "AAA Preset Library Ready", "unclaimed");
+
+    return model;
+}
+
+mirakana::ui::UiDocument make_environment_preset_library_ui_model(const EnvironmentPresetLibraryModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_preset_library", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Preset Library";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_preset_library"};
+    append_label(document, root_id, "environment_preset_library.pack_id", model.pack_id);
+    append_label(document, root_id, "environment_preset_library.path", model.path);
+    append_label(document, root_id, "environment_preset_library.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+
+    auto rows_root = make_child("environment_preset_library.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Preset Library Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_preset_library.rows"};
+
+    for (const auto& row : model.rows) {
+        auto item =
+            make_child("environment_preset_library.rows." + row.id, rows_id, mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = row.editable;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_preset_library.rows." + row.id};
+        append_label(document, item_id, "environment_preset_library.rows." + row.id + ".section", row.section);
+        append_label(document, item_id, "environment_preset_library.rows." + row.id + ".value", row.value);
+    }
+
+    return document;
+}
+
 std::vector<EnvironmentPackageCandidateRow>
 make_environment_package_candidate_rows(const EnvironmentAuthoringDocument& document,
                                         std::string_view cooked_profile_path, std::string_view package_index_path) {
@@ -710,6 +796,17 @@ make_environment_package_candidate_rows(const EnvironmentAuthoringDocument& docu
         EnvironmentPackageCandidateRow{
             .kind = EnvironmentPackageCandidateKind::package_index,
             .path = std::string{package_index_path},
+            .runtime_file = true,
+        },
+    };
+}
+
+std::vector<EnvironmentPackageCandidateRow>
+make_environment_preset_library_package_candidate_rows(std::string_view runtime_preset_pack_path) {
+    return {
+        EnvironmentPackageCandidateRow{
+            .kind = EnvironmentPackageCandidateKind::preset_pack,
+            .path = std::string{runtime_preset_pack_path},
             .runtime_file = true,
         },
     };

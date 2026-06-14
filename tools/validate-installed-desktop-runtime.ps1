@@ -176,7 +176,10 @@ $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
-$requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or $requiresEnvironmentTextureAssetPipelinePackage
+$requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
+$requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
+    $requiresEnvironmentTextureAssetPipelinePackage -or
+    $requiresEnvironmentPresetLibraryPackage
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -1117,6 +1120,29 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "environment_texture_asset_pipeline_gpu_upload_invoked" = "0"
                 "environment_texture_asset_pipeline_broad_ready" = "0"
                 "environment_texture_asset_pipeline_diagnostics" = "0"
+            }
+    }
+    if ($requiresEnvironmentPresetLibraryPackage) {
+        if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment preset library package evidence."
+        }
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment preset library package" `
+            -ExpectedFields @{
+                "environment_preset_library_package_status" = "ready"
+                "environment_preset_library_package_ready" = "1"
+                "environment_preset_library_package_requested" = "1"
+                "environment_preset_library_package_index_entry" = "1"
+                "environment_preset_library_package_file" = "1"
+                "environment_preset_library_preset_count" = "7"
+                "environment_preset_library_required_preset_rows" = "7"
+                "environment_preset_library_backend_feature_rows" = "1"
+                "environment_preset_library_dependency_refs" = "3"
+                "environment_preset_library_sample_consumption_evidence" = "1"
+                "environment_preset_library_aaa_ready_claimed" = "0"
+                "environment_preset_library_diagnostics" = "0"
             }
     }
     if ($requiresNativeUiOverlay) {

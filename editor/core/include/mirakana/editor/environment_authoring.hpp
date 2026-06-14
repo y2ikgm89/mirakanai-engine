@@ -7,6 +7,7 @@
 #include "mirakana/editor/io.hpp"
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/environment/cloud_layer.hpp"
+#include "mirakana/environment/environment_preset_pack.hpp"
 #include "mirakana/environment/environment_profile.hpp"
 #include "mirakana/ui/ui.hpp"
 
@@ -110,12 +111,25 @@ enum class EnvironmentPackageCandidateKind : std::uint8_t {
     profile_source = 0,
     profile_cooked,
     package_index,
+    preset_pack,
 };
 
 struct EnvironmentPackageCandidateRow {
     EnvironmentPackageCandidateKind kind{EnvironmentPackageCandidateKind::profile_source};
     std::string path;
     bool runtime_file{false};
+};
+
+struct EnvironmentPresetLibraryDesc {
+    EnvironmentPresetPackDocumentV1 pack;
+    std::string path;
+    std::string runtime_package_path;
+    bool package_index_registered{false};
+    bool sample_consumption_evidence{false};
+};
+
+struct EnvironmentPresetLibraryModel : EnvironmentAuthoringInspectorModel {
+    std::string pack_id;
 };
 
 enum class EnvironmentPackageRegistrationDraftStatus : std::uint8_t {
@@ -210,9 +224,16 @@ make_environment_authoring_editor_property_rows(const EnvironmentAuthoringInspec
 [[nodiscard]] mirakana::ui::UiDocument
 make_environment_authoring_ui_model(const EnvironmentAuthoringInspectorModel& model);
 
+[[nodiscard]] EnvironmentPresetLibraryModel
+make_environment_preset_library_model(const EnvironmentPresetLibraryDesc& desc);
+[[nodiscard]] mirakana::ui::UiDocument
+make_environment_preset_library_ui_model(const EnvironmentPresetLibraryModel& model);
+
 [[nodiscard]] std::vector<EnvironmentPackageCandidateRow>
 make_environment_package_candidate_rows(const EnvironmentAuthoringDocument& document,
                                         std::string_view cooked_profile_path, std::string_view package_index_path);
+[[nodiscard]] std::vector<EnvironmentPackageCandidateRow>
+make_environment_preset_library_package_candidate_rows(std::string_view runtime_preset_pack_path);
 [[nodiscard]] std::vector<EnvironmentPackageRegistrationDraftRow>
 make_environment_package_registration_draft_rows(std::span<const EnvironmentPackageCandidateRow> candidates,
                                                  std::string_view project_root_path,

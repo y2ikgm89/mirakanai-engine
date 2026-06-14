@@ -1326,7 +1326,21 @@ foreach ($needle in @(
     "runtime_ui_workbench_diagnostics",
     "runtime_ui_renderer_atlas_handoff_ready",
     "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
-    "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload"
+    "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload",
+    "--require-environment-preset-library-package",
+    "environment_preset_library_package_status",
+    "environment_preset_library_package_ready",
+    "environment_preset_library_package_requested",
+    "environment_preset_library_package_index_entry",
+    "environment_preset_library_package_file",
+    "environment_preset_library_preset_count",
+    "environment_preset_library_required_preset_rows",
+    "environment_preset_library_backend_feature_rows",
+    "environment_preset_library_dependency_refs",
+    "environment_preset_library_sample_consumption_evidence",
+    "environment_preset_library_aaa_ready_claimed",
+    "environment_preset_library_diagnostics",
+    "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment preset library package evidence."
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -1425,7 +1439,7 @@ Assert-RegisteredSourceAssetCookTarget `
     @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor", "sample/desktop-runtime/cloud-flow", "sample/desktop-runtime/environment/ibl-cubemap") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-preset-library-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }
@@ -1443,6 +1457,8 @@ foreach ($needle in @(
     "native GPU runtime UI overlay",
     "textured UI sprite atlas",
     "GameEngine.EnvironmentPresetPack.v1",
+    "--require-environment-preset-library-package",
+    "environment_preset_library_package_status=ready",
     "--require-environment-texture-asset-pipeline-package",
     "environment_texture_asset_pipeline_package_status=ready",
     "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
@@ -1500,6 +1516,19 @@ foreach ($needle in @(
     "--require-native-ui-overlay",
     "--require-native-ui-textured-sprite-atlas",
     "--require-environment-texture-asset-pipeline-package",
+    "--require-environment-preset-library-package",
+    "environment_preset_library_package_status=",
+    "environment_preset_library_package_ready=",
+    "environment_preset_library_package_requested=",
+    "environment_preset_library_package_index_entry=",
+    "environment_preset_library_package_file=",
+    "environment_preset_library_preset_count=",
+    "environment_preset_library_required_preset_rows=",
+    "environment_preset_library_backend_feature_rows=",
+    "environment_preset_library_dependency_refs=",
+    "environment_preset_library_sample_consumption_evidence=",
+    "environment_preset_library_aaa_ready_claimed=",
+    "environment_preset_library_diagnostics=",
     "environment_texture_asset_pipeline_package_status=",
     "environment_texture_asset_pipeline_backend_policy_rows=",
     "--require-quaternion-animation",

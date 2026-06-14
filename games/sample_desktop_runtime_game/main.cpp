@@ -9,6 +9,7 @@
 #include "mirakana/core/job_execution.hpp"
 #include "mirakana/core/simd_dispatch.hpp"
 #include "mirakana/environment/environment_io.hpp"
+#include "mirakana/environment/environment_preset_pack.hpp"
 #include "mirakana/environment/environment_quality_budget.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
@@ -98,6 +99,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_material_weathering{false};
     bool require_environment_audio_playback{false};
     bool require_environment_texture_asset_pipeline_package{false};
+    bool require_environment_preset_library_package{false};
     bool require_environment_ready_aggregate{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
@@ -188,6 +190,8 @@ constexpr std::string_view kRuntimeEnvironmentRadianceExrPath{
     "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset"};
 constexpr std::string_view kRuntimeEnvironmentSkyboxBasisPath{
     "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset"};
+constexpr std::string_view kRuntimeEnvironmentPresetPackPath{
+    "runtime/assets/desktop_runtime/environment_presets.gepresetpack"};
 constexpr std::string_view kRuntimeEnvironmentIblSampleVertexShaderPath{
     "shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.dxil"};
 constexpr std::string_view kRuntimeEnvironmentIblSampleFragmentShaderPath{
@@ -502,6 +506,10 @@ sample_environment_volumetric_cloud_lights() noexcept {
 
 [[nodiscard]] mirakana::AssetId packaged_environment_skybox_basis_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/environment/skybox-basis");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_preset_pack_asset_id() {
+    return asset_id_from_game_asset_key("environment/presets/sample_commercial_pack");
 }
 
 [[nodiscard]] mirakana::AssetId packaged_material_asset_id() {
@@ -839,6 +847,15 @@ enum class EnvironmentTextureAssetPipelinePackageStatus : std::uint8_t {
     ready,
 };
 
+enum class EnvironmentPresetLibraryPackageStatus : std::uint8_t {
+    not_requested,
+    missing_package,
+    missing_pack_record,
+    invalid_pack_record,
+    missing_dependency_ref,
+    ready,
+};
+
 struct EnvironmentTextureAssetPipelinePackageEvidence {
     EnvironmentTextureAssetPipelinePackageStatus status{EnvironmentTextureAssetPipelinePackageStatus::not_requested};
     bool requested{false};
@@ -862,6 +879,21 @@ struct EnvironmentTextureAssetPipelinePackageEvidence {
     std::size_t diagnostics{0};
 };
 
+struct EnvironmentPresetLibraryPackageEvidence {
+    EnvironmentPresetLibraryPackageStatus status{EnvironmentPresetLibraryPackageStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool package_index_entry{false};
+    bool package_file{false};
+    std::size_t preset_count{0};
+    std::size_t required_preset_rows{0};
+    std::size_t backend_feature_rows{0};
+    std::size_t dependency_refs{0};
+    bool sample_consumption_evidence{false};
+    bool aaa_ready_claimed{false};
+    std::size_t diagnostics{0};
+};
+
 [[nodiscard]] std::string_view
 environment_texture_asset_pipeline_package_status_name(EnvironmentTextureAssetPipelinePackageStatus status) noexcept {
     switch (status) {
@@ -880,6 +912,25 @@ environment_texture_asset_pipeline_package_status_name(EnvironmentTextureAssetPi
     case EnvironmentTextureAssetPipelinePackageStatus::missing_dependency_edge:
         return "missing_dependency_edge";
     case EnvironmentTextureAssetPipelinePackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+environment_preset_library_package_status_name(EnvironmentPresetLibraryPackageStatus status) noexcept {
+    switch (status) {
+    case EnvironmentPresetLibraryPackageStatus::not_requested:
+        return "not_requested";
+    case EnvironmentPresetLibraryPackageStatus::missing_package:
+        return "missing_package";
+    case EnvironmentPresetLibraryPackageStatus::missing_pack_record:
+        return "missing_pack_record";
+    case EnvironmentPresetLibraryPackageStatus::invalid_pack_record:
+        return "invalid_pack_record";
+    case EnvironmentPresetLibraryPackageStatus::missing_dependency_ref:
+        return "missing_dependency_ref";
+    case EnvironmentPresetLibraryPackageStatus::ready:
         return "ready";
     }
     return "unknown";
@@ -944,6 +995,91 @@ environment_texture_asset_pipeline_package_status_name(EnvironmentTextureAssetPi
            content.find("source.provenance_id=provenance.environment.") != std::string_view::npos &&
            content.find("source.license_id=LicenseRef-Proprietary\n") != std::string_view::npos &&
            metadata_backend_policy_rows(content) == 5U && metadata_unsupported_host_diagnostics(content) == 4U;
+}
+
+[[nodiscard]] bool
+contains_required_environment_preset(std::span<const mirakana::EnvironmentPresetPackPresetV1> presets,
+                                     std::string_view id) noexcept {
+    return std::ranges::any_of(presets, [id](const auto& preset) { return preset.id == id; });
+}
+
+[[nodiscard]] std::size_t
+count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPackPresetV1> presets) noexcept {
+    constexpr std::array required_ids{
+        std::string_view{"clear_noon"},
+        std::string_view{"overcast_storm"},
+        std::string_view{"night_moonlit"},
+        std::string_view{"snowfield"},
+        std::string_view{"foggy_valley"},
+        std::string_view{"cinematic_sunset"},
+        std::string_view{"indoor_to_outdoor_transition"},
+    };
+
+    return static_cast<std::size_t>(std::ranges::count_if(
+        required_ids, [presets](std::string_view id) { return contains_required_environment_preset(presets, id); }));
+}
+
+[[nodiscard]] bool is_environment_preset_pack_record(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
+    return record.kind == mirakana::AssetKind::environment_preset_pack &&
+           record.path == kRuntimeEnvironmentPresetPackPath &&
+           std::string_view{record.content}.starts_with("format=GameEngine.EnvironmentPresetPack.v1\n");
+}
+
+[[nodiscard]] EnvironmentPresetLibraryPackageEvidence evaluate_environment_preset_library_package(
+    bool requested, const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    EnvironmentPresetLibraryPackageEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+    if (!runtime_package.has_value()) {
+        evidence.status = EnvironmentPresetLibraryPackageStatus::missing_package;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    const auto* record = runtime_package->find(packaged_environment_preset_pack_asset_id());
+    if (record == nullptr) {
+        evidence.status = EnvironmentPresetLibraryPackageStatus::missing_pack_record;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    evidence.package_index_entry = true;
+    evidence.package_file = is_environment_preset_pack_record(*record);
+    if (!evidence.package_file) {
+        evidence.status = EnvironmentPresetLibraryPackageStatus::invalid_pack_record;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    const auto document = mirakana::deserialize_environment_preset_pack_v1(record->content);
+    const auto validation = mirakana::validate_environment_preset_pack_v1(document);
+    evidence.preset_count = document.presets.size();
+    evidence.required_preset_rows = count_required_environment_presets(document.presets);
+    evidence.backend_feature_rows = document.required_backend_feature_rows.size();
+    evidence.dependency_refs += has_record_dependency(*record, packaged_environment_profile_asset_id()) ? 1U : 0U;
+    evidence.dependency_refs += has_record_dependency(*record, packaged_environment_radiance_exr_asset_id()) ? 1U : 0U;
+    evidence.dependency_refs += has_record_dependency(*record, packaged_environment_skybox_basis_asset_id()) ? 1U : 0U;
+    evidence.sample_consumption_evidence = validation.succeeded() && evidence.preset_count == 7U &&
+                                           evidence.required_preset_rows == 7U && evidence.backend_feature_rows >= 1U &&
+                                           evidence.dependency_refs == 3U;
+    if (!evidence.sample_consumption_evidence) {
+        evidence.status = evidence.dependency_refs == 3U
+                              ? EnvironmentPresetLibraryPackageStatus::invalid_pack_record
+                              : EnvironmentPresetLibraryPackageStatus::missing_dependency_ref;
+        evidence.diagnostics = 1U;
+        return evidence;
+    }
+
+    evidence.status = EnvironmentPresetLibraryPackageStatus::ready;
+    evidence.ready = evidence.package_index_entry && evidence.package_file && evidence.sample_consumption_evidence &&
+                     !evidence.aaa_ready_claimed;
+    if (!evidence.ready) {
+        evidence.status = EnvironmentPresetLibraryPackageStatus::invalid_pack_record;
+        evidence.diagnostics = 1U;
+    }
+    return evidence;
 }
 
 [[nodiscard]] EnvironmentTextureAssetPipelinePackageEvidence evaluate_environment_texture_asset_pipeline_package(
@@ -2541,6 +2677,7 @@ void print_usage() {
                  "[--require-environment-material-weathering] "
                  "[--require-environment-audio-playback] "
                  "[--require-environment-texture-asset-pipeline-package] "
+                 "[--require-environment-preset-library-package] "
                  "[--require-environment-ready-aggregate] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
@@ -2873,6 +3010,11 @@ void print_usage() {
         if (arg == "--require-environment-texture-asset-pipeline-package") {
             options.require_environment_profile = true;
             options.require_environment_texture_asset_pipeline_package = true;
+            continue;
+        }
+        if (arg == "--require-environment-preset-library-package") {
+            options.require_environment_profile = true;
+            options.require_environment_preset_library_package = true;
             continue;
         }
         if (arg == "--require-environment-ready-aggregate") {
@@ -5105,6 +5247,8 @@ int main(int argc, char** argv) {
         options.require_environment_profile || environment_quality_budget_required, runtime_package);
     const auto environment_texture_asset_pipeline = evaluate_environment_texture_asset_pipeline_package(
         options.require_environment_texture_asset_pipeline_package, runtime_package);
+    const auto environment_preset_library = evaluate_environment_preset_library_package(
+        options.require_environment_preset_library_package, runtime_package);
     const auto environment_ibl_renderer_execution =
         mirakana::evaluate_win32_desktop_presentation_environment_ibl_renderer_execution(
             mirakana::Win32DesktopPresentationEnvironmentIblRendererExecutionDesc{
@@ -5853,6 +5997,21 @@ int main(int argc, char** argv) {
         << " environment_texture_asset_pipeline_broad_ready="
         << (environment_texture_asset_pipeline.broad_asset_pipeline_ready ? 1 : 0)
         << " environment_texture_asset_pipeline_diagnostics=" << environment_texture_asset_pipeline.diagnostics
+        << " environment_preset_library_package_status="
+        << environment_preset_library_package_status_name(environment_preset_library.status)
+        << " environment_preset_library_package_ready=" << (environment_preset_library.ready ? 1 : 0)
+        << " environment_preset_library_package_requested=" << (environment_preset_library.requested ? 1 : 0)
+        << " environment_preset_library_package_index_entry="
+        << (environment_preset_library.package_index_entry ? 1 : 0)
+        << " environment_preset_library_package_file=" << (environment_preset_library.package_file ? 1 : 0)
+        << " environment_preset_library_preset_count=" << environment_preset_library.preset_count
+        << " environment_preset_library_required_preset_rows=" << environment_preset_library.required_preset_rows
+        << " environment_preset_library_backend_feature_rows=" << environment_preset_library.backend_feature_rows
+        << " environment_preset_library_dependency_refs=" << environment_preset_library.dependency_refs
+        << " environment_preset_library_sample_consumption_evidence="
+        << (environment_preset_library.sample_consumption_evidence ? 1 : 0)
+        << " environment_preset_library_aaa_ready_claimed=" << (environment_preset_library.aaa_ready_claimed ? 1 : 0)
+        << " environment_preset_library_diagnostics=" << environment_preset_library.diagnostics
         << " environment_quality_budget_status="
         << environment_quality_budget_status_name(environment_quality_budget.status)
         << " environment_quality_preset=" << environment_quality_budget.quality_preset
@@ -6749,6 +6908,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_texture_asset_pipeline_package && !environment_texture_asset_pipeline.ready) {
+            return 3;
+        }
+        if (options.require_environment_preset_library_package && !environment_preset_library.ready) {
             return 3;
         }
         if (options.require_environment_fog_evidence && !environment_fog.ready) {
