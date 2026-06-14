@@ -9,6 +9,7 @@
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/editor/history.hpp"
 #include "mirakana/environment/environment_io.hpp"
+#include "mirakana/environment/environment_preset_pack.hpp"
 
 #include <algorithm>
 #include <array>
@@ -72,6 +73,50 @@ namespace {
         .quality_preset = mirakana::EnvironmentQualityPreset::high,
     });
     return document;
+}
+
+[[nodiscard]] mirakana::EnvironmentPresetPackDocumentV1 make_editor_environment_preset_pack() {
+    mirakana::EnvironmentPresetPackDocumentV1 pack{};
+    pack.id = "sample_commercial_environment_presets";
+    pack.provenance_id = "provenance.environment.sample_commercial_presets";
+    pack.license_id = "LicenseRef-Proprietary";
+    pack.art_direction = "first_party_commercial_environment_baseline";
+    pack.quality_tier = mirakana::EnvironmentQualityPreset::high;
+    pack.package_size_budget_bytes = 12000U;
+    pack.installed_size_budget_bytes = 12000U;
+    pack.decoded_memory_budget_bytes = 56000U;
+    pack.gpu_memory_budget_bytes = 44000U;
+    pack.required_backend_feature_rows.push_back("environment_platform_windows_d3d12_ready");
+
+    constexpr std::array<std::string_view, 7U> required_ids{
+        "clear_noon",
+        "overcast_storm",
+        "night_moonlit",
+        "snowfield",
+        "foggy_valley",
+        "cinematic_sunset",
+        "indoor_to_outdoor_transition",
+    };
+    for (const auto id : required_ids) {
+        pack.presets.push_back(mirakana::EnvironmentPresetPackPresetV1{
+            .id = std::string{id},
+            .profile_asset_path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+            .art_direction = "sample_art_direction_" + std::string{id},
+            .sky_atmosphere_values = "physical_atmosphere_profile_" + std::string{id},
+            .fog_cloud_weather_timeline = "weather_timeline_" + std::string{id},
+            .ibl_asset_ref = "runtime/assets/desktop_runtime/environment_ibl.geasset",
+            .material_weathering_ref = "runtime/assets/desktop_runtime/material_weathering.geasset",
+            .audio_trigger_intent = "environment_audio_trigger_" + std::string{id},
+            .quality_budget_id = "environment_quality_budget.high",
+            .quality_tier = mirakana::EnvironmentQualityPreset::high,
+            .package_size_bytes = 1200U,
+            .installed_size_bytes = 1200U,
+            .estimated_decoded_memory_bytes = 5000U,
+            .estimated_gpu_memory_bytes = 4000U,
+            .validation_recipe_id = "desktop-runtime-sample-game-environment-ready-aggregate",
+        });
+    }
+    return pack;
 }
 
 [[nodiscard]] const mirakana::editor::EnvironmentAuthoringInspectorRow*
@@ -461,6 +506,56 @@ MK_TEST("editor environment package registration draft reviews runtime additions
         mirakana::editor::make_environment_package_registration_draft_rows(duplicate_candidates, "games/sample", {});
     MK_REQUIRE(rejected[1].status == mirakana::editor::EnvironmentPackageRegistrationDraftStatus::rejected_duplicate);
     MK_REQUIRE(rejected[2].status == mirakana::editor::EnvironmentPackageRegistrationDraftStatus::rejected_unsafe_path);
+}
+
+MK_TEST("editor environment preset library exposes browsing rows and package evidence candidates") {
+    const auto model =
+        mirakana::editor::make_environment_preset_library_model(mirakana::editor::EnvironmentPresetLibraryDesc{
+            .pack = make_editor_environment_preset_pack(),
+            .path = "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+            .runtime_package_path = "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+            .package_index_registered = true,
+            .sample_consumption_evidence = true,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentAuthoringStatus::ready);
+    MK_REQUIRE(model.pack_id == "sample_commercial_environment_presets");
+    MK_REQUIRE(model.path == "runtime/assets/desktop_runtime/environment_presets.gepresetpack");
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.pack.id")->value ==
+               "sample_commercial_environment_presets");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.pack.provenance_id")->value ==
+               "provenance.environment.sample_commercial_presets");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.pack.license_id")->value ==
+               "LicenseRef-Proprietary");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.pack.preset_count")->value == "7");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.package.index_registered")->value == "true");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.sample.consumption_evidence")->value == "ready");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.preset.0.id")->value == "clear_noon");
+    MK_REQUIRE(find_environment_row(model, "environment.preset_library.preset.6.id")->value ==
+               "indoor_to_outdoor_transition");
+    MK_REQUIRE(
+        find_environment_row(model, "environment.readiness.unsupported.environment_aaa_preset_library_ready")->value ==
+        "unclaimed");
+
+    const auto ui = mirakana::editor::make_environment_preset_library_ui_model(model);
+    MK_REQUIRE(contains_element(ui, "environment_preset_library.rows.environment.preset_library.pack.id.value"));
+    MK_REQUIRE(contains_element(ui, "environment_preset_library.rows.environment.readiness.unsupported.environment_aaa_"
+                                    "preset_library_ready.value"));
+
+    const auto candidates = mirakana::editor::make_environment_preset_library_package_candidate_rows(
+        "runtime/assets/desktop_runtime/environment_presets.gepresetpack");
+    MK_REQUIRE(candidates.size() == 1U);
+    MK_REQUIRE(candidates[0].kind == mirakana::editor::EnvironmentPackageCandidateKind::preset_pack);
+    MK_REQUIRE(candidates[0].runtime_file);
+    MK_REQUIRE(mirakana::editor::environment_package_candidate_kind_label(candidates[0].kind) == "preset_pack");
+
+    const auto rows =
+        mirakana::editor::make_environment_package_registration_draft_rows(candidates, "games/sample", {});
+    MK_REQUIRE(rows.size() == 1U);
+    MK_REQUIRE(rows[0].status == mirakana::editor::EnvironmentPackageRegistrationDraftStatus::add_runtime_file);
 }
 
 MK_TEST("native editor inspector surfaces environment authoring without middleware or backend execution") {

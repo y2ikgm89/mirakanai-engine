@@ -52,11 +52,21 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `environment.weather_keyframe.<index>.weather`, `environment.weather_keyframe.<index>.precipitation`,
   `environment.weather_keyframe.<index>.quality_preset`, `environment.quality.tier`, `environment.capture.cubemap.request_status`,
   `environment.readiness.physical_sky.package_status`, `environment.readiness.backend.metal_status`, and
-  `environment.readiness.unsupported.environment_ready` from `make_environment_authoring_inspector_model`; reviewed command ids
+  `environment.readiness.unsupported.environment_ready` from `make_environment_authoring_inspector_model`. Environment preset library
+  browsing uses `EnvironmentPresetLibraryDesc`, `make_environment_preset_library_model`,
+  `make_environment_preset_library_ui_model`, and `make_environment_preset_library_package_candidate_rows`; retained rows include
+  `environment.preset_library.pack.id`, `environment.preset_library.pack.provenance_id`,
+  `environment.preset_library.pack.license_id`, `environment.preset_library.pack.art_direction`,
+  `environment.preset_library.pack.quality_tier`, `environment.preset_library.pack.preset_count`,
+  `environment.preset_library.package.index_registered`, `environment.preset_library.package.runtime_path`,
+  `environment.preset_library.sample.consumption_evidence`, `environment.preset_library.preset.<index>.id`,
+  `environment.preset_library.preset.<index>.profile_asset_path`, `environment.preset_library.preset.<index>.quality_tier`,
+  `environment.preset_library.preset.<index>.validation_recipe_id`, and
+  `environment.readiness.unsupported.environment_aaa_preset_library_ready`; reviewed command ids
   `environment.command.volume.add`, `environment.command.volume.remove`, `environment.command.volume.reorder`,
   `environment.command.weather_keyframe.edit`, `environment.command.quality_preset.select`, and
   `environment.command.capture.cubemap.request` are editor-core value rows only. Do not treat them as backend/package/validation
-  execution, public handle exposure, or broad `environment_ready`.
+  execution, public handle exposure, broad `environment_ready`, or broad AAA preset-library readiness.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.

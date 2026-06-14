@@ -138,6 +138,12 @@ editor logic target.
   `environment.command.quality_preset.select`, and `environment.command.capture.cubemap.request` are editor-core value rows only. Keep
   backend execution, package scripts, validation recipe execution, renderer/RHI/audio work, Dear ImGui, SDL3, UI middleware, public
   backend handles, backend parity, and broad `environment_ready` claims out of this editor-core surface.
+- Use `mirakana::editor::EnvironmentPresetLibraryDesc`, `make_environment_preset_library_model`,
+  `make_environment_preset_library_ui_model`, and `make_environment_preset_library_package_candidate_rows` for read-only
+  `GameEngine.EnvironmentPresetPack.v1` library browsing rows. It emits pack/provenance/license/art-direction/quality/budget rows,
+  per-preset profile/quality/validation-recipe rows, package-index/runtime-path/sample-consumption evidence rows, and
+  `environment.readiness.unsupported.environment_aaa_preset_library_ready`; keep renderer/RHI upload, backend execution,
+  validation-recipe execution, package scripts, public backend handles, and broad AAA preset-library readiness out of this surface.
 - Use `mirakana::editor::MaterialAuthoringDocument` for source material authoring. It owns first-party `MaterialDefinition` factor edits,
   fixed texture-slot rows, registry-backed texture validation, dirty/staged state, text-store save/load, deterministic texture dependencies,
   and `UndoStack` actions without making `editor/core` depend on Dear ImGui, SDL3, renderer, RHI, or runtime game APIs. Prefer
