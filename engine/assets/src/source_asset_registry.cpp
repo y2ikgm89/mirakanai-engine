@@ -222,6 +222,9 @@ struct SourceAssetTextRow {
                dependency_kind == AssetDependencyKind::scene_sprite ||
                dependency_kind == AssetDependencyKind::scene_environment_profile;
     }
+    if (asset_kind == AssetKind::environment_profile) {
+        return dependency_kind == AssetDependencyKind::environment_texture;
+    }
     return false;
 }
 
@@ -236,6 +239,8 @@ struct SourceAssetTextRow {
         return target_kind == AssetKind::material;
     case AssetDependencyKind::scene_environment_profile:
         return target_kind == AssetKind::environment_profile;
+    case AssetDependencyKind::environment_texture:
+        return target_kind == AssetKind::texture;
     case AssetDependencyKind::unknown:
     case AssetDependencyKind::shader_include:
     case AssetDependencyKind::ui_atlas_texture:
@@ -453,6 +458,8 @@ std::string_view source_asset_dependency_kind_name_v1(AssetDependencyKind kind) 
         return "scene_sprite";
     case AssetDependencyKind::scene_environment_profile:
         return "scene_environment_profile";
+    case AssetDependencyKind::environment_texture:
+        return "environment_texture";
     case AssetDependencyKind::unknown:
     case AssetDependencyKind::shader_include:
     case AssetDependencyKind::ui_atlas_texture:
@@ -483,6 +490,9 @@ AssetDependencyKind parse_source_asset_dependency_kind_v1(std::string_view value
     }
     if (value == "scene_environment_profile") {
         return AssetDependencyKind::scene_environment_profile;
+    }
+    if (value == "environment_texture") {
+        return AssetDependencyKind::environment_texture;
     }
     return AssetDependencyKind::unknown;
 }

@@ -25,6 +25,7 @@ namespace {
     case AssetDependencyKind::scene_material:
     case AssetDependencyKind::scene_sprite:
     case AssetDependencyKind::scene_environment_profile:
+    case AssetDependencyKind::environment_texture:
     case AssetDependencyKind::ui_atlas_texture:
     case AssetDependencyKind::tilemap_texture:
     case AssetDependencyKind::sprite_animation_texture:

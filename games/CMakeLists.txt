@@ -1517,6 +1517,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             runtime/sample_desktop_runtime_game.config
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
+            --require-environment-texture-asset-pipeline-package
             --require-d3d12-scene-shaders
             --require-d3d12-renderer
             --require-scene-gpu-bindings

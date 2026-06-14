@@ -157,6 +157,8 @@ namespace {
         return "scene_sprite";
     case AssetDependencyKind::scene_environment_profile:
         return "scene_environment_profile";
+    case AssetDependencyKind::environment_texture:
+        return "environment_texture";
     case AssetDependencyKind::ui_atlas_texture:
         return "ui_atlas_texture";
     case AssetDependencyKind::tilemap_texture:
@@ -197,6 +199,9 @@ namespace {
     }
     if (value == "scene_environment_profile") {
         return AssetDependencyKind::scene_environment_profile;
+    }
+    if (value == "environment_texture") {
+        return AssetDependencyKind::environment_texture;
     }
     if (value == "ui_atlas_texture") {
         return AssetDependencyKind::ui_atlas_texture;
