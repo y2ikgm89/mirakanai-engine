@@ -1439,7 +1439,7 @@ Assert-RegisteredSourceAssetCookTarget `
     @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor", "sample/desktop-runtime/cloud-flow", "sample/desktop-runtime/environment/ibl-cubemap") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-preset-library-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-texture-asset-pipeline-package", "desktop-runtime-sample-game-environment-preset-library-package", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }
@@ -1458,7 +1458,10 @@ foreach ($needle in @(
     "textured UI sprite atlas",
     "GameEngine.EnvironmentPresetPack.v1",
     "--require-environment-preset-library-package",
+    "--require-environment-vulkan-strict-aggregate",
     "environment_preset_library_package_status=ready",
+    "environment_vulkan_strict_aggregate_status=ready",
+    "environment_vulkan_strict_aggregate_descriptor_set_bindings=15",
     "--require-environment-texture-asset-pipeline-package",
     "environment_texture_asset_pipeline_package_status=ready",
     "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
@@ -1517,6 +1520,7 @@ foreach ($needle in @(
     "--require-native-ui-textured-sprite-atlas",
     "--require-environment-texture-asset-pipeline-package",
     "--require-environment-preset-library-package",
+    "--require-environment-vulkan-strict-aggregate",
     "environment_preset_library_package_status=",
     "environment_preset_library_package_ready=",
     "environment_preset_library_package_requested=",
@@ -1531,6 +1535,11 @@ foreach ($needle in @(
     "environment_preset_library_diagnostics=",
     "environment_texture_asset_pipeline_package_status=",
     "environment_texture_asset_pipeline_backend_policy_rows=",
+    "environment_vulkan_strict_aggregate_status=",
+    "environment_vulkan_strict_aggregate_ready=",
+    "environment_vulkan_strict_aggregate_descriptor_set_bindings=",
+    "environment_vulkan_strict_aggregate_synchronization2_barriers=",
+    "environment_vulkan_strict_aggregate_diagnostics=",
     "--require-quaternion-animation",
     "runtime_animation_quaternion_clip_payload",
     "make_animation_joint_tracks_3d_from_f32_bytes",

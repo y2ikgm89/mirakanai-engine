@@ -101,6 +101,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_texture_asset_pipeline_package{false};
     bool require_environment_preset_library_package{false};
     bool require_environment_ready_aggregate{false};
+    bool require_environment_vulkan_strict_aggregate{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -1333,6 +1334,35 @@ struct EnvironmentReadyAggregateEvidence {
     std::uint32_t diagnostics{0};
 };
 
+struct EnvironmentVulkanStrictAggregateEvidence {
+    EnvironmentReadyAggregateStatus status{EnvironmentReadyAggregateStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool profile_v2_ready{false};
+    bool vulkan_backend_selected{false};
+    bool postprocess_ready{false};
+    bool fog_ready{false};
+    bool physical_sky_ready{false};
+    bool lighting_ready{false};
+    bool volumetric_fog_ready{false};
+    bool volumetric_cloud_ready{false};
+    bool precipitation_ready{false};
+    bool quality_budget_ready{false};
+    std::uint32_t feature_rows{0};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
+    std::uint64_t renderer_draws{0};
+    std::uint64_t compute_dispatches{0};
+    std::uint64_t texture_uploads{0};
+    std::uint32_t readback_rows{0};
+    bool native_handle_access{false};
+    bool d3d12_fallback{false};
+    bool metal_fallback{false};
+    bool backend_parity_ready{false};
+    bool broad_optimization_claimed{false};
+    std::uint32_t diagnostics{0};
+};
+
 [[nodiscard]] std::string_view
 environment_lighting_package_status_name(EnvironmentLightingPackageStatus status) noexcept {
     switch (status) {
@@ -2157,6 +2187,96 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     return evidence;
 }
 
+[[nodiscard]] EnvironmentVulkanStrictAggregateEvidence build_environment_vulkan_strict_aggregate_evidence(
+    const DesktopRuntimeGameOptions& options, const mirakana::Win32DesktopPresentationReport& report,
+    const mirakana::Win32DesktopPresentationVulkanPostprocessExecutionReport& vulkan_postprocess_execution,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentFogPackageReport& environment_fog_vulkan_package,
+    const mirakana::Win32DesktopPresentationVulkanPhysicalSkyPackageReport& physical_sky_vulkan_package,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport&
+        environment_ibl_vulkan_renderer_execution,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentPrecipitationReport& environment_precipitation_vulkan,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport& environment_volumetric_fog_vulkan,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentVolumetricCloudReport& environment_volumetric_cloud_vulkan,
+    const EnvironmentProfilePackageEvidence& environment_profile,
+    const EnvironmentQualityBudgetEvidence& environment_quality_budget) {
+    EnvironmentVulkanStrictAggregateEvidence evidence;
+    evidence.requested = options.require_environment_vulkan_strict_aggregate;
+    if (!evidence.requested) {
+        return evidence;
+    }
+
+    evidence.profile_v2_ready = environment_profile.ready;
+    evidence.vulkan_backend_selected =
+        report.selected_backend == mirakana::Win32DesktopPresentationBackend::vulkan && !report.used_null_fallback;
+    evidence.postprocess_ready = vulkan_postprocess_execution.ready;
+    evidence.fog_ready = environment_fog_vulkan_package.ready;
+    evidence.physical_sky_ready = physical_sky_vulkan_package.ready;
+    evidence.lighting_ready = environment_ibl_vulkan_renderer_execution.ready;
+    evidence.volumetric_fog_ready = environment_volumetric_fog_vulkan.ready;
+    evidence.volumetric_cloud_ready = environment_volumetric_cloud_vulkan.ready;
+    evidence.precipitation_ready = environment_precipitation_vulkan.ready;
+    evidence.quality_budget_ready = environment_quality_budget.ready;
+    evidence.feature_rows = 6U;
+    evidence.descriptor_set_bindings = environment_ibl_vulkan_renderer_execution.descriptor_set_bindings +
+                                       environment_volumetric_fog_vulkan.descriptor_set_bindings +
+                                       environment_volumetric_cloud_vulkan.descriptor_set_bindings +
+                                       environment_precipitation_vulkan.descriptor_set_bindings;
+    evidence.synchronization2_barriers = environment_ibl_vulkan_renderer_execution.synchronization2_barriers +
+                                         environment_volumetric_fog_vulkan.synchronization2_barriers +
+                                         environment_volumetric_cloud_vulkan.synchronization2_barriers +
+                                         environment_precipitation_vulkan.synchronization2_barriers;
+    evidence.renderer_draws =
+        environment_volumetric_cloud_vulkan.renderer_draws + environment_precipitation_vulkan.renderer_draws;
+    evidence.compute_dispatches = environment_volumetric_fog_vulkan.compute_dispatches;
+    evidence.texture_uploads = environment_ibl_vulkan_renderer_execution.texture_cube_uploads +
+                               (environment_volumetric_cloud_vulkan.uploads_volume_textures ? 1U : 0U);
+    evidence.readback_rows = (environment_ibl_vulkan_renderer_execution.shader_sample_readback_nonzero ? 1U : 0U) +
+                             (environment_ibl_vulkan_renderer_execution.runtime_capture_readback_nonzero ? 1U : 0U) +
+                             (environment_volumetric_fog_vulkan.froxel_readback_nonzero ? 1U : 0U) +
+                             (environment_volumetric_cloud_vulkan.readback_nonzero ? 1U : 0U) +
+                             (environment_precipitation_vulkan.depth_occlusion_readback ? 1U : 0U);
+    evidence.native_handle_access =
+        environment_fog_vulkan_package.exposes_native_handles || physical_sky_vulkan_package.exposes_native_handles ||
+        environment_ibl_vulkan_renderer_execution.native_handle_access != 0U ||
+        environment_precipitation_vulkan.exposes_native_handles ||
+        environment_volumetric_fog_vulkan.exposes_native_handles ||
+        environment_volumetric_cloud_vulkan.exposes_native_handles || environment_quality_budget.native_handle_access;
+    evidence.d3d12_fallback = report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12;
+    evidence.metal_fallback = false;
+
+    auto add_required = [&](const bool ready) {
+        if (!ready) {
+            ++evidence.diagnostics;
+        }
+    };
+    add_required(evidence.profile_v2_ready);
+    add_required(evidence.vulkan_backend_selected);
+    add_required(evidence.postprocess_ready);
+    add_required(evidence.fog_ready);
+    add_required(evidence.physical_sky_ready);
+    add_required(evidence.lighting_ready);
+    add_required(evidence.volumetric_fog_ready);
+    add_required(evidence.volumetric_cloud_ready);
+    add_required(evidence.precipitation_ready);
+    add_required(evidence.quality_budget_ready);
+    add_required(evidence.feature_rows == 6U);
+    add_required(evidence.descriptor_set_bindings >= 15U);
+    add_required(evidence.synchronization2_barriers > 0U);
+    add_required(evidence.renderer_draws > 0U);
+    add_required(evidence.compute_dispatches > 0U);
+    add_required(evidence.texture_uploads > 0U);
+    add_required(evidence.readback_rows >= 5U);
+    if (evidence.native_handle_access || evidence.d3d12_fallback || evidence.metal_fallback ||
+        evidence.backend_parity_ready || evidence.broad_optimization_claimed) {
+        ++evidence.diagnostics;
+    }
+
+    evidence.ready = evidence.diagnostics == 0U;
+    evidence.status =
+        evidence.ready ? EnvironmentReadyAggregateStatus::ready : EnvironmentReadyAggregateStatus::blocked;
+    return evidence;
+}
+
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
     const auto layout = mirakana::runtime_rhi::make_runtime_mesh_vertex_layout_desc(
         mirakana::runtime::RuntimeMeshPayload{.has_normals = true, .has_uvs = true, .has_tangent_frame = true});
@@ -2645,6 +2765,23 @@ void enable_environment_ready_aggregate_requirements(DesktopRuntimeGameOptions& 
     options.require_environment_audio_playback = true;
 }
 
+void enable_environment_vulkan_strict_aggregate_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    options.require_environment_vulkan_strict_aggregate = true;
+    options.require_environment_profile = true;
+    options.require_vulkan_scene_shaders = true;
+    options.require_vulkan_renderer = true;
+    options.require_scene_gpu_bindings = true;
+    options.require_postprocess = true;
+    options.require_postprocess_depth_input = true;
+    options.require_vulkan_postprocess_evidence = true;
+    options.require_physical_sky_vulkan_package_evidence = true;
+    options.require_environment_fog_vulkan_package_evidence = true;
+    options.require_environment_lighting_vulkan_renderer_execution = true;
+    options.require_environment_volumetric_fog_vulkan_renderer_execution = true;
+    options.require_environment_volumetric_cloud_vulkan_renderer_execution = true;
+    options.require_environment_precipitation_vulkan_renderer_execution = true;
+}
+
 void print_usage() {
     std::cout << "sample_desktop_runtime_game [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
@@ -2679,6 +2816,7 @@ void print_usage() {
                  "[--require-environment-texture-asset-pipeline-package] "
                  "[--require-environment-preset-library-package] "
                  "[--require-environment-ready-aggregate] "
+                 "[--require-environment-vulkan-strict-aggregate] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -3019,6 +3157,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-ready-aggregate") {
             enable_environment_ready_aggregate_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-vulkan-strict-aggregate") {
+            enable_environment_vulkan_strict_aggregate_requirements(options);
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -5354,6 +5496,10 @@ int main(int argc, char** argv) {
         options, report, environment_fog, physical_sky, environment_lighting, environment_ibl_renderer_execution,
         environment_material_weathering, cloud_layer, environment_precipitation, environment_volumetric_fog,
         environment_volumetric_cloud, environment_profile, environment_audio_playback, environment_quality_budget);
+    const auto environment_vulkan_strict_aggregate = build_environment_vulkan_strict_aggregate_evidence(
+        options, report, vulkan_postprocess_execution, environment_fog_vulkan_package, physical_sky_vulkan_package,
+        environment_ibl_vulkan_renderer_execution, environment_precipitation_vulkan, environment_volumetric_fog_vulkan,
+        environment_volumetric_cloud_vulkan, environment_profile, environment_quality_budget);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -6802,6 +6948,55 @@ int main(int argc, char** argv) {
                   << (environment_ready_aggregate.native_handle_access ? 1 : 0)
                   << " environment_ready_diagnostics=" << environment_ready_aggregate.diagnostics;
     }
+    if (environment_vulkan_strict_aggregate.requested) {
+        std::cout
+            << " environment_vulkan_strict_aggregate_status="
+            << environment_ready_aggregate_status_name(environment_vulkan_strict_aggregate.status)
+            << " environment_vulkan_strict_aggregate_ready=" << (environment_vulkan_strict_aggregate.ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_profile_v2="
+            << (environment_vulkan_strict_aggregate.profile_v2_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_selected_backend="
+            << (environment_vulkan_strict_aggregate.vulkan_backend_selected ? "vulkan" : "not_vulkan")
+            << " environment_vulkan_strict_aggregate_postprocess="
+            << (environment_vulkan_strict_aggregate.postprocess_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_fog=" << (environment_vulkan_strict_aggregate.fog_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_physical_sky="
+            << (environment_vulkan_strict_aggregate.physical_sky_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_lighting="
+            << (environment_vulkan_strict_aggregate.lighting_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_volumetric_fog="
+            << (environment_vulkan_strict_aggregate.volumetric_fog_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_volumetric_cloud="
+            << (environment_vulkan_strict_aggregate.volumetric_cloud_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_precipitation="
+            << (environment_vulkan_strict_aggregate.precipitation_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_quality_budget="
+            << (environment_vulkan_strict_aggregate.quality_budget_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_feature_rows=" << environment_vulkan_strict_aggregate.feature_rows
+            << " environment_vulkan_strict_aggregate_descriptor_set_bindings="
+            << environment_vulkan_strict_aggregate.descriptor_set_bindings
+            << " environment_vulkan_strict_aggregate_synchronization2_barriers="
+            << environment_vulkan_strict_aggregate.synchronization2_barriers
+            << " environment_vulkan_strict_aggregate_renderer_draws="
+            << environment_vulkan_strict_aggregate.renderer_draws
+            << " environment_vulkan_strict_aggregate_compute_dispatches="
+            << environment_vulkan_strict_aggregate.compute_dispatches
+            << " environment_vulkan_strict_aggregate_texture_uploads="
+            << environment_vulkan_strict_aggregate.texture_uploads
+            << " environment_vulkan_strict_aggregate_readback_rows="
+            << environment_vulkan_strict_aggregate.readback_rows
+            << " environment_vulkan_strict_aggregate_native_handle_access="
+            << (environment_vulkan_strict_aggregate.native_handle_access ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_d3d12_fallback="
+            << (environment_vulkan_strict_aggregate.d3d12_fallback ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_metal_fallback="
+            << (environment_vulkan_strict_aggregate.metal_fallback ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_backend_parity="
+            << (environment_vulkan_strict_aggregate.backend_parity_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_broad_optimization_claimed="
+            << (environment_vulkan_strict_aggregate.broad_optimization_claimed ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_diagnostics=" << environment_vulkan_strict_aggregate.diagnostics;
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -6881,6 +7076,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (environment_ready_aggregate.requested && !environment_ready_aggregate.ready) {
+            return 3;
+        }
+        if (environment_vulkan_strict_aggregate.requested && !environment_vulkan_strict_aggregate.ready) {
             return 3;
         }
         if (options.require_postprocess &&
