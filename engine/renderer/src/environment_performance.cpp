@@ -310,6 +310,13 @@ void validate_rows(EnvironmentOptimizationMeasurementPlan& plan,
     return row_it != plan.rows.end() && ready_row(*row_it);
 }
 
+[[nodiscard]] bool has_ready_backend_workload(const EnvironmentOptimizationMeasurementPlan& plan,
+                                              EnvironmentOptimizationWorkload workload, rhi::BackendKind backend) {
+    const auto row_it = std::ranges::find_if(
+        plan.rows, [workload, backend](const auto& row) { return row.workload == workload && row.backend == backend; });
+    return row_it != plan.rows.end() && ready_row(*row_it);
+}
+
 void summarize(EnvironmentOptimizationMeasurementPlan& plan) {
     for (const auto& row : plan.rows) {
         if (row.before_after_ready && metric_values_ready(row.before) && metric_values_ready(row.after)) {
@@ -325,8 +332,10 @@ void summarize(EnvironmentOptimizationMeasurementPlan& plan) {
             ++plan.measured_workload_count;
         }
     }
-    plan.d3d12_preset_pack_flythrough_measured =
-        has_ready_workload(plan, EnvironmentOptimizationWorkload::preset_pack_flythrough);
+    plan.d3d12_preset_pack_flythrough_measured = has_ready_backend_workload(
+        plan, EnvironmentOptimizationWorkload::preset_pack_flythrough, rhi::BackendKind::d3d12);
+    plan.d3d12_storm_precipitation_measured =
+        has_ready_backend_workload(plan, EnvironmentOptimizationWorkload::storm_precipitation, rhi::BackendKind::d3d12);
     const auto every_required_workload_ready = std::ranges::all_of(
         kRequiredWorkloads, [&plan](const auto workload) { return has_ready_workload(plan, workload); });
     plan.environment_broad_optimization_ready = every_required_workload_ready && plan.environment_backend_parity_ready;

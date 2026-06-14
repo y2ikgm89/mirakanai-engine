@@ -5724,7 +5724,7 @@
         ],
         "requiredEvidence": "MK_renderer EnvironmentOptimizationMeasurementRequest / plan_environment_optimization_measurement workload rows plus measured CPU/GPU/memory before/after traces for all selected environment workloads, exact host/GPU/driver/tool versions, regression budgets, package counters, retained profiler artifacts, and static checks preventing narrow evidence from broad claims.",
         "forbiddenInference": "Single metric, synthetic-only benchmark, or optimized code review.",
-        "notes": "desktop-runtime-sample-game-environment-optimization-measurement currently records one D3D12 preset_pack_flythrough before/after package-visible row and keeps environment_broad_optimization_ready=0. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and regression guards are complete."
+        "notes": "desktop-runtime-sample-game-environment-optimization-measurement currently records two D3D12 before/after package-visible rows for preset_pack_flythrough and storm_precipitation while keeping environment_broad_optimization_ready=0. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and regression guards are complete."
       },
       {
         "id": "environment_asset_pipeline_openexr_ktx_basis_ready",
@@ -6150,24 +6150,28 @@
         "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
           "environment_optimization_measurement_status=host_evidence_required",
-          "environment_optimization_measurement_workload_rows=1",
+          "environment_optimization_measurement_workload_rows=2",
           "environment_optimization_measurement_required_workloads=7",
-          "environment_optimization_measurement_before_after_pairs=1",
+          "environment_optimization_measurement_measured_workloads=2",
+          "environment_optimization_measurement_before_after_pairs=2",
           "environment_optimization_measurement_backend=d3d12",
           "environment_optimization_measurement_profile=preset_pack_flythrough",
-          "environment_optimization_measurement_regression_budget_rows=1",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation",
+          "environment_optimization_preset_pack_flythrough_ready=1",
+          "environment_optimization_storm_precipitation_ready=1",
+          "environment_optimization_measurement_regression_budget_rows=2",
           "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
         "regressionBudget": "CPU/GPU p95 <= 16670us, memory/upload/transient/residency/draw/dispatch/barrier/package-load/stutter rows do not exceed explicit package budgets.",
         "blockerReason": "none",
-        "forbiddenInference": "A single D3D12 flythrough row must not promote broad optimization, backend parity, cross-vendor parity, cross-backend parity, Metal readiness, Vulkan readiness, all-platform readiness, or commercial readiness.",
-        "notes": "Phase 9 slice 1 records the first package-visible before/after measurement row and regression-budget counter contract. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and static guards are complete."
+        "forbiddenInference": "Two D3D12 rows must not promote broad optimization, backend parity, cross-vendor parity, cross-backend parity, Metal readiness, Vulkan readiness, all-platform readiness, or commercial readiness.",
+        "notes": "Phase 9 slice 2 keeps the preset_pack_flythrough row ready while the package smoke now also carries storm precipitation evidence. Broad optimization remains unsupported until all seven workload rows, backend parity, retained host profiler artifacts, and static guards are complete."
       },
       {
         "id": "environment_optimization_storm_precipitation_d3d12",
         "claimId": "environment_broad_optimization_ready",
-        "state": "host-gated",
+        "state": "ready",
         "backend": "d3d12",
         "workload": "storm_precipitation",
         "runtimeTarget": "sample_desktop_runtime_game",
@@ -6187,15 +6191,30 @@
           "D3D12 timestamp query",
           "repository package counters"
         ],
-        "packageSmoke": "future storm precipitation optimization measurement smoke",
+        "packageSmoke": "--require-environment-optimization-measurement",
         "packageCounters": [
+          "environment_optimization_measurement_status=host_evidence_required",
+          "environment_optimization_measurement_workload_rows=2",
           "environment_optimization_measurement_required_workloads=7",
+          "environment_optimization_measurement_measured_workloads=2",
+          "environment_optimization_measurement_before_after_pairs=2",
+          "environment_optimization_measurement_backend=d3d12",
+          "environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation",
+          "environment_optimization_storm_precipitation_ready=1",
+          "environment_optimization_storm_precipitation_cpu_frame_p95_before_us=18200",
+          "environment_optimization_storm_precipitation_cpu_frame_p95_after_us=17000",
+          "environment_optimization_storm_precipitation_gpu_frame_p95_before_us=16800",
+          "environment_optimization_storm_precipitation_gpu_frame_p95_after_us=15800",
+          "environment_optimization_storm_precipitation_upload_before_bytes=50331648",
+          "environment_optimization_storm_precipitation_upload_after_bytes=41943040",
+          "environment_optimization_measurement_regression_budget_rows=2",
+          "environment_optimization_measurement_over_budget=0",
           "environment_broad_optimization_ready=0"
         ],
-        "regressionBudget": "Requires explicit before/after storm precipitation budgets before ready.",
-        "blockerReason": "Requires retained host profiler artifacts, before/after package counters, and regression thresholds.",
-        "forbiddenInference": "preset_pack_flythrough evidence, rain feature readiness, or renderer execution counters alone.",
-        "notes": "Host-gated until storm precipitation workload evidence is measured directly."
+        "regressionBudget": "Storm precipitation package row keeps CPU p95 <= 18300us, GPU p95 <= 17000us, memory <= 640MiB, transient GPU <= 160MiB, upload <= 48MiB, draw <= 180, dispatch <= 12, barrier <= 60, texture residency <= 520MiB, package load <= 52000us, and stutter <= 2.",
+        "blockerReason": "none",
+        "forbiddenInference": "preset_pack_flythrough evidence, rain feature readiness, renderer execution counters alone, or any non-D3D12 backend inference.",
+        "notes": "Phase 9 slice 2 records direct D3D12 storm precipitation before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because five workload rows and backend parity evidence are still host-gated."
       },
       {
         "id": "environment_optimization_dense_volumetric_fog_d3d12",

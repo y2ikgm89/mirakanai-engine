@@ -184,6 +184,30 @@ MK_TEST("environment optimization measurement records d3d12 flythrough without b
     MK_REQUIRE(plan.regression_budget_row_count == 1U);
     MK_REQUIRE(plan.over_budget_row_count == 0U);
     MK_REQUIRE(plan.d3d12_preset_pack_flythrough_measured);
+    MK_REQUIRE(!plan.d3d12_storm_precipitation_measured);
+    MK_REQUIRE(!plan.environment_broad_optimization_ready);
+    MK_REQUIRE(!plan.exposed_native_handles);
+    MK_REQUIRE(!plan.invoked_gpu_commands);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("environment optimization measurement records d3d12 storm precipitation without broad readiness promotion") {
+    auto request = make_request(false);
+    request.rows.push_back(make_ready_row(EnvironmentOptimizationWorkload::storm_precipitation, 2U));
+
+    const auto plan = mirakana::plan_environment_optimization_measurement(request);
+
+    MK_REQUIRE(plan.status == EnvironmentOptimizationMeasurementStatus::host_evidence_required);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.row_count == 2U);
+    MK_REQUIRE(plan.required_workload_count == 7U);
+    MK_REQUIRE(plan.measured_workload_count == 2U);
+    MK_REQUIRE(plan.before_after_pair_count == 2U);
+    MK_REQUIRE(plan.regression_budget_row_count == 2U);
+    MK_REQUIRE(plan.over_budget_row_count == 0U);
+    MK_REQUIRE(plan.d3d12_preset_pack_flythrough_measured);
+    MK_REQUIRE(plan.d3d12_storm_precipitation_measured);
     MK_REQUIRE(!plan.environment_broad_optimization_ready);
     MK_REQUIRE(!plan.exposed_native_handles);
     MK_REQUIRE(!plan.invoked_gpu_commands);
@@ -202,6 +226,8 @@ MK_TEST("environment optimization measurement is broad ready only with every wor
     MK_REQUIRE(plan.before_after_pair_count == 7U);
     MK_REQUIRE(plan.regression_budget_row_count == 7U);
     MK_REQUIRE(plan.over_budget_row_count == 0U);
+    MK_REQUIRE(plan.d3d12_preset_pack_flythrough_measured);
+    MK_REQUIRE(plan.d3d12_storm_precipitation_measured);
     MK_REQUIRE(plan.environment_broad_optimization_ready);
     MK_REQUIRE(plan.replay_hash != 0U);
 }
