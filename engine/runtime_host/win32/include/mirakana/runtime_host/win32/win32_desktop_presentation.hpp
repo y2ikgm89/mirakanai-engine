@@ -234,6 +234,14 @@ struct Win32DesktopPresentationReport {
         Win32DesktopPresentationPostprocessStatus::not_requested};
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool vulkan_strict_validation_requested{false};
+    bool vulkan_validation_layers_ready{false};
+    bool vulkan_dynamic_rendering_ready{false};
+    bool vulkan_synchronization2_ready{false};
+    bool vulkan_spirv_validation_ready{false};
+    std::uint32_t vulkan_missing_validation_layer_rows{0};
+    std::uint32_t vulkan_missing_spirv_validation_rows{0};
+    std::uint32_t vulkan_unsupported_feature_device_rows{0};
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
@@ -1445,6 +1453,7 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
     bool enable_native_ui_overlay_textures{false};
+    bool enable_strict_validation{false};
 };
 
 struct Win32DesktopPresentationDesc {

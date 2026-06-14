@@ -78,6 +78,14 @@ struct NativeRendererCreateResult {
     std::vector<Win32DesktopPresentationPostprocessDiagnostic> postprocess_diagnostics;
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool vulkan_strict_validation_requested{false};
+    bool vulkan_validation_layers_ready{false};
+    bool vulkan_dynamic_rendering_ready{false};
+    bool vulkan_synchronization2_ready{false};
+    bool vulkan_spirv_validation_ready{false};
+    std::uint32_t vulkan_missing_validation_layer_rows{0};
+    std::uint32_t vulkan_missing_spirv_validation_rows{0};
+    std::uint32_t vulkan_unsupported_feature_device_rows{0};
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
@@ -4480,6 +4488,27 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 #endif
 }
 
+#if defined(MK_RUNTIME_HOST_WIN32_PRESENTATION_HAS_VULKAN)
+void apply_vulkan_strict_runtime_device_evidence(
+    NativeRendererCreateResult& result, const bool strict_validation_requested,
+    const rhi::vulkan::VulkanRuntimeDeviceCreateResult& runtime_device) noexcept {
+    if (!strict_validation_requested) {
+        return;
+    }
+
+    result.vulkan_strict_validation_requested = true;
+    result.vulkan_spirv_validation_ready = true;
+    result.vulkan_validation_layers_ready =
+        runtime_device.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled;
+    result.vulkan_dynamic_rendering_ready = runtime_device.logical_device_plan.dynamic_rendering_enabled;
+    result.vulkan_synchronization2_ready = runtime_device.logical_device_plan.synchronization2_enabled;
+    result.vulkan_missing_validation_layer_rows = result.vulkan_validation_layers_ready ? 0U : 1U;
+    result.vulkan_missing_spirv_validation_rows = result.vulkan_spirv_validation_ready ? 0U : 1U;
+    result.vulkan_unsupported_feature_device_rows =
+        (result.vulkan_dynamic_rendering_ready ? 0U : 1U) + (result.vulkan_synchronization2_ready ? 0U : 1U);
+}
+#endif
+
 [[nodiscard]] NativeRendererCreateResult create_vulkan_scene_renderer(const Win32DesktopPresentationDesc& desc,
                                                                       rhi::SurfaceHandle surface) {
 #if defined(MK_RUNTIME_HOST_WIN32_PRESENTATION_HAS_VULKAN)
@@ -4836,7 +4865,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         }
     }
 
-    auto runtime_device = rhi::vulkan::create_runtime_device({}, {}, {}, surface);
+    rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.enable_validation = desc.vulkan_scene_renderer->enable_strict_validation;
+    auto runtime_device = rhi::vulkan::create_runtime_device({}, instance_desc, {}, surface);
     if (!runtime_device.created) {
         NativeRendererCreateResult result{
             .succeeded = false,
@@ -4844,6 +4875,8 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
             .diagnostic = "Vulkan runtime device creation failed: " + runtime_device.diagnostic +
                           "; using NullRenderer fallback.",
         };
+        apply_vulkan_strict_runtime_device_evidence(result, desc.vulkan_scene_renderer->enable_strict_validation,
+                                                    runtime_device);
         result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::unavailable;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
         if (directional_shadow_requested) {
@@ -5210,6 +5243,8 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         result.succeeded = true;
         result.failure_reason = Win32DesktopPresentationFallbackReason::none;
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
+        apply_vulkan_strict_runtime_device_evidence(result, desc.vulkan_scene_renderer->enable_strict_validation,
+                                                    runtime_device);
         result.environment_fog_requested = environment_fog_requested;
         result.environment_fog_vulkan_package_requested = environment_fog_requested;
         result.physical_sky_vulkan_package_requested = physical_sky_vulkan_package_requested;
@@ -6006,6 +6041,14 @@ struct Win32DesktopPresentation::Impl {
         Win32DesktopPresentationPostprocessStatus::not_requested};
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool vulkan_strict_validation_requested{false};
+    bool vulkan_validation_layers_ready{false};
+    bool vulkan_dynamic_rendering_ready{false};
+    bool vulkan_synchronization2_ready{false};
+    bool vulkan_spirv_validation_ready{false};
+    std::uint32_t vulkan_missing_validation_layer_rows{0};
+    std::uint32_t vulkan_missing_spirv_validation_rows{0};
+    std::uint32_t vulkan_unsupported_feature_device_rows{0};
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
@@ -6209,6 +6252,18 @@ struct Win32DesktopPresentation::Impl {
     std::unique_ptr<rhi::IRhiDevice> device;
     std::unique_ptr<IRenderer> renderer;
     SceneGpuBindingInjectingRenderer* scene_gpu_renderer{nullptr};
+
+    void apply_vulkan_strict_toolchain_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        vulkan_strict_validation_requested =
+            vulkan_strict_validation_requested || renderer_result.vulkan_strict_validation_requested;
+        vulkan_validation_layers_ready = renderer_result.vulkan_validation_layers_ready;
+        vulkan_dynamic_rendering_ready = renderer_result.vulkan_dynamic_rendering_ready;
+        vulkan_synchronization2_ready = renderer_result.vulkan_synchronization2_ready;
+        vulkan_spirv_validation_ready = renderer_result.vulkan_spirv_validation_ready;
+        vulkan_missing_validation_layer_rows = renderer_result.vulkan_missing_validation_layer_rows;
+        vulkan_missing_spirv_validation_rows = renderer_result.vulkan_missing_spirv_validation_rows;
+        vulkan_unsupported_feature_device_rows = renderer_result.vulkan_unsupported_feature_device_rows;
+    }
 
     void apply_environment_fog_result(const NativeRendererCreateResult& renderer_result) noexcept {
         environment_fog_requested = environment_fog_requested || renderer_result.environment_fog_requested;
@@ -6829,6 +6884,7 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                        impl_->apply_vulkan_strict_toolchain_result(renderer_result);
                         impl_->apply_environment_fog_result(renderer_result);
                         impl_->apply_physical_sky_result(renderer_result);
                         impl_->apply_cloud_layer_result(renderer_result);
@@ -6887,6 +6943,7 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                    impl_->apply_vulkan_strict_toolchain_result(renderer_result);
                     impl_->apply_environment_fog_result(renderer_result);
                     impl_->apply_physical_sky_result(renderer_result);
                     impl_->apply_cloud_layer_result(renderer_result);
@@ -7383,6 +7440,14 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .postprocess_status = impl_->postprocess_status,
         .postprocess_depth_input_requested = impl_->postprocess_depth_input_requested,
         .postprocess_depth_input_ready = impl_->postprocess_depth_input_ready,
+        .vulkan_strict_validation_requested = impl_->vulkan_strict_validation_requested,
+        .vulkan_validation_layers_ready = impl_->vulkan_validation_layers_ready,
+        .vulkan_dynamic_rendering_ready = impl_->vulkan_dynamic_rendering_ready,
+        .vulkan_synchronization2_ready = impl_->vulkan_synchronization2_ready,
+        .vulkan_spirv_validation_ready = impl_->vulkan_spirv_validation_ready,
+        .vulkan_missing_validation_layer_rows = impl_->vulkan_missing_validation_layer_rows,
+        .vulkan_missing_spirv_validation_rows = impl_->vulkan_missing_spirv_validation_rows,
+        .vulkan_unsupported_feature_device_rows = impl_->vulkan_unsupported_feature_device_rows,
         .environment_fog_requested = impl_->environment_fog_requested,
         .environment_fog_constant_buffer_ready = impl_->environment_fog_constant_buffer_ready,
         .environment_fog_constant_buffer_bytes = impl_->environment_fog_constant_buffer_bytes,
