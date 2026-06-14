@@ -104,6 +104,7 @@ if ($null -eq $metalAggregateClaim -or
 }
 $backendParityClaim = $environmentCommercialClaimsById["environment_backend_parity_ready"]
 if ($null -eq $backendParityClaim -or
+    @($backendParityClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-backend-parity" -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("plan_environment_backend_parity") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("normalized feature id") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("profile revision") -or
@@ -167,7 +168,7 @@ foreach ($needle in @("environmentCommercialClaimMatrix", "packageCounter equal 
     }
 }
 $environmentBackendParityGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentBackendParityPhase7
-foreach ($needle in @("EnvironmentBackendParityRequest", "plan_environment_backend_parity", "normalized feature ids", "same profile revision", "same preset pack revision", "counter semantics")) {
+foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", "EnvironmentBackendParityRequest", "plan_environment_backend_parity", "normalized feature ids", "same profile revision", "same preset pack revision", "counter semantics", "host_evidence_required", "environment_backend_parity_ready=0")) {
     if (-not $environmentBackendParityGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentBackendParityPhase7 missing: $needle"
     }

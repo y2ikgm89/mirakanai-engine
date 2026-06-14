@@ -101,7 +101,11 @@ router says the current task needs detailed API names, detailed validation lanes
   revision, normalized feature ids, quality tier/budget class, resource class, output tolerance class, package counter ids/semantics,
   unsupported-row list, and zero diagnostics before parity can be ready. Host-gated rows, fallback/native-handle evidence,
   cross-backend inference, feature-count-only comparisons, stale revisions, and nonzero diagnostics must not emit package-visible
-  `environment_backend_parity_ready=1`.
+  `environment_backend_parity_ready=1`. The package-visible `desktop-runtime-sample-game-environment-backend-parity` recipe is a
+  host-gated review lane: it emits `environment_backend_parity_status=host_evidence_required`, `environment_backend_parity_ready=0`,
+  14 D3D12/strict-Vulkan ready rows, seven Apple-host Metal host-gated rows, two host-validated backends, zero diagnostics,
+  zero native-handle/GPU-command side effects, and a positive replay hash without promoting all-platform, commercial, broad optimization,
+  or broad `environment_ready`.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`,
   `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner
   may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy,
