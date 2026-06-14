@@ -17,6 +17,7 @@
 #include "mirakana/platform/win32/win32_cpu_sets.hpp"
 #include "mirakana/renderer/environment_lighting_policy.hpp"
 #include "mirakana/renderer/environment_parity.hpp"
+#include "mirakana/renderer/environment_performance.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/material_weathering_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
@@ -105,6 +106,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_vulkan_strict_aggregate{false};
     bool require_environment_backend_parity{false};
     bool require_environment_platform_readiness{false};
+    bool require_environment_optimization_measurement{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -1418,6 +1420,11 @@ struct EnvironmentPlatformReadinessSmokeEvidence {
     std::uint64_t replay_hash{0U};
 };
 
+struct EnvironmentOptimizationMeasurementSmokeEvidence {
+    bool requested{false};
+    mirakana::EnvironmentOptimizationMeasurementPlan plan{};
+};
+
 [[nodiscard]] std::string_view
 environment_lighting_package_status_name(EnvironmentLightingPackageStatus status) noexcept {
     switch (status) {
@@ -1535,6 +1542,21 @@ environment_backend_parity_status_name(mirakana::EnvironmentBackendParityStatus 
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+environment_optimization_measurement_status_name(mirakana::EnvironmentOptimizationMeasurementStatus status) noexcept {
+    switch (status) {
+    case mirakana::EnvironmentOptimizationMeasurementStatus::ready:
+        return "ready";
+    case mirakana::EnvironmentOptimizationMeasurementStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::EnvironmentOptimizationMeasurementStatus::no_rows:
+        return "no_rows";
+    case mirakana::EnvironmentOptimizationMeasurementStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] bool environment_quality_budget_requested(const DesktopRuntimeGameOptions& options) noexcept {
     return options.require_environment_profile || options.require_environment_fog_evidence ||
            options.require_environment_fog_vulkan_package_evidence || options.require_physical_sky_package_evidence ||
@@ -1553,7 +1575,8 @@ environment_backend_parity_status_name(mirakana::EnvironmentBackendParityStatus 
            options.require_environment_volumetric_cloud_renderer_execution ||
            options.require_environment_volumetric_cloud_vulkan_renderer_execution ||
            options.require_environment_material_weathering || options.require_environment_audio_playback ||
-           options.require_environment_ready_aggregate;
+           options.require_environment_ready_aggregate || options.require_environment_backend_parity ||
+           options.require_environment_platform_readiness || options.require_environment_optimization_measurement;
 }
 
 [[nodiscard]] std::uint32_t total_physical_sky_sample_budget(mirakana::PhysicalSkySampleBudgetDesc budget) noexcept {
@@ -2617,6 +2640,111 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
     return evidence;
 }
 
+[[nodiscard]] mirakana::EnvironmentOptimizationMetricSet environment_optimization_before_metrics() noexcept {
+    return mirakana::EnvironmentOptimizationMetricSet{
+        .cpu_frame_p95_us = 16000U,
+        .gpu_frame_p95_us = 14000U,
+        .memory_peak_bytes = 512ULL * 1024ULL * 1024ULL,
+        .transient_gpu_bytes = 128ULL * 1024ULL * 1024ULL,
+        .upload_bytes = 32ULL * 1024ULL * 1024ULL,
+        .draw_count = 120U,
+        .dispatch_count = 8U,
+        .barrier_count = 42U,
+        .texture_residency_bytes = 384ULL * 1024ULL * 1024ULL,
+        .package_load_us = 45000U,
+        .stutter_frames = 1U,
+        .finite_samples = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationMetricSet environment_optimization_after_metrics() noexcept {
+    return mirakana::EnvironmentOptimizationMetricSet{
+        .cpu_frame_p95_us = 15000U,
+        .gpu_frame_p95_us = 13200U,
+        .memory_peak_bytes = 500ULL * 1024ULL * 1024ULL,
+        .transient_gpu_bytes = 112ULL * 1024ULL * 1024ULL,
+        .upload_bytes = 24ULL * 1024ULL * 1024ULL,
+        .draw_count = 110U,
+        .dispatch_count = 8U,
+        .barrier_count = 36U,
+        .texture_residency_bytes = 360ULL * 1024ULL * 1024ULL,
+        .package_load_us = 40000U,
+        .stutter_frames = 0U,
+        .finite_samples = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationRegressionBudget environment_optimization_budget() noexcept {
+    return mirakana::EnvironmentOptimizationRegressionBudget{
+        .max_cpu_frame_p95_us = 16670U,
+        .max_gpu_frame_p95_us = 16670U,
+        .max_memory_peak_bytes = 512ULL * 1024ULL * 1024ULL,
+        .max_transient_gpu_bytes = 128ULL * 1024ULL * 1024ULL,
+        .max_upload_bytes = 32ULL * 1024ULL * 1024ULL,
+        .max_draw_count = 120U,
+        .max_dispatch_count = 8U,
+        .max_barrier_count = 42U,
+        .max_texture_residency_bytes = 384ULL * 1024ULL * 1024ULL,
+        .max_package_load_us = 45000U,
+        .max_stutter_frames = 1U,
+    };
+}
+
+[[nodiscard]] EnvironmentOptimizationMeasurementSmokeEvidence build_environment_optimization_measurement_smoke_evidence(
+    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate) {
+    EnvironmentOptimizationMeasurementSmokeEvidence evidence;
+    evidence.requested = options.require_environment_optimization_measurement;
+    if (!evidence.requested) {
+        return evidence;
+    }
+
+    const bool selected_d3d12_ready =
+        environment_ready_aggregate.ready && environment_ready_aggregate.d3d12_primary_ready;
+    mirakana::EnvironmentOptimizationMeasurementRequest request{
+        .expected_package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
+        .expected_quality_tier = "high",
+        .environment_backend_parity_ready = false,
+        .required_workload_count = 7U,
+        .row_budget = 16U,
+        .seed = 20260614U,
+    };
+    request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
+        .workload_id = "preset_pack_flythrough",
+        .workload = mirakana::EnvironmentOptimizationWorkload::preset_pack_flythrough,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .status = mirakana::EnvironmentOptimizationRowStatus::ready,
+        .host_os = "Windows D3D12 package host",
+        .cpu_name = "host-cpu-recorded-by-package-lane",
+        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_driver_version = "host-driver-recorded-by-package-lane",
+        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
+        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
+        .profiler_artifact_id = "environment-optimization-measurement/preset-pack-flythrough-d3d12",
+        .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
+        .quality_tier = "high",
+        .resolution = "1920x1080",
+        .warmup_frames = 30U,
+        .sample_frames = 120U,
+        .before = environment_optimization_before_metrics(),
+        .after = environment_optimization_after_metrics(),
+        .budget = environment_optimization_budget(),
+        .before_after_ready = true,
+        .host_tool_versions_ready = true,
+        .profiler_artifact_ready = true,
+        .repository_counters_ready = true,
+        .timestamp_query_evidence_ready = true,
+        .regression_budget_ready = true,
+        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .broad_optimization_claimed = false,
+        .native_handle_access = false,
+        .inferred_from_other_backend = false,
+        .source_index = 1U,
+    });
+
+    evidence.plan = mirakana::plan_environment_optimization_measurement(request);
+    return evidence;
+}
+
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
     const auto layout = mirakana::runtime_rhi::make_runtime_mesh_vertex_layout_desc(
         mirakana::runtime::RuntimeMeshPayload{.has_normals = true, .has_uvs = true, .has_tangent_frame = true});
@@ -3132,6 +3260,11 @@ void enable_environment_platform_readiness_requirements(DesktopRuntimeGameOption
     enable_environment_ready_aggregate_requirements(options);
 }
 
+void enable_environment_optimization_measurement_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    options.require_environment_optimization_measurement = true;
+    enable_environment_ready_aggregate_requirements(options);
+}
+
 void print_usage() {
     std::cout << "sample_desktop_runtime_game [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
@@ -3169,6 +3302,7 @@ void print_usage() {
                  "[--require-environment-vulkan-strict-aggregate] "
                  "[--require-environment-backend-parity] "
                  "[--require-environment-platform-readiness] "
+                 "[--require-environment-optimization-measurement] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -3521,6 +3655,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-platform-readiness") {
             enable_environment_platform_readiness_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-optimization-measurement") {
+            enable_environment_optimization_measurement_requirements(options);
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -5865,6 +6003,8 @@ int main(int argc, char** argv) {
         build_environment_backend_parity_smoke_evidence(options, environment_ready_aggregate);
     const auto environment_platform_readiness =
         build_environment_platform_readiness_smoke_evidence(options, environment_ready_aggregate);
+    const auto environment_optimization_measurement =
+        build_environment_optimization_measurement_smoke_evidence(options, environment_ready_aggregate);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -7468,6 +7608,55 @@ int main(int argc, char** argv) {
             << " environment_platform_diagnostics=" << environment_platform_readiness.diagnostics
             << " environment_platform_readiness_replay_hash=" << environment_platform_readiness.replay_hash;
     }
+    if (environment_optimization_measurement.requested) {
+        const auto& plan = environment_optimization_measurement.plan;
+        const auto& row = plan.rows.front();
+        std::cout
+            << " environment_optimization_measurement_status="
+            << environment_optimization_measurement_status_name(plan.status)
+            << " environment_optimization_measurement_ready=" << (plan.environment_broad_optimization_ready ? 1 : 0)
+            << " environment_optimization_measurement_workload_rows=" << plan.row_count
+            << " environment_optimization_measurement_required_workloads=" << plan.required_workload_count
+            << " environment_optimization_measurement_measured_workloads=" << plan.measured_workload_count
+            << " environment_optimization_measurement_before_after_pairs=" << plan.before_after_pair_count
+            << " environment_optimization_measurement_backend=d3d12"
+            << " environment_optimization_measurement_profile=preset_pack_flythrough"
+            << " environment_optimization_measurement_warmup_frames=" << row.warmup_frames
+            << " environment_optimization_measurement_sample_frames=" << row.sample_frames
+            << " environment_optimization_measurement_cpu_frame_p95_before_us=" << row.before.cpu_frame_p95_us
+            << " environment_optimization_measurement_cpu_frame_p95_after_us=" << row.after.cpu_frame_p95_us
+            << " environment_optimization_measurement_gpu_frame_p95_before_us=" << row.before.gpu_frame_p95_us
+            << " environment_optimization_measurement_gpu_frame_p95_after_us=" << row.after.gpu_frame_p95_us
+            << " environment_optimization_measurement_memory_peak_before_bytes=" << row.before.memory_peak_bytes
+            << " environment_optimization_measurement_memory_peak_after_bytes=" << row.after.memory_peak_bytes
+            << " environment_optimization_measurement_transient_gpu_before_bytes=" << row.before.transient_gpu_bytes
+            << " environment_optimization_measurement_transient_gpu_after_bytes=" << row.after.transient_gpu_bytes
+            << " environment_optimization_measurement_upload_before_bytes=" << row.before.upload_bytes
+            << " environment_optimization_measurement_upload_after_bytes=" << row.after.upload_bytes
+            << " environment_optimization_measurement_draw_count_before=" << row.before.draw_count
+            << " environment_optimization_measurement_draw_count_after=" << row.after.draw_count
+            << " environment_optimization_measurement_dispatch_count_before=" << row.before.dispatch_count
+            << " environment_optimization_measurement_dispatch_count_after=" << row.after.dispatch_count
+            << " environment_optimization_measurement_barrier_count_before=" << row.before.barrier_count
+            << " environment_optimization_measurement_barrier_count_after=" << row.after.barrier_count
+            << " environment_optimization_measurement_texture_residency_before_bytes="
+            << row.before.texture_residency_bytes
+            << " environment_optimization_measurement_texture_residency_after_bytes="
+            << row.after.texture_residency_bytes
+            << " environment_optimization_measurement_package_load_before_us=" << row.before.package_load_us
+            << " environment_optimization_measurement_package_load_after_us=" << row.after.package_load_us
+            << " environment_optimization_measurement_stutter_frames_before=" << row.before.stutter_frames
+            << " environment_optimization_measurement_stutter_frames_after=" << row.after.stutter_frames
+            << " environment_optimization_measurement_regression_budget_rows=" << plan.regression_budget_row_count
+            << " environment_optimization_measurement_over_budget=" << plan.over_budget_row_count
+            << " environment_optimization_measurement_backend_parity_ready="
+            << (plan.environment_backend_parity_ready ? 1 : 0)
+            << " environment_broad_optimization_ready=" << (plan.environment_broad_optimization_ready ? 1 : 0)
+            << " environment_optimization_measurement_native_handle_access=" << (plan.exposed_native_handles ? 1 : 0)
+            << " environment_optimization_measurement_invoked_gpu_commands=" << (plan.invoked_gpu_commands ? 1 : 0)
+            << " environment_optimization_measurement_diagnostics=" << plan.diagnostics.size()
+            << " environment_optimization_measurement_replay_hash=" << plan.replay_hash;
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -7565,6 +7754,24 @@ int main(int argc, char** argv) {
              environment_platform_readiness.ready_rows != 1U || environment_platform_readiness.host_gated_rows != 5U ||
              environment_platform_readiness.diagnostics != 0U || environment_platform_readiness.native_handle_access ||
              environment_platform_readiness.invoked_gpu_commands || environment_platform_readiness.replay_hash == 0U)) {
+            return 3;
+        }
+        if (environment_optimization_measurement.requested &&
+            (environment_optimization_measurement.plan.status !=
+                 mirakana::EnvironmentOptimizationMeasurementStatus::host_evidence_required ||
+             !environment_optimization_measurement.plan.diagnostics.empty() ||
+             environment_optimization_measurement.plan.row_count != 1U ||
+             environment_optimization_measurement.plan.required_workload_count != 7U ||
+             environment_optimization_measurement.plan.measured_workload_count != 1U ||
+             environment_optimization_measurement.plan.before_after_pair_count != 1U ||
+             environment_optimization_measurement.plan.regression_budget_row_count != 1U ||
+             environment_optimization_measurement.plan.over_budget_row_count != 0U ||
+             !environment_optimization_measurement.plan.d3d12_preset_pack_flythrough_measured ||
+             environment_optimization_measurement.plan.environment_backend_parity_ready ||
+             environment_optimization_measurement.plan.environment_broad_optimization_ready ||
+             environment_optimization_measurement.plan.exposed_native_handles ||
+             environment_optimization_measurement.plan.invoked_gpu_commands ||
+             environment_optimization_measurement.plan.replay_hash == 0U)) {
             return 3;
         }
         if (options.require_postprocess &&

@@ -17,6 +17,7 @@
     "unsupportedProductionGaps",
     "environmentCommercialClaimMatrix",
     "environmentPlatformReadinessRows",
+    "environmentOptimizationMeasurementWorkloadRows",
     "environmentCommercialUnsupportedAdjacentClaims",
     "hostGates",
     "validationRecipeMap",
@@ -465,6 +466,64 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "hostGate": { "type": "string", "minLength": 1 },
+          "blockerReason": { "type": "string", "minLength": 1 },
+          "forbiddenInference": { "type": "string", "minLength": 1 },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "environmentOptimizationMeasurementWorkloadRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "claimId",
+          "state",
+          "backend",
+          "workload",
+          "runtimeTarget",
+          "validationRecipeIds",
+          "requiredMetrics",
+          "requiredTools",
+          "packageSmoke",
+          "packageCounters",
+          "regressionBudget",
+          "blockerReason",
+          "forbiddenInference",
+          "notes"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "claimId": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["ready", "host-gated", "unsupported"] },
+          "backend": { "type": "string", "minLength": 1 },
+          "workload": { "type": "string", "minLength": 1 },
+          "runtimeTarget": { "type": "string", "minLength": 1 },
+          "validationRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "requiredMetrics": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "requiredTools": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "packageSmoke": { "type": "string", "minLength": 1 },
+          "packageCounters": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "regressionBudget": { "type": "string", "minLength": 1 },
           "blockerReason": { "type": "string", "minLength": 1 },
           "forbiddenInference": { "type": "string", "minLength": 1 },
           "notes": { "type": "string", "minLength": 1 }

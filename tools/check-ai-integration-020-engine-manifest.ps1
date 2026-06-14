@@ -1544,7 +1544,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
     Assert-ContainsText $runnerText "Get-ValidationRecipeCommandPlan" "tools/run-validation-recipe.ps1"
     Assert-ContainsText $runnerText "Invoke-ValidationRecipeCommandPlan" "tools/run-validation-recipe.ps1"
     $runnerCoreScript = Resolve-RequiredAgentPath "tools/validation-recipe-core.ps1"; $runnerCoreText = Get-Content -LiteralPath $runnerCoreScript -Raw
-    foreach ($needle in @("Test-ValidationRecipeRequest", "New-ValidationRecipeDryRunResult", "New-ValidationRecipeRejectedResult", "Get-SampleDesktopRuntimeGameEnvironmentReadyAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentVulkanStrictAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentPlatformReadinessSmokeArgs")) {
+    foreach ($needle in @("Test-ValidationRecipeRequest", "New-ValidationRecipeDryRunResult", "New-ValidationRecipeRejectedResult", "Get-SampleDesktopRuntimeGameEnvironmentReadyAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentVulkanStrictAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentPlatformReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentOptimizationMeasurementSmokeArgs")) {
         Assert-ContainsText $runnerCoreText $needle "tools/validation-recipe-core.ps1"
     }
     Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameEnvironmentLightingRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"

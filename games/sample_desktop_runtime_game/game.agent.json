@@ -203,6 +203,7 @@
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
         "desktop-runtime-sample-game-environment-platform-readiness",
+        "desktop-runtime-sample-game-environment-optimization-measurement",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -254,6 +255,13 @@
           "evidence": "The selected environment platform readiness package smoke reports --require-environment-platform-readiness, environment_platform_readiness_status=host_evidence_required, environment_platform_readiness_ready=0, environment_platform_readiness_rows=6, environment_platform_readiness_ready_rows=1, environment_platform_readiness_host_gated_rows=5, environment_platform_windows_d3d12_ready=1, environment_platform_windows_vulkan_ready=0, environment_platform_linux_vulkan_ready=0, environment_platform_macos_metal_ready=0, environment_platform_ios_metal_ready=0, environment_platform_android_vulkan_ready=0, environment_platform_requires_windows_vulkan_host_evidence=1, environment_platform_requires_linux_vulkan_host_evidence=1, environment_platform_requires_macos_metal_host_evidence=1, environment_platform_requires_ios_metal_host_evidence=1, environment_platform_requires_android_vulkan_host_evidence=1, environment_all_platform_unconditional_ready=0, environment_platform_diagnostics=0, environment_platform_native_handle_access=0, environment_platform_invoked_gpu_commands=0, and a positive replay hash without promoting all-platform, commercial, broad optimization, backend-parity-ready, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-platform-readiness"
+          ]
+        },
+        {
+          "id": "environment-optimization-measurement-host-gated-workload-row",
+          "evidence": "The selected environment optimization measurement package smoke reports --require-environment-optimization-measurement, environment_optimization_measurement_status=host_evidence_required, environment_optimization_measurement_ready=0, environment_optimization_measurement_workload_rows=1, environment_optimization_measurement_required_workloads=7, environment_optimization_measurement_measured_workloads=1, environment_optimization_measurement_before_after_pairs=1, environment_optimization_measurement_backend=d3d12, environment_optimization_measurement_profile=preset_pack_flythrough, before/after CPU/GPU/memory/transient/upload/draw/dispatch/barrier/texture-residency/package-load/stutter counters, environment_optimization_measurement_regression_budget_rows=1, environment_optimization_measurement_over_budget=0, environment_optimization_measurement_backend_parity_ready=0, environment_broad_optimization_ready=0, zero diagnostics, zero native-handle access, zero invoked GPU commands, and a positive replay hash without promoting broad optimization, backend parity, all-platform, commercial, or broad environment_ready claims.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-optimization-measurement"
           ]
         },
         {
@@ -439,7 +447,8 @@
             "desktop-runtime-sample-game-environment-ready-aggregate",
             "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
             "desktop-runtime-sample-game-environment-backend-parity",
-            "desktop-runtime-sample-game-environment-platform-readiness"
+            "desktop-runtime-sample-game-environment-platform-readiness",
+            "desktop-runtime-sample-game-environment-optimization-measurement"
           ]
         },
         {
@@ -1832,7 +1841,8 @@
         "desktop-runtime-sample-game-environment-ready-aggregate",
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
-        "desktop-runtime-sample-game-environment-platform-readiness"
+        "desktop-runtime-sample-game-environment-platform-readiness",
+        "desktop-runtime-sample-game-environment-optimization-measurement"
       ],
       "broadImporterExecution": "unsupported",
       "broadDependencyCooking": "unsupported",
@@ -2001,6 +2011,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-platform-readiness",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-platform-readiness')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-optimization-measurement",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-optimization-measurement')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",
