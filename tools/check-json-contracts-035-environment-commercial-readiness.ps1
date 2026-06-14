@@ -236,31 +236,31 @@ $expectedEnvironmentOptimizationRows = @(
         id = "environment_optimization_preset_pack_flythrough_d3d12"
         workload = "preset_pack_flythrough"
         state = "ready"
-        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "environment_optimization_preset_pack_flythrough_ready=1", "environment_optimization_measurement_before_after_pairs=4", "environment_broad_optimization_ready=0")
+        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "environment_optimization_preset_pack_flythrough_ready=1", "environment_optimization_measurement_before_after_pairs=5", "environment_broad_optimization_ready=0")
     },
     @{
         id = "environment_optimization_storm_precipitation_d3d12"
         workload = "storm_precipitation"
         state = "ready"
-        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "storm precipitation", "environment_optimization_storm_precipitation_ready=1", "environment_optimization_measurement_workload_rows=4", "environment_optimization_measurement_before_after_pairs=4", "environment_optimization_measurement_regression_budget_rows=4", "environment_broad_optimization_ready=0")
+        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "storm precipitation", "environment_optimization_storm_precipitation_ready=1", "environment_optimization_measurement_workload_rows=5", "environment_optimization_measurement_before_after_pairs=5", "environment_optimization_measurement_regression_budget_rows=5", "environment_broad_optimization_ready=0")
     },
     @{
         id = "environment_optimization_dense_volumetric_fog_d3d12"
         workload = "dense_volumetric_fog"
         state = "ready"
-        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "dense volumetric fog", "environment_optimization_dense_volumetric_fog_ready=1", "environment_optimization_dense_volumetric_fog_cpu_frame_p95_before_us=17600", "environment_optimization_dense_volumetric_fog_gpu_frame_p95_after_us=15000", "environment_optimization_measurement_workload_rows=4", "environment_optimization_measurement_before_after_pairs=4", "environment_optimization_measurement_regression_budget_rows=4", "environment_broad_optimization_ready=0")
+        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "dense volumetric fog", "environment_optimization_dense_volumetric_fog_ready=1", "environment_optimization_dense_volumetric_fog_cpu_frame_p95_before_us=17600", "environment_optimization_dense_volumetric_fog_gpu_frame_p95_after_us=15000", "environment_optimization_measurement_workload_rows=5", "environment_optimization_measurement_before_after_pairs=5", "environment_optimization_measurement_regression_budget_rows=5", "environment_broad_optimization_ready=0")
     },
     @{
         id = "environment_optimization_volumetric_cloud_sunset_d3d12"
         workload = "volumetric_cloud_sunset"
         state = "ready"
-        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "volumetric cloud", "sunset", "environment_optimization_volumetric_cloud_sunset_ready=1", "environment_optimization_volumetric_cloud_sunset_cpu_frame_p95_before_us=18800", "environment_optimization_volumetric_cloud_sunset_gpu_frame_p95_after_us=16200", "environment_optimization_measurement_workload_rows=4", "environment_optimization_measurement_before_after_pairs=4", "environment_optimization_measurement_regression_budget_rows=4", "environment_broad_optimization_ready=0")
+        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "volumetric cloud", "sunset", "environment_optimization_volumetric_cloud_sunset_ready=1", "environment_optimization_volumetric_cloud_sunset_cpu_frame_p95_before_us=18800", "environment_optimization_volumetric_cloud_sunset_gpu_frame_p95_after_us=16200", "environment_optimization_measurement_workload_rows=5", "environment_optimization_measurement_before_after_pairs=5", "environment_optimization_measurement_regression_budget_rows=5", "environment_broad_optimization_ready=0")
     },
     @{
         id = "environment_optimization_snowfield_material_weathering_d3d12"
         workload = "snowfield_material_weathering"
-        state = "host-gated"
-        needles = @("snowfield", "material weathering", "before/after", "environment_broad_optimization_ready=0")
+        state = "ready"
+        needles = @("desktop-runtime-sample-game-environment-optimization-measurement", "Windows Performance Recorder", "PIX Timing Capture", "D3D12 timestamp query", "snowfield", "material weathering", "environment_optimization_snowfield_material_weathering_ready=1", "environment_optimization_snowfield_material_weathering_cpu_frame_p95_before_us=16900", "environment_optimization_snowfield_material_weathering_gpu_frame_p95_after_us=14600", "environment_optimization_measurement_workload_rows=5", "environment_optimization_measurement_before_after_pairs=5", "environment_optimization_measurement_regression_budget_rows=5", "environment_broad_optimization_ready=0")
     },
     @{
         id = "environment_optimization_weather_simulation_stress_d3d12"
