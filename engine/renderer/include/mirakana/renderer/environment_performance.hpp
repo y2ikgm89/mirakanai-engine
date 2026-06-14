@@ -156,6 +156,7 @@ struct EnvironmentOptimizationMeasurementPlan {
     bool d3d12_volumetric_cloud_sunset_measured{false};
     bool d3d12_snowfield_material_weathering_measured{false};
     bool d3d12_weather_simulation_stress_measured{false};
+    bool d3d12_asset_library_cold_load_measured{false};
     bool environment_backend_parity_ready{false};
     bool environment_broad_optimization_ready{false};
     bool invoked_gpu_commands{false};

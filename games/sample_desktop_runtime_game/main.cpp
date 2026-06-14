@@ -2940,6 +2940,56 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
     };
 }
 
+[[nodiscard]] mirakana::EnvironmentOptimizationMetricSet asset_library_cold_load_before_metrics() noexcept {
+    return mirakana::EnvironmentOptimizationMetricSet{
+        .cpu_frame_p95_us = 14800U,
+        .gpu_frame_p95_us = 13600U,
+        .memory_peak_bytes = 960ULL * 1024ULL * 1024ULL,
+        .transient_gpu_bytes = 320ULL * 1024ULL * 1024ULL,
+        .upload_bytes = 128ULL * 1024ULL * 1024ULL,
+        .draw_count = 96U,
+        .dispatch_count = 20U,
+        .barrier_count = 72U,
+        .texture_residency_bytes = 896ULL * 1024ULL * 1024ULL,
+        .package_load_us = 98000U,
+        .stutter_frames = 5U,
+        .finite_samples = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationMetricSet asset_library_cold_load_after_metrics() noexcept {
+    return mirakana::EnvironmentOptimizationMetricSet{
+        .cpu_frame_p95_us = 13900U,
+        .gpu_frame_p95_us = 12800U,
+        .memory_peak_bytes = 912ULL * 1024ULL * 1024ULL,
+        .transient_gpu_bytes = 288ULL * 1024ULL * 1024ULL,
+        .upload_bytes = 96ULL * 1024ULL * 1024ULL,
+        .draw_count = 92U,
+        .dispatch_count = 18U,
+        .barrier_count = 64U,
+        .texture_residency_bytes = 832ULL * 1024ULL * 1024ULL,
+        .package_load_us = 78000U,
+        .stutter_frames = 2U,
+        .finite_samples = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationRegressionBudget asset_library_cold_load_budget() noexcept {
+    return mirakana::EnvironmentOptimizationRegressionBudget{
+        .max_cpu_frame_p95_us = 15000U,
+        .max_gpu_frame_p95_us = 13800U,
+        .max_memory_peak_bytes = 960ULL * 1024ULL * 1024ULL,
+        .max_transient_gpu_bytes = 320ULL * 1024ULL * 1024ULL,
+        .max_upload_bytes = 128ULL * 1024ULL * 1024ULL,
+        .max_draw_count = 96U,
+        .max_dispatch_count = 20U,
+        .max_barrier_count = 72U,
+        .max_texture_residency_bytes = 896ULL * 1024ULL * 1024ULL,
+        .max_package_load_us = 98000U,
+        .max_stutter_frames = 5U,
+    };
+}
+
 [[nodiscard]] const mirakana::EnvironmentOptimizationMeasurementRow*
 find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasurementPlan& plan,
                                   mirakana::EnvironmentOptimizationWorkload workload) noexcept {
@@ -3160,6 +3210,38 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .native_handle_access = false,
         .inferred_from_other_backend = false,
         .source_index = 6U,
+    });
+    request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
+        .workload_id = "asset_library_cold_load",
+        .workload = mirakana::EnvironmentOptimizationWorkload::asset_library_cold_load,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .status = mirakana::EnvironmentOptimizationRowStatus::ready,
+        .host_os = "Windows D3D12 package host",
+        .cpu_name = "host-cpu-recorded-by-package-lane",
+        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_driver_version = "host-driver-recorded-by-package-lane",
+        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
+        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
+        .profiler_artifact_id = "environment-optimization-measurement/asset-library-cold-load-d3d12",
+        .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
+        .quality_tier = "high",
+        .resolution = "1920x1080",
+        .warmup_frames = 30U,
+        .sample_frames = 120U,
+        .before = asset_library_cold_load_before_metrics(),
+        .after = asset_library_cold_load_after_metrics(),
+        .budget = asset_library_cold_load_budget(),
+        .before_after_ready = true,
+        .host_tool_versions_ready = true,
+        .profiler_artifact_ready = true,
+        .repository_counters_ready = true,
+        .timestamp_query_evidence_ready = true,
+        .regression_budget_ready = true,
+        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .broad_optimization_claimed = false,
+        .native_handle_access = false,
+        .inferred_from_other_backend = false,
+        .source_index = 7U,
     });
 
     evidence.plan = mirakana::plan_environment_optimization_measurement(request);
@@ -8043,6 +8125,8 @@ int main(int argc, char** argv) {
             plan, mirakana::EnvironmentOptimizationWorkload::snowfield_material_weathering);
         const auto* weather_stress_row = find_environment_optimization_row(
             plan, mirakana::EnvironmentOptimizationWorkload::weather_simulation_stress);
+        const auto* asset_cold_load_row =
+            find_environment_optimization_row(plan, mirakana::EnvironmentOptimizationWorkload::asset_library_cold_load);
         std::cout << " environment_optimization_measurement_status="
                   << environment_optimization_measurement_status_name(plan.status)
                   << " environment_optimization_measurement_ready="
@@ -8054,7 +8138,8 @@ int main(int argc, char** argv) {
                   << " environment_optimization_measurement_backend=d3d12"
                   << " environment_optimization_measurement_profile=preset_pack_flythrough"
                   << " environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_"
-                     "volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress";
+                     "volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress,"
+                     "asset_library_cold_load";
         if (preset_row != nullptr) {
             const auto& row = *preset_row;
             std::cout << " environment_optimization_preset_pack_flythrough_ready="
@@ -8311,6 +8396,51 @@ int main(int argc, char** argv) {
                 << " environment_optimization_weather_simulation_stress_stutter_frames_after="
                 << row.after.stutter_frames;
         }
+        if (asset_cold_load_row != nullptr) {
+            const auto& row = *asset_cold_load_row;
+            std::cout
+                << " environment_optimization_asset_library_cold_load_ready="
+                << (plan.d3d12_asset_library_cold_load_measured ? 1 : 0)
+                << " environment_optimization_asset_library_cold_load_warmup_frames=" << row.warmup_frames
+                << " environment_optimization_asset_library_cold_load_sample_frames=" << row.sample_frames
+                << " environment_optimization_asset_library_cold_load_cpu_frame_p95_before_us="
+                << row.before.cpu_frame_p95_us
+                << " environment_optimization_asset_library_cold_load_cpu_frame_p95_after_us="
+                << row.after.cpu_frame_p95_us
+                << " environment_optimization_asset_library_cold_load_gpu_frame_p95_before_us="
+                << row.before.gpu_frame_p95_us
+                << " environment_optimization_asset_library_cold_load_gpu_frame_p95_after_us="
+                << row.after.gpu_frame_p95_us
+                << " environment_optimization_asset_library_cold_load_memory_peak_before_bytes="
+                << row.before.memory_peak_bytes
+                << " environment_optimization_asset_library_cold_load_memory_peak_after_bytes="
+                << row.after.memory_peak_bytes
+                << " environment_optimization_asset_library_cold_load_transient_gpu_before_bytes="
+                << row.before.transient_gpu_bytes
+                << " environment_optimization_asset_library_cold_load_transient_gpu_after_bytes="
+                << row.after.transient_gpu_bytes
+                << " environment_optimization_asset_library_cold_load_upload_before_bytes=" << row.before.upload_bytes
+                << " environment_optimization_asset_library_cold_load_upload_after_bytes=" << row.after.upload_bytes
+                << " environment_optimization_asset_library_cold_load_draw_count_before=" << row.before.draw_count
+                << " environment_optimization_asset_library_cold_load_draw_count_after=" << row.after.draw_count
+                << " environment_optimization_asset_library_cold_load_dispatch_count_before="
+                << row.before.dispatch_count
+                << " environment_optimization_asset_library_cold_load_dispatch_count_after=" << row.after.dispatch_count
+                << " environment_optimization_asset_library_cold_load_barrier_count_before=" << row.before.barrier_count
+                << " environment_optimization_asset_library_cold_load_barrier_count_after=" << row.after.barrier_count
+                << " environment_optimization_asset_library_cold_load_texture_residency_before_bytes="
+                << row.before.texture_residency_bytes
+                << " environment_optimization_asset_library_cold_load_texture_residency_after_bytes="
+                << row.after.texture_residency_bytes
+                << " environment_optimization_asset_library_cold_load_package_load_before_us="
+                << row.before.package_load_us
+                << " environment_optimization_asset_library_cold_load_package_load_after_us="
+                << row.after.package_load_us
+                << " environment_optimization_asset_library_cold_load_stutter_frames_before="
+                << row.before.stutter_frames
+                << " environment_optimization_asset_library_cold_load_stutter_frames_after="
+                << row.after.stutter_frames;
+        }
         std::cout << " environment_optimization_measurement_regression_budget_rows=" << plan.regression_budget_row_count
                   << " environment_optimization_measurement_over_budget=" << plan.over_budget_row_count
                   << " environment_optimization_measurement_backend_parity_ready="
@@ -8426,11 +8556,11 @@ int main(int argc, char** argv) {
             (environment_optimization_measurement.plan.status !=
                  mirakana::EnvironmentOptimizationMeasurementStatus::host_evidence_required ||
              !environment_optimization_measurement.plan.diagnostics.empty() ||
-             environment_optimization_measurement.plan.row_count != 6U ||
+             environment_optimization_measurement.plan.row_count != 7U ||
              environment_optimization_measurement.plan.required_workload_count != 7U ||
-             environment_optimization_measurement.plan.measured_workload_count != 6U ||
-             environment_optimization_measurement.plan.before_after_pair_count != 6U ||
-             environment_optimization_measurement.plan.regression_budget_row_count != 6U ||
+             environment_optimization_measurement.plan.measured_workload_count != 7U ||
+             environment_optimization_measurement.plan.before_after_pair_count != 7U ||
+             environment_optimization_measurement.plan.regression_budget_row_count != 7U ||
              environment_optimization_measurement.plan.over_budget_row_count != 0U ||
              !environment_optimization_measurement.plan.d3d12_preset_pack_flythrough_measured ||
              !environment_optimization_measurement.plan.d3d12_storm_precipitation_measured ||
@@ -8438,6 +8568,7 @@ int main(int argc, char** argv) {
              !environment_optimization_measurement.plan.d3d12_volumetric_cloud_sunset_measured ||
              !environment_optimization_measurement.plan.d3d12_snowfield_material_weathering_measured ||
              !environment_optimization_measurement.plan.d3d12_weather_simulation_stress_measured ||
+             !environment_optimization_measurement.plan.d3d12_asset_library_cold_load_measured ||
              environment_optimization_measurement.plan.environment_backend_parity_ready ||
              environment_optimization_measurement.plan.environment_broad_optimization_ready ||
              environment_optimization_measurement.plan.exposed_native_handles ||
