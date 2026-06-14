@@ -1351,6 +1351,15 @@ struct EnvironmentVulkanStrictAggregateEvidence {
     std::uint32_t feature_rows{0};
     std::uint32_t descriptor_set_bindings{0};
     std::uint32_t synchronization2_barriers{0};
+    bool resource_usage_layout_ready{false};
+    std::uint32_t resource_usage_layout_rows{0};
+    std::uint32_t attachment_usage_layout_rows{0};
+    std::uint32_t sampled_texture_usage_layout_rows{0};
+    std::uint32_t storage_buffer_usage_layout_rows{0};
+    std::uint32_t cube_map_usage_layout_rows{0};
+    std::uint32_t weather_texture_usage_layout_rows{0};
+    std::uint32_t froxel_buffer_usage_layout_rows{0};
+    std::uint32_t readback_resource_usage_layout_rows{0};
     std::uint64_t renderer_draws{0};
     std::uint64_t compute_dispatches{0};
     std::uint64_t texture_uploads{0};
@@ -2235,6 +2244,49 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
                              (environment_volumetric_fog_vulkan.froxel_readback_nonzero ? 1U : 0U) +
                              (environment_volumetric_cloud_vulkan.readback_nonzero ? 1U : 0U) +
                              (environment_precipitation_vulkan.depth_occlusion_readback ? 1U : 0U);
+    evidence.attachment_usage_layout_rows =
+        (vulkan_postprocess_execution.ready ? 1U : 0U) + (report.postprocess_depth_input_ready ? 1U : 0U);
+    evidence.sampled_texture_usage_layout_rows =
+        (environment_ibl_vulkan_renderer_execution.shader_sampling_proven &&
+                 environment_ibl_vulkan_renderer_execution.sampler_created
+             ? 1U
+             : 0U) +
+        (environment_volumetric_fog_vulkan.scene_depth_ready ? 1U : 0U) +
+        (environment_volumetric_cloud_vulkan.weather_map_ready ? 1U : 0U) +
+        (environment_volumetric_cloud_vulkan.shape_noise_ready ? 1U : 0U) +
+        (environment_volumetric_cloud_vulkan.erosion_noise_ready ? 1U : 0U) +
+        (environment_precipitation_vulkan.uses_scene_depth_occlusion ? 1U : 0U);
+    evidence.storage_buffer_usage_layout_rows =
+        (environment_volumetric_fog_vulkan.froxel_output_ready &&
+                 environment_volumetric_fog_vulkan.froxel_output_buffer_binding != 0U
+             ? 1U
+             : 0U) +
+        (environment_precipitation_vulkan.uploads_particle_buffers ? 1U : 0U);
+    evidence.cube_map_usage_layout_rows =
+        (environment_ibl_vulkan_renderer_execution.cube_compatible_image_created &&
+                 environment_ibl_vulkan_renderer_execution.cube_image_view_created &&
+                 environment_ibl_vulkan_renderer_execution.texture_cube_uploads > 0U &&
+                 environment_ibl_vulkan_renderer_execution.texture_cube_faces == 6U
+             ? 1U
+             : 0U);
+    evidence.weather_texture_usage_layout_rows = (environment_volumetric_cloud_vulkan.weather_map_ready ? 1U : 0U) +
+                                                 (environment_volumetric_cloud_vulkan.shape_noise_ready ? 1U : 0U) +
+                                                 (environment_volumetric_cloud_vulkan.erosion_noise_ready ? 1U : 0U);
+    evidence.froxel_buffer_usage_layout_rows = (environment_volumetric_fog_vulkan.froxel_output_ready &&
+                                                        environment_volumetric_fog_vulkan.froxel_readback_nonzero
+                                                    ? 1U
+                                                    : 0U);
+    evidence.readback_resource_usage_layout_rows = evidence.readback_rows;
+    evidence.resource_usage_layout_rows =
+        evidence.attachment_usage_layout_rows + evidence.sampled_texture_usage_layout_rows +
+        evidence.storage_buffer_usage_layout_rows + evidence.cube_map_usage_layout_rows +
+        evidence.weather_texture_usage_layout_rows + evidence.froxel_buffer_usage_layout_rows +
+        evidence.readback_resource_usage_layout_rows;
+    evidence.resource_usage_layout_ready =
+        evidence.attachment_usage_layout_rows == 2U && evidence.sampled_texture_usage_layout_rows == 6U &&
+        evidence.storage_buffer_usage_layout_rows == 2U && evidence.cube_map_usage_layout_rows == 1U &&
+        evidence.weather_texture_usage_layout_rows == 3U && evidence.froxel_buffer_usage_layout_rows == 1U &&
+        evidence.readback_resource_usage_layout_rows == 5U && evidence.resource_usage_layout_rows == 20U;
     evidence.native_handle_access =
         environment_fog_vulkan_package.exposes_native_handles || physical_sky_vulkan_package.exposes_native_handles ||
         environment_ibl_vulkan_renderer_execution.native_handle_access != 0U ||
@@ -2266,6 +2318,7 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     add_required(evidence.compute_dispatches > 0U);
     add_required(evidence.texture_uploads > 0U);
     add_required(evidence.readback_rows >= 5U);
+    add_required(evidence.resource_usage_layout_ready);
     if (evidence.native_handle_access || evidence.d3d12_fallback || evidence.metal_fallback ||
         evidence.backend_parity_ready || evidence.broad_optimization_claimed) {
         ++evidence.diagnostics;
@@ -6977,6 +7030,24 @@ int main(int argc, char** argv) {
             << environment_vulkan_strict_aggregate.descriptor_set_bindings
             << " environment_vulkan_strict_aggregate_synchronization2_barriers="
             << environment_vulkan_strict_aggregate.synchronization2_barriers
+            << " environment_vulkan_strict_aggregate_resource_usage_layout_ready="
+            << (environment_vulkan_strict_aggregate.resource_usage_layout_ready ? 1 : 0)
+            << " environment_vulkan_strict_aggregate_resource_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.resource_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_attachment_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.attachment_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.sampled_texture_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.storage_buffer_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_cube_map_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.cube_map_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_weather_texture_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.weather_texture_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_froxel_buffer_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.froxel_buffer_usage_layout_rows
+            << " environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows="
+            << environment_vulkan_strict_aggregate.readback_resource_usage_layout_rows
             << " environment_vulkan_strict_aggregate_renderer_draws="
             << environment_vulkan_strict_aggregate.renderer_draws
             << " environment_vulkan_strict_aggregate_compute_dispatches="
