@@ -5268,6 +5268,8 @@
           "desktop-runtime-sample-game-environment-profile-package",
           "desktop-runtime-sample-game-environment-ready-aggregate",
           "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
+          "desktop-runtime-sample-game-environment-backend-parity",
+          "desktop-runtime-sample-game-environment-platform-readiness",
           "desktop-runtime-generated-material-shader-scaffold-package",
           "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
           "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package",
@@ -5546,6 +5548,7 @@
           "environment_metal_host_aggregate_ready",
           "environment_backend_parity_ready",
           "environment_platform_windows_d3d12_ready",
+          "environment_platform_windows_vulkan_ready",
           "environment_platform_linux_vulkan_ready",
           "environment_platform_macos_metal_ready",
           "environment_platform_ios_metal_ready",
@@ -5623,6 +5626,22 @@
         "requiredEvidence": "Windows D3D12 recipe with selected environment package smoke, runtime execution, package counters, zero diagnostics, and zero native handles.",
         "forbiddenInference": "Generic Windows build success or readiness for other desktop/mobile hosts.",
         "notes": "This row maps the existing selected D3D12 primary aggregate evidence to the exact Windows/D3D12 platform claim only."
+      },
+      {
+        "id": "environment_platform_windows_vulkan_ready",
+        "state": "host-gated",
+        "validationRecipeIds": [
+          "shader-toolchain",
+          "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "packageCounter": "environment_platform_windows_vulkan_ready",
+        "dependsOn": [
+          "environment_vulkan_strict_aggregate_ready"
+        ],
+        "requiredEvidence": "Windows Vulkan recipe with Vulkan SDK tools, validation layers, SPIR-V validation, strict runtime package smoke, Windows Vulkan runtime/driver evidence, and readback counters.",
+        "forbiddenInference": "D3D12 evidence, Linux Vulkan evidence, Android Vulkan evidence, or Vulkan compile-only evidence.",
+        "notes": "Windows Vulkan readiness is a distinct host-gated platform/backend row and cannot be inferred from the strict aggregate policy row without Windows Vulkan package execution evidence."
       },
       {
         "id": "environment_platform_linux_vulkan_ready",
@@ -5763,12 +5782,349 @@
         "notes": "Advanced artist workflow readiness is unsupported until the visible first-party authoring loop and production walkthrough land."
       }
     ],
+    "environmentPlatformReadinessRows": [
+      {
+        "id": "environment_platform_windows_d3d12",
+        "claimId": "environment_platform_windows_d3d12_ready",
+        "state": "ready",
+        "hostOs": "windows",
+        "backend": "d3d12",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "runtimeSample": "desktop-runtime-sample-game",
+        "requiredSdks": [
+          "Windows SDK",
+          "Direct3D 12 runtime",
+          "Graphics Tools debug layer"
+        ],
+        "requiredCompilers": [
+          "MSVC",
+          "DXC DXIL"
+        ],
+        "requiredValidationTools": [
+          "tools/package-desktop-runtime.ps1",
+          "tools/validate-installed-desktop-runtime.ps1",
+          "Direct3D 12 debug layer or GPU-based validation evidence"
+        ],
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-ready-aggregate",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "featureSet": [
+          "profile_v2",
+          "physical_sky",
+          "height_fog",
+          "volumetric_fog",
+          "volumetric_cloud",
+          "rain_precipitation",
+          "ibl",
+          "material_weathering",
+          "weather_audio",
+          "quality_budget"
+        ],
+        "packageSmoke": "--require-environment-platform-readiness delegates to --require-environment-ready-aggregate for Windows D3D12",
+        "packageCounters": [
+          "environment_platform_readiness_status=host_evidence_required",
+          "environment_platform_windows_d3d12_ready=1",
+          "environment_platform_windows_vulkan_ready=0",
+          "environment_platform_linux_vulkan_ready=0",
+          "environment_platform_macos_metal_ready=0",
+          "environment_platform_ios_metal_ready=0",
+          "environment_platform_android_vulkan_ready=0",
+          "environment_all_platform_unconditional_ready=0"
+        ],
+        "hostGate": "d3d12-windows-primary",
+        "blockerReason": "none",
+        "forbiddenInference": "Windows D3D12 ready does not imply Vulkan, Metal, Android, iOS, Linux, backend parity, all-platform, commercial, broad optimization, or broad environment_ready readiness.",
+        "notes": "This is the only ready platform row in Phase 8 slice 1 and is backed by package-visible Windows D3D12 aggregate counters."
+      },
+      {
+        "id": "environment_platform_windows_vulkan",
+        "claimId": "environment_platform_windows_vulkan_ready",
+        "state": "host-gated",
+        "hostOs": "windows",
+        "backend": "vulkan",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "runtimeSample": "desktop-runtime-sample-game",
+        "requiredSdks": [
+          "Vulkan SDK",
+          "Windows Vulkan runtime/driver",
+          "VK_LAYER_KHRONOS_validation"
+        ],
+        "requiredCompilers": [
+          "MSVC",
+          "DXC SPIR-V CodeGen"
+        ],
+        "requiredValidationTools": [
+          "spirv-val",
+          "Vulkan SDK tools",
+          "Vulkan validation layers",
+          "tools/package-desktop-runtime.ps1",
+          "tools/validate-installed-desktop-runtime.ps1"
+        ],
+        "validationRecipeIds": [
+          "shader-toolchain",
+          "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "featureSet": [
+          "profile_v2",
+          "physical_sky",
+          "height_fog",
+          "volumetric_fog",
+          "volumetric_cloud",
+          "rain_precipitation",
+          "ibl",
+          "quality_budget"
+        ],
+        "packageSmoke": "--require-environment-vulkan-strict-aggregate on a Windows Vulkan host plus --require-environment-platform-readiness",
+        "packageCounters": [
+          "environment_platform_windows_vulkan_ready=0",
+          "environment_platform_requires_windows_vulkan_host_evidence=1",
+          "environment_platform_readiness_host_gated_rows=5",
+          "environment_all_platform_unconditional_ready=0"
+        ],
+        "hostGate": "vulkan-strict",
+        "blockerReason": "Requires Windows Vulkan SDK, Windows Vulkan runtime/driver, validation layers, SPIR-V validation, strict package smoke, and D3D12 inference remains forbidden.",
+        "forbiddenInference": "D3D12 evidence, Linux Vulkan evidence, Android Vulkan evidence, Vulkan compile-only rows, or strict aggregate rows without Windows Vulkan package execution.",
+        "notes": "Windows Vulkan is host-gated until a Windows Vulkan package lane emits backend-local platform counters."
+      },
+      {
+        "id": "environment_platform_linux_vulkan",
+        "claimId": "environment_platform_linux_vulkan_ready",
+        "state": "host-gated",
+        "hostOs": "linux",
+        "backend": "vulkan",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "runtimeSample": "desktop-runtime-sample-game",
+        "requiredSdks": [
+          "Vulkan SDK",
+          "Linux Vulkan runtime/driver",
+          "VK_LAYER_KHRONOS_validation"
+        ],
+        "requiredCompilers": [
+          "Clang or GCC",
+          "DXC SPIR-V CodeGen"
+        ],
+        "requiredValidationTools": [
+          "spirv-val",
+          "Vulkan SDK tools",
+          "Vulkan validation layers",
+          "tools/package-desktop-runtime.ps1",
+          "tools/validate-installed-desktop-runtime.ps1"
+        ],
+        "validationRecipeIds": [
+          "shader-toolchain",
+          "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "featureSet": [
+          "profile_v2",
+          "physical_sky",
+          "height_fog",
+          "volumetric_fog",
+          "volumetric_cloud",
+          "rain_precipitation",
+          "ibl",
+          "quality_budget"
+        ],
+        "packageSmoke": "Linux Vulkan strict runtime package smoke plus --require-environment-platform-readiness",
+        "packageCounters": [
+          "environment_platform_linux_vulkan_ready=0",
+          "environment_platform_requires_linux_vulkan_host_evidence=1",
+          "environment_platform_readiness_host_gated_rows=5",
+          "environment_all_platform_unconditional_ready=0"
+        ],
+        "hostGate": "vulkan-strict-linux",
+        "blockerReason": "Requires Linux Vulkan SDK, Linux Vulkan runtime/driver, validation layers, SPIR-V validation, strict package smoke, and Windows Vulkan evidence is forbidden.",
+        "forbiddenInference": "Windows Vulkan evidence, desktop D3D12 evidence, Android Vulkan evidence, or Linux compile-only evidence.",
+        "notes": "Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts."
+      },
+      {
+        "id": "environment_platform_macos_metal",
+        "claimId": "environment_platform_macos_metal_ready",
+        "state": "host-gated",
+        "hostOs": "macos",
+        "backend": "metal",
+        "runtimeTarget": "sample_desktop_runtime_game",
+        "runtimeSample": "desktop-runtime-sample-game",
+        "requiredSdks": [
+          "macOS SDK",
+          "Xcode",
+          "Metal framework"
+        ],
+        "requiredCompilers": [
+          "AppleClang",
+          "Metal offline compiler"
+        ],
+        "requiredValidationTools": [
+          "renderer-metal-environment-aggregate-apple-host-evidence",
+          "Metal resource synchronization/readback evidence",
+          "tools/validate-environment-metal-host-aggregate.ps1"
+        ],
+        "validationRecipeIds": [
+          "renderer-metal-environment-aggregate-apple-host-evidence",
+          "renderer-metal-apple-host-evidence",
+          "shader-toolchain",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "featureSet": [
+          "profile_v2",
+          "physical_sky",
+          "height_fog",
+          "volumetric_fog",
+          "volumetric_cloud",
+          "rain_precipitation",
+          "ibl",
+          "quality_budget"
+        ],
+        "packageSmoke": "Apple-host Metal aggregate evidence plus --require-environment-platform-readiness",
+        "packageCounters": [
+          "environment_platform_macos_metal_ready=0",
+          "environment_platform_requires_macos_metal_host_evidence=1",
+          "environment_platform_readiness_host_gated_rows=5",
+          "environment_all_platform_unconditional_ready=0"
+        ],
+        "hostGate": "metal-apple",
+        "blockerReason": "Requires macOS Xcode, Metal resource and synchronization evidence, Apple-host package/runtime validation, and Windows declaration rows are forbidden.",
+        "forbiddenInference": "Windows declaration rows, D3D12 proof, Vulkan proof, iOS simulator evidence, or non-Apple host evidence.",
+        "notes": "macOS Metal readiness is not promoted by the Phase 8 Windows package-visible row map."
+      },
+      {
+        "id": "environment_platform_ios_metal",
+        "claimId": "environment_platform_ios_metal_ready",
+        "state": "host-gated",
+        "hostOs": "ios",
+        "backend": "metal",
+        "runtimeTarget": "sample_headless",
+        "runtimeSample": "ios-simulator-smoke",
+        "requiredSdks": [
+          "iOS SDK",
+          "Xcode",
+          "Metal framework"
+        ],
+        "requiredCompilers": [
+          "AppleClang",
+          "Metal offline compiler"
+        ],
+        "requiredValidationTools": [
+          "tools/check-mobile-packaging.ps1",
+          "tools/smoke-ios-package.ps1",
+          "iOS simulator or device",
+          "iOS signing validation"
+        ],
+        "validationRecipeIds": [
+          "mobile-packaging",
+          "ios-simulator-smoke",
+          "renderer-metal-apple-host-evidence",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "featureSet": [
+          "mobile-packaging",
+          "metal-runtime-view",
+          "selected-environment-feature-rows",
+          "package-smoke"
+        ],
+        "packageSmoke": "iOS simulator or device smoke plus --require-environment-platform-readiness row sync",
+        "packageCounters": [
+          "environment_platform_ios_metal_ready=0",
+          "environment_platform_requires_ios_metal_host_evidence=1",
+          "environment_platform_readiness_host_gated_rows=5",
+          "environment_all_platform_unconditional_ready=0"
+        ],
+        "hostGate": "ios-metal",
+        "blockerReason": "Requires macOS Xcode, iOS simulator or device, signing, Metal validation, mobile packaging smoke, and macOS desktop Metal inference remains forbidden.",
+        "forbiddenInference": "macOS desktop Metal evidence, Windows declarations, D3D12 proof, Vulkan proof, or package-template-only evidence.",
+        "notes": "iOS Metal remains mobile-host gated and is not proven by macOS desktop Metal alone."
+      },
+      {
+        "id": "environment_platform_android_vulkan",
+        "claimId": "environment_platform_android_vulkan_ready",
+        "state": "host-gated",
+        "hostOs": "android",
+        "backend": "vulkan",
+        "runtimeTarget": "sample_headless",
+        "runtimeSample": "android-gameactivity",
+        "requiredSdks": [
+          "Android SDK",
+          "NDK",
+          "Android Vulkan runtime/device"
+        ],
+        "requiredCompilers": [
+          "Clang",
+          "DXC SPIR-V CodeGen"
+        ],
+        "requiredValidationTools": [
+          "tools/check-mobile-packaging.ps1",
+          "Gradle",
+          "GameActivity package smoke",
+          "Android Vulkan device or emulator"
+        ],
+        "validationRecipeIds": [
+          "mobile-packaging",
+          "shader-toolchain",
+          "desktop-runtime-sample-game-environment-platform-readiness"
+        ],
+        "featureSet": [
+          "android-gameactivity",
+          "vulkan-runtime-surface",
+          "selected-environment-feature-rows",
+          "package-smoke"
+        ],
+        "packageSmoke": "Android GameActivity Vulkan package/device smoke plus --require-environment-platform-readiness row sync",
+        "packageCounters": [
+          "environment_platform_android_vulkan_ready=0",
+          "environment_platform_requires_android_vulkan_host_evidence=1",
+          "environment_platform_readiness_host_gated_rows=5",
+          "environment_all_platform_unconditional_ready=0"
+        ],
+        "hostGate": "android-gameactivity",
+        "blockerReason": "Requires Android SDK, NDK, Gradle, GameActivity runtime smoke, Android Vulkan device or emulator evidence, and desktop Vulkan inference remains forbidden.",
+        "forbiddenInference": "desktop Vulkan evidence, Windows Vulkan evidence, Linux Vulkan evidence, D3D12 proof, or Android package-template-only evidence.",
+        "notes": "Android Vulkan follows Android GameActivity and Android Vulkan host/device gates, not desktop Vulkan aggregate counters."
+      },
+      {
+        "id": "environment_platform_unconditional_all_platform",
+        "claimId": "environment_unconditional_all_platform_parity_ready",
+        "state": "unsupported",
+        "hostOs": "all",
+        "backend": "aggregate",
+        "runtimeTarget": "all-platform",
+        "runtimeSample": "none",
+        "requiredSdks": [
+          "exact platform rows required"
+        ],
+        "requiredCompilers": [
+          "exact platform rows required"
+        ],
+        "requiredValidationTools": [
+          "desktop-runtime-sample-game-environment-platform-readiness",
+          "platform-specific package smokes"
+        ],
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-platform-readiness",
+          "agent-contract"
+        ],
+        "featureSet": [
+          "all selected exact platform rows"
+        ],
+        "packageSmoke": "none; environment_all_platform_unconditional_ready=0 is emitted only as a non-claim counter",
+        "packageCounters": [
+          "environment_all_platform_unconditional_ready=0",
+          "environment_platform_readiness_ready=0"
+        ],
+        "hostGate": "all-platform-host-matrix",
+        "blockerReason": "permanent non-claim until a future architecture decision replaces exact platform rows; all-platform readiness must remain derived from explicit row evidence, not a broad aggregate.",
+        "forbiddenInference": "Any all-platform claim inferred from one ready row, one backend, one host, backend parity review-only rows, or commercial readiness plans.",
+        "notes": "This unsupported row keeps all-platform readiness as a permanent non-claim in Phase 8 slice 1."
+      }
+    ],
     "environmentCommercialUnsupportedAdjacentClaims": [
       {
         "id": "environment_unconditional_all_platform_parity_ready",
         "state": "unsupported",
         "requiredBeforeReadyClaim": [
           "environment_platform_windows_d3d12_ready",
+          "environment_platform_windows_vulkan_ready",
           "environment_platform_linux_vulkan_ready",
           "environment_platform_macos_metal_ready",
           "environment_platform_ios_metal_ready",

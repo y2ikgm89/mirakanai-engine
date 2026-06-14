@@ -104,6 +104,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_ready_aggregate{false};
     bool require_environment_vulkan_strict_aggregate{false};
     bool require_environment_backend_parity{false};
+    bool require_environment_platform_readiness{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -1390,6 +1391,33 @@ struct EnvironmentBackendParitySmokeEvidence {
     mirakana::EnvironmentBackendParityPlan plan{};
 };
 
+struct EnvironmentPlatformReadinessSmokeEvidence {
+    bool requested{false};
+    bool ready{false};
+    std::uint32_t rows{0U};
+    std::uint32_t ready_rows{0U};
+    std::uint32_t host_gated_rows{0U};
+    bool windows_d3d12_ready{false};
+    bool windows_vulkan_ready{false};
+    bool linux_vulkan_ready{false};
+    bool macos_metal_ready{false};
+    bool ios_metal_ready{false};
+    bool android_vulkan_ready{false};
+    bool requires_windows_vulkan_host_evidence{true};
+    bool requires_linux_vulkan_host_evidence{true};
+    bool requires_macos_metal_host_evidence{true};
+    bool requires_ios_metal_host_evidence{true};
+    bool requires_android_vulkan_host_evidence{true};
+    bool backend_parity_ready{false};
+    bool commercial_ready{false};
+    bool broad_environment_ready{false};
+    bool broad_optimization_ready{false};
+    bool native_handle_access{false};
+    bool invoked_gpu_commands{false};
+    std::uint32_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+};
+
 [[nodiscard]] std::string_view
 environment_lighting_package_status_name(EnvironmentLightingPackageStatus status) noexcept {
     switch (status) {
@@ -2555,6 +2583,40 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
     return evidence;
 }
 
+[[nodiscard]] EnvironmentPlatformReadinessSmokeEvidence build_environment_platform_readiness_smoke_evidence(
+    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate) {
+    EnvironmentPlatformReadinessSmokeEvidence evidence;
+    evidence.requested = options.require_environment_platform_readiness;
+    if (!evidence.requested) {
+        return evidence;
+    }
+
+    evidence.rows = 6U;
+    evidence.windows_d3d12_ready = environment_ready_aggregate.ready && environment_ready_aggregate.d3d12_primary_ready;
+    evidence.ready_rows = evidence.windows_d3d12_ready ? 1U : 0U;
+    evidence.host_gated_rows = evidence.rows - evidence.ready_rows;
+    evidence.diagnostics = evidence.windows_d3d12_ready ? 0U : 1U;
+
+    auto hash_mix = [](std::uint64_t& hash, std::uint64_t value) noexcept {
+        hash ^= value;
+        hash *= 1099511628211ULL;
+    };
+    std::uint64_t hash{1469598103934665603ULL};
+    hash_mix(hash, 20260614U);
+    hash_mix(hash, evidence.rows);
+    hash_mix(hash, evidence.ready_rows);
+    hash_mix(hash, evidence.host_gated_rows);
+    hash_mix(hash, evidence.windows_d3d12_ready ? 1U : 0U);
+    hash_mix(hash, evidence.windows_vulkan_ready ? 1U : 0U);
+    hash_mix(hash, evidence.linux_vulkan_ready ? 1U : 0U);
+    hash_mix(hash, evidence.macos_metal_ready ? 1U : 0U);
+    hash_mix(hash, evidence.ios_metal_ready ? 1U : 0U);
+    hash_mix(hash, evidence.android_vulkan_ready ? 1U : 0U);
+    hash_mix(hash, evidence.diagnostics);
+    evidence.replay_hash = hash == 0U ? 1U : hash;
+    return evidence;
+}
+
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
     const auto layout = mirakana::runtime_rhi::make_runtime_mesh_vertex_layout_desc(
         mirakana::runtime::RuntimeMeshPayload{.has_normals = true, .has_uvs = true, .has_tangent_frame = true});
@@ -3065,6 +3127,11 @@ void enable_environment_backend_parity_requirements(DesktopRuntimeGameOptions& o
     enable_environment_ready_aggregate_requirements(options);
 }
 
+void enable_environment_platform_readiness_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    options.require_environment_platform_readiness = true;
+    enable_environment_ready_aggregate_requirements(options);
+}
+
 void print_usage() {
     std::cout << "sample_desktop_runtime_game [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
@@ -3101,6 +3168,7 @@ void print_usage() {
                  "[--require-environment-ready-aggregate] "
                  "[--require-environment-vulkan-strict-aggregate] "
                  "[--require-environment-backend-parity] "
+                 "[--require-environment-platform-readiness] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -3449,6 +3517,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-backend-parity") {
             enable_environment_backend_parity_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-platform-readiness") {
+            enable_environment_platform_readiness_requirements(options);
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -5791,6 +5863,8 @@ int main(int argc, char** argv) {
         environment_volumetric_cloud_vulkan, environment_profile, environment_quality_budget);
     const auto environment_backend_parity =
         build_environment_backend_parity_smoke_evidence(options, environment_ready_aggregate);
+    const auto environment_platform_readiness =
+        build_environment_platform_readiness_smoke_evidence(options, environment_ready_aggregate);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -7352,6 +7426,48 @@ int main(int argc, char** argv) {
                   << " environment_backend_parity_broad_optimization_ready=0"
                   << " environment_backend_parity_replay_hash=" << plan.replay_hash;
     }
+    if (environment_platform_readiness.requested) {
+        std::cout
+            << " environment_platform_readiness_status=host_evidence_required"
+            << " environment_platform_readiness_ready=" << (environment_platform_readiness.ready ? 1 : 0)
+            << " environment_platform_readiness_rows=" << environment_platform_readiness.rows
+            << " environment_platform_readiness_ready_rows=" << environment_platform_readiness.ready_rows
+            << " environment_platform_readiness_host_gated_rows=" << environment_platform_readiness.host_gated_rows
+            << " environment_platform_windows_d3d12_ready="
+            << (environment_platform_readiness.windows_d3d12_ready ? 1 : 0)
+            << " environment_platform_windows_vulkan_ready="
+            << (environment_platform_readiness.windows_vulkan_ready ? 1 : 0)
+            << " environment_platform_linux_vulkan_ready="
+            << (environment_platform_readiness.linux_vulkan_ready ? 1 : 0)
+            << " environment_platform_macos_metal_ready=" << (environment_platform_readiness.macos_metal_ready ? 1 : 0)
+            << " environment_platform_ios_metal_ready=" << (environment_platform_readiness.ios_metal_ready ? 1 : 0)
+            << " environment_platform_android_vulkan_ready="
+            << (environment_platform_readiness.android_vulkan_ready ? 1 : 0)
+            << " environment_platform_requires_windows_vulkan_host_evidence="
+            << (environment_platform_readiness.requires_windows_vulkan_host_evidence ? 1 : 0)
+            << " environment_platform_requires_linux_vulkan_host_evidence="
+            << (environment_platform_readiness.requires_linux_vulkan_host_evidence ? 1 : 0)
+            << " environment_platform_requires_macos_metal_host_evidence="
+            << (environment_platform_readiness.requires_macos_metal_host_evidence ? 1 : 0)
+            << " environment_platform_requires_ios_metal_host_evidence="
+            << (environment_platform_readiness.requires_ios_metal_host_evidence ? 1 : 0)
+            << " environment_platform_requires_android_vulkan_host_evidence="
+            << (environment_platform_readiness.requires_android_vulkan_host_evidence ? 1 : 0)
+            << " environment_all_platform_unconditional_ready=0"
+            << " environment_platform_backend_parity_ready="
+            << (environment_platform_readiness.backend_parity_ready ? 1 : 0)
+            << " environment_platform_commercial_ready=" << (environment_platform_readiness.commercial_ready ? 1 : 0)
+            << " environment_platform_broad_environment_ready="
+            << (environment_platform_readiness.broad_environment_ready ? 1 : 0)
+            << " environment_platform_broad_optimization_ready="
+            << (environment_platform_readiness.broad_optimization_ready ? 1 : 0)
+            << " environment_platform_native_handle_access="
+            << (environment_platform_readiness.native_handle_access ? 1 : 0)
+            << " environment_platform_invoked_gpu_commands="
+            << (environment_platform_readiness.invoked_gpu_commands ? 1 : 0)
+            << " environment_platform_diagnostics=" << environment_platform_readiness.diagnostics
+            << " environment_platform_readiness_replay_hash=" << environment_platform_readiness.replay_hash;
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -7439,6 +7555,16 @@ int main(int argc, char** argv) {
         if (environment_backend_parity.requested &&
             (environment_backend_parity.plan.status == mirakana::EnvironmentBackendParityStatus::invalid_request ||
              !environment_backend_parity.plan.diagnostics.empty())) {
+            return 3;
+        }
+        if (environment_platform_readiness.requested &&
+            (!environment_platform_readiness.windows_d3d12_ready ||
+             environment_platform_readiness.windows_vulkan_ready || environment_platform_readiness.linux_vulkan_ready ||
+             environment_platform_readiness.macos_metal_ready || environment_platform_readiness.ios_metal_ready ||
+             environment_platform_readiness.android_vulkan_ready || environment_platform_readiness.ready ||
+             environment_platform_readiness.ready_rows != 1U || environment_platform_readiness.host_gated_rows != 5U ||
+             environment_platform_readiness.diagnostics != 0U || environment_platform_readiness.native_handle_access ||
+             environment_platform_readiness.invoked_gpu_commands || environment_platform_readiness.replay_hash == 0U)) {
             return 3;
         }
         if (options.require_postprocess &&

@@ -1189,6 +1189,7 @@ if ($null -eq $sample3dManifestEntry) {
         "--require-environment-preset-library-package", "environment_preset_library_package_status=ready",
         "--require-environment-texture-asset-pipeline-package", "environment_texture_asset_pipeline_package_status=ready", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate", "--require-environment-vulkan-strict-aggregate", "environment_vulkan_strict_aggregate_status=ready", "environment_vulkan_strict_aggregate_descriptor_set_bindings=15",
         "desktop-runtime-sample-game-environment-backend-parity", "--require-environment-backend-parity", "environment_backend_parity_status=host_evidence_required", "environment_backend_parity_ready=0", "environment_backend_parity_required_backends=3",
+        "desktop-runtime-sample-game-environment-platform-readiness", "--require-environment-platform-readiness", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_d3d12_ready=1", "environment_platform_windows_vulkan_ready=0", "environment_all_platform_unconditional_ready=0",
         "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
         "production text/font/image/atlas/accessibility remains unsupported",
         "public native or RHI handle access remains unsupported",
@@ -1199,15 +1200,13 @@ if ($null -eq $sample3dManifestEntry) {
         }
     }
     if ($sample3dManifestText.Contains("native GPU HUD or sprite overlay output remains unsupported")) { Write-Error "$sample3dManifestPath keeps a stale native GPU HUD or sprite overlay unsupported claim" }
-    $sample3dUiAtlasPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas"
-    $sample3dUiAtlasText = Get-Content -LiteralPath $sample3dUiAtlasPath -Raw
+    $sample3dUiAtlasPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas"; $sample3dUiAtlasText = Get-Content -LiteralPath $sample3dUiAtlasPath -Raw
     foreach ($needle in @("format=GameEngine.UiAtlas.v1", "source.decoding=unsupported", "atlas.packing=unsupported", "page.count=1", "image.count=1")) {
         if (-not $sample3dUiAtlasText.Contains($needle)) {
             Write-Error "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas missing cooked UI atlas metadata text: $needle"
         }
     }
-    $sample3dIndexPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
-    $sample3dIndexText = Get-Content -LiteralPath $sample3dIndexPath -Raw
+    $sample3dIndexPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"; $sample3dIndexText = Get-Content -LiteralPath $sample3dIndexPath -Raw
     foreach ($needle in @("kind=ui_atlas", "kind=ui_atlas_texture", "kind=environment_texture", "kind=environment_preset_pack")) {
         if (-not $sample3dIndexText.Contains($needle)) {
             Write-Error "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex missing sample 3D package row: $needle"
@@ -1227,14 +1226,14 @@ if ($null -eq $sample3dManifestEntry) {
         "mirakana/ui_renderer/ui_renderer.hpp",
         "--require-native-ui-overlay",
         "--require-native-ui-textured-sprite-atlas",
-        "--require-environment-texture-asset-pipeline-package", "--require-environment-preset-library-package", "--require-environment-vulkan-strict-aggregate",
+        "--require-environment-texture-asset-pipeline-package", "--require-environment-preset-library-package", "--require-environment-vulkan-strict-aggregate", "--require-environment-platform-readiness",
         "environment_preset_library_package_status=", "environment_preset_library_package_ready=",
         "environment_preset_library_package_requested=", "environment_preset_library_package_index_entry=",
         "environment_preset_library_package_file=", "environment_preset_library_preset_count=",
         "environment_preset_library_required_preset_rows=", "environment_preset_library_backend_feature_rows=",
         "environment_preset_library_sample_consumption_evidence=", "environment_preset_library_aaa_ready_claimed=",
         "environment_texture_asset_pipeline_package_status=",
-        "environment_texture_asset_pipeline_backend_policy_rows=", "environment_vulkan_strict_aggregate_status=", "environment_vulkan_strict_aggregate_ready=", "environment_vulkan_strict_aggregate_descriptor_set_bindings=", "environment_vulkan_strict_aggregate_synchronization2_barriers=", "environment_vulkan_strict_aggregate_diagnostics=", "environment_backend_parity_status=", "environment_backend_parity_ready=", "environment_backend_parity_required_backends=", "environment_backend_parity_ready_rows=", "environment_backend_parity_host_gated_rows=", "environment_backend_parity_diagnostics=", "environment_backend_parity_all_platform_ready=", "environment_backend_parity_commercial_ready=",
+        "environment_texture_asset_pipeline_backend_policy_rows=", "environment_vulkan_strict_aggregate_status=", "environment_vulkan_strict_aggregate_ready=", "environment_vulkan_strict_aggregate_descriptor_set_bindings=", "environment_vulkan_strict_aggregate_synchronization2_barriers=", "environment_vulkan_strict_aggregate_diagnostics=", "environment_backend_parity_status=", "environment_backend_parity_ready=", "environment_backend_parity_required_backends=", "environment_backend_parity_ready_rows=", "environment_backend_parity_host_gated_rows=", "environment_backend_parity_diagnostics=", "environment_backend_parity_all_platform_ready=", "environment_backend_parity_commercial_ready=", "environment_platform_readiness_status=", "environment_platform_readiness_ready=", "environment_platform_readiness_rows=", "environment_platform_readiness_host_gated_rows=", "environment_platform_windows_d3d12_ready=", "environment_platform_windows_vulkan_ready=", "environment_platform_linux_vulkan_ready=", "environment_platform_macos_metal_ready=", "environment_platform_ios_metal_ready=", "environment_platform_android_vulkan_ready=", "environment_all_platform_unconditional_ready=", "environment_platform_diagnostics=",
         "plan_scene_mesh_draws",
         "camera_primary=",
         "camera_controller_ticks=",
@@ -1324,6 +1323,7 @@ if ($null -eq $sample3dManifestEntry) {
     foreach ($needle in @('$requiresSimdDispatchPolicy', '"simd_dispatch_policy_status" = "ready"', '"simd_dispatch_policy_ready" = "1"', '"simd_dispatch_policy_requested_lane" = "auto_select"', '"simd_dispatch_policy_input_count" = "8"', '"simd_dispatch_policy_dot_product_result" = "120"', '"simd_dispatch_policy_reviewed_avx2_target_available"', '"simd_dispatch_policy_avx2_selected"', '"simd_dispatch_policy_span_inputs_used" = "1"', '"simd_dispatch_policy_raw_pointers_retained" = "0"', '"simd_dispatch_policy_native_handles_exposed" = "0"', '"simd_dispatch_policy_numa_allocation_applied" = "0"', '"simd_dispatch_policy_gpu_async_overlap_applied" = "0"', '"simd_dispatch_policy_cuda_path_used" = "0"', '"simd_dispatch_policy_hip_path_used" = "0"', '"simd_dispatch_policy_sycl_path_used" = "0"', 'scalar|sse2|avx2')) { if (-not $sample3dInstalledValidatorText.Contains($needle)) { Write-Error "tools/validate-installed-desktop-runtime.ps1 missing SIMD dispatch policy assertion: $needle" } }
     foreach ($needle in @('$requiresEnvironmentVulkanStrictAggregate', '"environment_vulkan_strict_aggregate_status" = "ready"', '"environment_vulkan_strict_aggregate_ready" = "1"', '"environment_vulkan_strict_aggregate_descriptor_set_bindings" = "15"', '"environment_vulkan_strict_aggregate_diagnostics" = "0"')) { if (-not $sample3dInstalledValidatorText.Contains($needle)) { Write-Error "tools/validate-installed-desktop-runtime.ps1 missing environment Vulkan strict aggregate assertion: $needle" } }
     foreach ($needle in @('$requiresEnvironmentBackendParity', '"environment_backend_parity_status" = "host_evidence_required"', '"environment_backend_parity_ready" = "0"', '"environment_backend_parity_required_backends" = "3"', '"environment_backend_parity_required_features" = "7"', '"environment_backend_parity_ready_rows" = "14"', '"environment_backend_parity_host_gated_rows" = "7"', '"environment_backend_parity_host_validated_backends" = "2"', '"environment_backend_parity_d3d12_primary" = "1"', '"environment_backend_parity_vulkan_strict" = "1"', '"environment_backend_parity_metal_host" = "0"', '"environment_backend_parity_requires_metal_host_evidence" = "1"', '"environment_backend_parity_diagnostics" = "0"', 'environment_backend_parity_replay_hash=[1-9]\d*')) { if (-not $sample3dInstalledValidatorText.Contains($needle)) { Write-Error "tools/validate-installed-desktop-runtime.ps1 missing environment backend parity assertion: $needle" } }
+    foreach ($needle in @('$requiresEnvironmentPlatformReadiness', '"environment_platform_readiness_status" = "host_evidence_required"', '"environment_platform_readiness_ready" = "0"', '"environment_platform_readiness_rows" = "6"', '"environment_platform_readiness_ready_rows" = "1"', '"environment_platform_readiness_host_gated_rows" = "5"', '"environment_platform_windows_d3d12_ready" = "1"', '"environment_platform_windows_vulkan_ready" = "0"', '"environment_platform_linux_vulkan_ready" = "0"', '"environment_platform_macos_metal_ready" = "0"', '"environment_platform_ios_metal_ready" = "0"', '"environment_platform_android_vulkan_ready" = "0"', '"environment_all_platform_unconditional_ready" = "0"', '"environment_platform_diagnostics" = "0"', 'environment_platform_readiness_replay_hash=[1-9]\d*')) { if (-not $sample3dInstalledValidatorText.Contains($needle)) { Write-Error "tools/validate-installed-desktop-runtime.ps1 missing environment platform readiness assertion: $needle" } }
     $sceneRendererHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw
     foreach ($needle in @(
         "SceneMeshDrawPlan",

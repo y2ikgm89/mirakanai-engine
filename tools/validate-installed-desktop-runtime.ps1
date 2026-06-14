@@ -179,11 +179,13 @@ $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--req
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
+$requiresEnvironmentPlatformReadiness = @($SmokeArgs) -contains "--require-environment-platform-readiness"
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
-    $requiresEnvironmentBackendParity
+    $requiresEnvironmentBackendParity -or
+    $requiresEnvironmentPlatformReadiness
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -206,7 +208,8 @@ $requiresEnvironmentVolumetricCloudVulkanRendererExecution = @($SmokeArgs) -cont
 $requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-environment-material-weathering"
 $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environment-audio-playback"
 $requiresEnvironmentReadyAggregate = (@($SmokeArgs) -contains "--require-environment-ready-aggregate") -or
-    $requiresEnvironmentBackendParity
+    $requiresEnvironmentBackendParity -or
+    $requiresEnvironmentPlatformReadiness
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -5730,6 +5733,41 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_backend_parity_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment backend parity replay hash."
+        }
+    }
+    if ($requiresEnvironmentPlatformReadiness) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment platform readiness" `
+            -ExpectedFields @{
+                "environment_platform_readiness_status" = "host_evidence_required"
+                "environment_platform_readiness_ready" = "0"
+                "environment_platform_readiness_rows" = "6"
+                "environment_platform_readiness_ready_rows" = "1"
+                "environment_platform_readiness_host_gated_rows" = "5"
+                "environment_platform_windows_d3d12_ready" = "1"
+                "environment_platform_windows_vulkan_ready" = "0"
+                "environment_platform_linux_vulkan_ready" = "0"
+                "environment_platform_macos_metal_ready" = "0"
+                "environment_platform_ios_metal_ready" = "0"
+                "environment_platform_android_vulkan_ready" = "0"
+                "environment_platform_requires_windows_vulkan_host_evidence" = "1"
+                "environment_platform_requires_linux_vulkan_host_evidence" = "1"
+                "environment_platform_requires_macos_metal_host_evidence" = "1"
+                "environment_platform_requires_ios_metal_host_evidence" = "1"
+                "environment_platform_requires_android_vulkan_host_evidence" = "1"
+                "environment_all_platform_unconditional_ready" = "0"
+                "environment_platform_backend_parity_ready" = "0"
+                "environment_platform_commercial_ready" = "0"
+                "environment_platform_broad_environment_ready" = "0"
+                "environment_platform_broad_optimization_ready" = "0"
+                "environment_platform_native_handle_access" = "0"
+                "environment_platform_invoked_gpu_commands" = "0"
+                "environment_platform_diagnostics" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_platform_readiness_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment platform readiness replay hash."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {
