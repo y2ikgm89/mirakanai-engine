@@ -891,7 +891,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "agent-contract",
             "default",
             "public-api-boundary", "shader-toolchain",
-            "renderer-metal-apple-host-evidence",
+            "renderer-metal-apple-host-evidence", "renderer-metal-environment-aggregate-apple-host-evidence",
             "desktop-game-runtime",
             "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
@@ -922,8 +922,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 32) {
-        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 32 recipes"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 33) {
+        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 33 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine manifest run-validation-recipe must not expose a ready apply mode"

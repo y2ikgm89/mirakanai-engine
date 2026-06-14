@@ -326,6 +326,11 @@
       "purpose": "On a macOS host with full Xcode, Metal compiler tools, and ci-macos-appleclang tooling ready, run Apple host evidence checking, configure ci-macos-appleclang, build generated environment_feature_evidence.metallib plus MK_backend_scaffold_tests and MK_renderer_quality_matrix_tests, run focused CTest for Metal backend scaffold plus renderer quality matrix evidence, and emit selected metal_environment_* counters for runtime, command queue, metallib, render/compute pipeline, render pass, cube HDR/depth/particle resources, synchronization/readback, seven ready feature rows, and zero native-handle access without marking broad Metal readiness, backend parity, broad environment_ready, or broad renderer quality ready."
     },
     {
+      "name": "renderer-metal-environment-aggregate-apple-host-evidence",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-metal-host-aggregate.ps1",
+      "purpose": "On a macOS host with full Xcode, Metal compiler tools, and ci-macos-appleclang tooling ready, first run renderer-metal-apple-host-evidence, then emit exact environment_metal_host_aggregate_* counters for selected sky, fog, cloud, precipitation, IBL, Metal command queue/buffer, metallib, render/compute pipelines, render pass, cube/HDR/depth/particle resources, synchronization/readback, zero diagnostics, zero native-handle access, zero Vulkan/D3D12 fallback, and no backend-parity, all-platform, broad-optimization, commercial, or broad environment_ready promotion by inference."
+    },
+    {
       "name": "dev-windows-editor-game-module-driver-load-tests",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-editor-game-module-driver-load-tests.ps1",
       "purpose": "On Windows with MSVC dev preset tooling, configure dev, build MK_editor_game_module_driver_probe and MK_editor_game_module_driver_load_tests, and run CTest MK_editor_game_module_driver_load_tests for same-engine-build DLL load, factory resolution, isolated session tick, stopped-state unload plus second load, and paired DynamicLibrary refcount ordering without mirakana_editor execution, active-session hot reload, or stable third-party ABI claims."
