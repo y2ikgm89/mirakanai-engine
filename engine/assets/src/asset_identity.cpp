@@ -144,6 +144,8 @@ struct AssetIdentityTextRow {
         return "physics_collision_scene";
     case AssetKind::environment_profile:
         return "environment_profile";
+    case AssetKind::environment_preset_pack:
+        return "environment_preset_pack";
     case AssetKind::mavg_cluster_graph:
         return "mavg_cluster_graph";
     case AssetKind::unknown:
@@ -200,6 +202,9 @@ struct AssetIdentityTextRow {
     }
     if (value == "environment_profile") {
         return AssetKind::environment_profile;
+    }
+    if (value == "environment_preset_pack") {
+        return AssetKind::environment_preset_pack;
     }
     if (value == "mavg_cluster_graph") {
         return AssetKind::mavg_cluster_graph;
