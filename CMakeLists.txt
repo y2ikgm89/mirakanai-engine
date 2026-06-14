@@ -931,6 +931,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_environment_policy_tests)
     add_test(NAME MK_renderer_environment_policy_tests COMMAND MK_renderer_environment_policy_tests)
 
+    add_executable(MK_env_backend_parity_tests
+        tests/unit/renderer_environment_parity_tests.cpp
+    )
+    target_link_libraries(MK_env_backend_parity_tests PRIVATE MK_renderer)
+    target_include_directories(MK_env_backend_parity_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_env_backend_parity_tests)
+    add_test(NAME MK_env_backend_parity_tests COMMAND MK_env_backend_parity_tests)
+
     add_executable(MK_renderer_physical_sky_policy_tests
         tests/unit/renderer_physical_sky_policy_tests.cpp
     )

@@ -23,3 +23,4 @@ Full workflow lives in shared skills. Start with the short `SKILL.md` routers, t
 
 Shader and GPU toolchain: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` when relevant.
 D3D12 CI policy: keep `MK_d3d12_rhi_tests` on Microsoft WARP for hosted determinism; use explicit host diagnostics or package smoke evidence for hardware-adapter proof.
+Environment backend parity: use `EnvironmentBackendParityRequest` / `plan_environment_backend_parity` from the shared rendering skills; do not promote package-visible `environment_backend_parity_ready=1` from feature-count-only, stale, inferred, host-gated, fallback, native-handle, or diagnostic-bearing rows.
