@@ -1661,6 +1661,39 @@ environment_weather_simulation_package_status_name(const mirakana::EnvironmentWe
     return 500000ULL;
 }
 
+[[nodiscard]] std::vector<mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow>
+make_environment_weather_simulation_profiler_artifact_rows(const std::uint64_t cpu_elapsed_us,
+                                                           const std::uint64_t gpu_elapsed_us) {
+    const auto bounded_cpu_elapsed = std::max<std::uint64_t>(1U, cpu_elapsed_us);
+    const auto bounded_gpu_elapsed = std::max<std::uint64_t>(1U, gpu_elapsed_us);
+    return {
+        mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow{
+            .artifact_id = "environment_weather_solver_pix_timing_capture",
+            .artifact_kind = "pix_timing_capture",
+            .artifact_path = "out/performance/sample_desktop_runtime_game/environment-weather-solver.pix3",
+            .capture_tool = "PIX",
+            .backend = "d3d12",
+            .cpu_duration_us = bounded_cpu_elapsed,
+            .gpu_duration_us = bounded_gpu_elapsed,
+            .cpu_budget_us = environment_weather_simulation_package_cpu_budget_us(),
+            .gpu_budget_us = environment_weather_simulation_package_gpu_budget_us(),
+            .source_index = 1U,
+        },
+        mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow{
+            .artifact_id = "environment_weather_solver_wpr_etl_trace",
+            .artifact_kind = "wpr_etl_trace",
+            .artifact_path = "out/performance/sample_desktop_runtime_game/environment-weather-solver.etl",
+            .capture_tool = "WPR",
+            .backend = "d3d12",
+            .cpu_duration_us = bounded_cpu_elapsed,
+            .gpu_duration_us = bounded_gpu_elapsed,
+            .cpu_budget_us = environment_weather_simulation_package_cpu_budget_us(),
+            .gpu_budget_us = environment_weather_simulation_package_gpu_budget_us(),
+            .source_index = 2U,
+        },
+    };
+}
+
 [[nodiscard]] std::uint64_t elapsed_microseconds(std::chrono::steady_clock::time_point begin,
                                                  std::chrono::steady_clock::time_point end) noexcept {
     const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
@@ -3662,6 +3695,7 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
     const auto begin = std::chrono::steady_clock::now();
     evidence.plan = mirakana::simulate_environment_weather_cpu_reference(package_desc);
     const auto end = std::chrono::steady_clock::now();
+    const auto cpu_elapsed_us = elapsed_microseconds(begin, end);
     evidence.step_count = evidence.plan.succeeded() ? 1U : 0U;
     std::uint64_t gpu_elapsed_us = 0U;
 #if defined(_WIN32)
@@ -3694,12 +3728,16 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
     evidence.solver_budget = mirakana::plan_environment_weather_simulation_solver_budget(
         mirakana::EnvironmentWeatherSimulationSolverBudgetDesc{
             .cpu_reference_package_ready = evidence.plan.succeeded(),
-            .cpu_elapsed_us = elapsed_microseconds(begin, end),
+            .cpu_elapsed_us = cpu_elapsed_us,
             .cpu_budget_us = environment_weather_simulation_package_cpu_budget_us(),
             .gpu_elapsed_us = gpu_elapsed_us,
             .gpu_budget_us =
                 evidence.d3d12_gpu_solver_ready ? environment_weather_simulation_package_gpu_budget_us() : 0U,
             .gpu_solver_package_ready = evidence.d3d12_gpu_solver_ready,
+            .profiler_artifacts =
+                evidence.d3d12_gpu_solver_ready
+                    ? make_environment_weather_simulation_profiler_artifact_rows(cpu_elapsed_us, gpu_elapsed_us)
+                    : std::vector<mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow>{},
         });
     evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
         make_environment_weather_simulation_validation_dataset_desc());
@@ -8997,7 +9035,13 @@ int main(int argc, char** argv) {
             << " environment_weather_simulation_d3d12_gpu_solver_hash="
             << environment_weather_simulation_package.d3d12_gpu_solver_hash
             << " environment_weather_simulation_solver_profiler_artifacts="
-            << (environment_weather_simulation_package.solver_budget.profiler_artifact_ready ? 1 : 0)
+            << environment_weather_simulation_package.solver_budget.profiler_artifact_count
+            << " environment_weather_simulation_solver_profiler_tool_rows="
+            << environment_weather_simulation_package.solver_budget.profiler_tool_rows
+            << " environment_weather_simulation_solver_profiler_backend_rows="
+            << environment_weather_simulation_package.solver_budget.profiler_backend_rows
+            << " environment_weather_simulation_solver_profiler_artifact_hash="
+            << environment_weather_simulation_package.solver_budget.profiler_artifact_hash
             << " environment_weather_simulation_profiler_budget_ready="
             << (environment_weather_simulation_package.solver_budget.profiler_budget_ready ? 1 : 0)
             << " environment_weather_simulation_production_solver_ready="
@@ -9215,7 +9259,12 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.d3d12_gpu_solver_backend_parity_ready ||
              environment_weather_simulation_package.d3d12_gpu_solver_failure_stage != 0U ||
              environment_weather_simulation_package.d3d12_gpu_solver_hash == 0U ||
-             environment_weather_simulation_package.solver_budget.profiler_budget_ready ||
+             !environment_weather_simulation_package.solver_budget.profiler_artifact_ready ||
+             !environment_weather_simulation_package.solver_budget.profiler_budget_ready ||
+             environment_weather_simulation_package.solver_budget.profiler_artifact_count != 2U ||
+             environment_weather_simulation_package.solver_budget.profiler_tool_rows != 2U ||
+             environment_weather_simulation_package.solver_budget.profiler_backend_rows != 1U ||
+             environment_weather_simulation_package.solver_budget.profiler_artifact_hash == 0U ||
              environment_weather_simulation_package.solver_budget.production_solver_ready ||
              environment_weather_simulation_package.solver_budget.diagnostics.size() != 0U ||
              !environment_weather_simulation_package.validation_dataset.succeeded() ||

@@ -349,6 +349,62 @@ MK_TEST("environment weather simulation package budget accepts selected d3d12 gp
     MK_REQUIRE(plan.diagnostics.empty());
 }
 
+MK_TEST("environment weather simulation package budget accepts retained profiler artifacts without production claim") {
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc desc{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 750U,
+        .cpu_budget_us = 5000U,
+        .gpu_elapsed_us = 900U,
+        .gpu_budget_us = 5000U,
+        .gpu_solver_package_ready = true,
+        .profiler_artifacts =
+            {
+                mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow{
+                    .artifact_id = "weather_solver_pix_timing",
+                    .artifact_kind = "pix_timing_capture",
+                    .artifact_path = "out/performance/sample_desktop_runtime_game/environment-weather-solver.pix3",
+                    .capture_tool = "PIX",
+                    .backend = "d3d12",
+                    .cpu_duration_us = 750U,
+                    .gpu_duration_us = 900U,
+                    .cpu_budget_us = 5000U,
+                    .gpu_budget_us = 5000U,
+                    .source_index = 1U,
+                },
+                mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow{
+                    .artifact_id = "weather_solver_wpr_etl",
+                    .artifact_kind = "wpr_etl_trace",
+                    .artifact_path = "out/performance/sample_desktop_runtime_game/environment-weather-solver.etl",
+                    .capture_tool = "WPR",
+                    .backend = "d3d12",
+                    .cpu_duration_us = 750U,
+                    .gpu_duration_us = 900U,
+                    .cpu_budget_us = 5000U,
+                    .gpu_budget_us = 5000U,
+                    .source_index = 2U,
+                },
+            },
+    };
+
+    const auto plan = mirakana::plan_environment_weather_simulation_solver_budget(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required);
+    MK_REQUIRE(plan.cpu_budget_ready);
+    MK_REQUIRE(plan.gpu_budget_ready);
+    MK_REQUIRE(plan.profiler_artifact_ready);
+    MK_REQUIRE(plan.profiler_budget_ready);
+    MK_REQUIRE(plan.profiler_artifact_count == 2U);
+    MK_REQUIRE(plan.profiler_tool_rows == 2U);
+    MK_REQUIRE(plan.profiler_backend_rows == 1U);
+    MK_REQUIRE(plan.profiler_artifact_hash != 0U);
+    MK_REQUIRE(!plan.production_solver_ready);
+    MK_REQUIRE(plan.invokes_gpu);
+    MK_REQUIRE(plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
 MK_TEST("environment weather simulation package budget fails closed for invalid or unsupported readiness claims") {
     mirakana::EnvironmentWeatherSimulationSolverBudgetDesc missing_package{};
     missing_package.cpu_budget_us = 5000U;
@@ -405,6 +461,48 @@ MK_TEST("environment weather simulation package budget fails closed for invalid 
     MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
         unsupported_plan,
         mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_production_solver_ready_claim));
+
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc invalid_profiler{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 750U,
+        .cpu_budget_us = 5000U,
+        .gpu_elapsed_us = 900U,
+        .gpu_budget_us = 5000U,
+        .gpu_solver_package_ready = true,
+        .profiler_artifacts =
+            {
+                mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow{
+                    .artifact_id = "unsafe_absolute_path",
+                    .artifact_kind = "pix_timing_capture",
+                    .artifact_path = "C:/captures/weather.pix3",
+                    .capture_tool = "PIX",
+                    .backend = "d3d12",
+                    .cpu_duration_us = 750U,
+                    .gpu_duration_us = 900U,
+                    .cpu_budget_us = 5000U,
+                    .gpu_budget_us = 5000U,
+                },
+            },
+    };
+
+    const auto invalid_profiler_plan = mirakana::plan_environment_weather_simulation_solver_budget(invalid_profiler);
+
+    MK_REQUIRE(!invalid_profiler_plan.succeeded());
+    MK_REQUIRE(!invalid_profiler_plan.profiler_artifact_ready);
+    MK_REQUIRE(!invalid_profiler_plan.profiler_budget_ready);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        invalid_profiler_plan,
+        mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::invalid_profiler_artifact));
+
+    auto wrong_root_profiler = invalid_profiler;
+    wrong_root_profiler.profiler_artifacts.front().artifact_path = "out/performance/other_game/weather.pix3";
+    const auto wrong_root_profiler_plan = mirakana::plan_environment_weather_simulation_solver_budget(invalid_profiler);
+
+    MK_REQUIRE(!wrong_root_profiler_plan.succeeded());
+    MK_REQUIRE(!wrong_root_profiler_plan.profiler_artifact_ready);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        wrong_root_profiler_plan,
+        mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::invalid_profiler_artifact));
 }
 
 MK_TEST("environment weather simulation validation dataset accepts selected canonical water-cycle cases") {

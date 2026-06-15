@@ -51,6 +51,8 @@ enum class EnvironmentWeatherSimulationSolverBudgetDiagnosticCode : std::uint8_t
     invalid_gpu_budget,
     gpu_budget_exceeded,
     unsupported_gpu_solver,
+    missing_profiler_artifacts,
+    invalid_profiler_artifact,
     unsupported_native_handle_access,
     unsupported_production_solver_ready_claim,
 };
@@ -166,6 +168,19 @@ struct EnvironmentWeatherSimulationDiagnostic {
     std::string message;
 };
 
+struct EnvironmentWeatherSimulationSolverProfilerArtifactRow {
+    std::string artifact_id;
+    std::string artifact_kind;
+    std::string artifact_path;
+    std::string capture_tool;
+    std::string backend;
+    std::uint64_t cpu_duration_us{0U};
+    std::uint64_t gpu_duration_us{0U};
+    std::uint64_t cpu_budget_us{0U};
+    std::uint64_t gpu_budget_us{0U};
+    std::uint64_t source_index{0U};
+};
+
 struct EnvironmentWeatherSimulationSolverBudgetDesc {
     bool cpu_reference_package_ready{false};
     std::uint64_t cpu_elapsed_us{0U};
@@ -173,7 +188,7 @@ struct EnvironmentWeatherSimulationSolverBudgetDesc {
     std::uint64_t gpu_elapsed_us{0U};
     std::uint64_t gpu_budget_us{0U};
     bool gpu_solver_package_ready{false};
-    bool profiler_artifact_ready{false};
+    std::vector<EnvironmentWeatherSimulationSolverProfilerArtifactRow> profiler_artifacts;
     bool request_native_handle_access{false};
     bool request_production_solver_ready_claim{false};
 };
@@ -197,6 +212,10 @@ struct EnvironmentWeatherSimulationSolverBudgetPlan {
     bool gpu_budget_over{false};
     bool profiler_artifact_ready{false};
     bool profiler_budget_ready{false};
+    std::uint32_t profiler_artifact_count{0U};
+    std::uint32_t profiler_tool_rows{0U};
+    std::uint32_t profiler_backend_rows{0U};
+    std::uint64_t profiler_artifact_hash{0U};
     bool production_solver_ready{false};
     bool invokes_gpu{false};
     bool invokes_backend{false};
