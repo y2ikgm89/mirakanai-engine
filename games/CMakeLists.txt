@@ -1560,6 +1560,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_core
             MK_animation
             MK_audio
+            MK_environment
             MK_runtime
             MK_runtime_rhi
             MK_runtime_scene

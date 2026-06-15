@@ -161,6 +161,7 @@
         "environment-audio-playback",
         "environment-preset-library-package",
         "environment-platform-readiness",
+        "environment-weather-simulation-package",
         "environment-quality-budget-evidence",
         "animation",
         "framegraph-multiqueue",
@@ -204,6 +205,7 @@
         "desktop-runtime-sample-game-environment-backend-parity",
         "desktop-runtime-sample-game-environment-platform-readiness",
         "desktop-runtime-sample-game-environment-optimization-measurement",
+        "desktop-runtime-sample-game-environment-weather-simulation-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -262,6 +264,13 @@
           "evidence": "The selected environment optimization measurement package smoke reports --require-environment-optimization-measurement, environment_optimization_measurement_status=host_evidence_required, environment_optimization_measurement_ready=0, environment_optimization_measurement_workload_rows=7, environment_optimization_measurement_required_workloads=7, environment_optimization_measurement_measured_workloads=7, environment_optimization_measurement_before_after_pairs=7, environment_optimization_measurement_backend=d3d12, environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress,asset_library_cold_load, ready D3D12 preset_pack_flythrough, storm_precipitation, dense_volumetric_fog, volumetric_cloud_sunset, snowfield_material_weathering, weather_simulation_stress, and asset_library_cold_load before/after CPU/GPU/memory/transient/upload/draw/dispatch/barrier/texture-residency/package-load/stutter counters, environment_optimization_measurement_regression_budget_rows=7, environment_optimization_measurement_over_budget=0, environment_optimization_measurement_backend_parity_ready=0, environment_broad_optimization_ready=0, zero diagnostics, zero native-handle access, zero invoked GPU commands, and a positive replay hash without promoting broad optimization, backend parity, all-platform, commercial, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-optimization-measurement"
+          ]
+        },
+        {
+          "id": "environment-weather-simulation-package-counters",
+          "evidence": "The selected environment weather simulation package smoke reports desktop-runtime-sample-game-environment-weather-simulation-package, --require-environment-weather-simulation-package, environment_weather_simulation_package_status=ready, environment_weather_simulation_package_ready=1, environment_weather_simulation_steps=1, environment_weather_simulation_cells=4, environment_weather_simulation_effective_timestep_ms=500, environment_weather_simulation_water_conservation_error_mg<=1, environment_weather_simulation_water_conservation_error_bound_mg=1, environment_weather_simulation_fallback_cpu_reference_used=1, environment_weather_simulation_invokes_gpu=0, environment_weather_simulation_invokes_backend=0, environment_weather_simulation_native_handle_access=0, environment_physical_weather_simulation_ready=0, zero diagnostics, and a positive replay hash without promoting complete physical weather simulation, backend parity, broad optimization, commercial, or broad environment_ready claims.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-weather-simulation-package"
           ]
         },
         {
@@ -448,7 +457,8 @@
             "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
             "desktop-runtime-sample-game-environment-backend-parity",
             "desktop-runtime-sample-game-environment-platform-readiness",
-            "desktop-runtime-sample-game-environment-optimization-measurement"
+            "desktop-runtime-sample-game-environment-optimization-measurement",
+            "desktop-runtime-sample-game-environment-weather-simulation-package"
           ]
         },
         {
@@ -2015,6 +2025,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-optimization-measurement",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-optimization-measurement')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-weather-simulation-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-weather-simulation-package')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",
