@@ -5996,6 +5996,18 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_native_handle_access" = "0"
                 "environment_physical_weather_simulation_ready" = "0"
                 "environment_weather_simulation_diagnostics" = "0"
+                "environment_weather_simulation_solver_budget_status" = "host_evidence_required"
+                "environment_weather_simulation_solver_budget_ready" = "0"
+                "environment_weather_simulation_cpu_reference_solver_ready" = "1"
+                "environment_weather_simulation_solver_cpu_budget_us" = "50000"
+                "environment_weather_simulation_solver_cpu_over_budget" = "0"
+                "environment_weather_simulation_gpu_solver_ready" = "0"
+                "environment_weather_simulation_solver_gpu_elapsed_us" = "0"
+                "environment_weather_simulation_solver_gpu_budget_us" = "0"
+                "environment_weather_simulation_solver_profiler_artifacts" = "0"
+                "environment_weather_simulation_profiler_budget_ready" = "0"
+                "environment_weather_simulation_production_solver_ready" = "0"
+                "environment_weather_simulation_solver_budget_diagnostics" = "0"
             }
         foreach ($field in @(
                 "environment_weather_simulation_total_water_before_mg",
@@ -6013,6 +6025,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation replay hash."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_solver_cpu_elapsed_us=\d+\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove an environment weather simulation CPU solver elapsed-time counter."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {

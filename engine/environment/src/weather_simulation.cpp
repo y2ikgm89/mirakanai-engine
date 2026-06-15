@@ -27,6 +27,16 @@ void add_diagnostic(EnvironmentWeatherSimulationPlan& plan, EnvironmentWeatherSi
     });
 }
 
+void add_diagnostic(EnvironmentWeatherSimulationSolverBudgetPlan& plan,
+                    EnvironmentWeatherSimulationSolverBudgetDiagnosticCode code, std::string field,
+                    std::string message) {
+    plan.diagnostics.push_back(EnvironmentWeatherSimulationSolverBudgetDiagnostic{
+        .code = code,
+        .field = std::move(field),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool finite_positive(const float value) noexcept {
     return std::isfinite(value) && value > 0.0F;
 }
@@ -230,6 +240,11 @@ bool EnvironmentWeatherSimulationPlan::succeeded() const noexcept {
     return diagnostics.empty();
 }
 
+bool EnvironmentWeatherSimulationSolverBudgetPlan::succeeded() const noexcept {
+    return status == EnvironmentWeatherSimulationSolverBudgetStatus::ready && diagnostics.empty() &&
+           production_solver_ready;
+}
+
 float environment_weather_saturation_vapor_kg_per_m2(const float temperature_celsius, const float air_pressure_hpa,
                                                      const float mixing_height_m) noexcept {
     if (!valid_temperature(temperature_celsius) || !finite_positive(air_pressure_hpa) ||
@@ -299,8 +314,78 @@ simulate_environment_weather_cpu_reference(const EnvironmentWeatherSimulationDes
     return plan;
 }
 
+EnvironmentWeatherSimulationSolverBudgetPlan
+plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimulationSolverBudgetDesc& desc) {
+    EnvironmentWeatherSimulationSolverBudgetPlan plan{
+        .cpu_elapsed_us = desc.cpu_elapsed_us,
+        .cpu_budget_us = desc.cpu_budget_us,
+        .gpu_elapsed_us = desc.gpu_elapsed_us,
+        .gpu_budget_us = desc.gpu_budget_us,
+        .profiler_artifact_ready = desc.profiler_artifact_ready,
+        .exposes_native_handles = desc.request_native_handle_access,
+    };
+
+    if (!desc.cpu_reference_package_ready) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_cpu_reference_package,
+                       "cpu_reference_package_ready",
+                       "weather simulation budget counters require a ready CPU reference package row");
+    }
+    if (desc.cpu_budget_us == 0U) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::invalid_cpu_budget,
+                       "cpu_budget_us", "weather simulation CPU budget must be non-zero");
+    }
+    if (desc.cpu_budget_us > 0U && desc.cpu_elapsed_us > desc.cpu_budget_us) {
+        plan.cpu_budget_over = true;
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::cpu_budget_exceeded,
+                       "cpu_elapsed_us",
+                       "weather simulation CPU reference package elapsed time exceeds the selected budget");
+    }
+    if (desc.gpu_solver_package_ready || desc.gpu_elapsed_us != 0U || desc.gpu_budget_us != 0U) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_gpu_solver,
+                       "gpu_solver_package_ready",
+                       "weather simulation GPU solver budget counters require a reviewed GPU solver package row");
+    }
+    if (desc.request_native_handle_access) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_native_handle_access,
+                       "request_native_handle_access",
+                       "weather simulation budget counters must not expose native handles");
+    }
+    if (desc.request_production_solver_ready_claim) {
+        add_diagnostic(
+            plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_production_solver_ready_claim,
+            "request_production_solver_ready_claim",
+            "CPU package timing counters alone cannot claim production weather solver readiness");
+    }
+
+    plan.cpu_budget_ready = desc.cpu_reference_package_ready && desc.cpu_budget_us > 0U &&
+                            desc.cpu_elapsed_us <= desc.cpu_budget_us && !plan.cpu_budget_over;
+    plan.profiler_budget_ready = plan.cpu_budget_ready && desc.profiler_artifact_ready;
+    plan.gpu_budget_ready = false;
+    plan.production_solver_ready = false;
+    plan.invokes_gpu = false;
+    plan.invokes_backend = false;
+
+    if (plan.cpu_budget_over) {
+        plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded;
+    } else if (!plan.diagnostics.empty()) {
+        plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::blocked;
+    } else if (plan.production_solver_ready) {
+        plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::ready;
+    } else {
+        plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required;
+    }
+
+    return plan;
+}
+
 bool has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                                    EnvironmentWeatherSimulationDiagnosticCode code) noexcept {
+    return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+bool has_environment_weather_simulation_solver_budget_diagnostic(
+    const EnvironmentWeatherSimulationSolverBudgetPlan& plan,
+    EnvironmentWeatherSimulationSolverBudgetDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 

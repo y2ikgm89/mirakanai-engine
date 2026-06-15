@@ -36,6 +36,23 @@ enum class EnvironmentWeatherSimulationDiagnosticCode : std::uint8_t {
     unsupported_physical_weather_ready_claim,
 };
 
+enum class EnvironmentWeatherSimulationSolverBudgetStatus : std::uint8_t {
+    blocked = 0,
+    host_evidence_required,
+    ready,
+    budget_exceeded,
+};
+
+enum class EnvironmentWeatherSimulationSolverBudgetDiagnosticCode : std::uint8_t {
+    none = 0,
+    missing_cpu_reference_package,
+    invalid_cpu_budget,
+    cpu_budget_exceeded,
+    unsupported_gpu_solver,
+    unsupported_native_handle_access,
+    unsupported_production_solver_ready_claim,
+};
+
 struct EnvironmentWeatherSimulationCellState {
     float temperature_celsius{15.0F};
     float vapor_water_kg_per_m2{0.0F};
@@ -83,6 +100,45 @@ struct EnvironmentWeatherSimulationDiagnostic {
     std::string message;
 };
 
+struct EnvironmentWeatherSimulationSolverBudgetDesc {
+    bool cpu_reference_package_ready{false};
+    std::uint64_t cpu_elapsed_us{0U};
+    std::uint64_t cpu_budget_us{0U};
+    std::uint64_t gpu_elapsed_us{0U};
+    std::uint64_t gpu_budget_us{0U};
+    bool gpu_solver_package_ready{false};
+    bool profiler_artifact_ready{false};
+    bool request_native_handle_access{false};
+    bool request_production_solver_ready_claim{false};
+};
+
+struct EnvironmentWeatherSimulationSolverBudgetDiagnostic {
+    EnvironmentWeatherSimulationSolverBudgetDiagnosticCode code{
+        EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::none};
+    std::string field;
+    std::string message;
+};
+
+struct EnvironmentWeatherSimulationSolverBudgetPlan {
+    EnvironmentWeatherSimulationSolverBudgetStatus status{EnvironmentWeatherSimulationSolverBudgetStatus::blocked};
+    std::uint64_t cpu_elapsed_us{0U};
+    std::uint64_t cpu_budget_us{0U};
+    std::uint64_t gpu_elapsed_us{0U};
+    std::uint64_t gpu_budget_us{0U};
+    bool cpu_budget_ready{false};
+    bool cpu_budget_over{false};
+    bool gpu_budget_ready{false};
+    bool profiler_artifact_ready{false};
+    bool profiler_budget_ready{false};
+    bool production_solver_ready{false};
+    bool invokes_gpu{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    std::vector<EnvironmentWeatherSimulationSolverBudgetDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct EnvironmentWeatherSimulationPlan {
     EnvironmentWeatherSimulationStatus status{EnvironmentWeatherSimulationStatus::blocked};
     EnvironmentWeatherSimulationDeterminism determinism{EnvironmentWeatherSimulationDeterminism::deterministic};
@@ -114,8 +170,15 @@ struct EnvironmentWeatherSimulationPlan {
 [[nodiscard]] EnvironmentWeatherSimulationPlan
 simulate_environment_weather_cpu_reference(const EnvironmentWeatherSimulationDesc& desc);
 
+[[nodiscard]] EnvironmentWeatherSimulationSolverBudgetPlan
+plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimulationSolverBudgetDesc& desc);
+
 [[nodiscard]] bool
 has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                               EnvironmentWeatherSimulationDiagnosticCode code) noexcept;
+
+[[nodiscard]] bool has_environment_weather_simulation_solver_budget_diagnostic(
+    const EnvironmentWeatherSimulationSolverBudgetPlan& plan,
+    EnvironmentWeatherSimulationSolverBudgetDiagnosticCode code) noexcept;
 
 } // namespace mirakana
