@@ -3748,6 +3748,12 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
                              : 0U;
     }
 #endif
+    evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
+        make_environment_weather_simulation_validation_dataset_desc());
+    evidence.validation_images = mirakana::plan_environment_weather_simulation_validation_images(
+        mirakana::EnvironmentWeatherSimulationValidationImageDesc{.dataset = evidence.validation_dataset});
+    evidence.artist_controls = mirakana::plan_environment_weather_simulation_artist_controls(
+        make_environment_weather_simulation_artist_control_desc());
     evidence.solver_budget = mirakana::plan_environment_weather_simulation_solver_budget(
         mirakana::EnvironmentWeatherSimulationSolverBudgetDesc{
             .cpu_reference_package_ready = evidence.plan.succeeded(),
@@ -3761,14 +3767,12 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
                 evidence.d3d12_gpu_solver_ready
                     ? make_environment_weather_simulation_profiler_artifact_rows(cpu_elapsed_us, gpu_elapsed_us)
                     : std::vector<mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow>{},
+            .validation_dataset_ready = evidence.validation_dataset.succeeded(),
+            .validation_images_ready = evidence.validation_images.succeeded(),
+            .artist_controls_ready = evidence.artist_controls.succeeded(),
             .production_solver_package_counter_reviewed = evidence.d3d12_gpu_solver_ready,
+            .production_solver_core_reviewed = evidence.d3d12_gpu_solver_ready,
         });
-    evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
-        make_environment_weather_simulation_validation_dataset_desc());
-    evidence.validation_images = mirakana::plan_environment_weather_simulation_validation_images(
-        mirakana::EnvironmentWeatherSimulationValidationImageDesc{.dataset = evidence.validation_dataset});
-    evidence.artist_controls = mirakana::plan_environment_weather_simulation_artist_controls(
-        make_environment_weather_simulation_artist_control_desc());
     return evidence;
 }
 
@@ -9078,6 +9082,10 @@ int main(int argc, char** argv) {
                                                                                                                     : 0)
             << " environment_weather_simulation_production_solver_package_counter_rows="
             << environment_weather_simulation_package.solver_budget.production_solver_package_counter_rows
+            << " environment_weather_simulation_production_solver_core_review_ready="
+            << (environment_weather_simulation_package.solver_budget.production_solver_core_review_ready ? 1 : 0)
+            << " environment_weather_simulation_production_solver_core_rows="
+            << environment_weather_simulation_package.solver_budget.production_solver_core_rows
             << " environment_weather_simulation_production_solver_ready="
             << (environment_weather_simulation_package.solver_budget.production_solver_ready ? 1 : 0)
             << " environment_weather_simulation_solver_budget_diagnostics="
@@ -9301,6 +9309,8 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.solver_budget.profiler_artifact_hash == 0U ||
              !environment_weather_simulation_package.solver_budget.production_solver_package_counter_review_ready ||
              environment_weather_simulation_package.solver_budget.production_solver_package_counter_rows != 1U ||
+             !environment_weather_simulation_package.solver_budget.production_solver_core_review_ready ||
+             environment_weather_simulation_package.solver_budget.production_solver_core_rows != 1U ||
              environment_weather_simulation_package.solver_budget.production_solver_ready ||
              !environment_weather_simulation_package.solver_budget.diagnostics.empty() ||
              !environment_weather_simulation_package.validation_dataset.succeeded() ||

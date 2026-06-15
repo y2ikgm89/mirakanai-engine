@@ -54,6 +54,7 @@ enum class EnvironmentWeatherSimulationSolverBudgetDiagnosticCode : std::uint8_t
     missing_profiler_artifacts,
     invalid_profiler_artifact,
     missing_production_solver_package_evidence,
+    missing_production_solver_core_evidence,
     unsupported_native_handle_access,
     unsupported_production_solver_ready_claim,
 };
@@ -190,7 +191,11 @@ struct EnvironmentWeatherSimulationSolverBudgetDesc {
     std::uint64_t gpu_budget_us{0U};
     bool gpu_solver_package_ready{false};
     std::vector<EnvironmentWeatherSimulationSolverProfilerArtifactRow> profiler_artifacts;
+    bool validation_dataset_ready{false};
+    bool validation_images_ready{false};
+    bool artist_controls_ready{false};
     bool production_solver_package_counter_reviewed{false};
+    bool production_solver_core_reviewed{false};
     bool request_native_handle_access{false};
     bool request_production_solver_ready_claim{false};
 };
@@ -220,6 +225,8 @@ struct EnvironmentWeatherSimulationSolverBudgetPlan {
     std::uint64_t profiler_artifact_hash{0U};
     bool production_solver_package_counter_review_ready{false};
     std::uint32_t production_solver_package_counter_rows{0U};
+    bool production_solver_core_review_ready{false};
+    std::uint32_t production_solver_core_rows{0U};
     bool production_solver_ready{false};
     bool invokes_gpu{false};
     bool invokes_backend{false};
