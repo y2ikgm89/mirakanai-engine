@@ -674,6 +674,19 @@ function Get-SampleDesktopRuntimeGameEnvironmentOptimizationMeasurementSmokeArgs
     )
 }
 
+function Get-SampleDesktopRuntimeGameEnvironmentWeatherSimulationPackageSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-environment-weather-simulation-package'
+    )
+}
+
 function Get-GeneratedMaterialShaderScaffoldPackageVulkanSmokeArgs {
     return @(
         '--smoke',

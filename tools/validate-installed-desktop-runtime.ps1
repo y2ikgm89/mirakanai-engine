@@ -181,6 +181,7 @@ $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-e
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
 $requiresEnvironmentPlatformReadiness = @($SmokeArgs) -contains "--require-environment-platform-readiness"
 $requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require-environment-optimization-measurement"
+$requiresEnvironmentWeatherSimulationPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-package"
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentPresetLibraryPackage -or
@@ -5973,6 +5974,45 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_optimization_measurement_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment optimization measurement replay hash."
+        }
+    }
+    if ($requiresEnvironmentWeatherSimulationPackage) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment weather simulation package" `
+            -ExpectedFields @{
+                "environment_weather_simulation_package_status" = "ready"
+                "environment_weather_simulation_package_ready" = "1"
+                "environment_weather_simulation_steps" = "1"
+                "environment_weather_simulation_cells" = "4"
+                "environment_weather_simulation_effective_timestep_ms" = "500"
+                "environment_weather_simulation_timestep_clamped" = "1"
+                "environment_weather_simulation_water_conservation_error_bound_mg" = "1"
+                "environment_weather_simulation_max_cell_water_conservation_error_mg_per_m2" = "0"
+                "environment_weather_simulation_fallback_cpu_reference_used" = "1"
+                "environment_weather_simulation_invokes_gpu" = "0"
+                "environment_weather_simulation_invokes_backend" = "0"
+                "environment_weather_simulation_native_handle_access" = "0"
+                "environment_physical_weather_simulation_ready" = "0"
+                "environment_weather_simulation_diagnostics" = "0"
+            }
+        foreach ($field in @(
+                "environment_weather_simulation_total_water_before_mg",
+                "environment_weather_simulation_total_water_after_mg",
+                "environment_weather_simulation_total_evaporated_mg",
+                "environment_weather_simulation_total_condensed_mg",
+                "environment_weather_simulation_total_precipitated_mg"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove positive environment weather simulation field: $field"
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_water_conservation_error_mg=[01]\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove environment weather simulation water-conservation error stayed within the selected 1 mg bound."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation replay hash."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {

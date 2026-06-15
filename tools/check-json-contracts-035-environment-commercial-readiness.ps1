@@ -337,7 +337,14 @@ $expectedEnvironmentPhysicalWeatherRows = @(
         claimId = "environment_physical_weather_simulation_ready"
         state = "ready"
         determinism = "deterministic"
-        needles = @("single-step deterministic", "MK_environment", "NWS vapor-pressure formula", "EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "water conservation error bounds", "timestep clamping", "deterministic replay hash", "environment_physical_weather_simulation_ready stays 0", "no package-visible counters", "GPU acceleration", "backend execution", "native handle access", "artist controls")
+        needles = @("single-step deterministic", "MK_environment", "NWS vapor-pressure formula", "EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "water conservation error bounds", "timestep clamping", "deterministic replay hash", "environment_physical_weather_simulation_ready stays 0", "GPU acceleration", "backend execution", "native handle access", "artist controls")
+    },
+    @{
+        id = "environment_weather_simulation_package_counters"
+        claimId = "environment_physical_weather_simulation_ready"
+        state = "ready"
+        determinism = "deterministic"
+        needles = @("desktop-runtime-sample-game-environment-weather-simulation-package", "--require-environment-weather-simulation-package", "environment_weather_simulation_package_status=ready", "environment_weather_simulation_package_ready=1", "environment_weather_simulation_steps=1", "environment_weather_simulation_cells=4", "environment_weather_simulation_effective_timestep_ms=500", "environment_weather_simulation_water_conservation_error_mg<=1", "environment_weather_simulation_water_conservation_error_bound_mg=1", "environment_weather_simulation_fallback_cpu_reference_used=1", "environment_weather_simulation_invokes_gpu=0", "environment_weather_simulation_invokes_backend=0", "environment_weather_simulation_native_handle_access=0", "environment_physical_weather_simulation_ready=0", "complete physical weather simulation remains unsupported")
     }
 )
 $environmentPhysicalWeatherRows = @($environmentCommercialLoop.environmentPhysicalWeatherSimulationRows)
@@ -456,7 +463,7 @@ foreach ($needle in @("desktop-runtime-sample-game-environment-optimization-meas
     }
 }
 $environmentPhysicalWeatherGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10
-foreach ($needle in @("EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "NWS vapor-pressure formula", "effective_timestep_s", "water", "deterministic replay hash", "GPU acceleration", "backend execution", "native handle access", "environment_physical_weather_simulation_ready=1 may be inferred")) {
+foreach ($needle in @("EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "NWS vapor-pressure formula", "effective_timestep_s", "water", "deterministic replay hash", "desktop-runtime-sample-game-environment-weather-simulation-package", "--require-environment-weather-simulation-package", "environment_weather_simulation_package_ready=1", "environment_weather_simulation_steps=1", "environment_physical_weather_simulation_ready=0", "GPU acceleration", "backend execution", "native handle access", "environment_physical_weather_simulation_ready=1 may be inferred")) {
     if (-not $environmentPhysicalWeatherGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10 missing: $needle"
     }
