@@ -331,6 +331,56 @@ void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     return kind == EnvironmentArtistWorkflowCommandKind::publish_package;
 }
 
+[[nodiscard]] std::string_view artist_workflow_asset_label(EnvironmentArtistWorkflowAssetKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowAssetKind::preset_library:
+        return "Preset Library";
+    case EnvironmentArtistWorkflowAssetKind::openexr_source:
+        return "OpenEXR Source";
+    case EnvironmentArtistWorkflowAssetKind::ktx2_basis_source:
+        return "KTX2/Basis Source";
+    case EnvironmentArtistWorkflowAssetKind::cooked_texture:
+        return "Cooked Texture";
+    case EnvironmentArtistWorkflowAssetKind::environment_profile:
+        return "Environment Profile";
+    case EnvironmentArtistWorkflowAssetKind::simulation_preset:
+        return "Simulation Preset";
+    case EnvironmentArtistWorkflowAssetKind::validation_report:
+        return "Validation Report";
+    case EnvironmentArtistWorkflowAssetKind::package_artifact:
+        return "Package Artifact";
+    }
+    return "Environment Asset";
+}
+
+[[nodiscard]] std::string_view asset_row_status_label(EnvironmentArtistWorkflowAssetRowStatus status) noexcept {
+    switch (status) {
+    case EnvironmentArtistWorkflowAssetRowStatus::ready:
+        return "ready";
+    case EnvironmentArtistWorkflowAssetRowStatus::missing:
+        return "missing";
+    case EnvironmentArtistWorkflowAssetRowStatus::blocked:
+        return "blocked";
+    }
+    return "blocked";
+}
+
+[[nodiscard]] const EnvironmentArtistWorkflowAssetBrowserInputRow*
+find_asset_browser_input(std::span<const EnvironmentArtistWorkflowAssetBrowserInputRow> inputs,
+                         EnvironmentArtistWorkflowAssetKind kind) noexcept {
+    const auto it = std::ranges::find_if(
+        inputs, [kind](const EnvironmentArtistWorkflowAssetBrowserInputRow& row) { return row.kind == kind; });
+    return it == inputs.end() ? nullptr : &(*it);
+}
+
+void add_asset_browser_diagnostic(EnvironmentArtistWorkflowAssetBrowserModel& model, std::string code,
+                                  std::string message) {
+    model.diagnostics.push_back(EnvironmentArtistWorkflowAssetBrowserDiagnosticRow{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] EnvironmentArtistWorkflowCommandRow
 make_artist_workflow_command_row(EnvironmentArtistWorkflowCommandKind kind) {
     const bool mutates = artist_workflow_command_mutates(kind);
@@ -371,6 +421,31 @@ void add_artist_workflow_report_rows(EnvironmentArtistWorkflowCommandPlan& plan)
                                    bool_text(plan.rollback_metadata_available));
     add_artist_workflow_report_row(plan, "environment.workflow.requires_confirmation", "Requires Confirmation",
                                    bool_text(plan.requires_confirmation));
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowAssetBrowserRow
+make_asset_browser_row(const EnvironmentArtistWorkflowAssetBrowserInputRow* input,
+                       EnvironmentArtistWorkflowAssetKind kind) {
+    EnvironmentArtistWorkflowAssetBrowserRow row{
+        .kind = kind,
+        .row_id = std::string{environment_artist_workflow_asset_kind_id(kind)},
+        .label = std::string{artist_workflow_asset_label(kind)},
+    };
+    if (input == nullptr) {
+        return row;
+    }
+
+    row.path = input->path;
+    row.available = input->available && !input->path.empty();
+    row.package_visible = input->package_visible;
+    row.provenance_recorded = input->provenance_recorded;
+    row.budget_recorded = input->budget_recorded;
+    row.requires_host_gate = input->requires_host_gate;
+    row.host_gate = input->host_gate;
+    row.validation_recipe_id = input->validation_recipe_id;
+    row.status = row.available ? EnvironmentArtistWorkflowAssetRowStatus::ready
+                               : EnvironmentArtistWorkflowAssetRowStatus::missing;
+    return row;
 }
 
 void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuthoringCommandRequest& request) {
@@ -543,6 +618,28 @@ std::string_view environment_artist_workflow_command_id(EnvironmentArtistWorkflo
         return "environment.command.publish.package";
     }
     return "environment.command.invalid";
+}
+
+std::string_view environment_artist_workflow_asset_kind_id(EnvironmentArtistWorkflowAssetKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowAssetKind::preset_library:
+        return "environment.workflow.asset.preset_library";
+    case EnvironmentArtistWorkflowAssetKind::openexr_source:
+        return "environment.workflow.asset.openexr_source";
+    case EnvironmentArtistWorkflowAssetKind::ktx2_basis_source:
+        return "environment.workflow.asset.ktx2_basis_source";
+    case EnvironmentArtistWorkflowAssetKind::cooked_texture:
+        return "environment.workflow.asset.cooked_texture";
+    case EnvironmentArtistWorkflowAssetKind::environment_profile:
+        return "environment.workflow.asset.environment_profile";
+    case EnvironmentArtistWorkflowAssetKind::simulation_preset:
+        return "environment.workflow.asset.simulation_preset";
+    case EnvironmentArtistWorkflowAssetKind::validation_report:
+        return "environment.workflow.asset.validation_report";
+    case EnvironmentArtistWorkflowAssetKind::package_artifact:
+        return "environment.workflow.asset.package_artifact";
+    }
+    return "environment.workflow.asset.invalid";
 }
 
 EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store, std::string_view path) {
@@ -772,6 +869,90 @@ plan_environment_artist_workflow_command(const EnvironmentAuthoringDocument& doc
     plan.status = EnvironmentArtistWorkflowCommandStatus::accepted;
     add_artist_workflow_report_rows(plan);
     return plan;
+}
+
+EnvironmentArtistWorkflowAssetBrowserModel
+make_environment_artist_workflow_asset_browser_model(const EnvironmentArtistWorkflowAssetBrowserDesc& desc) {
+    constexpr std::array kinds{
+        EnvironmentArtistWorkflowAssetKind::preset_library,      EnvironmentArtistWorkflowAssetKind::openexr_source,
+        EnvironmentArtistWorkflowAssetKind::ktx2_basis_source,   EnvironmentArtistWorkflowAssetKind::cooked_texture,
+        EnvironmentArtistWorkflowAssetKind::environment_profile, EnvironmentArtistWorkflowAssetKind::simulation_preset,
+        EnvironmentArtistWorkflowAssetKind::validation_report,   EnvironmentArtistWorkflowAssetKind::package_artifact,
+    };
+
+    EnvironmentArtistWorkflowAssetBrowserModel model;
+    model.rows.reserve(kinds.size());
+
+    if (desc.request_backend_execution || desc.request_package_script_execution || desc.request_native_handle_access) {
+        add_asset_browser_diagnostic(
+            model, "unsafe_execution",
+            "environment artist workflow asset browser is an editor-core row model and cannot execute backend work, "
+            "package scripts, or native handle access");
+    }
+
+    for (const auto kind : kinds) {
+        auto row = make_asset_browser_row(find_asset_browser_input(desc.assets, kind), kind);
+        if (row.status == EnvironmentArtistWorkflowAssetRowStatus::ready) {
+            ++model.ready_rows;
+        } else {
+            add_asset_browser_diagnostic(model, "missing_asset_row",
+                                         std::string{environment_artist_workflow_asset_kind_id(kind)} +
+                                             " is missing a reviewed asset path");
+        }
+        model.rows.push_back(std::move(row));
+    }
+
+    if (model.diagnostics.empty()) {
+        model.status = EnvironmentAuthoringStatus::ready;
+    }
+    return model;
+}
+
+mirakana::ui::UiDocument
+make_environment_artist_workflow_asset_browser_ui_model(const EnvironmentArtistWorkflowAssetBrowserModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_artist_workflow_asset_browser", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Artist Workflow Asset Browser";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_artist_workflow_asset_browser"};
+    append_label(document, root_id, "environment_artist_workflow_asset_browser.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_artist_workflow_asset_browser.ready_rows",
+                 std::to_string(model.ready_rows));
+    append_label(document, root_id, "environment_artist_workflow_asset_browser.complete_artist_workflow_ready_claimed",
+                 bool_text(model.complete_artist_workflow_ready_claimed));
+
+    auto rows_root =
+        make_child("environment_artist_workflow_asset_browser.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Artist Workflow Asset Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_artist_workflow_asset_browser.rows"};
+
+    for (const auto& row : model.rows) {
+        auto item = make_child("environment_artist_workflow_asset_browser.rows." + row.row_id, rows_id,
+                               mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = false;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_artist_workflow_asset_browser.rows." + row.row_id};
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".status",
+                     std::string{asset_row_status_label(row.status)});
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".value",
+                     row.path);
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".package",
+                     bool_text(row.package_visible));
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".provenance",
+                     bool_text(row.provenance_recorded));
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".budget",
+                     bool_text(row.budget_recorded));
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".host_gate",
+                     row.requires_host_gate ? row.host_gate : "none");
+        append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".validation",
+                     row.validation_recipe_id);
+    }
+
+    return document;
 }
 
 EnvironmentAuthoringValidationModel

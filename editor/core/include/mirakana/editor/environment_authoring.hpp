@@ -285,11 +285,83 @@ struct EnvironmentArtistWorkflowCommandPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class EnvironmentArtistWorkflowAssetKind : std::uint8_t {
+    preset_library = 0,
+    openexr_source,
+    ktx2_basis_source,
+    cooked_texture,
+    environment_profile,
+    simulation_preset,
+    validation_report,
+    package_artifact,
+};
+
+enum class EnvironmentArtistWorkflowAssetRowStatus : std::uint8_t {
+    ready = 0,
+    missing,
+    blocked,
+};
+
+struct EnvironmentArtistWorkflowAssetBrowserInputRow {
+    EnvironmentArtistWorkflowAssetKind kind{EnvironmentArtistWorkflowAssetKind::preset_library};
+    std::string path;
+    bool available{false};
+    bool package_visible{false};
+    bool provenance_recorded{false};
+    bool budget_recorded{false};
+    bool requires_host_gate{false};
+    std::string host_gate;
+    std::string validation_recipe_id;
+};
+
+struct EnvironmentArtistWorkflowAssetBrowserDesc {
+    std::vector<EnvironmentArtistWorkflowAssetBrowserInputRow> assets;
+    bool request_backend_execution{false};
+    bool request_package_script_execution{false};
+    bool request_native_handle_access{false};
+};
+
+struct EnvironmentArtistWorkflowAssetBrowserRow {
+    EnvironmentArtistWorkflowAssetKind kind{EnvironmentArtistWorkflowAssetKind::preset_library};
+    EnvironmentArtistWorkflowAssetRowStatus status{EnvironmentArtistWorkflowAssetRowStatus::missing};
+    std::string row_id;
+    std::string label;
+    std::string path;
+    bool available{false};
+    bool package_visible{false};
+    bool provenance_recorded{false};
+    bool budget_recorded{false};
+    bool requires_host_gate{false};
+    std::string host_gate;
+    std::string validation_recipe_id;
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+};
+
+struct EnvironmentArtistWorkflowAssetBrowserDiagnosticRow {
+    std::string code;
+    std::string message;
+};
+
+struct EnvironmentArtistWorkflowAssetBrowserModel {
+    EnvironmentAuthoringStatus status{EnvironmentAuthoringStatus::blocked};
+    std::size_t ready_rows{0U};
+    bool complete_artist_workflow_ready_claimed{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+    std::vector<EnvironmentArtistWorkflowAssetBrowserRow> rows;
+    std::vector<EnvironmentArtistWorkflowAssetBrowserDiagnosticRow> diagnostics;
+};
+
 [[nodiscard]] std::string_view environment_package_candidate_kind_label(EnvironmentPackageCandidateKind kind) noexcept;
 [[nodiscard]] std::string_view
 environment_package_registration_draft_status_label(EnvironmentPackageRegistrationDraftStatus status) noexcept;
 [[nodiscard]] std::string_view
 environment_artist_workflow_command_id(EnvironmentArtistWorkflowCommandKind kind) noexcept;
+[[nodiscard]] std::string_view
+environment_artist_workflow_asset_kind_id(EnvironmentArtistWorkflowAssetKind kind) noexcept;
 
 [[nodiscard]] EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store,
                                                                                std::string_view path);
@@ -309,6 +381,10 @@ make_environment_artist_workflow_command_catalog(const EnvironmentAuthoringDocum
 [[nodiscard]] EnvironmentArtistWorkflowCommandPlan
 plan_environment_artist_workflow_command(const EnvironmentAuthoringDocument& document,
                                          const EnvironmentArtistWorkflowCommandRequest& request);
+[[nodiscard]] EnvironmentArtistWorkflowAssetBrowserModel
+make_environment_artist_workflow_asset_browser_model(const EnvironmentArtistWorkflowAssetBrowserDesc& desc);
+[[nodiscard]] mirakana::ui::UiDocument
+make_environment_artist_workflow_asset_browser_ui_model(const EnvironmentArtistWorkflowAssetBrowserModel& model);
 
 [[nodiscard]] EnvironmentAuthoringValidationModel
 make_environment_authoring_validation_model(const EnvironmentAuthoringDocument& document);
