@@ -6,7 +6,7 @@ $engineForEnvironmentCommercial = Read-Json "engine/agent/manifest.json"
 $environmentCommercialSchema = Read-Json "schemas/engine-agent/ai-operable-production-loop.schema.json"
 $environmentCommercialLoop = $engineForEnvironmentCommercial.aiOperableProductionLoop
 
-foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentOptimizationMeasurementWorkloadRows", "environmentPhysicalWeatherSimulationRows", "environmentCommercialUnsupportedAdjacentClaims")) {
+foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environmentPlatformReadinessRows", "environmentOptimizationMeasurementWorkloadRows", "environmentPhysicalWeatherSimulationRows", "environmentArtistWorkflowRows", "environmentCommercialUnsupportedAdjacentClaims")) {
     if (@($environmentCommercialSchema.required) -notcontains $requiredSchemaField) {
         Write-Error "ai-operable-production-loop.schema.json must require $requiredSchemaField"
     }
@@ -442,6 +442,64 @@ foreach ($expectedWeatherRow in $expectedEnvironmentPhysicalWeatherRows) {
     }
 }
 
+$expectedEnvironmentArtistWorkflowRows = @(
+    @{
+        id = "environment_artist_workflow_command_report_foundation"
+        claimId = "environment_artist_workflow_ready"
+        state = "ready"
+        needles = @("MK_editor_core", "EnvironmentArtistWorkflowCommandKind", "EnvironmentArtistWorkflowCommandRequest", "EnvironmentArtistWorkflowCommandCatalog", "EnvironmentArtistWorkflowCommandPlan", "EnvironmentArtistWorkflowCommandReportRow", "make_environment_artist_workflow_command_catalog", "plan_environment_artist_workflow_command", "environment.command.preset.import", "environment.command.source_asset.review", "environment.command.cook.preview", "environment.command.profile_graph.edit", "environment.command.weather_timeline.edit", "environment.command.local_volume.edit", "environment.command.simulation_parameter.edit", "environment.command.quality_budget.edit", "environment.command.package.preview", "environment.command.validation.remediation", "environment.command.publish.package", "dry_run", "revision_checked_apply", "expected_revision", "rejected_stale_revision", "environment.workflow.command_id", "environment.workflow.mode", "environment.workflow.before_revision", "environment.workflow.after_revision", "environment.workflow.revision_checked", "environment.workflow.undo_supported", "environment.workflow.rollback_metadata", "backend work", "package scripts", "native handle access", "complete artist workflow readiness remains unsupported")
+    }
+)
+$environmentArtistWorkflowRows = @($environmentCommercialLoop.environmentArtistWorkflowRows)
+if ($environmentArtistWorkflowRows.Count -ne $expectedEnvironmentArtistWorkflowRows.Count) {
+    Write-Error "engine manifest environmentArtistWorkflowRows must contain exactly $($expectedEnvironmentArtistWorkflowRows.Count) rows"
+}
+$environmentArtistWorkflowRowsById = @{}
+foreach ($artistRow in $environmentArtistWorkflowRows) {
+    Assert-Properties $artistRow @("id", "claimId", "state", "owner", "commandIds", "requestModes", "revisionSafety", "reportRows", "validationRecipeIds", "blockerReason", "forbiddenInference", "notes") "engine manifest environmentArtistWorkflowRows"
+    $artistRowId = [string]$artistRow.id
+    if ($environmentArtistWorkflowRowsById.ContainsKey($artistRowId)) {
+        Write-Error "engine manifest environmentArtistWorkflowRows duplicate row id: $artistRowId"
+    }
+    $environmentArtistWorkflowRowsById[$artistRowId] = $artistRow
+    if ([string]$artistRow.claimId -ne "environment_artist_workflow_ready") {
+        Write-Error "engine manifest environmentArtistWorkflowRows '$artistRowId' must map to environment_artist_workflow_ready"
+    }
+    foreach ($arrayProperty in @("commandIds", "requestModes", "reportRows", "validationRecipeIds")) {
+        if (@($artistRow.$arrayProperty).Count -eq 0) {
+            Write-Error "engine manifest environmentArtistWorkflowRows '$artistRowId' must have at least one $arrayProperty row"
+        }
+    }
+    foreach ($recipeId in @($artistRow.validationRecipeIds)) {
+        if (-not $environmentCommercialValidationRecipeNames.ContainsKey([string]$recipeId)) {
+            Write-Error "engine manifest environmentArtistWorkflowRows '$artistRowId' references unknown validation recipe: $recipeId"
+        }
+    }
+}
+foreach ($expectedArtistRow in $expectedEnvironmentArtistWorkflowRows) {
+    $artistRowId = [string]$expectedArtistRow.id
+    if (-not $environmentArtistWorkflowRowsById.ContainsKey($artistRowId)) {
+        Write-Error "engine manifest environmentArtistWorkflowRows missing row id: $artistRowId"
+        continue
+    }
+    $artistRow = $environmentArtistWorkflowRowsById[$artistRowId]
+    if ([string]$artistRow.claimId -ne [string]$expectedArtistRow.claimId) {
+        Write-Error "engine manifest environmentArtistWorkflowRows '$artistRowId' must map to $($expectedArtistRow.claimId), not $($artistRow.claimId)"
+    }
+    if ([string]$artistRow.state -ne [string]$expectedArtistRow.state) {
+        Write-Error "engine manifest environmentArtistWorkflowRows '$artistRowId' must remain $($expectedArtistRow.state), not $($artistRow.state)"
+    }
+    if ([string]$environmentCommercialClaimsById["environment_artist_workflow_ready"].state -ne "unsupported") {
+        Write-Error "engine manifest environment_artist_workflow_ready must remain unsupported after selected artist workflow foundation rows"
+    }
+    $artistRowText = [string]::Join(" ", @([string]$artistRow.owner, [string]$artistRow.revisionSafety) + @($artistRow.commandIds) + @($artistRow.requestModes) + @($artistRow.reportRows) + @($artistRow.validationRecipeIds) + @([string]$artistRow.blockerReason, [string]$artistRow.forbiddenInference, [string]$artistRow.notes))
+    foreach ($needle in @($expectedArtistRow.needles)) {
+        if (-not $artistRowText.Contains([string]$needle)) {
+            Write-Error "engine manifest environmentArtistWorkflowRows '$artistRowId' missing workflow needle: $needle"
+        }
+    }
+}
+
 $expectedAdjacentEnvironmentCommercialClaims = @(
     "environment_unconditional_all_platform_parity_ready",
     "environment_broad_renderer_quality_ready",
@@ -508,5 +566,11 @@ $environmentPhysicalWeatherGuidance = [string]$engineForEnvironmentCommercial.ga
 foreach ($needle in @("EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "EnvironmentWeatherSimulationSolverBudgetDesc", "EnvironmentWeatherSimulationSolverBudgetPlan", "EnvironmentWeatherSimulationSolverProfilerArtifactRow", "EnvironmentWeatherSimulationValidationDatasetDesc", "EnvironmentWeatherSimulationValidationDatasetPlan", "EnvironmentWeatherSimulationValidationImageDesc", "EnvironmentWeatherSimulationValidationImagePlan", "EnvironmentWeatherSimulationValidationImageDiagnosticCode", "EnvironmentWeatherSimulationArtistControlDesc", "EnvironmentWeatherSimulationArtistControlPlan", "EnvironmentWeatherSimulationArtistControlDiagnosticCode", "D3d12EnvironmentWeatherSolverDesc", "D3d12EnvironmentWeatherSolverResult", "dispatch_environment_weather_solver", "plan_environment_weather_simulation_validation_dataset", "plan_environment_weather_simulation_validation_images", "plan_environment_weather_simulation_artist_controls", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "plan_environment_weather_simulation_solver_budget", "MK_environment_weather_simulation_tests", "MK_d3d12_environment_weather_solver_tests", "NWS vapor-pressure formula", "effective_timestep_s", "water", "deterministic replay", "validation dataset", "validation image hashes", "artist-control hash", "vapor_water_after", "cloud_water_after", "surface_water_after", "water_transfer", "relative humidity percent", "cloud cover percent", "surface wetness percent", "evaporation intensity percent", "precipitation intensity percent", "desktop-runtime-sample-game-environment-weather-simulation-package", "--require-environment-weather-simulation-package", "environment_weather_simulation_package_ready=1", "environment_weather_simulation_steps=1", "environment_weather_simulation_solver_budget_status=host_evidence_required", "environment_weather_simulation_cpu_reference_solver_ready=1", "environment_weather_simulation_gpu_solver_ready=1", "environment_weather_simulation_solver_gpu_budget_us=500000", "environment_weather_simulation_d3d12_gpu_solver_ready=1", "environment_weather_simulation_d3d12_gpu_solver_cells=4", "environment_weather_simulation_d3d12_gpu_solver_dispatches=1", "environment_weather_simulation_d3d12_gpu_solver_backend_parity_ready=0", "environment_weather_simulation_solver_profiler_artifacts=2", "environment_weather_simulation_solver_profiler_tool_rows=2", "environment_weather_simulation_solver_profiler_backend_rows=1", "environment_weather_simulation_solver_profiler_artifact_hash", "environment_weather_simulation_profiler_budget_ready=1", "environment_weather_simulation_production_solver_ready=0", "environment_weather_simulation_validation_dataset_status=ready", "environment_weather_simulation_validation_dataset_ready=1", "environment_weather_simulation_validation_image_status=ready", "environment_weather_simulation_validation_images_ready=1", "environment_weather_simulation_validation_image_rows=12", "environment_weather_simulation_validation_image_diagnostics=0", "environment_weather_simulation_artist_control_status=ready", "environment_weather_simulation_artist_controls_ready=1", "environment_weather_simulation_artist_control_rows=4", "environment_weather_simulation_artist_control_generated_cells=4", "environment_weather_simulation_artist_control_diagnostics=0", "environment_physical_weather_simulation_ready=0", "Vulkan", "Metal", "backend execution", "native handle access", "raw solver internal access", "broad physical accuracy", "visual quality", "environment_physical_weather_simulation_ready=1 may be inferred")) {
     if (-not $environmentPhysicalWeatherGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10 missing: $needle"
+    }
+}
+$environmentArtistWorkflowGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentArtistWorkflowPhase11
+foreach ($needle in @("EnvironmentArtistWorkflowCommandKind", "EnvironmentArtistWorkflowCommandRequest", "EnvironmentArtistWorkflowCommandCatalog", "EnvironmentArtistWorkflowCommandPlan", "EnvironmentArtistWorkflowCommandReportRow", "make_environment_artist_workflow_command_catalog", "plan_environment_artist_workflow_command", "environment.command.preset.import", "environment.command.source_asset.review", "environment.command.cook.preview", "environment.command.profile_graph.edit", "environment.command.weather_timeline.edit", "environment.command.local_volume.edit", "environment.command.simulation_parameter.edit", "environment.command.quality_budget.edit", "environment.command.package.preview", "environment.command.validation.remediation", "environment.command.publish.package", "dry-run", "revision-checked", "rejected_stale_revision", "environment.workflow.*", "undo/rollback", "backend execution", "package script execution", "native handle access", "environment_artist_workflow_ready=1")) {
+    if (-not $environmentArtistWorkflowGuidance.Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEnvironmentArtistWorkflowPhase11 missing: $needle"
     }
 }

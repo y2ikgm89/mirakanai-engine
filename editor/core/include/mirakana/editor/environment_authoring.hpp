@@ -197,9 +197,99 @@ struct EnvironmentAuthoringCommandPlan {
     std::vector<EnvironmentAuthoringCommandDiagnosticRow> diagnostics;
 };
 
+enum class EnvironmentArtistWorkflowCommandKind : std::uint8_t {
+    preset_import = 0,
+    source_asset_review,
+    cook_preview,
+    profile_graph_edit,
+    weather_timeline_edit,
+    local_volume_edit,
+    simulation_parameter_edit,
+    quality_budget_edit,
+    package_preview,
+    validation_remediation,
+    publish_package,
+};
+
+enum class EnvironmentArtistWorkflowCommandMode : std::uint8_t {
+    dry_run = 0,
+    apply,
+};
+
+enum class EnvironmentArtistWorkflowCommandStatus : std::uint8_t {
+    accepted = 0,
+    rejected_invalid_request,
+    rejected_stale_revision,
+    rejected_unsafe_execution,
+};
+
+struct EnvironmentArtistWorkflowCommandRequest {
+    EnvironmentArtistWorkflowCommandKind kind{EnvironmentArtistWorkflowCommandKind::preset_import};
+    EnvironmentArtistWorkflowCommandMode mode{EnvironmentArtistWorkflowCommandMode::dry_run};
+    std::uint64_t expected_revision{0U};
+    bool user_confirmed{false};
+    bool request_backend_execution{false};
+    bool request_package_script_execution{false};
+    bool request_native_handle_access{false};
+};
+
+struct EnvironmentArtistWorkflowCommandRow {
+    EnvironmentArtistWorkflowCommandKind kind{EnvironmentArtistWorkflowCommandKind::preset_import};
+    std::string command_id;
+    std::string label;
+    bool mutates_document{false};
+    bool supports_dry_run{true};
+    bool supports_revision_checked_apply{true};
+    bool supports_undo_metadata{false};
+    bool requires_confirmation{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+};
+
+struct EnvironmentArtistWorkflowCommandReportRow {
+    std::string id;
+    std::string label;
+    std::string value;
+};
+
+struct EnvironmentArtistWorkflowCommandDiagnosticRow {
+    std::string code;
+    std::string message;
+};
+
+struct EnvironmentArtistWorkflowCommandCatalog {
+    std::uint64_t revision{0U};
+    std::vector<EnvironmentArtistWorkflowCommandRow> commands;
+};
+
+struct EnvironmentArtistWorkflowCommandPlan {
+    EnvironmentArtistWorkflowCommandStatus status{EnvironmentArtistWorkflowCommandStatus::rejected_invalid_request};
+    std::string command_id;
+    std::string label;
+    bool dry_run{false};
+    bool apply{false};
+    bool mutates_document{false};
+    bool revision_checked{false};
+    bool undo_supported{false};
+    bool rollback_metadata_available{false};
+    bool requires_confirmation{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+    std::uint64_t before_revision{0U};
+    std::uint64_t after_revision{0U};
+    std::vector<EnvironmentArtistWorkflowCommandReportRow> report_rows;
+    std::vector<EnvironmentArtistWorkflowCommandDiagnosticRow> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] std::string_view environment_package_candidate_kind_label(EnvironmentPackageCandidateKind kind) noexcept;
 [[nodiscard]] std::string_view
 environment_package_registration_draft_status_label(EnvironmentPackageRegistrationDraftStatus status) noexcept;
+[[nodiscard]] std::string_view
+environment_artist_workflow_command_id(EnvironmentArtistWorkflowCommandKind kind) noexcept;
 
 [[nodiscard]] EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store,
                                                                                std::string_view path);
@@ -214,6 +304,11 @@ plan_environment_authoring_command(const EnvironmentAuthoringDocument& document,
 [[nodiscard]] UndoableAction
 make_environment_authoring_command_action(EnvironmentAuthoringDocument& document,
                                           const EnvironmentAuthoringCommandRequest& request);
+[[nodiscard]] EnvironmentArtistWorkflowCommandCatalog
+make_environment_artist_workflow_command_catalog(const EnvironmentAuthoringDocument& document);
+[[nodiscard]] EnvironmentArtistWorkflowCommandPlan
+plan_environment_artist_workflow_command(const EnvironmentAuthoringDocument& document,
+                                         const EnvironmentArtistWorkflowCommandRequest& request);
 
 [[nodiscard]] EnvironmentAuthoringValidationModel
 make_environment_authoring_validation_model(const EnvironmentAuthoringDocument& document);
