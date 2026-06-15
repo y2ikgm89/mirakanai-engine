@@ -31,6 +31,10 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#if defined(_WIN32)
+#include "mirakana/rhi/d3d12/d3d12_environment_weather_solver.hpp"
+#endif
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -1435,6 +1439,14 @@ struct EnvironmentWeatherSimulationPackageEvidence {
     mirakana::EnvironmentWeatherSimulationValidationImagePlan validation_images{};
     mirakana::EnvironmentWeatherSimulationArtistControlPlan artist_controls{};
     std::uint32_t step_count{0U};
+    bool d3d12_gpu_solver_ready{false};
+    bool d3d12_gpu_solver_native_handle_access{false};
+    bool d3d12_gpu_solver_backend_parity_ready{false};
+    std::uint32_t d3d12_gpu_solver_cells{0U};
+    std::uint32_t d3d12_gpu_solver_dispatches{0U};
+    std::uint32_t d3d12_gpu_solver_barriers{0U};
+    std::uint32_t d3d12_gpu_solver_failure_stage{0U};
+    std::uint64_t d3d12_gpu_solver_hash{0U};
 };
 
 [[nodiscard]] std::string_view
@@ -1643,6 +1655,10 @@ environment_weather_simulation_package_status_name(const mirakana::EnvironmentWe
 
 [[nodiscard]] constexpr std::uint64_t environment_weather_simulation_package_cpu_budget_us() noexcept {
     return 50000ULL;
+}
+
+[[nodiscard]] constexpr std::uint64_t environment_weather_simulation_package_gpu_budget_us() noexcept {
+    return 500000ULL;
 }
 
 [[nodiscard]] std::uint64_t elapsed_microseconds(std::chrono::steady_clock::time_point begin,
@@ -3401,6 +3417,31 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     return desc;
 }
 
+#if defined(_WIN32)
+[[nodiscard]] std::vector<mirakana::rhi::d3d12::D3d12EnvironmentWeatherSolverCellRow>
+make_d3d12_environment_weather_solver_rows(const mirakana::EnvironmentWeatherSimulationDesc& desc) {
+    std::vector<mirakana::rhi::d3d12::D3d12EnvironmentWeatherSolverCellRow> rows;
+    if (desc.initial_cells.size() != desc.forcing_rows.size()) {
+        return rows;
+    }
+    rows.reserve(desc.initial_cells.size());
+    for (std::size_t index = 0; index < desc.initial_cells.size(); ++index) {
+        const auto& state = desc.initial_cells[index];
+        const auto& forcing = desc.forcing_rows[index];
+        rows.push_back(mirakana::rhi::d3d12::D3d12EnvironmentWeatherSolverCellRow{
+            .temperature_celsius = state.temperature_celsius,
+            .vapor_water_kg_per_m2 = state.vapor_water_kg_per_m2,
+            .cloud_water_kg_per_m2 = state.cloud_water_kg_per_m2,
+            .surface_water_kg_per_m2 = state.surface_water_kg_per_m2,
+            .surface_evaporation_kg_per_m2_s = forcing.surface_evaporation_kg_per_m2_s,
+            .temperature_delta_celsius_per_s = forcing.temperature_delta_celsius_per_s,
+            .cloud_precipitation_rate_per_s = forcing.cloud_precipitation_rate_per_s,
+        });
+    }
+    return rows;
+}
+#endif
+
 [[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_environment_weather_simulation_condensation_desc() {
     const auto saturation = mirakana::environment_weather_saturation_vapor_kg_per_m2(10.0F, 1000.0F, 1000.0F);
 
@@ -3617,16 +3658,48 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
         return evidence;
     }
 
+    const auto package_desc = make_environment_weather_simulation_package_desc();
     const auto begin = std::chrono::steady_clock::now();
-    evidence.plan =
-        mirakana::simulate_environment_weather_cpu_reference(make_environment_weather_simulation_package_desc());
+    evidence.plan = mirakana::simulate_environment_weather_cpu_reference(package_desc);
     const auto end = std::chrono::steady_clock::now();
     evidence.step_count = evidence.plan.succeeded() ? 1U : 0U;
+    std::uint64_t gpu_elapsed_us = 0U;
+#if defined(_WIN32)
+    if (evidence.plan.succeeded()) {
+        const auto solver_rows = make_d3d12_environment_weather_solver_rows(package_desc);
+        const auto gpu_begin = std::chrono::steady_clock::now();
+        const auto gpu_solver = mirakana::rhi::d3d12::dispatch_environment_weather_solver(
+            mirakana::rhi::d3d12::D3d12EnvironmentWeatherSolverDesc{
+                .device = mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true, .enable_debug_layer = false},
+                .cell_rows = std::span<const mirakana::rhi::d3d12::D3d12EnvironmentWeatherSolverCellRow>{solver_rows},
+                .effective_timestep_s = evidence.plan.effective_timestep_s,
+                .air_pressure_hpa = package_desc.air_pressure_hpa,
+                .mixing_height_m = package_desc.mixing_height_m,
+            });
+        const auto gpu_end = std::chrono::steady_clock::now();
+        evidence.d3d12_gpu_solver_ready = gpu_solver.succeeded && gpu_solver.executed_gpu_solver &&
+                                          gpu_solver.output_readback_nonzero && gpu_solver.output_checksum != 0U &&
+                                          !gpu_solver.exposes_native_handles;
+        evidence.d3d12_gpu_solver_native_handle_access = gpu_solver.exposes_native_handles;
+        evidence.d3d12_gpu_solver_cells = gpu_solver.cell_count;
+        evidence.d3d12_gpu_solver_dispatches = gpu_solver.compute_dispatches;
+        evidence.d3d12_gpu_solver_barriers = gpu_solver.resource_barriers_recorded;
+        evidence.d3d12_gpu_solver_failure_stage = gpu_solver.failure_stage;
+        evidence.d3d12_gpu_solver_hash = gpu_solver.output_checksum;
+        gpu_elapsed_us = evidence.d3d12_gpu_solver_ready
+                             ? std::max<std::uint64_t>(1U, elapsed_microseconds(gpu_begin, gpu_end))
+                             : 0U;
+    }
+#endif
     evidence.solver_budget = mirakana::plan_environment_weather_simulation_solver_budget(
         mirakana::EnvironmentWeatherSimulationSolverBudgetDesc{
             .cpu_reference_package_ready = evidence.plan.succeeded(),
             .cpu_elapsed_us = elapsed_microseconds(begin, end),
             .cpu_budget_us = environment_weather_simulation_package_cpu_budget_us(),
+            .gpu_elapsed_us = gpu_elapsed_us,
+            .gpu_budget_us =
+                evidence.d3d12_gpu_solver_ready ? environment_weather_simulation_package_gpu_budget_us() : 0U,
+            .gpu_solver_package_ready = evidence.d3d12_gpu_solver_ready,
         });
     evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
         make_environment_weather_simulation_validation_dataset_desc());
@@ -8907,6 +8980,22 @@ int main(int argc, char** argv) {
             << environment_weather_simulation_package.solver_budget.gpu_elapsed_us
             << " environment_weather_simulation_solver_gpu_budget_us="
             << environment_weather_simulation_package.solver_budget.gpu_budget_us
+            << " environment_weather_simulation_d3d12_gpu_solver_ready="
+            << (environment_weather_simulation_package.d3d12_gpu_solver_ready ? 1 : 0)
+            << " environment_weather_simulation_d3d12_gpu_solver_cells="
+            << environment_weather_simulation_package.d3d12_gpu_solver_cells
+            << " environment_weather_simulation_d3d12_gpu_solver_dispatches="
+            << environment_weather_simulation_package.d3d12_gpu_solver_dispatches
+            << " environment_weather_simulation_d3d12_gpu_solver_barriers="
+            << environment_weather_simulation_package.d3d12_gpu_solver_barriers
+            << " environment_weather_simulation_d3d12_gpu_solver_native_handle_access="
+            << (environment_weather_simulation_package.d3d12_gpu_solver_native_handle_access ? 1 : 0)
+            << " environment_weather_simulation_d3d12_gpu_solver_backend_parity_ready="
+            << (environment_weather_simulation_package.d3d12_gpu_solver_backend_parity_ready ? 1 : 0)
+            << " environment_weather_simulation_d3d12_gpu_solver_failure_stage="
+            << environment_weather_simulation_package.d3d12_gpu_solver_failure_stage
+            << " environment_weather_simulation_d3d12_gpu_solver_hash="
+            << environment_weather_simulation_package.d3d12_gpu_solver_hash
             << " environment_weather_simulation_solver_profiler_artifacts="
             << (environment_weather_simulation_package.solver_budget.profiler_artifact_ready ? 1 : 0)
             << " environment_weather_simulation_profiler_budget_ready="
@@ -9114,7 +9203,18 @@ int main(int argc, char** argv) {
                  mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required ||
              !environment_weather_simulation_package.solver_budget.cpu_budget_ready ||
              environment_weather_simulation_package.solver_budget.cpu_budget_over ||
-             environment_weather_simulation_package.solver_budget.gpu_budget_ready ||
+             !environment_weather_simulation_package.solver_budget.gpu_budget_ready ||
+             environment_weather_simulation_package.solver_budget.gpu_budget_over ||
+             !environment_weather_simulation_package.solver_budget.invokes_gpu ||
+             !environment_weather_simulation_package.solver_budget.invokes_backend ||
+             !environment_weather_simulation_package.d3d12_gpu_solver_ready ||
+             environment_weather_simulation_package.d3d12_gpu_solver_cells != 4U ||
+             environment_weather_simulation_package.d3d12_gpu_solver_dispatches != 1U ||
+             environment_weather_simulation_package.d3d12_gpu_solver_barriers == 0U ||
+             environment_weather_simulation_package.d3d12_gpu_solver_native_handle_access ||
+             environment_weather_simulation_package.d3d12_gpu_solver_backend_parity_ready ||
+             environment_weather_simulation_package.d3d12_gpu_solver_failure_stage != 0U ||
+             environment_weather_simulation_package.d3d12_gpu_solver_hash == 0U ||
              environment_weather_simulation_package.solver_budget.profiler_budget_ready ||
              environment_weather_simulation_package.solver_budget.production_solver_ready ||
              environment_weather_simulation_package.solver_budget.diagnostics.size() != 0U ||
