@@ -18,6 +18,7 @@
     "environmentCommercialClaimMatrix",
     "environmentPlatformReadinessRows",
     "environmentOptimizationMeasurementWorkloadRows",
+    "environmentPhysicalWeatherSimulationRows",
     "environmentCommercialUnsupportedAdjacentClaims",
     "hostGates",
     "validationRecipeMap",
@@ -524,6 +525,62 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "regressionBudget": { "type": "string", "minLength": 1 },
+          "blockerReason": { "type": "string", "minLength": 1 },
+          "forbiddenInference": { "type": "string", "minLength": 1 },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "environmentPhysicalWeatherSimulationRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "claimId",
+          "state",
+          "model",
+          "runtimeTarget",
+          "determinism",
+          "validationRecipeIds",
+          "stateVariables",
+          "stabilityConstraints",
+          "validatedEvidence",
+          "packageVisibility",
+          "blockerReason",
+          "forbiddenInference",
+          "notes"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "claimId": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["ready", "host-gated", "unsupported"] },
+          "model": { "type": "string", "minLength": 1 },
+          "runtimeTarget": { "type": "string", "minLength": 1 },
+          "determinism": { "type": "string", "minLength": 1 },
+          "validationRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "stateVariables": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "stabilityConstraints": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "validatedEvidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "packageVisibility": { "type": "string", "minLength": 1 },
           "blockerReason": { "type": "string", "minLength": 1 },
           "forbiddenInference": { "type": "string", "minLength": 1 },
           "notes": { "type": "string", "minLength": 1 }

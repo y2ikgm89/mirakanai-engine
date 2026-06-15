@@ -5765,7 +5765,7 @@
         ],
         "requiredEvidence": "Numerical model contract, deterministic CPU reference or explicit nondeterminism contract, stability constraints, conservation/error bounds, CPU/GPU budget, fallback path, validation datasets/images, package counters, and profiler evidence.",
         "forbiddenInference": "Rain/snow/fog/cloud rendering, authored weather timelines, or particle systems.",
-        "notes": "Physical weather simulation is unsupported until a numerical model and validation evidence exist."
+        "notes": "Physical weather simulation remains unsupported. Phase 10 slice 1 adds a deterministic MK_environment CPU reference foundation with NWS vapor-pressure-derived saturation, bounded moisture transfer, water-conservation tests, timestep clamping, replay hashing, and fail-closed unsupported GPU/backend/native/ready requests, but no package counters, GPU/backend execution, profiler evidence, validation images/datasets, or artist workflow yet."
       },
       {
         "id": "environment_artist_workflow_ready",
@@ -6511,6 +6511,53 @@
         "blockerReason": "none",
         "forbiddenInference": "preset metadata, package installation, or asset-library browsing rows alone.",
         "notes": "Phase 9 slice 7 records direct D3D12 asset-library cold-load before/after package counters with WPR, PIX Timing Capture, and D3D12 timestamp-query evidence requirements. Broad optimization remains unsupported because backend parity evidence remains host-gated."
+      }
+    ],
+    "environmentPhysicalWeatherSimulationRows": [
+      {
+        "id": "environment_weather_simulation_cpu_reference_foundation",
+        "claimId": "environment_physical_weather_simulation_ready",
+        "state": "ready",
+        "model": "single-step deterministic saturated-column moisture-transfer CPU reference",
+        "runtimeTarget": "MK_environment",
+        "determinism": "deterministic",
+        "validationRecipeIds": [
+          "default",
+          "agent-contract"
+        ],
+        "stateVariables": [
+          "temperature_celsius",
+          "vapor_water_kg_per_m2",
+          "cloud_water_kg_per_m2",
+          "surface_water_kg_per_m2"
+        ],
+        "stabilityConstraints": [
+          "non-empty rectangular grid",
+          "one initial state and forcing row per cell",
+          "finite positive cell area, mixing height, air pressure, requested timestep, and max timestep",
+          "effective timestep is min(requested_timestep_s, max_timestep_s) with max_timestep_s <= 60",
+          "finite temperature in [-90, 60] Celsius",
+          "non-negative water pools and forcing rates",
+          "cloud_precipitation_rate_per_s * effective_timestep_s <= 1",
+          "requesting GPU acceleration, backend execution, native handle access, or a physical-weather ready claim fails closed"
+        ],
+        "validatedEvidence": [
+          "EnvironmentWeatherSimulationDesc",
+          "EnvironmentWeatherSimulationCellState",
+          "EnvironmentWeatherSimulationCellForcing",
+          "EnvironmentWeatherSimulationPlan",
+          "environment_weather_saturation_vapor_kg_per_m2",
+          "simulate_environment_weather_cpu_reference",
+          "MK_environment_weather_simulation_tests",
+          "NWS vapor-pressure formula",
+          "water conservation error bounds",
+          "timestep clamping",
+          "deterministic replay hash"
+        ],
+        "packageVisibility": "none in this slice; no package-visible counters; environment_physical_weather_simulation_ready stays 0 until package counters, CPU/GPU budgets, profiler evidence, validation datasets/images, GPU/backend integration, and artist controls land.",
+        "blockerReason": "none for the CPU reference foundation row; complete physical weather simulation readiness remains unsupported by the parent claim.",
+        "forbiddenInference": "rain/snow/fog/cloud rendering, authored weather timelines, particle systems, D3D12 optimization measurement rows, package smoke counters, GPU acceleration, backend execution, native handle access, validation images, or artist controls.",
+        "notes": "Phase 10 slice 1 establishes the host-independent numerical foundation only. It is not a complete physical weather simulation, not a GPU solver, not a package-visible runtime recipe, and not commercial readiness evidence."
       }
     ],
     "environmentCommercialUnsupportedAdjacentClaims": [

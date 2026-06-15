@@ -7,6 +7,7 @@ add_library(mirakana_environment
     src/material_weathering.cpp
     src/time_of_day.cpp
     src/weather.cpp
+    src/weather_simulation.cpp
 )
 
 target_include_directories(mirakana_environment
