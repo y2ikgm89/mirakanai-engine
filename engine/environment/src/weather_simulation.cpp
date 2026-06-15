@@ -594,10 +594,23 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
                        "cpu_elapsed_us",
                        "weather simulation CPU reference package elapsed time exceeds the selected budget");
     }
-    if (desc.gpu_solver_package_ready || desc.gpu_elapsed_us != 0U || desc.gpu_budget_us != 0U) {
+    const bool has_gpu_counters =
+        desc.gpu_solver_package_ready || desc.gpu_elapsed_us != 0U || desc.gpu_budget_us != 0U;
+    if (has_gpu_counters && !desc.gpu_solver_package_ready) {
         add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_gpu_solver,
                        "gpu_solver_package_ready",
                        "weather simulation GPU solver budget counters require a reviewed GPU solver package row");
+    }
+    if (desc.gpu_solver_package_ready && (desc.gpu_elapsed_us == 0U || desc.gpu_budget_us == 0U)) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::invalid_gpu_budget,
+                       "gpu_elapsed_us",
+                       "weather simulation GPU solver budget evidence requires non-zero elapsed and budget counters");
+    }
+    if (desc.gpu_solver_package_ready && desc.gpu_budget_us > 0U && desc.gpu_elapsed_us > desc.gpu_budget_us) {
+        plan.gpu_budget_over = true;
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::gpu_budget_exceeded,
+                       "gpu_elapsed_us",
+                       "weather simulation GPU solver package elapsed time exceeds the selected budget");
     }
     if (desc.request_native_handle_access) {
         add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_native_handle_access,
@@ -613,13 +626,14 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
 
     plan.cpu_budget_ready = desc.cpu_reference_package_ready && desc.cpu_budget_us > 0U &&
                             desc.cpu_elapsed_us <= desc.cpu_budget_us && !plan.cpu_budget_over;
+    plan.gpu_budget_ready = desc.gpu_solver_package_ready && desc.gpu_elapsed_us > 0U && desc.gpu_budget_us > 0U &&
+                            desc.gpu_elapsed_us <= desc.gpu_budget_us && !plan.gpu_budget_over;
     plan.profiler_budget_ready = plan.cpu_budget_ready && desc.profiler_artifact_ready;
-    plan.gpu_budget_ready = false;
     plan.production_solver_ready = false;
-    plan.invokes_gpu = false;
-    plan.invokes_backend = false;
+    plan.invokes_gpu = plan.gpu_budget_ready;
+    plan.invokes_backend = plan.gpu_budget_ready;
 
-    if (plan.cpu_budget_over) {
+    if (plan.cpu_budget_over || plan.gpu_budget_over) {
         plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded;
     } else if (!plan.diagnostics.empty()) {
         plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::blocked;

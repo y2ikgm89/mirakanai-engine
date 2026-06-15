@@ -48,6 +48,8 @@ enum class EnvironmentWeatherSimulationSolverBudgetDiagnosticCode : std::uint8_t
     missing_cpu_reference_package,
     invalid_cpu_budget,
     cpu_budget_exceeded,
+    invalid_gpu_budget,
+    gpu_budget_exceeded,
     unsupported_gpu_solver,
     unsupported_native_handle_access,
     unsupported_production_solver_ready_claim,
@@ -192,6 +194,7 @@ struct EnvironmentWeatherSimulationSolverBudgetPlan {
     bool cpu_budget_ready{false};
     bool cpu_budget_over{false};
     bool gpu_budget_ready{false};
+    bool gpu_budget_over{false};
     bool profiler_artifact_ready{false};
     bool profiler_budget_ready{false};
     bool production_solver_ready{false};

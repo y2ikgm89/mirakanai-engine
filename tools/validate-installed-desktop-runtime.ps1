@@ -6001,9 +6001,14 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_cpu_reference_solver_ready" = "1"
                 "environment_weather_simulation_solver_cpu_budget_us" = "50000"
                 "environment_weather_simulation_solver_cpu_over_budget" = "0"
-                "environment_weather_simulation_gpu_solver_ready" = "0"
-                "environment_weather_simulation_solver_gpu_elapsed_us" = "0"
-                "environment_weather_simulation_solver_gpu_budget_us" = "0"
+                "environment_weather_simulation_gpu_solver_ready" = "1"
+                "environment_weather_simulation_solver_gpu_budget_us" = "500000"
+                "environment_weather_simulation_d3d12_gpu_solver_ready" = "1"
+                "environment_weather_simulation_d3d12_gpu_solver_cells" = "4"
+                "environment_weather_simulation_d3d12_gpu_solver_dispatches" = "1"
+                "environment_weather_simulation_d3d12_gpu_solver_native_handle_access" = "0"
+                "environment_weather_simulation_d3d12_gpu_solver_backend_parity_ready" = "0"
+                "environment_weather_simulation_d3d12_gpu_solver_failure_stage" = "0"
                 "environment_weather_simulation_solver_profiler_artifacts" = "0"
                 "environment_weather_simulation_profiler_budget_ready" = "0"
                 "environment_weather_simulation_production_solver_ready" = "0"
@@ -6056,6 +6061,15 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_solver_cpu_elapsed_us=\d+\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove an environment weather simulation CPU solver elapsed-time counter."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_solver_gpu_elapsed_us=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive D3D12 environment weather simulation GPU solver elapsed-time counter."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_d3d12_gpu_solver_barriers=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove D3D12 environment weather simulation GPU solver barrier evidence."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_d3d12_gpu_solver_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive D3D12 environment weather simulation GPU solver hash."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_max_water_error_mg=[01]\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove the environment weather simulation validation dataset stayed within the selected 1 mg bound."

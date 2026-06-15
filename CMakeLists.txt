@@ -1239,6 +1239,15 @@ if(BUILD_TESTING)
         add_test(NAME MK_mavg_gpu_culling_dispatch_tests COMMAND MK_mavg_gpu_culling_dispatch_tests)
         set_tests_properties(MK_mavg_gpu_culling_dispatch_tests PROPERTIES RUN_SERIAL TRUE)
 
+        add_executable(MK_d3d12_environment_weather_solver_tests
+            tests/unit/d3d12_environment_weather_solver_tests.cpp
+        )
+        target_link_libraries(MK_d3d12_environment_weather_solver_tests PRIVATE MK_rhi_d3d12)
+        target_include_directories(MK_d3d12_environment_weather_solver_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_d3d12_environment_weather_solver_tests)
+        add_test(NAME MK_d3d12_environment_weather_solver_tests COMMAND MK_d3d12_environment_weather_solver_tests)
+        set_tests_properties(MK_d3d12_environment_weather_solver_tests PROPERTIES RUN_SERIAL TRUE)
+
         add_executable(MK_mavg_d3d12_compute_generated_indirect_consumption_tests
             tests/unit/mavg_d3d12_compute_generated_indirect_consumption_tests.cpp
         )
