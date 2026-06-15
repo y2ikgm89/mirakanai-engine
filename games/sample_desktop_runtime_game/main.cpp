@@ -1433,6 +1433,7 @@ struct EnvironmentWeatherSimulationPackageEvidence {
     mirakana::EnvironmentWeatherSimulationSolverBudgetPlan solver_budget{};
     mirakana::EnvironmentWeatherSimulationValidationDatasetPlan validation_dataset{};
     mirakana::EnvironmentWeatherSimulationValidationImagePlan validation_images{};
+    mirakana::EnvironmentWeatherSimulationArtistControlPlan artist_controls{};
     std::uint32_t step_count{0U};
 };
 
@@ -1606,6 +1607,17 @@ environment_weather_simulation_package_status_name(const mirakana::EnvironmentWe
     case mirakana::EnvironmentWeatherSimulationValidationImageStatus::blocked:
         return "blocked";
     case mirakana::EnvironmentWeatherSimulationValidationImageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view environment_weather_simulation_artist_control_status_name(
+    mirakana::EnvironmentWeatherSimulationArtistControlStatus status) noexcept {
+    switch (status) {
+    case mirakana::EnvironmentWeatherSimulationArtistControlStatus::blocked:
+        return "blocked";
+    case mirakana::EnvironmentWeatherSimulationArtistControlStatus::ready:
         return "ready";
     }
     return "unknown";
@@ -3493,6 +3505,62 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     return desc;
 }
 
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationArtistControlDesc
+make_environment_weather_simulation_artist_control_desc() {
+    mirakana::EnvironmentWeatherSimulationArtistControlDesc desc{};
+    desc.width = 2U;
+    desc.height = 2U;
+    desc.cell_area_m2 = 9.0F;
+    desc.mixing_height_m = 900.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 1.0F;
+    desc.max_timestep_s = 0.5F;
+    desc.deterministic_seed = 20260619ULL;
+    desc.cells = {
+        mirakana::EnvironmentWeatherSimulationArtistControlCell{
+            .control_id = "warm_humid_lowland",
+            .temperature_celsius = 18.0F,
+            .relative_humidity_percent = 92.0F,
+            .cloud_cover_percent = 55.0F,
+            .surface_wetness_percent = 30.0F,
+            .evaporation_intensity_percent = 25.0F,
+            .precipitation_intensity_percent = 10.0F,
+            .source_index = 1U,
+        },
+        mirakana::EnvironmentWeatherSimulationArtistControlCell{
+            .control_id = "cold_cloud_bank",
+            .temperature_celsius = 2.0F,
+            .relative_humidity_percent = 88.0F,
+            .cloud_cover_percent = 85.0F,
+            .surface_wetness_percent = 45.0F,
+            .evaporation_intensity_percent = 5.0F,
+            .precipitation_intensity_percent = 35.0F,
+            .source_index = 2U,
+        },
+        mirakana::EnvironmentWeatherSimulationArtistControlCell{
+            .control_id = "dry_ridge",
+            .temperature_celsius = 26.0F,
+            .relative_humidity_percent = 35.0F,
+            .cloud_cover_percent = 10.0F,
+            .surface_wetness_percent = 8.0F,
+            .evaporation_intensity_percent = 60.0F,
+            .precipitation_intensity_percent = 0.0F,
+            .source_index = 3U,
+        },
+        mirakana::EnvironmentWeatherSimulationArtistControlCell{
+            .control_id = "wet_snowfield",
+            .temperature_celsius = -4.0F,
+            .relative_humidity_percent = 70.0F,
+            .cloud_cover_percent = 65.0F,
+            .surface_wetness_percent = 80.0F,
+            .evaporation_intensity_percent = 3.0F,
+            .precipitation_intensity_percent = 20.0F,
+            .source_index = 4U,
+        },
+    };
+    return desc;
+}
+
 [[nodiscard]] mirakana::EnvironmentWeatherSimulationValidationDatasetDesc
 make_environment_weather_simulation_validation_dataset_desc() {
     const auto condensation_plan =
@@ -3564,6 +3632,8 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
         make_environment_weather_simulation_validation_dataset_desc());
     evidence.validation_images = mirakana::plan_environment_weather_simulation_validation_images(
         mirakana::EnvironmentWeatherSimulationValidationImageDesc{.dataset = evidence.validation_dataset});
+    evidence.artist_controls = mirakana::plan_environment_weather_simulation_artist_controls(
+        make_environment_weather_simulation_artist_control_desc());
     return evidence;
 }
 
@@ -8876,7 +8946,30 @@ int main(int argc, char** argv) {
             << " environment_weather_simulation_validation_diagnostics=" << validation_dataset.diagnostics.size()
             << " environment_weather_simulation_validation_image_diagnostics=" << validation_images.diagnostics.size()
             << " environment_weather_simulation_validation_dataset_hash=" << validation_dataset.dataset_hash
-            << " environment_weather_simulation_validation_image_hash=" << validation_images.image_hash;
+            << " environment_weather_simulation_validation_image_hash=" << validation_images.image_hash
+            << " environment_weather_simulation_artist_control_status="
+            << environment_weather_simulation_artist_control_status_name(
+                   environment_weather_simulation_package.artist_controls.status)
+            << " environment_weather_simulation_artist_controls_ready="
+            << (environment_weather_simulation_package.artist_controls.artist_controls_ready ? 1 : 0)
+            << " environment_weather_simulation_artist_control_rows="
+            << environment_weather_simulation_package.artist_controls.control_row_count
+            << " environment_weather_simulation_artist_control_generated_cells="
+            << environment_weather_simulation_package.artist_controls.generated_cell_count
+            << " environment_weather_simulation_artist_control_raw_solver_internal_access="
+            << (environment_weather_simulation_package.artist_controls.raw_solver_internal_access ? 1 : 0)
+            << " environment_weather_simulation_artist_control_native_handle_access="
+            << (environment_weather_simulation_package.artist_controls.exposes_native_handles ? 1 : 0)
+            << " environment_weather_simulation_artist_control_invokes_gpu="
+            << (environment_weather_simulation_package.artist_controls.invokes_gpu ? 1 : 0)
+            << " environment_weather_simulation_artist_control_invokes_backend="
+            << (environment_weather_simulation_package.artist_controls.invokes_backend ? 1 : 0)
+            << " environment_weather_simulation_artist_control_physical_weather_ready="
+            << (environment_weather_simulation_package.artist_controls.physical_weather_ready ? 1 : 0)
+            << " environment_weather_simulation_artist_control_diagnostics="
+            << environment_weather_simulation_package.artist_controls.diagnostics.size()
+            << " environment_weather_simulation_artist_control_hash="
+            << environment_weather_simulation_package.artist_controls.control_hash;
     }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
@@ -9058,7 +9151,20 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.validation_images.invokes_backend ||
              environment_weather_simulation_package.validation_images.exposes_native_handles ||
              environment_weather_simulation_package.validation_images.diagnostics.size() != 0U ||
-             environment_weather_simulation_package.validation_images.image_hash == 0U)) {
+             environment_weather_simulation_package.validation_images.image_hash == 0U ||
+             !environment_weather_simulation_package.artist_controls.succeeded() ||
+             environment_weather_simulation_package.artist_controls.status !=
+                 mirakana::EnvironmentWeatherSimulationArtistControlStatus::ready ||
+             !environment_weather_simulation_package.artist_controls.artist_controls_ready ||
+             environment_weather_simulation_package.artist_controls.control_row_count != 4U ||
+             environment_weather_simulation_package.artist_controls.generated_cell_count != 4U ||
+             environment_weather_simulation_package.artist_controls.raw_solver_internal_access ||
+             environment_weather_simulation_package.artist_controls.exposes_native_handles ||
+             environment_weather_simulation_package.artist_controls.invokes_gpu ||
+             environment_weather_simulation_package.artist_controls.invokes_backend ||
+             environment_weather_simulation_package.artist_controls.physical_weather_ready ||
+             environment_weather_simulation_package.artist_controls.diagnostics.size() != 0U ||
+             environment_weather_simulation_package.artist_controls.control_hash == 0U)) {
             return 3;
         }
         if (options.require_postprocess &&

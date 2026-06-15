@@ -65,6 +65,17 @@ void add_diagnostic(EnvironmentWeatherSimulationValidationImagePlan& plan,
     });
 }
 
+void add_diagnostic(EnvironmentWeatherSimulationArtistControlPlan& plan,
+                    EnvironmentWeatherSimulationArtistControlDiagnosticCode code, std::string field,
+                    std::string message, std::uint32_t source_index) {
+    plan.diagnostics.push_back(EnvironmentWeatherSimulationArtistControlDiagnostic{
+        .code = code,
+        .field = std::move(field),
+        .message = std::move(message),
+        .source_index = source_index,
+    });
+}
+
 [[nodiscard]] bool finite_positive(const float value) noexcept {
     return std::isfinite(value) && value > 0.0F;
 }
@@ -78,6 +89,14 @@ void add_diagnostic(EnvironmentWeatherSimulationValidationImagePlan& plan,
            value <= static_cast<float>(maximum_temperature_celsius);
 }
 
+[[nodiscard]] bool valid_percent(const float value) noexcept {
+    return std::isfinite(value) && value >= 0.0F && value <= 100.0F;
+}
+
+[[nodiscard]] float percent_to_fraction(const float value) noexcept {
+    return std::clamp(value, 0.0F, 100.0F) / 100.0F;
+}
+
 [[nodiscard]] std::uint64_t quantize_for_hash(const double value) noexcept {
     if (!std::isfinite(value)) {
         return 0ULL;
@@ -89,6 +108,13 @@ void add_diagnostic(EnvironmentWeatherSimulationValidationImagePlan& plan,
 void hash_combine(std::uint64_t& hash, const std::uint64_t value) noexcept {
     hash ^= value;
     hash *= fnv_prime;
+}
+
+void hash_combine_string(std::uint64_t& hash, std::string_view value) noexcept {
+    for (const unsigned char ch : value) {
+        hash_combine(hash, static_cast<std::uint64_t>(ch));
+    }
+    hash_combine(hash, 0ULL);
 }
 
 void hash_combine_float(std::uint64_t& hash, const double value) noexcept {
@@ -169,6 +195,10 @@ canonical_validation_case_id(const EnvironmentWeatherSimulationValidationCaseKin
     return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_';
 }
 
+[[nodiscard]] bool valid_artist_control_id(std::string_view id) {
+    return !id.empty() && std::ranges::all_of(id, is_case_id_char);
+}
+
 [[nodiscard]] bool valid_validation_case_id(const EnvironmentWeatherSimulationValidationCase& row) {
     return !row.case_id.empty() && std::ranges::all_of(row.case_id, is_case_id_char) &&
            row.case_id == canonical_validation_case_id(row.kind);
@@ -217,6 +247,45 @@ canonical_validation_case_id(const EnvironmentWeatherSimulationValidationCaseKin
         hash_combine(hash, row.pixel_count);
         hash_combine(hash, row.max_sample_mg_per_m2);
         hash_combine(hash, row.checksum);
+    }
+    hash_combine(hash, plan.diagnostics.size());
+    return hash == 0ULL ? fnv_offset_basis : hash;
+}
+
+[[nodiscard]] std::uint64_t
+build_artist_control_hash(const EnvironmentWeatherSimulationArtistControlDesc& desc,
+                          const EnvironmentWeatherSimulationArtistControlPlan& plan) noexcept {
+    std::uint64_t hash = fnv_offset_basis;
+    hash_combine(hash, desc.deterministic_seed);
+    hash_combine(hash, desc.width);
+    hash_combine(hash, desc.height);
+    hash_combine_float(hash, desc.cell_area_m2);
+    hash_combine_float(hash, desc.mixing_height_m);
+    hash_combine_float(hash, desc.air_pressure_hpa);
+    hash_combine_float(hash, desc.requested_timestep_s);
+    hash_combine_float(hash, desc.max_timestep_s);
+    hash_combine(hash, plan.control_row_count);
+    hash_combine(hash, plan.generated_cell_count);
+    for (const auto& cell : desc.cells) {
+        hash_combine_string(hash, cell.control_id);
+        hash_combine_float(hash, cell.temperature_celsius);
+        hash_combine_float(hash, cell.relative_humidity_percent);
+        hash_combine_float(hash, cell.cloud_cover_percent);
+        hash_combine_float(hash, cell.surface_wetness_percent);
+        hash_combine_float(hash, cell.evaporation_intensity_percent);
+        hash_combine_float(hash, cell.precipitation_intensity_percent);
+        hash_combine(hash, cell.source_index);
+    }
+    for (const auto& state : plan.preview_desc.initial_cells) {
+        hash_combine_float(hash, state.temperature_celsius);
+        hash_combine_float(hash, state.vapor_water_kg_per_m2);
+        hash_combine_float(hash, state.cloud_water_kg_per_m2);
+        hash_combine_float(hash, state.surface_water_kg_per_m2);
+    }
+    for (const auto& forcing : plan.preview_desc.forcing_rows) {
+        hash_combine_float(hash, forcing.surface_evaporation_kg_per_m2_s);
+        hash_combine_float(hash, forcing.temperature_delta_celsius_per_s);
+        hash_combine_float(hash, forcing.cloud_precipitation_rate_per_s);
     }
     hash_combine(hash, plan.diagnostics.size());
     return hash == 0ULL ? fnv_offset_basis : hash;
@@ -423,6 +492,11 @@ bool EnvironmentWeatherSimulationValidationDatasetPlan::succeeded() const noexce
 bool EnvironmentWeatherSimulationValidationImagePlan::succeeded() const noexcept {
     return status == EnvironmentWeatherSimulationValidationImageStatus::ready && diagnostics.empty() &&
            validation_images_ready;
+}
+
+bool EnvironmentWeatherSimulationArtistControlPlan::succeeded() const noexcept {
+    return status == EnvironmentWeatherSimulationArtistControlStatus::ready && diagnostics.empty() &&
+           artist_controls_ready;
 }
 
 float environment_weather_saturation_vapor_kg_per_m2(const float temperature_celsius, const float air_pressure_hpa,
@@ -753,6 +827,135 @@ plan_environment_weather_simulation_validation_images(const EnvironmentWeatherSi
     return plan;
 }
 
+EnvironmentWeatherSimulationArtistControlPlan
+plan_environment_weather_simulation_artist_controls(const EnvironmentWeatherSimulationArtistControlDesc& desc) {
+    EnvironmentWeatherSimulationArtistControlPlan plan;
+    plan.control_row_count = static_cast<std::uint32_t>(desc.cells.size());
+    plan.raw_solver_internal_access = desc.request_raw_solver_internal_access;
+    plan.exposes_native_handles = desc.request_native_handle_access;
+
+    const auto expected_cells = static_cast<std::uint64_t>(desc.width) * static_cast<std::uint64_t>(desc.height);
+    if (desc.width == 0U || desc.height == 0U ||
+        expected_cells > static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max()) ||
+        expected_cells != desc.cells.size()) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_grid,
+                       "width/height/cells",
+                       "weather simulation artist controls require one reviewed control row per grid cell", 0U);
+    }
+    if (!finite_positive(desc.cell_area_m2) || !finite_positive(desc.mixing_height_m) ||
+        !finite_positive(desc.air_pressure_hpa) || desc.air_pressure_hpa <= 10.0F) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_environment_value,
+                       "cell_area_m2/mixing_height_m/air_pressure_hpa",
+                       "weather simulation artist controls require finite positive environment values", 0U);
+    }
+    if (!finite_positive(desc.requested_timestep_s) || !finite_positive(desc.max_timestep_s) ||
+        desc.max_timestep_s > static_cast<float>(maximum_timestep_s)) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_environment_value,
+                       "requested_timestep_s/max_timestep_s",
+                       "weather simulation artist controls require finite positive timesteps within the stable cap",
+                       0U);
+    }
+    if (desc.request_raw_solver_internal_access) {
+        add_diagnostic(
+            plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_raw_solver_internal_access,
+            "request_raw_solver_internal_access",
+            "weather simulation artist controls must author reviewed controls instead of raw solver internals", 0U);
+    }
+    if (desc.request_native_handle_access) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_native_handle_access,
+                       "request_native_handle_access",
+                       "weather simulation artist controls must not expose native handles", 0U);
+    }
+    if (desc.request_backend_execution) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_backend_execution,
+                       "request_backend_execution",
+                       "weather simulation artist controls must not invoke renderer, physics, or platform backends",
+                       0U);
+    }
+    if (desc.request_physical_weather_ready_claim) {
+        add_diagnostic(
+            plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_physical_weather_ready_claim,
+            "request_physical_weather_ready_claim",
+            "selected artist controls cannot claim complete physical weather simulation readiness", 0U);
+    }
+
+    for (const auto& cell : desc.cells) {
+        if (!valid_artist_control_id(cell.control_id)) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_control_id,
+                           "control_id",
+                           "weather simulation artist control ids must be non-empty lower_snake_case identifiers",
+                           cell.source_index);
+        }
+        if (!valid_temperature(cell.temperature_celsius) || !valid_percent(cell.relative_humidity_percent) ||
+            !valid_percent(cell.cloud_cover_percent) || !valid_percent(cell.surface_wetness_percent) ||
+            !valid_percent(cell.evaporation_intensity_percent) ||
+            !valid_percent(cell.precipitation_intensity_percent)) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_control_value,
+                           "temperature/humidity/cloud/surface/forcing",
+                           "weather simulation artist controls require stable temperatures and 0..100 percent values",
+                           cell.source_index);
+        }
+    }
+
+    if (plan.diagnostics.empty()) {
+        plan.preview_desc.width = desc.width;
+        plan.preview_desc.height = desc.height;
+        plan.preview_desc.cell_area_m2 = desc.cell_area_m2;
+        plan.preview_desc.mixing_height_m = desc.mixing_height_m;
+        plan.preview_desc.air_pressure_hpa = desc.air_pressure_hpa;
+        plan.preview_desc.requested_timestep_s = desc.requested_timestep_s;
+        plan.preview_desc.max_timestep_s = desc.max_timestep_s;
+        plan.preview_desc.deterministic_seed = desc.deterministic_seed;
+        plan.preview_desc.determinism = EnvironmentWeatherSimulationDeterminism::deterministic;
+        plan.preview_desc.initial_cells.reserve(desc.cells.size());
+        plan.preview_desc.forcing_rows.reserve(desc.cells.size());
+
+        const float effective_timestep = std::min(desc.requested_timestep_s, desc.max_timestep_s);
+        const float stable_precipitation_cap =
+            effective_timestep > 0.0F ? std::min(1.0F, 0.95F / effective_timestep) : 0.0F;
+        for (const auto& cell : desc.cells) {
+            const float saturation = environment_weather_saturation_vapor_kg_per_m2(
+                cell.temperature_celsius, desc.air_pressure_hpa, desc.mixing_height_m);
+            const float humidity = percent_to_fraction(cell.relative_humidity_percent);
+            const float cloud = percent_to_fraction(cell.cloud_cover_percent);
+            const float surface = percent_to_fraction(cell.surface_wetness_percent);
+            const float evaporation = percent_to_fraction(cell.evaporation_intensity_percent);
+            const float precipitation = percent_to_fraction(cell.precipitation_intensity_percent);
+
+            plan.preview_desc.initial_cells.push_back(EnvironmentWeatherSimulationCellState{
+                .temperature_celsius = cell.temperature_celsius,
+                .vapor_water_kg_per_m2 = std::max(0.0F, saturation * humidity),
+                .cloud_water_kg_per_m2 = 0.5F * cloud,
+                .surface_water_kg_per_m2 = 2.0F * surface,
+            });
+            plan.preview_desc.forcing_rows.push_back(EnvironmentWeatherSimulationCellForcing{
+                .surface_evaporation_kg_per_m2_s = 0.2F * evaporation,
+                .temperature_delta_celsius_per_s = 0.0F,
+                .cloud_precipitation_rate_per_s = std::min(stable_precipitation_cap, 0.5F * precipitation),
+            });
+        }
+
+        const auto preview = simulate_environment_weather_cpu_reference(plan.preview_desc);
+        if (!preview.succeeded()) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_control_value,
+                           "preview_desc",
+                           "weather simulation artist controls generated an invalid CPU preview descriptor", 0U);
+        } else {
+            plan.generated_cell_count = preview.cell_count;
+        }
+    }
+
+    plan.artist_controls_ready = plan.diagnostics.empty() && plan.generated_cell_count == plan.control_row_count &&
+                                 plan.control_row_count == expected_cells;
+    plan.physical_weather_ready = false;
+    plan.invokes_gpu = false;
+    plan.invokes_backend = false;
+    plan.control_hash = build_artist_control_hash(desc, plan);
+    plan.status = plan.artist_controls_ready ? EnvironmentWeatherSimulationArtistControlStatus::ready
+                                             : EnvironmentWeatherSimulationArtistControlStatus::blocked;
+    return plan;
+}
+
 bool has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                                    EnvironmentWeatherSimulationDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
@@ -773,6 +976,12 @@ bool has_environment_weather_simulation_validation_dataset_diagnostic(
 bool has_environment_weather_simulation_validation_image_diagnostic(
     const EnvironmentWeatherSimulationValidationImagePlan& plan,
     EnvironmentWeatherSimulationValidationImageDiagnosticCode code) noexcept {
+    return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+bool has_environment_weather_simulation_artist_control_diagnostic(
+    const EnvironmentWeatherSimulationArtistControlPlan& plan,
+    EnvironmentWeatherSimulationArtistControlDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
