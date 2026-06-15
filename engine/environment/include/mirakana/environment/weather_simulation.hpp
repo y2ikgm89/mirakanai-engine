@@ -53,6 +53,32 @@ enum class EnvironmentWeatherSimulationSolverBudgetDiagnosticCode : std::uint8_t
     unsupported_production_solver_ready_claim,
 };
 
+enum class EnvironmentWeatherSimulationValidationDatasetStatus : std::uint8_t {
+    blocked = 0,
+    ready,
+};
+
+enum class EnvironmentWeatherSimulationValidationCaseKind : std::uint8_t {
+    supersaturated_condensation = 0,
+    forced_evaporation_precipitation,
+    clamped_mixed_grid,
+};
+
+enum class EnvironmentWeatherSimulationValidationDatasetDiagnosticCode : std::uint8_t {
+    none = 0,
+    invalid_case_id,
+    duplicate_case,
+    missing_required_case,
+    simulation_failed,
+    water_error_exceeded,
+    missing_expected_condensation,
+    missing_expected_evaporation,
+    missing_expected_precipitation,
+    missing_expected_timestep_clamp,
+    unsupported_native_handle_access,
+    unsupported_physical_weather_ready_claim,
+};
+
 struct EnvironmentWeatherSimulationCellState {
     float temperature_celsius{15.0F};
     float vapor_water_kg_per_m2{0.0F};
@@ -164,6 +190,58 @@ struct EnvironmentWeatherSimulationPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct EnvironmentWeatherSimulationValidationCase {
+    std::string case_id;
+    EnvironmentWeatherSimulationValidationCaseKind kind{
+        EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation};
+    EnvironmentWeatherSimulationPlan plan{};
+    std::uint64_t water_error_bound_mg{1U};
+    bool expect_condensation{false};
+    bool expect_evaporation{false};
+    bool expect_precipitation{false};
+    bool expect_timestep_clamped{false};
+    bool request_native_handle_access{false};
+    bool request_physical_weather_ready_claim{false};
+    std::uint32_t source_index{0U};
+};
+
+struct EnvironmentWeatherSimulationValidationDatasetDesc {
+    std::vector<EnvironmentWeatherSimulationValidationCase> cases;
+};
+
+struct EnvironmentWeatherSimulationValidationDatasetDiagnostic {
+    EnvironmentWeatherSimulationValidationDatasetDiagnosticCode code{
+        EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::none};
+    EnvironmentWeatherSimulationValidationCaseKind kind{
+        EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation};
+    std::string case_id;
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct EnvironmentWeatherSimulationValidationDatasetPlan {
+    EnvironmentWeatherSimulationValidationDatasetStatus status{
+        EnvironmentWeatherSimulationValidationDatasetStatus::blocked};
+    std::vector<EnvironmentWeatherSimulationValidationCase> cases;
+    std::vector<EnvironmentWeatherSimulationValidationDatasetDiagnostic> diagnostics;
+    std::uint32_t case_count{0U};
+    std::uint32_t required_case_count{3U};
+    std::uint32_t ready_case_count{0U};
+    bool supersaturated_condensation_ready{false};
+    bool forced_evaporation_precipitation_ready{false};
+    bool clamped_mixed_grid_ready{false};
+    bool validation_images_ready{false};
+    bool physical_weather_ready{false};
+    bool invokes_gpu{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    std::uint64_t max_water_conservation_error_mg{0U};
+    std::uint64_t water_conservation_error_bound_mg{1U};
+    std::uint64_t dataset_hash{0U};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] float environment_weather_saturation_vapor_kg_per_m2(float temperature_celsius, float air_pressure_hpa,
                                                                    float mixing_height_m) noexcept;
 
@@ -173,6 +251,9 @@ simulate_environment_weather_cpu_reference(const EnvironmentWeatherSimulationDes
 [[nodiscard]] EnvironmentWeatherSimulationSolverBudgetPlan
 plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimulationSolverBudgetDesc& desc);
 
+[[nodiscard]] EnvironmentWeatherSimulationValidationDatasetPlan
+plan_environment_weather_simulation_validation_dataset(const EnvironmentWeatherSimulationValidationDatasetDesc& desc);
+
 [[nodiscard]] bool
 has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                               EnvironmentWeatherSimulationDiagnosticCode code) noexcept;
@@ -180,5 +261,9 @@ has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulation
 [[nodiscard]] bool has_environment_weather_simulation_solver_budget_diagnostic(
     const EnvironmentWeatherSimulationSolverBudgetPlan& plan,
     EnvironmentWeatherSimulationSolverBudgetDiagnosticCode code) noexcept;
+
+[[nodiscard]] bool has_environment_weather_simulation_validation_dataset_diagnostic(
+    const EnvironmentWeatherSimulationValidationDatasetPlan& plan,
+    EnvironmentWeatherSimulationValidationDatasetDiagnosticCode code) noexcept;
 
 } // namespace mirakana

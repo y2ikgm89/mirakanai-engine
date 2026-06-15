@@ -1431,6 +1431,7 @@ struct EnvironmentWeatherSimulationPackageEvidence {
     bool requested{false};
     mirakana::EnvironmentWeatherSimulationPlan plan{};
     mirakana::EnvironmentWeatherSimulationSolverBudgetPlan solver_budget{};
+    mirakana::EnvironmentWeatherSimulationValidationDatasetPlan validation_dataset{};
     std::uint32_t step_count{0U};
 };
 
@@ -1583,6 +1584,17 @@ environment_weather_simulation_package_status_name(const mirakana::EnvironmentWe
         return "ready";
     case mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded:
         return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view environment_weather_simulation_validation_dataset_status_name(
+    mirakana::EnvironmentWeatherSimulationValidationDatasetStatus status) noexcept {
+    switch (status) {
+    case mirakana::EnvironmentWeatherSimulationValidationDatasetStatus::blocked:
+        return "blocked";
+    case mirakana::EnvironmentWeatherSimulationValidationDatasetStatus::ready:
+        return "ready";
     }
     return "unknown";
 }
@@ -3365,6 +3377,96 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     return desc;
 }
 
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_environment_weather_simulation_condensation_desc() {
+    const auto saturation = mirakana::environment_weather_saturation_vapor_kg_per_m2(10.0F, 1000.0F, 1000.0F);
+
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 1U;
+    desc.height = 1U;
+    desc.cell_area_m2 = 25.0F;
+    desc.mixing_height_m = 1000.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 1.0F;
+    desc.max_timestep_s = 1.0F;
+    desc.deterministic_seed = 20260616ULL;
+    desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
+        .temperature_celsius = 10.0F,
+        .vapor_water_kg_per_m2 = saturation + 0.2F,
+        .cloud_water_kg_per_m2 = 0.1F,
+        .surface_water_kg_per_m2 = 2.0F,
+    });
+    desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{});
+    return desc;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_environment_weather_simulation_transfer_desc() {
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 1U;
+    desc.height = 1U;
+    desc.cell_area_m2 = 4.0F;
+    desc.mixing_height_m = 800.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 1.0F;
+    desc.max_timestep_s = 1.0F;
+    desc.deterministic_seed = 20260617ULL;
+    desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
+        .temperature_celsius = 4.0F,
+        .vapor_water_kg_per_m2 = 0.1F,
+        .cloud_water_kg_per_m2 = 1.0F,
+        .surface_water_kg_per_m2 = 2.0F,
+    });
+    desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{
+        .surface_evaporation_kg_per_m2_s = 0.2F,
+        .temperature_delta_celsius_per_s = 0.0F,
+        .cloud_precipitation_rate_per_s = 0.5F,
+    });
+    return desc;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationValidationDatasetDesc
+make_environment_weather_simulation_validation_dataset_desc() {
+    const auto condensation_plan =
+        mirakana::simulate_environment_weather_cpu_reference(make_environment_weather_simulation_condensation_desc());
+    const auto transfer_plan =
+        mirakana::simulate_environment_weather_cpu_reference(make_environment_weather_simulation_transfer_desc());
+
+    auto clamped_desc = make_environment_weather_simulation_condensation_desc();
+    clamped_desc.requested_timestep_s = 10.0F;
+    clamped_desc.max_timestep_s = 0.25F;
+    const auto clamped_plan = mirakana::simulate_environment_weather_cpu_reference(clamped_desc);
+
+    mirakana::EnvironmentWeatherSimulationValidationDatasetDesc desc{};
+    desc.cases = {
+        mirakana::EnvironmentWeatherSimulationValidationCase{
+            .case_id = "supersaturated_condensation",
+            .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation,
+            .plan = condensation_plan,
+            .water_error_bound_mg = environment_weather_simulation_package_water_error_bound_mg(),
+            .expect_condensation = true,
+            .source_index = 1U,
+        },
+        mirakana::EnvironmentWeatherSimulationValidationCase{
+            .case_id = "forced_evaporation_precipitation",
+            .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation,
+            .plan = transfer_plan,
+            .water_error_bound_mg = environment_weather_simulation_package_water_error_bound_mg(),
+            .expect_evaporation = true,
+            .expect_precipitation = true,
+            .source_index = 2U,
+        },
+        mirakana::EnvironmentWeatherSimulationValidationCase{
+            .case_id = "clamped_mixed_grid",
+            .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid,
+            .plan = clamped_plan,
+            .water_error_bound_mg = environment_weather_simulation_package_water_error_bound_mg(),
+            .expect_condensation = true,
+            .expect_timestep_clamped = true,
+            .source_index = 3U,
+        },
+    };
+    return desc;
+}
+
 [[nodiscard]] EnvironmentWeatherSimulationPackageEvidence
 build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOptions& options) {
     EnvironmentWeatherSimulationPackageEvidence evidence;
@@ -3384,6 +3486,8 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
             .cpu_elapsed_us = elapsed_microseconds(begin, end),
             .cpu_budget_us = environment_weather_simulation_package_cpu_budget_us(),
         });
+    evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
+        make_environment_weather_simulation_validation_dataset_desc());
     return evidence;
 }
 
@@ -8604,6 +8708,7 @@ int main(int argc, char** argv) {
     }
     if (environment_weather_simulation_package.requested) {
         const auto& plan = environment_weather_simulation_package.plan;
+        const auto& validation_dataset = environment_weather_simulation_package.validation_dataset;
         std::cout << " environment_weather_simulation_package_status="
                   << environment_weather_simulation_package_status_name(plan)
                   << " environment_weather_simulation_package_ready=" << (plan.succeeded() ? 1 : 0)
@@ -8662,7 +8767,29 @@ int main(int argc, char** argv) {
                   << " environment_weather_simulation_production_solver_ready="
                   << (environment_weather_simulation_package.solver_budget.production_solver_ready ? 1 : 0)
                   << " environment_weather_simulation_solver_budget_diagnostics="
-                  << environment_weather_simulation_package.solver_budget.diagnostics.size();
+                  << environment_weather_simulation_package.solver_budget.diagnostics.size()
+                  << " environment_weather_simulation_validation_dataset_status="
+                  << environment_weather_simulation_validation_dataset_status_name(validation_dataset.status)
+                  << " environment_weather_simulation_validation_dataset_ready="
+                  << (validation_dataset.succeeded() ? 1 : 0)
+                  << " environment_weather_simulation_validation_case_rows=" << validation_dataset.case_count
+                  << " environment_weather_simulation_validation_required_cases="
+                  << validation_dataset.required_case_count
+                  << " environment_weather_simulation_validation_ready_cases=" << validation_dataset.ready_case_count
+                  << " environment_weather_simulation_validation_supersaturated_condensation_ready="
+                  << (validation_dataset.supersaturated_condensation_ready ? 1 : 0)
+                  << " environment_weather_simulation_validation_forced_evaporation_precipitation_ready="
+                  << (validation_dataset.forced_evaporation_precipitation_ready ? 1 : 0)
+                  << " environment_weather_simulation_validation_clamped_mixed_grid_ready="
+                  << (validation_dataset.clamped_mixed_grid_ready ? 1 : 0)
+                  << " environment_weather_simulation_validation_images_ready="
+                  << (validation_dataset.validation_images_ready ? 1 : 0)
+                  << " environment_weather_simulation_validation_max_water_error_mg="
+                  << validation_dataset.max_water_conservation_error_mg
+                  << " environment_weather_simulation_validation_water_error_bound_mg="
+                  << validation_dataset.water_conservation_error_bound_mg
+                  << " environment_weather_simulation_validation_diagnostics=" << validation_dataset.diagnostics.size()
+                  << " environment_weather_simulation_validation_dataset_hash=" << validation_dataset.dataset_hash;
     }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
@@ -8810,7 +8937,27 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.solver_budget.gpu_budget_ready ||
              environment_weather_simulation_package.solver_budget.profiler_budget_ready ||
              environment_weather_simulation_package.solver_budget.production_solver_ready ||
-             environment_weather_simulation_package.solver_budget.diagnostics.size() != 0U)) {
+             environment_weather_simulation_package.solver_budget.diagnostics.size() != 0U ||
+             !environment_weather_simulation_package.validation_dataset.succeeded() ||
+             environment_weather_simulation_package.validation_dataset.status !=
+                 mirakana::EnvironmentWeatherSimulationValidationDatasetStatus::ready ||
+             environment_weather_simulation_package.validation_dataset.case_count != 3U ||
+             environment_weather_simulation_package.validation_dataset.required_case_count != 3U ||
+             environment_weather_simulation_package.validation_dataset.ready_case_count != 3U ||
+             !environment_weather_simulation_package.validation_dataset.supersaturated_condensation_ready ||
+             !environment_weather_simulation_package.validation_dataset.forced_evaporation_precipitation_ready ||
+             !environment_weather_simulation_package.validation_dataset.clamped_mixed_grid_ready ||
+             environment_weather_simulation_package.validation_dataset.validation_images_ready ||
+             environment_weather_simulation_package.validation_dataset.physical_weather_ready ||
+             environment_weather_simulation_package.validation_dataset.invokes_gpu ||
+             environment_weather_simulation_package.validation_dataset.invokes_backend ||
+             environment_weather_simulation_package.validation_dataset.exposes_native_handles ||
+             environment_weather_simulation_package.validation_dataset.max_water_conservation_error_mg >
+                 environment_weather_simulation_package_water_error_bound_mg() ||
+             environment_weather_simulation_package.validation_dataset.water_conservation_error_bound_mg !=
+                 environment_weather_simulation_package_water_error_bound_mg() ||
+             environment_weather_simulation_package.validation_dataset.diagnostics.size() != 0U ||
+             environment_weather_simulation_package.validation_dataset.dataset_hash == 0U)) {
             return 3;
         }
         if (options.require_postprocess &&
