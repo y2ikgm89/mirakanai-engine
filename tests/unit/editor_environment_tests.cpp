@@ -140,6 +140,25 @@ find_environment_diagnostic(const mirakana::editor::EnvironmentAuthoringValidati
     return document.find(mirakana::ui::ElementId{.value = std::string{id}}) != nullptr;
 }
 
+[[nodiscard]] const mirakana::editor::EnvironmentArtistWorkflowCommandRow*
+find_artist_workflow_command_row(const mirakana::editor::EnvironmentArtistWorkflowCommandCatalog& catalog,
+                                 std::string_view id) noexcept {
+    const auto it =
+        std::ranges::find_if(catalog.commands, [id](const mirakana::editor::EnvironmentArtistWorkflowCommandRow& row) {
+            return row.command_id == id;
+        });
+    return it == catalog.commands.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::editor::EnvironmentArtistWorkflowCommandReportRow*
+find_artist_workflow_report_row(const mirakana::editor::EnvironmentArtistWorkflowCommandPlan& plan,
+                                std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        plan.report_rows,
+        [id](const mirakana::editor::EnvironmentArtistWorkflowCommandReportRow& row) { return row.id == id; });
+    return it == plan.report_rows.end() ? nullptr : &(*it);
+}
+
 } // namespace
 
 MK_TEST("editor environment authoring emits deterministic inspector rows") {
@@ -462,6 +481,115 @@ MK_TEST("editor environment authoring cubemap capture command is reviewed but ne
                       .kind = mirakana::editor::EnvironmentAuthoringCommandKind::request_cubemap_capture,
                       .label = "Request Cubemap Capture",
                   })));
+}
+
+MK_TEST("editor environment artist workflow exposes reviewed command catalog rows") {
+    const auto document = mirakana::editor::EnvironmentAuthoringDocument::from_profile_document_v2(
+        make_editor_environment_profile_v2(), "assets/environment/outdoor.environment");
+
+    const auto catalog = mirakana::editor::make_environment_artist_workflow_command_catalog(document);
+
+    MK_REQUIRE(catalog.revision == document.revision());
+    MK_REQUIRE(catalog.commands.size() == 11U);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.preset.import") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.source_asset.review") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.cook.preview") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.profile_graph.edit") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.weather_timeline.edit") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.local_volume.edit") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.simulation_parameter.edit") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.quality_budget.edit") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.package.preview") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.validation.remediation") != nullptr);
+    MK_REQUIRE(find_artist_workflow_command_row(catalog, "environment.command.publish.package") != nullptr);
+
+    const auto* local_volume = find_artist_workflow_command_row(catalog, "environment.command.local_volume.edit");
+    MK_REQUIRE(local_volume != nullptr);
+    MK_REQUIRE(local_volume->mutates_document);
+    MK_REQUIRE(local_volume->supports_dry_run);
+    MK_REQUIRE(local_volume->supports_revision_checked_apply);
+    MK_REQUIRE(local_volume->supports_undo_metadata);
+    MK_REQUIRE(!local_volume->invokes_backend);
+    MK_REQUIRE(!local_volume->executes_package_scripts);
+    MK_REQUIRE(!local_volume->exposes_native_handles);
+
+    const auto* source_review = find_artist_workflow_command_row(catalog, "environment.command.source_asset.review");
+    MK_REQUIRE(source_review != nullptr);
+    MK_REQUIRE(!source_review->mutates_document);
+    MK_REQUIRE(source_review->supports_dry_run);
+    MK_REQUIRE(!source_review->requires_confirmation);
+}
+
+MK_TEST("editor environment artist workflow plans dry run and revision checked apply metadata") {
+    const auto document = mirakana::editor::EnvironmentAuthoringDocument::from_profile_document_v2(
+        make_editor_environment_profile_v2(), "assets/environment/outdoor.environment");
+
+    const auto dry_run = mirakana::editor::plan_environment_artist_workflow_command(
+        document, mirakana::editor::EnvironmentArtistWorkflowCommandRequest{
+                      .kind = mirakana::editor::EnvironmentArtistWorkflowCommandKind::local_volume_edit,
+                      .mode = mirakana::editor::EnvironmentArtistWorkflowCommandMode::dry_run,
+                  });
+
+    MK_REQUIRE(dry_run.status == mirakana::editor::EnvironmentArtistWorkflowCommandStatus::accepted);
+    MK_REQUIRE(dry_run.command_id == "environment.command.local_volume.edit");
+    MK_REQUIRE(dry_run.dry_run);
+    MK_REQUIRE(!dry_run.apply);
+    MK_REQUIRE(dry_run.mutates_document);
+    MK_REQUIRE(dry_run.before_revision == document.revision());
+    MK_REQUIRE(dry_run.after_revision == document.revision());
+    MK_REQUIRE(!dry_run.revision_checked);
+    MK_REQUIRE(dry_run.undo_supported);
+    MK_REQUIRE(dry_run.rollback_metadata_available);
+    MK_REQUIRE(!dry_run.invokes_backend);
+    MK_REQUIRE(!dry_run.executes_package_scripts);
+    MK_REQUIRE(!dry_run.exposes_native_handles);
+    MK_REQUIRE(dry_run.diagnostics.empty());
+    MK_REQUIRE(find_artist_workflow_report_row(dry_run, "environment.workflow.command_id")->value ==
+               "environment.command.local_volume.edit");
+    MK_REQUIRE(find_artist_workflow_report_row(dry_run, "environment.workflow.mode")->value == "dry_run");
+    MK_REQUIRE(find_artist_workflow_report_row(dry_run, "environment.workflow.undo_supported")->value == "true");
+
+    const auto apply = mirakana::editor::plan_environment_artist_workflow_command(
+        document, mirakana::editor::EnvironmentArtistWorkflowCommandRequest{
+                      .kind = mirakana::editor::EnvironmentArtistWorkflowCommandKind::weather_timeline_edit,
+                      .mode = mirakana::editor::EnvironmentArtistWorkflowCommandMode::apply,
+                      .expected_revision = document.revision(),
+                  });
+
+    MK_REQUIRE(apply.status == mirakana::editor::EnvironmentArtistWorkflowCommandStatus::accepted);
+    MK_REQUIRE(apply.command_id == "environment.command.weather_timeline.edit");
+    MK_REQUIRE(!apply.dry_run);
+    MK_REQUIRE(apply.apply);
+    MK_REQUIRE(apply.revision_checked);
+    MK_REQUIRE(apply.before_revision == document.revision());
+    MK_REQUIRE(apply.after_revision == document.revision() + 1U);
+    MK_REQUIRE(apply.undo_supported);
+    MK_REQUIRE(apply.rollback_metadata_available);
+    MK_REQUIRE(find_artist_workflow_report_row(apply, "environment.workflow.revision_checked")->value == "true");
+
+    const auto stale = mirakana::editor::plan_environment_artist_workflow_command(
+        document, mirakana::editor::EnvironmentArtistWorkflowCommandRequest{
+                      .kind = mirakana::editor::EnvironmentArtistWorkflowCommandKind::quality_budget_edit,
+                      .mode = mirakana::editor::EnvironmentArtistWorkflowCommandMode::apply,
+                      .expected_revision = document.revision() + 10U,
+                  });
+    MK_REQUIRE(stale.status == mirakana::editor::EnvironmentArtistWorkflowCommandStatus::rejected_stale_revision);
+    MK_REQUIRE(!stale.apply);
+    MK_REQUIRE(!stale.diagnostics.empty());
+
+    const auto unsafe = mirakana::editor::plan_environment_artist_workflow_command(
+        document, mirakana::editor::EnvironmentArtistWorkflowCommandRequest{
+                      .kind = mirakana::editor::EnvironmentArtistWorkflowCommandKind::publish_package,
+                      .mode = mirakana::editor::EnvironmentArtistWorkflowCommandMode::apply,
+                      .expected_revision = document.revision(),
+                      .request_backend_execution = true,
+                      .request_package_script_execution = true,
+                      .request_native_handle_access = true,
+                  });
+    MK_REQUIRE(unsafe.status == mirakana::editor::EnvironmentArtistWorkflowCommandStatus::rejected_unsafe_execution);
+    MK_REQUIRE(!unsafe.invokes_backend);
+    MK_REQUIRE(!unsafe.executes_package_scripts);
+    MK_REQUIRE(!unsafe.exposes_native_handles);
 }
 
 MK_TEST("editor environment package registration draft reviews runtime additions only") {

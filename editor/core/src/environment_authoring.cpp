@@ -6,6 +6,7 @@
 #include "mirakana/environment/environment_io.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -208,6 +209,22 @@ void add_command_diagnostic(EnvironmentAuthoringCommandPlan& plan, std::string c
     });
 }
 
+void add_artist_workflow_diagnostic(EnvironmentArtistWorkflowCommandPlan& plan, std::string code, std::string message) {
+    plan.diagnostics.push_back(EnvironmentArtistWorkflowCommandDiagnosticRow{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_artist_workflow_report_row(EnvironmentArtistWorkflowCommandPlan& plan, std::string id, std::string label,
+                                    std::string value) {
+    plan.report_rows.push_back(EnvironmentArtistWorkflowCommandReportRow{
+        .id = std::move(id),
+        .label = std::move(label),
+        .value = std::move(value),
+    });
+}
+
 void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     plan.status = EnvironmentAuthoringCommandStatus::accepted;
 }
@@ -263,6 +280,99 @@ void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     return "environment.command.invalid";
 }
 
+[[nodiscard]] std::string_view artist_workflow_command_label(EnvironmentArtistWorkflowCommandKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowCommandKind::preset_import:
+        return "Import Environment Preset";
+    case EnvironmentArtistWorkflowCommandKind::source_asset_review:
+        return "Review Environment Source Asset";
+    case EnvironmentArtistWorkflowCommandKind::cook_preview:
+        return "Preview Environment Cook";
+    case EnvironmentArtistWorkflowCommandKind::profile_graph_edit:
+        return "Edit Environment Profile Graph";
+    case EnvironmentArtistWorkflowCommandKind::weather_timeline_edit:
+        return "Edit Weather Timeline";
+    case EnvironmentArtistWorkflowCommandKind::local_volume_edit:
+        return "Edit Local Environment Volume";
+    case EnvironmentArtistWorkflowCommandKind::simulation_parameter_edit:
+        return "Edit Weather Simulation Parameters";
+    case EnvironmentArtistWorkflowCommandKind::quality_budget_edit:
+        return "Edit Environment Quality Budget";
+    case EnvironmentArtistWorkflowCommandKind::package_preview:
+        return "Preview Environment Package";
+    case EnvironmentArtistWorkflowCommandKind::validation_remediation:
+        return "Remediate Environment Validation";
+    case EnvironmentArtistWorkflowCommandKind::publish_package:
+        return "Publish Environment Package";
+    }
+    return "Environment Workflow Command";
+}
+
+[[nodiscard]] bool artist_workflow_command_mutates(EnvironmentArtistWorkflowCommandKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowCommandKind::preset_import:
+    case EnvironmentArtistWorkflowCommandKind::profile_graph_edit:
+    case EnvironmentArtistWorkflowCommandKind::weather_timeline_edit:
+    case EnvironmentArtistWorkflowCommandKind::local_volume_edit:
+    case EnvironmentArtistWorkflowCommandKind::simulation_parameter_edit:
+    case EnvironmentArtistWorkflowCommandKind::quality_budget_edit:
+    case EnvironmentArtistWorkflowCommandKind::validation_remediation:
+        return true;
+    case EnvironmentArtistWorkflowCommandKind::source_asset_review:
+    case EnvironmentArtistWorkflowCommandKind::cook_preview:
+    case EnvironmentArtistWorkflowCommandKind::package_preview:
+    case EnvironmentArtistWorkflowCommandKind::publish_package:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool artist_workflow_command_requires_confirmation(EnvironmentArtistWorkflowCommandKind kind) noexcept {
+    return kind == EnvironmentArtistWorkflowCommandKind::publish_package;
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowCommandRow
+make_artist_workflow_command_row(EnvironmentArtistWorkflowCommandKind kind) {
+    const bool mutates = artist_workflow_command_mutates(kind);
+    return EnvironmentArtistWorkflowCommandRow{
+        .kind = kind,
+        .command_id = std::string{environment_artist_workflow_command_id(kind)},
+        .label = std::string{artist_workflow_command_label(kind)},
+        .mutates_document = mutates,
+        .supports_dry_run = true,
+        .supports_revision_checked_apply = true,
+        .supports_undo_metadata = mutates,
+        .requires_confirmation = artist_workflow_command_requires_confirmation(kind),
+        .invokes_backend = false,
+        .exposes_native_handles = false,
+        .executes_package_scripts = false,
+    };
+}
+
+void add_artist_workflow_report_rows(EnvironmentArtistWorkflowCommandPlan& plan) {
+    add_artist_workflow_report_row(plan, "environment.workflow.command_id", "Command", plan.command_id);
+    add_artist_workflow_report_row(plan, "environment.workflow.label", "Label", plan.label);
+    add_artist_workflow_report_row(plan, "environment.workflow.mode", "Mode",
+                                   plan.dry_run ? "dry_run" : (plan.apply ? "apply" : "rejected"));
+    add_artist_workflow_report_row(plan, "environment.workflow.status", "Status",
+                                   plan.status == EnvironmentArtistWorkflowCommandStatus::accepted ? "accepted"
+                                                                                                   : "rejected");
+    add_artist_workflow_report_row(plan, "environment.workflow.before_revision", "Before Revision",
+                                   std::to_string(plan.before_revision));
+    add_artist_workflow_report_row(plan, "environment.workflow.after_revision", "After Revision",
+                                   std::to_string(plan.after_revision));
+    add_artist_workflow_report_row(plan, "environment.workflow.revision_checked", "Revision Checked",
+                                   bool_text(plan.revision_checked));
+    add_artist_workflow_report_row(plan, "environment.workflow.mutates_document", "Mutates Document",
+                                   bool_text(plan.mutates_document));
+    add_artist_workflow_report_row(plan, "environment.workflow.undo_supported", "Undo Supported",
+                                   bool_text(plan.undo_supported));
+    add_artist_workflow_report_row(plan, "environment.workflow.rollback_metadata", "Rollback Metadata",
+                                   bool_text(plan.rollback_metadata_available));
+    add_artist_workflow_report_row(plan, "environment.workflow.requires_confirmation", "Requires Confirmation",
+                                   bool_text(plan.requires_confirmation));
+}
+
 void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuthoringCommandRequest& request) {
     switch (request.kind) {
     case EnvironmentAuthoringCommandKind::add_volume:
@@ -303,6 +413,10 @@ void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuth
 
 bool EnvironmentAuthoringValidationModel::succeeded() const noexcept {
     return diagnostics.empty();
+}
+
+bool EnvironmentArtistWorkflowCommandPlan::succeeded() const noexcept {
+    return status == EnvironmentArtistWorkflowCommandStatus::accepted && diagnostics.empty();
 }
 
 EnvironmentAuthoringDocument EnvironmentAuthoringDocument::from_profile(EnvironmentProfileDesc profile,
@@ -401,6 +515,34 @@ environment_package_registration_draft_status_label(EnvironmentPackageRegistrati
         return "rejected_duplicate";
     }
     return "rejected_source_file";
+}
+
+std::string_view environment_artist_workflow_command_id(EnvironmentArtistWorkflowCommandKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowCommandKind::preset_import:
+        return "environment.command.preset.import";
+    case EnvironmentArtistWorkflowCommandKind::source_asset_review:
+        return "environment.command.source_asset.review";
+    case EnvironmentArtistWorkflowCommandKind::cook_preview:
+        return "environment.command.cook.preview";
+    case EnvironmentArtistWorkflowCommandKind::profile_graph_edit:
+        return "environment.command.profile_graph.edit";
+    case EnvironmentArtistWorkflowCommandKind::weather_timeline_edit:
+        return "environment.command.weather_timeline.edit";
+    case EnvironmentArtistWorkflowCommandKind::local_volume_edit:
+        return "environment.command.local_volume.edit";
+    case EnvironmentArtistWorkflowCommandKind::simulation_parameter_edit:
+        return "environment.command.simulation_parameter.edit";
+    case EnvironmentArtistWorkflowCommandKind::quality_budget_edit:
+        return "environment.command.quality_budget.edit";
+    case EnvironmentArtistWorkflowCommandKind::package_preview:
+        return "environment.command.package.preview";
+    case EnvironmentArtistWorkflowCommandKind::validation_remediation:
+        return "environment.command.validation.remediation";
+    case EnvironmentArtistWorkflowCommandKind::publish_package:
+        return "environment.command.publish.package";
+    }
+    return "environment.command.invalid";
 }
 
 EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store, std::string_view path) {
@@ -552,6 +694,84 @@ UndoableAction make_environment_authoring_command_action(EnvironmentAuthoringDoc
         .redo = [&document, after]() { document.restore(after); },
         .undo = [&document, before]() { document.restore(before); },
     };
+}
+
+EnvironmentArtistWorkflowCommandCatalog
+make_environment_artist_workflow_command_catalog(const EnvironmentAuthoringDocument& document) {
+    constexpr std::array kinds{
+        EnvironmentArtistWorkflowCommandKind::preset_import,
+        EnvironmentArtistWorkflowCommandKind::source_asset_review,
+        EnvironmentArtistWorkflowCommandKind::cook_preview,
+        EnvironmentArtistWorkflowCommandKind::profile_graph_edit,
+        EnvironmentArtistWorkflowCommandKind::weather_timeline_edit,
+        EnvironmentArtistWorkflowCommandKind::local_volume_edit,
+        EnvironmentArtistWorkflowCommandKind::simulation_parameter_edit,
+        EnvironmentArtistWorkflowCommandKind::quality_budget_edit,
+        EnvironmentArtistWorkflowCommandKind::package_preview,
+        EnvironmentArtistWorkflowCommandKind::validation_remediation,
+        EnvironmentArtistWorkflowCommandKind::publish_package,
+    };
+
+    EnvironmentArtistWorkflowCommandCatalog catalog{.revision = document.revision()};
+    catalog.commands.reserve(kinds.size());
+    for (const auto kind : kinds) {
+        catalog.commands.push_back(make_artist_workflow_command_row(kind));
+    }
+    return catalog;
+}
+
+EnvironmentArtistWorkflowCommandPlan
+plan_environment_artist_workflow_command(const EnvironmentAuthoringDocument& document,
+                                         const EnvironmentArtistWorkflowCommandRequest& request) {
+    const auto row = make_artist_workflow_command_row(request.kind);
+    EnvironmentArtistWorkflowCommandPlan plan{
+        .command_id = row.command_id,
+        .label = row.label,
+        .mutates_document = row.mutates_document,
+        .undo_supported = row.supports_undo_metadata,
+        .rollback_metadata_available = row.supports_undo_metadata,
+        .requires_confirmation = row.requires_confirmation,
+        .before_revision = document.revision(),
+        .after_revision = document.revision(),
+    };
+
+    if (request.request_backend_execution || request.request_package_script_execution ||
+        request.request_native_handle_access) {
+        plan.status = EnvironmentArtistWorkflowCommandStatus::rejected_unsafe_execution;
+        add_artist_workflow_diagnostic(
+            plan, "unsafe_execution",
+            "environment artist workflow commands are editor-core plans only and cannot execute backend work, package "
+            "scripts, or native handle access");
+        add_artist_workflow_report_rows(plan);
+        return plan;
+    }
+
+    if (request.mode == EnvironmentArtistWorkflowCommandMode::apply) {
+        if (request.expected_revision != document.revision()) {
+            plan.status = EnvironmentArtistWorkflowCommandStatus::rejected_stale_revision;
+            add_artist_workflow_diagnostic(plan, "stale_revision",
+                                           "environment artist workflow expected_revision does not match the document "
+                                           "revision");
+            add_artist_workflow_report_rows(plan);
+            return plan;
+        }
+        if (row.requires_confirmation && !request.user_confirmed) {
+            plan.status = EnvironmentArtistWorkflowCommandStatus::rejected_invalid_request;
+            add_artist_workflow_diagnostic(plan, "confirmation_required",
+                                           "environment artist workflow publish/package apply requires confirmation");
+            add_artist_workflow_report_rows(plan);
+            return plan;
+        }
+        plan.apply = true;
+        plan.revision_checked = true;
+        plan.after_revision = plan.mutates_document ? plan.before_revision + 1U : plan.before_revision;
+    } else {
+        plan.dry_run = true;
+    }
+
+    plan.status = EnvironmentArtistWorkflowCommandStatus::accepted;
+    add_artist_workflow_report_rows(plan);
+    return plan;
 }
 
 EnvironmentAuthoringValidationModel

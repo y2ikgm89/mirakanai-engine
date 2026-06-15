@@ -19,6 +19,7 @@
     "environmentPlatformReadinessRows",
     "environmentOptimizationMeasurementWorkloadRows",
     "environmentPhysicalWeatherSimulationRows",
+    "environmentArtistWorkflowRows",
     "environmentCommercialUnsupportedAdjacentClaims",
     "hostGates",
     "validationRecipeMap",
@@ -581,6 +582,58 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "packageVisibility": { "type": "string", "minLength": 1 },
+          "blockerReason": { "type": "string", "minLength": 1 },
+          "forbiddenInference": { "type": "string", "minLength": 1 },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "environmentArtistWorkflowRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "claimId",
+          "state",
+          "owner",
+          "commandIds",
+          "requestModes",
+          "revisionSafety",
+          "reportRows",
+          "validationRecipeIds",
+          "blockerReason",
+          "forbiddenInference",
+          "notes"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "claimId": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["ready", "host-gated", "unsupported"] },
+          "owner": { "type": "string", "minLength": 1 },
+          "commandIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "requestModes": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "revisionSafety": { "type": "string", "minLength": 1 },
+          "reportRows": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "validationRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
           "blockerReason": { "type": "string", "minLength": 1 },
           "forbiddenInference": { "type": "string", "minLength": 1 },
           "notes": { "type": "string", "minLength": 1 }
