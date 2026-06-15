@@ -6008,6 +6008,17 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_profiler_budget_ready" = "0"
                 "environment_weather_simulation_production_solver_ready" = "0"
                 "environment_weather_simulation_solver_budget_diagnostics" = "0"
+                "environment_weather_simulation_validation_dataset_status" = "ready"
+                "environment_weather_simulation_validation_dataset_ready" = "1"
+                "environment_weather_simulation_validation_case_rows" = "3"
+                "environment_weather_simulation_validation_required_cases" = "3"
+                "environment_weather_simulation_validation_ready_cases" = "3"
+                "environment_weather_simulation_validation_supersaturated_condensation_ready" = "1"
+                "environment_weather_simulation_validation_forced_evaporation_precipitation_ready" = "1"
+                "environment_weather_simulation_validation_clamped_mixed_grid_ready" = "1"
+                "environment_weather_simulation_validation_images_ready" = "0"
+                "environment_weather_simulation_validation_water_error_bound_mg" = "1"
+                "environment_weather_simulation_validation_diagnostics" = "0"
             }
         foreach ($field in @(
                 "environment_weather_simulation_total_water_before_mg",
@@ -6028,6 +6039,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_solver_cpu_elapsed_us=\d+\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove an environment weather simulation CPU solver elapsed-time counter."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_max_water_error_mg=[01]\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove the environment weather simulation validation dataset stayed within the selected 1 mg bound."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_dataset_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation validation dataset hash."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {

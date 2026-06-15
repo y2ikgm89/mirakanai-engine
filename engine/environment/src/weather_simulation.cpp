@@ -4,8 +4,10 @@
 #include "mirakana/environment/weather_simulation.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
+#include <string_view>
 #include <utility>
 
 namespace mirakana {
@@ -34,6 +36,19 @@ void add_diagnostic(EnvironmentWeatherSimulationSolverBudgetPlan& plan,
         .code = code,
         .field = std::move(field),
         .message = std::move(message),
+    });
+}
+
+void add_diagnostic(EnvironmentWeatherSimulationValidationDatasetPlan& plan,
+                    EnvironmentWeatherSimulationValidationDatasetDiagnosticCode code,
+                    EnvironmentWeatherSimulationValidationCaseKind kind, std::string case_id, std::string message,
+                    std::uint32_t source_index) {
+    plan.diagnostics.push_back(EnvironmentWeatherSimulationValidationDatasetDiagnostic{
+        .code = code,
+        .kind = kind,
+        .case_id = std::move(case_id),
+        .message = std::move(message),
+        .source_index = source_index,
     });
 }
 
@@ -92,6 +107,72 @@ void hash_combine_float(std::uint64_t& hash, const double value) noexcept {
         hash_combine_float(hash, row.evaporated_kg_per_m2);
         hash_combine_float(hash, row.condensed_kg_per_m2);
         hash_combine_float(hash, row.precipitated_kg_per_m2);
+    }
+    hash_combine(hash, plan.diagnostics.size());
+    return hash == 0ULL ? fnv_offset_basis : hash;
+}
+
+[[nodiscard]] std::uint64_t kilograms_to_milligrams(const double kilograms) noexcept {
+    if (!std::isfinite(kilograms) || kilograms <= 0.0) {
+        return 0ULL;
+    }
+    return static_cast<std::uint64_t>(std::llround(kilograms * 1000000.0));
+}
+
+[[nodiscard]] constexpr std::array required_validation_cases{
+    EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation,
+    EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation,
+    EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid,
+};
+
+[[nodiscard]] std::string_view
+canonical_validation_case_id(const EnvironmentWeatherSimulationValidationCaseKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation:
+        return "supersaturated_condensation";
+    case EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation:
+        return "forced_evaporation_precipitation";
+    case EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid:
+        return "clamped_mixed_grid";
+    }
+    return {};
+}
+
+[[nodiscard]] bool is_case_id_char(char ch) noexcept {
+    return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_';
+}
+
+[[nodiscard]] bool valid_validation_case_id(const EnvironmentWeatherSimulationValidationCase& row) {
+    return !row.case_id.empty() && std::ranges::all_of(row.case_id, is_case_id_char) &&
+           row.case_id == canonical_validation_case_id(row.kind);
+}
+
+[[nodiscard]] bool has_validation_case(const EnvironmentWeatherSimulationValidationDatasetPlan& plan,
+                                       const EnvironmentWeatherSimulationValidationCaseKind kind) {
+    return std::ranges::any_of(plan.cases, [kind](const auto& row) { return row.kind == kind; });
+}
+
+[[nodiscard]] bool validation_case_ready(const EnvironmentWeatherSimulationValidationCase& row,
+                                         const std::uint64_t water_error_mg) noexcept {
+    return row.plan.succeeded() && row.plan.status == EnvironmentWeatherSimulationStatus::stepped &&
+           row.plan.replay_hash != 0U && water_error_mg <= row.water_error_bound_mg &&
+           (!row.expect_condensation || row.plan.total_condensed_kg > 0.0) &&
+           (!row.expect_evaporation || row.plan.total_evaporated_kg > 0.0) &&
+           (!row.expect_precipitation || row.plan.total_precipitated_kg > 0.0) &&
+           (!row.expect_timestep_clamped || row.plan.timestep_clamped) && !row.plan.invokes_gpu &&
+           !row.plan.invokes_backend && !row.plan.exposes_native_handles && !row.plan.physical_weather_ready &&
+           !row.request_native_handle_access && !row.request_physical_weather_ready_claim;
+}
+
+[[nodiscard]] std::uint64_t build_dataset_hash(const EnvironmentWeatherSimulationValidationDatasetPlan& plan) noexcept {
+    std::uint64_t hash = fnv_offset_basis;
+    hash_combine(hash, plan.case_count);
+    hash_combine(hash, plan.ready_case_count);
+    hash_combine(hash, plan.max_water_conservation_error_mg);
+    for (const auto& row : plan.cases) {
+        hash_combine(hash, static_cast<std::uint64_t>(row.kind));
+        hash_combine(hash, row.plan.replay_hash);
+        hash_combine(hash, kilograms_to_milligrams(row.plan.water_conservation_error_kg));
     }
     hash_combine(hash, plan.diagnostics.size());
     return hash == 0ULL ? fnv_offset_basis : hash;
@@ -245,6 +326,10 @@ bool EnvironmentWeatherSimulationSolverBudgetPlan::succeeded() const noexcept {
            production_solver_ready;
 }
 
+bool EnvironmentWeatherSimulationValidationDatasetPlan::succeeded() const noexcept {
+    return status == EnvironmentWeatherSimulationValidationDatasetStatus::ready && diagnostics.empty();
+}
+
 float environment_weather_saturation_vapor_kg_per_m2(const float temperature_celsius, const float air_pressure_hpa,
                                                      const float mixing_height_m) noexcept {
     if (!valid_temperature(temperature_celsius) || !finite_positive(air_pressure_hpa) ||
@@ -378,6 +463,123 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
     return plan;
 }
 
+EnvironmentWeatherSimulationValidationDatasetPlan
+plan_environment_weather_simulation_validation_dataset(const EnvironmentWeatherSimulationValidationDatasetDesc& desc) {
+    EnvironmentWeatherSimulationValidationDatasetPlan plan;
+    plan.cases = desc.cases;
+    plan.case_count = static_cast<std::uint32_t>(desc.cases.size());
+    plan.required_case_count = static_cast<std::uint32_t>(required_validation_cases.size());
+
+    for (const auto& required_case : required_validation_cases) {
+        if (!has_validation_case(plan, required_case)) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::missing_required_case,
+                           required_case, std::string{canonical_validation_case_id(required_case)},
+                           "weather simulation validation dataset is missing a required canonical case", 0U);
+        }
+    }
+
+    std::vector<EnvironmentWeatherSimulationValidationCaseKind> seen;
+    seen.reserve(desc.cases.size());
+    for (const auto& row : desc.cases) {
+        plan.exposes_native_handles =
+            plan.exposes_native_handles || row.request_native_handle_access || row.plan.exposes_native_handles;
+        if (!valid_validation_case_id(row)) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::invalid_case_id, row.kind,
+                           row.case_id, "weather simulation validation cases require canonical lower_snake_case ids",
+                           row.source_index);
+        }
+        if (std::ranges::find(seen, row.kind) != seen.end()) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::duplicate_case, row.kind,
+                           row.case_id, "weather simulation validation dataset allows one row per canonical case",
+                           row.source_index);
+        } else {
+            seen.push_back(row.kind);
+        }
+        if (!row.plan.succeeded() || row.plan.status != EnvironmentWeatherSimulationStatus::stepped ||
+            row.plan.replay_hash == 0U) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::simulation_failed,
+                           row.kind, row.case_id,
+                           "weather simulation validation cases require a successful deterministic CPU plan",
+                           row.source_index);
+        }
+
+        const auto water_error_mg = kilograms_to_milligrams(row.plan.water_conservation_error_kg);
+        plan.max_water_conservation_error_mg = std::max(plan.max_water_conservation_error_mg, water_error_mg);
+        plan.water_conservation_error_bound_mg =
+            std::max(plan.water_conservation_error_bound_mg, row.water_error_bound_mg);
+        if (water_error_mg > row.water_error_bound_mg) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::water_error_exceeded,
+                           row.kind, row.case_id,
+                           "weather simulation validation case exceeded its water-conservation error bound",
+                           row.source_index);
+        }
+        if (row.expect_condensation && row.plan.total_condensed_kg <= 0.0) {
+            add_diagnostic(plan,
+                           EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::missing_expected_condensation,
+                           row.kind, row.case_id, "weather simulation validation case expected condensation transfer",
+                           row.source_index);
+        }
+        if (row.expect_evaporation && row.plan.total_evaporated_kg <= 0.0) {
+            add_diagnostic(plan,
+                           EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::missing_expected_evaporation,
+                           row.kind, row.case_id, "weather simulation validation case expected evaporation transfer",
+                           row.source_index);
+        }
+        if (row.expect_precipitation && row.plan.total_precipitated_kg <= 0.0) {
+            add_diagnostic(plan,
+                           EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::missing_expected_precipitation,
+                           row.kind, row.case_id, "weather simulation validation case expected precipitation transfer",
+                           row.source_index);
+        }
+        if (row.expect_timestep_clamped && !row.plan.timestep_clamped) {
+            add_diagnostic(plan,
+                           EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::missing_expected_timestep_clamp,
+                           row.kind, row.case_id, "weather simulation validation case expected timestep clamping",
+                           row.source_index);
+        }
+        if (row.request_native_handle_access) {
+            add_diagnostic(
+                plan, EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::unsupported_native_handle_access,
+                row.kind, row.case_id, "weather simulation validation datasets must not expose native handles",
+                row.source_index);
+        }
+        if (row.request_physical_weather_ready_claim) {
+            add_diagnostic(
+                plan,
+                EnvironmentWeatherSimulationValidationDatasetDiagnosticCode::unsupported_physical_weather_ready_claim,
+                row.kind, row.case_id,
+                "canonical validation datasets alone cannot claim complete physical weather simulation readiness",
+                row.source_index);
+        }
+
+        const bool ready = validation_case_ready(row, water_error_mg);
+        if (ready) {
+            ++plan.ready_case_count;
+            switch (row.kind) {
+            case EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation:
+                plan.supersaturated_condensation_ready = true;
+                break;
+            case EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation:
+                plan.forced_evaporation_precipitation_ready = true;
+                break;
+            case EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid:
+                plan.clamped_mixed_grid_ready = true;
+                break;
+            }
+        }
+    }
+
+    plan.validation_images_ready = false;
+    plan.physical_weather_ready = false;
+    plan.invokes_gpu = false;
+    plan.invokes_backend = false;
+    plan.dataset_hash = build_dataset_hash(plan);
+    plan.status = plan.diagnostics.empty() && plan.ready_case_count == plan.required_case_count
+                      ? EnvironmentWeatherSimulationValidationDatasetStatus::ready
+                      : EnvironmentWeatherSimulationValidationDatasetStatus::blocked;
+    return plan;
+}
+
 bool has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                                    EnvironmentWeatherSimulationDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
@@ -386,6 +588,12 @@ bool has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimul
 bool has_environment_weather_simulation_solver_budget_diagnostic(
     const EnvironmentWeatherSimulationSolverBudgetPlan& plan,
     EnvironmentWeatherSimulationSolverBudgetDiagnosticCode code) noexcept {
+    return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+bool has_environment_weather_simulation_validation_dataset_diagnostic(
+    const EnvironmentWeatherSimulationValidationDatasetPlan& plan,
+    EnvironmentWeatherSimulationValidationDatasetDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
