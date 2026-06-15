@@ -716,9 +716,21 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
     plan.profiler_artifact_ready = profiler_artifacts_valid && plan.profiler_artifact_count > 0U &&
                                    plan.profiler_tool_rows >= 2U && plan.profiler_backend_rows == 1U;
     plan.profiler_budget_ready = plan.cpu_budget_ready && plan.gpu_budget_ready && plan.profiler_artifact_ready;
-    plan.production_solver_ready = false;
     plan.invokes_gpu = plan.gpu_budget_ready;
     plan.invokes_backend = plan.gpu_budget_ready;
+    if (desc.production_solver_package_counter_reviewed &&
+        (!plan.cpu_budget_ready || !plan.gpu_budget_ready || !plan.profiler_budget_ready)) {
+        add_diagnostic(
+            plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_production_solver_package_evidence,
+            "production_solver_package_counter_reviewed",
+            "weather simulation production solver package counter review requires ready CPU, GPU, and "
+            "retained profiler budget evidence");
+    }
+    plan.production_solver_package_counter_review_ready =
+        desc.production_solver_package_counter_reviewed && plan.cpu_budget_ready && plan.gpu_budget_ready &&
+        plan.profiler_budget_ready && !plan.exposes_native_handles && plan.diagnostics.empty();
+    plan.production_solver_package_counter_rows = plan.production_solver_package_counter_review_ready ? 1U : 0U;
+    plan.production_solver_ready = false;
 
     if (plan.cpu_budget_over || plan.gpu_budget_over) {
         plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded;

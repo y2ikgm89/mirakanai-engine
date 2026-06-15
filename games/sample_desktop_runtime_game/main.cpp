@@ -3761,6 +3761,7 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
                 evidence.d3d12_gpu_solver_ready
                     ? make_environment_weather_simulation_profiler_artifact_rows(cpu_elapsed_us, gpu_elapsed_us)
                     : std::vector<mirakana::EnvironmentWeatherSimulationSolverProfilerArtifactRow>{},
+            .production_solver_package_counter_reviewed = evidence.d3d12_gpu_solver_ready,
         });
     evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
         make_environment_weather_simulation_validation_dataset_desc());
@@ -9072,6 +9073,11 @@ int main(int argc, char** argv) {
             << environment_weather_simulation_package.solver_budget.profiler_artifact_hash
             << " environment_weather_simulation_profiler_budget_ready="
             << (environment_weather_simulation_package.solver_budget.profiler_budget_ready ? 1 : 0)
+            << " environment_weather_simulation_production_solver_package_counter_review_ready="
+            << (environment_weather_simulation_package.solver_budget.production_solver_package_counter_review_ready ? 1
+                                                                                                                    : 0)
+            << " environment_weather_simulation_production_solver_package_counter_rows="
+            << environment_weather_simulation_package.solver_budget.production_solver_package_counter_rows
             << " environment_weather_simulation_production_solver_ready="
             << (environment_weather_simulation_package.solver_budget.production_solver_ready ? 1 : 0)
             << " environment_weather_simulation_solver_budget_diagnostics="
@@ -9293,8 +9299,10 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.solver_budget.profiler_tool_rows != 2U ||
              environment_weather_simulation_package.solver_budget.profiler_backend_rows != 1U ||
              environment_weather_simulation_package.solver_budget.profiler_artifact_hash == 0U ||
+             !environment_weather_simulation_package.solver_budget.production_solver_package_counter_review_ready ||
+             environment_weather_simulation_package.solver_budget.production_solver_package_counter_rows != 1U ||
              environment_weather_simulation_package.solver_budget.production_solver_ready ||
-             environment_weather_simulation_package.solver_budget.diagnostics.size() != 0U ||
+             !environment_weather_simulation_package.solver_budget.diagnostics.empty() ||
              !environment_weather_simulation_package.validation_dataset.succeeded() ||
              environment_weather_simulation_package.validation_dataset.status !=
                  mirakana::EnvironmentWeatherSimulationValidationDatasetStatus::ready ||
@@ -9312,7 +9320,7 @@ int main(int argc, char** argv) {
                  environment_weather_simulation_package_water_error_bound_mg() ||
              environment_weather_simulation_package.validation_dataset.water_conservation_error_bound_mg !=
                  environment_weather_simulation_package_water_error_bound_mg() ||
-             environment_weather_simulation_package.validation_dataset.diagnostics.size() != 0U ||
+             !environment_weather_simulation_package.validation_dataset.diagnostics.empty() ||
              environment_weather_simulation_package.validation_dataset.dataset_hash == 0U ||
              !environment_weather_simulation_package.validation_images.succeeded() ||
              environment_weather_simulation_package.validation_images.status !=
@@ -9327,7 +9335,7 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.validation_images.invokes_gpu ||
              environment_weather_simulation_package.validation_images.invokes_backend ||
              environment_weather_simulation_package.validation_images.exposes_native_handles ||
-             environment_weather_simulation_package.validation_images.diagnostics.size() != 0U ||
+             !environment_weather_simulation_package.validation_images.diagnostics.empty() ||
              environment_weather_simulation_package.validation_images.image_hash == 0U ||
              !environment_weather_simulation_package.artist_controls.succeeded() ||
              environment_weather_simulation_package.artist_controls.status !=
@@ -9340,7 +9348,7 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.artist_controls.invokes_gpu ||
              environment_weather_simulation_package.artist_controls.invokes_backend ||
              environment_weather_simulation_package.artist_controls.physical_weather_ready ||
-             environment_weather_simulation_package.artist_controls.diagnostics.size() != 0U ||
+             !environment_weather_simulation_package.artist_controls.diagnostics.empty() ||
              environment_weather_simulation_package.artist_controls.control_hash == 0U)) {
             return 3;
         }
