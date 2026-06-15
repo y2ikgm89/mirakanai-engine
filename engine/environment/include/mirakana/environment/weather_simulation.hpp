@@ -58,10 +58,22 @@ enum class EnvironmentWeatherSimulationValidationDatasetStatus : std::uint8_t {
     ready,
 };
 
+enum class EnvironmentWeatherSimulationValidationImageStatus : std::uint8_t {
+    blocked = 0,
+    ready,
+};
+
 enum class EnvironmentWeatherSimulationValidationCaseKind : std::uint8_t {
     supersaturated_condensation = 0,
     forced_evaporation_precipitation,
     clamped_mixed_grid,
+};
+
+enum class EnvironmentWeatherSimulationValidationImageKind : std::uint8_t {
+    vapor_water_after = 0,
+    cloud_water_after,
+    surface_water_after,
+    water_transfer,
 };
 
 enum class EnvironmentWeatherSimulationValidationDatasetDiagnosticCode : std::uint8_t {
@@ -75,6 +87,15 @@ enum class EnvironmentWeatherSimulationValidationDatasetDiagnosticCode : std::ui
     missing_expected_evaporation,
     missing_expected_precipitation,
     missing_expected_timestep_clamp,
+    unsupported_native_handle_access,
+    unsupported_physical_weather_ready_claim,
+};
+
+enum class EnvironmentWeatherSimulationValidationImageDiagnosticCode : std::uint8_t {
+    none = 0,
+    missing_ready_dataset,
+    invalid_image_dimensions,
+    missing_case_rows,
     unsupported_native_handle_access,
     unsupported_physical_weather_ready_claim,
 };
@@ -195,6 +216,8 @@ struct EnvironmentWeatherSimulationValidationCase {
     EnvironmentWeatherSimulationValidationCaseKind kind{
         EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation};
     EnvironmentWeatherSimulationPlan plan{};
+    std::uint32_t grid_width{0U};
+    std::uint32_t grid_height{0U};
     std::uint64_t water_error_bound_mg{1U};
     bool expect_condensation{false};
     bool expect_evaporation{false};
@@ -242,6 +265,56 @@ struct EnvironmentWeatherSimulationValidationDatasetPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct EnvironmentWeatherSimulationValidationImageDesc {
+    EnvironmentWeatherSimulationValidationDatasetPlan dataset{};
+    bool request_native_handle_access{false};
+    bool request_physical_weather_ready_claim{false};
+};
+
+struct EnvironmentWeatherSimulationValidationImageRow {
+    std::string case_id;
+    EnvironmentWeatherSimulationValidationCaseKind case_kind{
+        EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation};
+    EnvironmentWeatherSimulationValidationImageKind image_kind{
+        EnvironmentWeatherSimulationValidationImageKind::vapor_water_after};
+    std::uint32_t width{0U};
+    std::uint32_t height{0U};
+    std::uint32_t pixel_count{0U};
+    std::uint64_t max_sample_mg_per_m2{0U};
+    std::uint64_t checksum{0U};
+    std::uint32_t source_index{0U};
+};
+
+struct EnvironmentWeatherSimulationValidationImageDiagnostic {
+    EnvironmentWeatherSimulationValidationImageDiagnosticCode code{
+        EnvironmentWeatherSimulationValidationImageDiagnosticCode::none};
+    EnvironmentWeatherSimulationValidationCaseKind kind{
+        EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation};
+    std::string case_id;
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct EnvironmentWeatherSimulationValidationImagePlan {
+    EnvironmentWeatherSimulationValidationImageStatus status{
+        EnvironmentWeatherSimulationValidationImageStatus::blocked};
+    std::vector<EnvironmentWeatherSimulationValidationImageRow> rows;
+    std::vector<EnvironmentWeatherSimulationValidationImageDiagnostic> diagnostics;
+    std::uint32_t image_count{0U};
+    std::uint32_t required_image_count{12U};
+    bool supersaturated_condensation_images_ready{false};
+    bool forced_evaporation_precipitation_images_ready{false};
+    bool clamped_mixed_grid_images_ready{false};
+    bool validation_images_ready{false};
+    bool physical_weather_ready{false};
+    bool invokes_gpu{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    std::uint64_t image_hash{0U};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] float environment_weather_saturation_vapor_kg_per_m2(float temperature_celsius, float air_pressure_hpa,
                                                                    float mixing_height_m) noexcept;
 
@@ -254,6 +327,9 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
 [[nodiscard]] EnvironmentWeatherSimulationValidationDatasetPlan
 plan_environment_weather_simulation_validation_dataset(const EnvironmentWeatherSimulationValidationDatasetDesc& desc);
 
+[[nodiscard]] EnvironmentWeatherSimulationValidationImagePlan
+plan_environment_weather_simulation_validation_images(const EnvironmentWeatherSimulationValidationImageDesc& desc);
+
 [[nodiscard]] bool
 has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                               EnvironmentWeatherSimulationDiagnosticCode code) noexcept;
@@ -265,5 +341,9 @@ has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulation
 [[nodiscard]] bool has_environment_weather_simulation_validation_dataset_diagnostic(
     const EnvironmentWeatherSimulationValidationDatasetPlan& plan,
     EnvironmentWeatherSimulationValidationDatasetDiagnosticCode code) noexcept;
+
+[[nodiscard]] bool has_environment_weather_simulation_validation_image_diagnostic(
+    const EnvironmentWeatherSimulationValidationImagePlan& plan,
+    EnvironmentWeatherSimulationValidationImageDiagnosticCode code) noexcept;
 
 } // namespace mirakana

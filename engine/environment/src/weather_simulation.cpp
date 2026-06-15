@@ -52,6 +52,19 @@ void add_diagnostic(EnvironmentWeatherSimulationValidationDatasetPlan& plan,
     });
 }
 
+void add_diagnostic(EnvironmentWeatherSimulationValidationImagePlan& plan,
+                    EnvironmentWeatherSimulationValidationImageDiagnosticCode code,
+                    EnvironmentWeatherSimulationValidationCaseKind kind, std::string case_id, std::string message,
+                    std::uint32_t source_index) {
+    plan.diagnostics.push_back(EnvironmentWeatherSimulationValidationImageDiagnostic{
+        .code = code,
+        .kind = kind,
+        .case_id = std::move(case_id),
+        .message = std::move(message),
+        .source_index = source_index,
+    });
+}
+
 [[nodiscard]] bool finite_positive(const float value) noexcept {
     return std::isfinite(value) && value > 0.0F;
 }
@@ -119,10 +132,24 @@ void hash_combine_float(std::uint64_t& hash, const double value) noexcept {
     return static_cast<std::uint64_t>(std::llround(kilograms * 1000000.0));
 }
 
+[[nodiscard]] std::uint64_t kilograms_per_m2_to_milligrams_per_m2(const double kilograms_per_m2) noexcept {
+    if (!std::isfinite(kilograms_per_m2) || kilograms_per_m2 <= 0.0) {
+        return 0ULL;
+    }
+    return static_cast<std::uint64_t>(std::llround(kilograms_per_m2 * 1000000.0));
+}
+
 [[nodiscard]] constexpr std::array required_validation_cases{
     EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation,
     EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation,
     EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid,
+};
+
+[[nodiscard]] constexpr std::array required_validation_image_kinds{
+    EnvironmentWeatherSimulationValidationImageKind::vapor_water_after,
+    EnvironmentWeatherSimulationValidationImageKind::cloud_water_after,
+    EnvironmentWeatherSimulationValidationImageKind::surface_water_after,
+    EnvironmentWeatherSimulationValidationImageKind::water_transfer,
 };
 
 [[nodiscard]] std::string_view
@@ -173,6 +200,23 @@ canonical_validation_case_id(const EnvironmentWeatherSimulationValidationCaseKin
         hash_combine(hash, static_cast<std::uint64_t>(row.kind));
         hash_combine(hash, row.plan.replay_hash);
         hash_combine(hash, kilograms_to_milligrams(row.plan.water_conservation_error_kg));
+    }
+    hash_combine(hash, plan.diagnostics.size());
+    return hash == 0ULL ? fnv_offset_basis : hash;
+}
+
+[[nodiscard]] std::uint64_t build_image_hash(const EnvironmentWeatherSimulationValidationImagePlan& plan) noexcept {
+    std::uint64_t hash = fnv_offset_basis;
+    hash_combine(hash, plan.image_count);
+    hash_combine(hash, plan.required_image_count);
+    for (const auto& row : plan.rows) {
+        hash_combine(hash, static_cast<std::uint64_t>(row.case_kind));
+        hash_combine(hash, static_cast<std::uint64_t>(row.image_kind));
+        hash_combine(hash, row.width);
+        hash_combine(hash, row.height);
+        hash_combine(hash, row.pixel_count);
+        hash_combine(hash, row.max_sample_mg_per_m2);
+        hash_combine(hash, row.checksum);
     }
     hash_combine(hash, plan.diagnostics.size());
     return hash == 0ULL ? fnv_offset_basis : hash;
@@ -315,6 +359,52 @@ void validate_desc(EnvironmentWeatherSimulationPlan& plan, const EnvironmentWeat
     };
 }
 
+[[nodiscard]] double
+validation_image_sample_kg_per_m2(const EnvironmentWeatherSimulationCellRow& cell,
+                                  const EnvironmentWeatherSimulationValidationImageKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentWeatherSimulationValidationImageKind::vapor_water_after:
+        return cell.state.vapor_water_kg_per_m2;
+    case EnvironmentWeatherSimulationValidationImageKind::cloud_water_after:
+        return cell.state.cloud_water_kg_per_m2;
+    case EnvironmentWeatherSimulationValidationImageKind::surface_water_after:
+        return cell.state.surface_water_kg_per_m2;
+    case EnvironmentWeatherSimulationValidationImageKind::water_transfer:
+        return static_cast<double>(cell.evaporated_kg_per_m2) + static_cast<double>(cell.condensed_kg_per_m2) +
+               static_cast<double>(cell.precipitated_kg_per_m2);
+    }
+    return 0.0;
+}
+
+[[nodiscard]] EnvironmentWeatherSimulationValidationImageRow
+build_validation_image_row(const EnvironmentWeatherSimulationValidationCase& row,
+                           const EnvironmentWeatherSimulationValidationImageKind image_kind) noexcept {
+    std::uint64_t checksum = fnv_offset_basis;
+    std::uint64_t max_sample_mg_per_m2 = 0U;
+    hash_combine(checksum, static_cast<std::uint64_t>(row.kind));
+    hash_combine(checksum, static_cast<std::uint64_t>(image_kind));
+    hash_combine(checksum, row.grid_width);
+    hash_combine(checksum, row.grid_height);
+    for (const auto& cell : row.plan.cell_rows) {
+        const auto sample_mg_per_m2 =
+            kilograms_per_m2_to_milligrams_per_m2(validation_image_sample_kg_per_m2(cell, image_kind));
+        max_sample_mg_per_m2 = std::max(max_sample_mg_per_m2, sample_mg_per_m2);
+        hash_combine(checksum, cell.cell_index);
+        hash_combine(checksum, sample_mg_per_m2);
+    }
+    return EnvironmentWeatherSimulationValidationImageRow{
+        .case_id = row.case_id,
+        .case_kind = row.kind,
+        .image_kind = image_kind,
+        .width = row.grid_width,
+        .height = row.grid_height,
+        .pixel_count = static_cast<std::uint32_t>(row.plan.cell_rows.size()),
+        .max_sample_mg_per_m2 = max_sample_mg_per_m2,
+        .checksum = checksum == 0ULL ? fnv_offset_basis : checksum,
+        .source_index = row.source_index,
+    };
+}
+
 } // namespace
 
 bool EnvironmentWeatherSimulationPlan::succeeded() const noexcept {
@@ -328,6 +418,11 @@ bool EnvironmentWeatherSimulationSolverBudgetPlan::succeeded() const noexcept {
 
 bool EnvironmentWeatherSimulationValidationDatasetPlan::succeeded() const noexcept {
     return status == EnvironmentWeatherSimulationValidationDatasetStatus::ready && diagnostics.empty();
+}
+
+bool EnvironmentWeatherSimulationValidationImagePlan::succeeded() const noexcept {
+    return status == EnvironmentWeatherSimulationValidationImageStatus::ready && diagnostics.empty() &&
+           validation_images_ready;
 }
 
 float environment_weather_saturation_vapor_kg_per_m2(const float temperature_celsius, const float air_pressure_hpa,
@@ -580,6 +675,84 @@ plan_environment_weather_simulation_validation_dataset(const EnvironmentWeatherS
     return plan;
 }
 
+EnvironmentWeatherSimulationValidationImagePlan
+plan_environment_weather_simulation_validation_images(const EnvironmentWeatherSimulationValidationImageDesc& desc) {
+    EnvironmentWeatherSimulationValidationImagePlan plan;
+    plan.exposes_native_handles = desc.request_native_handle_access || desc.dataset.exposes_native_handles;
+    plan.required_image_count =
+        static_cast<std::uint32_t>(required_validation_cases.size() * required_validation_image_kinds.size());
+
+    if (!desc.dataset.succeeded()) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationValidationImageDiagnosticCode::missing_ready_dataset,
+                       EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation, {},
+                       "weather simulation validation images require a ready canonical validation dataset", 0U);
+    }
+    if (desc.request_native_handle_access) {
+        add_diagnostic(plan,
+                       EnvironmentWeatherSimulationValidationImageDiagnosticCode::unsupported_native_handle_access,
+                       EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation, {},
+                       "weather simulation validation image counters must not expose native handles", 0U);
+    }
+    if (desc.request_physical_weather_ready_claim) {
+        add_diagnostic(
+            plan, EnvironmentWeatherSimulationValidationImageDiagnosticCode::unsupported_physical_weather_ready_claim,
+            EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation, {},
+            "selected validation image counters cannot claim complete physical weather simulation readiness", 0U);
+    }
+
+    for (const auto& row : desc.dataset.cases) {
+        const auto expected_pixels =
+            static_cast<std::uint64_t>(row.grid_width) * static_cast<std::uint64_t>(row.grid_height);
+        if (row.grid_width == 0U || row.grid_height == 0U ||
+            expected_pixels > static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max()) ||
+            expected_pixels != row.plan.cell_rows.size() || expected_pixels != row.plan.cell_count) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationImageDiagnosticCode::invalid_image_dimensions,
+                           row.kind, row.case_id,
+                           "weather simulation validation image dimensions must match the reviewed CPU grid",
+                           row.source_index);
+            continue;
+        }
+        if (row.plan.cell_rows.empty()) {
+            add_diagnostic(plan, EnvironmentWeatherSimulationValidationImageDiagnosticCode::missing_case_rows, row.kind,
+                           row.case_id, "weather simulation validation images require reviewed CPU reference cell rows",
+                           row.source_index);
+            continue;
+        }
+
+        const auto row_count_before = plan.rows.size();
+        for (const auto image_kind : required_validation_image_kinds) {
+            plan.rows.push_back(build_validation_image_row(row, image_kind));
+        }
+        const auto added_rows = plan.rows.size() - row_count_before;
+        if (added_rows == required_validation_image_kinds.size()) {
+            switch (row.kind) {
+            case EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation:
+                plan.supersaturated_condensation_images_ready = true;
+                break;
+            case EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation:
+                plan.forced_evaporation_precipitation_images_ready = true;
+                break;
+            case EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid:
+                plan.clamped_mixed_grid_images_ready = true;
+                break;
+            }
+        }
+    }
+
+    plan.image_count = static_cast<std::uint32_t>(plan.rows.size());
+    plan.validation_images_ready = plan.diagnostics.empty() && plan.image_count == plan.required_image_count &&
+                                   plan.supersaturated_condensation_images_ready &&
+                                   plan.forced_evaporation_precipitation_images_ready &&
+                                   plan.clamped_mixed_grid_images_ready;
+    plan.physical_weather_ready = false;
+    plan.invokes_gpu = false;
+    plan.invokes_backend = false;
+    plan.image_hash = build_image_hash(plan);
+    plan.status = plan.validation_images_ready ? EnvironmentWeatherSimulationValidationImageStatus::ready
+                                               : EnvironmentWeatherSimulationValidationImageStatus::blocked;
+    return plan;
+}
+
 bool has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                                    EnvironmentWeatherSimulationDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
@@ -594,6 +767,12 @@ bool has_environment_weather_simulation_solver_budget_diagnostic(
 bool has_environment_weather_simulation_validation_dataset_diagnostic(
     const EnvironmentWeatherSimulationValidationDatasetPlan& plan,
     EnvironmentWeatherSimulationValidationDatasetDiagnosticCode code) noexcept {
+    return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+bool has_environment_weather_simulation_validation_image_diagnostic(
+    const EnvironmentWeatherSimulationValidationImagePlan& plan,
+    EnvironmentWeatherSimulationValidationImageDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
