@@ -474,6 +474,149 @@ MK_TEST("environment weather simulation validation images fail closed without da
         mirakana::EnvironmentWeatherSimulationValidationImageDiagnosticCode::unsupported_physical_weather_ready_claim));
 }
 
+MK_TEST("environment weather simulation artist controls author deterministic CPU preview descriptors") {
+    const mirakana::EnvironmentWeatherSimulationArtistControlDesc desc{
+        .width = 2U,
+        .height = 2U,
+        .cell_area_m2 = 9.0F,
+        .mixing_height_m = 900.0F,
+        .air_pressure_hpa = 1000.0F,
+        .requested_timestep_s = 1.0F,
+        .max_timestep_s = 0.5F,
+        .deterministic_seed = 99U,
+        .cells =
+            {
+                mirakana::EnvironmentWeatherSimulationArtistControlCell{
+                    .control_id = "warm_humid_lowland",
+                    .temperature_celsius = 18.0F,
+                    .relative_humidity_percent = 92.0F,
+                    .cloud_cover_percent = 55.0F,
+                    .surface_wetness_percent = 30.0F,
+                    .evaporation_intensity_percent = 25.0F,
+                    .precipitation_intensity_percent = 10.0F,
+                    .source_index = 1U,
+                },
+                mirakana::EnvironmentWeatherSimulationArtistControlCell{
+                    .control_id = "cold_cloud_bank",
+                    .temperature_celsius = 2.0F,
+                    .relative_humidity_percent = 88.0F,
+                    .cloud_cover_percent = 85.0F,
+                    .surface_wetness_percent = 45.0F,
+                    .evaporation_intensity_percent = 5.0F,
+                    .precipitation_intensity_percent = 35.0F,
+                    .source_index = 2U,
+                },
+                mirakana::EnvironmentWeatherSimulationArtistControlCell{
+                    .control_id = "dry_ridge",
+                    .temperature_celsius = 26.0F,
+                    .relative_humidity_percent = 35.0F,
+                    .cloud_cover_percent = 10.0F,
+                    .surface_wetness_percent = 8.0F,
+                    .evaporation_intensity_percent = 60.0F,
+                    .precipitation_intensity_percent = 0.0F,
+                    .source_index = 3U,
+                },
+                mirakana::EnvironmentWeatherSimulationArtistControlCell{
+                    .control_id = "wet_snowfield",
+                    .temperature_celsius = -4.0F,
+                    .relative_humidity_percent = 70.0F,
+                    .cloud_cover_percent = 65.0F,
+                    .surface_wetness_percent = 80.0F,
+                    .evaporation_intensity_percent = 3.0F,
+                    .precipitation_intensity_percent = 20.0F,
+                    .source_index = 4U,
+                },
+            },
+    };
+
+    const auto first = mirakana::plan_environment_weather_simulation_artist_controls(desc);
+    const auto second = mirakana::plan_environment_weather_simulation_artist_controls(desc);
+
+    MK_REQUIRE(first.succeeded());
+    MK_REQUIRE(first.status == mirakana::EnvironmentWeatherSimulationArtistControlStatus::ready);
+    MK_REQUIRE(first.artist_controls_ready);
+    MK_REQUIRE(first.control_row_count == 4U);
+    MK_REQUIRE(first.generated_cell_count == 4U);
+    MK_REQUIRE(first.control_hash != 0U);
+    MK_REQUIRE(first.control_hash == second.control_hash);
+    MK_REQUIRE(first.diagnostics.empty());
+    MK_REQUIRE(!first.physical_weather_ready);
+    MK_REQUIRE(!first.invokes_gpu);
+    MK_REQUIRE(!first.invokes_backend);
+    MK_REQUIRE(!first.exposes_native_handles);
+    MK_REQUIRE(!first.raw_solver_internal_access);
+    MK_REQUIRE(first.preview_desc.width == 2U);
+    MK_REQUIRE(first.preview_desc.height == 2U);
+    MK_REQUIRE(first.preview_desc.initial_cells.size() == 4U);
+    MK_REQUIRE(first.preview_desc.forcing_rows.size() == 4U);
+    MK_REQUIRE(!first.preview_desc.request_gpu_acceleration);
+    MK_REQUIRE(!first.preview_desc.request_backend_execution);
+    MK_REQUIRE(!first.preview_desc.request_native_handle_access);
+    MK_REQUIRE(!first.preview_desc.request_physical_weather_ready_claim);
+
+    const auto preview = mirakana::simulate_environment_weather_cpu_reference(first.preview_desc);
+    MK_REQUIRE(preview.succeeded());
+    MK_REQUIRE(preview.cell_count == 4U);
+    MK_REQUIRE(preview.replay_hash != 0U);
+    MK_REQUIRE(preview.total_evaporated_kg > 0.0);
+    MK_REQUIRE(preview.total_precipitated_kg > 0.0);
+    MK_REQUIRE(!preview.invokes_gpu);
+    MK_REQUIRE(!preview.invokes_backend);
+    MK_REQUIRE(!preview.exposes_native_handles);
+    MK_REQUIRE(!preview.physical_weather_ready);
+}
+
+MK_TEST("environment weather simulation artist controls fail closed for invalid or unsupported controls") {
+    const mirakana::EnvironmentWeatherSimulationArtistControlDesc desc{
+        .width = 1U,
+        .height = 1U,
+        .requested_timestep_s = 1.0F,
+        .max_timestep_s = 0.5F,
+        .cells =
+            {
+                mirakana::EnvironmentWeatherSimulationArtistControlCell{
+                    .control_id = "Bad Id",
+                    .temperature_celsius = 70.0F,
+                    .relative_humidity_percent = 120.0F,
+                    .cloud_cover_percent = -1.0F,
+                    .surface_wetness_percent = 20.0F,
+                    .evaporation_intensity_percent = 10.0F,
+                    .precipitation_intensity_percent = 10.0F,
+                    .source_index = 7U,
+                },
+            },
+        .request_raw_solver_internal_access = true,
+        .request_native_handle_access = true,
+        .request_backend_execution = true,
+        .request_physical_weather_ready_claim = true,
+    };
+
+    const auto plan = mirakana::plan_environment_weather_simulation_artist_controls(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentWeatherSimulationArtistControlStatus::blocked);
+    MK_REQUIRE(!plan.artist_controls_ready);
+    MK_REQUIRE(!plan.physical_weather_ready);
+    MK_REQUIRE(!plan.invokes_gpu);
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(plan.exposes_native_handles);
+    MK_REQUIRE(plan.raw_solver_internal_access);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_artist_control_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_control_id));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_artist_control_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationArtistControlDiagnosticCode::invalid_control_value));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_artist_control_diagnostic(
+        plan,
+        mirakana::EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_raw_solver_internal_access));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_artist_control_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_backend_execution));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_artist_control_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_native_handle_access));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_artist_control_diagnostic(
+        plan,
+        mirakana::EnvironmentWeatherSimulationArtistControlDiagnosticCode::unsupported_physical_weather_ready_claim));
+}
+
 MK_TEST("environment weather simulation validation dataset fails closed for missing or unsupported cases") {
     const auto condensation_plan = mirakana::simulate_environment_weather_cpu_reference(make_single_cell_desc());
 

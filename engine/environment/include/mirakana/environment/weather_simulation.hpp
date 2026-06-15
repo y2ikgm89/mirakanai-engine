@@ -63,6 +63,11 @@ enum class EnvironmentWeatherSimulationValidationImageStatus : std::uint8_t {
     ready,
 };
 
+enum class EnvironmentWeatherSimulationArtistControlStatus : std::uint8_t {
+    blocked = 0,
+    ready,
+};
+
 enum class EnvironmentWeatherSimulationValidationCaseKind : std::uint8_t {
     supersaturated_condensation = 0,
     forced_evaporation_precipitation,
@@ -97,6 +102,18 @@ enum class EnvironmentWeatherSimulationValidationImageDiagnosticCode : std::uint
     invalid_image_dimensions,
     missing_case_rows,
     unsupported_native_handle_access,
+    unsupported_physical_weather_ready_claim,
+};
+
+enum class EnvironmentWeatherSimulationArtistControlDiagnosticCode : std::uint8_t {
+    none = 0,
+    invalid_grid,
+    invalid_environment_value,
+    invalid_control_id,
+    invalid_control_value,
+    unsupported_raw_solver_internal_access,
+    unsupported_native_handle_access,
+    unsupported_backend_execution,
     unsupported_physical_weather_ready_claim,
 };
 
@@ -315,6 +332,58 @@ struct EnvironmentWeatherSimulationValidationImagePlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct EnvironmentWeatherSimulationArtistControlCell {
+    std::string control_id;
+    float temperature_celsius{15.0F};
+    float relative_humidity_percent{50.0F};
+    float cloud_cover_percent{0.0F};
+    float surface_wetness_percent{0.0F};
+    float evaporation_intensity_percent{0.0F};
+    float precipitation_intensity_percent{0.0F};
+    std::uint32_t source_index{0U};
+};
+
+struct EnvironmentWeatherSimulationArtistControlDesc {
+    std::uint32_t width{0U};
+    std::uint32_t height{0U};
+    float cell_area_m2{1.0F};
+    float mixing_height_m{1000.0F};
+    float air_pressure_hpa{1013.25F};
+    float requested_timestep_s{1.0F};
+    float max_timestep_s{1.0F};
+    std::uint64_t deterministic_seed{0U};
+    std::vector<EnvironmentWeatherSimulationArtistControlCell> cells;
+    bool request_raw_solver_internal_access{false};
+    bool request_native_handle_access{false};
+    bool request_backend_execution{false};
+    bool request_physical_weather_ready_claim{false};
+};
+
+struct EnvironmentWeatherSimulationArtistControlDiagnostic {
+    EnvironmentWeatherSimulationArtistControlDiagnosticCode code{
+        EnvironmentWeatherSimulationArtistControlDiagnosticCode::none};
+    std::string field;
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct EnvironmentWeatherSimulationArtistControlPlan {
+    EnvironmentWeatherSimulationArtistControlStatus status{EnvironmentWeatherSimulationArtistControlStatus::blocked};
+    EnvironmentWeatherSimulationDesc preview_desc{};
+    std::vector<EnvironmentWeatherSimulationArtistControlDiagnostic> diagnostics;
+    std::uint32_t control_row_count{0U};
+    std::uint32_t generated_cell_count{0U};
+    bool artist_controls_ready{false};
+    bool physical_weather_ready{false};
+    bool invokes_gpu{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool raw_solver_internal_access{false};
+    std::uint64_t control_hash{0U};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] float environment_weather_saturation_vapor_kg_per_m2(float temperature_celsius, float air_pressure_hpa,
                                                                    float mixing_height_m) noexcept;
 
@@ -329,6 +398,9 @@ plan_environment_weather_simulation_validation_dataset(const EnvironmentWeatherS
 
 [[nodiscard]] EnvironmentWeatherSimulationValidationImagePlan
 plan_environment_weather_simulation_validation_images(const EnvironmentWeatherSimulationValidationImageDesc& desc);
+
+[[nodiscard]] EnvironmentWeatherSimulationArtistControlPlan
+plan_environment_weather_simulation_artist_controls(const EnvironmentWeatherSimulationArtistControlDesc& desc);
 
 [[nodiscard]] bool
 has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
@@ -345,5 +417,9 @@ has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulation
 [[nodiscard]] bool has_environment_weather_simulation_validation_image_diagnostic(
     const EnvironmentWeatherSimulationValidationImagePlan& plan,
     EnvironmentWeatherSimulationValidationImageDiagnosticCode code) noexcept;
+
+[[nodiscard]] bool has_environment_weather_simulation_artist_control_diagnostic(
+    const EnvironmentWeatherSimulationArtistControlPlan& plan,
+    EnvironmentWeatherSimulationArtistControlDiagnosticCode code) noexcept;
 
 } // namespace mirakana

@@ -6026,6 +6026,16 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_validation_water_error_bound_mg" = "1"
                 "environment_weather_simulation_validation_diagnostics" = "0"
                 "environment_weather_simulation_validation_image_diagnostics" = "0"
+                "environment_weather_simulation_artist_control_status" = "ready"
+                "environment_weather_simulation_artist_controls_ready" = "1"
+                "environment_weather_simulation_artist_control_rows" = "4"
+                "environment_weather_simulation_artist_control_generated_cells" = "4"
+                "environment_weather_simulation_artist_control_raw_solver_internal_access" = "0"
+                "environment_weather_simulation_artist_control_native_handle_access" = "0"
+                "environment_weather_simulation_artist_control_invokes_gpu" = "0"
+                "environment_weather_simulation_artist_control_invokes_backend" = "0"
+                "environment_weather_simulation_artist_control_physical_weather_ready" = "0"
+                "environment_weather_simulation_artist_control_diagnostics" = "0"
             }
         foreach ($field in @(
                 "environment_weather_simulation_total_water_before_mg",
@@ -6055,6 +6065,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_image_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation validation image hash."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_artist_control_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation artist control hash."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {
