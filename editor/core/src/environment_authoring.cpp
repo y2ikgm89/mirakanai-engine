@@ -431,6 +431,34 @@ artist_workflow_walkthrough_label(EnvironmentArtistWorkflowWalkthroughStepKind k
     return "Environment Walkthrough Step";
 }
 
+[[nodiscard]] std::string_view artist_workflow_execution_stage_label(std::string_view row_id) noexcept {
+    if (row_id == "environment.workflow.execution.command_catalog") {
+        return "Command Catalog";
+    }
+    if (row_id == "environment.workflow.execution.asset_browser") {
+        return "Asset Browser";
+    }
+    if (row_id == "environment.workflow.execution.preview") {
+        return "Preview";
+    }
+    if (row_id == "environment.workflow.execution.walkthrough") {
+        return "Walkthrough";
+    }
+    if (row_id == "environment.workflow.execution.external_execution") {
+        return "External Execution";
+    }
+    if (row_id == "environment.workflow.execution.evidence_review") {
+        return "Evidence Review";
+    }
+    if (row_id == "environment.workflow.execution.operator_review") {
+        return "Operator Review";
+    }
+    if (row_id == "environment.workflow.execution.ready_promotion_guard") {
+        return "Ready Promotion Guard";
+    }
+    return "Environment Artist Workflow Execution";
+}
+
 [[nodiscard]] EnvironmentArtistWorkflowCommandKind
 walkthrough_step_command_kind(EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept {
     switch (kind) {
@@ -452,6 +480,81 @@ walkthrough_step_command_kind(EnvironmentArtistWorkflowWalkthroughStepKind kind)
         return EnvironmentArtistWorkflowCommandKind::publish_package;
     }
     return EnvironmentArtistWorkflowCommandKind::source_asset_review;
+}
+
+void append_unique_string(std::vector<std::string>& values, std::string_view value) {
+    if (value.empty()) {
+        return;
+    }
+    const auto it = std::ranges::find_if(values, [value](const std::string& current) { return current == value; });
+    if (it == values.end()) {
+        values.emplace_back(value);
+    }
+}
+
+void append_unique_strings(std::vector<std::string>& values, std::span<const std::string> source) {
+    for (const auto& value : source) {
+        append_unique_string(values, value);
+    }
+}
+
+[[nodiscard]] bool contains_string(std::span<const std::string> values, std::string_view value) noexcept {
+    return std::ranges::find_if(values, [value](const std::string& current) { return current == value; }) !=
+           values.end();
+}
+
+[[nodiscard]] std::string join_strings(std::span<const std::string> values) {
+    if (values.empty()) {
+        return "none";
+    }
+    std::string joined;
+    for (const auto& value : values) {
+        if (!joined.empty()) {
+            joined += ",";
+        }
+        joined += value;
+    }
+    return joined;
+}
+
+[[nodiscard]] const EnvironmentArtistWorkflowExecutionEvidenceRow*
+find_execution_evidence(std::span<const EnvironmentArtistWorkflowExecutionEvidenceRow> evidence_rows,
+                        std::string_view recipe_id) noexcept {
+    const auto it =
+        std::ranges::find_if(evidence_rows, [recipe_id](const EnvironmentArtistWorkflowExecutionEvidenceRow& row) {
+            return row.recipe_id == recipe_id;
+        });
+    return it == evidence_rows.end() ? nullptr : &(*it);
+}
+
+void append_execution_unsupported(EnvironmentArtistWorkflowExecutionReviewModel& model, std::string_view claim,
+                                  std::string diagnostic) {
+    append_unique_string(model.unsupported_claims, claim);
+    if (!diagnostic.empty()) {
+        model.diagnostics.push_back(std::move(diagnostic));
+    }
+}
+
+void push_execution_stage(EnvironmentArtistWorkflowExecutionReviewModel& model,
+                          EnvironmentArtistWorkflowExecutionReviewStageRow row) {
+    if (row.status == EnvironmentArtistWorkflowExecutionStageStatus::blocked) {
+        model.has_blocking_diagnostics = true;
+    }
+    if (row.status == EnvironmentArtistWorkflowExecutionStageStatus::host_gated || !row.host_gates.empty()) {
+        model.has_host_gates = true;
+    }
+    model.stage_rows.push_back(std::move(row));
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowExecutionStageStatus
+source_model_stage_status(EnvironmentAuthoringStatus status, bool has_rows, bool has_host_gates) noexcept {
+    if (has_host_gates) {
+        return EnvironmentArtistWorkflowExecutionStageStatus::host_gated;
+    }
+    if (status == EnvironmentAuthoringStatus::ready && has_rows) {
+        return EnvironmentArtistWorkflowExecutionStageStatus::ready;
+    }
+    return EnvironmentArtistWorkflowExecutionStageStatus::blocked;
 }
 
 [[nodiscard]] const EnvironmentArtistWorkflowAssetBrowserInputRow*
@@ -843,6 +946,23 @@ environment_artist_workflow_walkthrough_step_id(EnvironmentArtistWorkflowWalkthr
         return "environment.workflow.walkthrough.inspect_report";
     }
     return "environment.workflow.walkthrough.invalid";
+}
+
+std::string_view environment_artist_workflow_execution_stage_status_label(
+    EnvironmentArtistWorkflowExecutionStageStatus status) noexcept {
+    switch (status) {
+    case EnvironmentArtistWorkflowExecutionStageStatus::ready:
+        return "ready";
+    case EnvironmentArtistWorkflowExecutionStageStatus::awaiting_external_evidence:
+        return "awaiting_external_evidence";
+    case EnvironmentArtistWorkflowExecutionStageStatus::awaiting_operator_review:
+        return "awaiting_operator_review";
+    case EnvironmentArtistWorkflowExecutionStageStatus::host_gated:
+        return "host_gated";
+    case EnvironmentArtistWorkflowExecutionStageStatus::blocked:
+        return "blocked";
+    }
+    return "blocked";
 }
 
 EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store, std::string_view path) {
@@ -1374,6 +1494,361 @@ make_environment_artist_workflow_walkthrough_ui_model(const EnvironmentArtistWor
                      row.requires_host_gate ? row.host_gate : "none");
         append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".validation",
                      row.validation_recipe_id);
+    }
+
+    return document;
+}
+
+EnvironmentArtistWorkflowExecutionReviewModel
+make_environment_artist_workflow_execution_review_model(const EnvironmentArtistWorkflowExecutionReviewDesc& desc) {
+    EnvironmentArtistWorkflowExecutionReviewModel model;
+    model.external_action_required = false;
+    model.evidence_review_required = false;
+
+    append_execution_unsupported(model, "environment_artist_workflow_ready",
+                                 "environment_artist_workflow_ready remains unsupported after visible workflow wiring");
+
+    const auto reject_request = [&model](bool requested, std::string_view claim, std::string_view diagnostic) {
+        if (requested) {
+            append_execution_unsupported(model, claim, std::string{diagnostic});
+            model.has_blocking_diagnostics = true;
+        }
+    };
+    reject_request(desc.request_backend_execution, "backend execution",
+                   "environment artist workflow execution review rejects backend execution from editor core");
+    reject_request(desc.request_package_script_execution, "package script execution",
+                   "environment artist workflow execution review rejects package script execution from editor core");
+    reject_request(desc.request_validation_recipe_execution, "validation recipe execution",
+                   "environment artist workflow execution review rejects validation recipe execution from editor core");
+    reject_request(desc.request_native_handle_access, "native handle access",
+                   "environment artist workflow execution review rejects native handle access");
+    reject_request(desc.request_complete_artist_workflow_ready_promotion, "environment_artist_workflow_ready",
+                   "environment artist workflow ready promotion requires a later complete closeout");
+
+    std::vector<std::string> command_ids;
+    command_ids.reserve(desc.command_catalog.commands.size());
+    for (const auto& row : desc.command_catalog.commands) {
+        append_unique_string(command_ids, row.command_id);
+    }
+    push_execution_stage(model, EnvironmentArtistWorkflowExecutionReviewStageRow{
+                                    .row_id = "environment.workflow.execution.command_catalog",
+                                    .label = std::string{artist_workflow_execution_stage_label(
+                                        "environment.workflow.execution.command_catalog")},
+                                    .source_model = "EnvironmentArtistWorkflowCommandCatalog",
+                                    .status = command_ids.size() == 11U
+                                                  ? EnvironmentArtistWorkflowExecutionStageStatus::ready
+                                                  : EnvironmentArtistWorkflowExecutionStageStatus::blocked,
+                                    .source_row_count = command_ids.size(),
+                                    .source_row_ids = command_ids,
+                                    .diagnostic = command_ids.size() == 11U ? "reviewed command catalog is visible"
+                                                                            : "reviewed command catalog is incomplete",
+                                });
+
+    std::vector<std::string> asset_ids;
+    std::vector<std::string> asset_host_gates;
+    asset_ids.reserve(desc.asset_browser.rows.size());
+    for (const auto& row : desc.asset_browser.rows) {
+        append_unique_string(asset_ids, row.row_id);
+        if (row.requires_host_gate) {
+            append_unique_string(asset_host_gates, row.host_gate.empty() ? std::string_view{"unspecified-host-gate"}
+                                                                         : std::string_view{row.host_gate});
+        }
+    }
+    const auto asset_status =
+        source_model_stage_status(desc.asset_browser.status, !asset_ids.empty(), !asset_host_gates.empty());
+    push_execution_stage(
+        model,
+        EnvironmentArtistWorkflowExecutionReviewStageRow{
+            .row_id = "environment.workflow.execution.asset_browser",
+            .label = std::string{artist_workflow_execution_stage_label("environment.workflow.execution.asset_browser")},
+            .source_model = "EnvironmentArtistWorkflowAssetBrowserModel",
+            .status = asset_status,
+            .source_row_count = asset_ids.size(),
+            .source_row_ids = asset_ids,
+            .host_gates = asset_host_gates,
+            .diagnostic = asset_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                              ? "asset browser rows are visible"
+                              : "asset browser rows are blocked or host-gated",
+        });
+
+    std::vector<std::string> preview_ids;
+    std::vector<std::string> preview_host_gates;
+    preview_ids.reserve(desc.preview.rows.size());
+    for (const auto& row : desc.preview.rows) {
+        append_unique_string(preview_ids, row.row_id);
+        if (row.kind == EnvironmentArtistWorkflowPreviewRowKind::missing_host_gate &&
+            row.status == EnvironmentArtistWorkflowPreviewRowStatus::blocked) {
+            append_unique_string(preview_host_gates, row.value.empty() ? std::string_view{"unspecified-host-gate"}
+                                                                       : std::string_view{row.value});
+        }
+    }
+    const auto preview_status =
+        source_model_stage_status(desc.preview.status, !preview_ids.empty(), !preview_host_gates.empty());
+    push_execution_stage(
+        model,
+        EnvironmentArtistWorkflowExecutionReviewStageRow{
+            .row_id = "environment.workflow.execution.preview",
+            .label = std::string{artist_workflow_execution_stage_label("environment.workflow.execution.preview")},
+            .source_model = "EnvironmentArtistWorkflowPreviewModel",
+            .status = preview_status,
+            .source_row_count = preview_ids.size(),
+            .source_row_ids = preview_ids,
+            .host_gates = preview_host_gates,
+            .diagnostic = preview_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                              ? "preview rows are visible"
+                              : "preview rows are blocked or host-gated",
+        });
+
+    std::vector<std::string> walkthrough_ids;
+    std::vector<std::string> walkthrough_host_gates;
+    std::vector<std::string> required_recipe_ids;
+    walkthrough_ids.reserve(desc.walkthrough.rows.size());
+    for (const auto& row : desc.walkthrough.rows) {
+        append_unique_string(walkthrough_ids, row.row_id);
+        append_unique_string(required_recipe_ids, row.validation_recipe_id);
+        if (row.requires_host_gate) {
+            append_unique_string(walkthrough_host_gates, row.host_gate.empty()
+                                                             ? std::string_view{"unspecified-host-gate"}
+                                                             : std::string_view{row.host_gate});
+        }
+    }
+    const auto walkthrough_status =
+        source_model_stage_status(desc.walkthrough.status, !walkthrough_ids.empty(), !walkthrough_host_gates.empty());
+    push_execution_stage(
+        model,
+        EnvironmentArtistWorkflowExecutionReviewStageRow{
+            .row_id = "environment.workflow.execution.walkthrough",
+            .label = std::string{artist_workflow_execution_stage_label("environment.workflow.execution.walkthrough")},
+            .source_model = "EnvironmentArtistWorkflowWalkthroughModel",
+            .status = walkthrough_status,
+            .source_row_count = walkthrough_ids.size(),
+            .source_row_ids = walkthrough_ids,
+            .external_recipe_ids = required_recipe_ids,
+            .host_gates = walkthrough_host_gates,
+            .diagnostic = walkthrough_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                              ? "walkthrough rows are visible"
+                              : "walkthrough rows are blocked or host-gated",
+        });
+
+    std::vector<std::string> external_blockers;
+    std::vector<std::string> external_host_gates;
+    bool missing_evidence = required_recipe_ids.empty();
+    bool invalid_evidence = false;
+    bool failed_evidence = false;
+    bool all_evidence_passed = !required_recipe_ids.empty();
+    for (const auto& recipe_id : required_recipe_ids) {
+        const auto* evidence = find_execution_evidence(desc.evidence_rows, recipe_id);
+        if (evidence == nullptr) {
+            missing_evidence = true;
+            all_evidence_passed = false;
+            append_unique_string(external_blockers, "missing-evidence:" + recipe_id);
+            continue;
+        }
+        append_unique_strings(external_host_gates, evidence->host_gates);
+        append_unique_strings(external_blockers, evidence->blocked_by);
+        if (!evidence->externally_supplied || evidence->claims_editor_core_execution) {
+            invalid_evidence = true;
+            all_evidence_passed = false;
+            append_unique_string(external_blockers, "invalid-editor-core-evidence:" + recipe_id);
+        } else if (!evidence->passed) {
+            failed_evidence = true;
+            all_evidence_passed = false;
+            append_unique_string(external_blockers, "nonpassing-evidence:" + recipe_id);
+        }
+    }
+    for (const auto& evidence : desc.evidence_rows) {
+        if (!required_recipe_ids.empty() && contains_string(required_recipe_ids, evidence.recipe_id)) {
+            continue;
+        }
+        invalid_evidence = true;
+        append_unique_string(external_blockers, evidence.recipe_id.empty()
+                                                    ? std::string_view{"unexpected-empty-evidence-recipe"}
+                                                    : std::string_view{evidence.recipe_id});
+    }
+
+    auto external_status = EnvironmentArtistWorkflowExecutionStageStatus::ready;
+    if (invalid_evidence || failed_evidence) {
+        external_status = EnvironmentArtistWorkflowExecutionStageStatus::blocked;
+    } else if (!external_host_gates.empty()) {
+        external_status = EnvironmentArtistWorkflowExecutionStageStatus::host_gated;
+    } else if (missing_evidence) {
+        external_status = EnvironmentArtistWorkflowExecutionStageStatus::awaiting_external_evidence;
+    }
+    push_execution_stage(model,
+                         EnvironmentArtistWorkflowExecutionReviewStageRow{
+                             .row_id = "environment.workflow.execution.external_execution",
+                             .label = std::string{artist_workflow_execution_stage_label(
+                                 "environment.workflow.execution.external_execution")},
+                             .source_model = "EnvironmentArtistWorkflowWalkthroughModel",
+                             .status = external_status,
+                             .source_row_count = required_recipe_ids.size(),
+                             .source_row_ids = required_recipe_ids,
+                             .external_recipe_ids = required_recipe_ids,
+                             .host_gates = external_host_gates,
+                             .blocked_by = external_blockers,
+                             .diagnostic = external_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                                               ? "external operator execution evidence is available"
+                                               : "external operator execution requires review",
+                             .external_execution_required = true,
+                             .evidence_passed = all_evidence_passed,
+                         });
+
+    std::vector<std::string> evidence_ids;
+    std::vector<std::string> evidence_host_gates;
+    std::vector<std::string> evidence_blockers;
+    evidence_ids.reserve(desc.evidence_rows.size());
+    for (const auto& evidence : desc.evidence_rows) {
+        append_unique_string(evidence_ids, evidence.recipe_id);
+        append_unique_strings(evidence_host_gates, evidence.host_gates);
+        append_unique_strings(evidence_blockers, evidence.blocked_by);
+        if (!evidence.externally_supplied) {
+            invalid_evidence = true;
+            append_unique_string(evidence_blockers, "evidence-not-externally-supplied:" + evidence.recipe_id);
+        }
+        if (evidence.claims_editor_core_execution) {
+            invalid_evidence = true;
+            append_unique_string(evidence_blockers, "editor-core-execution-claim:" + evidence.recipe_id);
+        }
+    }
+    auto evidence_status = EnvironmentArtistWorkflowExecutionStageStatus::ready;
+    if (invalid_evidence || failed_evidence || required_recipe_ids.empty()) {
+        evidence_status = EnvironmentArtistWorkflowExecutionStageStatus::blocked;
+    } else if (!evidence_host_gates.empty()) {
+        evidence_status = EnvironmentArtistWorkflowExecutionStageStatus::host_gated;
+    } else if (missing_evidence) {
+        evidence_status = EnvironmentArtistWorkflowExecutionStageStatus::awaiting_external_evidence;
+    }
+    push_execution_stage(model,
+                         EnvironmentArtistWorkflowExecutionReviewStageRow{
+                             .row_id = "environment.workflow.execution.evidence_review",
+                             .label = std::string{artist_workflow_execution_stage_label(
+                                 "environment.workflow.execution.evidence_review")},
+                             .source_model = "EnvironmentArtistWorkflowExecutionEvidenceRow",
+                             .status = evidence_status,
+                             .source_row_count = evidence_ids.size(),
+                             .source_row_ids = evidence_ids,
+                             .external_recipe_ids = required_recipe_ids,
+                             .host_gates = evidence_host_gates,
+                             .blocked_by = evidence_blockers,
+                             .diagnostic = evidence_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                                               ? "externally supplied evidence passed review"
+                                               : "externally supplied evidence is missing or blocked",
+                             .evidence_passed = evidence_status == EnvironmentArtistWorkflowExecutionStageStatus::ready,
+                         });
+
+    const auto operator_status = desc.operator_reviewed && !desc.operator_review_id.empty()
+                                     ? EnvironmentArtistWorkflowExecutionStageStatus::ready
+                                     : EnvironmentArtistWorkflowExecutionStageStatus::awaiting_operator_review;
+    push_execution_stage(
+        model,
+        EnvironmentArtistWorkflowExecutionReviewStageRow{
+            .row_id = "environment.workflow.execution.operator_review",
+            .label =
+                std::string{artist_workflow_execution_stage_label("environment.workflow.execution.operator_review")},
+            .source_model = "EnvironmentArtistWorkflowExecutionReviewDesc",
+            .status = operator_status,
+            .source_row_count = desc.operator_review_id.empty() ? 0U : 1U,
+            .source_row_ids = desc.operator_review_id.empty() ? std::vector<std::string>{}
+                                                              : std::vector<std::string>{desc.operator_review_id},
+            .diagnostic = operator_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                              ? "operator reviewed the visible workflow"
+                              : "operator review is required",
+            .operator_reviewed = operator_status == EnvironmentArtistWorkflowExecutionStageStatus::ready,
+        });
+
+    const auto guard_status = desc.request_complete_artist_workflow_ready_promotion
+                                  ? EnvironmentArtistWorkflowExecutionStageStatus::blocked
+                                  : EnvironmentArtistWorkflowExecutionStageStatus::ready;
+    push_execution_stage(model, EnvironmentArtistWorkflowExecutionReviewStageRow{
+                                    .row_id = "environment.workflow.execution.ready_promotion_guard",
+                                    .label = std::string{artist_workflow_execution_stage_label(
+                                        "environment.workflow.execution.ready_promotion_guard")},
+                                    .source_model = "EnvironmentCommercialExcellencePhase11",
+                                    .status = guard_status,
+                                    .source_row_count = 1U,
+                                    .source_row_ids = {"environment_artist_workflow_ready"},
+                                    .blocked_by = guard_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                                                      ? std::vector<std::string>{}
+                                                      : std::vector<std::string>{"complete-ready-promotion-requested"},
+                                    .diagnostic = guard_status == EnvironmentArtistWorkflowExecutionStageStatus::ready
+                                                      ? "complete artist workflow readiness remains unsupported"
+                                                      : "complete artist workflow readiness promotion is blocked",
+                                    .ready_promotion_guard = true,
+                                });
+
+    for (const auto& stage : model.stage_rows) {
+        if (stage.status != EnvironmentArtistWorkflowExecutionStageStatus::ready) {
+            model.external_action_required = true;
+        }
+        if (stage.row_id == "environment.workflow.execution.evidence_review" &&
+            stage.status != EnvironmentArtistWorkflowExecutionStageStatus::ready) {
+            model.evidence_review_required = true;
+        }
+    }
+
+    model.visible_first_party_workflow_wired =
+        !model.has_blocking_diagnostics &&
+        std::ranges::all_of(model.stage_rows, [](const EnvironmentArtistWorkflowExecutionReviewStageRow& row) {
+            return row.status == EnvironmentArtistWorkflowExecutionStageStatus::ready;
+        });
+    if (model.visible_first_party_workflow_wired) {
+        model.status = EnvironmentAuthoringStatus::ready;
+    }
+    return model;
+}
+
+mirakana::ui::UiDocument
+make_environment_artist_workflow_execution_review_ui_model(const EnvironmentArtistWorkflowExecutionReviewModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_artist_workflow_execution_review", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Artist Workflow Execution Review";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_artist_workflow_execution_review"};
+    append_label(document, root_id, "environment_artist_workflow_execution_review.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_artist_workflow_execution_review.visible_first_party_workflow_wired",
+                 bool_text(model.visible_first_party_workflow_wired));
+    append_label(document, root_id, "environment_artist_workflow_execution_review.external_action_required",
+                 bool_text(model.external_action_required));
+    append_label(document, root_id, "environment_artist_workflow_execution_review.evidence_review_required",
+                 bool_text(model.evidence_review_required));
+    append_label(document, root_id,
+                 "environment_artist_workflow_execution_review.complete_artist_workflow_ready_claimed",
+                 bool_text(model.complete_artist_workflow_ready_claimed));
+
+    auto rows_root =
+        make_child("environment_artist_workflow_execution_review.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Artist Workflow Execution Review Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_artist_workflow_execution_review.rows"};
+
+    for (const auto& row : model.stage_rows) {
+        auto item = make_child("environment_artist_workflow_execution_review.rows." + row.row_id, rows_id,
+                               mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = false;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_artist_workflow_execution_review.rows." + row.row_id};
+        append_label(document, item_id, "environment_artist_workflow_execution_review.rows." + row.row_id + ".status",
+                     std::string{environment_artist_workflow_execution_stage_status_label(row.status)});
+        append_label(document, item_id, "environment_artist_workflow_execution_review.rows." + row.row_id + ".value",
+                     row.diagnostic);
+        append_label(document, item_id,
+                     "environment_artist_workflow_execution_review.rows." + row.row_id + ".source_model",
+                     row.source_model);
+        append_label(document, item_id,
+                     "environment_artist_workflow_execution_review.rows." + row.row_id + ".source_row_count",
+                     std::to_string(row.source_row_count));
+        append_label(document, item_id,
+                     "environment_artist_workflow_execution_review.rows." + row.row_id + ".external_recipes",
+                     join_strings(row.external_recipe_ids));
+        append_label(document, item_id,
+                     "environment_artist_workflow_execution_review.rows." + row.row_id + ".host_gates",
+                     join_strings(row.host_gates));
+        append_label(document, item_id,
+                     "environment_artist_workflow_execution_review.rows." + row.row_id + ".blocked_by",
+                     join_strings(row.blocked_by));
     }
 
     return document;
