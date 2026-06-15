@@ -6016,9 +6016,16 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_validation_supersaturated_condensation_ready" = "1"
                 "environment_weather_simulation_validation_forced_evaporation_precipitation_ready" = "1"
                 "environment_weather_simulation_validation_clamped_mixed_grid_ready" = "1"
-                "environment_weather_simulation_validation_images_ready" = "0"
+                "environment_weather_simulation_validation_image_status" = "ready"
+                "environment_weather_simulation_validation_images_ready" = "1"
+                "environment_weather_simulation_validation_image_rows" = "12"
+                "environment_weather_simulation_validation_required_images" = "12"
+                "environment_weather_simulation_validation_supersaturated_condensation_images_ready" = "1"
+                "environment_weather_simulation_validation_forced_evaporation_precipitation_images_ready" = "1"
+                "environment_weather_simulation_validation_clamped_mixed_grid_images_ready" = "1"
                 "environment_weather_simulation_validation_water_error_bound_mg" = "1"
                 "environment_weather_simulation_validation_diagnostics" = "0"
+                "environment_weather_simulation_validation_image_diagnostics" = "0"
             }
         foreach ($field in @(
                 "environment_weather_simulation_total_water_before_mg",
@@ -6045,6 +6052,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_dataset_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation validation dataset hash."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_image_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation validation image hash."
         }
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {

@@ -5,6 +5,7 @@
 
 #include "mirakana/environment/weather_simulation.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -35,6 +36,131 @@ namespace {
     });
     desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{});
     return desc;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_transfer_desc() {
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 1U;
+    desc.height = 1U;
+    desc.cell_area_m2 = 4.0F;
+    desc.mixing_height_m = 800.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 1.0F;
+    desc.max_timestep_s = 1.0F;
+    desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
+        .temperature_celsius = 4.0F,
+        .vapor_water_kg_per_m2 = 0.1F,
+        .cloud_water_kg_per_m2 = 1.0F,
+        .surface_water_kg_per_m2 = 2.0F,
+    });
+    desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{
+        .surface_evaporation_kg_per_m2_s = 0.2F,
+        .temperature_delta_celsius_per_s = 0.0F,
+        .cloud_precipitation_rate_per_s = 0.5F,
+    });
+    return desc;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_clamped_mixed_grid_desc() {
+    const auto saturation = mirakana::environment_weather_saturation_vapor_kg_per_m2(8.0F, 1000.0F, 900.0F);
+
+    mirakana::EnvironmentWeatherSimulationDesc desc{};
+    desc.width = 2U;
+    desc.height = 2U;
+    desc.cell_area_m2 = 9.0F;
+    desc.mixing_height_m = 900.0F;
+    desc.air_pressure_hpa = 1000.0F;
+    desc.requested_timestep_s = 10.0F;
+    desc.max_timestep_s = 0.25F;
+    desc.deterministic_seed = 7U;
+    desc.initial_cells = {
+        mirakana::EnvironmentWeatherSimulationCellState{
+            .temperature_celsius = 8.0F,
+            .vapor_water_kg_per_m2 = saturation + 0.1F,
+            .cloud_water_kg_per_m2 = 0.2F,
+            .surface_water_kg_per_m2 = 1.0F,
+        },
+        mirakana::EnvironmentWeatherSimulationCellState{
+            .temperature_celsius = 2.0F,
+            .vapor_water_kg_per_m2 = 0.2F,
+            .cloud_water_kg_per_m2 = 0.4F,
+            .surface_water_kg_per_m2 = 1.2F,
+        },
+        mirakana::EnvironmentWeatherSimulationCellState{
+            .temperature_celsius = -2.0F,
+            .vapor_water_kg_per_m2 = 0.15F,
+            .cloud_water_kg_per_m2 = 0.3F,
+            .surface_water_kg_per_m2 = 0.8F,
+        },
+        mirakana::EnvironmentWeatherSimulationCellState{
+            .temperature_celsius = 12.0F,
+            .vapor_water_kg_per_m2 = 0.3F,
+            .cloud_water_kg_per_m2 = 0.1F,
+            .surface_water_kg_per_m2 = 1.5F,
+        },
+    };
+    desc.forcing_rows = {
+        mirakana::EnvironmentWeatherSimulationCellForcing{
+            .cloud_precipitation_rate_per_s = 0.25F,
+        },
+        mirakana::EnvironmentWeatherSimulationCellForcing{
+            .surface_evaporation_kg_per_m2_s = 0.1F,
+            .temperature_delta_celsius_per_s = 0.0F,
+            .cloud_precipitation_rate_per_s = 0.1F,
+        },
+        mirakana::EnvironmentWeatherSimulationCellForcing{
+            .surface_evaporation_kg_per_m2_s = 0.05F,
+        },
+        mirakana::EnvironmentWeatherSimulationCellForcing{
+            .temperature_delta_celsius_per_s = -1.0F,
+            .cloud_precipitation_rate_per_s = 0.15F,
+        },
+    };
+    return desc;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherSimulationValidationDatasetDesc make_validation_dataset_desc() {
+    const auto condensation_plan = mirakana::simulate_environment_weather_cpu_reference(make_single_cell_desc());
+    const auto transfer_plan = mirakana::simulate_environment_weather_cpu_reference(make_transfer_desc());
+    const auto clamped_plan = mirakana::simulate_environment_weather_cpu_reference(make_clamped_mixed_grid_desc());
+
+    return mirakana::EnvironmentWeatherSimulationValidationDatasetDesc{
+        .cases =
+            {
+                mirakana::EnvironmentWeatherSimulationValidationCase{
+                    .case_id = "supersaturated_condensation",
+                    .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation,
+                    .plan = condensation_plan,
+                    .grid_width = 1U,
+                    .grid_height = 1U,
+                    .water_error_bound_mg = 1U,
+                    .expect_condensation = true,
+                    .source_index = 1U,
+                },
+                mirakana::EnvironmentWeatherSimulationValidationCase{
+                    .case_id = "forced_evaporation_precipitation",
+                    .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation,
+                    .plan = transfer_plan,
+                    .grid_width = 1U,
+                    .grid_height = 1U,
+                    .water_error_bound_mg = 1U,
+                    .expect_evaporation = true,
+                    .expect_precipitation = true,
+                    .source_index = 2U,
+                },
+                mirakana::EnvironmentWeatherSimulationValidationCase{
+                    .case_id = "clamped_mixed_grid",
+                    .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid,
+                    .plan = clamped_plan,
+                    .grid_width = 2U,
+                    .grid_height = 2U,
+                    .water_error_bound_mg = 1U,
+                    .expect_condensation = true,
+                    .expect_timestep_clamped = true,
+                    .source_index = 3U,
+                },
+            },
+    };
 }
 
 } // namespace
@@ -239,64 +365,7 @@ MK_TEST("environment weather simulation package budget fails closed for invalid 
 }
 
 MK_TEST("environment weather simulation validation dataset accepts selected canonical water-cycle cases") {
-    auto condensation_desc = make_single_cell_desc();
-    const auto condensation_plan = mirakana::simulate_environment_weather_cpu_reference(condensation_desc);
-
-    mirakana::EnvironmentWeatherSimulationDesc transfer_desc{};
-    transfer_desc.width = 1U;
-    transfer_desc.height = 1U;
-    transfer_desc.cell_area_m2 = 4.0F;
-    transfer_desc.mixing_height_m = 800.0F;
-    transfer_desc.air_pressure_hpa = 1000.0F;
-    transfer_desc.requested_timestep_s = 1.0F;
-    transfer_desc.max_timestep_s = 1.0F;
-    transfer_desc.initial_cells.push_back(mirakana::EnvironmentWeatherSimulationCellState{
-        .temperature_celsius = 4.0F,
-        .vapor_water_kg_per_m2 = 0.1F,
-        .cloud_water_kg_per_m2 = 1.0F,
-        .surface_water_kg_per_m2 = 2.0F,
-    });
-    transfer_desc.forcing_rows.push_back(mirakana::EnvironmentWeatherSimulationCellForcing{
-        .surface_evaporation_kg_per_m2_s = 0.2F,
-        .temperature_delta_celsius_per_s = 0.0F,
-        .cloud_precipitation_rate_per_s = 0.5F,
-    });
-    const auto transfer_plan = mirakana::simulate_environment_weather_cpu_reference(transfer_desc);
-
-    auto clamped_desc = make_single_cell_desc();
-    clamped_desc.requested_timestep_s = 10.0F;
-    clamped_desc.max_timestep_s = 0.25F;
-    const auto clamped_plan = mirakana::simulate_environment_weather_cpu_reference(clamped_desc);
-
-    mirakana::EnvironmentWeatherSimulationValidationDatasetDesc dataset{};
-    dataset.cases = {
-        mirakana::EnvironmentWeatherSimulationValidationCase{
-            .case_id = "supersaturated_condensation",
-            .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::supersaturated_condensation,
-            .plan = condensation_plan,
-            .water_error_bound_mg = 1U,
-            .expect_condensation = true,
-            .source_index = 1U,
-        },
-        mirakana::EnvironmentWeatherSimulationValidationCase{
-            .case_id = "forced_evaporation_precipitation",
-            .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation,
-            .plan = transfer_plan,
-            .water_error_bound_mg = 1U,
-            .expect_evaporation = true,
-            .expect_precipitation = true,
-            .source_index = 2U,
-        },
-        mirakana::EnvironmentWeatherSimulationValidationCase{
-            .case_id = "clamped_mixed_grid",
-            .kind = mirakana::EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid,
-            .plan = clamped_plan,
-            .water_error_bound_mg = 1U,
-            .expect_condensation = true,
-            .expect_timestep_clamped = true,
-            .source_index = 3U,
-        },
-    };
+    const auto dataset = make_validation_dataset_desc();
 
     const auto plan = mirakana::plan_environment_weather_simulation_validation_dataset(dataset);
 
@@ -316,6 +385,93 @@ MK_TEST("environment weather simulation validation dataset accepts selected cano
     MK_REQUIRE(plan.max_water_conservation_error_mg <= 1U);
     MK_REQUIRE(plan.dataset_hash != 0U);
     MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("environment weather simulation validation images produce deterministic selected scalar fields") {
+    const auto dataset_plan =
+        mirakana::plan_environment_weather_simulation_validation_dataset(make_validation_dataset_desc());
+
+    const auto first = mirakana::plan_environment_weather_simulation_validation_images(
+        mirakana::EnvironmentWeatherSimulationValidationImageDesc{.dataset = dataset_plan});
+    const auto second = mirakana::plan_environment_weather_simulation_validation_images(
+        mirakana::EnvironmentWeatherSimulationValidationImageDesc{.dataset = dataset_plan});
+
+    MK_REQUIRE(first.succeeded());
+    MK_REQUIRE(first.status == mirakana::EnvironmentWeatherSimulationValidationImageStatus::ready);
+    MK_REQUIRE(first.validation_images_ready);
+    MK_REQUIRE(!first.physical_weather_ready);
+    MK_REQUIRE(!first.invokes_gpu);
+    MK_REQUIRE(!first.invokes_backend);
+    MK_REQUIRE(!first.exposes_native_handles);
+    MK_REQUIRE(first.image_count == 12U);
+    MK_REQUIRE(first.required_image_count == 12U);
+    MK_REQUIRE(first.supersaturated_condensation_images_ready);
+    MK_REQUIRE(first.forced_evaporation_precipitation_images_ready);
+    MK_REQUIRE(first.clamped_mixed_grid_images_ready);
+    MK_REQUIRE(first.image_hash != 0U);
+    MK_REQUIRE(first.image_hash == second.image_hash);
+    MK_REQUIRE(first.rows.size() == 12U);
+    MK_REQUIRE(first.diagnostics.empty());
+
+    const auto find_row = [&first](mirakana::EnvironmentWeatherSimulationValidationCaseKind case_kind,
+                                   mirakana::EnvironmentWeatherSimulationValidationImageKind image_kind) {
+        return std::ranges::find_if(first.rows, [case_kind, image_kind](const auto& row) {
+            return row.case_kind == case_kind && row.image_kind == image_kind;
+        });
+    };
+
+    const auto transfer_row =
+        find_row(mirakana::EnvironmentWeatherSimulationValidationCaseKind::forced_evaporation_precipitation,
+                 mirakana::EnvironmentWeatherSimulationValidationImageKind::water_transfer);
+    MK_REQUIRE(transfer_row != first.rows.end());
+    MK_REQUIRE(transfer_row->width == 1U);
+    MK_REQUIRE(transfer_row->height == 1U);
+    MK_REQUIRE(transfer_row->pixel_count == 1U);
+    MK_REQUIRE(transfer_row->max_sample_mg_per_m2 > 0U);
+    MK_REQUIRE(transfer_row->checksum != 0U);
+
+    const auto clamped_cloud_row =
+        find_row(mirakana::EnvironmentWeatherSimulationValidationCaseKind::clamped_mixed_grid,
+                 mirakana::EnvironmentWeatherSimulationValidationImageKind::cloud_water_after);
+    MK_REQUIRE(clamped_cloud_row != first.rows.end());
+    MK_REQUIRE(clamped_cloud_row->width == 2U);
+    MK_REQUIRE(clamped_cloud_row->height == 2U);
+    MK_REQUIRE(clamped_cloud_row->pixel_count == 4U);
+    MK_REQUIRE(clamped_cloud_row->checksum != 0U);
+}
+
+MK_TEST("environment weather simulation validation images fail closed without dataset or for ready claims") {
+    const auto missing = mirakana::plan_environment_weather_simulation_validation_images(
+        mirakana::EnvironmentWeatherSimulationValidationImageDesc{});
+
+    MK_REQUIRE(!missing.succeeded());
+    MK_REQUIRE(missing.status == mirakana::EnvironmentWeatherSimulationValidationImageStatus::blocked);
+    MK_REQUIRE(!missing.validation_images_ready);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_validation_image_diagnostic(
+        missing, mirakana::EnvironmentWeatherSimulationValidationImageDiagnosticCode::missing_ready_dataset));
+
+    auto dataset_plan =
+        mirakana::plan_environment_weather_simulation_validation_dataset(make_validation_dataset_desc());
+    dataset_plan.cases[2].grid_width = 0U;
+    const auto unsupported = mirakana::plan_environment_weather_simulation_validation_images(
+        mirakana::EnvironmentWeatherSimulationValidationImageDesc{
+            .dataset = dataset_plan,
+            .request_native_handle_access = true,
+            .request_physical_weather_ready_claim = true,
+        });
+
+    MK_REQUIRE(!unsupported.succeeded());
+    MK_REQUIRE(!unsupported.validation_images_ready);
+    MK_REQUIRE(!unsupported.physical_weather_ready);
+    MK_REQUIRE(unsupported.exposes_native_handles);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_validation_image_diagnostic(
+        unsupported, mirakana::EnvironmentWeatherSimulationValidationImageDiagnosticCode::invalid_image_dimensions));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_validation_image_diagnostic(
+        unsupported,
+        mirakana::EnvironmentWeatherSimulationValidationImageDiagnosticCode::unsupported_native_handle_access));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_validation_image_diagnostic(
+        unsupported,
+        mirakana::EnvironmentWeatherSimulationValidationImageDiagnosticCode::unsupported_physical_weather_ready_claim));
 }
 
 MK_TEST("environment weather simulation validation dataset fails closed for missing or unsupported cases") {
