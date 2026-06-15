@@ -169,6 +169,16 @@ find_artist_workflow_asset_row(const mirakana::editor::EnvironmentArtistWorkflow
     return it == model.rows.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::EnvironmentArtistWorkflowPreviewRow*
+find_artist_workflow_preview_row(const mirakana::editor::EnvironmentArtistWorkflowPreviewModel& model,
+                                 std::string_view id) noexcept {
+    const auto it =
+        std::ranges::find_if(model.rows, [id](const mirakana::editor::EnvironmentArtistWorkflowPreviewRow& row) {
+            return row.row_id == id;
+        });
+    return it == model.rows.end() ? nullptr : &(*it);
+}
+
 } // namespace
 
 MK_TEST("editor environment authoring emits deterministic inspector rows") {
@@ -734,6 +744,90 @@ MK_TEST("editor environment artist workflow asset browser fails closed on unsafe
     MK_REQUIRE(!model.executes_package_scripts);
     MK_REQUIRE(!model.exposes_native_handles);
     MK_REQUIRE(!model.diagnostics.empty());
+}
+
+MK_TEST("editor environment artist workflow exposes deterministic preview rows") {
+    const auto model = mirakana::editor::make_environment_artist_workflow_preview_model(
+        mirakana::editor::EnvironmentArtistWorkflowPreviewDesc{
+            .selected_backend = "d3d12",
+            .quality_tier = "ultra",
+            .package_budget_bytes = 4194304U,
+            .memory_budget_bytes = 67108864U,
+            .unsupported_claim_reason = "visible workflow and production walkthrough validation are not complete",
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentAuthoringStatus::ready);
+    MK_REQUIRE(model.rows.size() == 7U);
+    MK_REQUIRE(model.ready_rows == 7U);
+    MK_REQUIRE(!model.complete_artist_workflow_ready_claimed);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.diagnostics.empty());
+
+    const auto* backend = find_artist_workflow_preview_row(model, "environment.workflow.preview.selected_backend");
+    const auto* quality = find_artist_workflow_preview_row(model, "environment.workflow.preview.quality_tier");
+    const auto* host_gate = find_artist_workflow_preview_row(model, "environment.workflow.preview.missing_host_gate");
+    const auto* package_budget = find_artist_workflow_preview_row(model, "environment.workflow.preview.package_budget");
+    const auto* memory_budget = find_artist_workflow_preview_row(model, "environment.workflow.preview.memory_budget");
+    const auto* diagnostics = find_artist_workflow_preview_row(model, "environment.workflow.preview.diagnostics");
+    const auto* unsupported =
+        find_artist_workflow_preview_row(model, "environment.workflow.preview.unsupported_claim_reason");
+
+    MK_REQUIRE(backend != nullptr);
+    MK_REQUIRE(quality != nullptr);
+    MK_REQUIRE(host_gate != nullptr);
+    MK_REQUIRE(package_budget != nullptr);
+    MK_REQUIRE(memory_budget != nullptr);
+    MK_REQUIRE(diagnostics != nullptr);
+    MK_REQUIRE(unsupported != nullptr);
+    MK_REQUIRE(backend->kind == mirakana::editor::EnvironmentArtistWorkflowPreviewRowKind::selected_backend);
+    MK_REQUIRE(backend->value == "d3d12");
+    MK_REQUIRE(quality->value == "ultra");
+    MK_REQUIRE(host_gate->value == "none");
+    MK_REQUIRE(package_budget->value == "4194304");
+    MK_REQUIRE(memory_budget->value == "67108864");
+    MK_REQUIRE(diagnostics->value == "0");
+    MK_REQUIRE(unsupported->value == "visible workflow and production walkthrough validation are not complete");
+    MK_REQUIRE(unsupported->status == mirakana::editor::EnvironmentArtistWorkflowPreviewRowStatus::ready);
+
+    const auto ui = mirakana::editor::make_environment_artist_workflow_preview_ui_model(model);
+    MK_REQUIRE(contains_element(ui, "environment_artist_workflow_preview.rows.environment.workflow.preview."
+                                    "selected_backend.value"));
+    MK_REQUIRE(contains_element(ui, "environment_artist_workflow_preview.rows.environment.workflow.preview."
+                                    "unsupported_claim_reason.value"));
+}
+
+MK_TEST("editor environment artist workflow preview rows expose host gate and fail closed") {
+    const auto model = mirakana::editor::make_environment_artist_workflow_preview_model(
+        mirakana::editor::EnvironmentArtistWorkflowPreviewDesc{
+            .selected_backend = "metal",
+            .quality_tier = "ultra",
+            .missing_host_gate = "macos-metal-host",
+            .package_budget_bytes = 4194304U,
+            .memory_budget_bytes = 67108864U,
+            .diagnostics = 2U,
+            .unsupported_claim_reason = "macOS Metal host evidence and walkthrough validation are missing",
+            .request_backend_execution = true,
+            .request_package_script_execution = true,
+            .request_native_handle_access = true,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentAuthoringStatus::blocked);
+    MK_REQUIRE(!model.complete_artist_workflow_ready_claimed);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(!model.diagnostics.empty());
+
+    const auto* host_gate = find_artist_workflow_preview_row(model, "environment.workflow.preview.missing_host_gate");
+    const auto* diagnostics = find_artist_workflow_preview_row(model, "environment.workflow.preview.diagnostics");
+    MK_REQUIRE(host_gate != nullptr);
+    MK_REQUIRE(diagnostics != nullptr);
+    MK_REQUIRE(host_gate->status == mirakana::editor::EnvironmentArtistWorkflowPreviewRowStatus::blocked);
+    MK_REQUIRE(host_gate->value == "macos-metal-host");
+    MK_REQUIRE(diagnostics->status == mirakana::editor::EnvironmentArtistWorkflowPreviewRowStatus::blocked);
+    MK_REQUIRE(diagnostics->value == "2");
 }
 
 MK_TEST("editor environment package registration draft reviews runtime additions only") {
