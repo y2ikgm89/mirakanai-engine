@@ -179,6 +179,15 @@ find_artist_workflow_preview_row(const mirakana::editor::EnvironmentArtistWorkfl
     return it == model.rows.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepRow*
+find_artist_workflow_walkthrough_row(const mirakana::editor::EnvironmentArtistWorkflowWalkthroughModel& model,
+                                     std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        model.rows,
+        [id](const mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepRow& row) { return row.row_id == id; });
+    return it == model.rows.end() ? nullptr : &(*it);
+}
+
 } // namespace
 
 MK_TEST("editor environment authoring emits deterministic inspector rows") {
@@ -828,6 +837,167 @@ MK_TEST("editor environment artist workflow preview rows expose host gate and fa
     MK_REQUIRE(host_gate->value == "macos-metal-host");
     MK_REQUIRE(diagnostics->status == mirakana::editor::EnvironmentArtistWorkflowPreviewRowStatus::blocked);
     MK_REQUIRE(diagnostics->value == "2");
+}
+
+MK_TEST("editor environment artist workflow exposes deterministic production walkthrough rows") {
+    const auto
+        model =
+            mirakana::editor::
+                make_environment_artist_workflow_walkthrough_model(
+                    mirakana::editor::EnvironmentArtistWorkflowWalkthroughDesc{
+                        .steps =
+                            {
+                                mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                    .kind = mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepKind::
+                                        import_source_assets,
+                                    .evidence_id = "source-assets-reviewed",
+                                    .completed = true,
+                                    .reviewed = true,
+                                    .validation_recipe_id = "asset-importers",
+                                },
+                                mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                    .kind = mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepKind::cook_assets,
+                                    .evidence_id = "environment-cook-preview",
+                                    .completed = true,
+                                    .reviewed = true,
+                                    .package_visible = true,
+                                    .validation_recipe_id = "desktop-runtime-sample-game-environment-texture-package",
+                                },
+                                mirakana::editor::
+                                    EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                        .kind =
+                                            mirakana::
+                                                editor::EnvironmentArtistWorkflowWalkthroughStepKind::assemble_preset,
+                                        .evidence_id = "preset-pack-assembled",
+                                        .completed = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .validation_recipe_id = "desktop-runtime-sample-game-environment-preset-"
+                                                                "library-package",
+                                    },
+                                mirakana::
+                                    editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                        .kind = mirakana::
+                                            editor::EnvironmentArtistWorkflowWalkthroughStepKind::edit_weather_timeline,
+                                        .evidence_id = "weather-timeline-edited",
+                                        .completed = true,
+                                        .reviewed = true,
+                                        .validation_recipe_id = "agent-contract",
+                                    },
+                                mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                    .kind = mirakana::
+                                        editor::EnvironmentArtistWorkflowWalkthroughStepKind::run_simulation_preview,
+                                    .evidence_id = "weather-simulation-preview",
+                                    .completed = true,
+                                    .reviewed = true,
+                                    .validation_recipe_id =
+                                        "desktop-runtime-sample-game-environment-weather-simulation-package",
+                                },
+                                mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                    .kind = mirakana::
+                                        editor::EnvironmentArtistWorkflowWalkthroughStepKind::package_sample,
+                                    .evidence_id = "sample-package-built",
+                                    .completed = true,
+                                    .reviewed = true,
+                                    .package_visible = true,
+                                    .validation_recipe_id = "desktop-game-runtime",
+                                },
+                                mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                    .kind = mirakana::
+                                        editor::EnvironmentArtistWorkflowWalkthroughStepKind::run_installed_validation,
+                                    .evidence_id = "installed-validation-run",
+                                    .completed = true,
+                                    .reviewed = true,
+                                    .package_visible = true,
+                                    .validation_recipe_id = "desktop-runtime-sample-game-environment-ready-aggregate",
+                                },
+                                mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                                    .kind = mirakana::
+                                        editor::EnvironmentArtistWorkflowWalkthroughStepKind::inspect_report,
+                                    .evidence_id = "artist-report-reviewed",
+                                    .completed = true,
+                                    .reviewed = true,
+                                    .validation_recipe_id = "agent-contract",
+                                },
+                            },
+                    });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentAuthoringStatus::ready);
+    MK_REQUIRE(model.rows.size() == 8U);
+    MK_REQUIRE(model.ready_rows == 8U);
+    MK_REQUIRE(!model.complete_artist_workflow_ready_claimed);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.diagnostics.empty());
+
+    const auto* import =
+        find_artist_workflow_walkthrough_row(model, "environment.workflow.walkthrough.import_source_assets");
+    const auto* validation =
+        find_artist_workflow_walkthrough_row(model, "environment.workflow.walkthrough.run_installed_validation");
+    const auto* report = find_artist_workflow_walkthrough_row(model, "environment.workflow.walkthrough.inspect_report");
+
+    MK_REQUIRE(import != nullptr);
+    MK_REQUIRE(validation != nullptr);
+    MK_REQUIRE(report != nullptr);
+    MK_REQUIRE(import->kind == mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepKind::import_source_assets);
+    MK_REQUIRE(import->status == mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepStatus::ready);
+    MK_REQUIRE(import->command_id == "environment.command.source_asset.review");
+    MK_REQUIRE(import->evidence_id == "source-assets-reviewed");
+    MK_REQUIRE(import->reviewed);
+    MK_REQUIRE(!import->package_visible);
+    MK_REQUIRE(validation->command_id == "environment.command.validation.remediation");
+    MK_REQUIRE(validation->package_visible);
+    MK_REQUIRE(validation->validation_recipe_id == "desktop-runtime-sample-game-environment-ready-aggregate");
+    MK_REQUIRE(report->command_id == "environment.command.publish.package");
+    MK_REQUIRE(report->reviewed);
+
+    const auto ui = mirakana::editor::make_environment_artist_workflow_walkthrough_ui_model(model);
+    MK_REQUIRE(contains_element(ui, "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
+                                    "import_source_assets.value"));
+    MK_REQUIRE(contains_element(ui, "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
+                                    "run_installed_validation.validation"));
+}
+
+MK_TEST("editor environment artist workflow walkthrough exposes host gate and fail closed") {
+    const auto model = mirakana::editor::make_environment_artist_workflow_walkthrough_model(
+        mirakana::editor::EnvironmentArtistWorkflowWalkthroughDesc{
+            .steps =
+                {
+                    mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                        .kind = mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepKind::package_sample,
+                        .evidence_id = "macos-package",
+                        .completed = true,
+                        .reviewed = true,
+                        .requires_host_gate = true,
+                        .host_gate = "macos-metal-host",
+                        .validation_recipe_id = "renderer-metal-environment-aggregate-apple-host-evidence",
+                    },
+                },
+            .request_backend_execution = true,
+            .request_package_script_execution = true,
+            .request_native_handle_access = true,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentAuthoringStatus::blocked);
+    MK_REQUIRE(model.rows.size() == 8U);
+    MK_REQUIRE(model.ready_rows < 8U);
+    MK_REQUIRE(!model.complete_artist_workflow_ready_claimed);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(!model.diagnostics.empty());
+
+    const auto* package =
+        find_artist_workflow_walkthrough_row(model, "environment.workflow.walkthrough.package_sample");
+    const auto* import =
+        find_artist_workflow_walkthrough_row(model, "environment.workflow.walkthrough.import_source_assets");
+
+    MK_REQUIRE(package != nullptr);
+    MK_REQUIRE(import != nullptr);
+    MK_REQUIRE(package->status == mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepStatus::blocked);
+    MK_REQUIRE(package->host_gate == "macos-metal-host");
+    MK_REQUIRE(import->status == mirakana::editor::EnvironmentArtistWorkflowWalkthroughStepStatus::missing);
 }
 
 MK_TEST("editor environment package registration draft reviews runtime additions only") {

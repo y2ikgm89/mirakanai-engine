@@ -395,11 +395,78 @@ void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     return "Environment Preview Row";
 }
 
+[[nodiscard]] std::string_view
+walkthrough_step_status_label(EnvironmentArtistWorkflowWalkthroughStepStatus status) noexcept {
+    switch (status) {
+    case EnvironmentArtistWorkflowWalkthroughStepStatus::ready:
+        return "ready";
+    case EnvironmentArtistWorkflowWalkthroughStepStatus::missing:
+        return "missing";
+    case EnvironmentArtistWorkflowWalkthroughStepStatus::blocked:
+        return "blocked";
+    }
+    return "blocked";
+}
+
+[[nodiscard]] std::string_view
+artist_workflow_walkthrough_label(EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowWalkthroughStepKind::import_source_assets:
+        return "Import Source Assets";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::cook_assets:
+        return "Cook Assets";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::assemble_preset:
+        return "Assemble Preset";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::edit_weather_timeline:
+        return "Edit Weather Timeline";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::run_simulation_preview:
+        return "Run Simulation Preview";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::package_sample:
+        return "Package Sample";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::run_installed_validation:
+        return "Run Installed Validation";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::inspect_report:
+        return "Inspect Report";
+    }
+    return "Environment Walkthrough Step";
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowCommandKind
+walkthrough_step_command_kind(EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowWalkthroughStepKind::import_source_assets:
+        return EnvironmentArtistWorkflowCommandKind::source_asset_review;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::cook_assets:
+        return EnvironmentArtistWorkflowCommandKind::cook_preview;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::assemble_preset:
+        return EnvironmentArtistWorkflowCommandKind::preset_import;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::edit_weather_timeline:
+        return EnvironmentArtistWorkflowCommandKind::weather_timeline_edit;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::run_simulation_preview:
+        return EnvironmentArtistWorkflowCommandKind::simulation_parameter_edit;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::package_sample:
+        return EnvironmentArtistWorkflowCommandKind::package_preview;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::run_installed_validation:
+        return EnvironmentArtistWorkflowCommandKind::validation_remediation;
+    case EnvironmentArtistWorkflowWalkthroughStepKind::inspect_report:
+        return EnvironmentArtistWorkflowCommandKind::publish_package;
+    }
+    return EnvironmentArtistWorkflowCommandKind::source_asset_review;
+}
+
 [[nodiscard]] const EnvironmentArtistWorkflowAssetBrowserInputRow*
 find_asset_browser_input(std::span<const EnvironmentArtistWorkflowAssetBrowserInputRow> inputs,
                          EnvironmentArtistWorkflowAssetKind kind) noexcept {
     const auto it = std::ranges::find_if(
         inputs, [kind](const EnvironmentArtistWorkflowAssetBrowserInputRow& row) { return row.kind == kind; });
+    return it == inputs.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const EnvironmentArtistWorkflowWalkthroughStepInputRow*
+find_walkthrough_input(std::span<const EnvironmentArtistWorkflowWalkthroughStepInputRow> inputs,
+                       EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept {
+    const auto it = std::ranges::find_if(
+        inputs, [kind](const EnvironmentArtistWorkflowWalkthroughStepInputRow& row) { return row.kind == kind; });
     return it == inputs.end() ? nullptr : &(*it);
 }
 
@@ -413,6 +480,14 @@ void add_asset_browser_diagnostic(EnvironmentArtistWorkflowAssetBrowserModel& mo
 
 void add_preview_diagnostic(EnvironmentArtistWorkflowPreviewModel& model, std::string code, std::string message) {
     model.diagnostics.push_back(EnvironmentArtistWorkflowPreviewDiagnosticRow{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_walkthrough_diagnostic(EnvironmentArtistWorkflowWalkthroughModel& model, std::string code,
+                                std::string message) {
+    model.diagnostics.push_back(EnvironmentArtistWorkflowWalkthroughDiagnosticRow{
         .code = std::move(code),
         .message = std::move(message),
     });
@@ -434,6 +509,39 @@ make_artist_workflow_command_row(EnvironmentArtistWorkflowCommandKind kind) {
         .exposes_native_handles = false,
         .executes_package_scripts = false,
     };
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowWalkthroughStepRow
+make_walkthrough_step_row(const EnvironmentArtistWorkflowWalkthroughStepInputRow* input,
+                          EnvironmentArtistWorkflowWalkthroughStepKind kind) {
+    EnvironmentArtistWorkflowWalkthroughStepRow row{
+        .kind = kind,
+        .row_id = std::string{environment_artist_workflow_walkthrough_step_id(kind)},
+        .label = std::string{artist_workflow_walkthrough_label(kind)},
+        .command_id = std::string{environment_artist_workflow_command_id(walkthrough_step_command_kind(kind))},
+        .invokes_backend = false,
+        .exposes_native_handles = false,
+        .executes_package_scripts = false,
+    };
+    if (input == nullptr) {
+        return row;
+    }
+
+    row.evidence_id = input->evidence_id;
+    row.completed = input->completed;
+    row.reviewed = input->reviewed;
+    row.package_visible = input->package_visible;
+    row.requires_host_gate = input->requires_host_gate;
+    row.host_gate = input->host_gate;
+    row.validation_recipe_id = input->validation_recipe_id;
+    if (row.requires_host_gate) {
+        row.status = EnvironmentArtistWorkflowWalkthroughStepStatus::blocked;
+    } else if (row.completed && row.reviewed && !row.evidence_id.empty() && !row.validation_recipe_id.empty()) {
+        row.status = EnvironmentArtistWorkflowWalkthroughStepStatus::ready;
+    } else {
+        row.status = EnvironmentArtistWorkflowWalkthroughStepStatus::blocked;
+    }
+    return row;
 }
 
 void add_artist_workflow_report_rows(EnvironmentArtistWorkflowCommandPlan& plan) {
@@ -712,6 +820,29 @@ std::string_view environment_artist_workflow_preview_row_id(EnvironmentArtistWor
         return "environment.workflow.preview.unsupported_claim_reason";
     }
     return "environment.workflow.preview.invalid";
+}
+
+std::string_view
+environment_artist_workflow_walkthrough_step_id(EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowWalkthroughStepKind::import_source_assets:
+        return "environment.workflow.walkthrough.import_source_assets";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::cook_assets:
+        return "environment.workflow.walkthrough.cook_assets";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::assemble_preset:
+        return "environment.workflow.walkthrough.assemble_preset";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::edit_weather_timeline:
+        return "environment.workflow.walkthrough.edit_weather_timeline";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::run_simulation_preview:
+        return "environment.workflow.walkthrough.run_simulation_preview";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::package_sample:
+        return "environment.workflow.walkthrough.package_sample";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::run_installed_validation:
+        return "environment.workflow.walkthrough.run_installed_validation";
+    case EnvironmentArtistWorkflowWalkthroughStepKind::inspect_report:
+        return "environment.workflow.walkthrough.inspect_report";
+    }
+    return "environment.workflow.walkthrough.invalid";
 }
 
 EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store, std::string_view path) {
@@ -1145,6 +1276,104 @@ make_environment_artist_workflow_preview_ui_model(const EnvironmentArtistWorkflo
         append_label(document, item_id, "environment_artist_workflow_preview.rows." + row.row_id + ".status",
                      std::string{preview_row_status_label(row.status)});
         append_label(document, item_id, "environment_artist_workflow_preview.rows." + row.row_id + ".value", row.value);
+    }
+
+    return document;
+}
+
+EnvironmentArtistWorkflowWalkthroughModel
+make_environment_artist_workflow_walkthrough_model(const EnvironmentArtistWorkflowWalkthroughDesc& desc) {
+    constexpr std::array kinds{
+        EnvironmentArtistWorkflowWalkthroughStepKind::import_source_assets,
+        EnvironmentArtistWorkflowWalkthroughStepKind::cook_assets,
+        EnvironmentArtistWorkflowWalkthroughStepKind::assemble_preset,
+        EnvironmentArtistWorkflowWalkthroughStepKind::edit_weather_timeline,
+        EnvironmentArtistWorkflowWalkthroughStepKind::run_simulation_preview,
+        EnvironmentArtistWorkflowWalkthroughStepKind::package_sample,
+        EnvironmentArtistWorkflowWalkthroughStepKind::run_installed_validation,
+        EnvironmentArtistWorkflowWalkthroughStepKind::inspect_report,
+    };
+
+    EnvironmentArtistWorkflowWalkthroughModel model;
+    model.rows.reserve(kinds.size());
+
+    if (desc.request_backend_execution || desc.request_package_script_execution || desc.request_native_handle_access) {
+        add_walkthrough_diagnostic(
+            model, "unsafe_execution",
+            "environment artist workflow walkthrough is an editor-core row model and cannot execute backend work, "
+            "package scripts, validation recipes, or native handle access");
+    }
+
+    for (const auto kind : kinds) {
+        const auto* input = find_walkthrough_input(desc.steps, kind);
+        auto row = make_walkthrough_step_row(input, kind);
+        if (row.status == EnvironmentArtistWorkflowWalkthroughStepStatus::ready) {
+            ++model.ready_rows;
+        } else if (input == nullptr) {
+            add_walkthrough_diagnostic(model, "missing_walkthrough_step",
+                                       std::string{environment_artist_workflow_walkthrough_step_id(kind)} +
+                                           " is missing reviewed walkthrough evidence");
+        } else if (row.requires_host_gate) {
+            add_walkthrough_diagnostic(model, "walkthrough_host_gate",
+                                       std::string{environment_artist_workflow_walkthrough_step_id(kind)} +
+                                           " requires host gate " +
+                                           (row.host_gate.empty() ? "unspecified" : row.host_gate));
+        } else {
+            add_walkthrough_diagnostic(model, "incomplete_walkthrough_step",
+                                       std::string{environment_artist_workflow_walkthrough_step_id(kind)} +
+                                           " must be completed, reviewed, evidence-backed, and validation-linked");
+        }
+        model.rows.push_back(std::move(row));
+    }
+
+    if (model.diagnostics.empty()) {
+        model.status = EnvironmentAuthoringStatus::ready;
+    }
+    return model;
+}
+
+mirakana::ui::UiDocument
+make_environment_artist_workflow_walkthrough_ui_model(const EnvironmentArtistWorkflowWalkthroughModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_artist_workflow_walkthrough", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Artist Workflow Walkthrough";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_artist_workflow_walkthrough"};
+    append_label(document, root_id, "environment_artist_workflow_walkthrough.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_artist_workflow_walkthrough.ready_rows",
+                 std::to_string(model.ready_rows));
+    append_label(document, root_id, "environment_artist_workflow_walkthrough.complete_artist_workflow_ready_claimed",
+                 bool_text(model.complete_artist_workflow_ready_claimed));
+
+    auto rows_root =
+        make_child("environment_artist_workflow_walkthrough.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Artist Workflow Walkthrough Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_artist_workflow_walkthrough.rows"};
+
+    for (const auto& row : model.rows) {
+        auto item = make_child("environment_artist_workflow_walkthrough.rows." + row.row_id, rows_id,
+                               mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = false;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_artist_workflow_walkthrough.rows." + row.row_id};
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".status",
+                     std::string{walkthrough_step_status_label(row.status)});
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".value",
+                     row.evidence_id);
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".command",
+                     row.command_id);
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".reviewed",
+                     bool_text(row.reviewed));
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".package",
+                     bool_text(row.package_visible));
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".host_gate",
+                     row.requires_host_gate ? row.host_gate : "none");
+        append_label(document, item_id, "environment_artist_workflow_walkthrough.rows." + row.row_id + ".validation",
+                     row.validation_recipe_id);
     }
 
     return document;
