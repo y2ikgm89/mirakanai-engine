@@ -6018,6 +6018,8 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_profiler_budget_ready" = "1"
                 "environment_weather_simulation_production_solver_package_counter_review_ready" = "1"
                 "environment_weather_simulation_production_solver_package_counter_rows" = "1"
+                "environment_weather_simulation_production_solver_core_review_ready" = "1"
+                "environment_weather_simulation_production_solver_core_rows" = "1"
                 "environment_weather_simulation_production_solver_ready" = "0"
                 "environment_weather_simulation_solver_budget_diagnostics" = "0"
                 "environment_weather_simulation_validation_dataset_status" = "ready"
