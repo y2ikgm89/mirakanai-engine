@@ -64,6 +64,15 @@ void add_diagnostic(std::vector<EnvironmentTextureGeassetMetadataDiagnostic>& di
     });
 }
 
+void add_diagnostic(std::vector<EnvironmentTextureGeassetPayloadDiagnostic>& diagnostics,
+                    EnvironmentTextureGeassetPayloadDiagnosticCode code, std::string message, std::string path = {}) {
+    diagnostics.push_back(EnvironmentTextureGeassetPayloadDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .path = std::move(path),
+    });
+}
+
 [[nodiscard]] bool clean_text_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos &&
            value.find('\0') == std::string_view::npos;
@@ -71,6 +80,21 @@ void add_diagnostic(std::vector<EnvironmentTextureGeassetMetadataDiagnostic>& di
 
 [[nodiscard]] bool hex_digit(char value) noexcept {
     return (value >= '0' && value <= '9') || (value >= 'a' && value <= 'f') || (value >= 'A' && value <= 'F');
+}
+
+[[nodiscard]] char hex_char(std::uint8_t value) noexcept {
+    constexpr std::string_view digits = "0123456789abcdef";
+    return digits[value & 0x0FU];
+}
+
+[[nodiscard]] std::string encode_payload_hex(const std::vector<std::uint8_t>& bytes) {
+    std::string text;
+    text.reserve(bytes.size() * 2U);
+    for (const auto byte : bytes) {
+        text.push_back(hex_char(static_cast<std::uint8_t>(byte >> 4U)));
+        text.push_back(hex_char(byte));
+    }
+    return text;
 }
 
 [[nodiscard]] bool sha256_token(std::string_view value) noexcept {
@@ -253,6 +277,97 @@ unsupported_host_diagnostic_count(const std::vector<TextureCookBackendDecisionV1
         }
     }
     return count;
+}
+
+[[nodiscard]] const char* bool_text(bool value) noexcept {
+    return value ? "true" : "false";
+}
+
+[[nodiscard]] std::uint32_t bool_flag(bool value) noexcept {
+    return value ? 1U : 0U;
+}
+
+[[nodiscard]] const TextureCookBackendDecisionV1* find_backend_decision(const TextureCookMetadataDocumentV1& metadata,
+                                                                        TextureCookBackendV1 backend) noexcept {
+    const auto it = std::ranges::find_if(metadata.backend_decisions,
+                                         [backend](const auto& decision) { return decision.backend == backend; });
+    return it == metadata.backend_decisions.end() ? nullptr : &(*it);
+}
+
+void append_backend_policy_rows(std::ostringstream& output, const TextureCookMetadataDocumentV1& metadata) {
+    output << "texture.backend_policy_count=" << metadata.backend_decisions.size() << '\n';
+    std::size_t index = 0;
+    for (const auto backend : required_texture_cook_backends()) {
+        const auto* const decision = find_backend_decision(metadata, backend);
+        if (decision == nullptr) {
+            continue;
+        }
+
+        const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
+        output << prefix << "backend=" << texture_cook_backend_name_v1(decision->backend) << '\n';
+        output << prefix << "device_format=" << decision->device_format << '\n';
+        output << prefix << "compression=" << texture_compression_kind_name_v2(decision->compression) << '\n';
+        output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision->transcode) << '\n';
+        output << prefix << "estimated_gpu_bytes=" << decision->estimated_gpu_bytes << '\n';
+        output << prefix << "supported=" << bool_text(decision->supported) << '\n';
+        output << prefix << "host_validated=" << bool_text(decision->host_validated) << '\n';
+        if (!decision->diagnostic.empty()) {
+            output << prefix << "diagnostic=" << decision->diagnostic << '\n';
+        }
+        ++index;
+    }
+}
+
+[[nodiscard]] bool valid_openexr_payload_stage(const EnvironmentTextureGeassetPayloadRequestV1& request) noexcept {
+    return request.pixel_decode_invoked && !request.basis_transcode_invoked &&
+           request.decode_stage.contains("openexr.") && request.decode_stage.contains("readPixels") &&
+           request.transcode_stage == "not_required";
+}
+
+[[nodiscard]] bool valid_ktx2_basis_payload_stage(const EnvironmentTextureGeassetPayloadRequestV1& request) noexcept {
+    return !request.pixel_decode_invoked && request.basis_transcode_invoked &&
+           request.decode_stage.contains("ktxTexture2_CreateFromNamedFile") &&
+           request.transcode_stage.contains("ktxTexture2_TranscodeBasis");
+}
+
+[[nodiscard]] std::string
+serialize_environment_texture_geasset_payload_v1(const EnvironmentTextureGeassetPayloadRequestV1& request) {
+    const auto& metadata = request.cook_metadata;
+    const auto& source = metadata.source;
+    const auto payload_hex = encode_payload_hex(request.payload_bytes);
+
+    std::ostringstream output;
+    output << "format=GameEngine.EnvironmentTextureGeassetPayload.v1\n";
+    output << "asset.path=" << request.geasset_path << '\n';
+    output << "asset.kind=environment_texture\n";
+    output << "asset.payload=cooked_texture_payload\n";
+    output << "source.format=GameEngine.TextureSource.v2\n";
+    output << "source.path=" << source.source_path << '\n';
+    output << "source.hash=" << source.source_hash << '\n';
+    output << "source.provenance_id=" << source.provenance_id << '\n';
+    output << "source.license_id=" << source.license_id << '\n';
+    output << "source.kind=" << texture_source_kind_name_v2(source.source_kind) << '\n';
+    output << "texture.width=" << source.width << '\n';
+    output << "texture.height=" << source.height << '\n';
+    output << "texture.color_space=" << texture_color_space_name_v2(source.color_space) << '\n';
+    output << "texture.sampler_class=" << texture_sampler_class_name_v2(source.sampler_class) << '\n';
+    output << "texture.mip_count=" << source_mip_count(source) << '\n';
+    output << "texture.estimated_source_bytes=" << metadata.estimated_source_bytes << '\n';
+    output << "texture.estimated_decoded_bytes=" << metadata.estimated_decoded_bytes << '\n';
+    output << "texture.max_estimated_gpu_bytes=" << max_estimated_gpu_bytes(metadata.backend_decisions) << '\n';
+    append_backend_policy_rows(output, metadata);
+    output << "texture.unsupported_host_diagnostic_count="
+           << unsupported_host_diagnostic_count(metadata.backend_decisions) << '\n';
+    output << "texture.payload_bytes=" << request.payload_bytes.size() << '\n';
+    output << "texture.payload_hash=" << hash_asset_cooked_content(payload_hex) << '\n';
+    output << "texture.payload_data_hex=" << payload_hex << '\n';
+    output << "texture.decode_stage=" << request.decode_stage << '\n';
+    output << "texture.basis_transcode_stage=" << request.transcode_stage << '\n';
+    output << "texture.pixel_decode_invoked=" << bool_flag(request.pixel_decode_invoked) << '\n';
+    output << "texture.basis_transcode_invoked=" << bool_flag(request.basis_transcode_invoked) << '\n';
+    output << "texture.gpu_upload_invoked=" << bool_flag(request.gpu_upload_invoked) << '\n';
+    output << "texture.broad_asset_pipeline_ready=" << bool_flag(request.broad_asset_pipeline_ready) << '\n';
+    return output.str();
 }
 
 [[nodiscard]] bool source_requires_cube_support(const TextureSourceDocumentV2& source) noexcept {
@@ -962,6 +1077,88 @@ plan_environment_texture_geasset_metadata_v1(const EnvironmentTextureGeassetMeta
     }
 
     result.metadata = std::move(metadata);
+    return result;
+}
+
+EnvironmentTextureGeassetPayloadResultV1
+plan_environment_texture_geasset_payload_v1(const EnvironmentTextureGeassetPayloadRequestV1& request) {
+    EnvironmentTextureGeassetPayloadResultV1 result;
+
+    if (request.asset.value == 0) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                       "environment texture geasset payload requires a non-zero asset id", request.geasset_path);
+    }
+    if (!safe_package_relative_path(request.geasset_path, ".geasset") || request.source_revision == 0) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                       "environment texture geasset payload requires a safe package-relative .geasset path and "
+                       "non-zero source revision",
+                       request.geasset_path);
+    }
+    if (!is_valid_texture_cook_metadata_document_v1(request.cook_metadata)) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_cook_metadata,
+                       "environment texture geasset payload requires valid GameEngine.CookedTextureMetadata.v1 input",
+                       request.geasset_path);
+    }
+    if (request.payload_bytes.empty()) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_payload,
+                       "environment texture geasset payload requires non-empty cooked payload bytes",
+                       request.geasset_path);
+    }
+    if (!clean_text_token(request.decode_stage) || !clean_text_token(request.transcode_stage)) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                       "environment texture geasset payload stages must be deterministic text tokens",
+                       request.geasset_path);
+    } else if (is_valid_texture_cook_metadata_document_v1(request.cook_metadata)) {
+        switch (request.cook_metadata.source.source_kind) {
+        case TextureSourceKindV2::openexr:
+            if (!valid_openexr_payload_stage(request)) {
+                add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                               "OpenEXR payload evidence must record OpenEXR readPixels decode with no Basis transcode",
+                               request.geasset_path);
+            }
+            break;
+        case TextureSourceKindV2::ktx2_basis:
+            if (!valid_ktx2_basis_payload_stage(request)) {
+                add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                               "KTX2/Basis payload evidence must record ktxTexture2 load and Basis transcode stages",
+                               request.geasset_path);
+            }
+            break;
+        case TextureSourceKindV2::unknown:
+            add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                           "environment texture payload source kind is unsupported", request.geasset_path);
+            break;
+        }
+    }
+    if (request.gpu_upload_invoked) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::unsupported_claim,
+                       "environment texture payload planning cannot claim runtime GPU upload execution",
+                       request.geasset_path);
+    }
+    if (request.broad_asset_pipeline_ready) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::unsupported_claim,
+                       "environment texture payload planning cannot claim broad asset-pipeline readiness",
+                       request.geasset_path);
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.content = serialize_environment_texture_geasset_payload_v1(request);
+    result.artifact = AssetCookedArtifact{
+        .asset = request.asset,
+        .kind = AssetKind::texture,
+        .path = request.geasset_path,
+        .content = result.content,
+        .source_revision = request.source_revision,
+        .dependencies = {},
+    };
+    if (!is_valid_asset_cooked_artifact(result.artifact)) {
+        add_diagnostic(result.diagnostics, EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request,
+                       "environment texture geasset payload artifact is invalid", request.geasset_path);
+        result.content.clear();
+        result.artifact = {};
+    }
     return result;
 }
 

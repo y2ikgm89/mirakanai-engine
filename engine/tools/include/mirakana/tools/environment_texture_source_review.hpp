@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -47,6 +49,14 @@ enum class EnvironmentTextureGeassetMetadataDiagnosticCode : std::uint8_t {
     invalid_cook_metadata,
 };
 
+enum class EnvironmentTextureGeassetPayloadDiagnosticCode : std::uint8_t {
+    none,
+    invalid_request,
+    invalid_cook_metadata,
+    invalid_payload,
+    unsupported_claim,
+};
+
 struct OpenExrTextureSourceReviewDiagnostic {
     OpenExrTextureSourceReviewDiagnosticCode code{OpenExrTextureSourceReviewDiagnosticCode::none};
     std::string message;
@@ -67,6 +77,12 @@ struct TextureBackendFormatPolicyDiagnostic {
 
 struct EnvironmentTextureGeassetMetadataDiagnostic {
     EnvironmentTextureGeassetMetadataDiagnosticCode code{EnvironmentTextureGeassetMetadataDiagnosticCode::none};
+    std::string message;
+    std::string path;
+};
+
+struct EnvironmentTextureGeassetPayloadDiagnostic {
+    EnvironmentTextureGeassetPayloadDiagnosticCode code{EnvironmentTextureGeassetPayloadDiagnosticCode::none};
     std::string message;
     std::string path;
 };
@@ -117,6 +133,20 @@ struct EnvironmentTextureGeassetMetadataRequestV1 {
     bool metadata_only{true};
 };
 
+struct EnvironmentTextureGeassetPayloadRequestV1 {
+    AssetId asset;
+    std::string geasset_path;
+    std::uint64_t source_revision{1};
+    TextureCookMetadataDocumentV1 cook_metadata;
+    std::vector<std::uint8_t> payload_bytes;
+    std::string decode_stage;
+    std::string transcode_stage{"not_required"};
+    bool pixel_decode_invoked{false};
+    bool basis_transcode_invoked{false};
+    bool gpu_upload_invoked{false};
+    bool broad_asset_pipeline_ready{false};
+};
+
 struct OpenExrTextureSourceReviewResult {
     std::optional<TextureSourceDocumentV2> source;
     std::vector<OpenExrTextureSourceReviewDiagnostic> diagnostics;
@@ -153,6 +183,16 @@ struct EnvironmentTextureGeassetMetadataResultV1 {
     }
 };
 
+struct EnvironmentTextureGeassetPayloadResultV1 {
+    std::string content;
+    AssetCookedArtifact artifact;
+    std::vector<EnvironmentTextureGeassetPayloadDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return !content.empty() && is_valid_asset_cooked_artifact(artifact) && diagnostics.empty();
+    }
+};
+
 [[nodiscard]] bool has_openexr_texture_source_review() noexcept;
 [[nodiscard]] OpenExrTextureSourceReviewResult
 review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& request);
@@ -163,5 +203,7 @@ review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequ
 plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1& request);
 [[nodiscard]] EnvironmentTextureGeassetMetadataResultV1
 plan_environment_texture_geasset_metadata_v1(const EnvironmentTextureGeassetMetadataRequestV1& request);
+[[nodiscard]] EnvironmentTextureGeassetPayloadResultV1
+plan_environment_texture_geasset_payload_v1(const EnvironmentTextureGeassetPayloadRequestV1& request);
 
 } // namespace mirakana

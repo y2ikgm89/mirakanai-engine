@@ -875,12 +875,15 @@ struct EnvironmentTextureAssetPipelinePackageEvidence {
     std::size_t package_index_entries{0};
     std::size_t metadata_records{0};
     std::size_t metadata_only_records{0};
+    std::size_t payload_records{0};
     std::size_t openexr_records{0};
     std::size_t ktx2_basis_records{0};
     std::size_t source_hash_rows{0};
     std::size_t provenance_rows{0};
     std::size_t license_rows{0};
     std::size_t backend_policy_rows{0};
+    std::size_t payload_byte_rows{0};
+    std::size_t payload_hash_rows{0};
     std::size_t unsupported_host_diagnostics{0};
     std::size_t environment_profile_dependency_refs{0};
     std::size_t environment_texture_dependency_edges{0};
@@ -997,15 +1000,20 @@ environment_preset_library_package_status_name(EnvironmentPresetLibraryPackageSt
                                                           std::string_view expected_source_kind) noexcept {
     const std::string_view content{record.content};
     return record.kind == mirakana::AssetKind::texture && record.path == expected_path &&
-           content.starts_with("format=GameEngine.EnvironmentTextureGeassetMetadata.v1\n") &&
+           content.starts_with("format=GameEngine.EnvironmentTextureGeassetPayload.v1\n") &&
            content.find("asset.kind=environment_texture\n") != std::string_view::npos &&
-           content.find("asset.payload=metadata_only\n") != std::string_view::npos &&
+           content.find("asset.payload=cooked_texture_payload\n") != std::string_view::npos &&
            content.find("source.format=GameEngine.TextureSource.v2\n") != std::string_view::npos &&
            content.find(std::string{"source.kind="} + std::string{expected_source_kind} + "\n") !=
                std::string_view::npos &&
            content.find("source.hash=sha256:") != std::string_view::npos &&
            content.find("source.provenance_id=provenance.environment.") != std::string_view::npos &&
            content.find("source.license_id=LicenseRef-Proprietary\n") != std::string_view::npos &&
+           content.find("texture.payload_bytes=") != std::string_view::npos &&
+           content.find("texture.payload_hash=") != std::string_view::npos &&
+           content.find("texture.payload_data_hex=") != std::string_view::npos &&
+           content.find("texture.decode_stage=") != std::string_view::npos &&
+           content.find("texture.basis_transcode_stage=") != std::string_view::npos &&
            metadata_backend_policy_rows(content) == 5U && metadata_unsupported_host_diagnostics(content) == 4U;
 }
 
@@ -1139,6 +1147,8 @@ count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPa
         evidence.metadata_records += 1U;
         evidence.metadata_only_records +=
             content.find("asset.payload=metadata_only\n") != std::string_view::npos ? 1U : 0U;
+        evidence.payload_records +=
+            content.find("asset.payload=cooked_texture_payload\n") != std::string_view::npos ? 1U : 0U;
         evidence.openexr_records += source_kind == "openexr" ? 1U : 0U;
         evidence.ktx2_basis_records += source_kind == "ktx2_basis" ? 1U : 0U;
         evidence.source_hash_rows += content.find("source.hash=sha256:") != std::string_view::npos ? 1U : 0U;
@@ -1147,10 +1157,22 @@ count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPa
         evidence.license_rows +=
             content.find("source.license_id=LicenseRef-Proprietary\n") != std::string_view::npos ? 1U : 0U;
         evidence.backend_policy_rows += metadata_backend_policy_rows(content);
+        evidence.payload_byte_rows += content.find("texture.payload_bytes=") != std::string_view::npos ? 1U : 0U;
+        evidence.payload_hash_rows += content.find("texture.payload_hash=") != std::string_view::npos ? 1U : 0U;
         evidence.unsupported_host_diagnostics += metadata_unsupported_host_diagnostics(content);
         evidence.environment_profile_dependency_refs += has_record_dependency(*environment_record, asset) ? 1U : 0U;
         evidence.environment_texture_dependency_edges +=
             has_environment_texture_dependency_edge(*runtime_package, asset) ? 1U : 0U;
+        evidence.pixel_decode_invoked =
+            evidence.pixel_decode_invoked || content.find("texture.pixel_decode_invoked=1\n") != std::string_view::npos;
+        evidence.basis_runtime_transcode_invoked =
+            evidence.basis_runtime_transcode_invoked ||
+            content.find("texture.basis_transcode_invoked=1\n") != std::string_view::npos;
+        evidence.gpu_upload_invoked =
+            evidence.gpu_upload_invoked || content.find("texture.gpu_upload_invoked=1\n") != std::string_view::npos;
+        evidence.broad_asset_pipeline_ready =
+            evidence.broad_asset_pipeline_ready ||
+            content.find("texture.broad_asset_pipeline_ready=1\n") != std::string_view::npos;
     }
 
     if (evidence.environment_profile_dependency_refs != expected_records.size()) {
@@ -1166,11 +1188,12 @@ count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPa
 
     evidence.status = EnvironmentTextureAssetPipelinePackageStatus::ready;
     evidence.ready = evidence.package_index_entries == 2U && evidence.metadata_records == 2U &&
-                     evidence.metadata_only_records == 2U && evidence.openexr_records == 1U &&
-                     evidence.ktx2_basis_records == 1U && evidence.source_hash_rows == 2U &&
-                     evidence.provenance_rows == 2U && evidence.license_rows == 2U &&
-                     evidence.backend_policy_rows == 10U && evidence.unsupported_host_diagnostics == 8U &&
-                     !evidence.pixel_decode_invoked && !evidence.basis_runtime_transcode_invoked &&
+                     evidence.metadata_only_records == 0U && evidence.payload_records == 2U &&
+                     evidence.openexr_records == 1U && evidence.ktx2_basis_records == 1U &&
+                     evidence.source_hash_rows == 2U && evidence.provenance_rows == 2U && evidence.license_rows == 2U &&
+                     evidence.backend_policy_rows == 10U && evidence.payload_byte_rows == 2U &&
+                     evidence.payload_hash_rows == 2U && evidence.unsupported_host_diagnostics == 8U &&
+                     evidence.pixel_decode_invoked && evidence.basis_runtime_transcode_invoked &&
                      !evidence.gpu_upload_invoked && !evidence.broad_asset_pipeline_ready;
     if (!evidence.ready) {
         evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
@@ -7637,6 +7660,7 @@ int main(int argc, char** argv) {
         << environment_texture_asset_pipeline.metadata_records
         << " environment_texture_asset_pipeline_metadata_only_records="
         << environment_texture_asset_pipeline.metadata_only_records
+        << " environment_texture_asset_pipeline_payload_records=" << environment_texture_asset_pipeline.payload_records
         << " environment_texture_asset_pipeline_openexr_records=" << environment_texture_asset_pipeline.openexr_records
         << " environment_texture_asset_pipeline_ktx2_basis_records="
         << environment_texture_asset_pipeline.ktx2_basis_records
@@ -7646,6 +7670,10 @@ int main(int argc, char** argv) {
         << " environment_texture_asset_pipeline_license_rows=" << environment_texture_asset_pipeline.license_rows
         << " environment_texture_asset_pipeline_backend_policy_rows="
         << environment_texture_asset_pipeline.backend_policy_rows
+        << " environment_texture_asset_pipeline_payload_byte_rows="
+        << environment_texture_asset_pipeline.payload_byte_rows
+        << " environment_texture_asset_pipeline_payload_hash_rows="
+        << environment_texture_asset_pipeline.payload_hash_rows
         << " environment_texture_asset_pipeline_unsupported_host_diagnostics="
         << environment_texture_asset_pipeline.unsupported_host_diagnostics
         << " environment_texture_asset_pipeline_profile_dependency_refs="

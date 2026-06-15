@@ -1474,7 +1474,7 @@ foreach ($needle in @(
     "environment_optimization_measurement_status=host_evidence_required", "environment_optimization_measurement_required_workloads=7", "environment_broad_optimization_ready=0",
     "--require-environment-texture-asset-pipeline-package",
     "environment_texture_asset_pipeline_package_status=ready",
-    "zero pixel decode, Basis runtime transcode, GPU upload, and broad asset-pipeline ready counters",
+    "payload texture decode and Basis transcode evidence with zero GPU upload and broad asset-pipeline ready counters",
     "production text/font/image/atlas/accessibility remains unsupported",
     "public native or RHI handle access remains unsupported",
     "general production renderer quality remains unsupported"
@@ -1544,7 +1544,7 @@ foreach ($needle in @(
     "environment_preset_library_aaa_ready_claimed=",
     "environment_preset_library_diagnostics=",
     "environment_texture_asset_pipeline_package_status=",
-    "environment_texture_asset_pipeline_backend_policy_rows=",
+    "environment_texture_asset_pipeline_backend_policy_rows=", "environment_texture_asset_pipeline_payload_records=", "environment_texture_asset_pipeline_payload_byte_rows=", "environment_texture_asset_pipeline_payload_hash_rows=",
     "environment_vulkan_strict_aggregate_status=",
     "environment_vulkan_strict_aggregate_ready=",
     "environment_vulkan_strict_aggregate_descriptor_set_bindings=",
