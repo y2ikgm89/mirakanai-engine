@@ -6009,8 +6009,10 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_d3d12_gpu_solver_native_handle_access" = "0"
                 "environment_weather_simulation_d3d12_gpu_solver_backend_parity_ready" = "0"
                 "environment_weather_simulation_d3d12_gpu_solver_failure_stage" = "0"
-                "environment_weather_simulation_solver_profiler_artifacts" = "0"
-                "environment_weather_simulation_profiler_budget_ready" = "0"
+                "environment_weather_simulation_solver_profiler_artifacts" = "2"
+                "environment_weather_simulation_solver_profiler_tool_rows" = "2"
+                "environment_weather_simulation_solver_profiler_backend_rows" = "1"
+                "environment_weather_simulation_profiler_budget_ready" = "1"
                 "environment_weather_simulation_production_solver_ready" = "0"
                 "environment_weather_simulation_solver_budget_diagnostics" = "0"
                 "environment_weather_simulation_validation_dataset_status" = "ready"
@@ -6070,6 +6072,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_d3d12_gpu_solver_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive D3D12 environment weather simulation GPU solver hash."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_solver_profiler_artifact_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation retained profiler artifact hash."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_validation_max_water_error_mg=[01]\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove the environment weather simulation validation dataset stayed within the selected 1 mg bound."

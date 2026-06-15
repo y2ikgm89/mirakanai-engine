@@ -291,6 +291,72 @@ build_artist_control_hash(const EnvironmentWeatherSimulationArtistControlDesc& d
     return hash == 0ULL ? fnv_offset_basis : hash;
 }
 
+[[nodiscard]] bool is_supported_profiler_artifact_kind(std::string_view kind) noexcept {
+    return kind == "pix_timing_capture" || kind == "wpr_etl_trace" || kind == "d3d12_timestamp_query";
+}
+
+[[nodiscard]] bool is_supported_profiler_capture_tool(std::string_view tool) noexcept {
+    return tool == "PIX" || tool == "WPR" || tool == "D3D12_TIMESTAMP_QUERY";
+}
+
+[[nodiscard]] bool is_safe_profiler_artifact_path(std::string_view path) noexcept {
+    constexpr std::string_view profiler_artifact_path_prefix{"out/performance/sample_desktop_runtime_game/"};
+    return path.starts_with(profiler_artifact_path_prefix) && path.find("..") == std::string_view::npos &&
+           path.find('\\') == std::string_view::npos && path.find(':') == std::string_view::npos;
+}
+
+[[nodiscard]] bool
+valid_profiler_artifact_row(const EnvironmentWeatherSimulationSolverProfilerArtifactRow& row) noexcept {
+    return !row.artifact_id.empty() && is_supported_profiler_artifact_kind(row.artifact_kind) &&
+           is_safe_profiler_artifact_path(row.artifact_path) && is_supported_profiler_capture_tool(row.capture_tool) &&
+           row.backend == "d3d12" && row.cpu_duration_us > 0U && row.gpu_duration_us > 0U && row.cpu_budget_us > 0U &&
+           row.gpu_budget_us > 0U && row.cpu_duration_us <= row.cpu_budget_us &&
+           row.gpu_duration_us <= row.gpu_budget_us;
+}
+
+[[nodiscard]] std::uint32_t
+count_unique_profiler_tools(const std::vector<EnvironmentWeatherSimulationSolverProfilerArtifactRow>& artifacts) {
+    std::vector<std::string_view> tools;
+    tools.reserve(artifacts.size());
+    for (const auto& row : artifacts) {
+        if (std::ranges::find(tools, std::string_view{row.capture_tool}) == tools.end()) {
+            tools.push_back(row.capture_tool);
+        }
+    }
+    return static_cast<std::uint32_t>(tools.size());
+}
+
+[[nodiscard]] std::uint32_t
+count_unique_profiler_backends(const std::vector<EnvironmentWeatherSimulationSolverProfilerArtifactRow>& artifacts) {
+    std::vector<std::string_view> backends;
+    backends.reserve(artifacts.size());
+    for (const auto& row : artifacts) {
+        if (std::ranges::find(backends, std::string_view{row.backend}) == backends.end()) {
+            backends.push_back(row.backend);
+        }
+    }
+    return static_cast<std::uint32_t>(backends.size());
+}
+
+[[nodiscard]] std::uint64_t build_profiler_artifact_hash(
+    const std::vector<EnvironmentWeatherSimulationSolverProfilerArtifactRow>& artifacts) noexcept {
+    std::uint64_t hash = fnv_offset_basis;
+    hash_combine(hash, artifacts.size());
+    for (const auto& row : artifacts) {
+        hash_combine_string(hash, row.artifact_id);
+        hash_combine_string(hash, row.artifact_kind);
+        hash_combine_string(hash, row.artifact_path);
+        hash_combine_string(hash, row.capture_tool);
+        hash_combine_string(hash, row.backend);
+        hash_combine(hash, row.cpu_duration_us);
+        hash_combine(hash, row.gpu_duration_us);
+        hash_combine(hash, row.cpu_budget_us);
+        hash_combine(hash, row.gpu_budget_us);
+        hash_combine(hash, row.source_index);
+    }
+    return hash == 0ULL ? fnv_offset_basis : hash;
+}
+
 [[nodiscard]] std::size_t expected_cell_count(const EnvironmentWeatherSimulationDesc& desc) noexcept {
     return static_cast<std::size_t>(desc.width) * static_cast<std::size_t>(desc.height);
 }
@@ -575,7 +641,6 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
         .cpu_budget_us = desc.cpu_budget_us,
         .gpu_elapsed_us = desc.gpu_elapsed_us,
         .gpu_budget_us = desc.gpu_budget_us,
-        .profiler_artifact_ready = desc.profiler_artifact_ready,
         .exposes_native_handles = desc.request_native_handle_access,
     };
 
@@ -612,6 +677,26 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
                        "gpu_elapsed_us",
                        "weather simulation GPU solver package elapsed time exceeds the selected budget");
     }
+    plan.profiler_artifact_count = static_cast<std::uint32_t>(desc.profiler_artifacts.size());
+    plan.profiler_tool_rows = count_unique_profiler_tools(desc.profiler_artifacts);
+    plan.profiler_backend_rows = count_unique_profiler_backends(desc.profiler_artifacts);
+    plan.profiler_artifact_hash = build_profiler_artifact_hash(desc.profiler_artifacts);
+    bool profiler_artifacts_valid = !desc.profiler_artifacts.empty();
+    for (const auto& artifact : desc.profiler_artifacts) {
+        if (!valid_profiler_artifact_row(artifact)) {
+            profiler_artifacts_valid = false;
+            add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::invalid_profiler_artifact,
+                           "profiler_artifacts",
+                           "weather simulation profiler artifacts require safe retained PIX/WPR/D3D12 timestamp "
+                           "metadata with in-budget CPU and GPU durations");
+            break;
+        }
+    }
+    if (desc.request_production_solver_ready_claim && desc.profiler_artifacts.empty()) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_profiler_artifacts,
+                       "profiler_artifacts",
+                       "weather simulation production solver readiness requires retained profiler artifacts");
+    }
     if (desc.request_native_handle_access) {
         add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_native_handle_access,
                        "request_native_handle_access",
@@ -628,7 +713,9 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
                             desc.cpu_elapsed_us <= desc.cpu_budget_us && !plan.cpu_budget_over;
     plan.gpu_budget_ready = desc.gpu_solver_package_ready && desc.gpu_elapsed_us > 0U && desc.gpu_budget_us > 0U &&
                             desc.gpu_elapsed_us <= desc.gpu_budget_us && !plan.gpu_budget_over;
-    plan.profiler_budget_ready = plan.cpu_budget_ready && desc.profiler_artifact_ready;
+    plan.profiler_artifact_ready = profiler_artifacts_valid && plan.profiler_artifact_count > 0U &&
+                                   plan.profiler_tool_rows >= 2U && plan.profiler_backend_rows == 1U;
+    plan.profiler_budget_ready = plan.cpu_budget_ready && plan.gpu_budget_ready && plan.profiler_artifact_ready;
     plan.production_solver_ready = false;
     plan.invokes_gpu = plan.gpu_budget_ready;
     plan.invokes_backend = plan.gpu_budget_ready;
