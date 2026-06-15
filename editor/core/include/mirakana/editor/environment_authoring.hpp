@@ -355,6 +355,61 @@ struct EnvironmentArtistWorkflowAssetBrowserModel {
     std::vector<EnvironmentArtistWorkflowAssetBrowserDiagnosticRow> diagnostics;
 };
 
+enum class EnvironmentArtistWorkflowPreviewRowKind : std::uint8_t {
+    selected_backend = 0,
+    quality_tier,
+    missing_host_gate,
+    package_budget,
+    memory_budget,
+    diagnostics,
+    unsupported_claim_reason,
+};
+
+enum class EnvironmentArtistWorkflowPreviewRowStatus : std::uint8_t {
+    ready = 0,
+    blocked,
+};
+
+struct EnvironmentArtistWorkflowPreviewDesc {
+    std::string selected_backend;
+    std::string quality_tier;
+    std::string missing_host_gate;
+    std::uint64_t package_budget_bytes{0U};
+    std::uint64_t memory_budget_bytes{0U};
+    std::uint32_t diagnostics{0U};
+    std::string unsupported_claim_reason;
+    bool request_backend_execution{false};
+    bool request_package_script_execution{false};
+    bool request_native_handle_access{false};
+};
+
+struct EnvironmentArtistWorkflowPreviewRow {
+    EnvironmentArtistWorkflowPreviewRowKind kind{EnvironmentArtistWorkflowPreviewRowKind::selected_backend};
+    EnvironmentArtistWorkflowPreviewRowStatus status{EnvironmentArtistWorkflowPreviewRowStatus::blocked};
+    std::string row_id;
+    std::string label;
+    std::string value;
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+};
+
+struct EnvironmentArtistWorkflowPreviewDiagnosticRow {
+    std::string code;
+    std::string message;
+};
+
+struct EnvironmentArtistWorkflowPreviewModel {
+    EnvironmentAuthoringStatus status{EnvironmentAuthoringStatus::blocked};
+    std::size_t ready_rows{0U};
+    bool complete_artist_workflow_ready_claimed{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+    std::vector<EnvironmentArtistWorkflowPreviewRow> rows;
+    std::vector<EnvironmentArtistWorkflowPreviewDiagnosticRow> diagnostics;
+};
+
 [[nodiscard]] std::string_view environment_package_candidate_kind_label(EnvironmentPackageCandidateKind kind) noexcept;
 [[nodiscard]] std::string_view
 environment_package_registration_draft_status_label(EnvironmentPackageRegistrationDraftStatus status) noexcept;
@@ -362,6 +417,8 @@ environment_package_registration_draft_status_label(EnvironmentPackageRegistrati
 environment_artist_workflow_command_id(EnvironmentArtistWorkflowCommandKind kind) noexcept;
 [[nodiscard]] std::string_view
 environment_artist_workflow_asset_kind_id(EnvironmentArtistWorkflowAssetKind kind) noexcept;
+[[nodiscard]] std::string_view
+environment_artist_workflow_preview_row_id(EnvironmentArtistWorkflowPreviewRowKind kind) noexcept;
 
 [[nodiscard]] EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store,
                                                                                std::string_view path);
@@ -385,6 +442,10 @@ plan_environment_artist_workflow_command(const EnvironmentAuthoringDocument& doc
 make_environment_artist_workflow_asset_browser_model(const EnvironmentArtistWorkflowAssetBrowserDesc& desc);
 [[nodiscard]] mirakana::ui::UiDocument
 make_environment_artist_workflow_asset_browser_ui_model(const EnvironmentArtistWorkflowAssetBrowserModel& model);
+[[nodiscard]] EnvironmentArtistWorkflowPreviewModel
+make_environment_artist_workflow_preview_model(const EnvironmentArtistWorkflowPreviewDesc& desc);
+[[nodiscard]] mirakana::ui::UiDocument
+make_environment_artist_workflow_preview_ui_model(const EnvironmentArtistWorkflowPreviewModel& model);
 
 [[nodiscard]] EnvironmentAuthoringValidationModel
 make_environment_authoring_validation_model(const EnvironmentAuthoringDocument& document);

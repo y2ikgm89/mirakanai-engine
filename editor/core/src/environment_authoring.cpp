@@ -365,6 +365,36 @@ void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
     return "blocked";
 }
 
+[[nodiscard]] std::string_view preview_row_status_label(EnvironmentArtistWorkflowPreviewRowStatus status) noexcept {
+    switch (status) {
+    case EnvironmentArtistWorkflowPreviewRowStatus::ready:
+        return "ready";
+    case EnvironmentArtistWorkflowPreviewRowStatus::blocked:
+        return "blocked";
+    }
+    return "blocked";
+}
+
+[[nodiscard]] std::string_view artist_workflow_preview_label(EnvironmentArtistWorkflowPreviewRowKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowPreviewRowKind::selected_backend:
+        return "Selected Backend";
+    case EnvironmentArtistWorkflowPreviewRowKind::quality_tier:
+        return "Quality Tier";
+    case EnvironmentArtistWorkflowPreviewRowKind::missing_host_gate:
+        return "Missing Host Gate";
+    case EnvironmentArtistWorkflowPreviewRowKind::package_budget:
+        return "Package Budget";
+    case EnvironmentArtistWorkflowPreviewRowKind::memory_budget:
+        return "Memory Budget";
+    case EnvironmentArtistWorkflowPreviewRowKind::diagnostics:
+        return "Diagnostics";
+    case EnvironmentArtistWorkflowPreviewRowKind::unsupported_claim_reason:
+        return "Unsupported Claim Reason";
+    }
+    return "Environment Preview Row";
+}
+
 [[nodiscard]] const EnvironmentArtistWorkflowAssetBrowserInputRow*
 find_asset_browser_input(std::span<const EnvironmentArtistWorkflowAssetBrowserInputRow> inputs,
                          EnvironmentArtistWorkflowAssetKind kind) noexcept {
@@ -376,6 +406,13 @@ find_asset_browser_input(std::span<const EnvironmentArtistWorkflowAssetBrowserIn
 void add_asset_browser_diagnostic(EnvironmentArtistWorkflowAssetBrowserModel& model, std::string code,
                                   std::string message) {
     model.diagnostics.push_back(EnvironmentArtistWorkflowAssetBrowserDiagnosticRow{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_preview_diagnostic(EnvironmentArtistWorkflowPreviewModel& model, std::string code, std::string message) {
+    model.diagnostics.push_back(EnvironmentArtistWorkflowPreviewDiagnosticRow{
         .code = std::move(code),
         .message = std::move(message),
     });
@@ -446,6 +483,21 @@ make_asset_browser_row(const EnvironmentArtistWorkflowAssetBrowserInputRow* inpu
     row.status = row.available ? EnvironmentArtistWorkflowAssetRowStatus::ready
                                : EnvironmentArtistWorkflowAssetRowStatus::missing;
     return row;
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowPreviewRow make_preview_row(EnvironmentArtistWorkflowPreviewRowKind kind,
+                                                                   std::string value,
+                                                                   EnvironmentArtistWorkflowPreviewRowStatus status) {
+    return EnvironmentArtistWorkflowPreviewRow{
+        .kind = kind,
+        .status = status,
+        .row_id = std::string{environment_artist_workflow_preview_row_id(kind)},
+        .label = std::string{artist_workflow_preview_label(kind)},
+        .value = std::move(value),
+        .invokes_backend = false,
+        .exposes_native_handles = false,
+        .executes_package_scripts = false,
+    };
 }
 
 void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuthoringCommandRequest& request) {
@@ -640,6 +692,26 @@ std::string_view environment_artist_workflow_asset_kind_id(EnvironmentArtistWork
         return "environment.workflow.asset.package_artifact";
     }
     return "environment.workflow.asset.invalid";
+}
+
+std::string_view environment_artist_workflow_preview_row_id(EnvironmentArtistWorkflowPreviewRowKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowPreviewRowKind::selected_backend:
+        return "environment.workflow.preview.selected_backend";
+    case EnvironmentArtistWorkflowPreviewRowKind::quality_tier:
+        return "environment.workflow.preview.quality_tier";
+    case EnvironmentArtistWorkflowPreviewRowKind::missing_host_gate:
+        return "environment.workflow.preview.missing_host_gate";
+    case EnvironmentArtistWorkflowPreviewRowKind::package_budget:
+        return "environment.workflow.preview.package_budget";
+    case EnvironmentArtistWorkflowPreviewRowKind::memory_budget:
+        return "environment.workflow.preview.memory_budget";
+    case EnvironmentArtistWorkflowPreviewRowKind::diagnostics:
+        return "environment.workflow.preview.diagnostics";
+    case EnvironmentArtistWorkflowPreviewRowKind::unsupported_claim_reason:
+        return "environment.workflow.preview.unsupported_claim_reason";
+    }
+    return "environment.workflow.preview.invalid";
 }
 
 EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store, std::string_view path) {
@@ -950,6 +1022,129 @@ make_environment_artist_workflow_asset_browser_ui_model(const EnvironmentArtistW
                      row.requires_host_gate ? row.host_gate : "none");
         append_label(document, item_id, "environment_artist_workflow_asset_browser.rows." + row.row_id + ".validation",
                      row.validation_recipe_id);
+    }
+
+    return document;
+}
+
+EnvironmentArtistWorkflowPreviewModel
+make_environment_artist_workflow_preview_model(const EnvironmentArtistWorkflowPreviewDesc& desc) {
+    constexpr std::array kinds{
+        EnvironmentArtistWorkflowPreviewRowKind::selected_backend,
+        EnvironmentArtistWorkflowPreviewRowKind::quality_tier,
+        EnvironmentArtistWorkflowPreviewRowKind::missing_host_gate,
+        EnvironmentArtistWorkflowPreviewRowKind::package_budget,
+        EnvironmentArtistWorkflowPreviewRowKind::memory_budget,
+        EnvironmentArtistWorkflowPreviewRowKind::diagnostics,
+        EnvironmentArtistWorkflowPreviewRowKind::unsupported_claim_reason,
+    };
+
+    EnvironmentArtistWorkflowPreviewModel model;
+    model.rows.reserve(kinds.size());
+
+    if (desc.request_backend_execution || desc.request_package_script_execution || desc.request_native_handle_access) {
+        add_preview_diagnostic(
+            model, "unsafe_execution",
+            "environment artist workflow preview is an editor-core row model and cannot execute backend work, package "
+            "scripts, or native handle access");
+    }
+
+    const auto push_row = [&model](EnvironmentArtistWorkflowPreviewRow row, std::string code, std::string message) {
+        if (row.status == EnvironmentArtistWorkflowPreviewRowStatus::ready) {
+            ++model.ready_rows;
+        } else {
+            add_preview_diagnostic(model, std::move(code), std::move(message));
+        }
+        model.rows.push_back(std::move(row));
+    };
+
+    for (const auto kind : kinds) {
+        switch (kind) {
+        case EnvironmentArtistWorkflowPreviewRowKind::selected_backend:
+            push_row(make_preview_row(kind, desc.selected_backend,
+                                      desc.selected_backend.empty() ? EnvironmentArtistWorkflowPreviewRowStatus::blocked
+                                                                    : EnvironmentArtistWorkflowPreviewRowStatus::ready),
+                     "missing_selected_backend", "environment artist workflow preview selected backend is missing");
+            break;
+        case EnvironmentArtistWorkflowPreviewRowKind::quality_tier:
+            push_row(make_preview_row(kind, desc.quality_tier,
+                                      desc.quality_tier.empty() ? EnvironmentArtistWorkflowPreviewRowStatus::blocked
+                                                                : EnvironmentArtistWorkflowPreviewRowStatus::ready),
+                     "missing_quality_tier", "environment artist workflow preview quality tier is missing");
+            break;
+        case EnvironmentArtistWorkflowPreviewRowKind::missing_host_gate:
+            push_row(make_preview_row(kind, desc.missing_host_gate.empty() ? "none" : desc.missing_host_gate,
+                                      desc.missing_host_gate.empty()
+                                          ? EnvironmentArtistWorkflowPreviewRowStatus::ready
+                                          : EnvironmentArtistWorkflowPreviewRowStatus::blocked),
+                     "missing_host_gate", "environment artist workflow preview is blocked by a missing host gate");
+            break;
+        case EnvironmentArtistWorkflowPreviewRowKind::package_budget:
+            push_row(make_preview_row(kind, std::to_string(desc.package_budget_bytes),
+                                      desc.package_budget_bytes == 0U
+                                          ? EnvironmentArtistWorkflowPreviewRowStatus::blocked
+                                          : EnvironmentArtistWorkflowPreviewRowStatus::ready),
+                     "missing_package_budget", "environment artist workflow preview package budget is missing");
+            break;
+        case EnvironmentArtistWorkflowPreviewRowKind::memory_budget:
+            push_row(make_preview_row(kind, std::to_string(desc.memory_budget_bytes),
+                                      desc.memory_budget_bytes == 0U
+                                          ? EnvironmentArtistWorkflowPreviewRowStatus::blocked
+                                          : EnvironmentArtistWorkflowPreviewRowStatus::ready),
+                     "missing_memory_budget", "environment artist workflow preview memory budget is missing");
+            break;
+        case EnvironmentArtistWorkflowPreviewRowKind::diagnostics:
+            push_row(make_preview_row(kind, std::to_string(desc.diagnostics),
+                                      desc.diagnostics == 0U ? EnvironmentArtistWorkflowPreviewRowStatus::ready
+                                                             : EnvironmentArtistWorkflowPreviewRowStatus::blocked),
+                     "preview_diagnostics", "environment artist workflow preview has diagnostics");
+            break;
+        case EnvironmentArtistWorkflowPreviewRowKind::unsupported_claim_reason:
+            push_row(make_preview_row(kind, desc.unsupported_claim_reason,
+                                      desc.unsupported_claim_reason.empty()
+                                          ? EnvironmentArtistWorkflowPreviewRowStatus::blocked
+                                          : EnvironmentArtistWorkflowPreviewRowStatus::ready),
+                     "missing_unsupported_claim_reason",
+                     "environment artist workflow preview must explain why complete readiness is still unsupported");
+            break;
+        }
+    }
+
+    if (model.diagnostics.empty()) {
+        model.status = EnvironmentAuthoringStatus::ready;
+    }
+    return model;
+}
+
+mirakana::ui::UiDocument
+make_environment_artist_workflow_preview_ui_model(const EnvironmentArtistWorkflowPreviewModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_artist_workflow_preview", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Artist Workflow Preview";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_artist_workflow_preview"};
+    append_label(document, root_id, "environment_artist_workflow_preview.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_artist_workflow_preview.ready_rows", std::to_string(model.ready_rows));
+    append_label(document, root_id, "environment_artist_workflow_preview.complete_artist_workflow_ready_claimed",
+                 bool_text(model.complete_artist_workflow_ready_claimed));
+
+    auto rows_root = make_child("environment_artist_workflow_preview.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Artist Workflow Preview Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_artist_workflow_preview.rows"};
+
+    for (const auto& row : model.rows) {
+        auto item = make_child("environment_artist_workflow_preview.rows." + row.row_id, rows_id,
+                               mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = false;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_artist_workflow_preview.rows." + row.row_id};
+        append_label(document, item_id, "environment_artist_workflow_preview.rows." + row.row_id + ".status",
+                     std::string{preview_row_status_label(row.status)});
+        append_label(document, item_id, "environment_artist_workflow_preview.rows." + row.row_id + ".value", row.value);
     }
 
     return document;
