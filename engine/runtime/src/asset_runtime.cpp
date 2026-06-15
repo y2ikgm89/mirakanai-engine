@@ -254,6 +254,47 @@ using KeyValues = std::unordered_map<std::string, std::string>;
            valid_environment_payload_stage(payload);
 }
 
+void append_environment_texture_upload_plan_diagnostic(RuntimeEnvironmentTexturePayloadUploadPlanResult& result,
+                                                       std::string code, std::string message) {
+    result.diagnostics.push_back(
+        RuntimeEnvironmentTexturePayloadUploadPlanDiagnostic{.code = std::move(code), .message = std::move(message)});
+}
+
+[[nodiscard]] std::string lower_hex_from_bytes(const std::vector<std::uint8_t>& bytes) {
+    constexpr char digits[] = "0123456789abcdef";
+    std::string result;
+    if (bytes.size() <= std::numeric_limits<std::size_t>::max() / 2U) {
+        result.reserve(bytes.size() * 2U);
+    }
+    for (const auto byte : bytes) {
+        result.push_back(digits[(byte >> 4U) & 0x0FU]);
+        result.push_back(digits[byte & 0x0FU]);
+    }
+    return result;
+}
+
+[[nodiscard]] std::uint64_t
+expected_environment_texture_upload_source_bytes(const RuntimeEnvironmentTexturePayload& payload,
+                                                 TextureSourcePixelFormat pixel_format, bool& overflow) noexcept {
+    overflow = true;
+    const auto bytes_per_pixel = texture_source_bytes_per_pixel(pixel_format);
+    if (payload.width == 0U || payload.height == 0U || bytes_per_pixel == 0U) {
+        return 0;
+    }
+    const auto width = static_cast<std::uint64_t>(payload.width);
+    const auto height = static_cast<std::uint64_t>(payload.height);
+    const auto bytes_per_pixel64 = static_cast<std::uint64_t>(bytes_per_pixel);
+    if (width > std::numeric_limits<std::uint64_t>::max() / height) {
+        return 0;
+    }
+    const auto pixels = width * height;
+    if (pixels > std::numeric_limits<std::uint64_t>::max() / bytes_per_pixel64) {
+        return 0;
+    }
+    overflow = false;
+    return pixels * bytes_per_pixel64;
+}
+
 [[nodiscard]] bool valid_physics_collision_token(std::string_view value, bool require_non_empty) noexcept {
     if (require_non_empty && value.empty()) {
         return false;
@@ -666,6 +707,104 @@ runtime_environment_texture_payload(const RuntimeAssetRecord& record) {
     } catch (const std::exception& error) {
         return payload_failure<RuntimeEnvironmentTexturePayload>(error.what());
     }
+}
+
+bool RuntimeEnvironmentTexturePayloadUploadPlanResult::succeeded() const noexcept {
+    return upload_plan_ready && diagnostics.empty();
+}
+
+RuntimeEnvironmentTexturePayloadUploadPlanResult
+plan_runtime_environment_texture_payload_upload(const RuntimeEnvironmentTexturePayload& payload,
+                                                TextureSourcePixelFormat expected_pixel_format) {
+    RuntimeEnvironmentTexturePayloadUploadPlanResult result{
+        .payload = {},
+        .diagnostics = {},
+        .upload_plan_ready = false,
+        .source_kind = payload.source_kind,
+        .color_space = payload.color_space,
+        .sampler_class = payload.sampler_class,
+        .pixel_format = expected_pixel_format,
+        .mip_count = payload.mip_count,
+        .payload_bytes = static_cast<std::uint64_t>(payload.bytes.size()),
+        .upload_source_bytes = 0,
+        .runtime_codec_invoked = false,
+        .runtime_basis_transcode_invoked = false,
+        .backend_api_invoked = false,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+    };
+
+    if (!valid_environment_texture_payload(payload)) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-invalid-payload",
+            "environment texture upload plan requires a validated cooked environment texture payload");
+    }
+    if (payload.bytes.empty()) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-empty-payload-bytes",
+            "environment texture upload plan requires inline cooked payload bytes");
+    }
+    if (payload.payload_hash != hash_asset_cooked_content(lower_hex_from_bytes(payload.bytes))) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-payload-hash-mismatch",
+            "environment texture upload plan payload bytes do not match the recorded payload hash");
+    }
+    if (expected_pixel_format != TextureSourcePixelFormat::rgba8_unorm) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-pixel-format-unsupported",
+            "environment texture upload plan currently supports only uncompressed rgba8_unorm source rows");
+    }
+    if (payload.mip_count != 1U) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-mip-chain-unsupported",
+            "environment texture upload plan currently supports only single-mip source rows");
+    }
+    if (payload.source_kind == TextureSourceKindV2::openexr && !payload.pixel_decode_invoked) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-runtime-codec-required",
+            "OpenEXR environment texture upload planning requires prior cook-time pixel decode evidence");
+    }
+    if (payload.source_kind == TextureSourceKindV2::ktx2_basis && !payload.basis_transcode_invoked) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-runtime-basis-transcode-required",
+            "KTX2/Basis environment texture upload planning requires prior cook-time Basis transcode evidence");
+    }
+    if (payload.gpu_upload_invoked) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-gpu-upload-claim",
+            "environment texture upload plan cannot accept payloads that already claim GPU upload execution");
+    }
+    if (payload.broad_asset_pipeline_ready) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-broad-asset-pipeline-claim",
+            "environment texture upload plan cannot accept broad asset-pipeline readiness claims");
+    }
+
+    bool byte_count_overflow = false;
+    const auto expected_upload_bytes =
+        expected_environment_texture_upload_source_bytes(payload, expected_pixel_format, byte_count_overflow);
+    result.upload_source_bytes = expected_upload_bytes;
+    if (byte_count_overflow || expected_upload_bytes != static_cast<std::uint64_t>(payload.bytes.size())) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-byte-size-mismatch",
+            "environment texture upload plan byte count does not match width * height * bytes_per_pixel");
+    }
+
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.payload = RuntimeTexturePayload{
+        .asset = payload.asset,
+        .handle = payload.handle,
+        .width = payload.width,
+        .height = payload.height,
+        .pixel_format = expected_pixel_format,
+        .source_bytes = expected_upload_bytes,
+        .bytes = payload.bytes,
+    };
+    result.upload_plan_ready = true;
+    return result;
 }
 
 RuntimePayloadAccessResult<RuntimeMeshPayload> runtime_mesh_payload(const RuntimeAssetRecord& record) {

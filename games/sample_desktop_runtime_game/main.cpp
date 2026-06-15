@@ -202,6 +202,8 @@ constexpr std::string_view kRuntimeEnvironmentRadianceExrPath{
     "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset"};
 constexpr std::string_view kRuntimeEnvironmentSkyboxBasisPath{
     "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset"};
+constexpr std::string_view kRuntimeEnvironmentUploadPlanRgba8Path{
+    "runtime/assets/desktop_runtime/environment_upload_plan_rgba8.texture.geasset"};
 constexpr std::string_view kRuntimeEnvironmentPresetPackPath{
     "runtime/assets/desktop_runtime/environment_presets.gepresetpack"};
 constexpr std::string_view kRuntimeEnvironmentIblSampleVertexShaderPath{
@@ -518,6 +520,10 @@ sample_environment_volumetric_cloud_lights() noexcept {
 
 [[nodiscard]] mirakana::AssetId packaged_environment_skybox_basis_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/environment/skybox-basis");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_upload_plan_rgba8_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/environment/upload-plan-rgba8");
 }
 
 [[nodiscard]] mirakana::AssetId packaged_environment_preset_pack_asset_id() {
@@ -887,10 +893,20 @@ struct EnvironmentTextureAssetPipelinePackageEvidence {
     std::size_t unsupported_host_diagnostics{0};
     std::size_t environment_profile_dependency_refs{0};
     std::size_t environment_texture_dependency_edges{0};
+    std::size_t upload_plan_records{0};
+    std::size_t upload_plan_ready_records{0};
+    std::size_t upload_plan_diagnostics{0};
+    std::uint64_t upload_plan_payload_bytes{0};
+    std::uint64_t upload_plan_source_bytes{0};
     bool pixel_decode_invoked{false};
     bool basis_runtime_transcode_invoked{false};
     bool gpu_upload_invoked{false};
     bool broad_asset_pipeline_ready{false};
+    bool upload_plan_runtime_codec_invoked{false};
+    bool upload_plan_runtime_basis_transcode_invoked{false};
+    bool upload_plan_backend_api_invoked{false};
+    bool upload_plan_gpu_upload_invoked{false};
+    bool upload_plan_broad_asset_pipeline_ready{false};
     std::size_t diagnostics{0};
 };
 
@@ -1127,6 +1143,8 @@ count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPa
                    std::string_view{"openexr"}},
         std::tuple{packaged_environment_skybox_basis_asset_id(), kRuntimeEnvironmentSkyboxBasisPath,
                    std::string_view{"ktx2_basis"}},
+        std::tuple{packaged_environment_upload_plan_rgba8_asset_id(), kRuntimeEnvironmentUploadPlanRgba8Path,
+                   std::string_view{"openexr"}},
     };
 
     for (const auto& [asset, path, source_kind] : expected_records) {
@@ -1173,28 +1191,60 @@ count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPa
         evidence.broad_asset_pipeline_ready =
             evidence.broad_asset_pipeline_ready ||
             content.find("texture.broad_asset_pipeline_ready=1\n") != std::string_view::npos;
+
+        const auto parsed_payload = mirakana::runtime::runtime_environment_texture_payload(*record);
+        if (!parsed_payload.succeeded()) {
+            evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
+            evidence.diagnostics = 1U;
+            return evidence;
+        }
+        const auto upload_plan =
+            mirakana::runtime::plan_runtime_environment_texture_payload_upload(parsed_payload.payload);
+        evidence.upload_plan_records += 1U;
+        evidence.upload_plan_ready_records += upload_plan.succeeded() ? 1U : 0U;
+        evidence.upload_plan_diagnostics += upload_plan.diagnostics.size();
+        if (upload_plan.succeeded()) {
+            evidence.upload_plan_payload_bytes += upload_plan.payload_bytes;
+            evidence.upload_plan_source_bytes += upload_plan.upload_source_bytes;
+        }
+        evidence.upload_plan_runtime_codec_invoked =
+            evidence.upload_plan_runtime_codec_invoked || upload_plan.runtime_codec_invoked;
+        evidence.upload_plan_runtime_basis_transcode_invoked =
+            evidence.upload_plan_runtime_basis_transcode_invoked || upload_plan.runtime_basis_transcode_invoked;
+        evidence.upload_plan_backend_api_invoked =
+            evidence.upload_plan_backend_api_invoked || upload_plan.backend_api_invoked;
+        evidence.upload_plan_gpu_upload_invoked =
+            evidence.upload_plan_gpu_upload_invoked || upload_plan.gpu_upload_invoked;
+        evidence.upload_plan_broad_asset_pipeline_ready =
+            evidence.upload_plan_broad_asset_pipeline_ready || upload_plan.broad_asset_pipeline_ready;
     }
 
-    if (evidence.environment_profile_dependency_refs != expected_records.size()) {
+    if (evidence.environment_profile_dependency_refs != 2U) {
         evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_profile_dependency;
         evidence.diagnostics = 1U;
         return evidence;
     }
-    if (evidence.environment_texture_dependency_edges != expected_records.size()) {
+    if (evidence.environment_texture_dependency_edges != 2U) {
         evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_dependency_edge;
         evidence.diagnostics = 1U;
         return evidence;
     }
 
     evidence.status = EnvironmentTextureAssetPipelinePackageStatus::ready;
-    evidence.ready = evidence.package_index_entries == 2U && evidence.metadata_records == 2U &&
-                     evidence.metadata_only_records == 0U && evidence.payload_records == 2U &&
-                     evidence.openexr_records == 1U && evidence.ktx2_basis_records == 1U &&
-                     evidence.source_hash_rows == 2U && evidence.provenance_rows == 2U && evidence.license_rows == 2U &&
-                     evidence.backend_policy_rows == 10U && evidence.payload_byte_rows == 2U &&
-                     evidence.payload_hash_rows == 2U && evidence.unsupported_host_diagnostics == 8U &&
-                     evidence.pixel_decode_invoked && evidence.basis_runtime_transcode_invoked &&
-                     !evidence.gpu_upload_invoked && !evidence.broad_asset_pipeline_ready;
+    evidence.ready =
+        evidence.package_index_entries == 3U && evidence.metadata_records == 3U &&
+        evidence.metadata_only_records == 0U && evidence.payload_records == 3U && evidence.openexr_records == 2U &&
+        evidence.ktx2_basis_records == 1U && evidence.source_hash_rows == 3U && evidence.provenance_rows == 3U &&
+        evidence.license_rows == 3U && evidence.backend_policy_rows == 15U && evidence.payload_byte_rows == 3U &&
+        evidence.payload_hash_rows == 3U && evidence.unsupported_host_diagnostics == 12U &&
+        evidence.environment_profile_dependency_refs == 2U && evidence.environment_texture_dependency_edges == 2U &&
+        evidence.upload_plan_records == 3U && evidence.upload_plan_ready_records == 1U &&
+        evidence.upload_plan_diagnostics == 3U && evidence.upload_plan_payload_bytes == 4U &&
+        evidence.upload_plan_source_bytes == 4U && evidence.pixel_decode_invoked &&
+        evidence.basis_runtime_transcode_invoked && !evidence.gpu_upload_invoked &&
+        !evidence.broad_asset_pipeline_ready && !evidence.upload_plan_runtime_codec_invoked &&
+        !evidence.upload_plan_runtime_basis_transcode_invoked && !evidence.upload_plan_backend_api_invoked &&
+        !evidence.upload_plan_gpu_upload_invoked && !evidence.upload_plan_broad_asset_pipeline_ready;
     if (!evidence.ready) {
         evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
         evidence.diagnostics = 1U;
@@ -7685,6 +7735,16 @@ int main(int argc, char** argv) {
         << environment_texture_asset_pipeline.environment_profile_dependency_refs
         << " environment_texture_asset_pipeline_dependency_edges="
         << environment_texture_asset_pipeline.environment_texture_dependency_edges
+        << " environment_texture_asset_pipeline_upload_plan_records="
+        << environment_texture_asset_pipeline.upload_plan_records
+        << " environment_texture_asset_pipeline_upload_plan_ready_records="
+        << environment_texture_asset_pipeline.upload_plan_ready_records
+        << " environment_texture_asset_pipeline_upload_plan_diagnostics="
+        << environment_texture_asset_pipeline.upload_plan_diagnostics
+        << " environment_texture_asset_pipeline_upload_plan_payload_bytes="
+        << environment_texture_asset_pipeline.upload_plan_payload_bytes
+        << " environment_texture_asset_pipeline_upload_plan_source_bytes="
+        << environment_texture_asset_pipeline.upload_plan_source_bytes
         << " environment_texture_asset_pipeline_pixel_decode_invoked="
         << (environment_texture_asset_pipeline.pixel_decode_invoked ? 1 : 0)
         << " environment_texture_asset_pipeline_basis_runtime_transcode_invoked="
@@ -7693,6 +7753,16 @@ int main(int argc, char** argv) {
         << (environment_texture_asset_pipeline.gpu_upload_invoked ? 1 : 0)
         << " environment_texture_asset_pipeline_broad_ready="
         << (environment_texture_asset_pipeline.broad_asset_pipeline_ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_upload_plan_runtime_codec_invoked="
+        << (environment_texture_asset_pipeline.upload_plan_runtime_codec_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_upload_plan_runtime_basis_transcode_invoked="
+        << (environment_texture_asset_pipeline.upload_plan_runtime_basis_transcode_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_upload_plan_backend_api_invoked="
+        << (environment_texture_asset_pipeline.upload_plan_backend_api_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_upload_plan_gpu_upload_invoked="
+        << (environment_texture_asset_pipeline.upload_plan_gpu_upload_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_upload_plan_broad_ready="
+        << (environment_texture_asset_pipeline.upload_plan_broad_asset_pipeline_ready ? 1 : 0)
         << " environment_texture_asset_pipeline_diagnostics=" << environment_texture_asset_pipeline.diagnostics
         << " environment_preset_library_package_status="
         << environment_preset_library_package_status_name(environment_preset_library.status)
