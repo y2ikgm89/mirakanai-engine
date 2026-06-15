@@ -36,6 +36,10 @@ void append_payload_diagnostic(RuntimeDiagnosticReport& report, const RuntimeAss
     }
 }
 
+[[nodiscard]] bool is_environment_texture_payload_record(const RuntimeAssetRecord& record) noexcept {
+    return record.content.starts_with("format=GameEngine.EnvironmentTextureGeassetPayload.v1\n");
+}
+
 [[nodiscard]] const RuntimeAssetRecord* find_record_or_null(const RuntimeAssetPackage& package,
                                                             AssetId asset) noexcept {
     return asset.value == 0 ? nullptr : package.find(asset);
@@ -230,7 +234,11 @@ RuntimeDiagnosticReport inspect_runtime_asset_package(const RuntimeAssetPackage&
     for (const auto& record : package.records()) {
         switch (record.kind) {
         case AssetKind::texture:
-            append_payload_diagnostic(report, record, runtime_texture_payload(record));
+            if (is_environment_texture_payload_record(record)) {
+                append_payload_diagnostic(report, record, runtime_environment_texture_payload(record));
+            } else {
+                append_payload_diagnostic(report, record, runtime_texture_payload(record));
+            }
             break;
         case AssetKind::mesh:
             append_payload_diagnostic(report, record, runtime_mesh_payload(record));
