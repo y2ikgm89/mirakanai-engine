@@ -481,6 +481,74 @@ struct EnvironmentArtistWorkflowWalkthroughModel {
     std::vector<EnvironmentArtistWorkflowWalkthroughDiagnosticRow> diagnostics;
 };
 
+enum class EnvironmentArtistWorkflowExecutionStageStatus : std::uint8_t {
+    ready = 0,
+    awaiting_external_evidence,
+    awaiting_operator_review,
+    host_gated,
+    blocked,
+};
+
+struct EnvironmentArtistWorkflowExecutionEvidenceRow {
+    std::string recipe_id;
+    bool externally_supplied{true};
+    bool passed{false};
+    bool claims_editor_core_execution{false};
+    std::string summary;
+    std::vector<std::string> host_gates;
+    std::vector<std::string> blocked_by;
+};
+
+struct EnvironmentArtistWorkflowExecutionReviewDesc {
+    EnvironmentArtistWorkflowCommandCatalog command_catalog;
+    EnvironmentArtistWorkflowAssetBrowserModel asset_browser;
+    EnvironmentArtistWorkflowPreviewModel preview;
+    EnvironmentArtistWorkflowWalkthroughModel walkthrough;
+    std::vector<EnvironmentArtistWorkflowExecutionEvidenceRow> evidence_rows;
+    bool operator_reviewed{false};
+    std::string operator_review_id;
+    bool request_backend_execution{false};
+    bool request_package_script_execution{false};
+    bool request_validation_recipe_execution{false};
+    bool request_native_handle_access{false};
+    bool request_complete_artist_workflow_ready_promotion{false};
+};
+
+struct EnvironmentArtistWorkflowExecutionReviewStageRow {
+    std::string row_id;
+    std::string label;
+    std::string source_model;
+    EnvironmentArtistWorkflowExecutionStageStatus status{EnvironmentArtistWorkflowExecutionStageStatus::blocked};
+    std::size_t source_row_count{0U};
+    std::vector<std::string> source_row_ids;
+    std::vector<std::string> external_recipe_ids;
+    std::vector<std::string> host_gates;
+    std::vector<std::string> blocked_by;
+    std::string diagnostic;
+    bool visible_first_party_row{true};
+    bool external_execution_required{false};
+    bool evidence_passed{false};
+    bool operator_reviewed{false};
+    bool ready_promotion_guard{false};
+};
+
+struct EnvironmentArtistWorkflowExecutionReviewModel {
+    EnvironmentAuthoringStatus status{EnvironmentAuthoringStatus::blocked};
+    std::vector<EnvironmentArtistWorkflowExecutionReviewStageRow> stage_rows;
+    bool visible_first_party_workflow_wired{false};
+    bool external_action_required{true};
+    bool evidence_review_required{true};
+    bool has_host_gates{false};
+    bool has_blocking_diagnostics{false};
+    bool complete_artist_workflow_ready_claimed{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool executes_package_scripts{false};
+    bool executes_validation_recipes{false};
+    std::vector<std::string> unsupported_claims;
+    std::vector<std::string> diagnostics;
+};
+
 [[nodiscard]] std::string_view environment_package_candidate_kind_label(EnvironmentPackageCandidateKind kind) noexcept;
 [[nodiscard]] std::string_view
 environment_package_registration_draft_status_label(EnvironmentPackageRegistrationDraftStatus status) noexcept;
@@ -492,6 +560,8 @@ environment_artist_workflow_asset_kind_id(EnvironmentArtistWorkflowAssetKind kin
 environment_artist_workflow_preview_row_id(EnvironmentArtistWorkflowPreviewRowKind kind) noexcept;
 [[nodiscard]] std::string_view
 environment_artist_workflow_walkthrough_step_id(EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept;
+[[nodiscard]] std::string_view
+environment_artist_workflow_execution_stage_status_label(EnvironmentArtistWorkflowExecutionStageStatus status) noexcept;
 
 [[nodiscard]] EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store,
                                                                                std::string_view path);
@@ -523,6 +593,10 @@ make_environment_artist_workflow_preview_ui_model(const EnvironmentArtistWorkflo
 make_environment_artist_workflow_walkthrough_model(const EnvironmentArtistWorkflowWalkthroughDesc& desc);
 [[nodiscard]] mirakana::ui::UiDocument
 make_environment_artist_workflow_walkthrough_ui_model(const EnvironmentArtistWorkflowWalkthroughModel& model);
+[[nodiscard]] EnvironmentArtistWorkflowExecutionReviewModel
+make_environment_artist_workflow_execution_review_model(const EnvironmentArtistWorkflowExecutionReviewDesc& desc);
+[[nodiscard]] mirakana::ui::UiDocument
+make_environment_artist_workflow_execution_review_ui_model(const EnvironmentArtistWorkflowExecutionReviewModel& model);
 
 [[nodiscard]] EnvironmentAuthoringValidationModel
 make_environment_authoring_validation_model(const EnvironmentAuthoringDocument& document);
