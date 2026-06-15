@@ -1430,6 +1430,7 @@ struct EnvironmentOptimizationMeasurementSmokeEvidence {
 struct EnvironmentWeatherSimulationPackageEvidence {
     bool requested{false};
     mirakana::EnvironmentWeatherSimulationPlan plan{};
+    mirakana::EnvironmentWeatherSimulationSolverBudgetPlan solver_budget{};
     std::uint32_t step_count{0U};
 };
 
@@ -1571,6 +1572,21 @@ environment_weather_simulation_package_status_name(const mirakana::EnvironmentWe
                                                                                                     : "blocked";
 }
 
+[[nodiscard]] std::string_view environment_weather_simulation_solver_budget_status_name(
+    mirakana::EnvironmentWeatherSimulationSolverBudgetStatus status) noexcept {
+    switch (status) {
+    case mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::blocked:
+        return "blocked";
+    case mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::ready:
+        return "ready";
+    case mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::uint64_t kilograms_to_milligrams(double kilograms) noexcept {
     if (!std::isfinite(kilograms) || kilograms <= 0.0) {
         return 0ULL;
@@ -1587,6 +1603,16 @@ environment_weather_simulation_package_status_name(const mirakana::EnvironmentWe
 
 [[nodiscard]] constexpr std::uint64_t environment_weather_simulation_package_water_error_bound_mg() noexcept {
     return 1ULL;
+}
+
+[[nodiscard]] constexpr std::uint64_t environment_weather_simulation_package_cpu_budget_us() noexcept {
+    return 50000ULL;
+}
+
+[[nodiscard]] std::uint64_t elapsed_microseconds(std::chrono::steady_clock::time_point begin,
+                                                 std::chrono::steady_clock::time_point end) noexcept {
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    return elapsed > 0 ? static_cast<std::uint64_t>(elapsed) : 0ULL;
 }
 
 [[nodiscard]] bool environment_quality_budget_requested(const DesktopRuntimeGameOptions& options) noexcept {
@@ -3347,9 +3373,17 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
         return evidence;
     }
 
+    const auto begin = std::chrono::steady_clock::now();
     evidence.plan =
         mirakana::simulate_environment_weather_cpu_reference(make_environment_weather_simulation_package_desc());
+    const auto end = std::chrono::steady_clock::now();
     evidence.step_count = evidence.plan.succeeded() ? 1U : 0U;
+    evidence.solver_budget = mirakana::plan_environment_weather_simulation_solver_budget(
+        mirakana::EnvironmentWeatherSimulationSolverBudgetDesc{
+            .cpu_reference_package_ready = evidence.plan.succeeded(),
+            .cpu_elapsed_us = elapsed_microseconds(begin, end),
+            .cpu_budget_us = environment_weather_simulation_package_cpu_budget_us(),
+        });
     return evidence;
 }
 
@@ -8601,7 +8635,34 @@ int main(int argc, char** argv) {
                   << " environment_weather_simulation_native_handle_access=" << (plan.exposes_native_handles ? 1 : 0)
                   << " environment_physical_weather_simulation_ready=" << (plan.physical_weather_ready ? 1 : 0)
                   << " environment_weather_simulation_diagnostics=" << plan.diagnostics.size()
-                  << " environment_weather_simulation_replay_hash=" << plan.replay_hash;
+                  << " environment_weather_simulation_replay_hash=" << plan.replay_hash
+                  << " environment_weather_simulation_solver_budget_status="
+                  << environment_weather_simulation_solver_budget_status_name(
+                         environment_weather_simulation_package.solver_budget.status)
+                  << " environment_weather_simulation_solver_budget_ready="
+                  << (environment_weather_simulation_package.solver_budget.production_solver_ready ? 1 : 0)
+                  << " environment_weather_simulation_cpu_reference_solver_ready="
+                  << (environment_weather_simulation_package.solver_budget.cpu_budget_ready ? 1 : 0)
+                  << " environment_weather_simulation_solver_cpu_elapsed_us="
+                  << environment_weather_simulation_package.solver_budget.cpu_elapsed_us
+                  << " environment_weather_simulation_solver_cpu_budget_us="
+                  << environment_weather_simulation_package.solver_budget.cpu_budget_us
+                  << " environment_weather_simulation_solver_cpu_over_budget="
+                  << (environment_weather_simulation_package.solver_budget.cpu_budget_over ? 1 : 0)
+                  << " environment_weather_simulation_gpu_solver_ready="
+                  << (environment_weather_simulation_package.solver_budget.gpu_budget_ready ? 1 : 0)
+                  << " environment_weather_simulation_solver_gpu_elapsed_us="
+                  << environment_weather_simulation_package.solver_budget.gpu_elapsed_us
+                  << " environment_weather_simulation_solver_gpu_budget_us="
+                  << environment_weather_simulation_package.solver_budget.gpu_budget_us
+                  << " environment_weather_simulation_solver_profiler_artifacts="
+                  << (environment_weather_simulation_package.solver_budget.profiler_artifact_ready ? 1 : 0)
+                  << " environment_weather_simulation_profiler_budget_ready="
+                  << (environment_weather_simulation_package.solver_budget.profiler_budget_ready ? 1 : 0)
+                  << " environment_weather_simulation_production_solver_ready="
+                  << (environment_weather_simulation_package.solver_budget.production_solver_ready ? 1 : 0)
+                  << " environment_weather_simulation_solver_budget_diagnostics="
+                  << environment_weather_simulation_package.solver_budget.diagnostics.size();
     }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
@@ -8741,7 +8802,15 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.plan.invokes_backend ||
              environment_weather_simulation_package.plan.exposes_native_handles ||
              environment_weather_simulation_package.plan.physical_weather_ready ||
-             environment_weather_simulation_package.plan.replay_hash == 0U)) {
+             environment_weather_simulation_package.plan.replay_hash == 0U ||
+             environment_weather_simulation_package.solver_budget.status !=
+                 mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required ||
+             !environment_weather_simulation_package.solver_budget.cpu_budget_ready ||
+             environment_weather_simulation_package.solver_budget.cpu_budget_over ||
+             environment_weather_simulation_package.solver_budget.gpu_budget_ready ||
+             environment_weather_simulation_package.solver_budget.profiler_budget_ready ||
+             environment_weather_simulation_package.solver_budget.production_solver_ready ||
+             environment_weather_simulation_package.solver_budget.diagnostics.size() != 0U)) {
             return 3;
         }
         if (options.require_postprocess &&

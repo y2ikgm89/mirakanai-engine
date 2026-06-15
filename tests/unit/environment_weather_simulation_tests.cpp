@@ -167,6 +167,76 @@ MK_TEST("environment weather simulation fails closed for invalid input and unsup
         plan, mirakana::EnvironmentWeatherSimulationDiagnosticCode::unsupported_physical_weather_ready_claim));
 }
 
+MK_TEST("environment weather simulation package budget reports cpu reference timing without production solver claim") {
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc desc{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 750U,
+        .cpu_budget_us = 5000U,
+    };
+
+    const auto plan = mirakana::plan_environment_weather_simulation_solver_budget(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required);
+    MK_REQUIRE(plan.cpu_elapsed_us == 750U);
+    MK_REQUIRE(plan.cpu_budget_us == 5000U);
+    MK_REQUIRE(plan.cpu_budget_ready);
+    MK_REQUIRE(!plan.cpu_budget_over);
+    MK_REQUIRE(plan.gpu_elapsed_us == 0U);
+    MK_REQUIRE(plan.gpu_budget_us == 0U);
+    MK_REQUIRE(!plan.gpu_budget_ready);
+    MK_REQUIRE(!plan.profiler_artifact_ready);
+    MK_REQUIRE(!plan.profiler_budget_ready);
+    MK_REQUIRE(!plan.production_solver_ready);
+    MK_REQUIRE(!plan.invokes_gpu);
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("environment weather simulation package budget fails closed for invalid or unsupported readiness claims") {
+    mirakana::EnvironmentWeatherSimulationSolverBudgetDesc missing_package{};
+    missing_package.cpu_budget_us = 5000U;
+
+    const auto missing_plan = mirakana::plan_environment_weather_simulation_solver_budget(missing_package);
+
+    MK_REQUIRE(!missing_plan.succeeded());
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        missing_plan, mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_cpu_reference_package));
+
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc over_budget{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 6000U,
+        .cpu_budget_us = 5000U,
+    };
+
+    const auto over_budget_plan = mirakana::plan_environment_weather_simulation_solver_budget(over_budget);
+
+    MK_REQUIRE(!over_budget_plan.succeeded());
+    MK_REQUIRE(over_budget_plan.status == mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded);
+    MK_REQUIRE(over_budget_plan.cpu_budget_over);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        over_budget_plan, mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::cpu_budget_exceeded));
+
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc unsupported_ready{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 750U,
+        .cpu_budget_us = 5000U,
+        .gpu_solver_package_ready = true,
+        .request_production_solver_ready_claim = true,
+    };
+
+    const auto unsupported_plan = mirakana::plan_environment_weather_simulation_solver_budget(unsupported_ready);
+
+    MK_REQUIRE(!unsupported_plan.succeeded());
+    MK_REQUIRE(!unsupported_plan.production_solver_ready);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        unsupported_plan, mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_gpu_solver));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        unsupported_plan,
+        mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_production_solver_ready_claim));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

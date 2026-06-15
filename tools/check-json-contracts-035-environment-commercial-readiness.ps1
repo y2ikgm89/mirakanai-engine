@@ -345,6 +345,13 @@ $expectedEnvironmentPhysicalWeatherRows = @(
         state = "ready"
         determinism = "deterministic"
         needles = @("desktop-runtime-sample-game-environment-weather-simulation-package", "--require-environment-weather-simulation-package", "environment_weather_simulation_package_status=ready", "environment_weather_simulation_package_ready=1", "environment_weather_simulation_steps=1", "environment_weather_simulation_cells=4", "environment_weather_simulation_effective_timestep_ms=500", "environment_weather_simulation_water_conservation_error_mg<=1", "environment_weather_simulation_water_conservation_error_bound_mg=1", "environment_weather_simulation_fallback_cpu_reference_used=1", "environment_weather_simulation_invokes_gpu=0", "environment_weather_simulation_invokes_backend=0", "environment_weather_simulation_native_handle_access=0", "environment_physical_weather_simulation_ready=0", "complete physical weather simulation remains unsupported")
+    },
+    @{
+        id = "environment_weather_simulation_solver_budget_counters"
+        claimId = "environment_physical_weather_simulation_ready"
+        state = "ready"
+        determinism = "deterministic"
+        needles = @("EnvironmentWeatherSimulationSolverBudgetDesc", "EnvironmentWeatherSimulationSolverBudgetPlan", "EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required", "plan_environment_weather_simulation_solver_budget", "environment_weather_simulation_solver_budget_status=host_evidence_required", "environment_weather_simulation_solver_budget_ready=0", "environment_weather_simulation_cpu_reference_solver_ready=1", "environment_weather_simulation_solver_cpu_elapsed_us", "environment_weather_simulation_solver_cpu_budget_us=50000", "environment_weather_simulation_solver_cpu_over_budget=0", "environment_weather_simulation_gpu_solver_ready=0", "environment_weather_simulation_solver_profiler_artifacts=0", "environment_weather_simulation_profiler_budget_ready=0", "environment_weather_simulation_production_solver_ready=0", "environment_weather_simulation_solver_budget_diagnostics=0", "environment_physical_weather_simulation_ready=0", "retained profiler artifacts", "complete physical weather simulation remains unsupported")
     }
 )
 $environmentPhysicalWeatherRows = @($environmentCommercialLoop.environmentPhysicalWeatherSimulationRows)
@@ -390,7 +397,7 @@ foreach ($expectedWeatherRow in $expectedEnvironmentPhysicalWeatherRows) {
         Write-Error "engine manifest environmentPhysicalWeatherSimulationRows '$weatherRowId' must remain $($expectedWeatherRow.determinism), not $($weatherRow.determinism)"
     }
     if ([string]$environmentCommercialClaimsById["environment_physical_weather_simulation_ready"].state -ne "unsupported") {
-        Write-Error "engine manifest environment_physical_weather_simulation_ready must remain unsupported after the CPU reference foundation row"
+        Write-Error "engine manifest environment_physical_weather_simulation_ready must remain unsupported after selected physical-weather evidence rows"
     }
     $weatherRowText = [string]::Join(" ", @([string]$weatherRow.model, [string]$weatherRow.runtimeTarget, [string]$weatherRow.determinism) + @($weatherRow.validationRecipeIds) + @($weatherRow.stateVariables) + @($weatherRow.stabilityConstraints) + @($weatherRow.validatedEvidence) + @([string]$weatherRow.packageVisibility, [string]$weatherRow.blockerReason, [string]$weatherRow.forbiddenInference, [string]$weatherRow.notes))
     foreach ($needle in @($expectedWeatherRow.needles)) {
@@ -463,7 +470,7 @@ foreach ($needle in @("desktop-runtime-sample-game-environment-optimization-meas
     }
 }
 $environmentPhysicalWeatherGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10
-foreach ($needle in @("EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "MK_environment_weather_simulation_tests", "NWS vapor-pressure formula", "effective_timestep_s", "water", "deterministic replay hash", "desktop-runtime-sample-game-environment-weather-simulation-package", "--require-environment-weather-simulation-package", "environment_weather_simulation_package_ready=1", "environment_weather_simulation_steps=1", "environment_physical_weather_simulation_ready=0", "GPU acceleration", "backend execution", "native handle access", "environment_physical_weather_simulation_ready=1 may be inferred")) {
+foreach ($needle in @("EnvironmentWeatherSimulationDesc", "EnvironmentWeatherSimulationCellState", "EnvironmentWeatherSimulationCellForcing", "EnvironmentWeatherSimulationPlan", "EnvironmentWeatherSimulationSolverBudgetDesc", "EnvironmentWeatherSimulationSolverBudgetPlan", "environment_weather_saturation_vapor_kg_per_m2", "simulate_environment_weather_cpu_reference", "plan_environment_weather_simulation_solver_budget", "MK_environment_weather_simulation_tests", "NWS vapor-pressure formula", "effective_timestep_s", "water", "deterministic replay hash", "desktop-runtime-sample-game-environment-weather-simulation-package", "--require-environment-weather-simulation-package", "environment_weather_simulation_package_ready=1", "environment_weather_simulation_steps=1", "environment_weather_simulation_solver_budget_status=host_evidence_required", "environment_weather_simulation_cpu_reference_solver_ready=1", "environment_weather_simulation_production_solver_ready=0", "environment_physical_weather_simulation_ready=0", "GPU acceleration", "backend execution", "native handle access", "environment_physical_weather_simulation_ready=1 may be inferred")) {
     if (-not $environmentPhysicalWeatherGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPhysicalWeatherSimulationPhase10 missing: $needle"
     }
