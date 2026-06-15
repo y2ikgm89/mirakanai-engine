@@ -120,6 +120,16 @@ using KeyValues = std::unordered_map<std::string, std::string>;
     throw std::invalid_argument(std::string(diagnostic_name) + " bool value is invalid");
 }
 
+[[nodiscard]] bool parse_payload_flag(std::string_view value, std::string_view diagnostic_name) {
+    if (value == "1") {
+        return true;
+    }
+    if (value == "0") {
+        return false;
+    }
+    throw std::invalid_argument(std::string(diagnostic_name) + " 0/1 flag value is invalid");
+}
+
 [[nodiscard]] float parse_payload_float(std::string_view value, std::string_view diagnostic_name) {
     const auto valid_character = [](char character) noexcept {
         return (character >= '0' && character <= '9') || character == '+' || character == '-' || character == '.' ||
@@ -215,6 +225,33 @@ using KeyValues = std::unordered_map<std::string, std::string>;
 [[nodiscard]] bool valid_payload_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos &&
            value.find('\0') == std::string_view::npos;
+}
+
+[[nodiscard]] bool valid_environment_payload_stage(const RuntimeEnvironmentTexturePayload& payload) noexcept {
+    if (payload.source_kind == TextureSourceKindV2::openexr) {
+        return payload.pixel_decode_invoked && !payload.basis_transcode_invoked &&
+               payload.decode_stage.contains("openexr.") && payload.decode_stage.contains("readPixels") &&
+               payload.basis_transcode_stage == "not_required";
+    }
+    if (payload.source_kind == TextureSourceKindV2::ktx2_basis) {
+        return !payload.pixel_decode_invoked && payload.basis_transcode_invoked &&
+               payload.decode_stage.contains("ktxTexture2_CreateFromNamedFile") &&
+               payload.basis_transcode_stage.contains("ktxTexture2_TranscodeBasis");
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_environment_texture_payload(const RuntimeEnvironmentTexturePayload& payload) noexcept {
+    return payload.asset.value != 0 && payload.handle.value != 0 && valid_package_path(payload.asset_path) &&
+           payload.asset_path.ends_with(".geasset") && valid_package_path(payload.source_path) &&
+           payload.source_hash.starts_with("sha256:") && valid_payload_token(payload.source_hash) &&
+           valid_payload_token(payload.provenance_id) && valid_payload_token(payload.license_id) &&
+           payload.source_kind != TextureSourceKindV2::unknown && payload.color_space != TextureColorSpaceV2::unknown &&
+           payload.sampler_class != TextureSamplerClassV2::unknown && payload.width > 0U && payload.height > 0U &&
+           payload.mip_count > 0U && payload.estimated_source_bytes > 0U && payload.estimated_decoded_bytes > 0U &&
+           payload.max_estimated_gpu_bytes > 0U && payload.backend_policy_count > 0U && payload.payload_hash != 0U &&
+           !payload.bytes.empty() && !payload.gpu_upload_invoked && !payload.broad_asset_pipeline_ready &&
+           valid_environment_payload_stage(payload);
 }
 
 [[nodiscard]] bool valid_physics_collision_token(std::string_view value, bool require_non_empty) noexcept {
@@ -512,6 +549,122 @@ RuntimePayloadAccessResult<RuntimeTexturePayload> runtime_texture_payload(const 
         return RuntimePayloadAccessResult<RuntimeTexturePayload>{.payload = payload, .diagnostic = {}};
     } catch (const std::exception& error) {
         return payload_failure<RuntimeTexturePayload>(error.what());
+    }
+}
+
+RuntimePayloadAccessResult<RuntimeEnvironmentTexturePayload>
+runtime_environment_texture_payload(const RuntimeAssetRecord& record) {
+    if (record.kind != AssetKind::texture) {
+        return payload_failure<RuntimeEnvironmentTexturePayload>(
+            "runtime asset record is not an environment texture payload");
+    }
+
+    try {
+        const auto values = parse_payload_key_values(record.content, "runtime environment texture");
+        if (required_payload_value(values, "format", "runtime environment texture") !=
+            "GameEngine.EnvironmentTextureGeassetPayload.v1") {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload format is unsupported");
+        }
+        if (required_payload_value(values, "asset.kind", "runtime environment texture") != "environment_texture" ||
+            required_payload_value(values, "asset.payload", "runtime environment texture") !=
+                "cooked_texture_payload" ||
+            required_payload_value(values, "source.format", "runtime environment texture") !=
+                "GameEngine.TextureSource.v2") {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload header is invalid");
+        }
+
+        const auto& payload_hex =
+            required_payload_value(values, "texture.payload_data_hex", "runtime environment texture");
+        RuntimeEnvironmentTexturePayload payload{
+            .asset = record.asset,
+            .handle = record.handle,
+            .asset_path = required_payload_value(values, "asset.path", "runtime environment texture"),
+            .source_path = required_payload_value(values, "source.path", "runtime environment texture"),
+            .source_hash = required_payload_value(values, "source.hash", "runtime environment texture"),
+            .provenance_id = required_payload_value(values, "source.provenance_id", "runtime environment texture"),
+            .license_id = required_payload_value(values, "source.license_id", "runtime environment texture"),
+            .source_kind = parse_texture_source_kind_v2(
+                required_payload_value(values, "source.kind", "runtime environment texture")),
+            .color_space = parse_texture_color_space_v2(
+                required_payload_value(values, "texture.color_space", "runtime environment texture")),
+            .sampler_class = parse_texture_sampler_class_v2(
+                required_payload_value(values, "texture.sampler_class", "runtime environment texture")),
+            .width = parse_payload_u32(required_payload_value(values, "texture.width", "runtime environment texture"),
+                                       "runtime environment texture"),
+            .height = parse_payload_u32(required_payload_value(values, "texture.height", "runtime environment texture"),
+                                        "runtime environment texture"),
+            .mip_count =
+                parse_payload_u32(required_payload_value(values, "texture.mip_count", "runtime environment texture"),
+                                  "runtime environment texture"),
+            .estimated_source_bytes = parse_payload_u64(
+                required_payload_value(values, "texture.estimated_source_bytes", "runtime environment texture"),
+                "runtime environment texture"),
+            .estimated_decoded_bytes = parse_payload_u64(
+                required_payload_value(values, "texture.estimated_decoded_bytes", "runtime environment texture"),
+                "runtime environment texture"),
+            .max_estimated_gpu_bytes = parse_payload_u64(
+                required_payload_value(values, "texture.max_estimated_gpu_bytes", "runtime environment texture"),
+                "runtime environment texture"),
+            .backend_policy_count = parse_payload_u32(
+                required_payload_value(values, "texture.backend_policy_count", "runtime environment texture"),
+                "runtime environment texture"),
+            .unsupported_host_diagnostic_count =
+                parse_payload_u32(required_payload_value(values, "texture.unsupported_host_diagnostic_count",
+                                                         "runtime environment texture"),
+                                  "runtime environment texture"),
+            .payload_hash =
+                parse_payload_u64(required_payload_value(values, "texture.payload_hash", "runtime environment texture"),
+                                  "runtime environment texture"),
+            .decode_stage = required_payload_value(values, "texture.decode_stage", "runtime environment texture"),
+            .basis_transcode_stage =
+                required_payload_value(values, "texture.basis_transcode_stage", "runtime environment texture"),
+            .pixel_decode_invoked = parse_payload_flag(
+                required_payload_value(values, "texture.pixel_decode_invoked", "runtime environment texture"),
+                "runtime environment texture"),
+            .basis_transcode_invoked = parse_payload_flag(
+                required_payload_value(values, "texture.basis_transcode_invoked", "runtime environment texture"),
+                "runtime environment texture"),
+            .gpu_upload_invoked = parse_payload_flag(
+                required_payload_value(values, "texture.gpu_upload_invoked", "runtime environment texture"),
+                "runtime environment texture"),
+            .broad_asset_pipeline_ready = parse_payload_flag(
+                required_payload_value(values, "texture.broad_asset_pipeline_ready", "runtime environment texture"),
+                "runtime environment texture"),
+            .bytes = parse_optional_hex_bytes(values, "texture.payload_data_hex", "runtime environment texture"),
+        };
+
+        if (payload.asset_path != record.path) {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload path does not match record");
+        }
+        const auto payload_byte_count =
+            parse_payload_u64(required_payload_value(values, "texture.payload_bytes", "runtime environment texture"),
+                              "runtime environment texture");
+        if (payload_byte_count != payload.bytes.size()) {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload byte count is invalid");
+        }
+        if (payload.payload_hash != hash_asset_cooked_content(payload_hex)) {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload hash is invalid");
+        }
+        if (payload.gpu_upload_invoked) {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload cannot claim GPU upload execution");
+        }
+        if (payload.broad_asset_pipeline_ready) {
+            return payload_failure<RuntimeEnvironmentTexturePayload>(
+                "runtime environment texture payload cannot claim broad asset-pipeline readiness");
+        }
+        if (!valid_environment_texture_payload(payload)) {
+            return payload_failure<RuntimeEnvironmentTexturePayload>("runtime environment texture payload is invalid");
+        }
+        return RuntimePayloadAccessResult<RuntimeEnvironmentTexturePayload>{.payload = std::move(payload),
+                                                                            .diagnostic = {}};
+    } catch (const std::exception& error) {
+        return payload_failure<RuntimeEnvironmentTexturePayload>(error.what());
     }
 }
 

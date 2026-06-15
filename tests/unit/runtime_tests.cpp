@@ -34,6 +34,82 @@ namespace {
            "texture.source_bytes=32\n";
 }
 
+[[nodiscard]] std::string environment_texture_payload(mirakana::AssetId /*asset*/, std::string_view source_kind,
+                                                      std::string_view color_space, std::string_view sampler_class,
+                                                      std::uint32_t mip_count, std::string_view payload_hex,
+                                                      std::string_view decode_stage,
+                                                      std::string_view basis_transcode_stage, bool pixel_decode_invoked,
+                                                      bool basis_transcode_invoked, bool gpu_upload_invoked = false,
+                                                      bool broad_asset_pipeline_ready = false) {
+    const auto source_path =
+        source_kind == "openexr" ? "source/textures/environment/studio.exr" : "source/textures/environment/skybox.ktx2";
+    const auto payload_byte_count = payload_hex.size() / 2U;
+    const auto bool_flag = [](bool value) noexcept { return value ? "1" : "0"; };
+    return "format=GameEngine.EnvironmentTextureGeassetPayload.v1\n"
+           "asset.path=runtime/assets/desktop_runtime/environment_test.texture.geasset\n"
+           "asset.kind=environment_texture\n"
+           "asset.payload=cooked_texture_payload\n"
+           "source.format=GameEngine.TextureSource.v2\n"
+           "source.path=" +
+           std::string{source_path} +
+           "\n"
+           "source.hash=sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff\n"
+           "source.provenance_id=provenance.environment.test\n"
+           "source.license_id=LicenseRef-Proprietary\n"
+           "source.kind=" +
+           std::string{source_kind} +
+           "\n"
+           "texture.width=4\n"
+           "texture.height=4\n"
+           "texture.color_space=" +
+           std::string{color_space} +
+           "\n"
+           "texture.sampler_class=" +
+           std::string{sampler_class} +
+           "\n"
+           "texture.mip_count=" +
+           std::to_string(mip_count) +
+           "\n"
+           "texture.estimated_source_bytes=64\n"
+           "texture.estimated_decoded_bytes=128\n"
+           "texture.max_estimated_gpu_bytes=256\n"
+           "texture.backend_policy_count=1\n"
+           "texture.backend.0.backend=d3d12\n"
+           "texture.backend.0.device_format=DXGI_FORMAT_BC7_UNORM_SRGB\n"
+           "texture.backend.0.compression=bc7\n"
+           "texture.backend.0.transcode=basis_transcode_policy\n"
+           "texture.backend.0.estimated_gpu_bytes=64\n"
+           "texture.backend.0.supported=true\n"
+           "texture.backend.0.host_validated=true\n"
+           "texture.unsupported_host_diagnostic_count=0\n"
+           "texture.payload_bytes=" +
+           std::to_string(payload_byte_count) +
+           "\n"
+           "texture.payload_hash=" +
+           std::to_string(mirakana::hash_asset_cooked_content(payload_hex)) +
+           "\n"
+           "texture.payload_data_hex=" +
+           std::string{payload_hex} +
+           "\n"
+           "texture.decode_stage=" +
+           std::string{decode_stage} +
+           "\n"
+           "texture.basis_transcode_stage=" +
+           std::string{basis_transcode_stage} +
+           "\n"
+           "texture.pixel_decode_invoked=" +
+           bool_flag(pixel_decode_invoked) +
+           "\n"
+           "texture.basis_transcode_invoked=" +
+           bool_flag(basis_transcode_invoked) +
+           "\n"
+           "texture.gpu_upload_invoked=" +
+           bool_flag(gpu_upload_invoked) +
+           "\n"
+           "texture.broad_asset_pipeline_ready=" +
+           bool_flag(broad_asset_pipeline_ready) + "\n";
+}
+
 [[nodiscard]] std::string cooked_ui_atlas_payload(mirakana::AssetId atlas_asset, mirakana::AssetId texture_asset,
                                                   std::string_view source_decoding = "unsupported",
                                                   std::string_view atlas_packing = "unsupported") {
@@ -1102,6 +1178,172 @@ MK_TEST("runtime typed payload access reports malformed cooked payloads without 
 
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(result.diagnostic.find("missing") != std::string::npos);
+}
+
+MK_TEST("runtime environment texture payload access ingests OpenEXR stage bytes without ready claims") {
+    const auto texture = mirakana::AssetId::from_name("environment/studio-radiance-runtime");
+    const auto payload = environment_texture_payload(
+        texture, "openexr", "scene_linear", "environment_radiance", 1U, "0000803f00000040",
+        "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f", "not_required", true, false);
+    const mirakana::runtime::RuntimeAssetRecord record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{11},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(payload),
+        .source_revision = 17,
+        .dependencies = {},
+        .content = payload,
+    };
+
+    const auto result = mirakana::runtime::runtime_environment_texture_payload(record);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.payload.asset == texture);
+    MK_REQUIRE(result.payload.handle == mirakana::runtime::RuntimeAssetHandle{11});
+    MK_REQUIRE(result.payload.asset_path == "runtime/assets/desktop_runtime/environment_test.texture.geasset");
+    MK_REQUIRE(result.payload.source_path == "source/textures/environment/studio.exr");
+    MK_REQUIRE(result.payload.source_hash == "sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
+    MK_REQUIRE(result.payload.provenance_id == "provenance.environment.test");
+    MK_REQUIRE(result.payload.license_id == "LicenseRef-Proprietary");
+    MK_REQUIRE(result.payload.source_kind == mirakana::TextureSourceKindV2::openexr);
+    MK_REQUIRE(result.payload.color_space == mirakana::TextureColorSpaceV2::scene_linear);
+    MK_REQUIRE(result.payload.sampler_class == mirakana::TextureSamplerClassV2::environment_radiance);
+    MK_REQUIRE(result.payload.width == 4U);
+    MK_REQUIRE(result.payload.height == 4U);
+    MK_REQUIRE(result.payload.mip_count == 1U);
+    MK_REQUIRE(result.payload.payload_hash == mirakana::hash_asset_cooked_content("0000803f00000040"));
+    MK_REQUIRE((result.payload.bytes == std::vector<std::uint8_t>{0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40}));
+    MK_REQUIRE(result.payload.decode_stage == "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f");
+    MK_REQUIRE(result.payload.basis_transcode_stage == "not_required");
+    MK_REQUIRE(result.payload.pixel_decode_invoked);
+    MK_REQUIRE(!result.payload.basis_transcode_invoked);
+    MK_REQUIRE(!result.payload.gpu_upload_invoked);
+    MK_REQUIRE(!result.payload.broad_asset_pipeline_ready);
+}
+
+MK_TEST("runtime environment texture payload access ingests KTX2 Basis transcode evidence") {
+    const auto texture = mirakana::AssetId::from_name("environment/studio-skybox-runtime");
+    const auto payload = environment_texture_payload(texture, "ktx2_basis", "srgb", "color", 4U, "a0a1a2a3",
+                                                     "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA",
+                                                     "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY", false, true);
+    const mirakana::runtime::RuntimeAssetRecord record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{12},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(payload),
+        .source_revision = 21,
+        .dependencies = {},
+        .content = payload,
+    };
+
+    const auto result = mirakana::runtime::runtime_environment_texture_payload(record);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.payload.source_kind == mirakana::TextureSourceKindV2::ktx2_basis);
+    MK_REQUIRE(result.payload.color_space == mirakana::TextureColorSpaceV2::srgb);
+    MK_REQUIRE(result.payload.sampler_class == mirakana::TextureSamplerClassV2::color);
+    MK_REQUIRE(result.payload.mip_count == 4U);
+    MK_REQUIRE((result.payload.bytes == std::vector<std::uint8_t>{0xA0, 0xA1, 0xA2, 0xA3}));
+    MK_REQUIRE(!result.payload.pixel_decode_invoked);
+    MK_REQUIRE(result.payload.basis_transcode_invoked);
+    MK_REQUIRE(result.payload.basis_transcode_stage == "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY");
+    MK_REQUIRE(!result.payload.gpu_upload_invoked);
+    MK_REQUIRE(!result.payload.broad_asset_pipeline_ready);
+}
+
+MK_TEST("runtime environment texture payload access rejects unsafe claims and byte count drift") {
+    const auto texture = mirakana::AssetId::from_name("environment/unsafe-runtime");
+    const auto unsafe_payload = environment_texture_payload(
+        texture, "openexr", "scene_linear", "environment_radiance", 1U, "0000803f",
+        "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f", "not_required", true, false, true, false);
+    const mirakana::runtime::RuntimeAssetRecord unsafe_record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{13},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(unsafe_payload),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = unsafe_payload,
+    };
+
+    const auto unsafe_result = mirakana::runtime::runtime_environment_texture_payload(unsafe_record);
+    MK_REQUIRE(!unsafe_result.succeeded());
+    MK_REQUIRE(unsafe_result.diagnostic.find("GPU upload") != std::string::npos);
+
+    auto mismatched_payload = environment_texture_payload(texture, "ktx2_basis", "srgb", "color", 1U, "a0a1",
+                                                          "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA",
+                                                          "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY", false, true);
+    const auto count_position = mismatched_payload.find("texture.payload_bytes=2\n");
+    MK_REQUIRE(count_position != std::string::npos);
+    mismatched_payload.replace(count_position, std::string{"texture.payload_bytes=2\n"}.size(),
+                               "texture.payload_bytes=3\n");
+    const mirakana::runtime::RuntimeAssetRecord mismatched_record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{14},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(mismatched_payload),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = mismatched_payload,
+    };
+
+    const auto mismatched_result = mirakana::runtime::runtime_environment_texture_payload(mismatched_record);
+    MK_REQUIRE(!mismatched_result.succeeded());
+    MK_REQUIRE(mismatched_result.diagnostic.find("byte") != std::string::npos);
+
+    auto invalid_hash_payload = environment_texture_payload(
+        texture, "openexr", "scene_linear", "environment_radiance", 1U, "0000803f",
+        "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f", "not_required", true, false);
+    const auto hash_position = invalid_hash_payload.find(
+        "source.hash=sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff\n");
+    MK_REQUIRE(hash_position != std::string::npos);
+    invalid_hash_payload.replace(
+        hash_position,
+        std::string{"source.hash=sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff\n"}.size(),
+        std::string{"source.hash=sha256:\0bad\n", 24});
+    const mirakana::runtime::RuntimeAssetRecord invalid_hash_record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{16},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(invalid_hash_payload),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = invalid_hash_payload,
+    };
+
+    const auto invalid_hash_result = mirakana::runtime::runtime_environment_texture_payload(invalid_hash_record);
+    MK_REQUIRE(!invalid_hash_result.succeeded());
+    MK_REQUIRE(invalid_hash_result.diagnostic.find("invalid") != std::string::npos);
+}
+
+MK_TEST("runtime diagnostics accept environment texture geasset payload records") {
+    const auto texture = mirakana::AssetId::from_name("environment/diagnostic-runtime");
+    const auto payload = environment_texture_payload(
+        texture, "openexr", "scene_linear", "environment_radiance", 1U, "0000803f00000040",
+        "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f", "not_required", true, false);
+    const mirakana::runtime::RuntimeAssetRecord record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{15},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(payload),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = payload,
+    };
+    const mirakana::runtime::RuntimeAssetPackage package{
+        std::vector<mirakana::runtime::RuntimeAssetRecord>{record},
+        {},
+    };
+
+    const auto report = mirakana::runtime::inspect_runtime_asset_package(package);
+
+    MK_REQUIRE(report.diagnostics.empty());
 }
 
 MK_TEST("runtime physics collision scene payload decodes deterministic body rows") {
