@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <limits>
@@ -86,6 +87,16 @@ void add_diagnostic(std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic
     });
 }
 
+void add_diagnostic(std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic>& diagnostics,
+                    Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode code, std::string message,
+                    std::string path = {}) {
+    diagnostics.push_back(Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .path = std::move(path),
+    });
+}
+
 [[nodiscard]] OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode
 decode_diagnostic_code(OpenExrTextureSourceReviewDiagnosticCode code) noexcept {
     switch (code) {
@@ -135,6 +146,58 @@ void append_diagnostics(std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagno
                         const std::vector<EnvironmentTextureGeassetPayloadDiagnostic>& input) {
     for (const auto& diagnostic : input) {
         add_diagnostic(output, decode_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
+    }
+}
+
+[[nodiscard]] Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode
+ktx_transcode_diagnostic_code(Ktx2BasisTextureSourceReviewDiagnosticCode code) noexcept {
+    switch (code) {
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_request:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_request;
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::asset_importers_disabled:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::asset_importers_disabled;
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::ktx_read_failed:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::ktx_read_failed;
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::unsupported_ktx_layout:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_layout;
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::unsupported_ktx_format:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_format;
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::invalid_ktx_metadata:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_ktx_metadata;
+    case Ktx2BasisTextureSourceReviewDiagnosticCode::none:
+        break;
+    }
+    return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_request;
+}
+
+[[nodiscard]] Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode
+ktx_transcode_diagnostic_code(EnvironmentTextureGeassetPayloadDiagnosticCode code) noexcept {
+    switch (code) {
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_request;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_cook_metadata:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_cook_metadata;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_payload:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_payload;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::unsupported_claim:
+        return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_claim;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::none:
+        break;
+    }
+    return Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_request;
+}
+
+void append_diagnostics(std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic>& output,
+                        const std::vector<Ktx2BasisTextureSourceReviewDiagnostic>& input) {
+    for (const auto& diagnostic : input) {
+        add_diagnostic(output, ktx_transcode_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
+    }
+}
+
+void append_diagnostics(std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic>& output,
+                        const std::vector<EnvironmentTextureGeassetPayloadDiagnostic>& input) {
+    for (const auto& diagnostic : input) {
+        add_diagnostic(output, ktx_transcode_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
     }
 }
 
@@ -1014,6 +1077,100 @@ read_openexr_rgba16_payload(std::vector<OpenExrEnvironmentTexturePayloadDecodeDi
         return {};
     }
 }
+
+[[nodiscard]] std::vector<std::uint8_t>
+read_ktx2_basis_rgba8_payload(std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic>& diagnostics,
+                              const Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1& request,
+                              const TextureSourceDocumentV2& source) {
+    if (source.ktx2_basis.level_count != 1U || source.ktx2_basis.layer_count != 1U ||
+        source.ktx2_basis.face_count != 1U) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_layout,
+                       "KTX2/Basis payload transcode currently supports one base-level non-array 2D image",
+                       request.source_review.source_path);
+        return {};
+    }
+
+    ktxTexture2* raw_texture = nullptr;
+    const auto native_path = request.source_review.source_file_path.string();
+    const auto create_result =
+        ktxTexture2_CreateFromNamedFile(native_path.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &raw_texture);
+    if (create_result != KTX_SUCCESS) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::ktx_read_failed,
+                       "failed to read KTX2/Basis source payload: " + ktx_error_text(create_result),
+                       request.source_review.source_path);
+        return {};
+    }
+
+    UniqueKtxTexture2 texture{raw_texture};
+    const ktxTexture* const base = ktxTexture(texture.get());
+    if (texture->isVideo || base->numDimensions != 2U || base->baseDepth != 1U || base->baseWidth != source.width ||
+        base->baseHeight != source.height || base->numLevels != 1U || base->numLayers != 1U || base->numFaces != 1U) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_layout,
+                       "KTX2/Basis payload layout changed after metadata review", request.source_review.source_path);
+        return {};
+    }
+    if (texture->vkFormat != kKtxVkFormatUndefined || !ktxTexture2_NeedsTranscoding(texture.get())) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_format,
+                       "KTX2/Basis payload transcode requires a Basis Universal texture that needs transcoding",
+                       request.source_review.source_path);
+        return {};
+    }
+
+    const auto transcode_result = ktxTexture2_TranscodeBasis(texture.get(), KTX_TTF_RGBA32, 0);
+    if (transcode_result != KTX_SUCCESS) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::ktx_transcode_failed,
+                       "failed to transcode KTX2/Basis source payload to KTX_TTF_RGBA32: " +
+                           ktx_error_text(transcode_result),
+                       request.source_review.source_path);
+        return {};
+    }
+
+    ktx_size_t offset = 0;
+    const auto offset_result = ktxTexture_GetImageOffset(ktxTexture(texture.get()), 0, 0, 0, &offset);
+    if (offset_result != KTX_SUCCESS) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::ktx_read_failed,
+                       "failed to locate transcoded KTX2/Basis base image: " + ktx_error_text(offset_result),
+                       request.source_review.source_path);
+        return {};
+    }
+
+    const auto width = source.width;
+    const auto height = source.height;
+    const auto payload_size = estimate_rgba8_bytes(width, height);
+    if (payload_size == 0U || payload_size > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)())) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_ktx_metadata,
+                       "KTX2/Basis RGBA8 payload byte size overflowed", request.source_review.source_path);
+        return {};
+    }
+
+    const auto tight_row_bytes = checked_mul(width, 4U);
+    const auto row_pitch = static_cast<std::uint64_t>(ktxTexture_GetRowPitch(ktxTexture(texture.get()), 0));
+    const auto data_size = static_cast<std::uint64_t>(ktxTexture_GetDataSize(ktxTexture(texture.get())));
+    const auto* const data = ktxTexture_GetData(ktxTexture(texture.get()));
+    const auto last_row_offset = checked_mul(row_pitch, height - 1U);
+    const auto offset_bytes = static_cast<std::uint64_t>(offset);
+    const auto max_u64 = (std::numeric_limits<std::uint64_t>::max)();
+    const bool row_span_overflow = last_row_offset == 0U && height > 1U;
+    const bool required_end_overflow =
+        last_row_offset > max_u64 - offset_bytes || tight_row_bytes > max_u64 - offset_bytes - last_row_offset;
+    const auto required_end = required_end_overflow ? max_u64 : offset_bytes + last_row_offset + tight_row_bytes;
+    if (data == nullptr || tight_row_bytes == 0U || row_pitch < tight_row_bytes || row_span_overflow ||
+        required_end_overflow || required_end > data_size) {
+        add_diagnostic(diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_ktx_metadata,
+                       "KTX2/Basis transcoded RGBA8 image data is not addressable as a base-level 2D payload",
+                       request.source_review.source_path);
+        return {};
+    }
+
+    std::vector<std::uint8_t> payload(static_cast<std::size_t>(payload_size));
+    const auto copy_row_bytes = static_cast<std::size_t>(tight_row_bytes);
+    for (std::uint32_t y = 0; y < height; ++y) {
+        const auto source_offset = static_cast<std::size_t>(offset + static_cast<ktx_size_t>(row_pitch) * y);
+        const auto target_offset = static_cast<std::size_t>(tight_row_bytes) * y;
+        std::memcpy(payload.data() + target_offset, data + source_offset, copy_row_bytes);
+    }
+    return payload;
+}
 #endif
 
 } // namespace
@@ -1027,6 +1184,14 @@ bool has_openexr_texture_source_review() noexcept {
 }
 
 bool has_ktx2_basis_texture_source_review() noexcept {
+#if MK_HAS_ASSET_IMPORTERS
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool has_ktx2_basis_environment_texture_payload_transcode() noexcept {
 #if MK_HAS_ASSET_IMPORTERS
     return true;
 #else
@@ -1192,6 +1357,77 @@ review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequ
     auto document = make_source_document_from_ktx2(result.diagnostics, request, *texture);
     if (result.diagnostics.empty()) {
         result.source = std::move(document);
+    }
+    return result;
+#endif
+}
+
+Ktx2BasisEnvironmentTexturePayloadTranscodeResultV1 transcode_ktx2_basis_environment_texture_payload_v1(
+    const Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1& request) {
+    Ktx2BasisEnvironmentTexturePayloadTranscodeResultV1 result;
+
+#if !MK_HAS_ASSET_IMPORTERS
+    add_diagnostic(result.diagnostics,
+                   Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::asset_importers_disabled,
+                   "asset-importers feature is disabled; KTX2/Basis source payload transcode is unavailable",
+                   request.source_review.source_path);
+    return result;
+#else
+    if (request.gpu_upload_invoked) {
+        add_diagnostic(result.diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_claim,
+                       "KTX2/Basis payload transcode cannot claim runtime GPU upload execution", request.geasset_path);
+    }
+    if (request.broad_asset_pipeline_ready) {
+        add_diagnostic(result.diagnostics, Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_claim,
+                       "KTX2/Basis payload transcode cannot claim broad asset-pipeline readiness",
+                       request.geasset_path);
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    const auto source_review = review_ktx2_basis_texture_source_metadata(request.source_review);
+    if (!source_review.succeeded()) {
+        append_diagnostics(result.diagnostics, source_review.diagnostics);
+        return result;
+    }
+    result.source = *source_review.source;
+
+    const auto policy = plan_texture_backend_format_policy_v1(TextureBackendFormatPolicyRequestV1{
+        .source = *result.source,
+        .backend_evidence = request.backend_evidence,
+        .require_all_backends = request.require_all_backends,
+    });
+    if (!policy.metadata.has_value()) {
+        add_diagnostic(result.diagnostics,
+                       Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_cook_metadata,
+                       "KTX2/Basis payload transcode could not produce texture cook metadata", request.geasset_path);
+        return result;
+    }
+    result.cook_metadata = *policy.metadata;
+
+    result.payload_bytes = read_ktx2_basis_rgba8_payload(result.diagnostics, request, *result.source);
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.decode_stage = "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA";
+    result.transcode_stage = "ktxTexture2_TranscodeBasis.KTX_TTF_RGBA32";
+    result.payload = plan_environment_texture_geasset_payload_v1(EnvironmentTextureGeassetPayloadRequestV1{
+        .asset = request.asset,
+        .geasset_path = request.geasset_path,
+        .source_revision = request.source_revision,
+        .cook_metadata = *result.cook_metadata,
+        .payload_bytes = result.payload_bytes,
+        .decode_stage = result.decode_stage,
+        .transcode_stage = result.transcode_stage,
+        .pixel_decode_invoked = false,
+        .basis_transcode_invoked = true,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+    });
+    if (!result.payload.succeeded()) {
+        append_diagnostics(result.diagnostics, result.payload.diagnostics);
     }
     return result;
 #endif
