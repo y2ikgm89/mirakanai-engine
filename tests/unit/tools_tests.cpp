@@ -360,7 +360,32 @@ void write_openexr_environment_texture_fixture(const std::filesystem::path& path
     file.writePixels(height);
 }
 
-void write_ktx2_basis_texture_fixture(const std::filesystem::path& path) {
+using Ktx2BasisFixturePixels = std::array<std::uint8_t, 4U * 4U * 4U>;
+
+[[nodiscard]] Ktx2BasisFixturePixels make_gradient_ktx2_basis_fixture_pixels() {
+    constexpr std::uint32_t width = 4;
+    constexpr std::uint32_t height = 4;
+
+    Ktx2BasisFixturePixels pixels{};
+    for (std::uint32_t y = 0; y < height; ++y) {
+        for (std::uint32_t x = 0; x < width; ++x) {
+            const auto index = static_cast<std::size_t>((y * width + x) * 4U);
+            pixels[index + 0U] = static_cast<std::uint8_t>(32U + x * 32U);
+            pixels[index + 1U] = static_cast<std::uint8_t>(48U + y * 32U);
+            pixels[index + 2U] = static_cast<std::uint8_t>(96U + (x + y) * 16U);
+            pixels[index + 3U] = 255U;
+        }
+    }
+    return pixels;
+}
+
+[[nodiscard]] Ktx2BasisFixturePixels make_white_ktx2_basis_fixture_pixels() {
+    Ktx2BasisFixturePixels pixels{};
+    pixels.fill(255U);
+    return pixels;
+}
+
+void write_ktx2_basis_texture_fixture(const std::filesystem::path& path, const Ktx2BasisFixturePixels& pixels) {
     constexpr std::uint32_t width = 4;
     constexpr std::uint32_t height = 4;
 
@@ -381,22 +406,15 @@ void write_ktx2_basis_texture_fixture(const std::filesystem::path& path) {
                         "ktxTexture2_Create");
     ScopedKtxTexture2 texture{raw_texture};
 
-    std::array<std::uint8_t, width * height * 4U> pixels{};
-    for (std::uint32_t y = 0; y < height; ++y) {
-        for (std::uint32_t x = 0; x < width; ++x) {
-            const auto index = static_cast<std::size_t>((y * width + x) * 4U);
-            pixels[index + 0U] = static_cast<std::uint8_t>(32U + x * 32U);
-            pixels[index + 1U] = static_cast<std::uint8_t>(48U + y * 32U);
-            pixels[index + 2U] = static_cast<std::uint8_t>(96U + (x + y) * 16U);
-            pixels[index + 3U] = 255U;
-        }
-    }
-
     require_ktx_success(ktxTexture_SetImageFromMemory(ktxTexture(texture.get()), 0, 0, 0, pixels.data(), pixels.size()),
                         "ktxTexture_SetImageFromMemory");
     require_ktx_success(ktxTexture2_CompressBasis(texture.get(), 128U), "ktxTexture2_CompressBasis");
     require_ktx_success(ktxTexture_WriteToNamedFile(ktxTexture(texture.get()), path.string().c_str()),
                         "ktxTexture_WriteToNamedFile");
+}
+
+void write_ktx2_basis_texture_fixture(const std::filesystem::path& path) {
+    write_ktx2_basis_texture_fixture(path, make_gradient_ktx2_basis_fixture_pixels());
 }
 #endif
 
@@ -7896,6 +7914,40 @@ MK_TEST("ktx2 basis texture source review fails closed without asset importers")
     MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
 }
 
+MK_TEST("ktx2 basis environment texture payload transcode fails closed without asset importers") {
+    if (mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+    const auto result = mirakana::transcode_ktx2_basis_environment_texture_payload_v1(
+        mirakana::Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1{
+            .asset = mirakana::AssetId::from_name("environment/studio-skybox"),
+            .geasset_path = "runtime/assets/environment/studio_skybox.texture.geasset",
+            .source_revision = 7,
+            .source_review =
+                mirakana::Ktx2BasisTextureSourceReviewRequest{
+                    .source_file_path = std::filesystem::path{"source/textures/environment/studio.ktx2"},
+                    .source_path = "source/textures/environment/studio.ktx2",
+                    .source_hash = "sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    .provenance_id = "provenance.environment.studio",
+                    .license_id = "LicenseRef-Proprietary",
+                    .color_space = mirakana::TextureColorSpaceV2::srgb,
+                    .sampler_class = mirakana::TextureSamplerClassV2::color,
+                    .basis_required = true,
+                },
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.source.has_value());
+    MK_REQUIRE(!result.cook_metadata.has_value());
+    MK_REQUIRE(result.payload_bytes.empty());
+    MK_REQUIRE(!result.payload.succeeded());
+    MK_REQUIRE(result.diagnostics.size() == 1U);
+    MK_REQUIRE(result.diagnostics[0].code ==
+               mirakana::Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::asset_importers_disabled);
+    MK_REQUIRE(result.diagnostics[0].message.contains("asset-importers feature is disabled"));
+}
+
 MK_TEST("texture backend format policy fails closed without official backend evidence") {
     const mirakana::TextureSourceDocumentV2 source{
         .source_path = "source/textures/environment/studio.exr",
@@ -8406,6 +8458,63 @@ MK_TEST("ktx2 basis texture source review maps real file metadata when importers
     MK_REQUIRE(source.ktx2_basis.supercompression == mirakana::TextureCompressionKindV2::basis_lz);
     MK_REQUIRE(source.ktx2_basis.basis_codec == mirakana::TexturePixelEncodingV2::basis_etc1s);
     MK_REQUIRE(source.ktx2_basis.requires_transcoding);
+#endif
+}
+
+MK_TEST(
+    "ktx2 basis environment texture payload transcode reads real pixels into rgba8 geasset payload when importers are "
+    "enabled") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+#if MK_TESTS_HAS_ASSET_IMPORTERS
+    const ScopedTestFile fixture{std::filesystem::current_path() / "mk_ktx2_basis_environment_payload_fixture.ktx2"};
+    write_ktx2_basis_texture_fixture(fixture.path(), make_white_ktx2_basis_fixture_pixels());
+
+    const auto result = mirakana::transcode_ktx2_basis_environment_texture_payload_v1(
+        mirakana::Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1{
+            .asset = mirakana::AssetId::from_name("environment/studio-skybox"),
+            .geasset_path = "runtime/assets/environment/studio_skybox.texture.geasset",
+            .source_revision = 37,
+            .source_review =
+                mirakana::Ktx2BasisTextureSourceReviewRequest{
+                    .source_file_path = fixture.path(),
+                    .source_path = "source/textures/environment/studio.ktx2",
+                    .source_hash = "sha256:22223333444455556666777788889999aaaabbbbccccddddeeeeffff00001111",
+                    .provenance_id = "provenance.environment.studio",
+                    .license_id = "LicenseRef-Proprietary",
+                    .color_space = mirakana::TextureColorSpaceV2::srgb,
+                    .sampler_class = mirakana::TextureSamplerClassV2::color,
+                    .basis_required = true,
+                },
+        });
+
+    const std::vector<std::uint8_t> expected_payload(4U * 4U * 4U, 255U);
+    const std::string expected_payload_hex(expected_payload.size() * 2U, 'f');
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(result.source.has_value());
+    MK_REQUIRE(result.cook_metadata.has_value());
+    MK_REQUIRE(result.source->width == 4U);
+    MK_REQUIRE(result.source->height == 4U);
+    MK_REQUIRE(result.source->ktx2_basis.requires_transcoding);
+    MK_REQUIRE(result.cook_metadata->estimated_decoded_bytes == expected_payload.size());
+    MK_REQUIRE(result.payload_bytes == expected_payload);
+    MK_REQUIRE(result.decode_stage == "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA");
+    MK_REQUIRE(result.transcode_stage == "ktxTexture2_TranscodeBasis.KTX_TTF_RGBA32");
+    MK_REQUIRE(result.payload.succeeded());
+    MK_REQUIRE(result.payload.artifact.source_revision == 37U);
+    MK_REQUIRE(result.payload.content.contains("source.kind=ktx2_basis\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.payload_bytes=64\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.payload_data_hex=" + expected_payload_hex + "\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.pixel_decode_invoked=0\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.basis_transcode_invoked=1\n"));
+    MK_REQUIRE(
+        result.payload.content.contains("texture.basis_transcode_stage=ktxTexture2_TranscodeBasis.KTX_TTF_RGBA32\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.gpu_upload_invoked=0\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.broad_asset_pipeline_ready=0\n"));
 #endif
 }
 

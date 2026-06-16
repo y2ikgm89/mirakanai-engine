@@ -70,6 +70,20 @@ enum class OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode : std::uint8_t {
     unsupported_claim,
 };
 
+enum class Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode : std::uint8_t {
+    none,
+    invalid_request,
+    asset_importers_disabled,
+    ktx_read_failed,
+    ktx_transcode_failed,
+    unsupported_ktx_layout,
+    unsupported_ktx_format,
+    invalid_ktx_metadata,
+    invalid_cook_metadata,
+    invalid_payload,
+    unsupported_claim,
+};
+
 struct OpenExrTextureSourceReviewDiagnostic {
     OpenExrTextureSourceReviewDiagnosticCode code{OpenExrTextureSourceReviewDiagnosticCode::none};
     std::string message;
@@ -103,6 +117,13 @@ struct EnvironmentTextureGeassetPayloadDiagnostic {
 struct OpenExrEnvironmentTexturePayloadDecodeDiagnostic {
     OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode code{
         OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::none};
+    std::string message;
+    std::string path;
+};
+
+struct Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic {
+    Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode code{
+        Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::none};
     std::string message;
     std::string path;
 };
@@ -178,6 +199,17 @@ struct OpenExrEnvironmentTexturePayloadDecodeRequestV1 {
     bool broad_asset_pipeline_ready{false};
 };
 
+struct Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1 {
+    AssetId asset;
+    std::string geasset_path;
+    std::uint64_t source_revision{1};
+    Ktx2BasisTextureSourceReviewRequest source_review;
+    std::vector<TextureBackendFormatEvidenceRowV1> backend_evidence;
+    bool require_all_backends{true};
+    bool gpu_upload_invoked{false};
+    bool broad_asset_pipeline_ready{false};
+};
+
 struct OpenExrTextureSourceReviewResult {
     std::optional<TextureSourceDocumentV2> source;
     std::vector<OpenExrTextureSourceReviewDiagnostic> diagnostics;
@@ -238,6 +270,21 @@ struct OpenExrEnvironmentTexturePayloadDecodeResultV1 {
     }
 };
 
+struct Ktx2BasisEnvironmentTexturePayloadTranscodeResultV1 {
+    std::optional<TextureSourceDocumentV2> source;
+    std::optional<TextureCookMetadataDocumentV1> cook_metadata;
+    std::vector<std::uint8_t> payload_bytes;
+    std::string decode_stage;
+    std::string transcode_stage;
+    EnvironmentTextureGeassetPayloadResultV1 payload;
+    std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return source.has_value() && cook_metadata.has_value() && !payload_bytes.empty() && !decode_stage.empty() &&
+               !transcode_stage.empty() && payload.succeeded() && diagnostics.empty();
+    }
+};
+
 [[nodiscard]] bool has_openexr_texture_source_review() noexcept;
 [[nodiscard]] OpenExrTextureSourceReviewResult
 review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& request);
@@ -247,6 +294,9 @@ decode_openexr_environment_texture_payload_v1(const OpenExrEnvironmentTexturePay
 [[nodiscard]] bool has_ktx2_basis_texture_source_review() noexcept;
 [[nodiscard]] Ktx2BasisTextureSourceReviewResult
 review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequest& request);
+[[nodiscard]] bool has_ktx2_basis_environment_texture_payload_transcode() noexcept;
+[[nodiscard]] Ktx2BasisEnvironmentTexturePayloadTranscodeResultV1 transcode_ktx2_basis_environment_texture_payload_v1(
+    const Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1& request);
 [[nodiscard]] TextureBackendFormatPolicyResultV1
 plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1& request);
 [[nodiscard]] EnvironmentTextureGeassetMetadataResultV1
