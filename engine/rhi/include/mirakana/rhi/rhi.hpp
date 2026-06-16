@@ -435,6 +435,8 @@ struct RhiStats {
     std::uint64_t descriptor_set_layouts_created{0};
     std::uint64_t descriptor_sets_allocated{0};
     std::uint64_t descriptor_writes{0};
+    std::uint64_t format_support_queries{0};
+    std::uint64_t format_support_query_failures{0};
     std::uint64_t pipeline_layouts_created{0};
     std::uint64_t graphics_pipelines_created{0};
     std::uint64_t compute_pipelines_created{0};

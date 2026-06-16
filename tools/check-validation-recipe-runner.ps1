@@ -316,6 +316,10 @@ $sampleEnvironmentTextureAssetPipelineD3d12CompressedUploadDryRun = Assert-DryRu
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-texture-asset-pipeline-package", "--require-environment-texture-asset-pipeline-d3d12-compressed-upload", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentTextureAssetPipelineD3d12CompressedUploadDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-texture-asset-pipeline-d3d12-compressed-upload"
 }
+$sampleEnvironmentTextureAssetPipelineVulkanCompressedUploadDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-compressed-upload" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-texture-asset-pipeline-package", "--require-environment-texture-asset-pipeline-vulkan-compressed-upload", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentTextureAssetPipelineVulkanCompressedUploadDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-compressed-upload"
+}
 $sampleEnvironmentPlatformReadinessDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-platform-readiness" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-platform-readiness", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentPlatformReadinessDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-platform-readiness"

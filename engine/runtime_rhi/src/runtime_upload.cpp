@@ -431,6 +431,12 @@ struct RuntimeRhiTexturePayload {
     if (device_format == "DXGI_FORMAT_BC7_UNORM_SRGB") {
         return rhi::Format::bc7_unorm_srgb;
     }
+    if (device_format == "VK_FORMAT_BC7_UNORM_BLOCK") {
+        return rhi::Format::bc7_unorm;
+    }
+    if (device_format == "VK_FORMAT_BC7_SRGB_BLOCK") {
+        return rhi::Format::bc7_unorm_srgb;
+    }
     throw std::invalid_argument(
         "runtime backend texture payload device format is not supported by the RHI upload bridge");
 }
@@ -895,7 +901,13 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         auto upload_options = options.texture_upload_options;
         upload_options.usage = upload_options.usage | rhi::TextureUsage::shader_resource |
                                rhi::TextureUsage::copy_destination | rhi::TextureUsage::copy_source;
+        const auto stats_before_upload = device.stats();
         result.upload = upload_runtime_texture_payload(device, texture_payload, upload_options);
+        const auto stats_after_upload = device.stats();
+        if (stats_after_upload.format_support_queries >= stats_before_upload.format_support_queries) {
+            result.format_support_queries = static_cast<std::size_t>(stats_after_upload.format_support_queries -
+                                                                     stats_before_upload.format_support_queries);
+        }
         if (!result.upload.succeeded()) {
             result.diagnostic = "runtime environment texture upload failed: " + result.upload.diagnostic;
             return result;
@@ -905,7 +917,7 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         result.copy_region = result.upload.copy_region;
         result.uploaded_bytes = result.upload.uploaded_bytes;
         result.gpu_upload_invoked = result.upload.copy_recorded;
-        result.backend_api_invoked = result.upload.copy_recorded;
+        result.backend_api_invoked = result.upload.copy_recorded || result.format_support_queries > 0U;
         result.resource_transitions = result.upload.frame_graph_barriers_recorded;
         result.copy_to_texture_count = result.upload.copy_recorded ? 1U : 0U;
         result.source_row_bytes =

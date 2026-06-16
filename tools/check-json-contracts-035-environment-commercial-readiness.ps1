@@ -147,13 +147,15 @@ if ($null -eq $assetPipelineClaim -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-d3d12-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-vulkan-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-d3d12-compressed-upload") -or
+    -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-vulkan-compressed-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected D3D12 WARP runtime upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected strict Vulkan runtime upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected D3D12 WARP backend-target BC7 compressed upload/readback") -or
+    -not [string]$assetPipelineClaim.notes.Contains("selected strict Vulkan backend-target BC7 compressed upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("Apple-host Metal upload execution") -or
-    -not [string]$assetPipelineClaim.notes.Contains("Vulkan BC7 and Metal/ASTC compressed payload execution") -or
+    -not [string]$assetPipelineClaim.notes.Contains("Metal/ASTC compressed payload execution") -or
     -not [string]$assetPipelineClaim.notes.Contains("broad asset-pipeline readiness remain future work")) {
-    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker, backend-target decision fields, selected D3D12/Vulkan RGBA8 upload/readback evidence, selected D3D12 BC7 compressed upload/readback evidence, and remaining Metal/Vulkan-compressed non-claims"
+    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker, backend-target decision fields, selected D3D12/Vulkan RGBA8 upload/readback evidence, selected D3D12/Vulkan BC7 compressed upload/readback evidence, and remaining Metal compressed non-claims"
 }
 foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend_parity_ready", "environment_broad_optimization_ready", "environment_aaa_preset_library_ready", "environment_physical_weather_simulation_ready", "environment_artist_workflow_ready")) {
     $broadClaim = $environmentCommercialClaimsById[$broadClaimId]

@@ -7517,6 +7517,133 @@ MK_TEST("vulkan rhi device executes strict environment texture upload and readba
 #endif
 }
 
+MK_TEST("vulkan rhi device executes strict environment BC7 texture upload and readback when runtime is available") {
+#if defined(_WIN32) || defined(__linux__)
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineVulkanEnvironmentTextureBc7UploadExecution";
+    instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+
+#if defined(_WIN32)
+    HiddenVulkanTestWindow window;
+    if (!window.valid()) {
+        return;
+    }
+    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(
+        mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
+        {}, surface);
+#else
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(
+        mirakana::rhi::vulkan::VulkanLoaderProbeDesc{mirakana::rhi::current_rhi_host_platform()}, instance_desc, {});
+#endif
+    if (!device_result.created) {
+        MK_REQUIRE(!device_result.diagnostic.empty());
+        return;
+    }
+
+    auto rhi =
+        mirakana::rhi::vulkan::create_rhi_device(std::move(device_result.device), ready_vulkan_rhi_mapping_plan());
+    MK_REQUIRE(rhi != nullptr);
+    MK_REQUIRE(rhi->backend_kind() == mirakana::rhi::BackendKind::vulkan);
+
+    const mirakana::runtime::RuntimeEnvironmentTexturePayload payload{
+        .asset = mirakana::AssetId::from_name("textures/environment/vulkan_runtime_upload_bc7"),
+        .handle = mirakana::runtime::RuntimeAssetHandle{44},
+        .asset_path = "runtime/assets/desktop_runtime/environment_upload_plan_vulkan_bc7.texture.geasset",
+        .source_path = "source/textures/environment/vulkan_runtime_upload_bc7.ktx2",
+        .source_hash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        .provenance_id = "provenance.environment.vulkan_runtime_upload_bc7",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::ktx2_basis,
+        .color_space = mirakana::TextureColorSpaceV2::srgb,
+        .sampler_class = mirakana::TextureSamplerClassV2::color,
+        .width = 4,
+        .height = 4,
+        .mip_count = 1,
+        .estimated_source_bytes = 16,
+        .estimated_decoded_bytes = 64,
+        .max_estimated_gpu_bytes = 16,
+        .backend_policy_count = 1,
+        .unsupported_host_diagnostic_count = 0,
+        .payload_hash = mirakana::hash_asset_cooked_content("00112233445566778899aabbccddeeff"),
+        .decode_stage = "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA",
+        .basis_transcode_stage = "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY",
+        .pixel_decode_invoked = false,
+        .basis_transcode_invoked = true,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+        .backend_decisions = {mirakana::TextureCookBackendDecisionV1{
+            .backend = mirakana::TextureCookBackendV1::vulkan,
+            .device_format = "VK_FORMAT_BC7_SRGB_BLOCK",
+            .payload_transcode_target = "KTX_TTF_BC7_RGBA",
+            .format_support_evidence_id = "vulkan-bc7-format-properties",
+            .official_format_support_api = "vkGetPhysicalDeviceFormatProperties(VK_FORMAT_BC7_SRGB_BLOCK)",
+            .compression = mirakana::TextureCompressionKindV2::bc7,
+            .transcode = mirakana::TextureCookTranscodeKindV1::basis_transcode_policy,
+            .estimated_gpu_bytes = 16,
+            .supported = true,
+            .host_validated = true,
+            .diagnostic = {},
+        }},
+        .bytes = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
+    };
+    mirakana::runtime_rhi::RuntimeEnvironmentTextureUploadExecutionOptions options;
+    options.backend_target = mirakana::TextureCookBackendV1::vulkan;
+    options.backend_target_compressed_payload = true;
+
+    const auto result =
+        mirakana::runtime_rhi::execute_runtime_environment_texture_payload_upload(*rhi, payload, options);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.backend_kind == mirakana::rhi::BackendKind::vulkan);
+    MK_REQUIRE(result.backend_target == mirakana::TextureCookBackendV1::vulkan);
+    MK_REQUIRE(result.backend_target_compressed_payload);
+    MK_REQUIRE(result.backend_upload_ready);
+    MK_REQUIRE(result.upload_plan_ready);
+    MK_REQUIRE(result.backend_format_support_proven);
+    MK_REQUIRE(result.backend_upload_plan.succeeded());
+    MK_REQUIRE(result.device_format == "VK_FORMAT_BC7_SRGB_BLOCK");
+    MK_REQUIRE(result.payload_transcode_target == "KTX_TTF_BC7_RGBA");
+    MK_REQUIRE(result.format_support_evidence_id == "vulkan-bc7-format-properties");
+    MK_REQUIRE(result.official_format_support_api.find("vkGetPhysicalDeviceFormatProperties") != std::string::npos);
+    MK_REQUIRE(result.compression == mirakana::TextureCompressionKindV2::bc7);
+    MK_REQUIRE(result.transcode == mirakana::TextureCookTranscodeKindV1::basis_transcode_policy);
+    MK_REQUIRE(result.backend_api_invoked);
+    MK_REQUIRE(result.format_support_queries >= 1);
+    MK_REQUIRE(result.gpu_upload_invoked);
+    MK_REQUIRE(result.readback_invoked);
+    MK_REQUIRE(result.readback_checksum_matched);
+    MK_REQUIRE(result.descriptor_sampled_texture_bound);
+    MK_REQUIRE(!result.native_handle_accessed);
+    MK_REQUIRE(result.strict_vulkan_ready);
+    MK_REQUIRE(!result.metal_host_ready);
+    MK_REQUIRE(!result.backend_parity_ready);
+    MK_REQUIRE(!result.broad_asset_pipeline_ready);
+    MK_REQUIRE(result.texture_desc.format == mirakana::rhi::Format::bc7_unorm_srgb);
+    MK_REQUIRE(result.copy_region.buffer_row_length == 64);
+    MK_REQUIRE(result.format_block_width == 4);
+    MK_REQUIRE(result.format_block_height == 4);
+    MK_REQUIRE(result.format_block_bytes == 16);
+    MK_REQUIRE(result.source_row_bytes == 16);
+    MK_REQUIRE(result.row_pitch_bytes == 256);
+    MK_REQUIRE(result.uploaded_bytes == 256);
+    MK_REQUIRE(result.readback_bytes == 256);
+    MK_REQUIRE(result.compact_readback_bytes == payload.bytes.size());
+    MK_REQUIRE(result.source_checksum == result.readback_checksum);
+    MK_REQUIRE(result.descriptor_writes == 1);
+    MK_REQUIRE(result.resource_transitions >= 4);
+    MK_REQUIRE(result.copy_to_texture_count == 1);
+    MK_REQUIRE(result.copy_to_readback_count == 1);
+
+    const auto stats = rhi->stats();
+    MK_REQUIRE(stats.format_support_queries >= 1);
+    MK_REQUIRE(stats.buffer_texture_copies >= 1);
+    MK_REQUIRE(stats.texture_buffer_copies >= 1);
+    MK_REQUIRE(stats.resource_transitions >= 2);
+    MK_REQUIRE(stats.fence_waits >= 2);
+#endif
+}
+
 MK_TEST("vulkan rhi frame renderer visibly samples runtime material texture bindings when configured") {
 #if defined(_WIN32) || defined(__linux__)
     const auto vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_RUNTIME_MATERIAL_VERTEX_SPV");

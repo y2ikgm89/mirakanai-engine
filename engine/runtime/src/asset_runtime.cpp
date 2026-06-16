@@ -910,10 +910,10 @@ plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironment
             result, "environment-texture-invalid-payload",
             "backend texture upload plan requires a validated cooked environment texture payload");
     }
-    if (backend != TextureCookBackendV1::d3d12) {
+    if (backend != TextureCookBackendV1::d3d12 && backend != TextureCookBackendV1::vulkan) {
         append_environment_texture_upload_plan_diagnostic(
             result, "environment-texture-backend-target-unsupported",
-            "backend texture upload plan currently supports only D3D12 BC7 execution evidence");
+            "backend texture upload plan currently supports only D3D12 and Vulkan BC7 execution evidence");
     }
     if (payload.source_kind != TextureSourceKindV2::ktx2_basis || !payload.basis_transcode_invoked) {
         append_environment_texture_upload_plan_diagnostic(
@@ -973,18 +973,28 @@ plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironment
                 result, "environment-texture-backend-compression-policy-mismatch",
                 "backend texture upload plan requires a BC7 KTX_TTF_BC7_RGBA transcode policy row");
         }
-        if (decision->device_format != "DXGI_FORMAT_BC7_UNORM" &&
-            decision->device_format != "DXGI_FORMAT_BC7_UNORM_SRGB") {
+        const auto d3d12_format = decision->device_format == "DXGI_FORMAT_BC7_UNORM" ||
+                                  decision->device_format == "DXGI_FORMAT_BC7_UNORM_SRGB";
+        const auto vulkan_format = decision->device_format == "VK_FORMAT_BC7_UNORM_BLOCK" ||
+                                   decision->device_format == "VK_FORMAT_BC7_SRGB_BLOCK";
+        const auto backend_format_matches = (backend == TextureCookBackendV1::d3d12 && d3d12_format) ||
+                                            (backend == TextureCookBackendV1::vulkan && vulkan_format);
+        if (!backend_format_matches) {
             append_environment_texture_upload_plan_diagnostic(
                 result, "environment-texture-backend-device-format-unsupported",
-                "backend texture upload plan requires a D3D12 BC7 device format");
+                "backend texture upload plan requires a backend-local BC7 device format");
         }
-        if (decision->format_support_evidence_id.empty() ||
-            decision->official_format_support_api.find("D3D12_FEATURE_FORMAT_SUPPORT") == std::string::npos ||
-            decision->official_format_support_api.find("CheckFeatureSupport") == std::string::npos) {
+        const auto official_d3d12_api =
+            decision->official_format_support_api.find("D3D12_FEATURE_FORMAT_SUPPORT") != std::string::npos &&
+            decision->official_format_support_api.find("CheckFeatureSupport") != std::string::npos;
+        const auto official_vulkan_api =
+            decision->official_format_support_api.find("vkGetPhysicalDeviceFormatProperties") != std::string::npos;
+        const auto official_api_matches = (backend == TextureCookBackendV1::d3d12 && official_d3d12_api) ||
+                                          (backend == TextureCookBackendV1::vulkan && official_vulkan_api);
+        if (decision->format_support_evidence_id.empty() || !official_api_matches) {
             append_environment_texture_upload_plan_diagnostic(
                 result, "environment-texture-backend-format-support-api-missing",
-                "backend texture upload plan requires official D3D12 format support API evidence");
+                "backend texture upload plan requires official backend format support API evidence");
         }
     }
 

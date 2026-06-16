@@ -110,6 +110,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_texture_asset_pipeline_package{false};
     bool require_environment_texture_asset_pipeline_d3d12_upload{false};
     bool require_environment_texture_asset_pipeline_d3d12_compressed_upload{false};
+    bool require_environment_texture_asset_pipeline_vulkan_compressed_upload{false};
     bool require_environment_texture_asset_pipeline_vulkan_upload{false};
     bool require_environment_preset_library_package{false};
     bool require_environment_ready_aggregate{false};
@@ -962,6 +963,32 @@ struct EnvironmentTextureAssetPipelinePackageEvidence {
     bool d3d12_compressed_upload_backend_parity_ready{false};
     bool d3d12_compressed_upload_broad_asset_pipeline_ready{false};
     std::size_t d3d12_compressed_upload_diagnostics{0};
+    bool vulkan_compressed_upload_requested{false};
+    bool vulkan_compressed_upload_ready{false};
+    bool vulkan_compressed_upload_backend_format_support_proven{false};
+    bool vulkan_compressed_upload_backend_api_invoked{false};
+    bool vulkan_compressed_upload_gpu_upload_invoked{false};
+    bool vulkan_compressed_upload_readback_invoked{false};
+    bool vulkan_compressed_upload_checksum_matched{false};
+    bool vulkan_compressed_upload_descriptor_bound{false};
+    std::uint64_t vulkan_compressed_upload_source_row_bytes{0};
+    std::uint64_t vulkan_compressed_upload_row_pitch_bytes{0};
+    std::uint64_t vulkan_compressed_upload_uploaded_bytes{0};
+    std::uint64_t vulkan_compressed_upload_readback_bytes{0};
+    std::uint64_t vulkan_compressed_upload_compact_readback_bytes{0};
+    std::uint32_t vulkan_compressed_upload_block_width{0};
+    std::uint32_t vulkan_compressed_upload_block_height{0};
+    std::uint32_t vulkan_compressed_upload_block_bytes{0};
+    std::size_t vulkan_compressed_upload_descriptor_writes{0};
+    std::size_t vulkan_compressed_upload_resource_transitions{0};
+    std::size_t vulkan_compressed_upload_copy_to_texture_count{0};
+    std::size_t vulkan_compressed_upload_copy_to_readback_count{0};
+    std::size_t vulkan_compressed_upload_format_support_queries{0};
+    bool vulkan_compressed_upload_native_handle_access{false};
+    bool vulkan_compressed_upload_metal_host_ready{false};
+    bool vulkan_compressed_upload_backend_parity_ready{false};
+    bool vulkan_compressed_upload_broad_asset_pipeline_ready{false};
+    std::size_t vulkan_compressed_upload_diagnostics{0};
     bool vulkan_upload_requested{false};
     bool vulkan_upload_ready{false};
     bool vulkan_upload_strict_ready{false};
@@ -1378,13 +1405,88 @@ void record_environment_texture_asset_pipeline_vulkan_upload(EnvironmentTextureA
     }
 }
 
+void record_environment_texture_asset_pipeline_vulkan_compressed_upload(
+    EnvironmentTextureAssetPipelinePackageEvidence& evidence, const mirakana::runtime::RuntimeAssetRecord& record) {
+    evidence.vulkan_compressed_upload_requested = true;
+    const auto parsed_payload = mirakana::runtime::runtime_environment_texture_payload(record);
+    if (!parsed_payload.succeeded()) {
+        evidence.vulkan_compressed_upload_diagnostics += 1U;
+        return;
+    }
+
+    try {
+        mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+        instance_desc.application_name = "GameEngineVulkanEnvironmentTextureAssetPipelineBc7Upload";
+        instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+
+        mirakana::rhi::vulkan::VulkanLogicalDeviceCreateDesc device_desc;
+        device_desc.required_extensions.clear();
+        device_desc.require_present_queue = false;
+
+        auto device_result = mirakana::rhi::vulkan::create_runtime_device(
+            mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()},
+            instance_desc, device_desc);
+        if (!device_result.created) {
+            evidence.vulkan_compressed_upload_diagnostics += 1U;
+            return;
+        }
+
+        auto device = mirakana::rhi::vulkan::create_rhi_device(
+            std::move(device_result.device), mirakana::rhi::vulkan::minimal_irhi_device_mapping_plan());
+        if (!device) {
+            evidence.vulkan_compressed_upload_diagnostics += 1U;
+            return;
+        }
+
+        mirakana::runtime_rhi::RuntimeEnvironmentTextureUploadExecutionOptions options;
+        options.backend_target = mirakana::TextureCookBackendV1::vulkan;
+        options.backend_target_compressed_payload = true;
+        const auto result = mirakana::runtime_rhi::execute_runtime_environment_texture_payload_upload(
+            *device, parsed_payload.payload, options);
+        evidence.vulkan_compressed_upload_ready =
+            result.succeeded() && result.backend_upload_ready && result.backend_format_support_proven &&
+            result.backend_target_compressed_payload && result.backend_kind == mirakana::rhi::BackendKind::vulkan &&
+            result.backend_target == mirakana::TextureCookBackendV1::vulkan && result.strict_vulkan_ready &&
+            result.format_support_queries > 0U && !result.native_handle_accessed && !result.metal_host_ready &&
+            !result.backend_parity_ready && !result.broad_asset_pipeline_ready;
+        evidence.vulkan_compressed_upload_backend_format_support_proven = result.backend_format_support_proven;
+        evidence.vulkan_compressed_upload_backend_api_invoked = result.backend_api_invoked;
+        evidence.vulkan_compressed_upload_gpu_upload_invoked = result.gpu_upload_invoked;
+        evidence.vulkan_compressed_upload_readback_invoked = result.readback_invoked;
+        evidence.vulkan_compressed_upload_checksum_matched = result.readback_checksum_matched;
+        evidence.vulkan_compressed_upload_descriptor_bound = result.descriptor_sampled_texture_bound;
+        evidence.vulkan_compressed_upload_source_row_bytes = result.source_row_bytes;
+        evidence.vulkan_compressed_upload_row_pitch_bytes = result.row_pitch_bytes;
+        evidence.vulkan_compressed_upload_uploaded_bytes = result.uploaded_bytes;
+        evidence.vulkan_compressed_upload_readback_bytes = result.readback_bytes;
+        evidence.vulkan_compressed_upload_compact_readback_bytes = result.compact_readback_bytes;
+        evidence.vulkan_compressed_upload_block_width = result.format_block_width;
+        evidence.vulkan_compressed_upload_block_height = result.format_block_height;
+        evidence.vulkan_compressed_upload_block_bytes = result.format_block_bytes;
+        evidence.vulkan_compressed_upload_descriptor_writes = result.descriptor_writes;
+        evidence.vulkan_compressed_upload_resource_transitions = result.resource_transitions;
+        evidence.vulkan_compressed_upload_copy_to_texture_count = result.copy_to_texture_count;
+        evidence.vulkan_compressed_upload_copy_to_readback_count = result.copy_to_readback_count;
+        evidence.vulkan_compressed_upload_format_support_queries = result.format_support_queries;
+        evidence.vulkan_compressed_upload_native_handle_access = result.native_handle_accessed;
+        evidence.vulkan_compressed_upload_metal_host_ready = result.metal_host_ready;
+        evidence.vulkan_compressed_upload_backend_parity_ready = result.backend_parity_ready;
+        evidence.vulkan_compressed_upload_broad_asset_pipeline_ready = result.broad_asset_pipeline_ready;
+        evidence.vulkan_compressed_upload_diagnostics += result.succeeded() ? 0U : 1U;
+    } catch (const std::exception&) {
+        evidence.vulkan_compressed_upload_diagnostics += 1U;
+    }
+}
+
 [[nodiscard]] EnvironmentTextureAssetPipelinePackageEvidence evaluate_environment_texture_asset_pipeline_package(
-    bool requested, bool require_d3d12_upload, bool require_d3d12_compressed_upload, bool require_vulkan_upload,
+    bool requested, bool require_d3d12_upload, bool require_d3d12_compressed_upload,
+    bool require_vulkan_compressed_upload, bool require_vulkan_upload,
     const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
     EnvironmentTextureAssetPipelinePackageEvidence evidence;
     evidence.requested = requested;
     evidence.d3d12_upload_requested = require_d3d12_upload;
     evidence.d3d12_compressed_upload_requested = require_d3d12_compressed_upload;
+    evidence.vulkan_compressed_upload_requested = require_vulkan_compressed_upload;
     evidence.vulkan_upload_requested = require_vulkan_upload;
     if (!requested) {
         return evidence;
@@ -1521,6 +1623,15 @@ void record_environment_texture_asset_pipeline_vulkan_upload(EnvironmentTextureA
         }
         record_environment_texture_asset_pipeline_vulkan_upload(evidence, *upload_record);
     }
+    if (require_vulkan_compressed_upload) {
+        const auto* upload_record = runtime_package->find(packaged_environment_skybox_basis_bc7_upload_asset_id());
+        if (upload_record == nullptr) {
+            evidence.status = EnvironmentTextureAssetPipelinePackageStatus::missing_texture_record;
+            evidence.diagnostics = 1U;
+            return evidence;
+        }
+        record_environment_texture_asset_pipeline_vulkan_compressed_upload(evidence, *upload_record);
+    }
 
     evidence.status = EnvironmentTextureAssetPipelinePackageStatus::ready;
     evidence.ready =
@@ -1539,6 +1650,7 @@ void record_environment_texture_asset_pipeline_vulkan_upload(EnvironmentTextureA
         !evidence.upload_plan_gpu_upload_invoked && !evidence.upload_plan_broad_asset_pipeline_ready &&
         (!require_d3d12_upload || evidence.d3d12_upload_ready) &&
         (!require_d3d12_compressed_upload || evidence.d3d12_compressed_upload_ready) &&
+        (!require_vulkan_compressed_upload || evidence.vulkan_compressed_upload_ready) &&
         (!require_vulkan_upload || evidence.vulkan_upload_ready);
     if (!evidence.ready) {
         evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
@@ -4678,7 +4790,9 @@ void print_usage() {
                  "[--require-environment-audio-playback] "
                  "[--require-environment-texture-asset-pipeline-package] "
                  "[--require-environment-texture-asset-pipeline-d3d12-upload] "
+                 "[--require-environment-texture-asset-pipeline-d3d12-compressed-upload] "
                  "[--require-environment-texture-asset-pipeline-vulkan-upload] "
+                 "[--require-environment-texture-asset-pipeline-vulkan-compressed-upload] "
                  "[--require-environment-preset-library-package] "
                  "[--require-environment-ready-aggregate] "
                  "[--require-environment-vulkan-strict-aggregate] "
@@ -5031,6 +5145,12 @@ void print_usage() {
             options.require_environment_profile = true;
             options.require_environment_texture_asset_pipeline_package = true;
             options.require_environment_texture_asset_pipeline_d3d12_compressed_upload = true;
+            continue;
+        }
+        if (arg == "--require-environment-texture-asset-pipeline-vulkan-compressed-upload") {
+            options.require_environment_profile = true;
+            options.require_environment_texture_asset_pipeline_package = true;
+            options.require_environment_texture_asset_pipeline_vulkan_compressed_upload = true;
             continue;
         }
         if (arg == "--require-environment-texture-asset-pipeline-vulkan-upload") {
@@ -7297,6 +7417,7 @@ int main(int argc, char** argv) {
         options.require_environment_texture_asset_pipeline_package,
         options.require_environment_texture_asset_pipeline_d3d12_upload,
         options.require_environment_texture_asset_pipeline_d3d12_compressed_upload,
+        options.require_environment_texture_asset_pipeline_vulkan_compressed_upload,
         options.require_environment_texture_asset_pipeline_vulkan_upload, runtime_package);
     const auto environment_preset_library = evaluate_environment_preset_library_package(
         options.require_environment_preset_library_package, runtime_package);
@@ -8171,6 +8292,58 @@ int main(int argc, char** argv) {
         << (environment_texture_asset_pipeline.d3d12_compressed_upload_broad_asset_pipeline_ready ? 1 : 0)
         << " environment_texture_asset_pipeline_d3d12_compressed_upload_diagnostics="
         << environment_texture_asset_pipeline.d3d12_compressed_upload_diagnostics
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_requested="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_requested ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_ready="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_backend_format_support_proven="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_backend_format_support_proven ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_backend_api_invoked="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_backend_api_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_gpu_upload_invoked="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_gpu_upload_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_readback_invoked="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_readback_invoked ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_checksum_matched="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_checksum_matched ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_descriptor_bound="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_descriptor_bound ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_source_row_bytes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_source_row_bytes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_row_pitch_bytes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_row_pitch_bytes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_uploaded_bytes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_uploaded_bytes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_readback_bytes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_readback_bytes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_compact_readback_bytes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_compact_readback_bytes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_block_width="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_block_width
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_block_height="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_block_height
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_block_bytes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_block_bytes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_descriptor_writes="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_descriptor_writes
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_resource_transitions="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_resource_transitions
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_copy_to_texture_count="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_copy_to_texture_count
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_copy_to_readback_count="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_copy_to_readback_count
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_format_support_queries="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_format_support_queries
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_native_handle_access="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_native_handle_access ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_metal_host_ready="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_metal_host_ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_backend_parity_ready="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_backend_parity_ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_broad_ready="
+        << (environment_texture_asset_pipeline.vulkan_compressed_upload_broad_asset_pipeline_ready ? 1 : 0)
+        << " environment_texture_asset_pipeline_vulkan_compressed_upload_diagnostics="
+        << environment_texture_asset_pipeline.vulkan_compressed_upload_diagnostics
         << " environment_texture_asset_pipeline_vulkan_upload_requested="
         << (environment_texture_asset_pipeline.vulkan_upload_requested ? 1 : 0)
         << " environment_texture_asset_pipeline_vulkan_upload_ready="
@@ -9918,6 +10091,10 @@ int main(int argc, char** argv) {
         }
         if (options.require_environment_texture_asset_pipeline_d3d12_compressed_upload &&
             !environment_texture_asset_pipeline.d3d12_compressed_upload_ready) {
+            return 3;
+        }
+        if (options.require_environment_texture_asset_pipeline_vulkan_compressed_upload &&
+            !environment_texture_asset_pipeline.vulkan_compressed_upload_ready) {
             return 3;
         }
         if (options.require_environment_texture_asset_pipeline_vulkan_upload &&

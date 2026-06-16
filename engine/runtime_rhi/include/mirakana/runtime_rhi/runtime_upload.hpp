@@ -117,6 +117,7 @@ struct RuntimeEnvironmentTextureUploadExecutionResult {
     std::size_t resource_transitions{0};
     std::size_t copy_to_texture_count{0};
     std::size_t copy_to_readback_count{0};
+    std::size_t format_support_queries{0};
     std::uint32_t format_block_width{0};
     std::uint32_t format_block_height{0};
     std::uint32_t format_block_bytes{0};
