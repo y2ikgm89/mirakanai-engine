@@ -4414,6 +4414,8 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
             .artist_controls_ready = evidence.artist_controls.succeeded(),
             .production_solver_package_counter_reviewed = evidence.d3d12_gpu_solver_ready,
             .production_solver_core_reviewed = evidence.d3d12_gpu_solver_ready,
+            .broad_physical_accuracy_reviewed = evidence.d3d12_gpu_solver_ready,
+            .visual_quality_reviewed = evidence.d3d12_gpu_solver_ready,
         });
     return evidence;
 }
@@ -10070,8 +10072,18 @@ int main(int argc, char** argv) {
             << (environment_weather_simulation_package.solver_budget.production_solver_core_review_ready ? 1 : 0)
             << " environment_weather_simulation_production_solver_core_rows="
             << environment_weather_simulation_package.solver_budget.production_solver_core_rows
+            << " environment_weather_simulation_broad_physical_accuracy_review_ready="
+            << (environment_weather_simulation_package.solver_budget.broad_physical_accuracy_review_ready ? 1 : 0)
+            << " environment_weather_simulation_broad_physical_accuracy_rows="
+            << environment_weather_simulation_package.solver_budget.broad_physical_accuracy_rows
+            << " environment_weather_simulation_visual_quality_review_ready="
+            << (environment_weather_simulation_package.solver_budget.visual_quality_review_ready ? 1 : 0)
+            << " environment_weather_simulation_visual_quality_rows="
+            << environment_weather_simulation_package.solver_budget.visual_quality_rows
             << " environment_weather_simulation_production_solver_ready="
             << (environment_weather_simulation_package.solver_budget.production_solver_ready ? 1 : 0)
+            << " environment_weather_simulation_physical_weather_ready="
+            << (environment_weather_simulation_package.solver_budget.physical_weather_ready ? 1 : 0)
             << " environment_weather_simulation_solver_budget_diagnostics="
             << environment_weather_simulation_package.solver_budget.diagnostics.size()
             << " environment_weather_simulation_validation_dataset_status="
@@ -10295,7 +10307,12 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.solver_budget.production_solver_package_counter_rows != 1U ||
              !environment_weather_simulation_package.solver_budget.production_solver_core_review_ready ||
              environment_weather_simulation_package.solver_budget.production_solver_core_rows != 1U ||
+             !environment_weather_simulation_package.solver_budget.broad_physical_accuracy_review_ready ||
+             environment_weather_simulation_package.solver_budget.broad_physical_accuracy_rows != 1U ||
+             !environment_weather_simulation_package.solver_budget.visual_quality_review_ready ||
+             environment_weather_simulation_package.solver_budget.visual_quality_rows != 1U ||
              environment_weather_simulation_package.solver_budget.production_solver_ready ||
+             environment_weather_simulation_package.solver_budget.physical_weather_ready ||
              !environment_weather_simulation_package.solver_budget.diagnostics.empty() ||
              !environment_weather_simulation_package.validation_dataset.succeeded() ||
              environment_weather_simulation_package.validation_dataset.status !=

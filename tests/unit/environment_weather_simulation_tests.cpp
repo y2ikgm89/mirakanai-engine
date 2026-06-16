@@ -526,6 +526,65 @@ MK_TEST("environment weather simulation production solver core reviews complete 
     MK_REQUIRE(plan.diagnostics.empty());
 }
 
+MK_TEST("environment weather simulation reviews broad physical accuracy and visual quality gates") {
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc desc{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 750U,
+        .cpu_budget_us = 5000U,
+        .gpu_elapsed_us = 900U,
+        .gpu_budget_us = 5000U,
+        .gpu_solver_package_ready = true,
+        .profiler_artifacts = make_selected_solver_profiler_artifacts(),
+        .validation_dataset_ready = true,
+        .validation_images_ready = true,
+        .artist_controls_ready = true,
+        .production_solver_package_counter_reviewed = true,
+        .production_solver_core_reviewed = true,
+        .broad_physical_accuracy_reviewed = true,
+        .visual_quality_reviewed = true,
+    };
+
+    const auto plan = mirakana::plan_environment_weather_simulation_solver_budget(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.status == mirakana::EnvironmentWeatherSimulationSolverBudgetStatus::host_evidence_required);
+    MK_REQUIRE(plan.production_solver_core_review_ready);
+    MK_REQUIRE(plan.broad_physical_accuracy_review_ready);
+    MK_REQUIRE(plan.broad_physical_accuracy_rows == 1U);
+    MK_REQUIRE(plan.visual_quality_review_ready);
+    MK_REQUIRE(plan.visual_quality_rows == 1U);
+    MK_REQUIRE(!plan.production_solver_ready);
+    MK_REQUIRE(!plan.physical_weather_ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("environment weather simulation broad accuracy review fails closed without core evidence") {
+    const mirakana::EnvironmentWeatherSimulationSolverBudgetDesc desc{
+        .cpu_reference_package_ready = true,
+        .cpu_elapsed_us = 750U,
+        .cpu_budget_us = 5000U,
+        .broad_physical_accuracy_reviewed = true,
+        .visual_quality_reviewed = true,
+        .request_production_solver_ready_claim = true,
+    };
+
+    const auto plan = mirakana::plan_environment_weather_simulation_solver_budget(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(!plan.broad_physical_accuracy_review_ready);
+    MK_REQUIRE(!plan.visual_quality_review_ready);
+    MK_REQUIRE(!plan.production_solver_ready);
+    MK_REQUIRE(!plan.physical_weather_ready);
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        plan,
+        mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_broad_physical_accuracy_evidence));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        plan, mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_visual_quality_evidence));
+    MK_REQUIRE(mirakana::has_environment_weather_simulation_solver_budget_diagnostic(
+        plan,
+        mirakana::EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::unsupported_production_solver_ready_claim));
+}
+
 MK_TEST("environment weather simulation package budget fails closed for invalid or unsupported readiness claims") {
     mirakana::EnvironmentWeatherSimulationSolverBudgetDesc missing_package{};
     missing_package.cpu_budget_us = 5000U;
