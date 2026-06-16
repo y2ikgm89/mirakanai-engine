@@ -215,6 +215,11 @@ foreach ($needle in @(
         "payload_transcode_target",
         "format_support_evidence_id",
         "official_format_support_api",
+        "RuntimeEnvironmentTextureUploadExecutionResult",
+        "execute_runtime_environment_texture_payload_upload",
+        "--require-environment-texture-asset-pipeline-d3d12-upload",
+        "selected D3D12 WARP runtime upload/readback",
+        "strict Vulkan/Metal upload execution",
         "backend-target BC7/ASTC compressed payload execution",
         "environment_asset_pipeline_openexr_ktx_basis_ready",
         "broad asset-pipeline readiness"

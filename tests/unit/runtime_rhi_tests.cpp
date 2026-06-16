@@ -3,6 +3,7 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
@@ -301,6 +302,55 @@ MK_TEST("runtime rhi texture upload can use caller owned upload ring staging") {
     MK_REQUIRE(device.stats().textures_created == 1);
     MK_REQUIRE(device.stats().command_lists_submitted == 1);
     MK_REQUIRE(device.stats().fence_waits == 1);
+}
+
+MK_TEST("runtime rhi environment texture upload execution rejects null backend ready evidence") {
+    mirakana::rhi::NullRhiDevice device;
+    const mirakana::runtime::RuntimeEnvironmentTexturePayload payload{
+        .asset = mirakana::AssetId::from_name("textures/environment/runtime_upload"),
+        .handle = mirakana::runtime::RuntimeAssetHandle{41},
+        .asset_path = "runtime/assets/desktop_runtime/environment_upload_plan_rgba8.texture.geasset",
+        .source_path = "source/textures/environment/runtime_upload.ktx2",
+        .source_hash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        .provenance_id = "provenance.environment.runtime_upload",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::ktx2_basis,
+        .color_space = mirakana::TextureColorSpaceV2::srgb,
+        .sampler_class = mirakana::TextureSamplerClassV2::color,
+        .width = 2,
+        .height = 2,
+        .mip_count = 1,
+        .estimated_source_bytes = 16,
+        .estimated_decoded_bytes = 16,
+        .max_estimated_gpu_bytes = 16,
+        .backend_policy_count = 5,
+        .unsupported_host_diagnostic_count = 0,
+        .payload_hash = mirakana::hash_asset_cooked_content("0102030405060708090a0b0c0d0e0f10"),
+        .decode_stage = "ktxTexture2_CreateFromNamedFile.load-image-data",
+        .basis_transcode_stage = "ktxTexture2_TranscodeBasis.KTX_TTF_RGBA32",
+        .pixel_decode_invoked = false,
+        .basis_transcode_invoked = true,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+        .bytes = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10},
+    };
+
+    const auto result = mirakana::runtime_rhi::execute_runtime_environment_texture_payload_upload(device, payload);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.backend_kind == mirakana::rhi::BackendKind::null);
+    MK_REQUIRE(result.upload_plan_ready);
+    MK_REQUIRE(!result.backend_api_invoked);
+    MK_REQUIRE(!result.gpu_upload_invoked);
+    MK_REQUIRE(!result.readback_invoked);
+    MK_REQUIRE(!result.readback_checksum_matched);
+    MK_REQUIRE(!result.descriptor_sampled_texture_bound);
+    MK_REQUIRE(result.native_handle_accessed == false);
+    MK_REQUIRE(result.backend_upload_ready == false);
+    MK_REQUIRE(result.diagnostic.find("requires a real RHI backend") != std::string::npos);
+    MK_REQUIRE(device.stats().textures_created == 0);
+    MK_REQUIRE(device.stats().buffer_texture_copies == 0);
+    MK_REQUIRE(device.stats().texture_buffer_copies == 0);
 }
 
 MK_TEST("runtime rhi texture upload rejects ring staging exhaustion before side effects") {

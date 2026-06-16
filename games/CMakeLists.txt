@@ -1518,6 +1518,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
             --require-environment-texture-asset-pipeline-package
+            --require-environment-texture-asset-pipeline-d3d12-upload
             --require-environment-preset-library-package
             --require-d3d12-scene-shaders
             --require-d3d12-renderer

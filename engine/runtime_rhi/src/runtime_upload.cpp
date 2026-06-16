@@ -26,6 +26,15 @@ namespace {
     return result;
 }
 
+[[nodiscard]] RuntimeEnvironmentTextureUploadExecutionResult
+environment_texture_upload_execution_failure(rhi::IRhiDevice& device, std::string diagnostic) {
+    RuntimeEnvironmentTextureUploadExecutionResult result;
+    result.backend_kind = device.backend_kind();
+    result.backend_name = std::string{device.backend_name()};
+    result.diagnostic = std::move(diagnostic);
+    return result;
+}
+
 [[nodiscard]] std::string
 runtime_texture_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
     if (diagnostics.empty()) {
@@ -311,6 +320,76 @@ struct TextureUploadStaging {
         .texture_extent = rhi::Extent3D{.width = width, .height = height, .depth = 1},
     };
     return staging;
+}
+
+[[nodiscard]] std::uint64_t checksum_runtime_texture_bytes(std::span<const std::uint8_t> bytes) noexcept {
+    auto hash = std::uint64_t{1469598103934665603ULL};
+    for (const auto byte : bytes) {
+        hash ^= static_cast<std::uint64_t>(byte);
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+[[nodiscard]] std::uint64_t texture_copy_allocation_bytes(rhi::Format format,
+                                                          const rhi::BufferTextureCopyRegion& region) {
+    const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(format));
+    const auto row_length = region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
+    const auto image_height =
+        region.buffer_image_height == 0 ? region.texture_extent.height : region.buffer_image_height;
+    if (row_length == 0 || texel_bytes == 0 ||
+        static_cast<std::uint64_t>(row_length) > (std::numeric_limits<std::uint64_t>::max)() / texel_bytes) {
+        throw std::overflow_error("runtime environment texture row pitch is invalid");
+    }
+    const auto row_pitch = static_cast<std::uint64_t>(row_length) * texel_bytes;
+    if (image_height == 0 ||
+        static_cast<std::uint64_t>(image_height) > (std::numeric_limits<std::uint64_t>::max)() / row_pitch) {
+        throw std::overflow_error("runtime environment texture image pitch is invalid");
+    }
+    const auto image_pitch = static_cast<std::uint64_t>(image_height) * row_pitch;
+    if (region.texture_extent.depth == 0 || static_cast<std::uint64_t>(region.texture_extent.depth) >
+                                                (std::numeric_limits<std::uint64_t>::max)() / image_pitch) {
+        throw std::overflow_error("runtime environment texture copy byte size is invalid");
+    }
+    const auto copy_bytes = static_cast<std::uint64_t>(region.texture_extent.depth) * image_pitch;
+    if (region.buffer_offset > (std::numeric_limits<std::uint64_t>::max)() - copy_bytes) {
+        throw std::overflow_error("runtime environment texture copy allocation byte count overflowed");
+    }
+    return region.buffer_offset + copy_bytes;
+}
+
+[[nodiscard]] std::vector<std::uint8_t> compact_texture_readback_bytes(std::span<const std::uint8_t> readback_bytes,
+                                                                       rhi::Format format,
+                                                                       const rhi::BufferTextureCopyRegion& region) {
+    const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(format));
+    if (texel_bytes == 0) {
+        throw std::invalid_argument("runtime environment texture readback format is unsupported");
+    }
+    const auto source_row_bytes = static_cast<std::uint64_t>(region.texture_extent.width) * texel_bytes;
+    const auto staged_row_texels =
+        region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
+    const auto staged_row_bytes = static_cast<std::uint64_t>(staged_row_texels) * texel_bytes;
+    const auto height = static_cast<std::uint64_t>(region.texture_extent.height);
+    const auto required_bytes = rhi::buffer_texture_copy_required_bytes(format, region);
+    if (required_bytes > static_cast<std::uint64_t>(readback_bytes.size())) {
+        throw std::invalid_argument("runtime environment texture readback byte range is incomplete");
+    }
+    if (source_row_bytes > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) ||
+        height > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) ||
+        height > 0U &&
+            source_row_bytes > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) / height) {
+        throw std::overflow_error("runtime environment texture compact readback byte count overflowed");
+    }
+
+    std::vector<std::uint8_t> compact(static_cast<std::size_t>(source_row_bytes * height));
+    for (std::uint64_t row = 0; row < height; ++row) {
+        const auto source_offset = static_cast<std::size_t>(row * staged_row_bytes);
+        const auto destination_offset = static_cast<std::size_t>(row * source_row_bytes);
+        std::copy_n(readback_bytes.begin() + static_cast<std::ptrdiff_t>(source_offset),
+                    static_cast<std::size_t>(source_row_bytes),
+                    compact.begin() + static_cast<std::ptrdiff_t>(destination_offset));
+    }
+    return compact;
 }
 
 [[nodiscard]] rhi::Format runtime_texture_format(TextureSourcePixelFormat format) {
@@ -671,6 +750,116 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
         };
     } catch (const std::exception& error) {
         return texture_upload_failure(error.what());
+    }
+}
+
+RuntimeEnvironmentTextureUploadExecutionResult
+execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
+                                                   const runtime::RuntimeEnvironmentTexturePayload& payload,
+                                                   const RuntimeEnvironmentTextureUploadExecutionOptions& options) {
+    try {
+        RuntimeEnvironmentTextureUploadExecutionResult result;
+        result.backend_kind = device.backend_kind();
+        result.backend_name = std::string{device.backend_name()};
+        result.upload_plan = runtime::plan_runtime_environment_texture_payload_upload(payload);
+        result.upload_plan_ready = result.upload_plan.succeeded();
+        if (!result.upload_plan_ready) {
+            result.diagnostic = result.upload_plan.diagnostics.empty()
+                                    ? "runtime environment texture upload execution requires a ready upload plan"
+                                    : "runtime environment texture upload execution requires a ready upload plan: " +
+                                          result.upload_plan.diagnostics.front().code;
+            return result;
+        }
+        if (result.backend_kind == rhi::BackendKind::null) {
+            result.diagnostic = "runtime environment texture upload execution requires a real RHI backend";
+            return result;
+        }
+
+        auto upload_options = options.texture_upload_options;
+        upload_options.usage = upload_options.usage | rhi::TextureUsage::shader_resource |
+                               rhi::TextureUsage::copy_destination | rhi::TextureUsage::copy_source;
+        result.upload = upload_runtime_texture(device, result.upload_plan.payload, upload_options);
+        if (!result.upload.succeeded()) {
+            result.diagnostic = "runtime environment texture upload failed: " + result.upload.diagnostic;
+            return result;
+        }
+
+        result.texture_desc = result.upload.texture_desc;
+        result.copy_region = result.upload.copy_region;
+        result.uploaded_bytes = result.upload.uploaded_bytes;
+        result.gpu_upload_invoked = result.upload.copy_recorded;
+        result.backend_api_invoked = result.upload.copy_recorded;
+        result.resource_transitions = result.upload.frame_graph_barriers_recorded;
+        result.copy_to_texture_count = result.upload.copy_recorded ? 1U : 0U;
+        const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(result.texture_desc.format));
+        result.source_row_bytes = static_cast<std::uint64_t>(result.texture_desc.extent.width) * texel_bytes;
+        result.row_pitch_bytes = static_cast<std::uint64_t>(result.copy_region.buffer_row_length) * texel_bytes;
+        result.source_checksum = checksum_runtime_texture_bytes(result.upload_plan.payload.bytes);
+
+        if (options.create_sampled_texture_descriptor) {
+            result.descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{
+                .bindings = {rhi::DescriptorBindingDesc{
+                    .binding = 0,
+                    .type = rhi::DescriptorType::sampled_texture,
+                    .count = 1,
+                    .stages = rhi::ShaderStageVisibility::fragment,
+                }},
+            });
+            result.descriptor_set = device.allocate_descriptor_set(result.descriptor_set_layout);
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = result.descriptor_set,
+                .binding = 0,
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture,
+                                                               result.upload.texture)},
+            });
+            result.descriptor_writes = 1U;
+            result.descriptor_sampled_texture_bound = true;
+        }
+
+        if (!options.readback_after_upload) {
+            result.diagnostic = "runtime environment texture upload execution requires readback evidence";
+            return result;
+        }
+        result.readback_bytes = texture_copy_allocation_bytes(result.texture_desc.format, result.copy_region);
+        result.readback_buffer = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = result.readback_bytes,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        auto commands = device.begin_command_list(upload_options.queue);
+        commands->transition_texture(result.upload.texture, rhi::ResourceState::shader_read,
+                                     rhi::ResourceState::copy_source);
+        commands->copy_texture_to_buffer(result.upload.texture, result.readback_buffer, result.copy_region);
+        commands->transition_texture(result.upload.texture, rhi::ResourceState::copy_source,
+                                     rhi::ResourceState::shader_read);
+        commands->close();
+        result.readback_fence = device.submit(*commands);
+        if (options.wait_for_readback_completion) {
+            device.wait(result.readback_fence);
+        }
+
+        const auto padded_readback = device.read_buffer(result.readback_buffer, 0, result.readback_bytes);
+        const auto compact_readback =
+            compact_texture_readback_bytes(padded_readback, result.texture_desc.format, result.copy_region);
+        result.compact_readback_bytes = static_cast<std::uint64_t>(compact_readback.size());
+        result.readback_checksum = checksum_runtime_texture_bytes(compact_readback);
+        result.readback_checksum_matched =
+            compact_readback == result.upload_plan.payload.bytes && result.readback_checksum == result.source_checksum;
+        result.readback_invoked = true;
+        result.copy_to_readback_count = 1U;
+        result.resource_transitions += 2U;
+        result.backend_upload_ready = result.backend_kind != rhi::BackendKind::null && result.readback_checksum_matched;
+        result.native_handle_accessed = false;
+        result.strict_vulkan_ready = false;
+        result.metal_host_ready = false;
+        result.backend_parity_ready = false;
+        result.broad_asset_pipeline_ready = false;
+        if (!result.readback_checksum_matched) {
+            result.diagnostic = "runtime environment texture upload readback checksum mismatch";
+        }
+        return result;
+    } catch (const std::exception& error) {
+        return environment_texture_upload_execution_failure(device, error.what());
     }
 }
 

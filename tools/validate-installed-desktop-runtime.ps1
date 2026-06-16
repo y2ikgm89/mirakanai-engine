@@ -176,6 +176,7 @@ $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
+$requiresEnvironmentTextureAssetPipelineD3d12Upload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-upload"
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
@@ -184,6 +185,7 @@ $requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require
 $requiresEnvironmentWeatherSimulationPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-package"
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
+    $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
     $requiresEnvironmentBackendParity -or
@@ -1159,6 +1161,38 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "environment_texture_asset_pipeline_upload_plan_broad_ready" = "0"
                 "environment_texture_asset_pipeline_diagnostics" = "0"
             }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineD3d12Upload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline D3D12 upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_d3d12_upload_requested" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_ready" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_source_row_bytes" = "4"
+                "environment_texture_asset_pipeline_d3d12_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_upload_compact_readback_bytes" = "4"
+                "environment_texture_asset_pipeline_d3d12_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_d3d12_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_upload_diagnostics" = "0"
+            }
+        foreach ($field in @("environment_texture_asset_pipeline_d3d12_upload_resource_transitions")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 environment texture upload positive count: $field"
+            }
+        }
     }
     if ($requiresEnvironmentPresetLibraryPackage) {
         if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
