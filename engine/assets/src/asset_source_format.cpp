@@ -293,6 +293,9 @@ constexpr std::uint32_t max_audio_channel_count = 64;
 
 [[nodiscard]] bool texture_cook_backend_decision_valid(const TextureCookBackendDecisionV1& decision) noexcept {
     if (!texture_cook_backend_known(decision.backend) || !clean_text_token(decision.device_format) ||
+        !clean_text_token(decision.payload_transcode_target) ||
+        !clean_text_token(decision.format_support_evidence_id) ||
+        !clean_text_token(decision.official_format_support_api) ||
         decision.compression == TextureCompressionKindV2::unknown ||
         decision.transcode == TextureCookTranscodeKindV1::unknown || decision.estimated_gpu_bytes == 0) {
         return false;
@@ -1370,6 +1373,9 @@ std::string serialize_texture_cook_metadata_document_v1(const TextureCookMetadat
         const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
         output << prefix << "backend=" << texture_cook_backend_name_v1(decision.backend) << '\n';
         output << prefix << "device_format=" << decision.device_format << '\n';
+        output << prefix << "payload_transcode_target=" << decision.payload_transcode_target << '\n';
+        output << prefix << "format_support_evidence_id=" << decision.format_support_evidence_id << '\n';
+        output << prefix << "official_format_support_api=" << decision.official_format_support_api << '\n';
         output << prefix << "compression=" << texture_compression_kind_name_v2(decision.compression) << '\n';
         output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision.transcode) << '\n';
         output << prefix << "estimated_gpu_bytes=" << decision.estimated_gpu_bytes << '\n';
@@ -1419,6 +1425,9 @@ std::string serialize_environment_texture_geasset_metadata_document_v1(
         const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
         output << prefix << "backend=" << texture_cook_backend_name_v1(decision.backend) << '\n';
         output << prefix << "device_format=" << decision.device_format << '\n';
+        output << prefix << "payload_transcode_target=" << decision.payload_transcode_target << '\n';
+        output << prefix << "format_support_evidence_id=" << decision.format_support_evidence_id << '\n';
+        output << prefix << "official_format_support_api=" << decision.official_format_support_api << '\n';
         output << prefix << "compression=" << texture_compression_kind_name_v2(decision.compression) << '\n';
         output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision.transcode) << '\n';
         output << prefix << "estimated_gpu_bytes=" << decision.estimated_gpu_bytes << '\n';

@@ -509,6 +509,9 @@ void append_backend_policy_rows(std::ostringstream& output, const TextureCookMet
         const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
         output << prefix << "backend=" << texture_cook_backend_name_v1(decision->backend) << '\n';
         output << prefix << "device_format=" << decision->device_format << '\n';
+        output << prefix << "payload_transcode_target=" << decision->payload_transcode_target << '\n';
+        output << prefix << "format_support_evidence_id=" << decision->format_support_evidence_id << '\n';
+        output << prefix << "official_format_support_api=" << decision->official_format_support_api << '\n';
         output << prefix << "compression=" << texture_compression_kind_name_v2(decision->compression) << '\n';
         output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision->transcode) << '\n';
         output << prefix << "estimated_gpu_bytes=" << decision->estimated_gpu_bytes << '\n';
@@ -579,6 +582,7 @@ serialize_environment_texture_geasset_payload_v1(const EnvironmentTextureGeasset
 
 struct TextureBackendFormatSelection {
     std::string device_format;
+    std::string payload_transcode_target;
     TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
     TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
     std::uint64_t estimated_gpu_bytes{0};
@@ -594,6 +598,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::d3d12:
             return TextureBackendFormatSelection{
                 .device_format = "DXGI_FORMAT_R16G16B16A16_FLOAT",
+                .payload_transcode_target = "not_required",
                 .compression = TextureCompressionKindV2::none,
                 .transcode = TextureCookTranscodeKindV1::offline_policy,
                 .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
@@ -605,6 +610,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::vulkan_android:
             return TextureBackendFormatSelection{
                 .device_format = "VK_FORMAT_R16G16B16A16_SFLOAT",
+                .payload_transcode_target = "not_required",
                 .compression = TextureCompressionKindV2::none,
                 .transcode = TextureCookTranscodeKindV1::offline_policy,
                 .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
@@ -616,6 +622,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::metal_ios:
             return TextureBackendFormatSelection{
                 .device_format = "MTLPixelFormatRGBA16Float",
+                .payload_transcode_target = "not_required",
                 .compression = TextureCompressionKindV2::none,
                 .transcode = TextureCookTranscodeKindV1::offline_policy,
                 .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
@@ -634,6 +641,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::d3d12:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "DXGI_FORMAT_BC7_UNORM_SRGB" : "DXGI_FORMAT_BC7_UNORM",
+                .payload_transcode_target = "KTX_TTF_BC7_RGBA",
                 .compression = TextureCompressionKindV2::bc7,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -644,6 +652,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::vulkan:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "VK_FORMAT_BC7_SRGB_BLOCK" : "VK_FORMAT_BC7_UNORM_BLOCK",
+                .payload_transcode_target = "KTX_TTF_BC7_RGBA",
                 .compression = TextureCompressionKindV2::bc7,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -654,6 +663,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::metal_macos:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
                 .compression = TextureCompressionKindV2::astc_4x4,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -664,6 +674,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::vulkan_android:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "VK_FORMAT_ASTC_4x4_SRGB_BLOCK" : "VK_FORMAT_ASTC_4x4_UNORM_BLOCK",
+                .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
                 .compression = TextureCompressionKindV2::astc_4x4,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -674,6 +685,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::metal_ios:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
                 .compression = TextureCompressionKindV2::astc_4x4,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -1655,6 +1667,13 @@ plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1&
         metadata.backend_decisions.push_back(TextureCookBackendDecisionV1{
             .backend = backend,
             .device_format = selection.device_format.empty() ? "unsupported" : selection.device_format,
+            .payload_transcode_target = supported && !selection.payload_transcode_target.empty()
+                                            ? selection.payload_transcode_target
+                                            : "unsupported",
+            .format_support_evidence_id =
+                evidence == nullptr || !clean_text_token(evidence->evidence_id) ? "missing" : evidence->evidence_id,
+            .official_format_support_api =
+                evidence == nullptr || !clean_text_token(evidence->official_api) ? "missing" : evidence->official_api,
             .compression = selection.compression == TextureCompressionKindV2::unknown ? TextureCompressionKindV2::none
                                                                                       : selection.compression,
             .transcode = selection.transcode == TextureCookTranscodeKindV1::unknown

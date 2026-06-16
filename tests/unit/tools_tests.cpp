@@ -8173,6 +8173,20 @@ MK_TEST("texture backend format policy records all platform ktx basis transcode 
     MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::vulkan_android).device_format ==
                "VK_FORMAT_ASTC_4x4_SRGB_BLOCK");
     MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::metal_ios).device_format == "MTLPixelFormatASTC_4x4_sRGB");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::d3d12).payload_transcode_target == "KTX_TTF_BC7_RGBA");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::vulkan).payload_transcode_target == "KTX_TTF_BC7_RGBA");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::metal_macos).payload_transcode_target ==
+               "KTX_TTF_ASTC_4x4_RGBA");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::vulkan_android).payload_transcode_target ==
+               "KTX_TTF_ASTC_4x4_RGBA");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::metal_ios).payload_transcode_target ==
+               "KTX_TTF_ASTC_4x4_RGBA");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::d3d12).format_support_evidence_id ==
+               "host.windows.d3d12.format-support");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::vulkan).format_support_evidence_id ==
+               "host.linux.vulkan.format-properties2");
+    MK_REQUIRE(decision_for(mirakana::TextureCookBackendV1::metal_macos).official_format_support_api ==
+               "Metal Feature Set Tables MTLPixelFormat texture read");
     for (const auto& decision : result.metadata->backend_decisions) {
         MK_REQUIRE(decision.supported);
         MK_REQUIRE(decision.host_validated);
@@ -8182,7 +8196,59 @@ MK_TEST("texture backend format policy records all platform ktx basis transcode 
                                                 : mirakana::TextureCompressionKindV2::astc_4x4));
         MK_REQUIRE(decision.transcode == mirakana::TextureCookTranscodeKindV1::basis_transcode_policy);
         MK_REQUIRE(decision.estimated_gpu_bytes == 80U);
+        MK_REQUIRE(!decision.format_support_evidence_id.empty());
+        MK_REQUIRE(!decision.official_format_support_api.empty());
     }
+    const auto serialized = mirakana::serialize_texture_cook_metadata_document_v1(*result.metadata);
+    MK_REQUIRE(serialized.find("texture.backend.0.payload_transcode_target=KTX_TTF_BC7_RGBA\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("texture.backend.1.payload_transcode_target=KTX_TTF_BC7_RGBA\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("texture.backend.2.payload_transcode_target=KTX_TTF_ASTC_4x4_RGBA\n") !=
+               std::string::npos);
+    MK_REQUIRE(serialized.find("texture.backend.0.format_support_evidence_id=host.windows.d3d12.format-support\n") !=
+               std::string::npos);
+}
+
+MK_TEST("texture backend format policy suppresses executable transcode targets for unsupported ktx basis rows") {
+    const mirakana::TextureSourceDocumentV2 source{
+        .source_path = "source/textures/environment/studio.ktx2",
+        .source_hash = "sha256:444455556666777788889999aaaabbbbccccddddeeeeffff0000111122223333",
+        .provenance_id = "provenance.environment.studio",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::ktx2_basis,
+        .width = 8U,
+        .height = 8U,
+        .color_space = mirakana::TextureColorSpaceV2::srgb,
+        .sampler_class = mirakana::TextureSamplerClassV2::color,
+        .ktx2_basis =
+            mirakana::TextureKtx2BasisSourceReviewV2{
+                .vk_format = "VK_FORMAT_UNDEFINED",
+                .level_count = 2U,
+                .layer_count = 1U,
+                .face_count = 1U,
+                .supercompression = mirakana::TextureCompressionKindV2::basis_lz,
+                .basis_codec = mirakana::TexturePixelEncodingV2::basis_etc1s,
+                .requires_transcoding = true,
+            },
+    };
+
+    const auto result = mirakana::plan_texture_backend_format_policy_v1(mirakana::TextureBackendFormatPolicyRequestV1{
+        .source = source,
+        .backend_evidence = {},
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.metadata.has_value());
+    MK_REQUIRE(result.metadata->backend_decisions.size() == 5U);
+    for (const auto& decision : result.metadata->backend_decisions) {
+        MK_REQUIRE(!decision.supported);
+        MK_REQUIRE(!decision.host_validated);
+        MK_REQUIRE(decision.payload_transcode_target == "unsupported");
+        MK_REQUIRE(!decision.diagnostic.empty());
+    }
+    const auto serialized = mirakana::serialize_texture_cook_metadata_document_v1(*result.metadata);
+    MK_REQUIRE(serialized.find("KTX_TTF_BC7_RGBA") == std::string::npos);
+    MK_REQUIRE(serialized.find("KTX_TTF_ASTC_4x4_RGBA") == std::string::npos);
+    MK_REQUIRE(serialized.find("texture.backend.0.payload_transcode_target=unsupported\n") != std::string::npos);
 }
 
 MK_TEST("environment texture geasset metadata planner records unsupported host diagnostics") {

@@ -211,6 +211,10 @@ foreach ($needle in @(
         "EnvironmentTexturePayloadCookResultV1",
         "EnvironmentTexturePayloadCookDiagnostic",
         "cook_environment_texture_payload_v1",
+        "TextureCookBackendDecisionV1",
+        "payload_transcode_target",
+        "format_support_evidence_id",
+        "official_format_support_api",
         "backend-target BC7/ASTC compressed payload execution",
         "environment_asset_pipeline_openexr_ktx_basis_ready",
         "broad asset-pipeline readiness"

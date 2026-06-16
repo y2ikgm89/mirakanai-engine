@@ -70,6 +70,9 @@ namespace {
         mirakana::TextureCookBackendDecisionV1{
             .backend = mirakana::TextureCookBackendV1::d3d12,
             .device_format = "DXGI_FORMAT_BC6H_UF16",
+            .payload_transcode_target = "not_required",
+            .format_support_evidence_id = "host.windows.d3d12.format-support",
+            .official_format_support_api = "ID3D12Device::CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT)",
             .compression = mirakana::TextureCompressionKindV2::bc6h,
             .transcode = mirakana::TextureCookTranscodeKindV1::offline_policy,
             .estimated_gpu_bytes = 1'048'576,
@@ -80,6 +83,9 @@ namespace {
         mirakana::TextureCookBackendDecisionV1{
             .backend = mirakana::TextureCookBackendV1::vulkan,
             .device_format = "VK_FORMAT_BC6H_UFLOAT_BLOCK",
+            .payload_transcode_target = "not_required",
+            .format_support_evidence_id = "host.linux.vulkan.format-properties2",
+            .official_format_support_api = "vkGetPhysicalDeviceFormatProperties2 optimalTilingFeatures",
             .compression = mirakana::TextureCompressionKindV2::bc6h,
             .transcode = mirakana::TextureCookTranscodeKindV1::offline_policy,
             .estimated_gpu_bytes = 1'048'576,
@@ -90,6 +96,9 @@ namespace {
         mirakana::TextureCookBackendDecisionV1{
             .backend = mirakana::TextureCookBackendV1::metal_macos,
             .device_format = "MTLPixelFormatRGBA16Float",
+            .payload_transcode_target = "not_required",
+            .format_support_evidence_id = "host.macos.metal.pixel-format-table",
+            .official_format_support_api = "Metal Feature Set Tables MTLPixelFormat texture read",
             .compression = mirakana::TextureCompressionKindV2::none,
             .transcode = mirakana::TextureCookTranscodeKindV1::not_required,
             .estimated_gpu_bytes = 16'777'216,
@@ -100,6 +109,9 @@ namespace {
         mirakana::TextureCookBackendDecisionV1{
             .backend = mirakana::TextureCookBackendV1::vulkan_android,
             .device_format = "VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK",
+            .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
+            .format_support_evidence_id = "host.android.vulkan.format-properties2",
+            .official_format_support_api = "vkGetPhysicalDeviceFormatProperties2 optimalTilingFeatures",
             .compression = mirakana::TextureCompressionKindV2::astc_4x4,
             .transcode = mirakana::TextureCookTranscodeKindV1::basis_transcode_policy,
             .estimated_gpu_bytes = 1'048'576,
@@ -110,6 +122,9 @@ namespace {
         mirakana::TextureCookBackendDecisionV1{
             .backend = mirakana::TextureCookBackendV1::metal_ios,
             .device_format = "MTLPixelFormatASTC_4x4_HDR",
+            .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
+            .format_support_evidence_id = "host.ios.metal.pixel-format-table",
+            .official_format_support_api = "Metal Feature Set Tables MTLPixelFormat texture read",
             .compression = mirakana::TextureCompressionKindV2::astc_4x4,
             .transcode = mirakana::TextureCookTranscodeKindV1::basis_transcode_policy,
             .estimated_gpu_bytes = 1'048'576,
@@ -209,6 +224,8 @@ MK_TEST("texture cook metadata serializes backend policy rows and host diagnosti
     MK_REQUIRE(text.contains("texture.backend_policy_count=5\n"));
     MK_REQUIRE(text.contains("texture.backend.0.backend=d3d12\n"));
     MK_REQUIRE(text.contains("texture.backend.0.device_format=DXGI_FORMAT_BC6H_UF16\n"));
+    MK_REQUIRE(text.contains("texture.backend.0.payload_transcode_target=not_required\n"));
+    MK_REQUIRE(text.contains("texture.backend.0.format_support_evidence_id=host.windows.d3d12.format-support\n"));
     MK_REQUIRE(text.contains("texture.backend.1.backend=vulkan\n"));
     MK_REQUIRE(text.contains("texture.backend.1.host_validated=false\n"));
     MK_REQUIRE(text.contains("texture.backend.1.diagnostic=host-gated:vulkan-format-feature-query\n"));
@@ -244,6 +261,8 @@ MK_TEST("environment texture geasset metadata serializes deterministic cook prov
     MK_REQUIRE(text.contains("source.license_id=LicenseRef-Proprietary\n"));
     MK_REQUIRE(text.contains("texture.color_space=scene_linear\n"));
     MK_REQUIRE(text.contains("texture.mip_count=1\n"));
+    MK_REQUIRE(text.contains("texture.backend.0.payload_transcode_target=not_required\n"));
+    MK_REQUIRE(text.contains("texture.backend.0.format_support_evidence_id=host.windows.d3d12.format-support\n"));
     MK_REQUIRE(text.contains("texture.backend.0.compression=bc6h\n"));
     MK_REQUIRE(text.contains("texture.backend.0.transcode=offline_policy\n"));
     MK_REQUIRE(text.contains("texture.max_estimated_gpu_bytes=16777216\n"));
