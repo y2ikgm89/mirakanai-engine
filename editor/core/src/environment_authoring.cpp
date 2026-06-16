@@ -70,6 +70,18 @@ void add_readiness_row(EnvironmentAuthoringInspectorModel& model, std::string id
     add_row(model, std::move(id), std::move(section), std::move(label), std::move(value), false);
 }
 
+[[nodiscard]] const EnvironmentAuthoringInspectorRow*
+find_inspector_row(const EnvironmentAuthoringInspectorModel& model, std::string_view id) noexcept {
+    const auto it =
+        std::ranges::find_if(model.rows, [id](const EnvironmentAuthoringInspectorRow& row) { return row.id == id; });
+    return it == model.rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] bool has_nonzero_row_value(const EnvironmentAuthoringInspectorModel& model, std::string_view id) {
+    const auto* row = find_inspector_row(model, id);
+    return row != nullptr && !row->value.empty() && row->value != "0";
+}
+
 void add_default_readiness_rows(EnvironmentAuthoringInspectorModel& model) {
     add_readiness_row(model, "environment.readiness.physical_sky.package_status", "Readiness", "Physical Sky Package",
                       "ready");
@@ -223,6 +235,24 @@ void add_artist_workflow_report_row(EnvironmentArtistWorkflowCommandPlan& plan, 
         .label = std::move(label),
         .value = std::move(value),
     });
+}
+
+void add_preset_library_readiness_diagnostic(EnvironmentPresetLibraryReadinessModel& model, std::string field,
+                                             std::string message) {
+    model.diagnostics.push_back(EnvironmentAuthoringDiagnosticRow{
+        .field = std::move(field),
+        .profile_id = model.profile_id,
+        .message = std::move(message),
+    });
+}
+
+void add_preset_library_readiness_requirement(EnvironmentPresetLibraryReadinessModel& model, std::string id,
+                                              std::string label, bool ready, std::string diagnostic_message) {
+    add_readiness_row(model, std::move(id), "AAA Preset Library Readiness", std::move(label),
+                      ready ? "ready" : "blocked");
+    if (!ready) {
+        add_preset_library_readiness_diagnostic(model, model.rows.back().id, std::move(diagnostic_message));
+    }
 }
 
 void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
@@ -2074,6 +2104,114 @@ mirakana::ui::UiDocument make_environment_preset_library_ui_model(const Environm
         const mirakana::ui::ElementId item_id{"environment_preset_library.rows." + row.id};
         append_label(document, item_id, "environment_preset_library.rows." + row.id + ".section", row.section);
         append_label(document, item_id, "environment_preset_library.rows." + row.id + ".value", row.value);
+    }
+
+    return document;
+}
+
+EnvironmentPresetLibraryReadinessModel
+make_environment_preset_library_readiness_model(const EnvironmentPresetLibraryReadinessDesc& desc) {
+    EnvironmentPresetLibraryReadinessModel model;
+    model.profile_id = desc.library.profile_id;
+    model.path = desc.library.path;
+    model.dirty = desc.library.dirty;
+    model.revision = desc.library.revision;
+    model.saved_revision = desc.library.saved_revision;
+    model.invokes_backend = desc.request_backend_execution;
+    model.exposes_native_handles = desc.request_native_handle_access;
+    model.executes_package_scripts = desc.request_package_script_execution;
+
+    const auto* provenance_row = find_inspector_row(desc.library, "environment.preset_library.pack.provenance_id");
+    const auto* license_row = find_inspector_row(desc.library, "environment.preset_library.pack.license_id");
+    const auto* sample_row = find_inspector_row(desc.library, "environment.preset_library.sample.consumption_evidence");
+
+    const bool pack_validation_ready = desc.library.status == EnvironmentAuthoringStatus::ready;
+    const bool budget_rows_ready =
+        has_nonzero_row_value(desc.library, "environment.preset_library.pack.package_size_budget_bytes") &&
+        has_nonzero_row_value(desc.library, "environment.preset_library.pack.installed_size_budget_bytes") &&
+        has_nonzero_row_value(desc.library, "environment.preset_library.pack.decoded_memory_budget_bytes") &&
+        has_nonzero_row_value(desc.library, "environment.preset_library.pack.gpu_memory_budget_bytes");
+    const bool license_and_provenance_ready = desc.license_and_provenance_ready && provenance_row != nullptr &&
+                                              !provenance_row->value.empty() && license_row != nullptr &&
+                                              !license_row->value.empty();
+    const bool editor_browsing_ready = desc.editor_browsing_rows_ready && !desc.library.rows.empty();
+    const bool sample_scene_consumption_ready =
+        desc.sample_scene_consumption_ready && sample_row != nullptr && sample_row->value == "ready";
+    const bool unsafe_request_absent =
+        !desc.request_backend_execution && !desc.request_package_script_execution && !desc.request_native_handle_access;
+
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.pack_validation",
+                                             "Preset Pack Validation", pack_validation_ready,
+                                             "preset pack validation must be ready");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.budget_rows",
+                                             "Package And Memory Budgets", budget_rows_ready,
+                                             "package, installed, decoded-memory, and GPU-memory budgets must be set");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.license_and_provenance",
+                                             "License And Provenance", license_and_provenance_ready,
+                                             "license and provenance evidence must be reviewed");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.package_smoke",
+                                             "Package Smoke", desc.package_smoke_ready,
+                                             "package smoke evidence must pass");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.installed_package_smoke",
+                                             "Installed Package Smoke", desc.installed_package_smoke_ready,
+                                             "installed package smoke evidence must pass");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.editor_browsing",
+                                             "Editor Browsing Rows", editor_browsing_ready,
+                                             "editor browsing rows must be present");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.sample_scene_consumption",
+                                             "Sample Scene Consumption", sample_scene_consumption_ready,
+                                             "sample scene consumption evidence must be ready");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.external_asset_notices",
+                                             "External Asset Notices", desc.external_asset_notices_ready,
+                                             "external asset notices must be recorded or explicitly not required");
+    add_preset_library_readiness_requirement(model, "environment.preset_library.readiness.no_unsafe_execution",
+                                             "No Unsafe Execution", unsafe_request_absent,
+                                             "preset-library readiness review must not execute backend work, package "
+                                             "scripts, or expose native handles");
+
+    model.environment_aaa_preset_library_ready =
+        model.diagnostics.empty() && pack_validation_ready && budget_rows_ready && license_and_provenance_ready &&
+        desc.package_smoke_ready && desc.installed_package_smoke_ready && editor_browsing_ready &&
+        sample_scene_consumption_ready && desc.external_asset_notices_ready && unsafe_request_absent;
+    model.status = model.environment_aaa_preset_library_ready ? EnvironmentAuthoringStatus::ready
+                                                              : EnvironmentAuthoringStatus::blocked;
+
+    add_readiness_row(model, "environment.preset_library.readiness.environment_aaa_preset_library_ready",
+                      "AAA Preset Library Readiness", "AAA Preset Library Ready",
+                      model.environment_aaa_preset_library_ready ? "ready" : "blocked");
+
+    return model;
+}
+
+mirakana::ui::UiDocument
+make_environment_preset_library_readiness_ui_model(const EnvironmentPresetLibraryReadinessModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_preset_library_readiness", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Preset Library Readiness";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_preset_library_readiness"};
+    append_label(document, root_id, "environment_preset_library_readiness.path", model.path);
+    append_label(document, root_id, "environment_preset_library_readiness.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_preset_library_readiness.environment_aaa_preset_library_ready",
+                 model.environment_aaa_preset_library_ready ? "ready" : "blocked");
+
+    auto rows_root = make_child("environment_preset_library_readiness.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Preset Library Readiness Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_preset_library_readiness.rows"};
+
+    for (const auto& row : model.rows) {
+        auto item = make_child("environment_preset_library_readiness.rows." + row.id, rows_id,
+                               mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = false;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_preset_library_readiness.rows." + row.id};
+        append_label(document, item_id, "environment_preset_library_readiness.rows." + row.id + ".section",
+                     row.section);
+        append_label(document, item_id, "environment_preset_library_readiness.rows." + row.id + ".value", row.value);
     }
 
     return document;

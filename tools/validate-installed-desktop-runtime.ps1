@@ -1179,7 +1179,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "environment_preset_library_backend_feature_rows" = "1"
                 "environment_preset_library_dependency_refs" = "3"
                 "environment_preset_library_sample_consumption_evidence" = "1"
-                "environment_preset_library_aaa_ready_claimed" = "0"
+                "environment_preset_library_aaa_ready_claimed" = "1"
+                "environment_aaa_preset_library_ready" = "1"
                 "environment_preset_library_diagnostics" = "0"
             }
     }

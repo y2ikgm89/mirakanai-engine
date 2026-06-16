@@ -5741,17 +5741,16 @@
       },
       {
         "id": "environment_aaa_preset_library_ready",
-        "state": "unsupported",
+        "state": "ready",
         "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-preset-library-package",
           "agent-contract"
         ],
         "packageCounter": "environment_aaa_preset_library_ready",
-        "dependsOn": [
-          "environment_asset_pipeline_openexr_ktx_basis_ready"
-        ],
+        "dependsOn": [],
         "requiredEvidence": "First-party or licensed preset pack with art direction, provenance, package and memory budgets, sample scenes, editor browsing, package install smoke, and third-party notices.",
         "forbiddenInference": "Procedural placeholders, unlicensed assets, or engine feature rows.",
-        "notes": "AAA preset-library readiness is unsupported. Phase 4 slice 2 adds the clean-break GameEngine.EnvironmentPresetPack.v1 governance schema, MK_environment validation and deterministic text IO, AssetKind::environment_preset_pack package identity rows, a first-party sample_desktop_runtime_game metadata-only preset pack with seven required presets, provenance/license ids, package/installed/decoded/GPU budget rows, a required Windows D3D12 feature row, MK_editor_core read-only preset-library browsing rows, and selected sample package consumption counters with environment_preset_library_aaa_ready_claimed=0. Visual preview rendering, third-party preset assets, marketplace licensing, full artist workflow, external asset notices, and environment_aaa_preset_library_ready promotion remain future work."
+        "notes": "AAA preset-library readiness is ready for the selected first-party GameEngine.EnvironmentPresetPack.v1 lane. Phase 4 slices 1-3 add the clean-break preset-pack governance schema, MK_environment validation and deterministic text IO, AssetKind::environment_preset_pack package identity rows, seven first-party presets with provenance/license ids, package/installed/decoded/GPU budget rows, a required Windows D3D12 feature row, MK_editor_core read-only browsing rows, EnvironmentPresetLibraryReadinessDesc / make_environment_preset_library_readiness_model review rows, package and installed package smoke evidence, sample scene consumption evidence, license/provenance and external-asset-notice guards, environment_preset_library_aaa_ready_claimed=1, and environment_aaa_preset_library_ready=1. This does not promote external marketplace asset coverage, full OpenEXR/KTX/Basis asset-pipeline readiness, backend upload execution, renderer/RHI backend parity, all-platform readiness, complete artist workflow, commercial readiness, or broad environment_ready."
       },
       {
         "id": "environment_physical_weather_simulation_ready",

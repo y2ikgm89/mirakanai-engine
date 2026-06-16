@@ -132,6 +132,23 @@ struct EnvironmentPresetLibraryModel : EnvironmentAuthoringInspectorModel {
     std::string pack_id;
 };
 
+struct EnvironmentPresetLibraryReadinessDesc {
+    EnvironmentPresetLibraryModel library;
+    bool package_smoke_ready{false};
+    bool installed_package_smoke_ready{false};
+    bool editor_browsing_rows_ready{false};
+    bool sample_scene_consumption_ready{false};
+    bool license_and_provenance_ready{false};
+    bool external_asset_notices_ready{false};
+    bool request_backend_execution{false};
+    bool request_package_script_execution{false};
+    bool request_native_handle_access{false};
+};
+
+struct EnvironmentPresetLibraryReadinessModel : EnvironmentAuthoringInspectorModel {
+    bool environment_aaa_preset_library_ready{false};
+};
+
 enum class EnvironmentPackageRegistrationDraftStatus : std::uint8_t {
     add_runtime_file = 0,
     already_registered,
@@ -611,6 +628,10 @@ make_environment_authoring_ui_model(const EnvironmentAuthoringInspectorModel& mo
 make_environment_preset_library_model(const EnvironmentPresetLibraryDesc& desc);
 [[nodiscard]] mirakana::ui::UiDocument
 make_environment_preset_library_ui_model(const EnvironmentPresetLibraryModel& model);
+[[nodiscard]] EnvironmentPresetLibraryReadinessModel
+make_environment_preset_library_readiness_model(const EnvironmentPresetLibraryReadinessDesc& desc);
+[[nodiscard]] mirakana::ui::UiDocument
+make_environment_preset_library_readiness_ui_model(const EnvironmentPresetLibraryReadinessModel& model);
 
 [[nodiscard]] std::vector<EnvironmentPackageCandidateRow>
 make_environment_package_candidate_rows(const EnvironmentAuthoringDocument& document,

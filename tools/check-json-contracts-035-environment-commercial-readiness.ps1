@@ -50,7 +50,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_platform_android_vulkan_ready = "host-gated"
     environment_broad_optimization_ready = "unsupported"
     environment_asset_pipeline_openexr_ktx_basis_ready = "unsupported"
-    environment_aaa_preset_library_ready = "unsupported"
+    environment_aaa_preset_library_ready = "ready"
     environment_physical_weather_simulation_ready = "unsupported"
     environment_artist_workflow_ready = "unsupported"
 }
