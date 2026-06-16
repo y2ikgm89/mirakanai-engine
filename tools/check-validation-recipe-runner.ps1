@@ -229,6 +229,7 @@ Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") |
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @("-File", "validate-renderer-metal-apple.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-environment-aggregate-apple-host-evidence" -ExpectedArgv @("-File", "validate-environment-metal-host-aggregate.ps1") | Out-Null
+Assert-DryRunRecipe -Recipe "environment-weather-metal-solver-host-gate" -ExpectedArgv @("-File", "validate-environment-weather-metal-solver-host-gate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "network-enet" -ExpectedArgv @("-File", "validate-network-enet.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-editor" -ExpectedArgv @("-File", "build-editor.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-scene-gpu-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_desktop_runtime_game") | Out-Null
@@ -336,6 +337,10 @@ $sampleEnvironmentWeatherSimulationPackageDryRun = Assert-DryRunRecipe -Recipe "
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-weather-simulation-package", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentWeatherSimulationPackageDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-weather-simulation-package"
 }
+$sampleEnvironmentWeatherSimulationVulkanSolverDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-weather-simulation-vulkan-solver-package", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentWeatherSimulationVulkanSolverDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package"
+}
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
 $materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-scene-shaders", "--require-material-graph-authoring")) {
@@ -402,6 +407,11 @@ if ($missingVulkanTextureAssetPipelineUploadGate.status -ne "rejected" -or @($mi
     Write-Error "strict Vulkan environment texture asset-pipeline upload recipe must require vulkan-strict acknowledgement before execute"
 }
 
+$missingVulkanWeatherSolverGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package") -ExpectedExitCode 2
+if ($missingVulkanWeatherSolverGate.status -ne "rejected" -or @($missingVulkanWeatherSolverGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan environment weather solver recipe must require vulkan-strict acknowledgement before execute"
+}
+
 $missingD3d12TextureAssetPipelineCompressedUploadGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-texture-asset-pipeline-d3d12-compressed-upload") -ExpectedExitCode 2
 if ($missingD3d12TextureAssetPipelineCompressedUploadGate.status -ne "rejected" -or @($missingD3d12TextureAssetPipelineCompressedUploadGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "D3D12 environment texture asset-pipeline compressed upload recipe must require d3d12-windows-primary acknowledgement before execute"
@@ -440,6 +450,11 @@ if ($missingMetalAppleGate.status -ne "rejected" -or @($missingMetalAppleGate.di
 $missingEnvironmentMetalAggregateGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "renderer-metal-environment-aggregate-apple-host-evidence") -ExpectedExitCode 2
 if ($missingEnvironmentMetalAggregateGate.status -ne "rejected" -or @($missingEnvironmentMetalAggregateGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "renderer-metal-environment-aggregate-apple-host-evidence recipe must require metal-apple acknowledgement before execute"
+}
+
+$missingEnvironmentWeatherMetalSolverGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "environment-weather-metal-solver-host-gate") -ExpectedExitCode 2
+if ($missingEnvironmentWeatherMetalSolverGate.status -ne "rejected" -or @($missingEnvironmentWeatherMetalSolverGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "environment-weather-metal-solver-host-gate recipe must require metal-apple acknowledgement before execute"
 }
 
 # Full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` / `tools/check-ai-integration.ps1` runs once from `tools/validate.ps1` after this script.

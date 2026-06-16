@@ -1,5 +1,6 @@
 add_library(MK_rhi_metal
     src/metal_backend.cpp
+    src/metal_environment_weather_solver.cpp
 )
 
 target_include_directories(MK_rhi_metal
@@ -28,8 +29,24 @@ if(APPLE)
         DEPENDS "${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
     )
     set_property(GLOBAL PROPERTY MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB "${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}")
+    set(MK_METAL_ENVIRONMENT_WEATHER_SOLVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/weather_simulation.metal")
+    set(MK_METAL_ENVIRONMENT_WEATHER_SOLVER_AIR "${CMAKE_CURRENT_BINARY_DIR}/weather_simulation.air")
+    set(MK_METAL_ENVIRONMENT_WEATHER_SOLVER_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/weather_simulation.metallib")
+    add_custom_command(
+        OUTPUT "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_METALLIB}"
+        COMMAND "${MK_APPLE_XCRUN}" --sdk macosx metal -c "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_SOURCE}" -o "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_AIR}"
+        COMMAND "${MK_APPLE_XCRUN}" --sdk macosx metallib "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_AIR}" -o "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_METALLIB}"
+        DEPENDS "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_SOURCE}"
+        BYPRODUCTS "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_AIR}"
+        VERBATIM
+    )
+    add_custom_target(MK_metal_environment_weather_solver_metallib
+        DEPENDS "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_METALLIB}"
+    )
+    set_property(GLOBAL PROPERTY MK_METAL_ENVIRONMENT_WEATHER_SOLVER_METALLIB "${MK_METAL_ENVIRONMENT_WEATHER_SOLVER_METALLIB}")
     target_sources(MK_rhi_metal PRIVATE
         src/metal_native.mm
+        src/metal_environment_weather_solver_native.mm
     )
     find_library(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED)
     find_library(MK_APPLE_METAL_FRAMEWORK Metal REQUIRED)
