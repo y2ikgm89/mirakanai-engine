@@ -254,7 +254,53 @@ using KeyValues = std::unordered_map<std::string, std::string>;
            valid_environment_payload_stage(payload);
 }
 
+[[nodiscard]] std::vector<TextureCookBackendDecisionV1>
+parse_environment_texture_backend_decisions(const KeyValues& values, std::uint32_t count,
+                                            std::string_view diagnostic_name) {
+    std::vector<TextureCookBackendDecisionV1> decisions;
+    decisions.reserve(count);
+    for (std::uint32_t index = 0; index < count; ++index) {
+        const auto prefix = "texture.backend." + std::to_string(index) + ".";
+        decisions.push_back(TextureCookBackendDecisionV1{
+            .backend =
+                parse_texture_cook_backend_v1(required_payload_value(values, prefix + "backend", diagnostic_name)),
+            .device_format = required_payload_value(values, prefix + "device_format", diagnostic_name),
+            .payload_transcode_target = optional_payload_value(values, prefix + "payload_transcode_target") != nullptr
+                                            ? *optional_payload_value(values, prefix + "payload_transcode_target")
+                                            : std::string{},
+            .format_support_evidence_id =
+                optional_payload_value(values, prefix + "format_support_evidence_id") != nullptr
+                    ? *optional_payload_value(values, prefix + "format_support_evidence_id")
+                    : std::string{},
+            .official_format_support_api =
+                optional_payload_value(values, prefix + "official_format_support_api") != nullptr
+                    ? *optional_payload_value(values, prefix + "official_format_support_api")
+                    : std::string{},
+            .compression = parse_texture_compression_kind_v2(
+                required_payload_value(values, prefix + "compression", diagnostic_name)),
+            .transcode = parse_texture_cook_transcode_kind_v1(
+                required_payload_value(values, prefix + "transcode", diagnostic_name)),
+            .estimated_gpu_bytes = parse_payload_u64(
+                required_payload_value(values, prefix + "estimated_gpu_bytes", diagnostic_name), diagnostic_name),
+            .supported = parse_payload_bool(required_payload_value(values, prefix + "supported", diagnostic_name),
+                                            diagnostic_name),
+            .host_validated = parse_payload_bool(
+                required_payload_value(values, prefix + "host_validated", diagnostic_name), diagnostic_name),
+            .diagnostic = optional_payload_value(values, prefix + "diagnostic") != nullptr
+                              ? *optional_payload_value(values, prefix + "diagnostic")
+                              : std::string{},
+        });
+    }
+    return decisions;
+}
+
 void append_environment_texture_upload_plan_diagnostic(RuntimeEnvironmentTexturePayloadUploadPlanResult& result,
+                                                       std::string code, std::string message) {
+    result.diagnostics.push_back(
+        RuntimeEnvironmentTexturePayloadUploadPlanDiagnostic{.code = std::move(code), .message = std::move(message)});
+}
+
+void append_environment_texture_upload_plan_diagnostic(RuntimeEnvironmentTextureBackendPayloadUploadPlanResult& result,
                                                        std::string code, std::string message) {
     result.diagnostics.push_back(
         RuntimeEnvironmentTexturePayloadUploadPlanDiagnostic{.code = std::move(code), .message = std::move(message)});
@@ -293,6 +339,28 @@ expected_environment_texture_upload_source_bytes(const RuntimeEnvironmentTexture
     }
     overflow = false;
     return pixels * bytes_per_pixel64;
+}
+
+[[nodiscard]] std::uint64_t expected_bc7_payload_bytes(std::uint32_t width, std::uint32_t height,
+                                                       bool& overflow) noexcept {
+    overflow = true;
+    if (width == 0U || height == 0U) {
+        return 0;
+    }
+    constexpr std::uint64_t block_width = 4;
+    constexpr std::uint64_t block_height = 4;
+    constexpr std::uint64_t block_bytes = 16;
+    const auto block_columns = (static_cast<std::uint64_t>(width) + block_width - 1U) / block_width;
+    const auto block_rows = (static_cast<std::uint64_t>(height) + block_height - 1U) / block_height;
+    if (block_columns > std::numeric_limits<std::uint64_t>::max() / block_rows) {
+        return 0;
+    }
+    const auto blocks = block_columns * block_rows;
+    if (blocks > std::numeric_limits<std::uint64_t>::max() / block_bytes) {
+        return 0;
+    }
+    overflow = false;
+    return blocks * block_bytes;
 }
 
 [[nodiscard]] bool valid_physics_collision_token(std::string_view value, bool require_non_empty) noexcept {
@@ -618,6 +686,9 @@ runtime_environment_texture_payload(const RuntimeAssetRecord& record) {
 
         const auto& payload_hex =
             required_payload_value(values, "texture.payload_data_hex", "runtime environment texture");
+        const auto backend_policy_count = parse_payload_u32(
+            required_payload_value(values, "texture.backend_policy_count", "runtime environment texture"),
+            "runtime environment texture");
         RuntimeEnvironmentTexturePayload payload{
             .asset = record.asset,
             .handle = record.handle,
@@ -648,9 +719,7 @@ runtime_environment_texture_payload(const RuntimeAssetRecord& record) {
             .max_estimated_gpu_bytes = parse_payload_u64(
                 required_payload_value(values, "texture.max_estimated_gpu_bytes", "runtime environment texture"),
                 "runtime environment texture"),
-            .backend_policy_count = parse_payload_u32(
-                required_payload_value(values, "texture.backend_policy_count", "runtime environment texture"),
-                "runtime environment texture"),
+            .backend_policy_count = backend_policy_count,
             .unsupported_host_diagnostic_count =
                 parse_payload_u32(required_payload_value(values, "texture.unsupported_host_diagnostic_count",
                                                          "runtime environment texture"),
@@ -673,6 +742,8 @@ runtime_environment_texture_payload(const RuntimeAssetRecord& record) {
             .broad_asset_pipeline_ready = parse_payload_flag(
                 required_payload_value(values, "texture.broad_asset_pipeline_ready", "runtime environment texture"),
                 "runtime environment texture"),
+            .backend_decisions = parse_environment_texture_backend_decisions(values, backend_policy_count,
+                                                                             "runtime environment texture"),
             .bytes = parse_optional_hex_bytes(values, "texture.payload_data_hex", "runtime environment texture"),
         };
 
@@ -711,6 +782,10 @@ runtime_environment_texture_payload(const RuntimeAssetRecord& record) {
 
 bool RuntimeEnvironmentTexturePayloadUploadPlanResult::succeeded() const noexcept {
     return upload_plan_ready && diagnostics.empty();
+}
+
+bool RuntimeEnvironmentTextureBackendPayloadUploadPlanResult::succeeded() const noexcept {
+    return upload_plan_ready && backend_format_support_proven && diagnostics.empty();
 }
 
 RuntimeEnvironmentTexturePayloadUploadPlanResult
@@ -803,6 +878,130 @@ plan_runtime_environment_texture_payload_upload(const RuntimeEnvironmentTextureP
         .source_bytes = expected_upload_bytes,
         .bytes = payload.bytes,
     };
+    result.upload_plan_ready = true;
+    return result;
+}
+
+RuntimeEnvironmentTextureBackendPayloadUploadPlanResult
+plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironmentTexturePayload& payload,
+                                                        TextureCookBackendV1 backend) {
+    RuntimeEnvironmentTextureBackendPayloadUploadPlanResult result{
+        .diagnostics = {},
+        .backend = backend,
+        .width = payload.width,
+        .height = payload.height,
+        .mip_count = payload.mip_count,
+        .block_width = 4,
+        .block_height = 4,
+        .block_bytes = 16,
+        .payload_bytes = static_cast<std::uint64_t>(payload.bytes.size()),
+        .upload_source_bytes = 0,
+        .upload_plan_ready = false,
+        .backend_format_support_proven = false,
+        .runtime_codec_invoked = false,
+        .runtime_basis_transcode_invoked = false,
+        .backend_api_invoked = false,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+    };
+
+    if (!valid_environment_texture_payload(payload)) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-invalid-payload",
+            "backend texture upload plan requires a validated cooked environment texture payload");
+    }
+    if (backend != TextureCookBackendV1::d3d12) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-backend-target-unsupported",
+            "backend texture upload plan currently supports only D3D12 BC7 execution evidence");
+    }
+    if (payload.source_kind != TextureSourceKindV2::ktx2_basis || !payload.basis_transcode_invoked) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-compressed-basis-transcode-required",
+            "backend texture upload plan requires prior cook-time KTX2/Basis transcode evidence");
+    }
+    if (payload.mip_count != 1U) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-mip-chain-unsupported",
+            "backend texture upload plan currently supports only single-mip compressed payload rows");
+    }
+    if (payload.bytes.empty()) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-empty-payload-bytes",
+            "backend texture upload plan requires inline cooked compressed payload bytes");
+    }
+    if (payload.payload_hash != hash_asset_cooked_content(lower_hex_from_bytes(payload.bytes))) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-payload-hash-mismatch",
+            "backend texture upload plan payload bytes do not match the recorded payload hash");
+    }
+    if (payload.gpu_upload_invoked) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-gpu-upload-claim",
+            "backend texture upload plan cannot accept payloads that already claim GPU upload execution");
+    }
+    if (payload.broad_asset_pipeline_ready) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-broad-asset-pipeline-claim",
+            "backend texture upload plan cannot accept broad asset-pipeline readiness claims");
+    }
+
+    const auto decision = std::ranges::find_if(payload.backend_decisions,
+                                               [backend](const auto& item) { return item.backend == backend; });
+    if (decision == payload.backend_decisions.end()) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-backend-policy-missing",
+            "backend texture upload plan requires a matching backend policy row");
+    } else {
+        result.device_format = decision->device_format;
+        result.payload_transcode_target = decision->payload_transcode_target;
+        result.format_support_evidence_id = decision->format_support_evidence_id;
+        result.official_format_support_api = decision->official_format_support_api;
+        result.compression = decision->compression;
+        result.transcode = decision->transcode;
+        result.backend_format_support_proven = decision->supported && decision->host_validated;
+
+        if (!decision->supported || !decision->host_validated) {
+            append_environment_texture_upload_plan_diagnostic(
+                result, "environment-texture-backend-format-support-unproven",
+                "backend texture upload plan requires host-validated official format support evidence");
+        }
+        if (decision->compression != TextureCompressionKindV2::bc7 ||
+            decision->transcode != TextureCookTranscodeKindV1::basis_transcode_policy ||
+            decision->payload_transcode_target != "KTX_TTF_BC7_RGBA") {
+            append_environment_texture_upload_plan_diagnostic(
+                result, "environment-texture-backend-compression-policy-mismatch",
+                "backend texture upload plan requires a BC7 KTX_TTF_BC7_RGBA transcode policy row");
+        }
+        if (decision->device_format != "DXGI_FORMAT_BC7_UNORM" &&
+            decision->device_format != "DXGI_FORMAT_BC7_UNORM_SRGB") {
+            append_environment_texture_upload_plan_diagnostic(
+                result, "environment-texture-backend-device-format-unsupported",
+                "backend texture upload plan requires a D3D12 BC7 device format");
+        }
+        if (decision->format_support_evidence_id.empty() ||
+            decision->official_format_support_api.find("D3D12_FEATURE_FORMAT_SUPPORT") == std::string::npos ||
+            decision->official_format_support_api.find("CheckFeatureSupport") == std::string::npos) {
+            append_environment_texture_upload_plan_diagnostic(
+                result, "environment-texture-backend-format-support-api-missing",
+                "backend texture upload plan requires official D3D12 format support API evidence");
+        }
+    }
+
+    bool byte_count_overflow = false;
+    const auto expected_upload_bytes = expected_bc7_payload_bytes(payload.width, payload.height, byte_count_overflow);
+    result.upload_source_bytes = expected_upload_bytes;
+    if (byte_count_overflow || expected_upload_bytes != static_cast<std::uint64_t>(payload.bytes.size())) {
+        append_environment_texture_upload_plan_diagnostic(
+            result, "environment-texture-byte-size-mismatch",
+            "backend texture upload plan byte count does not match BC7 block dimensions");
+    }
+
+    if (!result.diagnostics.empty()) {
+        result.backend_format_support_proven = false;
+        return result;
+    }
+
     result.upload_plan_ready = true;
     return result;
 }

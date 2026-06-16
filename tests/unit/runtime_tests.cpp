@@ -81,6 +81,10 @@ namespace {
            "texture.backend_policy_count=1\n"
            "texture.backend.0.backend=d3d12\n"
            "texture.backend.0.device_format=DXGI_FORMAT_BC7_UNORM_SRGB\n"
+           "texture.backend.0.payload_transcode_target=KTX_TTF_BC7_RGBA\n"
+           "texture.backend.0.format_support_evidence_id=d3d12-bc7-format-support\n"
+           "texture.backend.0.official_format_support_api=ID3D12Device::CheckFeatureSupport(D3D12_FEATURE_FORMAT_"
+           "SUPPORT)\n"
            "texture.backend.0.compression=bc7\n"
            "texture.backend.0.transcode=basis_transcode_policy\n"
            "texture.backend.0.estimated_gpu_bytes=64\n"
@@ -1262,6 +1266,13 @@ MK_TEST("runtime environment texture payload access ingests KTX2 Basis transcode
     MK_REQUIRE(result.payload.basis_transcode_stage == "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY");
     MK_REQUIRE(!result.payload.gpu_upload_invoked);
     MK_REQUIRE(!result.payload.broad_asset_pipeline_ready);
+    MK_REQUIRE(result.payload.backend_decisions.size() == 1);
+    MK_REQUIRE(result.payload.backend_decisions[0].backend == mirakana::TextureCookBackendV1::d3d12);
+    MK_REQUIRE(result.payload.backend_decisions[0].device_format == "DXGI_FORMAT_BC7_UNORM_SRGB");
+    MK_REQUIRE(result.payload.backend_decisions[0].payload_transcode_target == "KTX_TTF_BC7_RGBA");
+    MK_REQUIRE(result.payload.backend_decisions[0].format_support_evidence_id == "d3d12-bc7-format-support");
+    MK_REQUIRE(result.payload.backend_decisions[0].official_format_support_api.find("D3D12_FEATURE_FORMAT_SUPPORT") !=
+               std::string::npos);
 }
 
 MK_TEST("runtime environment texture upload plan converts single mip RGBA8 payload without GPU side effects") {
@@ -1307,6 +1318,52 @@ MK_TEST("runtime environment texture upload plan converts single mip RGBA8 paylo
     MK_REQUIRE(plan.payload.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
     MK_REQUIRE(plan.payload.source_bytes == 4U);
     MK_REQUIRE((plan.payload.bytes == std::vector<std::uint8_t>{0x01, 0x02, 0x03, 0x04}));
+}
+
+MK_TEST(
+    "runtime environment texture backend upload plan converts single mip D3D12 BC7 payload without GPU side effects") {
+    const auto texture = mirakana::AssetId::from_name("environment/studio-skybox-bc7-upload-plan");
+    const auto payload =
+        environment_texture_payload(texture, "ktx2_basis", "srgb", "color", 1U, "00112233445566778899aabbccddeeff",
+                                    "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA",
+                                    "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY", false, true, false, false, 4U, 4U);
+    const mirakana::runtime::RuntimeAssetRecord record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{25},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(payload),
+        .source_revision = 26,
+        .dependencies = {},
+        .content = payload,
+    };
+    const auto parsed = mirakana::runtime::runtime_environment_texture_payload(record);
+    MK_REQUIRE(parsed.succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_environment_texture_backend_payload_upload(
+        parsed.payload, mirakana::TextureCookBackendV1::d3d12);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.upload_plan_ready);
+    MK_REQUIRE(plan.backend_format_support_proven);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.backend == mirakana::TextureCookBackendV1::d3d12);
+    MK_REQUIRE(plan.device_format == "DXGI_FORMAT_BC7_UNORM_SRGB");
+    MK_REQUIRE(plan.payload_transcode_target == "KTX_TTF_BC7_RGBA");
+    MK_REQUIRE(plan.format_support_evidence_id == "d3d12-bc7-format-support");
+    MK_REQUIRE(plan.official_format_support_api.find("CheckFeatureSupport") != std::string::npos);
+    MK_REQUIRE(plan.compression == mirakana::TextureCompressionKindV2::bc7);
+    MK_REQUIRE(plan.transcode == mirakana::TextureCookTranscodeKindV1::basis_transcode_policy);
+    MK_REQUIRE(plan.block_width == 4U);
+    MK_REQUIRE(plan.block_height == 4U);
+    MK_REQUIRE(plan.block_bytes == 16U);
+    MK_REQUIRE(plan.payload_bytes == 16U);
+    MK_REQUIRE(plan.upload_source_bytes == 16U);
+    MK_REQUIRE(!plan.runtime_codec_invoked);
+    MK_REQUIRE(!plan.runtime_basis_transcode_invoked);
+    MK_REQUIRE(!plan.backend_api_invoked);
+    MK_REQUIRE(!plan.gpu_upload_invoked);
+    MK_REQUIRE(!plan.broad_asset_pipeline_ready);
 }
 
 MK_TEST("runtime environment texture upload plan fails closed for unsupported upload evidence") {

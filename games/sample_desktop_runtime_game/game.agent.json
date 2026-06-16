@@ -654,6 +654,13 @@
           "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve selected RGBA8 upload-plan-ready evidence and backend-upload non-claim counters."
         },
         {
+          "id": "runtime-assets-desktop-runtime-environment-skybox-basis-bc7-upload-texture-geasset",
+          "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_skybox_basis_bc7_upload.texture.geasset",
+          "generatedBy": "environment-commercial-excellence-v1-d3d12-bc7-compressed-upload",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve selected D3D12 BC7 compressed upload evidence and Vulkan/Metal/backend-parity non-claim counters."
+        },
+        {
           "id": "runtime-assets-desktop-runtime-default-outdoor-geenv",
           "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/default_outdoor.geenv",
           "generatedBy": "environment-system-v1-package-validation",
@@ -1752,6 +1759,7 @@
     "runtime/assets/desktop_runtime/environment_radiance_exr.texture.geasset",
     "runtime/assets/desktop_runtime/environment_skybox_basis.texture.geasset",
     "runtime/assets/desktop_runtime/environment_upload_plan_rgba8.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_skybox_basis_bc7_upload.texture.geasset",
     "runtime/assets/desktop_runtime/default_outdoor.geenv",
     "runtime/assets/desktop_runtime/triangle.mesh",
     "runtime/assets/desktop_runtime/hud.uiatlas",
@@ -1935,6 +1943,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-upload",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-texture-asset-pipeline-package','--require-environment-texture-asset-pipeline-vulkan-upload')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-texture-asset-pipeline-d3d12-compressed-upload",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-texture-asset-pipeline-package','--require-environment-texture-asset-pipeline-d3d12-compressed-upload')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-preset-library-package",

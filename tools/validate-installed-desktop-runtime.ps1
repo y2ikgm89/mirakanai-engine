@@ -177,6 +177,7 @@ $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-pos
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
 $requiresEnvironmentTextureAssetPipelineD3d12Upload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-upload"
+$requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
@@ -187,6 +188,7 @@ $requiresEnvironmentWeatherSimulationPackage = @($SmokeArgs) -contains "--requir
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
+    $requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload -or
     $requiresEnvironmentTextureAssetPipelineVulkanUpload -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
@@ -1193,6 +1195,42 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         foreach ($field in @("environment_texture_asset_pipeline_d3d12_upload_resource_transitions")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 environment texture upload positive count: $field"
+            }
+        }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline D3D12 BC7 compressed upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_requested" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_ready" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_backend_format_support_proven" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_source_row_bytes" = "16"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_compact_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_block_width" = "4"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_block_height" = "4"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_block_bytes" = "16"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_diagnostics" = "0"
+            }
+        foreach ($field in @("environment_texture_asset_pipeline_d3d12_compressed_upload_resource_transitions")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 environment texture compressed upload positive count: $field"
             }
         }
     }

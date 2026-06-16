@@ -207,6 +207,8 @@ inline constexpr std::uint32_t vulkan_format_r16g16b16a16_sfloat = 97;
 inline constexpr std::uint32_t vulkan_format_r8g8b8a8_unorm = 37;
 inline constexpr std::uint32_t vulkan_format_b8g8r8a8_unorm = 44;
 inline constexpr std::uint32_t vulkan_format_d24_unorm_s8_uint = 129;
+inline constexpr std::uint32_t vulkan_format_bc7_unorm_block = 145;
+inline constexpr std::uint32_t vulkan_format_bc7_srgb_block = 146;
 inline constexpr std::uint32_t vulkan_color_space_srgb_nonlinear = 0;
 inline constexpr std::uint32_t vulkan_image_usage_transfer_src_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_image_usage_transfer_dst_bit = 0x00000002U;
@@ -2173,6 +2175,10 @@ template <typename AvailableDeviceExtensions>
         return Format::rgba8_unorm;
     case vulkan_format_b8g8r8a8_unorm:
         return Format::bgra8_unorm;
+    case vulkan_format_bc7_unorm_block:
+        return Format::bc7_unorm;
+    case vulkan_format_bc7_srgb_block:
+        return Format::bc7_unorm_srgb;
     default:
         return Format::unknown;
     }
@@ -2180,6 +2186,11 @@ template <typename AvailableDeviceExtensions>
 
 [[nodiscard]] bool dynamic_rendering_color_format_supported(Format format) noexcept {
     return format == Format::rgba8_unorm || format == Format::bgra8_unorm;
+}
+
+[[nodiscard]] bool sampled_texture_format_supported(Format format) noexcept {
+    return dynamic_rendering_color_format_supported(format) || format == Format::depth24_stencil8 ||
+           format == Format::bc7_unorm || format == Format::bc7_unorm_srgb;
 }
 
 [[nodiscard]] bool dynamic_rendering_depth_format_supported(Format format) noexcept {
@@ -2229,6 +2240,10 @@ template <typename AvailableDeviceExtensions>
         return vulkan_format_b8g8r8a8_unorm;
     case Format::depth24_stencil8:
         return vulkan_format_d24_unorm_s8_uint;
+    case Format::bc7_unorm:
+        return vulkan_format_bc7_unorm_block;
+    case Format::bc7_unorm_srgb:
+        return vulkan_format_bc7_srgb_block;
     case Format::unknown:
         return 0;
     }
@@ -3617,10 +3632,7 @@ class VulkanRhiDevice final : public IRhiDevice {
             if (desc.format == Format::unknown) {
                 continue;
             }
-            const auto texels = static_cast<std::uint64_t>(desc.extent.width) *
-                                static_cast<std::uint64_t>(desc.extent.height) *
-                                static_cast<std::uint64_t>(desc.extent.depth);
-            total += texels * static_cast<std::uint64_t>(mirakana::rhi::bytes_per_texel(desc.format));
+            total += mirakana::rhi::format_copy_compact_bytes(desc.format, desc.extent);
         }
         diagnostics.committed_resources_byte_estimate = total;
         diagnostics.committed_resources_byte_estimate_available = true;
@@ -7507,8 +7519,7 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
         plan.diagnostic = "Vulkan runtime texture extent is required";
         return plan;
     }
-    if (!dynamic_rendering_color_format_supported(desc.texture.format) &&
-        !dynamic_rendering_depth_format_supported(desc.texture.format)) {
+    if (native_vulkan_format(desc.texture.format) == 0) {
         plan.diagnostic = "Vulkan runtime texture format is unsupported";
         return plan;
     }
@@ -7522,6 +7533,20 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
     }
     if (has_flag(desc.texture.usage, TextureUsage::shared)) {
         plan.diagnostic = "Vulkan runtime texture shared usage is not supported yet";
+        return plan;
+    }
+    if (has_flag(desc.texture.usage, TextureUsage::render_target) &&
+        !dynamic_rendering_color_format_supported(desc.texture.format)) {
+        plan.diagnostic = "Vulkan runtime texture render target format is unsupported";
+        return plan;
+    }
+    if (has_flag(desc.texture.usage, TextureUsage::shader_resource) &&
+        !sampled_texture_format_supported(desc.texture.format)) {
+        plan.diagnostic = "Vulkan runtime texture sampled format is unsupported";
+        return plan;
+    }
+    if (has_flag(desc.texture.usage, TextureUsage::storage) && format_is_block_compressed(desc.texture.format)) {
+        plan.diagnostic = "Vulkan runtime texture storage usage is unsupported for block-compressed formats";
         return plan;
     }
     if (desc.texture.format == Format::depth24_stencil8) {

@@ -267,6 +267,16 @@ struct TextureUploadStaging {
     rhi::BufferTextureCopyRegion region;
 };
 
+struct RuntimeRhiTexturePayload {
+    AssetId asset;
+    runtime::RuntimeAssetHandle handle;
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    rhi::Format format{rhi::Format::unknown};
+    std::uint64_t source_bytes{0};
+    std::vector<std::uint8_t> bytes;
+};
+
 [[nodiscard]] std::uint64_t align_up(std::uint64_t value, std::uint64_t alignment) {
     if (alignment == 0) {
         throw std::invalid_argument("runtime texture upload alignment must be non-zero");
@@ -286,18 +296,20 @@ struct TextureUploadStaging {
                                                                std::uint32_t height,
                                                                const std::vector<std::uint8_t>& source_bytes) {
     constexpr std::uint64_t row_pitch_alignment = 256;
-    const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(format));
-    const auto source_row_bytes = static_cast<std::uint64_t>(width) * texel_bytes;
+    const auto block_width = static_cast<std::uint64_t>(rhi::format_block_width(format));
+    const auto block_bytes = static_cast<std::uint64_t>(rhi::bytes_per_format_block(format));
+    const auto source_row_bytes = rhi::format_copy_row_bytes(format, width);
+    const auto source_row_count = rhi::format_copy_row_count(format, height);
     const auto staged_row_bytes = align_up(source_row_bytes, row_pitch_alignment);
-    if (staged_row_bytes % texel_bytes != 0) {
-        throw std::invalid_argument("runtime texture upload row pitch is not texel aligned");
+    if (staged_row_bytes % block_bytes != 0) {
+        throw std::invalid_argument("runtime texture upload row pitch is not format-block aligned");
     }
 
-    const auto row_length = staged_row_bytes / texel_bytes;
+    const auto row_length = (staged_row_bytes / block_bytes) * block_width;
     if (row_length > (std::numeric_limits<std::uint32_t>::max)()) {
         throw std::overflow_error("runtime texture upload row length overflowed");
     }
-    const auto staged_bytes = staged_row_bytes * static_cast<std::uint64_t>(height);
+    const auto staged_bytes = staged_row_bytes * source_row_count;
     if (staged_bytes > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)())) {
         throw std::overflow_error("runtime texture upload byte count overflowed");
     }
@@ -306,7 +318,7 @@ struct TextureUploadStaging {
     staging.bytes.resize(static_cast<std::size_t>(staged_bytes), std::uint8_t{0});
     const auto source_row_size = static_cast<std::size_t>(source_row_bytes);
     const auto staged_row_size = static_cast<std::size_t>(staged_row_bytes);
-    for (std::uint32_t row = 0; row < height; ++row) {
+    for (std::uint64_t row = 0; row < source_row_count; ++row) {
         const auto source_offset = static_cast<std::size_t>(row) * source_row_size;
         const auto staged_offset = static_cast<std::size_t>(row) * staged_row_size;
         std::copy_n(source_bytes.begin() + static_cast<std::ptrdiff_t>(source_offset), source_row_size,
@@ -333,20 +345,18 @@ struct TextureUploadStaging {
 
 [[nodiscard]] std::uint64_t texture_copy_allocation_bytes(rhi::Format format,
                                                           const rhi::BufferTextureCopyRegion& region) {
-    const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(format));
     const auto row_length = region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
     const auto image_height =
         region.buffer_image_height == 0 ? region.texture_extent.height : region.buffer_image_height;
-    if (row_length == 0 || texel_bytes == 0 ||
-        static_cast<std::uint64_t>(row_length) > (std::numeric_limits<std::uint64_t>::max)() / texel_bytes) {
+    if (row_length == 0) {
         throw std::overflow_error("runtime environment texture row pitch is invalid");
     }
-    const auto row_pitch = static_cast<std::uint64_t>(row_length) * texel_bytes;
+    const auto row_pitch = rhi::format_copy_row_bytes(format, row_length);
     if (image_height == 0 ||
-        static_cast<std::uint64_t>(image_height) > (std::numeric_limits<std::uint64_t>::max)() / row_pitch) {
+        rhi::format_copy_row_count(format, image_height) > (std::numeric_limits<std::uint64_t>::max)() / row_pitch) {
         throw std::overflow_error("runtime environment texture image pitch is invalid");
     }
-    const auto image_pitch = static_cast<std::uint64_t>(image_height) * row_pitch;
+    const auto image_pitch = rhi::format_copy_row_count(format, image_height) * row_pitch;
     if (region.texture_extent.depth == 0 || static_cast<std::uint64_t>(region.texture_extent.depth) >
                                                 (std::numeric_limits<std::uint64_t>::max)() / image_pitch) {
         throw std::overflow_error("runtime environment texture copy byte size is invalid");
@@ -361,28 +371,24 @@ struct TextureUploadStaging {
 [[nodiscard]] std::vector<std::uint8_t> compact_texture_readback_bytes(std::span<const std::uint8_t> readback_bytes,
                                                                        rhi::Format format,
                                                                        const rhi::BufferTextureCopyRegion& region) {
-    const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(format));
-    if (texel_bytes == 0) {
-        throw std::invalid_argument("runtime environment texture readback format is unsupported");
-    }
-    const auto source_row_bytes = static_cast<std::uint64_t>(region.texture_extent.width) * texel_bytes;
+    const auto source_row_bytes = rhi::format_copy_row_bytes(format, region.texture_extent.width);
     const auto staged_row_texels =
         region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
-    const auto staged_row_bytes = static_cast<std::uint64_t>(staged_row_texels) * texel_bytes;
-    const auto height = static_cast<std::uint64_t>(region.texture_extent.height);
+    const auto staged_row_bytes = rhi::format_copy_row_bytes(format, staged_row_texels);
+    const auto row_count = rhi::format_copy_row_count(format, region.texture_extent.height);
     const auto required_bytes = rhi::buffer_texture_copy_required_bytes(format, region);
     if (required_bytes > static_cast<std::uint64_t>(readback_bytes.size())) {
         throw std::invalid_argument("runtime environment texture readback byte range is incomplete");
     }
     if (source_row_bytes > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) ||
-        height > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) ||
-        height > 0U &&
-            source_row_bytes > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) / height) {
+        row_count > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) ||
+        row_count > 0U &&
+            source_row_bytes > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)()) / row_count) {
         throw std::overflow_error("runtime environment texture compact readback byte count overflowed");
     }
 
-    std::vector<std::uint8_t> compact(static_cast<std::size_t>(source_row_bytes * height));
-    for (std::uint64_t row = 0; row < height; ++row) {
+    std::vector<std::uint8_t> compact(static_cast<std::size_t>(source_row_bytes * row_count));
+    for (std::uint64_t row = 0; row < row_count; ++row) {
         const auto source_offset = static_cast<std::size_t>(row * staged_row_bytes);
         const auto destination_offset = static_cast<std::size_t>(row * source_row_bytes);
         std::copy_n(readback_bytes.begin() + static_cast<std::ptrdiff_t>(source_offset),
@@ -402,6 +408,31 @@ struct TextureUploadStaging {
         break;
     }
     throw std::invalid_argument("runtime texture payload format is not supported by the RHI upload bridge");
+}
+
+[[nodiscard]] TextureCookBackendV1 runtime_backend_target_for_device(rhi::BackendKind backend) noexcept {
+    switch (backend) {
+    case rhi::BackendKind::d3d12:
+        return TextureCookBackendV1::d3d12;
+    case rhi::BackendKind::vulkan:
+        return TextureCookBackendV1::vulkan;
+    case rhi::BackendKind::metal:
+        return TextureCookBackendV1::metal_macos;
+    case rhi::BackendKind::null:
+        return TextureCookBackendV1::unknown;
+    }
+    return TextureCookBackendV1::unknown;
+}
+
+[[nodiscard]] rhi::Format runtime_backend_texture_format(std::string_view device_format) {
+    if (device_format == "DXGI_FORMAT_BC7_UNORM") {
+        return rhi::Format::bc7_unorm;
+    }
+    if (device_format == "DXGI_FORMAT_BC7_UNORM_SRGB") {
+        return rhi::Format::bc7_unorm_srgb;
+    }
+    throw std::invalid_argument(
+        "runtime backend texture payload device format is not supported by the RHI upload bridge");
 }
 
 [[nodiscard]] rhi::ShaderStageVisibility runtime_shader_visibility(MaterialShaderStageMask stages) noexcept {
@@ -541,23 +572,23 @@ RuntimeUploadQueueWaitResult wait_for_runtime_uploads_on_queue(rhi::IRhiDevice& 
     return result;
 }
 
-RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
-                                                  const runtime::RuntimeTexturePayload& payload,
-                                                  const RuntimeTextureUploadOptions& options) {
+[[nodiscard]] RuntimeTextureUploadResult upload_runtime_texture_payload(rhi::IRhiDevice& device,
+                                                                        const RuntimeRhiTexturePayload& payload,
+                                                                        const RuntimeTextureUploadOptions& options) {
     try {
-        const TextureSourceDocument document{
-            .width = payload.width, .height = payload.height, .pixel_format = payload.pixel_format};
-        if (!is_valid_texture_source_document(document)) {
+        if (payload.width == 0U || payload.height == 0U || payload.format == rhi::Format::unknown) {
             return texture_upload_failure("runtime texture payload is invalid");
         }
-        if (payload.source_bytes != texture_source_uncompressed_bytes(document)) {
+        const auto expected_source_bytes = rhi::format_copy_compact_bytes(
+            payload.format, rhi::Extent3D{.width = payload.width, .height = payload.height, .depth = 1});
+        if (payload.source_bytes != expected_source_bytes) {
             return texture_upload_failure("runtime texture payload source byte count is invalid");
         }
         if (!payload.bytes.empty() && payload.bytes.size() != payload.source_bytes) {
             return texture_upload_failure("runtime texture payload byte data size is invalid");
         }
 
-        const auto format = runtime_texture_format(payload.pixel_format);
+        const auto format = payload.format;
         auto usage = options.usage;
         if (!rhi::has_flag(usage, rhi::TextureUsage::shader_resource)) {
             usage = usage | rhi::TextureUsage::shader_resource;
@@ -753,6 +784,38 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
     }
 }
 
+RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
+                                                  const runtime::RuntimeTexturePayload& payload,
+                                                  const RuntimeTextureUploadOptions& options) {
+    const TextureSourceDocument document{
+        .width = payload.width, .height = payload.height, .pixel_format = payload.pixel_format};
+    if (!is_valid_texture_source_document(document)) {
+        return texture_upload_failure("runtime texture payload is invalid");
+    }
+    if (payload.source_bytes != texture_source_uncompressed_bytes(document)) {
+        return texture_upload_failure("runtime texture payload source byte count is invalid");
+    }
+    if (!payload.bytes.empty() && payload.bytes.size() != payload.source_bytes) {
+        return texture_upload_failure("runtime texture payload byte data size is invalid");
+    }
+
+    try {
+        return upload_runtime_texture_payload(device,
+                                              RuntimeRhiTexturePayload{
+                                                  .asset = payload.asset,
+                                                  .handle = payload.handle,
+                                                  .width = payload.width,
+                                                  .height = payload.height,
+                                                  .format = runtime_texture_format(payload.pixel_format),
+                                                  .source_bytes = payload.source_bytes,
+                                                  .bytes = payload.bytes,
+                                              },
+                                              options);
+    } catch (const std::exception& error) {
+        return texture_upload_failure(error.what());
+    }
+}
+
 RuntimeEnvironmentTextureUploadExecutionResult
 execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
                                                    const runtime::RuntimeEnvironmentTexturePayload& payload,
@@ -761,14 +824,68 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         RuntimeEnvironmentTextureUploadExecutionResult result;
         result.backend_kind = device.backend_kind();
         result.backend_name = std::string{device.backend_name()};
-        result.upload_plan = runtime::plan_runtime_environment_texture_payload_upload(payload);
-        result.upload_plan_ready = result.upload_plan.succeeded();
-        if (!result.upload_plan_ready) {
-            result.diagnostic = result.upload_plan.diagnostics.empty()
-                                    ? "runtime environment texture upload execution requires a ready upload plan"
-                                    : "runtime environment texture upload execution requires a ready upload plan: " +
-                                          result.upload_plan.diagnostics.front().code;
-            return result;
+        result.backend_target = options.backend_target == TextureCookBackendV1::unknown
+                                    ? runtime_backend_target_for_device(result.backend_kind)
+                                    : options.backend_target;
+        result.backend_target_compressed_payload = options.backend_target_compressed_payload;
+
+        RuntimeRhiTexturePayload texture_payload;
+        if (options.backend_target_compressed_payload) {
+            result.backend_upload_plan =
+                runtime::plan_runtime_environment_texture_backend_payload_upload(payload, result.backend_target);
+            result.upload_plan_ready = result.backend_upload_plan.succeeded();
+            result.backend_format_support_proven = result.backend_upload_plan.backend_format_support_proven;
+            result.device_format = result.backend_upload_plan.device_format;
+            result.payload_transcode_target = result.backend_upload_plan.payload_transcode_target;
+            result.format_support_evidence_id = result.backend_upload_plan.format_support_evidence_id;
+            result.official_format_support_api = result.backend_upload_plan.official_format_support_api;
+            result.compression = result.backend_upload_plan.compression;
+            result.transcode = result.backend_upload_plan.transcode;
+            result.format_block_width = result.backend_upload_plan.block_width;
+            result.format_block_height = result.backend_upload_plan.block_height;
+            result.format_block_bytes = result.backend_upload_plan.block_bytes;
+            if (!result.upload_plan_ready) {
+                result.diagnostic =
+                    result.backend_upload_plan.diagnostics.empty()
+                        ? "runtime environment texture upload execution requires a ready backend upload plan"
+                        : "runtime environment texture upload execution requires a ready backend upload plan: " +
+                              result.backend_upload_plan.diagnostics.front().code;
+                return result;
+            }
+            if (result.backend_target != runtime_backend_target_for_device(result.backend_kind)) {
+                result.diagnostic =
+                    "runtime environment texture upload execution backend target does not match the RHI device";
+                return result;
+            }
+            texture_payload = RuntimeRhiTexturePayload{
+                .asset = payload.asset,
+                .handle = payload.handle,
+                .width = payload.width,
+                .height = payload.height,
+                .format = runtime_backend_texture_format(result.backend_upload_plan.device_format),
+                .source_bytes = result.backend_upload_plan.upload_source_bytes,
+                .bytes = payload.bytes,
+            };
+        } else {
+            result.upload_plan = runtime::plan_runtime_environment_texture_payload_upload(payload);
+            result.upload_plan_ready = result.upload_plan.succeeded();
+            if (!result.upload_plan_ready) {
+                result.diagnostic =
+                    result.upload_plan.diagnostics.empty()
+                        ? "runtime environment texture upload execution requires a ready upload plan"
+                        : "runtime environment texture upload execution requires a ready upload plan: " +
+                              result.upload_plan.diagnostics.front().code;
+                return result;
+            }
+            texture_payload = RuntimeRhiTexturePayload{
+                .asset = result.upload_plan.payload.asset,
+                .handle = result.upload_plan.payload.handle,
+                .width = result.upload_plan.payload.width,
+                .height = result.upload_plan.payload.height,
+                .format = runtime_texture_format(result.upload_plan.payload.pixel_format),
+                .source_bytes = result.upload_plan.payload.source_bytes,
+                .bytes = result.upload_plan.payload.bytes,
+            };
         }
         if (result.backend_kind == rhi::BackendKind::null) {
             result.diagnostic = "runtime environment texture upload execution requires a real RHI backend";
@@ -778,7 +895,7 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         auto upload_options = options.texture_upload_options;
         upload_options.usage = upload_options.usage | rhi::TextureUsage::shader_resource |
                                rhi::TextureUsage::copy_destination | rhi::TextureUsage::copy_source;
-        result.upload = upload_runtime_texture(device, result.upload_plan.payload, upload_options);
+        result.upload = upload_runtime_texture_payload(device, texture_payload, upload_options);
         if (!result.upload.succeeded()) {
             result.diagnostic = "runtime environment texture upload failed: " + result.upload.diagnostic;
             return result;
@@ -791,10 +908,11 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         result.backend_api_invoked = result.upload.copy_recorded;
         result.resource_transitions = result.upload.frame_graph_barriers_recorded;
         result.copy_to_texture_count = result.upload.copy_recorded ? 1U : 0U;
-        const auto texel_bytes = static_cast<std::uint64_t>(rhi::bytes_per_texel(result.texture_desc.format));
-        result.source_row_bytes = static_cast<std::uint64_t>(result.texture_desc.extent.width) * texel_bytes;
-        result.row_pitch_bytes = static_cast<std::uint64_t>(result.copy_region.buffer_row_length) * texel_bytes;
-        result.source_checksum = checksum_runtime_texture_bytes(result.upload_plan.payload.bytes);
+        result.source_row_bytes =
+            rhi::format_copy_row_bytes(result.texture_desc.format, result.texture_desc.extent.width);
+        result.row_pitch_bytes =
+            rhi::format_copy_row_bytes(result.texture_desc.format, result.copy_region.buffer_row_length);
+        result.source_checksum = checksum_runtime_texture_bytes(texture_payload.bytes);
 
         if (options.create_sampled_texture_descriptor) {
             result.descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{
@@ -844,7 +962,7 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         result.compact_readback_bytes = static_cast<std::uint64_t>(compact_readback.size());
         result.readback_checksum = checksum_runtime_texture_bytes(compact_readback);
         result.readback_checksum_matched =
-            compact_readback == result.upload_plan.payload.bytes && result.readback_checksum == result.source_checksum;
+            compact_readback == texture_payload.bytes && result.readback_checksum == result.source_checksum;
         result.readback_invoked = true;
         result.copy_to_readback_count = 1U;
         result.resource_transitions += 2U;

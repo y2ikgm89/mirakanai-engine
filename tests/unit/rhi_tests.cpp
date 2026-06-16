@@ -826,6 +826,24 @@ MK_TEST("rhi computes buffer texture copy footprints") {
             .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
             .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 3},
         });
+    const auto bc7_tight = mirakana::rhi::buffer_texture_copy_required_bytes(
+        mirakana::rhi::Format::bc7_unorm_srgb,
+        mirakana::rhi::BufferTextureCopyRegion{
+            .buffer_offset = 32,
+            .buffer_row_length = 0,
+            .buffer_image_height = 0,
+            .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 1},
+        });
+    const auto bc7_padded = mirakana::rhi::buffer_texture_copy_required_bytes(
+        mirakana::rhi::Format::bc7_unorm_srgb,
+        mirakana::rhi::BufferTextureCopyRegion{
+            .buffer_offset = 128,
+            .buffer_row_length = 64,
+            .buffer_image_height = 8,
+            .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 8, .depth = 2},
+        });
 
     bool rejected_row_length = false;
     try {
@@ -842,9 +860,33 @@ MK_TEST("rhi computes buffer texture copy footprints") {
         rejected_row_length = true;
     }
 
+    bool rejected_bc7_block_layout = false;
+    try {
+        (void)mirakana::rhi::buffer_texture_copy_required_bytes(
+            mirakana::rhi::Format::bc7_unorm,
+            mirakana::rhi::BufferTextureCopyRegion{
+                .buffer_offset = 0,
+                .buffer_row_length = 6,
+                .buffer_image_height = 0,
+                .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+                .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 1},
+            });
+    } catch (const std::invalid_argument&) {
+        rejected_bc7_block_layout = true;
+    }
+
     MK_REQUIRE(tight == 192);
     MK_REQUIRE(padded == 560);
+    MK_REQUIRE(bc7_tight == 48);
+    MK_REQUIRE(bc7_padded == 912);
+    MK_REQUIRE(mirakana::rhi::format_is_block_compressed(mirakana::rhi::Format::bc7_unorm_srgb));
+    MK_REQUIRE(mirakana::rhi::format_block_width(mirakana::rhi::Format::bc7_unorm_srgb) == 4);
+    MK_REQUIRE(mirakana::rhi::format_block_height(mirakana::rhi::Format::bc7_unorm_srgb) == 4);
+    MK_REQUIRE(mirakana::rhi::bytes_per_format_block(mirakana::rhi::Format::bc7_unorm_srgb) == 16);
+    MK_REQUIRE(mirakana::rhi::format_copy_row_bytes(mirakana::rhi::Format::bc7_unorm_srgb, 4) == 16);
+    MK_REQUIRE(mirakana::rhi::format_copy_row_bytes(mirakana::rhi::Format::bc7_unorm_srgb, 64) == 256);
     MK_REQUIRE(rejected_row_length);
+    MK_REQUIRE(rejected_bc7_block_layout);
 }
 
 MK_TEST("null rhi rejects invalid copy and present commands") {

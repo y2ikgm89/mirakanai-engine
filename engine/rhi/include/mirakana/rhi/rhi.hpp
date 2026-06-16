@@ -54,7 +54,7 @@ enum class StoreAction : std::uint8_t { store = 0, dont_care };
 
 enum class CompareOp : std::uint8_t { never = 0, less, equal, less_equal, greater, not_equal, greater_equal, always };
 
-enum class Format : std::uint8_t { unknown = 0, rgba8_unorm, bgra8_unorm, depth24_stencil8 };
+enum class Format : std::uint8_t { unknown = 0, rgba8_unorm, bgra8_unorm, depth24_stencil8, bc7_unorm, bc7_unorm_srgb };
 
 enum class ResourceState : std::uint8_t {
     undefined = 0,
@@ -254,6 +254,13 @@ struct BufferTextureCopyRegion {
 };
 
 [[nodiscard]] std::uint32_t bytes_per_texel(Format format);
+[[nodiscard]] bool format_is_block_compressed(Format format) noexcept;
+[[nodiscard]] std::uint32_t format_block_width(Format format);
+[[nodiscard]] std::uint32_t format_block_height(Format format);
+[[nodiscard]] std::uint32_t bytes_per_format_block(Format format);
+[[nodiscard]] std::uint64_t format_copy_row_bytes(Format format, std::uint32_t texel_width);
+[[nodiscard]] std::uint64_t format_copy_row_count(Format format, std::uint32_t texel_height);
+[[nodiscard]] std::uint64_t format_copy_compact_bytes(Format format, Extent3D extent);
 [[nodiscard]] std::uint64_t buffer_texture_copy_required_bytes(Format format, const BufferTextureCopyRegion& region);
 
 struct ShaderDesc {

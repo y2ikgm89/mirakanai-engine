@@ -452,10 +452,90 @@ std::uint32_t bytes_per_texel(Format format) {
     case Format::bgra8_unorm:
     case Format::depth24_stencil8:
         return 4;
+    case Format::bc7_unorm:
+    case Format::bc7_unorm_srgb:
+        break;
     case Format::unknown:
         break;
     }
     throw std::invalid_argument("rhi format must have a known texel size");
+}
+
+bool format_is_block_compressed(Format format) noexcept {
+    return format == Format::bc7_unorm || format == Format::bc7_unorm_srgb;
+}
+
+std::uint32_t format_block_width(Format format) {
+    switch (format) {
+    case Format::bc7_unorm:
+    case Format::bc7_unorm_srgb:
+        return 4;
+    case Format::rgba8_unorm:
+    case Format::bgra8_unorm:
+    case Format::depth24_stencil8:
+        return 1;
+    case Format::unknown:
+        break;
+    }
+    throw std::invalid_argument("rhi format block width is unknown");
+}
+
+std::uint32_t format_block_height(Format format) {
+    switch (format) {
+    case Format::bc7_unorm:
+    case Format::bc7_unorm_srgb:
+        return 4;
+    case Format::rgba8_unorm:
+    case Format::bgra8_unorm:
+    case Format::depth24_stencil8:
+        return 1;
+    case Format::unknown:
+        break;
+    }
+    throw std::invalid_argument("rhi format block height is unknown");
+}
+
+std::uint32_t bytes_per_format_block(Format format) {
+    switch (format) {
+    case Format::bc7_unorm:
+    case Format::bc7_unorm_srgb:
+        return 16;
+    case Format::rgba8_unorm:
+    case Format::bgra8_unorm:
+    case Format::depth24_stencil8:
+        return 4;
+    case Format::unknown:
+        break;
+    }
+    throw std::invalid_argument("rhi format block byte size is unknown");
+}
+
+std::uint64_t format_copy_row_count(Format format, std::uint32_t texel_height) {
+    if (texel_height == 0) {
+        throw std::invalid_argument("rhi format copy height must be non-zero");
+    }
+    const auto block_height = static_cast<std::uint64_t>(format_block_height(format));
+    return (static_cast<std::uint64_t>(texel_height) + block_height - 1U) / block_height;
+}
+
+std::uint64_t format_copy_row_bytes(Format format, std::uint32_t texel_width) {
+    if (texel_width == 0) {
+        throw std::invalid_argument("rhi format copy width must be non-zero");
+    }
+    const auto block_width = static_cast<std::uint64_t>(format_block_width(format));
+    const auto block_bytes = static_cast<std::uint64_t>(bytes_per_format_block(format));
+    const auto block_columns = (static_cast<std::uint64_t>(texel_width) + block_width - 1U) / block_width;
+    return checked_mul(block_columns, block_bytes, "rhi format copy row size overflowed");
+}
+
+std::uint64_t format_copy_compact_bytes(Format format, Extent3D extent) {
+    if (extent.width == 0 || extent.height == 0 || extent.depth == 0) {
+        throw std::invalid_argument("rhi format copy extent must be non-zero");
+    }
+    const auto row_bytes = format_copy_row_bytes(format, extent.width);
+    const auto row_count = format_copy_row_count(format, extent.height);
+    const auto image_bytes = checked_mul(row_count, row_bytes, "rhi format copy image size overflowed");
+    return checked_mul(static_cast<std::uint64_t>(extent.depth), image_bytes, "rhi format copy byte size overflowed");
 }
 
 std::uint64_t buffer_texture_copy_required_bytes(Format format, const BufferTextureCopyRegion& region) {
@@ -463,7 +543,6 @@ std::uint64_t buffer_texture_copy_required_bytes(Format format, const BufferText
         throw std::invalid_argument("rhi buffer texture copy extent must be non-zero");
     }
 
-    const auto texel_bytes = static_cast<std::uint64_t>(bytes_per_texel(format));
     const auto row_length = region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
     const auto image_height =
         region.buffer_image_height == 0 ? region.texture_extent.height : region.buffer_image_height;
@@ -473,15 +552,20 @@ std::uint64_t buffer_texture_copy_required_bytes(Format format, const BufferText
     if (image_height < region.texture_extent.height) {
         throw std::invalid_argument("rhi buffer texture copy image height must be zero or at least the copy height");
     }
+    if (format_is_block_compressed(format) &&
+        ((region.buffer_row_length != 0 && row_length % format_block_width(format) != 0U) ||
+         (region.buffer_image_height != 0 && image_height % format_block_height(format) != 0U))) {
+        throw std::invalid_argument("rhi block-compressed buffer texture copy layout must align to format blocks");
+    }
 
-    const auto row_pitch = checked_mul(row_length, texel_bytes, "rhi buffer texture copy row pitch overflowed");
-    const auto image_pitch = checked_mul(image_height, row_pitch, "rhi buffer texture copy image pitch overflowed");
+    const auto row_pitch = format_copy_row_bytes(format, row_length);
+    const auto image_pitch = checked_mul(format_copy_row_count(format, image_height), row_pitch,
+                                         "rhi buffer texture copy image pitch overflowed");
     const auto depth_offset =
         checked_mul(region.texture_extent.depth - 1U, image_pitch, "rhi buffer texture copy depth offset overflowed");
-    const auto row_offset =
-        checked_mul(region.texture_extent.height - 1U, row_pitch, "rhi buffer texture copy row offset overflowed");
-    const auto final_row_bytes =
-        checked_mul(region.texture_extent.width, texel_bytes, "rhi buffer texture copy final row size overflowed");
+    const auto row_offset = checked_mul(format_copy_row_count(format, region.texture_extent.height) - 1U, row_pitch,
+                                        "rhi buffer texture copy row offset overflowed");
+    const auto final_row_bytes = format_copy_row_bytes(format, region.texture_extent.width);
     return checked_add(
         checked_add(checked_add(region.buffer_offset, depth_offset, "rhi buffer texture copy size overflowed"),
                     row_offset, "rhi buffer texture copy size overflowed"),
@@ -1314,10 +1398,7 @@ RhiDeviceMemoryDiagnostics NullRhiDevice::memory_diagnostics() const {
         if (desc.format == Format::unknown) {
             continue;
         }
-        const auto texels = static_cast<std::uint64_t>(desc.extent.width) *
-                            static_cast<std::uint64_t>(desc.extent.height) *
-                            static_cast<std::uint64_t>(desc.extent.depth);
-        total += texels * static_cast<std::uint64_t>(bytes_per_texel(desc.format));
+        total += format_copy_compact_bytes(desc.format, desc.extent);
     }
     diagnostics.committed_resources_byte_estimate = total;
     diagnostics.committed_resources_byte_estimate_available = true;
