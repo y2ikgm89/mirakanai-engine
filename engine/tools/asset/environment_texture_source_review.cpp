@@ -4,6 +4,7 @@
 #include "mirakana/tools/environment_texture_source_review.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -16,7 +17,9 @@
 #include <vector>
 
 #if MK_HAS_ASSET_IMPORTERS
+#include <Imath/half.h>
 #include <OpenEXR/ImfChannelList.h>
+#include <OpenEXR/ImfFrameBuffer.h>
 #include <OpenEXR/ImfHeader.h>
 #include <OpenEXR/ImfInputFile.h>
 #include <OpenEXR/ImfStandardAttributes.h>
@@ -71,6 +74,68 @@ void add_diagnostic(std::vector<EnvironmentTextureGeassetPayloadDiagnostic>& dia
         .message = std::move(message),
         .path = std::move(path),
     });
+}
+
+void add_diagnostic(std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic>& diagnostics,
+                    OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode code, std::string message,
+                    std::string path = {}) {
+    diagnostics.push_back(OpenExrEnvironmentTexturePayloadDecodeDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .path = std::move(path),
+    });
+}
+
+[[nodiscard]] OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode
+decode_diagnostic_code(OpenExrTextureSourceReviewDiagnosticCode code) noexcept {
+    switch (code) {
+    case OpenExrTextureSourceReviewDiagnosticCode::invalid_request:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_request;
+    case OpenExrTextureSourceReviewDiagnosticCode::asset_importers_disabled:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::asset_importers_disabled;
+    case OpenExrTextureSourceReviewDiagnosticCode::openexr_read_failed:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::openexr_read_failed;
+    case OpenExrTextureSourceReviewDiagnosticCode::unsupported_openexr_layout:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_openexr_layout;
+    case OpenExrTextureSourceReviewDiagnosticCode::unsupported_openexr_channels:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_openexr_channels;
+    case OpenExrTextureSourceReviewDiagnosticCode::invalid_openexr_metadata:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_openexr_metadata;
+    case OpenExrTextureSourceReviewDiagnosticCode::none:
+        break;
+    }
+    return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_request;
+}
+
+[[nodiscard]] OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode
+decode_diagnostic_code(EnvironmentTextureGeassetPayloadDiagnosticCode code) noexcept {
+    switch (code) {
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_request:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_request;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_cook_metadata:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_cook_metadata;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::invalid_payload:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_payload;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::unsupported_claim:
+        return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_claim;
+    case EnvironmentTextureGeassetPayloadDiagnosticCode::none:
+        break;
+    }
+    return OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_request;
+}
+
+void append_diagnostics(std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic>& output,
+                        const std::vector<OpenExrTextureSourceReviewDiagnostic>& input) {
+    for (const auto& diagnostic : input) {
+        add_diagnostic(output, decode_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
+    }
+}
+
+void append_diagnostics(std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic>& output,
+                        const std::vector<EnvironmentTextureGeassetPayloadDiagnostic>& input) {
+    for (const auto& diagnostic : input) {
+        add_diagnostic(output, decode_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
+    }
 }
 
 [[nodiscard]] bool clean_text_token(std::string_view value) noexcept {
@@ -389,31 +454,37 @@ struct TextureBackendFormatSelection {
     if (source.source_kind == TextureSourceKindV2::openexr) {
         switch (backend) {
         case TextureCookBackendV1::d3d12:
-            return {"DXGI_FORMAT_R16G16B16A16_FLOAT",
-                    TextureCompressionKindV2::none,
-                    TextureCookTranscodeKindV1::offline_policy,
-                    estimate_rgba16_float_bytes(source.width, source.height),
-                    true,
-                    false,
-                    false};
+            return TextureBackendFormatSelection{
+                .device_format = "DXGI_FORMAT_R16G16B16A16_FLOAT",
+                .compression = TextureCompressionKindV2::none,
+                .transcode = TextureCookTranscodeKindV1::offline_policy,
+                .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
+                .requires_rgba16_float = true,
+                .requires_bc7_rgba = false,
+                .requires_astc_4x4_rgba = false,
+            };
         case TextureCookBackendV1::vulkan:
         case TextureCookBackendV1::vulkan_android:
-            return {"VK_FORMAT_R16G16B16A16_SFLOAT",
-                    TextureCompressionKindV2::none,
-                    TextureCookTranscodeKindV1::offline_policy,
-                    estimate_rgba16_float_bytes(source.width, source.height),
-                    true,
-                    false,
-                    false};
+            return TextureBackendFormatSelection{
+                .device_format = "VK_FORMAT_R16G16B16A16_SFLOAT",
+                .compression = TextureCompressionKindV2::none,
+                .transcode = TextureCookTranscodeKindV1::offline_policy,
+                .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
+                .requires_rgba16_float = true,
+                .requires_bc7_rgba = false,
+                .requires_astc_4x4_rgba = false,
+            };
         case TextureCookBackendV1::metal_macos:
         case TextureCookBackendV1::metal_ios:
-            return {"MTLPixelFormatRGBA16Float",
-                    TextureCompressionKindV2::none,
-                    TextureCookTranscodeKindV1::offline_policy,
-                    estimate_rgba16_float_bytes(source.width, source.height),
-                    true,
-                    false,
-                    false};
+            return TextureBackendFormatSelection{
+                .device_format = "MTLPixelFormatRGBA16Float",
+                .compression = TextureCompressionKindV2::none,
+                .transcode = TextureCookTranscodeKindV1::offline_policy,
+                .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
+                .requires_rgba16_float = true,
+                .requires_bc7_rgba = false,
+                .requires_astc_4x4_rgba = false,
+            };
         case TextureCookBackendV1::unknown:
             break;
         }
@@ -423,45 +494,55 @@ struct TextureBackendFormatSelection {
         const bool srgb = source.color_space == TextureColorSpaceV2::srgb;
         switch (backend) {
         case TextureCookBackendV1::d3d12:
-            return {srgb ? "DXGI_FORMAT_BC7_UNORM_SRGB" : "DXGI_FORMAT_BC7_UNORM",
-                    TextureCompressionKindV2::bc7,
-                    TextureCookTranscodeKindV1::basis_transcode_policy,
-                    estimate_block4x4_bytes(source),
-                    false,
-                    true,
-                    false};
+            return TextureBackendFormatSelection{
+                .device_format = srgb ? "DXGI_FORMAT_BC7_UNORM_SRGB" : "DXGI_FORMAT_BC7_UNORM",
+                .compression = TextureCompressionKindV2::bc7,
+                .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
+                .estimated_gpu_bytes = estimate_block4x4_bytes(source),
+                .requires_rgba16_float = false,
+                .requires_bc7_rgba = true,
+                .requires_astc_4x4_rgba = false,
+            };
         case TextureCookBackendV1::vulkan:
-            return {srgb ? "VK_FORMAT_BC7_SRGB_BLOCK" : "VK_FORMAT_BC7_UNORM_BLOCK",
-                    TextureCompressionKindV2::bc7,
-                    TextureCookTranscodeKindV1::basis_transcode_policy,
-                    estimate_block4x4_bytes(source),
-                    false,
-                    true,
-                    false};
+            return TextureBackendFormatSelection{
+                .device_format = srgb ? "VK_FORMAT_BC7_SRGB_BLOCK" : "VK_FORMAT_BC7_UNORM_BLOCK",
+                .compression = TextureCompressionKindV2::bc7,
+                .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
+                .estimated_gpu_bytes = estimate_block4x4_bytes(source),
+                .requires_rgba16_float = false,
+                .requires_bc7_rgba = true,
+                .requires_astc_4x4_rgba = false,
+            };
         case TextureCookBackendV1::metal_macos:
-            return {srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
-                    TextureCompressionKindV2::astc_4x4,
-                    TextureCookTranscodeKindV1::basis_transcode_policy,
-                    estimate_block4x4_bytes(source),
-                    false,
-                    false,
-                    true};
+            return TextureBackendFormatSelection{
+                .device_format = srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                .compression = TextureCompressionKindV2::astc_4x4,
+                .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
+                .estimated_gpu_bytes = estimate_block4x4_bytes(source),
+                .requires_rgba16_float = false,
+                .requires_bc7_rgba = false,
+                .requires_astc_4x4_rgba = true,
+            };
         case TextureCookBackendV1::vulkan_android:
-            return {srgb ? "VK_FORMAT_ASTC_4x4_SRGB_BLOCK" : "VK_FORMAT_ASTC_4x4_UNORM_BLOCK",
-                    TextureCompressionKindV2::astc_4x4,
-                    TextureCookTranscodeKindV1::basis_transcode_policy,
-                    estimate_block4x4_bytes(source),
-                    false,
-                    false,
-                    true};
+            return TextureBackendFormatSelection{
+                .device_format = srgb ? "VK_FORMAT_ASTC_4x4_SRGB_BLOCK" : "VK_FORMAT_ASTC_4x4_UNORM_BLOCK",
+                .compression = TextureCompressionKindV2::astc_4x4,
+                .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
+                .estimated_gpu_bytes = estimate_block4x4_bytes(source),
+                .requires_rgba16_float = false,
+                .requires_bc7_rgba = false,
+                .requires_astc_4x4_rgba = true,
+            };
         case TextureCookBackendV1::metal_ios:
-            return {srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
-                    TextureCompressionKindV2::astc_4x4,
-                    TextureCookTranscodeKindV1::basis_transcode_policy,
-                    estimate_block4x4_bytes(source),
-                    false,
-                    false,
-                    true};
+            return TextureBackendFormatSelection{
+                .device_format = srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                .compression = TextureCompressionKindV2::astc_4x4,
+                .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
+                .estimated_gpu_bytes = estimate_block4x4_bytes(source),
+                .requires_rgba16_float = false,
+                .requires_bc7_rgba = false,
+                .requires_astc_4x4_rgba = true,
+            };
         case TextureCookBackendV1::unknown:
             break;
         }
@@ -536,6 +617,13 @@ find_backend_evidence(std::vector<TextureBackendFormatPolicyDiagnostic>& diagnos
 struct OpenExrChannelRow {
     std::string name;
     TexturePixelEncodingV2 encoding{TexturePixelEncodingV2::unknown};
+};
+
+struct OpenExrRgba16Pixel {
+    IMATH_NAMESPACE::half r;
+    IMATH_NAMESPACE::half g;
+    IMATH_NAMESPACE::half b;
+    IMATH_NAMESPACE::half a;
 };
 
 struct KtxTexture2Deleter {
@@ -831,6 +919,101 @@ make_source_document_from_header(std::vector<OpenExrTextureSourceReviewDiagnosti
     }
     return document;
 }
+
+[[nodiscard]] bool openexr_has_channel(const OPENEXR_IMF_NAMESPACE::Header& header, const char* name) {
+    return header.channels().findChannel(name) != nullptr;
+}
+
+[[nodiscard]] char* openexr_slice_base(IMATH_NAMESPACE::half& first_channel, const IMATH_NAMESPACE::Box2i& data_window,
+                                       std::size_t x_stride, std::size_t y_stride) noexcept {
+    const auto x_offset = static_cast<std::ptrdiff_t>(data_window.min.x) * static_cast<std::ptrdiff_t>(x_stride);
+    const auto y_offset = static_cast<std::ptrdiff_t>(data_window.min.y) * static_cast<std::ptrdiff_t>(y_stride);
+    return reinterpret_cast<char*>(&first_channel) - x_offset - y_offset;
+}
+
+[[nodiscard]] std::uint16_t half_bits(IMATH_NAMESPACE::half value) noexcept {
+    return value.bits();
+}
+
+void append_le_u16(std::vector<std::uint8_t>& output, std::uint16_t value) {
+    output.push_back(static_cast<std::uint8_t>(value & 0x00FFU));
+    output.push_back(static_cast<std::uint8_t>((value >> 8U) & 0x00FFU));
+}
+
+void append_half_le(std::vector<std::uint8_t>& output, IMATH_NAMESPACE::half value) {
+    append_le_u16(output, half_bits(value));
+}
+
+[[nodiscard]] std::vector<std::uint8_t>
+read_openexr_rgba16_payload(std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic>& diagnostics,
+                            const OpenExrEnvironmentTexturePayloadDecodeRequestV1& request,
+                            const TextureSourceDocumentV2& source) {
+    if (source.openexr.tiled || source.openexr.multipart || source.openexr.deep) {
+        add_diagnostic(diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_openexr_layout,
+                       "OpenEXR payload decode supports single-part non-deep scanline images only",
+                       request.source_review.source_path);
+        return {};
+    }
+
+    const auto native_path = request.source_review.source_file_path.string();
+    try {
+        OPENEXR_IMF_NAMESPACE::InputFile file{native_path.c_str()};
+        const auto data_window = file.header().dataWindow();
+        const auto width = window_extent(data_window.min.x, data_window.max.x);
+        const auto height = window_extent(data_window.min.y, data_window.max.y);
+        if (width == 0U || height == 0U || width != source.width || height != source.height) {
+            add_diagnostic(diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_openexr_metadata,
+                           "OpenEXR payload decode data window changed after metadata review",
+                           request.source_review.source_path);
+            return {};
+        }
+
+        const auto pixel_count = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+        std::vector<OpenExrRgba16Pixel> pixels(
+            pixel_count, OpenExrRgba16Pixel{IMATH_NAMESPACE::half{0.0F}, IMATH_NAMESPACE::half{0.0F},
+                                            IMATH_NAMESPACE::half{0.0F}, IMATH_NAMESPACE::half{1.0F}});
+
+        const auto x_stride = sizeof(OpenExrRgba16Pixel);
+        const auto y_stride = x_stride * static_cast<std::size_t>(width);
+        OPENEXR_IMF_NAMESPACE::FrameBuffer frame_buffer;
+        frame_buffer.insert(
+            "R", OPENEXR_IMF_NAMESPACE::Slice{OPENEXR_IMF_NAMESPACE::HALF,
+                                              openexr_slice_base(pixels.front().r, data_window, x_stride, y_stride),
+                                              x_stride, y_stride, 1, 1, 0.0});
+        frame_buffer.insert(
+            "G", OPENEXR_IMF_NAMESPACE::Slice{OPENEXR_IMF_NAMESPACE::HALF,
+                                              openexr_slice_base(pixels.front().g, data_window, x_stride, y_stride),
+                                              x_stride, y_stride, 1, 1, 0.0});
+        frame_buffer.insert(
+            "B", OPENEXR_IMF_NAMESPACE::Slice{OPENEXR_IMF_NAMESPACE::HALF,
+                                              openexr_slice_base(pixels.front().b, data_window, x_stride, y_stride),
+                                              x_stride, y_stride, 1, 1, 0.0});
+        if (openexr_has_channel(file.header(), "A")) {
+            frame_buffer.insert(
+                "A", OPENEXR_IMF_NAMESPACE::Slice{OPENEXR_IMF_NAMESPACE::HALF,
+                                                  openexr_slice_base(pixels.front().a, data_window, x_stride, y_stride),
+                                                  x_stride, y_stride, 1, 1, 1.0});
+        }
+
+        file.setFrameBuffer(frame_buffer);
+        file.readPixels(data_window.min.y, data_window.max.y);
+
+        std::vector<std::uint8_t> payload;
+        payload.reserve(pixels.size() * 8U);
+        for (const auto& pixel : pixels) {
+            append_half_le(payload, pixel.r);
+            append_half_le(payload, pixel.g);
+            append_half_le(payload, pixel.b);
+            append_half_le(payload, pixel.a);
+        }
+        return payload;
+    } catch (const std::exception& error) {
+        add_diagnostic(diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::openexr_read_failed,
+                       std::string{"failed to read OpenEXR payload pixels: "} + error.what(),
+                       request.source_review.source_path);
+        return {};
+    }
+}
 #endif
 
 } // namespace
@@ -901,6 +1084,81 @@ review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& 
                        std::string{"failed to read OpenEXR source metadata: "} + error.what(), request.source_path);
         return result;
     }
+#endif
+}
+
+bool has_openexr_environment_texture_payload_decode() noexcept {
+#if MK_HAS_ASSET_IMPORTERS
+    return true;
+#else
+    return false;
+#endif
+}
+
+OpenExrEnvironmentTexturePayloadDecodeResultV1
+decode_openexr_environment_texture_payload_v1(const OpenExrEnvironmentTexturePayloadDecodeRequestV1& request) {
+    OpenExrEnvironmentTexturePayloadDecodeResultV1 result;
+
+#if !MK_HAS_ASSET_IMPORTERS
+    add_diagnostic(result.diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::asset_importers_disabled,
+                   "asset-importers feature is disabled; OpenEXR source payload decode is unavailable",
+                   request.source_review.source_path);
+    return result;
+#else
+    if (request.gpu_upload_invoked) {
+        add_diagnostic(result.diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_claim,
+                       "OpenEXR payload decode cannot claim runtime GPU upload execution", request.geasset_path);
+    }
+    if (request.broad_asset_pipeline_ready) {
+        add_diagnostic(result.diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_claim,
+                       "OpenEXR payload decode cannot claim broad asset-pipeline readiness", request.geasset_path);
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    const auto source_review = review_openexr_texture_source_metadata(request.source_review);
+    if (!source_review.succeeded()) {
+        append_diagnostics(result.diagnostics, source_review.diagnostics);
+        return result;
+    }
+    result.source = *source_review.source;
+
+    const auto policy = plan_texture_backend_format_policy_v1(TextureBackendFormatPolicyRequestV1{
+        .source = *result.source,
+        .backend_evidence = request.backend_evidence,
+        .require_all_backends = request.require_all_backends,
+    });
+    if (!policy.metadata.has_value()) {
+        add_diagnostic(result.diagnostics, OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_cook_metadata,
+                       "OpenEXR payload decode could not produce texture cook metadata", request.geasset_path);
+        return result;
+    }
+    result.cook_metadata = *policy.metadata;
+
+    result.payload_bytes = read_openexr_rgba16_payload(result.diagnostics, request, *result.source);
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.decode_stage = "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f";
+    result.payload = plan_environment_texture_geasset_payload_v1(EnvironmentTextureGeassetPayloadRequestV1{
+        .asset = request.asset,
+        .geasset_path = request.geasset_path,
+        .source_revision = request.source_revision,
+        .cook_metadata = *result.cook_metadata,
+        .payload_bytes = result.payload_bytes,
+        .decode_stage = result.decode_stage,
+        .transcode_stage = "not_required",
+        .pixel_decode_invoked = true,
+        .basis_transcode_invoked = false,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+    });
+    if (!result.payload.succeeded()) {
+        append_diagnostics(result.diagnostics, result.payload.diagnostics);
+    }
+    return result;
 #endif
 }
 

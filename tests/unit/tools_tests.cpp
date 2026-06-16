@@ -7839,6 +7839,38 @@ MK_TEST("openexr environment texture source review fails closed without asset im
     MK_REQUIRE(result.diagnostics[0].message.find("asset-importers feature is disabled") != std::string::npos);
 }
 
+MK_TEST("openexr environment texture payload decode fails closed without asset importers") {
+    if (mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+    const auto result = mirakana::decode_openexr_environment_texture_payload_v1(
+        mirakana::OpenExrEnvironmentTexturePayloadDecodeRequestV1{
+            .asset = mirakana::AssetId::from_name("environment/studio-radiance"),
+            .geasset_path = "runtime/assets/environment/studio_radiance.texture.geasset",
+            .source_revision = 5,
+            .source_review =
+                mirakana::OpenExrTextureSourceReviewRequest{
+                    .source_file_path = std::filesystem::path{"source/textures/environment/studio.exr"},
+                    .source_path = "source/textures/environment/studio.exr",
+                    .source_hash = "sha256:00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    .provenance_id = "provenance.environment.studio",
+                    .license_id = "LicenseRef-Proprietary",
+                    .scene_linear_intent = true,
+                },
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.source.has_value());
+    MK_REQUIRE(!result.cook_metadata.has_value());
+    MK_REQUIRE(result.payload_bytes.empty());
+    MK_REQUIRE(!result.payload.succeeded());
+    MK_REQUIRE(result.diagnostics.size() == 1U);
+    MK_REQUIRE(result.diagnostics[0].code ==
+               mirakana::OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::asset_importers_disabled);
+    MK_REQUIRE(result.diagnostics[0].message.contains("asset-importers feature is disabled"));
+}
+
 MK_TEST("ktx2 basis texture source review fails closed without asset importers") {
     if (mirakana::external_asset_importers_available()) {
         return;
@@ -8282,6 +8314,58 @@ MK_TEST("openexr environment texture source review maps real file metadata when 
     MK_REQUIRE(!source.openexr.multipart);
     MK_REQUIRE(!source.openexr.deep);
     MK_REQUIRE(!source.openexr.tiled);
+#endif
+}
+
+MK_TEST("openexr environment texture payload decode reads real pixels into rgba16f geasset payload when importers are "
+        "enabled") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+#if MK_TESTS_HAS_ASSET_IMPORTERS
+    const ScopedTestFile fixture{std::filesystem::current_path() / "mk_openexr_environment_payload_fixture.exr"};
+    write_openexr_environment_texture_fixture(fixture.path());
+
+    const auto result = mirakana::decode_openexr_environment_texture_payload_v1(
+        mirakana::OpenExrEnvironmentTexturePayloadDecodeRequestV1{
+            .asset = mirakana::AssetId::from_name("environment/studio-radiance"),
+            .geasset_path = "runtime/assets/environment/studio_radiance.texture.geasset",
+            .source_revision = 31,
+            .source_review =
+                mirakana::OpenExrTextureSourceReviewRequest{
+                    .source_file_path = fixture.path(),
+                    .source_path = "source/textures/environment/studio.exr",
+                    .source_hash = "sha256:111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000",
+                    .provenance_id = "provenance.environment.studio",
+                    .license_id = "LicenseRef-Proprietary",
+                    .scene_linear_intent = true,
+                },
+        });
+
+    const std::vector<std::uint8_t> expected_payload{
+        0x00, 0x3C, 0x00, 0x00, 0x00, 0x30, 0x00, 0x3C, 0x00, 0x3A, 0x00, 0x34, 0x00, 0x34, 0x00, 0x3C,
+        0x00, 0x38, 0x00, 0x38, 0x00, 0x38, 0x00, 0x3C, 0x00, 0x34, 0x00, 0x3A, 0x00, 0x3C, 0x00, 0x3C,
+    };
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(result.source.has_value());
+    MK_REQUIRE(result.cook_metadata.has_value());
+    MK_REQUIRE(result.source->width == 2U);
+    MK_REQUIRE(result.source->height == 2U);
+    MK_REQUIRE(result.source->openexr.channel_list == "R:float,G:float,B:float");
+    MK_REQUIRE(result.cook_metadata->estimated_decoded_bytes == 32U);
+    MK_REQUIRE(result.payload_bytes == expected_payload);
+    MK_REQUIRE(result.decode_stage == "openexr.InputFile.FrameBuffer.readPixels.scene_linear_rgba16f");
+    MK_REQUIRE(result.payload.succeeded());
+    MK_REQUIRE(result.payload.artifact.source_revision == 31U);
+    MK_REQUIRE(result.payload.content.contains(
+        "texture.payload_data_hex=003c00000030003c003a00340034003c003800380038003c0034003a003c003c\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.pixel_decode_invoked=1\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.basis_transcode_invoked=0\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.gpu_upload_invoked=0\n"));
+    MK_REQUIRE(result.payload.content.contains("texture.broad_asset_pipeline_ready=0\n"));
 #endif
 }
 
