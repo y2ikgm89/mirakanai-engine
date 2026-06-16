@@ -57,6 +57,19 @@ enum class EnvironmentTextureGeassetPayloadDiagnosticCode : std::uint8_t {
     unsupported_claim,
 };
 
+enum class OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode : std::uint8_t {
+    none,
+    invalid_request,
+    asset_importers_disabled,
+    openexr_read_failed,
+    unsupported_openexr_layout,
+    unsupported_openexr_channels,
+    invalid_openexr_metadata,
+    invalid_cook_metadata,
+    invalid_payload,
+    unsupported_claim,
+};
+
 struct OpenExrTextureSourceReviewDiagnostic {
     OpenExrTextureSourceReviewDiagnosticCode code{OpenExrTextureSourceReviewDiagnosticCode::none};
     std::string message;
@@ -83,6 +96,13 @@ struct EnvironmentTextureGeassetMetadataDiagnostic {
 
 struct EnvironmentTextureGeassetPayloadDiagnostic {
     EnvironmentTextureGeassetPayloadDiagnosticCode code{EnvironmentTextureGeassetPayloadDiagnosticCode::none};
+    std::string message;
+    std::string path;
+};
+
+struct OpenExrEnvironmentTexturePayloadDecodeDiagnostic {
+    OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode code{
+        OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::none};
     std::string message;
     std::string path;
 };
@@ -147,6 +167,17 @@ struct EnvironmentTextureGeassetPayloadRequestV1 {
     bool broad_asset_pipeline_ready{false};
 };
 
+struct OpenExrEnvironmentTexturePayloadDecodeRequestV1 {
+    AssetId asset;
+    std::string geasset_path;
+    std::uint64_t source_revision{1};
+    OpenExrTextureSourceReviewRequest source_review;
+    std::vector<TextureBackendFormatEvidenceRowV1> backend_evidence;
+    bool require_all_backends{true};
+    bool gpu_upload_invoked{false};
+    bool broad_asset_pipeline_ready{false};
+};
+
 struct OpenExrTextureSourceReviewResult {
     std::optional<TextureSourceDocumentV2> source;
     std::vector<OpenExrTextureSourceReviewDiagnostic> diagnostics;
@@ -193,9 +224,26 @@ struct EnvironmentTextureGeassetPayloadResultV1 {
     }
 };
 
+struct OpenExrEnvironmentTexturePayloadDecodeResultV1 {
+    std::optional<TextureSourceDocumentV2> source;
+    std::optional<TextureCookMetadataDocumentV1> cook_metadata;
+    std::vector<std::uint8_t> payload_bytes;
+    std::string decode_stage;
+    EnvironmentTextureGeassetPayloadResultV1 payload;
+    std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return source.has_value() && cook_metadata.has_value() && !payload_bytes.empty() && !decode_stage.empty() &&
+               payload.succeeded() && diagnostics.empty();
+    }
+};
+
 [[nodiscard]] bool has_openexr_texture_source_review() noexcept;
 [[nodiscard]] OpenExrTextureSourceReviewResult
 review_openexr_texture_source_metadata(const OpenExrTextureSourceReviewRequest& request);
+[[nodiscard]] bool has_openexr_environment_texture_payload_decode() noexcept;
+[[nodiscard]] OpenExrEnvironmentTexturePayloadDecodeResultV1
+decode_openexr_environment_texture_payload_v1(const OpenExrEnvironmentTexturePayloadDecodeRequestV1& request);
 [[nodiscard]] bool has_ktx2_basis_texture_source_review() noexcept;
 [[nodiscard]] Ktx2BasisTextureSourceReviewResult
 review_ktx2_basis_texture_source_metadata(const Ktx2BasisTextureSourceReviewRequest& request);
