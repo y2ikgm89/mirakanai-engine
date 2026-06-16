@@ -1405,6 +1405,56 @@ MK_TEST("editor environment preset library exposes browsing rows and package evi
     MK_REQUIRE(rows[0].status == mirakana::editor::EnvironmentPackageRegistrationDraftStatus::add_runtime_file);
 }
 
+MK_TEST("editor environment preset library readiness promotes only with reviewed package evidence") {
+    const auto library =
+        mirakana::editor::make_environment_preset_library_model(mirakana::editor::EnvironmentPresetLibraryDesc{
+            .pack = make_editor_environment_preset_pack(),
+            .path = "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+            .runtime_package_path = "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+            .package_index_registered = true,
+            .sample_consumption_evidence = true,
+        });
+
+    const auto ready = mirakana::editor::make_environment_preset_library_readiness_model(
+        mirakana::editor::EnvironmentPresetLibraryReadinessDesc{
+            .library = library,
+            .package_smoke_ready = true,
+            .installed_package_smoke_ready = true,
+            .editor_browsing_rows_ready = true,
+            .sample_scene_consumption_ready = true,
+            .license_and_provenance_ready = true,
+            .external_asset_notices_ready = true,
+        });
+
+    MK_REQUIRE(ready.status == mirakana::editor::EnvironmentAuthoringStatus::ready);
+    MK_REQUIRE(ready.environment_aaa_preset_library_ready);
+    MK_REQUIRE(!ready.invokes_backend);
+    MK_REQUIRE(!ready.exposes_native_handles);
+    MK_REQUIRE(!ready.executes_package_scripts);
+    MK_REQUIRE(find_environment_row(ready, "environment.preset_library.readiness.environment_aaa_preset_library_ready")
+                   ->value == "ready");
+    MK_REQUIRE(find_environment_row(ready, "environment.preset_library.readiness.package_smoke")->value == "ready");
+    MK_REQUIRE(find_environment_row(ready, "environment.preset_library.readiness.installed_package_smoke")->value ==
+               "ready");
+
+    const auto blocked = mirakana::editor::make_environment_preset_library_readiness_model(
+        mirakana::editor::EnvironmentPresetLibraryReadinessDesc{
+            .library = library,
+            .package_smoke_ready = true,
+            .installed_package_smoke_ready = false,
+            .editor_browsing_rows_ready = true,
+            .sample_scene_consumption_ready = true,
+            .license_and_provenance_ready = true,
+            .external_asset_notices_ready = true,
+        });
+    MK_REQUIRE(blocked.status == mirakana::editor::EnvironmentAuthoringStatus::blocked);
+    MK_REQUIRE(!blocked.environment_aaa_preset_library_ready);
+    MK_REQUIRE(
+        find_environment_row(blocked, "environment.preset_library.readiness.environment_aaa_preset_library_ready")
+            ->value == "blocked");
+    MK_REQUIRE(!blocked.diagnostics.empty());
+}
+
 MK_TEST("native editor inspector surfaces environment authoring without middleware or backend execution") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 

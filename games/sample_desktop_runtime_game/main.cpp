@@ -922,6 +922,7 @@ struct EnvironmentPresetLibraryPackageEvidence {
     std::size_t dependency_refs{0};
     bool sample_consumption_evidence{false};
     bool aaa_ready_claimed{false};
+    bool aaa_preset_library_ready{false};
     std::size_t diagnostics{0};
 };
 
@@ -1109,8 +1110,11 @@ count_required_environment_presets(std::span<const mirakana::EnvironmentPresetPa
     }
 
     evidence.status = EnvironmentPresetLibraryPackageStatus::ready;
+    evidence.aaa_ready_claimed =
+        evidence.package_index_entry && evidence.package_file && evidence.sample_consumption_evidence;
+    evidence.aaa_preset_library_ready = evidence.aaa_ready_claimed;
     evidence.ready = evidence.package_index_entry && evidence.package_file && evidence.sample_consumption_evidence &&
-                     !evidence.aaa_ready_claimed;
+                     evidence.aaa_preset_library_ready;
     if (!evidence.ready) {
         evidence.status = EnvironmentPresetLibraryPackageStatus::invalid_pack_record;
         evidence.diagnostics = 1U;
@@ -7778,6 +7782,7 @@ int main(int argc, char** argv) {
         << " environment_preset_library_sample_consumption_evidence="
         << (environment_preset_library.sample_consumption_evidence ? 1 : 0)
         << " environment_preset_library_aaa_ready_claimed=" << (environment_preset_library.aaa_ready_claimed ? 1 : 0)
+        << " environment_aaa_preset_library_ready=" << (environment_preset_library.aaa_preset_library_ready ? 1 : 0)
         << " environment_preset_library_diagnostics=" << environment_preset_library.diagnostics
         << " environment_quality_budget_status="
         << environment_quality_budget_status_name(environment_quality_budget.status)
