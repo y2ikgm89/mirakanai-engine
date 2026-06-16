@@ -95,6 +95,31 @@ struct RuntimeEnvironmentTexturePayload {
     std::vector<std::uint8_t> bytes;
 };
 
+struct RuntimeEnvironmentTexturePayloadUploadPlanDiagnostic {
+    std::string code;
+    std::string message;
+};
+
+struct RuntimeEnvironmentTexturePayloadUploadPlanResult {
+    RuntimeTexturePayload payload;
+    std::vector<RuntimeEnvironmentTexturePayloadUploadPlanDiagnostic> diagnostics;
+    bool upload_plan_ready{false};
+    TextureSourceKindV2 source_kind{TextureSourceKindV2::unknown};
+    TextureColorSpaceV2 color_space{TextureColorSpaceV2::unknown};
+    TextureSamplerClassV2 sampler_class{TextureSamplerClassV2::unknown};
+    TextureSourcePixelFormat pixel_format{TextureSourcePixelFormat::unknown};
+    std::uint32_t mip_count{0};
+    std::uint64_t payload_bytes{0};
+    std::uint64_t upload_source_bytes{0};
+    bool runtime_codec_invoked{false};
+    bool runtime_basis_transcode_invoked{false};
+    bool backend_api_invoked{false};
+    bool gpu_upload_invoked{false};
+    bool broad_asset_pipeline_ready{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct RuntimeMeshPayload {
     AssetId asset;
     RuntimeAssetHandle handle;
@@ -333,6 +358,9 @@ struct RuntimeAssetPackageLoadResult {
 runtime_texture_payload(const RuntimeAssetRecord& record);
 [[nodiscard]] RuntimePayloadAccessResult<RuntimeEnvironmentTexturePayload>
 runtime_environment_texture_payload(const RuntimeAssetRecord& record);
+[[nodiscard]] RuntimeEnvironmentTexturePayloadUploadPlanResult plan_runtime_environment_texture_payload_upload(
+    const RuntimeEnvironmentTexturePayload& payload,
+    TextureSourcePixelFormat expected_pixel_format = TextureSourcePixelFormat::rgba8_unorm);
 [[nodiscard]] RuntimePayloadAccessResult<RuntimeMeshPayload> runtime_mesh_payload(const RuntimeAssetRecord& record);
 [[nodiscard]] RuntimePayloadAccessResult<RuntimeMorphMeshCpuPayload>
 runtime_morph_mesh_cpu_payload(const RuntimeAssetRecord& record);

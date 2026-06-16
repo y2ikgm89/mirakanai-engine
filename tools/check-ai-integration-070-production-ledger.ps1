@@ -1472,12 +1472,9 @@ foreach ($needle in @(
     "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_d3d12_ready=1",
     "environment_platform_windows_vulkan_ready=0", "environment_all_platform_unconditional_ready=0",
     "environment_optimization_measurement_status=host_evidence_required", "environment_optimization_measurement_required_workloads=7", "environment_broad_optimization_ready=0",
-    "--require-environment-texture-asset-pipeline-package",
-    "environment_texture_asset_pipeline_package_status=ready",
-    "payload texture decode and Basis transcode evidence with zero GPU upload and broad asset-pipeline ready counters",
-    "production text/font/image/atlas/accessibility remains unsupported",
-    "public native or RHI handle access remains unsupported",
-    "general production renderer quality remains unsupported"
+    "--require-environment-texture-asset-pipeline-package", "environment_texture_asset_pipeline_package_status=ready", "payload texture decode and Basis transcode evidence", "one selected RGBA8 upload-plan-ready payload", "environment_texture_asset_pipeline_upload_plan_ready_records=1",
+    "environment_texture_asset_pipeline_upload_plan_runtime_codec_invoked=0", "environment_texture_asset_pipeline_upload_plan_runtime_basis_transcode_invoked=0", "environment_texture_asset_pipeline_upload_plan_backend_api_invoked=0", "environment_texture_asset_pipeline_upload_plan_gpu_upload_invoked=0", "environment_texture_asset_pipeline_upload_plan_broad_ready=0",
+    "production text/font/image/atlas/accessibility remains unsupported", "public native or RHI handle access remains unsupported", "general production renderer quality remains unsupported"
 )) {
     Assert-ContainsText $sample3dManifestText $needle $sample3dManifestPath
 }
