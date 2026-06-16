@@ -181,6 +181,7 @@ $requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload = @($SmokeArgs) -c
 $requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineMetalCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-metal-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
+$requiresEnvironmentAssetPipelineOpenExrKtxBasisReady = @($SmokeArgs) -contains "--require-environment-asset-pipeline-openexr-ktx-basis-ready"
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
@@ -194,6 +195,7 @@ $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-pr
     $requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload -or
     $requiresEnvironmentTextureAssetPipelineMetalCompressedUpload -or
     $requiresEnvironmentTextureAssetPipelineVulkanUpload -or
+    $requiresEnvironmentAssetPipelineOpenExrKtxBasisReady -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
     $requiresEnvironmentBackendParity -or
@@ -1344,6 +1346,29 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan environment texture upload positive count: $field"
             }
+        }
+    }
+    if ($requiresEnvironmentAssetPipelineOpenExrKtxBasisReady) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment asset-pipeline OpenEXR/KTX/Basis ready closeout" `
+            -ExpectedFields @{
+                "environment_asset_pipeline_openexr_ktx_basis_ready_requested" = "1"
+                "environment_asset_pipeline_openexr_ktx_basis_ready" = "1"
+                "environment_asset_pipeline_openexr_ktx_basis_package_ready" = "1"
+                "environment_asset_pipeline_openexr_ktx_basis_source_to_package_rows" = "3"
+                "environment_asset_pipeline_openexr_ktx_basis_backend_decision_rows" = "15"
+                "environment_asset_pipeline_openexr_ktx_basis_runtime_upload_rows" = "5"
+                "environment_asset_pipeline_openexr_ktx_basis_host_validated_rows" = "5"
+                "environment_asset_pipeline_openexr_ktx_basis_fail_closed_diagnostics" = "12"
+                "environment_asset_pipeline_openexr_ktx_basis_backend_parity_ready" = "0"
+                "environment_asset_pipeline_openexr_ktx_basis_commercial_ready" = "0"
+                "environment_asset_pipeline_openexr_ktx_basis_broad_environment_ready" = "0"
+                "environment_asset_pipeline_openexr_ktx_basis_diagnostics" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_asset_pipeline_openexr_ktx_basis_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive OpenEXR/KTX/Basis asset-pipeline replay hash"
         }
     }
     if ($requiresEnvironmentPresetLibraryPackage) {

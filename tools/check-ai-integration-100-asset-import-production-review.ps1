@@ -222,6 +222,8 @@ foreach ($needle in @(
         "--require-environment-texture-asset-pipeline-d3d12-compressed-upload",
         "--require-environment-texture-asset-pipeline-vulkan-compressed-upload",
         "--require-environment-texture-asset-pipeline-metal-compressed-upload",
+        "--require-environment-asset-pipeline-openexr-ktx-basis-ready",
+        "environment_asset_pipeline_openexr_ktx_basis_ready=1",
         "selected D3D12 WARP runtime upload/readback",
         "selected strict Vulkan runtime upload/readback",
         "selected D3D12 WARP backend-target BC7 compressed upload/readback",

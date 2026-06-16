@@ -114,6 +114,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_texture_asset_pipeline_vulkan_compressed_upload{false};
     bool require_environment_texture_asset_pipeline_metal_compressed_upload{false};
     bool require_environment_texture_asset_pipeline_vulkan_upload{false};
+    bool require_environment_asset_pipeline_openexr_ktx_basis_ready{false};
     bool require_environment_preset_library_package{false};
     bool require_environment_ready_aggregate{false};
     bool require_environment_vulkan_strict_aggregate{false};
@@ -1045,6 +1046,19 @@ struct EnvironmentTextureAssetPipelinePackageEvidence {
     bool vulkan_upload_backend_parity_ready{false};
     bool vulkan_upload_broad_asset_pipeline_ready{false};
     std::size_t vulkan_upload_diagnostics{0};
+    bool openexr_ktx_basis_ready_requested{false};
+    bool openexr_ktx_basis_ready{false};
+    bool openexr_ktx_basis_package_ready{false};
+    std::size_t openexr_ktx_basis_source_to_package_rows{0};
+    std::size_t openexr_ktx_basis_backend_decision_rows{0};
+    std::size_t openexr_ktx_basis_runtime_upload_rows{0};
+    std::size_t openexr_ktx_basis_host_validated_rows{0};
+    std::size_t openexr_ktx_basis_fail_closed_diagnostics{0};
+    bool openexr_ktx_basis_backend_parity_ready{false};
+    bool openexr_ktx_basis_commercial_ready{false};
+    bool openexr_ktx_basis_broad_environment_ready{false};
+    std::size_t openexr_ktx_basis_diagnostics{0};
+    std::uint64_t openexr_ktx_basis_replay_hash{0};
     std::size_t diagnostics{0};
 };
 
@@ -1602,6 +1616,7 @@ void record_environment_texture_asset_pipeline_metal_compressed_upload(
 [[nodiscard]] EnvironmentTextureAssetPipelinePackageEvidence evaluate_environment_texture_asset_pipeline_package(
     bool requested, bool require_d3d12_upload, bool require_d3d12_compressed_upload,
     bool require_vulkan_compressed_upload, bool require_metal_compressed_upload, bool require_vulkan_upload,
+    bool require_openexr_ktx_basis_ready,
     const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
     EnvironmentTextureAssetPipelinePackageEvidence evidence;
     evidence.requested = requested;
@@ -1610,6 +1625,7 @@ void record_environment_texture_asset_pipeline_metal_compressed_upload(
     evidence.vulkan_compressed_upload_requested = require_vulkan_compressed_upload;
     evidence.metal_compressed_upload_requested = require_metal_compressed_upload;
     evidence.vulkan_upload_requested = require_vulkan_upload;
+    evidence.openexr_ktx_basis_ready_requested = require_openexr_ktx_basis_ready;
     if (!requested) {
         return evidence;
     }
@@ -1787,6 +1803,43 @@ void record_environment_texture_asset_pipeline_metal_compressed_upload(
     if (!evidence.ready) {
         evidence.status = EnvironmentTextureAssetPipelinePackageStatus::invalid_texture_record;
         evidence.diagnostics = 1U;
+    }
+    if (require_openexr_ktx_basis_ready) {
+        const bool selected_runtime_uploads_ready =
+            evidence.d3d12_upload_ready && evidence.d3d12_compressed_upload_ready && evidence.vulkan_upload_ready &&
+            evidence.vulkan_compressed_upload_ready;
+        evidence.openexr_ktx_basis_package_ready = evidence.ready;
+        evidence.openexr_ktx_basis_source_to_package_rows = evidence.payload_records;
+        evidence.openexr_ktx_basis_backend_decision_rows = evidence.backend_policy_rows;
+        evidence.openexr_ktx_basis_runtime_upload_rows = selected_runtime_uploads_ready ? 5U : 0U;
+        evidence.openexr_ktx_basis_host_validated_rows = selected_runtime_uploads_ready ? 5U : 0U;
+        evidence.openexr_ktx_basis_fail_closed_diagnostics = evidence.unsupported_host_diagnostics;
+        evidence.openexr_ktx_basis_backend_parity_ready =
+            evidence.d3d12_upload_backend_parity_ready || evidence.d3d12_compressed_upload_backend_parity_ready ||
+            evidence.vulkan_upload_backend_parity_ready || evidence.vulkan_compressed_upload_backend_parity_ready ||
+            evidence.metal_compressed_upload_backend_parity_ready;
+        evidence.openexr_ktx_basis_ready =
+            evidence.openexr_ktx_basis_package_ready && evidence.openexr_ktx_basis_source_to_package_rows == 3U &&
+            evidence.openexr_ktx_basis_backend_decision_rows == 15U &&
+            evidence.openexr_ktx_basis_runtime_upload_rows == 5U &&
+            evidence.openexr_ktx_basis_host_validated_rows == 5U &&
+            evidence.openexr_ktx_basis_fail_closed_diagnostics == 12U &&
+            !evidence.openexr_ktx_basis_backend_parity_ready && !evidence.openexr_ktx_basis_commercial_ready &&
+            !evidence.openexr_ktx_basis_broad_environment_ready;
+        evidence.openexr_ktx_basis_diagnostics = evidence.openexr_ktx_basis_ready ? 0U : 1U;
+
+        std::uint64_t hash{1469598103934665603ULL};
+        auto mix = [&hash](std::uint64_t value) noexcept {
+            hash ^= value;
+            hash *= 1099511628211ULL;
+        };
+        mix(evidence.openexr_ktx_basis_source_to_package_rows);
+        mix(evidence.openexr_ktx_basis_backend_decision_rows);
+        mix(evidence.openexr_ktx_basis_runtime_upload_rows);
+        mix(evidence.openexr_ktx_basis_host_validated_rows);
+        mix(evidence.openexr_ktx_basis_fail_closed_diagnostics);
+        mix(evidence.openexr_ktx_basis_ready ? 1U : 0U);
+        evidence.openexr_ktx_basis_replay_hash = hash;
     }
     return evidence;
 }
@@ -4885,6 +4938,18 @@ void enable_environment_optimization_measurement_requirements(DesktopRuntimeGame
     enable_environment_ready_aggregate_requirements(options);
 }
 
+void enable_environment_asset_pipeline_openexr_ktx_basis_ready_requirements(
+    DesktopRuntimeGameOptions& options) noexcept {
+    options.require_d3d12_renderer = true;
+    options.require_environment_profile = true;
+    options.require_environment_texture_asset_pipeline_package = true;
+    options.require_environment_texture_asset_pipeline_d3d12_upload = true;
+    options.require_environment_texture_asset_pipeline_d3d12_compressed_upload = true;
+    options.require_environment_texture_asset_pipeline_vulkan_upload = true;
+    options.require_environment_texture_asset_pipeline_vulkan_compressed_upload = true;
+    options.require_environment_asset_pipeline_openexr_ktx_basis_ready = true;
+}
+
 void enable_environment_weather_simulation_package_requirements(DesktopRuntimeGameOptions& options) noexcept {
     options.require_environment_weather_simulation_package = true;
 }
@@ -4925,6 +4990,7 @@ void print_usage() {
                  "[--require-environment-texture-asset-pipeline-d3d12-compressed-upload] "
                  "[--require-environment-texture-asset-pipeline-vulkan-upload] "
                  "[--require-environment-texture-asset-pipeline-vulkan-compressed-upload] "
+                 "[--require-environment-asset-pipeline-openexr-ktx-basis-ready] "
                  "[--require-environment-preset-library-package] "
                  "[--require-environment-ready-aggregate] "
                  "[--require-environment-vulkan-strict-aggregate] "
@@ -5295,6 +5361,10 @@ void print_usage() {
             options.require_environment_profile = true;
             options.require_environment_texture_asset_pipeline_package = true;
             options.require_environment_texture_asset_pipeline_vulkan_upload = true;
+            continue;
+        }
+        if (arg == "--require-environment-asset-pipeline-openexr-ktx-basis-ready") {
+            enable_environment_asset_pipeline_openexr_ktx_basis_ready_requirements(options);
             continue;
         }
         if (arg == "--require-environment-preset-library-package") {
@@ -7557,7 +7627,8 @@ int main(int argc, char** argv) {
         options.require_environment_texture_asset_pipeline_d3d12_compressed_upload,
         options.require_environment_texture_asset_pipeline_vulkan_compressed_upload,
         options.require_environment_texture_asset_pipeline_metal_compressed_upload,
-        options.require_environment_texture_asset_pipeline_vulkan_upload, runtime_package);
+        options.require_environment_texture_asset_pipeline_vulkan_upload,
+        options.require_environment_asset_pipeline_openexr_ktx_basis_ready, runtime_package);
     const auto environment_preset_library = evaluate_environment_preset_library_package(
         options.require_environment_preset_library_package, runtime_package);
     const auto environment_ibl_renderer_execution =
@@ -8579,6 +8650,32 @@ int main(int argc, char** argv) {
         << (environment_texture_asset_pipeline.vulkan_upload_broad_asset_pipeline_ready ? 1 : 0)
         << " environment_texture_asset_pipeline_vulkan_upload_diagnostics="
         << environment_texture_asset_pipeline.vulkan_upload_diagnostics
+        << " environment_asset_pipeline_openexr_ktx_basis_ready_requested="
+        << (environment_texture_asset_pipeline.openexr_ktx_basis_ready_requested ? 1 : 0)
+        << " environment_asset_pipeline_openexr_ktx_basis_ready="
+        << (environment_texture_asset_pipeline.openexr_ktx_basis_ready ? 1 : 0)
+        << " environment_asset_pipeline_openexr_ktx_basis_package_ready="
+        << (environment_texture_asset_pipeline.openexr_ktx_basis_package_ready ? 1 : 0)
+        << " environment_asset_pipeline_openexr_ktx_basis_source_to_package_rows="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_source_to_package_rows
+        << " environment_asset_pipeline_openexr_ktx_basis_backend_decision_rows="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_backend_decision_rows
+        << " environment_asset_pipeline_openexr_ktx_basis_runtime_upload_rows="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_runtime_upload_rows
+        << " environment_asset_pipeline_openexr_ktx_basis_host_validated_rows="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_host_validated_rows
+        << " environment_asset_pipeline_openexr_ktx_basis_fail_closed_diagnostics="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_fail_closed_diagnostics
+        << " environment_asset_pipeline_openexr_ktx_basis_backend_parity_ready="
+        << (environment_texture_asset_pipeline.openexr_ktx_basis_backend_parity_ready ? 1 : 0)
+        << " environment_asset_pipeline_openexr_ktx_basis_commercial_ready="
+        << (environment_texture_asset_pipeline.openexr_ktx_basis_commercial_ready ? 1 : 0)
+        << " environment_asset_pipeline_openexr_ktx_basis_broad_environment_ready="
+        << (environment_texture_asset_pipeline.openexr_ktx_basis_broad_environment_ready ? 1 : 0)
+        << " environment_asset_pipeline_openexr_ktx_basis_diagnostics="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_diagnostics
+        << " environment_asset_pipeline_openexr_ktx_basis_replay_hash="
+        << environment_texture_asset_pipeline.openexr_ktx_basis_replay_hash
         << " environment_texture_asset_pipeline_diagnostics=" << environment_texture_asset_pipeline.diagnostics
         << " environment_preset_library_package_status="
         << environment_preset_library_package_status_name(environment_preset_library.status)
@@ -10294,6 +10391,10 @@ int main(int argc, char** argv) {
         }
         if (options.require_environment_texture_asset_pipeline_vulkan_upload &&
             !environment_texture_asset_pipeline.vulkan_upload_ready) {
+            return 3;
+        }
+        if (options.require_environment_asset_pipeline_openexr_ktx_basis_ready &&
+            !environment_texture_asset_pipeline.openexr_ktx_basis_ready) {
             return 3;
         }
         if (options.require_environment_preset_library_package && !environment_preset_library.ready) {
