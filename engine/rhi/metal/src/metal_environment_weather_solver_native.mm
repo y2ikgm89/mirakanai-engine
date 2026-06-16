@@ -88,8 +88,10 @@ dispatch_environment_weather_solver(const MetalEnvironmentWeatherSolverDesc& des
         return result;
     }
 
-    id<MTLDevice> metal_device = (__bridge id<MTLDevice>)native_device.device.impl_->device;
-    id<MTLCommandQueue> command_queue = (__bridge id<MTLCommandQueue>)native_device.device.impl_->command_queue;
+    id<MTLDevice> metal_device =
+        (__bridge id<MTLDevice>)MetalRuntimeDevicePrivateAccess::device(native_device.device);
+    id<MTLCommandQueue> command_queue =
+        (__bridge id<MTLCommandQueue>)MetalRuntimeDevicePrivateAccess::command_queue(native_device.device);
     NSString* metallib_path = to_ns_string(desc.metallib_path);
     if (metallib_path == nil) {
         result.failure_stage = 6U;

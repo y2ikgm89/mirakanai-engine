@@ -272,6 +272,7 @@ class MetalRuntimeDevice {
                                                                        MetalRuntimeTexture& texture);
     friend MetalNativeEnvironmentFeatureHostEvidenceResult
     create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc);
+    friend struct MetalRuntimeDevicePrivateAccess;
 };
 
 class MetalRuntimeCommandBuffer {
