@@ -37,6 +37,7 @@
 #endif
 #include "mirakana/rhi/metal/metal_backend.hpp"
 #include "mirakana/rhi/vulkan/vulkan_backend.hpp"
+#include "mirakana/rhi/vulkan/vulkan_environment_weather_solver.hpp"
 
 #include <algorithm>
 #include <array>
@@ -47,6 +48,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -122,6 +124,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_platform_readiness{false};
     bool require_environment_optimization_measurement{false};
     bool require_environment_weather_simulation_package{false};
+    bool require_environment_weather_simulation_vulkan_solver_package{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -184,6 +187,8 @@ constexpr std::string_view kRuntimeEnvironmentVolumetricFogComputeShaderPath{
     "shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.dxil"};
 constexpr std::string_view kRuntimeEnvironmentVolumetricFogVulkanComputeShaderPath{
     "shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.spv"};
+constexpr std::string_view kRuntimeEnvironmentWeatherSolverVulkanComputeShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_weather_solver.cs.spv"};
 constexpr std::string_view kRuntimeCloudLayerVertexShaderPath{
     "shaders/sample_desktop_runtime_game_cloud_layer.vs.dxil"};
 constexpr std::string_view kRuntimeCloudLayerFragmentShaderPath{
@@ -2112,6 +2117,22 @@ struct EnvironmentWeatherSimulationPackageEvidence {
     std::uint32_t d3d12_gpu_solver_barriers{0U};
     std::uint32_t d3d12_gpu_solver_failure_stage{0U};
     std::uint64_t d3d12_gpu_solver_hash{0U};
+    bool vulkan_gpu_solver_ready{false};
+    bool vulkan_gpu_solver_strict_ready{false};
+    bool vulkan_gpu_solver_native_handle_access{false};
+    bool vulkan_gpu_solver_backend_parity_ready{false};
+    bool vulkan_gpu_solver_d3d12_inferred{false};
+    bool vulkan_gpu_solver_metal_inferred{false};
+    std::uint32_t vulkan_gpu_solver_cells{0U};
+    std::uint32_t vulkan_gpu_solver_dispatches{0U};
+    std::uint32_t vulkan_gpu_solver_descriptor_set_bindings{0U};
+    std::uint32_t vulkan_gpu_solver_barriers{0U};
+    std::uint32_t vulkan_gpu_solver_failure_stage{0U};
+    std::uint64_t vulkan_gpu_solver_hash{0U};
+    std::uint64_t vulkan_gpu_solver_elapsed_us{0U};
+    std::uint64_t vulkan_gpu_solver_budget_us{0U};
+    bool vulkan_gpu_solver_over_budget{false};
+    bool vulkan_gpu_solver_profiler_budget_ready{false};
 };
 
 [[nodiscard]] std::string_view
@@ -4140,6 +4161,39 @@ make_d3d12_environment_weather_solver_rows(const mirakana::EnvironmentWeatherSim
 }
 #endif
 
+[[nodiscard]] std::vector<mirakana::rhi::vulkan::VulkanEnvironmentWeatherSolverCellRow>
+make_vulkan_environment_weather_solver_rows(const mirakana::EnvironmentWeatherSimulationDesc& desc) {
+    std::vector<mirakana::rhi::vulkan::VulkanEnvironmentWeatherSolverCellRow> rows;
+    if (desc.initial_cells.size() != desc.forcing_rows.size()) {
+        return rows;
+    }
+    rows.reserve(desc.initial_cells.size());
+    for (std::size_t index = 0; index < desc.initial_cells.size(); ++index) {
+        const auto& state = desc.initial_cells[index];
+        const auto& forcing = desc.forcing_rows[index];
+        rows.push_back(mirakana::rhi::vulkan::VulkanEnvironmentWeatherSolverCellRow{
+            .temperature_celsius = state.temperature_celsius,
+            .vapor_water_kg_per_m2 = state.vapor_water_kg_per_m2,
+            .cloud_water_kg_per_m2 = state.cloud_water_kg_per_m2,
+            .surface_water_kg_per_m2 = state.surface_water_kg_per_m2,
+            .surface_evaporation_kg_per_m2_s = forcing.surface_evaporation_kg_per_m2_s,
+            .temperature_delta_celsius_per_s = forcing.temperature_delta_celsius_per_s,
+            .cloud_precipitation_rate_per_s = forcing.cloud_precipitation_rate_per_s,
+        });
+    }
+    return rows;
+}
+
+[[nodiscard]] std::vector<std::uint32_t> to_spirv_words(const mirakana::DesktopShaderBytecodeBlob& blob) {
+    if (blob.bytecode.empty() || (blob.bytecode.size() % sizeof(std::uint32_t)) != 0U) {
+        return {};
+    }
+
+    std::vector<std::uint32_t> words(blob.bytecode.size() / sizeof(std::uint32_t));
+    std::memcpy(words.data(), blob.bytecode.data(), blob.bytecode.size());
+    return words;
+}
+
 [[nodiscard]] mirakana::EnvironmentWeatherSimulationDesc make_environment_weather_simulation_condensation_desc() {
     const auto saturation = mirakana::environment_weather_saturation_vapor_kg_per_m2(10.0F, 1000.0F, 1000.0F);
 
@@ -4349,7 +4403,8 @@ make_environment_weather_simulation_validation_dataset_desc() {
 }
 
 [[nodiscard]] EnvironmentWeatherSimulationPackageEvidence
-build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOptions& options) {
+build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOptions& options,
+                                                      std::span<const std::uint32_t> vulkan_solver_spirv) {
     EnvironmentWeatherSimulationPackageEvidence evidence;
     evidence.requested = options.require_environment_weather_simulation_package;
     if (!evidence.requested) {
@@ -4390,6 +4445,43 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
                              : 0U;
     }
 #endif
+    if (evidence.plan.succeeded() && options.require_environment_weather_simulation_vulkan_solver_package) {
+        const auto solver_rows = make_vulkan_environment_weather_solver_rows(package_desc);
+        const auto gpu_begin = std::chrono::steady_clock::now();
+        const auto gpu_solver = mirakana::rhi::vulkan::dispatch_environment_weather_solver(
+            mirakana::rhi::vulkan::VulkanEnvironmentWeatherSolverDesc{
+                .compute_shader_spirv = vulkan_solver_spirv,
+                .compute_shader_entry_point = "cs_environment_weather",
+                .cell_rows = std::span<const mirakana::rhi::vulkan::VulkanEnvironmentWeatherSolverCellRow>{solver_rows},
+                .effective_timestep_s = evidence.plan.effective_timestep_s,
+                .air_pressure_hpa = package_desc.air_pressure_hpa,
+                .mixing_height_m = package_desc.mixing_height_m,
+            });
+        const auto gpu_end = std::chrono::steady_clock::now();
+        evidence.vulkan_gpu_solver_native_handle_access = gpu_solver.exposes_native_handles;
+        evidence.vulkan_gpu_solver_cells = gpu_solver.cell_count;
+        evidence.vulkan_gpu_solver_dispatches = gpu_solver.compute_dispatches;
+        evidence.vulkan_gpu_solver_descriptor_set_bindings = gpu_solver.descriptor_set_bindings;
+        evidence.vulkan_gpu_solver_barriers = gpu_solver.resource_barriers_recorded;
+        evidence.vulkan_gpu_solver_failure_stage = gpu_solver.failure_stage;
+        evidence.vulkan_gpu_solver_hash = gpu_solver.output_checksum;
+        evidence.vulkan_gpu_solver_ready =
+            gpu_solver.succeeded && gpu_solver.executed_gpu_solver && gpu_solver.output_readback_nonzero &&
+            gpu_solver.output_checksum != 0U && gpu_solver.descriptor_set_bindings == 3U &&
+            gpu_solver.resource_barriers_recorded >= 2U && !gpu_solver.exposes_native_handles;
+        evidence.vulkan_gpu_solver_strict_ready =
+            evidence.vulkan_gpu_solver_ready && !evidence.vulkan_gpu_solver_backend_parity_ready &&
+            !evidence.vulkan_gpu_solver_d3d12_inferred && !evidence.vulkan_gpu_solver_metal_inferred &&
+            gpu_solver.failure_stage == 0U;
+        evidence.vulkan_gpu_solver_elapsed_us =
+            evidence.vulkan_gpu_solver_ready ? std::max<std::uint64_t>(1U, elapsed_microseconds(gpu_begin, gpu_end))
+                                             : 0U;
+        evidence.vulkan_gpu_solver_budget_us = environment_weather_simulation_package_gpu_budget_us();
+        evidence.vulkan_gpu_solver_over_budget =
+            evidence.vulkan_gpu_solver_elapsed_us > evidence.vulkan_gpu_solver_budget_us;
+        evidence.vulkan_gpu_solver_profiler_budget_ready =
+            evidence.vulkan_gpu_solver_strict_ready && !evidence.vulkan_gpu_solver_over_budget;
+    }
     evidence.validation_dataset = mirakana::plan_environment_weather_simulation_validation_dataset(
         make_environment_weather_simulation_validation_dataset_desc());
     evidence.validation_images = mirakana::plan_environment_weather_simulation_validation_images(
@@ -4956,6 +5048,13 @@ void enable_environment_weather_simulation_package_requirements(DesktopRuntimeGa
     options.require_environment_weather_simulation_package = true;
 }
 
+void enable_environment_weather_simulation_vulkan_solver_package_requirements(
+    DesktopRuntimeGameOptions& options) noexcept {
+    enable_environment_weather_simulation_package_requirements(options);
+    options.require_vulkan_scene_shaders = true;
+    options.require_environment_weather_simulation_vulkan_solver_package = true;
+}
+
 void print_usage() {
     std::cout << "sample_desktop_runtime_game [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
@@ -5000,6 +5099,7 @@ void print_usage() {
                  "[--require-environment-platform-readiness] "
                  "[--require-environment-optimization-measurement] "
                  "[--require-environment-weather-simulation-package] "
+                 "[--require-environment-weather-simulation-vulkan-solver-package] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -5396,6 +5496,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-weather-simulation-package") {
             enable_environment_weather_simulation_package_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-weather-simulation-vulkan-solver-package") {
+            enable_environment_weather_simulation_vulkan_solver_package_requirements(options);
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -7219,6 +7323,22 @@ int main(int argc, char** argv) {
                   << kRuntimeEnvironmentVolumetricFogVulkanComputeShaderPath << '\n';
         return 6;
     }
+    const auto environment_weather_solver_vulkan_compute_blob = load_packaged_single_shader_blob(
+        argc > 0 ? argv[0] : nullptr, kRuntimeEnvironmentWeatherSolverVulkanComputeShaderPath,
+        "cs_environment_weather");
+    if (options.require_environment_weather_simulation_vulkan_solver_package &&
+        environment_weather_solver_vulkan_compute_blob.bytecode.empty()) {
+        std::cout << "sample_desktop_runtime_game vulkan_environment_weather_solver_shader_diagnostic=missing: "
+                  << kRuntimeEnvironmentWeatherSolverVulkanComputeShaderPath << '\n';
+        return 6;
+    }
+    const auto environment_weather_solver_vulkan_spirv = to_spirv_words(environment_weather_solver_vulkan_compute_blob);
+    if (options.require_environment_weather_simulation_vulkan_solver_package &&
+        environment_weather_solver_vulkan_spirv.empty()) {
+        std::cout << "sample_desktop_runtime_game vulkan_environment_weather_solver_shader_diagnostic=invalid: "
+                  << kRuntimeEnvironmentWeatherSolverVulkanComputeShaderPath << '\n';
+        return 6;
+    }
 
     const bool require_environment_any_precipitation_package_evidence =
         options.require_environment_precipitation_package_evidence ||
@@ -7748,7 +7868,8 @@ int main(int argc, char** argv) {
         build_environment_platform_readiness_smoke_evidence(options, environment_ready_aggregate);
     const auto environment_optimization_measurement =
         build_environment_optimization_measurement_smoke_evidence(options, environment_ready_aggregate);
-    const auto environment_weather_simulation_package = build_environment_weather_simulation_package_evidence(options);
+    const auto environment_weather_simulation_package = build_environment_weather_simulation_package_evidence(
+        options, std::span<const std::uint32_t>{environment_weather_solver_vulkan_spirv});
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -10053,6 +10174,38 @@ int main(int argc, char** argv) {
             << environment_weather_simulation_package.d3d12_gpu_solver_failure_stage
             << " environment_weather_simulation_d3d12_gpu_solver_hash="
             << environment_weather_simulation_package.d3d12_gpu_solver_hash
+            << " environment_weather_simulation_vulkan_gpu_solver_ready="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_ready ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_strict_ready="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_strict_ready ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_cells="
+            << environment_weather_simulation_package.vulkan_gpu_solver_cells
+            << " environment_weather_simulation_vulkan_gpu_solver_dispatches="
+            << environment_weather_simulation_package.vulkan_gpu_solver_dispatches
+            << " environment_weather_simulation_vulkan_gpu_solver_descriptor_set_bindings="
+            << environment_weather_simulation_package.vulkan_gpu_solver_descriptor_set_bindings
+            << " environment_weather_simulation_vulkan_gpu_solver_barriers="
+            << environment_weather_simulation_package.vulkan_gpu_solver_barriers
+            << " environment_weather_simulation_vulkan_gpu_solver_native_handle_access="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_native_handle_access ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_backend_parity_ready="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_backend_parity_ready ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_d3d12_inferred="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_d3d12_inferred ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_metal_inferred="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_metal_inferred ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_failure_stage="
+            << environment_weather_simulation_package.vulkan_gpu_solver_failure_stage
+            << " environment_weather_simulation_vulkan_gpu_solver_hash="
+            << environment_weather_simulation_package.vulkan_gpu_solver_hash
+            << " environment_weather_simulation_vulkan_gpu_solver_elapsed_us="
+            << environment_weather_simulation_package.vulkan_gpu_solver_elapsed_us
+            << " environment_weather_simulation_vulkan_gpu_solver_budget_us="
+            << environment_weather_simulation_package.vulkan_gpu_solver_budget_us
+            << " environment_weather_simulation_vulkan_gpu_solver_over_budget="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_over_budget ? 1 : 0)
+            << " environment_weather_simulation_vulkan_gpu_solver_profiler_budget_ready="
+            << (environment_weather_simulation_package.vulkan_gpu_solver_profiler_budget_ready ? 1 : 0)
             << " environment_weather_simulation_solver_profiler_artifacts="
             << environment_weather_simulation_package.solver_budget.profiler_artifact_count
             << " environment_weather_simulation_solver_profiler_tool_rows="
@@ -10297,6 +10450,24 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.d3d12_gpu_solver_backend_parity_ready ||
              environment_weather_simulation_package.d3d12_gpu_solver_failure_stage != 0U ||
              environment_weather_simulation_package.d3d12_gpu_solver_hash == 0U ||
+             (options.require_environment_weather_simulation_vulkan_solver_package &&
+              (!environment_weather_simulation_package.vulkan_gpu_solver_ready ||
+               !environment_weather_simulation_package.vulkan_gpu_solver_strict_ready ||
+               environment_weather_simulation_package.vulkan_gpu_solver_cells != 4U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_dispatches != 1U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_descriptor_set_bindings != 3U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_barriers < 2U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_native_handle_access ||
+               environment_weather_simulation_package.vulkan_gpu_solver_backend_parity_ready ||
+               environment_weather_simulation_package.vulkan_gpu_solver_d3d12_inferred ||
+               environment_weather_simulation_package.vulkan_gpu_solver_metal_inferred ||
+               environment_weather_simulation_package.vulkan_gpu_solver_failure_stage != 0U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_hash == 0U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_elapsed_us == 0U ||
+               environment_weather_simulation_package.vulkan_gpu_solver_budget_us !=
+                   environment_weather_simulation_package_gpu_budget_us() ||
+               environment_weather_simulation_package.vulkan_gpu_solver_over_budget ||
+               !environment_weather_simulation_package.vulkan_gpu_solver_profiler_budget_ready)) ||
              !environment_weather_simulation_package.solver_budget.profiler_artifact_ready ||
              !environment_weather_simulation_package.solver_budget.profiler_budget_ready ||
              environment_weather_simulation_package.solver_budget.profiler_artifact_count != 2U ||

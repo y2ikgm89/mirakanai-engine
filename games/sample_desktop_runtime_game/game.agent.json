@@ -214,6 +214,7 @@
         "desktop-runtime-sample-game-environment-platform-readiness",
         "desktop-runtime-sample-game-environment-optimization-measurement",
         "desktop-runtime-sample-game-environment-weather-simulation-package",
+        "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -279,6 +280,13 @@
           "evidence": "The selected environment weather simulation package smoke reports desktop-runtime-sample-game-environment-weather-simulation-package, --require-environment-weather-simulation-package, environment_weather_simulation_package_status=ready, environment_weather_simulation_package_ready=1, environment_weather_simulation_steps=1, environment_weather_simulation_cells=4, environment_weather_simulation_effective_timestep_ms=500, environment_weather_simulation_water_conservation_error_mg<=1, environment_weather_simulation_water_conservation_error_bound_mg=1, environment_weather_simulation_fallback_cpu_reference_used=1, environment_weather_simulation_invokes_gpu=0, environment_weather_simulation_invokes_backend=0, environment_weather_simulation_native_handle_access=0, environment_weather_simulation_solver_budget_status=host_evidence_required, environment_weather_simulation_solver_budget_ready=0, environment_weather_simulation_cpu_reference_solver_ready=1, environment_weather_simulation_solver_cpu_elapsed_us, environment_weather_simulation_solver_cpu_budget_us=50000, environment_weather_simulation_solver_cpu_over_budget=0, environment_weather_simulation_gpu_solver_ready=1, environment_weather_simulation_solver_gpu_elapsed_us, environment_weather_simulation_solver_gpu_budget_us=500000, environment_weather_simulation_d3d12_gpu_solver_ready=1, environment_weather_simulation_d3d12_gpu_solver_cells=4, environment_weather_simulation_d3d12_gpu_solver_dispatches=1, environment_weather_simulation_d3d12_gpu_solver_barriers, environment_weather_simulation_d3d12_gpu_solver_native_handle_access=0, environment_weather_simulation_d3d12_gpu_solver_backend_parity_ready=0, environment_weather_simulation_d3d12_gpu_solver_failure_stage=0, environment_weather_simulation_d3d12_gpu_solver_hash, environment_weather_simulation_solver_profiler_artifacts=2, environment_weather_simulation_solver_profiler_tool_rows=2, environment_weather_simulation_solver_profiler_backend_rows=1, environment_weather_simulation_solver_profiler_artifact_hash, environment_weather_simulation_profiler_budget_ready=1, environment_weather_simulation_production_solver_package_counter_review_ready=1, environment_weather_simulation_production_solver_package_counter_rows=1, environment_weather_simulation_production_solver_core_review_ready=1, environment_weather_simulation_production_solver_core_rows=1, environment_weather_simulation_production_solver_ready=0, environment_weather_simulation_validation_dataset_status=ready, environment_weather_simulation_validation_dataset_ready=1, environment_weather_simulation_validation_case_rows=3, environment_weather_simulation_validation_ready_cases=3, environment_weather_simulation_validation_image_status=ready, environment_weather_simulation_validation_images_ready=1, environment_weather_simulation_validation_image_rows=12, environment_weather_simulation_validation_required_images=12, environment_weather_simulation_validation_image_diagnostics=0, environment_weather_simulation_artist_control_status=ready, environment_weather_simulation_artist_controls_ready=1, environment_weather_simulation_artist_control_rows=4, environment_weather_simulation_artist_control_generated_cells=4, environment_weather_simulation_artist_control_raw_solver_internal_access=0, environment_weather_simulation_artist_control_native_handle_access=0, environment_weather_simulation_artist_control_invokes_gpu=0, environment_weather_simulation_artist_control_invokes_backend=0, environment_weather_simulation_artist_control_physical_weather_ready=0, environment_weather_simulation_artist_control_diagnostics=0, positive validation dataset, image, artist-control, retained profiler artifact, and D3D12 GPU solver hashes, environment_physical_weather_simulation_ready=0, zero diagnostics, zero solver-budget diagnostics, and a positive replay hash without promoting raw solver internal access, Vulkan/Metal solver parity, production solver readiness, complete physical weather simulation, complete artist workflow, backend parity, broad optimization, commercial, broad physical accuracy, visual quality, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-weather-simulation-package"
+          ]
+        },
+        {
+          "id": "environment-weather-simulation-vulkan-solver-package-counters",
+          "evidence": "The selected strict Vulkan environment weather simulation solver package smoke reports desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package, --require-environment-weather-simulation-vulkan-solver-package, target-specific cs_environment_weather SPIR-V compiled through DXC -spirv -fspv-target-env=vulkan1.3 and validated by spirv-val, environment_weather_simulation_vulkan_gpu_solver_ready=1, environment_weather_simulation_vulkan_gpu_solver_strict_ready=1, cells=4, dispatches=1, descriptor_set_bindings=3, positive sync2 barrier/readback hash/elapsed counters, native_handle_access=0, backend_parity_ready=0, d3d12_inferred=0, metal_inferred=0, failure_stage=0, budget_us=500000, over_budget=0, profiler_budget_ready=1, and environment_physical_weather_simulation_ready=0 without promoting Metal solver parity, backend parity, production solver readiness, complete physical weather simulation, complete artist workflow, all-platform readiness, commercial readiness, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package"
           ]
         },
         {
@@ -494,7 +502,8 @@
             "desktop-runtime-sample-game-environment-backend-parity",
             "desktop-runtime-sample-game-environment-platform-readiness",
             "desktop-runtime-sample-game-environment-optimization-measurement",
-            "desktop-runtime-sample-game-environment-weather-simulation-package"
+            "desktop-runtime-sample-game-environment-weather-simulation-package",
+            "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package"
           ]
         },
         {
@@ -2110,6 +2119,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-weather-simulation-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-weather-simulation-package')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-weather-simulation-vulkan-solver-package')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",

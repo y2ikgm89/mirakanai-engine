@@ -1278,6 +1278,15 @@ if(BUILD_TESTING)
         add_test(NAME MK_mavg_vulkan_compute_generated_indirect_consumption_tests
                  COMMAND MK_mavg_vulkan_compute_generated_indirect_consumption_tests)
         set_tests_properties(MK_mavg_vulkan_compute_generated_indirect_consumption_tests PROPERTIES RUN_SERIAL TRUE)
+
+        add_executable(MK_vulkan_environment_weather_solver_tests
+            tests/unit/vulkan_environment_weather_solver_tests.cpp
+        )
+        target_link_libraries(MK_vulkan_environment_weather_solver_tests PRIVATE MK_rhi_vulkan)
+        target_include_directories(MK_vulkan_environment_weather_solver_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_vulkan_environment_weather_solver_tests)
+        add_test(NAME MK_vulkan_environment_weather_solver_tests COMMAND MK_vulkan_environment_weather_solver_tests)
+        set_tests_properties(MK_vulkan_environment_weather_solver_tests PROPERTIES RUN_SERIAL TRUE)
     endif()
 
     if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))

@@ -187,7 +187,9 @@ $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-e
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
 $requiresEnvironmentPlatformReadiness = @($SmokeArgs) -contains "--require-environment-platform-readiness"
 $requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require-environment-optimization-measurement"
-$requiresEnvironmentWeatherSimulationPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-package"
+$requiresEnvironmentWeatherSimulationVulkanSolverPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-vulkan-solver-package"
+$requiresEnvironmentWeatherSimulationPackage = (@($SmokeArgs) -contains "--require-environment-weather-simulation-package") -or
+    $requiresEnvironmentWeatherSimulationVulkanSolverPackage
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
@@ -6278,6 +6280,39 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_artist_control_physical_weather_ready" = "0"
                 "environment_weather_simulation_artist_control_diagnostics" = "0"
             }
+        if ($requiresEnvironmentWeatherSimulationVulkanSolverPackage) {
+            Assert-InstalledDesktopRuntimeStatusFields `
+                -SmokeOutput $smokeOutput `
+                -EscapedGameTarget $escapedGameTarget `
+                -Context "environment weather simulation Vulkan solver package" `
+                -ExpectedFields @{
+                    "environment_weather_simulation_vulkan_gpu_solver_ready" = "1"
+                    "environment_weather_simulation_vulkan_gpu_solver_strict_ready" = "1"
+                    "environment_weather_simulation_vulkan_gpu_solver_cells" = "4"
+                    "environment_weather_simulation_vulkan_gpu_solver_dispatches" = "1"
+                    "environment_weather_simulation_vulkan_gpu_solver_descriptor_set_bindings" = "3"
+                    "environment_weather_simulation_vulkan_gpu_solver_native_handle_access" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_backend_parity_ready" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_d3d12_inferred" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_metal_inferred" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_failure_stage" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_budget_us" = "500000"
+                    "environment_weather_simulation_vulkan_gpu_solver_over_budget" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_profiler_budget_ready" = "1"
+                    "environment_weather_simulation_production_solver_ready" = "0"
+                    "environment_weather_simulation_physical_weather_ready" = "0"
+                    "environment_physical_weather_simulation_ready" = "0"
+                }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_vulkan_gpu_solver_barriers=[2-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment weather simulation solver sync2 barrier evidence."
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_vulkan_gpu_solver_hash=[1-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove a positive Vulkan environment weather simulation solver readback hash."
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_vulkan_gpu_solver_elapsed_us=[1-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove a positive Vulkan environment weather simulation solver elapsed-time counter."
+            }
+        }
         foreach ($field in @(
                 "environment_weather_simulation_total_water_before_mg",
                 "environment_weather_simulation_total_water_after_mg",
