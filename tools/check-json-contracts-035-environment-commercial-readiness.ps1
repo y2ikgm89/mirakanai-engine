@@ -135,7 +135,8 @@ if ($null -eq $assetPipelineClaim -or
     -not [string]$assetPipelineClaim.requiredEvidence.Contains("official_format_support_api") -or
     -not [string]$assetPipelineClaim.requiredEvidence.Contains("RuntimeEnvironmentTextureUploadExecutionResult") -or
     -not [string]$assetPipelineClaim.requiredEvidence.Contains("execute_runtime_environment_texture_payload_upload") -or
-    -not [string]$assetPipelineClaim.requiredEvidence.Contains("strict Vulkan/Metal upload/readback") -or
+    -not [string]$assetPipelineClaim.requiredEvidence.Contains("selected strict Vulkan upload/readback") -or
+    -not [string]$assetPipelineClaim.requiredEvidence.Contains("Apple-host Metal upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("EnvironmentTexturePayloadCookResultV1") -or
     -not [string]$assetPipelineClaim.notes.Contains("EnvironmentTexturePayloadCookDiagnostic") -or
     -not [string]$assetPipelineClaim.notes.Contains("has_environment_texture_payload_cook_diagnostic") -or
@@ -144,11 +145,13 @@ if ($null -eq $assetPipelineClaim -or
     -not [string]$assetPipelineClaim.notes.Contains("format_support_evidence_id") -or
     -not [string]$assetPipelineClaim.notes.Contains("official_format_support_api") -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-d3d12-upload") -or
+    -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-vulkan-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected D3D12 WARP runtime upload/readback") -or
-    -not [string]$assetPipelineClaim.notes.Contains("strict Vulkan/Metal upload execution") -or
+    -not [string]$assetPipelineClaim.notes.Contains("selected strict Vulkan runtime upload/readback") -or
+    -not [string]$assetPipelineClaim.notes.Contains("Apple-host Metal upload execution") -or
     -not [string]$assetPipelineClaim.notes.Contains("backend-target BC7/ASTC compressed payload execution") -or
     -not [string]$assetPipelineClaim.notes.Contains("broad asset-pipeline readiness remain future work")) {
-    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker, backend-target decision fields, selected D3D12 upload/readback evidence, and remaining strict Vulkan/Metal non-claims"
+    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker, backend-target decision fields, selected D3D12 and strict Vulkan upload/readback evidence, and remaining Metal/compressed-payload non-claims"
 }
 foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend_parity_ready", "environment_broad_optimization_ready", "environment_aaa_preset_library_ready", "environment_physical_weather_simulation_ready", "environment_artist_workflow_ready")) {
     $broadClaim = $environmentCommercialClaimsById[$broadClaimId]

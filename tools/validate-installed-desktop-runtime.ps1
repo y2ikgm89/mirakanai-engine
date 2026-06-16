@@ -177,6 +177,7 @@ $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-pos
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
 $requiresEnvironmentTextureAssetPipelineD3d12Upload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-upload"
+$requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
@@ -186,6 +187,7 @@ $requiresEnvironmentWeatherSimulationPackage = @($SmokeArgs) -contains "--requir
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
+    $requiresEnvironmentTextureAssetPipelineVulkanUpload -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
     $requiresEnvironmentBackendParity -or
@@ -1191,6 +1193,40 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         foreach ($field in @("environment_texture_asset_pipeline_d3d12_upload_resource_transitions")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 environment texture upload positive count: $field"
+            }
+        }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineVulkanUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline Vulkan upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_vulkan_upload_requested" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_ready" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_strict_ready" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_source_row_bytes" = "4"
+                "environment_texture_asset_pipeline_vulkan_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_upload_compact_readback_bytes" = "4"
+                "environment_texture_asset_pipeline_vulkan_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_metal_host_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_diagnostics" = "0"
+            }
+        foreach ($field in @("environment_texture_asset_pipeline_vulkan_upload_resource_transitions")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan environment texture upload positive count: $field"
             }
         }
     }

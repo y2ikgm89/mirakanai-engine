@@ -1566,6 +1566,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_runtime_rhi
             MK_runtime_scene
             MK_rhi_d3d12
+            MK_rhi_vulkan
             MK_scene
             MK_scene_renderer
             MK_ui

@@ -850,7 +850,7 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         result.resource_transitions += 2U;
         result.backend_upload_ready = result.backend_kind != rhi::BackendKind::null && result.readback_checksum_matched;
         result.native_handle_accessed = false;
-        result.strict_vulkan_ready = false;
+        result.strict_vulkan_ready = result.backend_kind == rhi::BackendKind::vulkan && result.backend_upload_ready;
         result.metal_host_ready = false;
         result.backend_parity_ready = false;
         result.broad_asset_pipeline_ready = false;

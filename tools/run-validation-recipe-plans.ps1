@@ -312,6 +312,21 @@ function Get-ValidationRecipeCommandPlan {
         $diagEnvironmentVulkanStrict = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment aggregate validation is restricted to the reviewed sample_desktop_runtime_game Vulkan package lane and proves selected profile v2, Vulkan physical sky, height fog, IBL renderer execution, volumetric fog compute, volumetric cloud renderer execution, rain precipitation renderer execution, quality-budget counters, descriptor-set bindings, strict toolchain rows, Vulkan validation layer enablement, SPIR-V validation, dynamic rendering, synchronization2, resource usage/layout rows, synchronization2 barriers, draw/dispatch/upload/readback counters, and zero diagnostics/native-handle/fallback counters without claiming D3D12 by inference, Metal host readiness, backend parity, broad optimization, all-platform readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentVulkanStrict)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-upload') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-texture-asset-pipeline-vulkan-upload'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentTextureVulkanUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment texture asset-pipeline upload validation is restricted to the reviewed sample_desktop_runtime_game Vulkan runtime RHI upload/readback lane. It proves the selected package RGBA8 payload through IRhiDevice texture upload, descriptor write, Vulkan readback, compact checksum comparison, row-pitch evidence, positive resource transitions, and zero native-handle/Metal/backend-parity/broad-ready counters without requiring scene SPIR-V artifacts or claiming backend-target compressed payload execution.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentTextureVulkanUpload)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-backend-parity') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentBackendParitySmokeArgs)
