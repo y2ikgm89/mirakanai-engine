@@ -179,6 +179,7 @@ $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--req
 $requiresEnvironmentTextureAssetPipelineD3d12Upload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-upload"
 $requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-compressed-upload"
+$requiresEnvironmentTextureAssetPipelineMetalCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-metal-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
 $requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
@@ -191,6 +192,7 @@ $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-pr
     $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
     $requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload -or
     $requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload -or
+    $requiresEnvironmentTextureAssetPipelineMetalCompressedUpload -or
     $requiresEnvironmentTextureAssetPipelineVulkanUpload -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
@@ -1275,6 +1277,40 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan environment texture compressed upload positive count: $field"
             }
         }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineMetalCompressedUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline Metal ASTC compressed upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_metal_compressed_upload_requested" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_ready" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_backend_format_support_proven" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_texture_usage_shader_resource" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_texture_usage_copy_source" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_source_row_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_row_pitch_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_uploaded_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_compact_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_block_width" = "4"
+                "environment_texture_asset_pipeline_metal_compressed_upload_block_height" = "4"
+                "environment_texture_asset_pipeline_metal_compressed_upload_block_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_format_support_evidence_rows" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_strict_vulkan_ready" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_metal_host_ready" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_diagnostics" = "0"
+            }
     }
     if ($requiresEnvironmentTextureAssetPipelineVulkanUpload) {
         Assert-InstalledDesktopRuntimeStatusFields `

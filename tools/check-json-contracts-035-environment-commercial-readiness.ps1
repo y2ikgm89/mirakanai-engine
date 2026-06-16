@@ -125,6 +125,7 @@ if ($null -eq $broadOptimizationClaim -or
 $assetPipelineClaim = $environmentCommercialClaimsById["environment_asset_pipeline_openexr_ktx_basis_ready"]
 if ($null -eq $assetPipelineClaim -or
     @($assetPipelineClaim.validationRecipeIds) -notcontains "asset-importers" -or
+    @($assetPipelineClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-texture-asset-pipeline-metal-compressed-upload" -or
     @($assetPipelineClaim.validationRecipeIds) -notcontains "agent-contract" -or
     [string]$assetPipelineClaim.state -ne "unsupported" -or
     -not [string]$assetPipelineClaim.requiredEvidence.Contains("EnvironmentTexturePayloadCookRequestV1") -or
@@ -148,14 +149,15 @@ if ($null -eq $assetPipelineClaim -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-vulkan-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-d3d12-compressed-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-vulkan-compressed-upload") -or
+    -not [string]$assetPipelineClaim.notes.Contains("--require-environment-texture-asset-pipeline-metal-compressed-upload") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected D3D12 WARP runtime upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected strict Vulkan runtime upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected D3D12 WARP backend-target BC7 compressed upload/readback") -or
     -not [string]$assetPipelineClaim.notes.Contains("selected strict Vulkan backend-target BC7 compressed upload/readback") -or
-    -not [string]$assetPipelineClaim.notes.Contains("Apple-host Metal upload execution") -or
-    -not [string]$assetPipelineClaim.notes.Contains("Metal/ASTC compressed payload execution") -or
+    -not [string]$assetPipelineClaim.notes.Contains("selected Apple-host Metal ASTC compressed package upload/readback counters") -or
+    -not [string]$assetPipelineClaim.notes.Contains("MTLBlitCommandEncoder copyFromBuffer") -or
     -not [string]$assetPipelineClaim.notes.Contains("broad asset-pipeline readiness remain future work")) {
-    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker, backend-target decision fields, selected D3D12/Vulkan RGBA8 upload/readback evidence, selected D3D12/Vulkan BC7 compressed upload/readback evidence, and remaining Metal compressed non-claims"
+    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker, backend-target decision fields, selected D3D12/Vulkan RGBA8 upload/readback evidence, selected D3D12/Vulkan BC7 compressed upload/readback evidence, selected Apple-host Metal ASTC compressed package evidence, and remaining broad asset-pipeline non-claims"
 }
 foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend_parity_ready", "environment_broad_optimization_ready", "environment_aaa_preset_library_ready", "environment_physical_weather_simulation_ready", "environment_artist_workflow_ready")) {
     $broadClaim = $environmentCommercialClaimsById[$broadClaimId]

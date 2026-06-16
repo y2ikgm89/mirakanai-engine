@@ -320,6 +320,10 @@ $sampleEnvironmentTextureAssetPipelineVulkanCompressedUploadDryRun = Assert-DryR
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-texture-asset-pipeline-package", "--require-environment-texture-asset-pipeline-vulkan-compressed-upload", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentTextureAssetPipelineVulkanCompressedUploadDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-compressed-upload"
 }
+$sampleEnvironmentTextureAssetPipelineMetalCompressedUploadDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-texture-asset-pipeline-metal-compressed-upload" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-texture-asset-pipeline-package", "--require-environment-texture-asset-pipeline-metal-compressed-upload", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentTextureAssetPipelineMetalCompressedUploadDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-texture-asset-pipeline-metal-compressed-upload"
+}
 $sampleEnvironmentPlatformReadinessDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-platform-readiness" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-platform-readiness", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentPlatformReadinessDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-platform-readiness"
@@ -401,6 +405,11 @@ if ($missingVulkanTextureAssetPipelineUploadGate.status -ne "rejected" -or @($mi
 $missingD3d12TextureAssetPipelineCompressedUploadGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-texture-asset-pipeline-d3d12-compressed-upload") -ExpectedExitCode 2
 if ($missingD3d12TextureAssetPipelineCompressedUploadGate.status -ne "rejected" -or @($missingD3d12TextureAssetPipelineCompressedUploadGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "D3D12 environment texture asset-pipeline compressed upload recipe must require d3d12-windows-primary acknowledgement before execute"
+}
+
+$missingMetalTextureAssetPipelineCompressedUploadGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-texture-asset-pipeline-metal-compressed-upload") -ExpectedExitCode 2
+if ($missingMetalTextureAssetPipelineCompressedUploadGate.status -ne "rejected" -or @($missingMetalTextureAssetPipelineCompressedUploadGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "Metal environment texture asset-pipeline compressed upload recipe must require metal-apple acknowledgement before execute"
 }
 
 $missingEnvironmentPlatformReadinessGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-platform-readiness") -ExpectedExitCode 2

@@ -357,6 +357,21 @@ function Get-ValidationRecipeCommandPlan {
         $diagEnvironmentTextureVulkanCompressedUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment texture asset-pipeline compressed upload validation is restricted to the reviewed sample_desktop_runtime_game Vulkan backend-target BC7 lane. It proves official vkGetPhysicalDeviceFormatProperties evidence for the selected BC7 sampled-image and transfer feature set, BC7 block footprint rows, IRhiDevice texture upload, descriptor write, Vulkan readback, compact checksum comparison, row-pitch evidence, positive resource transitions, and zero native-handle/Metal/backend-parity/broad-ready counters without claiming Metal/ASTC execution, backend parity, all-platform readiness, full OpenEXR/KTX/Basis asset-pipeline readiness, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentTextureVulkanCompressedUpload)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-texture-asset-pipeline-metal-compressed-upload') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-texture-asset-pipeline-metal-compressed-upload'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentTextureMetalCompressedUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Apple-host Metal environment texture asset-pipeline compressed upload validation is restricted to the reviewed sample_desktop_runtime_game Metal ASTC lane. It proves official Apple Metal Feature Set Tables / MTLPixelFormat ASTC 4x4 evidence, ASTC block footprint rows, Metal private texture upload through MTLBlitCommandEncoder copyFromBuffer, Metal readback, compact checksum comparison, texture usage rows, and zero public native-handle/Vulkan/backend-parity/broad-ready counters without claiming Metal aggregate readiness, backend parity, all-platform readiness, full OpenEXR/KTX/Basis asset-pipeline readiness, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Metal') -Diagnostics @($diagEnvironmentTextureMetalCompressedUpload)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-backend-parity') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentBackendParitySmokeArgs)
