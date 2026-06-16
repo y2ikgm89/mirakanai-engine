@@ -464,11 +464,56 @@ MetalRuntimeTextureUploadResult upload_native_texture_bytes(MetalRuntimeTexture&
         return result;
     }
 
+    if (texture.impl_->device_owner == nullptr || texture.impl_->device_owner->command_queue == nullptr ||
+        texture.impl_->device_owner->device == nullptr) {
+        result.diagnostic = "Metal command queue is required before texture upload";
+        return result;
+    }
+
+    id<MTLDevice> metal_device = (__bridge id<MTLDevice>)texture.impl_->device_owner->device;
+    id<MTLCommandQueue> command_queue = (__bridge id<MTLCommandQueue>)texture.impl_->device_owner->command_queue;
     id<MTLTexture> metal_texture = (__bridge id<MTLTexture>)texture.impl_->texture;
-    [metal_texture replaceRegion:MTLRegionMake2D(0, 0, extent.width, extent.height)
-                      mipmapLevel:0
-                        withBytes:desc.bytes
-                      bytesPerRow:static_cast<NSUInteger>(row_bytes)];
+    id<MTLBuffer> upload_buffer = [metal_device newBufferWithBytes:desc.bytes
+                                                            length:static_cast<NSUInteger>(byte_count)
+                                                           options:MTLResourceStorageModeShared];
+    if (upload_buffer == nil) {
+        result.diagnostic = "Metal texture upload buffer creation failed";
+        return result;
+    }
+
+    id<MTLCommandBuffer> command_buffer = [command_queue commandBuffer];
+    id<MTLBlitCommandEncoder> blit_encoder = [command_buffer blitCommandEncoder];
+    if (command_buffer == nil || blit_encoder == nil) {
+        result.diagnostic = "Metal texture upload command creation failed";
+        release_objc_object((__bridge_retained void*)upload_buffer);
+        return result;
+    }
+
+    metal_set_gpu_debug_label(upload_buffer,
+                              metal_next_debug_label(texture.impl_->device_owner.get(), "GameEngine.RHI.Metal.UploadBuffer"));
+    metal_set_gpu_debug_label(command_buffer,
+                              metal_next_debug_label(texture.impl_->device_owner.get(), "GameEngine.RHI.Metal.UploadCommandBuffer"));
+    metal_set_gpu_debug_label(blit_encoder,
+                              metal_next_debug_label(texture.impl_->device_owner.get(), "GameEngine.RHI.Metal.UploadBlitEncoder"));
+
+    [blit_encoder copyFromBuffer:upload_buffer
+                    sourceOffset:0
+               sourceBytesPerRow:static_cast<NSUInteger>(row_bytes)
+             sourceBytesPerImage:static_cast<NSUInteger>(byte_count)
+                      sourceSize:MTLSizeMake(extent.width, extent.height, 1)
+                       toTexture:metal_texture
+                destinationSlice:0
+                destinationLevel:0
+               destinationOrigin:MTLOriginMake(0, 0, 0)];
+    [blit_encoder endEncoding];
+    [command_buffer commit];
+    [command_buffer waitUntilCompleted];
+
+    if (command_buffer.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal texture upload command buffer failed";
+        release_objc_object((__bridge_retained void*)upload_buffer);
+        return result;
+    }
 
     result.uploaded = true;
     result.extent = extent;
@@ -476,6 +521,8 @@ MetalRuntimeTextureUploadResult upload_native_texture_bytes(MetalRuntimeTexture&
     result.source_bytes = byte_count;
     result.source_row_bytes = row_bytes;
     result.diagnostic = "Metal texture upload completed";
+
+    release_objc_object((__bridge_retained void*)upload_buffer);
     return result;
 }
 
