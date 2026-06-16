@@ -1768,6 +1768,16 @@ struct DeviceContext::Impl {
         return resource_heaps[handle.value - 1U] != nullptr;
     }
 
+    [[nodiscard]] bool resource_in_common_state(NativeResourceHandle handle) const noexcept {
+        if (handle.value == 0) {
+            return true;
+        }
+        if (handle.value > resource_states.size()) {
+            return false;
+        }
+        return resource_states[handle.value - 1U] == D3D12_RESOURCE_STATE_COMMON;
+    }
+
     [[nodiscard]] bool resources_share_placed_alias_group(NativeResourceHandle lhs,
                                                           NativeResourceHandle rhs) const noexcept {
         if (lhs.value == 0 || rhs.value == 0 || lhs.value > resource_heaps.size() ||
@@ -3165,6 +3175,10 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
     ID3D12Resource* after_resource = after.value == 0 ? nullptr : impl_->resource_record(after);
     if (command_record == nullptr || command_record->closed || (before.value != 0 && before_resource == nullptr) ||
         (after.value != 0 && after_resource == nullptr)) {
+        return false;
+    }
+    if (command_record->queue == QueueKind::copy &&
+        (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
         return false;
     }
 

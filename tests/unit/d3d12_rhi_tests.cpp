@@ -1587,12 +1587,30 @@ MK_TEST("d3d12 device context records placed resource aliasing barriers on copy 
 
     MK_REQUIRE(context != nullptr);
 
-    const auto aliases = context->create_placed_texture_alias_group(
+    const auto non_common_aliases = context->create_placed_texture_alias_group(
         mirakana::rhi::TextureDesc{
             .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
             .format = mirakana::rhi::Format::rgba8_unorm,
             .usage = mirakana::rhi::TextureUsage::copy_source | mirakana::rhi::TextureUsage::copy_destination |
                      mirakana::rhi::TextureUsage::shader_resource,
+        },
+        2);
+
+    MK_REQUIRE(non_common_aliases.size() == 2);
+    const auto rejected_commands = context->create_command_list(mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(!context->texture_aliasing_barrier(rejected_commands, non_common_aliases[0], non_common_aliases[1]));
+    MK_REQUIRE(context->close_command_list(rejected_commands));
+    context->destroy_committed_resource(non_common_aliases[0]);
+    context->destroy_committed_resource(non_common_aliases[1]);
+    MK_REQUIRE(context->stats().texture_aliasing_barriers == 0);
+    MK_REQUIRE(context->stats().placed_resource_aliasing_barriers == 0);
+    MK_REQUIRE(context->stats().placed_resources_alive == 0);
+
+    const auto aliases = context->create_placed_texture_alias_group(
+        mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::shader_resource,
         },
         2);
 
