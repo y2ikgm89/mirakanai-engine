@@ -172,10 +172,10 @@ Validated local package versions:
 | --- | --- | --- |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
-| OpenEXR | 3.4.12 | Optional `asset-importers` dependency/legal/bootstrap gate for future HDR scene-linear EXR source review |
+| OpenEXR | 3.4.10 | Optional `asset-importers` dependency/legal/bootstrap gate for future HDR scene-linear EXR source review |
 | Imath | 3.2.2 | Optional `asset-importers` build output through OpenEXR |
 | libdeflate | 1.25 | Optional `asset-importers` build output through OpenEXR |
-| OpenJPH | 0.27.2 port 1 | Optional `asset-importers` build output through OpenEXR |
+| OpenJPH | 0.27.0 | Optional `asset-importers` build output through OpenEXR |
 | KTX Software | 4.4.2 | Optional `MK_tools` KTX2/Basis texture review dependency/legal evidence |
 | Zstandard | 1.5.7 | Optional `MK_tools` build output through KTX Software |
 | OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
