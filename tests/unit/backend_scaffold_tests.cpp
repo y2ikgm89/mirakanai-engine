@@ -8623,6 +8623,49 @@ MK_TEST("metal native texture render encoder and readback ownership stays host g
 #endif
 }
 
+MK_TEST("metal native ASTC texture upload and readback ownership stays host gated") {
+    mirakana::rhi::metal::MetalRuntimeTexture missing_texture_target;
+    const std::array<std::uint8_t, 16> payload{
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+    };
+    const auto missing_upload = mirakana::rhi::metal::upload_native_texture_bytes(
+        missing_texture_target, mirakana::rhi::metal::MetalRuntimeTextureUploadDesc{payload.data(), payload.size()});
+    MK_REQUIRE(!missing_upload.uploaded);
+    MK_REQUIRE(missing_upload.diagnostic == "Metal texture is required before texture upload");
+
+#if defined(__APPLE__)
+    auto native = mirakana::rhi::metal::create_native_device_and_command_queue(
+        mirakana::rhi::metal::MetalNativeDeviceQueueDesc{mirakana::rhi::current_rhi_host_platform()});
+    if (!native.created) {
+        MK_REQUIRE(!native.diagnostic.empty());
+        return;
+    }
+
+    auto texture = mirakana::rhi::metal::create_native_texture_target(
+        native.device, mirakana::rhi::metal::MetalTextureTargetDesc{
+                           mirakana::rhi::Extent2D{4, 4},
+                           mirakana::rhi::Format::astc_4x4_srgb,
+                           mirakana::rhi::TextureUsage::shader_resource | mirakana::rhi::TextureUsage::copy_source,
+                           false,
+                       });
+    MK_REQUIRE(texture.created);
+    MK_REQUIRE(texture.texture.owns_texture());
+
+    const auto upload = mirakana::rhi::metal::upload_native_texture_bytes(
+        texture.texture, mirakana::rhi::metal::MetalRuntimeTextureUploadDesc{payload.data(), payload.size()});
+    MK_REQUIRE(upload.uploaded);
+    MK_REQUIRE(upload.format == mirakana::rhi::Format::astc_4x4_srgb);
+    MK_REQUIRE(upload.source_bytes == payload.size());
+    MK_REQUIRE(upload.source_row_bytes == 16U);
+
+    const auto readback = mirakana::rhi::metal::read_native_texture_bytes(native.device, texture.texture);
+    MK_REQUIRE(readback.read);
+    MK_REQUIRE(readback.format == mirakana::rhi::Format::astc_4x4_srgb);
+    MK_REQUIRE(readback.bytes.size() == payload.size());
+    MK_REQUIRE(std::ranges::equal(readback.bytes, payload));
+#endif
+}
+
 MK_TEST("metal native drawable render encoder and present ownership stays host gated") {
     mirakana::rhi::metal::MetalRuntimeDevice missing_device;
     const auto missing_drawable = mirakana::rhi::metal::acquire_native_drawable(

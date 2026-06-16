@@ -437,6 +437,12 @@ struct RuntimeRhiTexturePayload {
     if (device_format == "VK_FORMAT_BC7_SRGB_BLOCK") {
         return rhi::Format::bc7_unorm_srgb;
     }
+    if (device_format == "MTLPixelFormatASTC_4x4_LDR") {
+        return rhi::Format::astc_4x4_unorm;
+    }
+    if (device_format == "MTLPixelFormatASTC_4x4_sRGB") {
+        return rhi::Format::astc_4x4_srgb;
+    }
     throw std::invalid_argument(
         "runtime backend texture payload device format is not supported by the RHI upload bridge");
 }

@@ -844,6 +844,15 @@ MK_TEST("rhi computes buffer texture copy footprints") {
             .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
             .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 8, .depth = 2},
         });
+    const auto astc_tight = mirakana::rhi::buffer_texture_copy_required_bytes(
+        mirakana::rhi::Format::astc_4x4_srgb,
+        mirakana::rhi::BufferTextureCopyRegion{
+            .buffer_offset = 16,
+            .buffer_row_length = 0,
+            .buffer_image_height = 0,
+            .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = mirakana::rhi::Extent3D{.width = 8, .height = 4, .depth = 1},
+        });
 
     bool rejected_row_length = false;
     try {
@@ -880,11 +889,17 @@ MK_TEST("rhi computes buffer texture copy footprints") {
     MK_REQUIRE(bc7_tight == 48);
     MK_REQUIRE(bc7_padded == 912);
     MK_REQUIRE(mirakana::rhi::format_is_block_compressed(mirakana::rhi::Format::bc7_unorm_srgb));
+    MK_REQUIRE(astc_tight == 48);
+    MK_REQUIRE(mirakana::rhi::format_is_block_compressed(mirakana::rhi::Format::astc_4x4_srgb));
     MK_REQUIRE(mirakana::rhi::format_block_width(mirakana::rhi::Format::bc7_unorm_srgb) == 4);
     MK_REQUIRE(mirakana::rhi::format_block_height(mirakana::rhi::Format::bc7_unorm_srgb) == 4);
     MK_REQUIRE(mirakana::rhi::bytes_per_format_block(mirakana::rhi::Format::bc7_unorm_srgb) == 16);
+    MK_REQUIRE(mirakana::rhi::format_block_width(mirakana::rhi::Format::astc_4x4_srgb) == 4);
+    MK_REQUIRE(mirakana::rhi::format_block_height(mirakana::rhi::Format::astc_4x4_srgb) == 4);
+    MK_REQUIRE(mirakana::rhi::bytes_per_format_block(mirakana::rhi::Format::astc_4x4_srgb) == 16);
     MK_REQUIRE(mirakana::rhi::format_copy_row_bytes(mirakana::rhi::Format::bc7_unorm_srgb, 4) == 16);
     MK_REQUIRE(mirakana::rhi::format_copy_row_bytes(mirakana::rhi::Format::bc7_unorm_srgb, 64) == 256);
+    MK_REQUIRE(mirakana::rhi::format_copy_row_bytes(mirakana::rhi::Format::astc_4x4_srgb, 8) == 32);
     MK_REQUIRE(rejected_row_length);
     MK_REQUIRE(rejected_bc7_block_layout);
 }

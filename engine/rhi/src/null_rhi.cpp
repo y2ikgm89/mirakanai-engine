@@ -454,6 +454,8 @@ std::uint32_t bytes_per_texel(Format format) {
         return 4;
     case Format::bc7_unorm:
     case Format::bc7_unorm_srgb:
+    case Format::astc_4x4_unorm:
+    case Format::astc_4x4_srgb:
         break;
     case Format::unknown:
         break;
@@ -462,13 +464,16 @@ std::uint32_t bytes_per_texel(Format format) {
 }
 
 bool format_is_block_compressed(Format format) noexcept {
-    return format == Format::bc7_unorm || format == Format::bc7_unorm_srgb;
+    return format == Format::bc7_unorm || format == Format::bc7_unorm_srgb || format == Format::astc_4x4_unorm ||
+           format == Format::astc_4x4_srgb;
 }
 
 std::uint32_t format_block_width(Format format) {
     switch (format) {
     case Format::bc7_unorm:
     case Format::bc7_unorm_srgb:
+    case Format::astc_4x4_unorm:
+    case Format::astc_4x4_srgb:
         return 4;
     case Format::rgba8_unorm:
     case Format::bgra8_unorm:
@@ -484,6 +489,8 @@ std::uint32_t format_block_height(Format format) {
     switch (format) {
     case Format::bc7_unorm:
     case Format::bc7_unorm_srgb:
+    case Format::astc_4x4_unorm:
+    case Format::astc_4x4_srgb:
         return 4;
     case Format::rgba8_unorm:
     case Format::bgra8_unorm:
@@ -499,6 +506,8 @@ std::uint32_t bytes_per_format_block(Format format) {
     switch (format) {
     case Format::bc7_unorm:
     case Format::bc7_unorm_srgb:
+    case Format::astc_4x4_unorm:
+    case Format::astc_4x4_srgb:
         return 16;
     case Format::rgba8_unorm:
     case Format::bgra8_unorm:

@@ -341,8 +341,8 @@ expected_environment_texture_upload_source_bytes(const RuntimeEnvironmentTexture
     return pixels * bytes_per_pixel64;
 }
 
-[[nodiscard]] std::uint64_t expected_bc7_payload_bytes(std::uint32_t width, std::uint32_t height,
-                                                       bool& overflow) noexcept {
+[[nodiscard]] std::uint64_t expected_block4x4_compressed_payload_bytes(std::uint32_t width, std::uint32_t height,
+                                                                       bool& overflow) noexcept {
     overflow = true;
     if (width == 0U || height == 0U) {
         return 0;
@@ -910,10 +910,14 @@ plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironment
             result, "environment-texture-invalid-payload",
             "backend texture upload plan requires a validated cooked environment texture payload");
     }
-    if (backend != TextureCookBackendV1::d3d12 && backend != TextureCookBackendV1::vulkan) {
+    const auto metal_backend =
+        backend == TextureCookBackendV1::metal_macos || backend == TextureCookBackendV1::metal_ios;
+    const auto supported_backend =
+        backend == TextureCookBackendV1::d3d12 || backend == TextureCookBackendV1::vulkan || metal_backend;
+    if (!supported_backend) {
         append_environment_texture_upload_plan_diagnostic(
             result, "environment-texture-backend-target-unsupported",
-            "backend texture upload plan currently supports only D3D12 and Vulkan BC7 execution evidence");
+            "backend texture upload plan currently supports D3D12/Vulkan BC7 and Metal ASTC execution evidence");
     }
     if (payload.source_kind != TextureSourceKindV2::ktx2_basis || !payload.basis_transcode_invoked) {
         append_environment_texture_upload_plan_diagnostic(
@@ -966,31 +970,42 @@ plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironment
                 result, "environment-texture-backend-format-support-unproven",
                 "backend texture upload plan requires host-validated official format support evidence");
         }
-        if (decision->compression != TextureCompressionKindV2::bc7 ||
-            decision->transcode != TextureCookTranscodeKindV1::basis_transcode_policy ||
-            decision->payload_transcode_target != "KTX_TTF_BC7_RGBA") {
+        const auto compression_policy_matches =
+            decision->transcode == TextureCookTranscodeKindV1::basis_transcode_policy &&
+            ((!metal_backend && decision->compression == TextureCompressionKindV2::bc7 &&
+              decision->payload_transcode_target == "KTX_TTF_BC7_RGBA") ||
+             (metal_backend && decision->compression == TextureCompressionKindV2::astc_4x4 &&
+              decision->payload_transcode_target == "KTX_TTF_ASTC_4x4_RGBA"));
+        if (!compression_policy_matches) {
             append_environment_texture_upload_plan_diagnostic(
                 result, "environment-texture-backend-compression-policy-mismatch",
-                "backend texture upload plan requires a BC7 KTX_TTF_BC7_RGBA transcode policy row");
+                "backend texture upload plan requires a backend-local BC7 or ASTC 4x4 Basis transcode policy row");
         }
         const auto d3d12_format = decision->device_format == "DXGI_FORMAT_BC7_UNORM" ||
                                   decision->device_format == "DXGI_FORMAT_BC7_UNORM_SRGB";
         const auto vulkan_format = decision->device_format == "VK_FORMAT_BC7_UNORM_BLOCK" ||
                                    decision->device_format == "VK_FORMAT_BC7_SRGB_BLOCK";
+        const auto metal_format = decision->device_format == "MTLPixelFormatASTC_4x4_LDR" ||
+                                  decision->device_format == "MTLPixelFormatASTC_4x4_sRGB";
         const auto backend_format_matches = (backend == TextureCookBackendV1::d3d12 && d3d12_format) ||
-                                            (backend == TextureCookBackendV1::vulkan && vulkan_format);
+                                            (backend == TextureCookBackendV1::vulkan && vulkan_format) ||
+                                            (metal_backend && metal_format);
         if (!backend_format_matches) {
             append_environment_texture_upload_plan_diagnostic(
                 result, "environment-texture-backend-device-format-unsupported",
-                "backend texture upload plan requires a backend-local BC7 device format");
+                "backend texture upload plan requires a backend-local BC7 or ASTC 4x4 device format");
         }
         const auto official_d3d12_api =
             decision->official_format_support_api.find("D3D12_FEATURE_FORMAT_SUPPORT") != std::string::npos &&
             decision->official_format_support_api.find("CheckFeatureSupport") != std::string::npos;
         const auto official_vulkan_api =
             decision->official_format_support_api.find("vkGetPhysicalDeviceFormatProperties") != std::string::npos;
+        const auto official_metal_api =
+            decision->official_format_support_api.find("Metal Feature Set Tables") != std::string::npos &&
+            decision->official_format_support_api.find("MTLPixelFormat") != std::string::npos;
         const auto official_api_matches = (backend == TextureCookBackendV1::d3d12 && official_d3d12_api) ||
-                                          (backend == TextureCookBackendV1::vulkan && official_vulkan_api);
+                                          (backend == TextureCookBackendV1::vulkan && official_vulkan_api) ||
+                                          (metal_backend && official_metal_api);
         if (decision->format_support_evidence_id.empty() || !official_api_matches) {
             append_environment_texture_upload_plan_diagnostic(
                 result, "environment-texture-backend-format-support-api-missing",
@@ -999,12 +1014,13 @@ plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironment
     }
 
     bool byte_count_overflow = false;
-    const auto expected_upload_bytes = expected_bc7_payload_bytes(payload.width, payload.height, byte_count_overflow);
+    const auto expected_upload_bytes =
+        expected_block4x4_compressed_payload_bytes(payload.width, payload.height, byte_count_overflow);
     result.upload_source_bytes = expected_upload_bytes;
     if (byte_count_overflow || expected_upload_bytes != static_cast<std::uint64_t>(payload.bytes.size())) {
         append_environment_texture_upload_plan_diagnostic(
             result, "environment-texture-byte-size-mismatch",
-            "backend texture upload plan byte count does not match BC7 block dimensions");
+            "backend texture upload plan byte count does not match 4x4 compressed block dimensions");
     }
 
     if (!result.diagnostics.empty()) {

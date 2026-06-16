@@ -788,6 +788,22 @@ MetalRuntimeCommandBufferSubmitResult commit_and_wait_native_command_buffer(Meta
     return result;
 }
 
+MetalRuntimeTextureUploadResult upload_native_texture_bytes(MetalRuntimeTexture& texture,
+                                                            const MetalRuntimeTextureUploadDesc& desc) {
+    MetalRuntimeTextureUploadResult result;
+    if (!texture.owns_texture()) {
+        result.diagnostic = "Metal texture is required before texture upload";
+        return result;
+    }
+    if (desc.bytes == nullptr || desc.byte_count == 0) {
+        result.diagnostic = "Metal texture upload bytes are required";
+        return result;
+    }
+
+    result.diagnostic = "Metal native texture upload requires an Apple host";
+    return result;
+}
+
 MetalRuntimeTextureReadbackResult read_native_texture_bytes(MetalRuntimeDevice& device, MetalRuntimeTexture& texture) {
     MetalRuntimeTextureReadbackResult result;
     if (!device.owns_command_queue()) {

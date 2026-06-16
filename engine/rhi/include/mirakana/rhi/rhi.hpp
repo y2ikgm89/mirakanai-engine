@@ -54,7 +54,16 @@ enum class StoreAction : std::uint8_t { store = 0, dont_care };
 
 enum class CompareOp : std::uint8_t { never = 0, less, equal, less_equal, greater, not_equal, greater_equal, always };
 
-enum class Format : std::uint8_t { unknown = 0, rgba8_unorm, bgra8_unorm, depth24_stencil8, bc7_unorm, bc7_unorm_srgb };
+enum class Format : std::uint8_t {
+    unknown = 0,
+    rgba8_unorm,
+    bgra8_unorm,
+    depth24_stencil8,
+    bc7_unorm,
+    bc7_unorm_srgb,
+    astc_4x4_unorm,
+    astc_4x4_srgb,
+};
 
 enum class ResourceState : std::uint8_t {
     undefined = 0,

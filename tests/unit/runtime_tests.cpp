@@ -1426,6 +1426,66 @@ MK_TEST(
     MK_REQUIRE(!plan.broad_asset_pipeline_ready);
 }
 
+MK_TEST(
+    "runtime environment texture backend upload plan converts single mip Metal ASTC payload without GPU side effects") {
+    const auto texture = mirakana::AssetId::from_name("environment/studio-skybox-metal-astc-upload-plan");
+    const auto payload =
+        environment_texture_payload(texture, "ktx2_basis", "srgb", "color", 1U, "00112233445566778899aabbccddeeff",
+                                    "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA",
+                                    "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY", false, true, false, false, 4U, 4U);
+    const mirakana::runtime::RuntimeAssetRecord record{
+        .handle = mirakana::runtime::RuntimeAssetHandle{27},
+        .asset = texture,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/desktop_runtime/environment_test.texture.geasset",
+        .content_hash = mirakana::hash_asset_cooked_content(payload),
+        .source_revision = 28,
+        .dependencies = {},
+        .content = payload,
+    };
+    const auto parsed = mirakana::runtime::runtime_environment_texture_payload(record);
+    MK_REQUIRE(parsed.succeeded());
+    auto metal_payload = parsed.payload;
+    metal_payload.backend_decisions = {mirakana::TextureCookBackendDecisionV1{
+        .backend = mirakana::TextureCookBackendV1::metal_macos,
+        .device_format = "MTLPixelFormatASTC_4x4_sRGB",
+        .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
+        .format_support_evidence_id = "metal-macos-astc-pixel-format-table",
+        .official_format_support_api = "Metal Feature Set Tables MTLPixelFormatASTC_4x4_sRGB",
+        .compression = mirakana::TextureCompressionKindV2::astc_4x4,
+        .transcode = mirakana::TextureCookTranscodeKindV1::basis_transcode_policy,
+        .estimated_gpu_bytes = 16,
+        .supported = true,
+        .host_validated = true,
+        .diagnostic = {},
+    }};
+
+    const auto plan = mirakana::runtime::plan_runtime_environment_texture_backend_payload_upload(
+        metal_payload, mirakana::TextureCookBackendV1::metal_macos);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.upload_plan_ready);
+    MK_REQUIRE(plan.backend_format_support_proven);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.backend == mirakana::TextureCookBackendV1::metal_macos);
+    MK_REQUIRE(plan.device_format == "MTLPixelFormatASTC_4x4_sRGB");
+    MK_REQUIRE(plan.payload_transcode_target == "KTX_TTF_ASTC_4x4_RGBA");
+    MK_REQUIRE(plan.format_support_evidence_id == "metal-macos-astc-pixel-format-table");
+    MK_REQUIRE(plan.official_format_support_api.find("Metal Feature Set Tables") != std::string::npos);
+    MK_REQUIRE(plan.compression == mirakana::TextureCompressionKindV2::astc_4x4);
+    MK_REQUIRE(plan.transcode == mirakana::TextureCookTranscodeKindV1::basis_transcode_policy);
+    MK_REQUIRE(plan.block_width == 4U);
+    MK_REQUIRE(plan.block_height == 4U);
+    MK_REQUIRE(plan.block_bytes == 16U);
+    MK_REQUIRE(plan.payload_bytes == 16U);
+    MK_REQUIRE(plan.upload_source_bytes == 16U);
+    MK_REQUIRE(!plan.runtime_codec_invoked);
+    MK_REQUIRE(!plan.runtime_basis_transcode_invoked);
+    MK_REQUIRE(!plan.backend_api_invoked);
+    MK_REQUIRE(!plan.gpu_upload_invoked);
+    MK_REQUIRE(!plan.broad_asset_pipeline_ready);
+}
+
 MK_TEST("runtime environment texture upload plan fails closed for unsupported upload evidence") {
     const auto openexr_texture = mirakana::AssetId::from_name("environment/studio-radiance-upload-plan-invalid");
     const auto openexr_payload = environment_texture_payload(

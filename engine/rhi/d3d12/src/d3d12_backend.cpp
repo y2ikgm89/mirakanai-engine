@@ -119,6 +119,8 @@ namespace {
         return DXGI_FORMAT_BC7_UNORM;
     case Format::bc7_unorm_srgb:
         return DXGI_FORMAT_BC7_UNORM_SRGB;
+    case Format::astc_4x4_unorm:
+    case Format::astc_4x4_srgb:
     case Format::unknown:
         break;
     }

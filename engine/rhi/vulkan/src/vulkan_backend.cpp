@@ -209,6 +209,8 @@ inline constexpr std::uint32_t vulkan_format_b8g8r8a8_unorm = 44;
 inline constexpr std::uint32_t vulkan_format_d24_unorm_s8_uint = 129;
 inline constexpr std::uint32_t vulkan_format_bc7_unorm_block = 145;
 inline constexpr std::uint32_t vulkan_format_bc7_srgb_block = 146;
+inline constexpr std::uint32_t vulkan_format_astc_4x4_unorm_block = 157;
+inline constexpr std::uint32_t vulkan_format_astc_4x4_srgb_block = 158;
 inline constexpr std::uint32_t vulkan_color_space_srgb_nonlinear = 0;
 inline constexpr std::uint32_t vulkan_image_usage_transfer_src_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_image_usage_transfer_dst_bit = 0x00000002U;
@@ -2193,6 +2195,10 @@ template <typename AvailableDeviceExtensions>
         return Format::bc7_unorm;
     case vulkan_format_bc7_srgb_block:
         return Format::bc7_unorm_srgb;
+    case vulkan_format_astc_4x4_unorm_block:
+        return Format::astc_4x4_unorm;
+    case vulkan_format_astc_4x4_srgb_block:
+        return Format::astc_4x4_srgb;
     default:
         return Format::unknown;
     }
@@ -2258,6 +2264,10 @@ template <typename AvailableDeviceExtensions>
         return vulkan_format_bc7_unorm_block;
     case Format::bc7_unorm_srgb:
         return vulkan_format_bc7_srgb_block;
+    case Format::astc_4x4_unorm:
+        return vulkan_format_astc_4x4_unorm_block;
+    case Format::astc_4x4_srgb:
+        return vulkan_format_astc_4x4_srgb_block;
     case Format::unknown:
         return 0;
     }
