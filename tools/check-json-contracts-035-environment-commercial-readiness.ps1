@@ -122,6 +122,21 @@ if ($null -eq $broadOptimizationClaim -or
     -not [string]$broadOptimizationClaim.notes.Contains("environment_broad_optimization_ready=0")) {
     Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract without ready promotion"
 }
+$assetPipelineClaim = $environmentCommercialClaimsById["environment_asset_pipeline_openexr_ktx_basis_ready"]
+if ($null -eq $assetPipelineClaim -or
+    @($assetPipelineClaim.validationRecipeIds) -notcontains "asset-importers" -or
+    @($assetPipelineClaim.validationRecipeIds) -notcontains "agent-contract" -or
+    [string]$assetPipelineClaim.state -ne "unsupported" -or
+    -not [string]$assetPipelineClaim.requiredEvidence.Contains("EnvironmentTexturePayloadCookRequestV1") -or
+    -not [string]$assetPipelineClaim.requiredEvidence.Contains("cook_environment_texture_payload_v1") -or
+    -not [string]$assetPipelineClaim.requiredEvidence.Contains("backend upload/readback") -or
+    -not [string]$assetPipelineClaim.notes.Contains("EnvironmentTexturePayloadCookResultV1") -or
+    -not [string]$assetPipelineClaim.notes.Contains("EnvironmentTexturePayloadCookDiagnostic") -or
+    -not [string]$assetPipelineClaim.notes.Contains("has_environment_texture_payload_cook_diagnostic") -or
+    -not [string]$assetPipelineClaim.notes.Contains("backend-target BC7/ASTC compressed payload execution") -or
+    -not [string]$assetPipelineClaim.notes.Contains("broad asset-pipeline readiness remain future work")) {
+    Write-Error "engine manifest environment_asset_pipeline_openexr_ktx_basis_ready must record the selected source-to-package cooker API while preserving broad readiness non-claims"
+}
 foreach ($broadClaimId in @("environment_commercial_ready", "environment_backend_parity_ready", "environment_broad_optimization_ready", "environment_aaa_preset_library_ready", "environment_physical_weather_simulation_ready", "environment_artist_workflow_ready")) {
     $broadClaim = $environmentCommercialClaimsById[$broadClaimId]
     if ($null -ne $broadClaim -and [string]$broadClaim.state -eq "ready") {

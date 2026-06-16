@@ -8,6 +8,9 @@ $assetReviewSourceText = Get-AgentSurfaceText "engine/assets/src/asset_import_pr
 $assetCMakeText = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $assetReviewTestsText = Get-AgentSurfaceText "tests/unit/asset_import_production_review_tests.cpp"
+$environmentTextureReviewHeaderText = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/environment_texture_source_review.hpp"
+$environmentTextureReviewSourceText = Get-AgentSurfaceText "engine/tools/asset/environment_texture_source_review.cpp"
+$environmentTextureReviewTestsText = Get-AgentSurfaceText "tests/unit/tools_tests.cpp"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $importerCapabilitiesText = Get-AgentSurfaceText "engine/agent/manifest.fragments/007-importerCapabilities.json"
 $gameCodeGuidanceText = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
@@ -19,6 +22,7 @@ $aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
 $generatedValidationText = Get-AgentSurfaceText "docs/specs/generated-game-validation-scenarios.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $activePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md"
+$environmentCommercialPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-13-environment-commercial-excellence-v1.md"
 $backlogText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
 $projectionText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
@@ -180,6 +184,39 @@ foreach ($needle in @(
     Assert-ContainsText $assetReviewSourceText $needle "engine/assets/src/asset_import_production_review.cpp"
 }
 Assert-DoesNotContainText $assetReviewSourceText "vcpkg.ktx-software" "engine/assets/src/asset_import_production_review.cpp"
+
+foreach ($needle in @(
+        "EnvironmentTexturePayloadCookDiagnosticCode",
+        "EnvironmentTexturePayloadCookDiagnostic",
+        "EnvironmentTexturePayloadCookRequestV1",
+        "EnvironmentTexturePayloadCookResultV1",
+        "has_environment_texture_payload_cook",
+        "has_environment_texture_payload_cook_diagnostic",
+        "cook_environment_texture_payload_v1"
+    )) {
+    Assert-ContainsText ($environmentTextureReviewHeaderText + $environmentTextureReviewSourceText) $needle "environment texture source-to-package cooker API"
+}
+
+foreach ($needle in @(
+        "environment texture payload cooker validates source selection and unsupported claims",
+        "environment texture payload cooker fails closed without asset importers",
+        "environment texture payload cooker cooks openexr source into geasset payload when importers are enabled",
+        "environment texture payload cooker cooks ktx2 basis source into geasset payload when importers are enabled"
+    )) {
+    Assert-ContainsText $environmentTextureReviewTestsText $needle "tests/unit/tools_tests.cpp environment texture cooker coverage"
+}
+
+foreach ($needle in @(
+        "EnvironmentTexturePayloadCookRequestV1",
+        "EnvironmentTexturePayloadCookResultV1",
+        "EnvironmentTexturePayloadCookDiagnostic",
+        "cook_environment_texture_payload_v1",
+        "backend-target BC7/ASTC compressed payload execution",
+        "environment_asset_pipeline_openexr_ktx_basis_ready",
+        "broad asset-pipeline readiness"
+    )) {
+    Assert-ContainsText ($manifestText + $environmentCommercialPlanText) $needle "environment texture cooker manifest and plan contract"
+}
 
 foreach ($needle in @(
         "src/asset_import_production_review.cpp",
