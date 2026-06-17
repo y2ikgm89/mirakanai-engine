@@ -215,6 +215,7 @@
         "desktop-runtime-sample-game-environment-ready-aggregate",
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
+        "desktop-runtime-sample-game-environment-backend-parity-ready",
         "desktop-runtime-sample-game-environment-platform-readiness",
         "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence",
         "desktop-runtime-sample-game-environment-optimization-measurement",
@@ -267,6 +268,14 @@
           "evidence": "The selected environment backend parity package smoke reports --require-environment-backend-parity, environment_backend_parity_status=host_evidence_required, environment_backend_parity_ready=0, environment_backend_parity_required_backends=3, environment_backend_parity_required_features=7, environment_backend_parity_rows=21, environment_backend_parity_ready_rows=14, environment_backend_parity_host_gated_rows=7, environment_backend_parity_host_validated_backends=2, environment_backend_parity_d3d12_primary=1, environment_backend_parity_vulkan_strict=1, environment_backend_parity_metal_host=0, environment_backend_parity_requires_metal_host_evidence=1, environment_backend_parity_diagnostics=0, environment_backend_parity_native_handle_access=0, environment_backend_parity_invoked_gpu_commands=0, and a positive replay hash without promoting all-platform, commercial, broad optimization, backend-parity-ready, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-backend-parity"
+          ]
+        },
+        {
+          "id": "environment-backend-parity-ready-closeout",
+          "evidence": "The selected environment backend parity ready closeout smoke reports --require-environment-backend-parity-ready, environment_backend_parity_status=ready, environment_backend_parity_ready_closeout_requested=1, environment_backend_parity_ready=1, environment_backend_parity_required_backends=3, environment_backend_parity_required_features=7, environment_backend_parity_rows=21, environment_backend_parity_ready_rows=21, environment_backend_parity_host_gated_rows=0, environment_backend_parity_host_validated_backends=3, environment_backend_parity_d3d12_primary=1, environment_backend_parity_vulkan_strict=1, environment_backend_parity_metal_host=1, environment_backend_parity_metal_evidence_consumed=1, environment_backend_parity_requires_metal_host_evidence=1, environment_backend_parity_cross_host_aggregate_ready=1, environment_backend_parity_d3d12_inferred=0, environment_backend_parity_vulkan_inferred=0, environment_backend_parity_metal_inferred=0, environment_backend_parity_diagnostics=0, environment_backend_parity_native_handle_access=0, environment_backend_parity_invoked_gpu_commands=0, and a positive replay hash without promoting all-platform, commercial, broad optimization, or broad environment_ready claims.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-backend-parity-ready",
+            "renderer-metal-environment-aggregate-apple-host-evidence"
           ]
         },
         {
@@ -1960,6 +1969,7 @@
         "desktop-runtime-sample-game-environment-ready-aggregate",
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
+        "desktop-runtime-sample-game-environment-backend-parity-ready",
         "desktop-runtime-sample-game-environment-platform-readiness",
         "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence",
         "desktop-runtime-sample-game-environment-optimization-measurement",
@@ -2148,6 +2158,14 @@
     {
       "name": "desktop-runtime-sample-game-environment-backend-parity",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-backend-parity')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-backend-parity-ready",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-backend-parity-ready')\""
+    },
+    {
+      "name": "renderer-metal-environment-aggregate-apple-host-evidence",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-metal-host-aggregate.ps1"
     },
     {
       "name": "desktop-runtime-sample-game-environment-platform-readiness",

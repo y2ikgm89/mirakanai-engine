@@ -199,7 +199,9 @@ $requiresEnvironmentPresetLibraryPackage = (@($SmokeArgs) -contains "--require-e
 $requiresEnvironmentVulkanStrictAggregate = (@($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate") -or
     $requiresEnvironmentCommercialVulkanEvidence -or
     $requiresEnvironmentPlatformWindowsVulkanEvidence
+$requiresEnvironmentBackendParityReady = @($SmokeArgs) -contains "--require-environment-backend-parity-ready"
 $requiresEnvironmentBackendParity = (@($SmokeArgs) -contains "--require-environment-backend-parity") -or
+    $requiresEnvironmentBackendParityReady -or
     $requiresEnvironmentCommercialFullReadiness
 $requiresEnvironmentPlatformReadinessFlag = @($SmokeArgs) -contains "--require-environment-platform-readiness"
 $requiresEnvironmentD3d12PlatformReadiness = $requiresEnvironmentPlatformReadinessFlag -or
@@ -5964,26 +5966,41 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
     }
     if ($requiresEnvironmentBackendParity) {
+        $environmentBackendParityExpectedStatus = if ($requiresEnvironmentBackendParityReady) { "ready" } else { "host_evidence_required" }
+        $environmentBackendParityExpectedReady = if ($requiresEnvironmentBackendParityReady) { "1" } else { "0" }
+        $environmentBackendParityExpectedReadyRows = if ($requiresEnvironmentBackendParityReady) { "21" } else { "14" }
+        $environmentBackendParityExpectedHostGatedRows = if ($requiresEnvironmentBackendParityReady) { "0" } else { "7" }
+        $environmentBackendParityExpectedHostValidatedBackends = if ($requiresEnvironmentBackendParityReady) { "3" } else { "2" }
+        $environmentBackendParityExpectedMetalHost = if ($requiresEnvironmentBackendParityReady) { "1" } else { "0" }
+        $environmentBackendParityExpectedMetalEvidenceConsumed = if ($requiresEnvironmentBackendParityReady) { "1" } else { "0" }
+        $environmentBackendParityExpectedCrossHostAggregateReady = if ($requiresEnvironmentBackendParityReady) { "1" } else { "0" }
+        $environmentBackendParityExpectedReadyCloseoutRequested = if ($requiresEnvironmentBackendParityReady) { "1" } else { "0" }
         Assert-InstalledDesktopRuntimeStatusFields `
             -SmokeOutput $smokeOutput `
             -EscapedGameTarget $escapedGameTarget `
             -Context "environment backend parity" `
             -ExpectedFields @{
-                "environment_backend_parity_status" = "host_evidence_required"
-                "environment_backend_parity_ready" = "0"
+                "environment_backend_parity_status" = $environmentBackendParityExpectedStatus
+                "environment_backend_parity_ready_closeout_requested" = $environmentBackendParityExpectedReadyCloseoutRequested
+                "environment_backend_parity_ready" = $environmentBackendParityExpectedReady
                 "environment_backend_parity_required_backends" = "3"
                 "environment_backend_parity_required_features" = "7"
                 "environment_backend_parity_rows" = "21"
-                "environment_backend_parity_ready_rows" = "14"
-                "environment_backend_parity_host_gated_rows" = "7"
-                "environment_backend_parity_host_validated_backends" = "2"
+                "environment_backend_parity_ready_rows" = $environmentBackendParityExpectedReadyRows
+                "environment_backend_parity_host_gated_rows" = $environmentBackendParityExpectedHostGatedRows
+                "environment_backend_parity_host_validated_backends" = $environmentBackendParityExpectedHostValidatedBackends
                 "environment_backend_parity_d3d12_primary" = "1"
                 "environment_backend_parity_vulkan_strict" = "1"
-                "environment_backend_parity_metal_host" = "0"
+                "environment_backend_parity_metal_host" = $environmentBackendParityExpectedMetalHost
+                "environment_backend_parity_metal_evidence_consumed" = $environmentBackendParityExpectedMetalEvidenceConsumed
                 "environment_backend_parity_requires_metal_host_evidence" = "1"
+                "environment_backend_parity_cross_host_aggregate_ready" = $environmentBackendParityExpectedCrossHostAggregateReady
                 "environment_backend_parity_diagnostics" = "0"
                 "environment_backend_parity_native_handle_access" = "0"
                 "environment_backend_parity_invoked_gpu_commands" = "0"
+                "environment_backend_parity_d3d12_inferred" = "0"
+                "environment_backend_parity_vulkan_inferred" = "0"
+                "environment_backend_parity_metal_inferred" = "0"
                 "environment_backend_parity_all_platform_ready" = "0"
                 "environment_backend_parity_commercial_ready" = "0"
                 "environment_backend_parity_broad_environment_ready" = "0"
