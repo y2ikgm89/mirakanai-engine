@@ -71,6 +71,14 @@ Source implications:
 - KTX2/Basis import must validate container metadata, decide whether transcoding is required, choose a GPU format from backend/device capabilities, and record compression/transcoding decisions in cooked metadata.
 - vcpkg changes must be optional manifest features installed only by `tools/bootstrap-deps.ps1`; CMake configure must not restore, download, or install packages.
 
+2026-06-16 highest-level refresh:
+
+- Context7 selected `/khronosgroup/vulkan-docs` as the official Vulkan source. Strict Vulkan closeout must keep `VK_KHR_synchronization2` / Vulkan 1.3 barriers, `VkDependencyInfoKHR`, `VkImageMemoryBarrier2KHR`, explicit stage/access pairs, validation layers, SPIR-V validation, dynamic-rendering feature rows, image usage/layout checks, queue submit/readback counters, and zero cross-backend inference as required evidence.
+- Context7 selected `/academysoftwarefoundation/openexr` as the official OpenEXR source. Full OpenEXR asset-pipeline closeout must record scene-linear intent, part/channel metadata, data/display windows, `HALF`/`FLOAT` handling, scanline/tiled/deep/multipart decisions, chromaticities, `InputFile`/`FrameBuffer`/`Slice`/`readPixels` execution where selected, deterministic payload hashes, and fail-closed unsupported-layout diagnostics.
+- Context7 selected `/khronosgroup/ktx-software` as the official KTX/Basis source. Full KTX2/Basis asset-pipeline closeout must record `ktxTexture2_CreateFromNamedFile`, `KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT`, `ktxTexture2_NeedsTranscoding`, backend/device target format selection, `ktxTexture2_TranscodeBasis`, mip/layer/face offsets, row pitch/data-size checks, payload hashes, and backend upload/readback evidence before any full asset-pipeline claim.
+- Apple Metal readiness remains official-site and host-gated. Metal closeout must use Apple-host execution, Apple Metal Feature Set Tables / `MTLGPUFamily` capability rows, `MTLTextureUsage`, command queue/buffer/pipeline rows, synchronization/readback rows, and package-visible counters. A Windows-host declaration, compile-only row, or non-Apple host cannot promote Metal.
+- vcpkg dependency closeout must keep OpenEXR/KTX/Basis optional under manifest features and installed only through `tools/bootstrap-deps.ps1`; `VCPKG_MANIFEST_INSTALL=OFF` CMake configure paths must remain package-consumer-only.
+
 ## Non-Negotiable Claim Rules
 
 - Do not claim `environment_commercial_ready` until every selected row in this plan is ready, package-visible, and guarded by validation and static checks.
@@ -689,6 +697,75 @@ Phase 4 slice 3 implementation notes:
 - [ ] Set all adjacent broad non-claims explicitly when they remain unsupported.
 - [ ] Return `currentActivePlan` to the production master plan or select the next dated plan in the same closeout change.
 
+### Phase 12A-12I Highest-Level Closeout Order
+
+The following order is mandatory for the highest-level commercial environment closeout. Each row is one PR-sized implementation boundary unless the operator explicitly splits a row into smaller evidence-only PRs. A later row cannot promote readiness by referencing an earlier row unless the earlier row has package-visible counters, manifest rows, docs, static checks, and local or hosted validation evidence.
+
+| Order | Claim promoted | Implementation boundary | Required ready evidence | Required non-claims |
+| --- | --- | --- | --- | --- |
+| 12A | `environment_asset_pipeline_openexr_ktx_basis_ready` | Complete the selected source-to-cooked-to-runtime-to-backend texture path for OpenEXR RGBA16F and KTX2/Basis selected compressed/uncompressed targets. | Optional `asset-importers` bootstrap/build evidence, OpenEXR scene-linear decode rows, KTX2/Basis transcode rows, backend/device format selection rows, `.geasset` payload rows, runtime ingest rows, D3D12 runtime upload/readback rows, strict Vulkan upload/readback rows, Apple-host Metal upload/readback rows, installed package smoke rows, deterministic payload/readback checksums, legal/provenance rows, and zero diagnostics. | No runtime optional codec dependency in default builds, no public KTX/OpenEXR handles, no backend readiness from metadata-only rows, no asset-pipeline ready claim before all selected backend upload/readback rows pass. |
+| 12B | `environment_vulkan_strict_aggregate_ready` | Convert all selected Vulkan feature lanes into one strict aggregate package recipe. | Vulkan SDK/tool rows, DXC SPIR-V CodeGen rows, `spirv-val` rows, validation-layer rows, Vulkan 1.3 synchronization2/dynamic-rendering feature rows, descriptor/image usage rows, sampled/storage/cube/weather/froxel/readback rows, positive barrier/draw/dispatch/upload/readback counters, checksum or nonzero readback rows, package smoke, and zero diagnostics/native handles/fallbacks. | No D3D12 inference, no Metal inference, no selected-feature-only aggregate, no broad all-platform/platform/backend-parity/optimization claim. |
+| 12C | `environment_metal_host_aggregate_ready` | Promote only Apple-host Metal execution for the same selected environment feature set. | macOS/Xcode host evidence, generated `metallib`, `MTLGPUFamily`/Metal Feature Set capability rows, command queue/buffer rows, render/compute pipeline rows, cube/HDR/depth/particle/weather resources, synchronization/readback rows, package counters, and zero diagnostics/native handles/fallbacks. | No Windows declaration promotion, no compile-only promotion, no iOS-to-macOS inference, no backend parity or all-platform promotion. |
+| 12D | `environment_backend_parity_ready` | Compare D3D12, strict Vulkan, and Apple-host Metal rows through the backend parity matrix. | Same selected feature ids, profile/preset/package revisions, quality tier, resource usage classes, tolerance class, counter semantics, unsupported-row list, replay hash, and row-level diagnostics across all three backends. | No feature-count-only parity, no two-backend parity, no screenshot-only parity, no platform readiness promotion. |
+| 12E | `environment_platform_readiness_ready` with exact platform rows | Promote exact per-platform rows, not an unconditional all-platform shortcut. | `windows_d3d12`, `windows_vulkan`, `linux_vulkan`, `macos_metal`, `ios_metal`, and `android_vulkan` each has a ready or explicitly host-gated row with host/toolchain/device/signing/driver blockers and package recipe ids. The derived matrix can be ready only when every selected platform row is ready. | `environment_all_platform_unconditional_ready` stays `0`; no platform row may inherit another platform, backend, driver, or host result. |
+| 12F | `environment_broad_optimization_ready` | Convert D3D12-only workload measurement into backend-parity-backed optimization evidence. | Seven workload rows for D3D12, strict Vulkan, and Apple-host Metal where selected, with host/GPU/driver/tool versions, warmup/frame count, before/after CPU time, GPU time, memory peak, transient GPU bytes, upload bytes, draw/dispatch/barrier counts, texture residency, package load time, stutter budget, retained profiler artifact hashes, regression budgets, and zero over-budget rows. | No single-backend broad claim, no synthetic-only measurement claim, no code-review-only optimization claim, no broad optimization without backend parity rows. |
+| 12G | `environment_physical_weather_simulation_ready` | Promote the selected numerical weather solver from reviewed evidence rows to production solver readiness. | Fixed state variables/units/grid/timestep/forcing equations, deterministic or explicitly nondeterministic contract, CPU reference, D3D12 GPU solver, strict Vulkan GPU solver, Apple-host Metal solver, conservation or bounded-error checks, canonical datasets/images, artist-control constraints, profiler budgets, fallback path, package counters, and backend parity. | Rain/snow/fog/cloud VFX do not count as physical simulation, D3D12 solver alone does not promote readiness, broad physical accuracy and visual quality remain separate unless explicitly proven. |
+| 12H | `environment_artist_workflow_ready` | Promote the complete first-party artist workflow from value models to an executed visible production loop. | Visible editor workflow for import, source review, cook preview, preset assembly, profile graph edit, weather timeline edit, simulation preview, package preview, validation remediation, installed package validation, operator review, revision-checked dry-run/apply reports, undo/rollback metadata, retained UI ids, and external execution evidence rows where editor core must not execute scripts. | No manual file editing claim, no editor-core backend/package/validation execution, no native handles, no unreviewed content mutation, no complete workflow claim from value-only rows. |
+| 12I | `environment_commercial_ready` | Final aggregate promotion and active-plan closeout. | Rows 12A-12H ready, `environment_aaa_preset_library_ready=1` revalidated, legal/dependency records current, manifest/schema/static checks updated, docs/registry/current-capabilities/roadmap synced, full validation passed, hosted PR checks or exact host-gated blockers recorded, and active plan pointer cleaned up. | No broad `environment_ready` beyond exact selected rows, no new unsupported broad claim hidden by aggregate wording, no completed-plan pointer left active. |
+
+### Phase 12 Per-Row Implementation Rules
+
+- 12A must add or verify package-visible counters named for source decode, transcode, backend format selection, upload, readback, checksum, descriptor binding, resource transitions, row pitch, native-handle access, backend parity, and broad-ready suppression.
+- 12B and 12C must expose backend-local runtime/package counters before any parity row consumes them.
+- 12D must reject parity when any backend lacks the same feature id, quality tier, package revision, counter semantic, unsupported row, or tolerance class.
+- 12E must treat missing macOS, iOS, Android, Linux, Vulkan SDK, Xcode, signing, driver, simulator, or device evidence as host-gated blockers, not as failure-to-plan ambiguity.
+- 12F must keep before/after measurements reproducible by recording workload revision, host/tool versions, profiler artifact ids, and regression budgets in the same package-visible output that claims readiness.
+- 12G must require backend solver parity before `environment_physical_weather_simulation_ready=1`; selected D3D12 WARP solver evidence remains only a prerequisite.
+- 12H must keep editor-core as a planner/reviewer and put actual package validation execution behind reviewed external/operator paths.
+- 12I must run a targeted agent-surface drift check before full validation and must update manifest fragments before composing `engine/agent/manifest.json`.
+
+### Phase 12 Validation Commands
+
+Run these at the first closeout PR that changes only docs/plan text:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+```
+
+Run these at each C++/runtime/backend/package slice:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
+```
+
+Run these additionally when 12A changes optional dependencies or importer features:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+```
+
+Run these additionally when host-gated backend/platform claims are promoted:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe desktop-runtime-sample-game-environment-vulkan-strict-aggregate
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe renderer-metal-environment-aggregate-apple-host-evidence
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1
+```
+
 **Done when:** The commercial aggregate is promoted by evidence, not assertion, and the active plan stack is clean after closeout.
 
 ## Validation Ladder
@@ -747,4 +824,5 @@ This plan is complete only when Phase 12 closes. Partial phases may land as PR-s
 - Created from `origin/main` in an isolated worktree on 2026-06-13.
 - Uses current completed environment evidence from `environment-production-excellence-v1`.
 - Uses official-source and Context7 references for Vulkan, Metal, D3D12, OpenEXR, KTX/Basis, product environment authoring patterns, and vcpkg dependency gates.
+- 2026-06-16 update adds the highest-level Phase 12A-12I closeout order for strict Vulkan/Metal aggregate readiness, backend parity, per-platform readiness, broad measured optimization, full OpenEXR/KTX/Basis pipeline promotion, physical weather simulation, complete artist workflow, and commercial aggregate promotion. The update uses Context7 official ids `/khronosgroup/vulkan-docs`, `/academysoftwarefoundation/openexr`, and `/khronosgroup/ktx-software`, plus Apple Metal and Microsoft vcpkg official documentation.
 - Does not select itself as active and does not claim any new runtime, backend, asset-pipeline, performance, simulation, platform, or artist-workflow readiness.
