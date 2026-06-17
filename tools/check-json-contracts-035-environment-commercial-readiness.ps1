@@ -647,10 +647,46 @@ if (@($environmentCommercialLoop.unsupportedProductionGaps).Count -ne 0) {
     Write-Error "engine manifest unsupportedProductionGaps must remain [] while environment commercial Phase 1 uses the dedicated claim taxonomy"
 }
 
+$commercialReadinessClaim = $environmentCommercialClaimsById["environment_commercial_ready"]
+if ($null -eq $commercialReadinessClaim -or
+    @($commercialReadinessClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-commercial-readiness" -or
+    [string]$commercialReadinessClaim.state -ne "unsupported") {
+    Write-Error "engine manifest environment_commercial_ready must remain unsupported and reference desktop-runtime-sample-game-environment-commercial-readiness"
+}
+$commercialReadinessClaimText = ((@($commercialReadinessClaim.validationRecipeIds) + @([string]$commercialReadinessClaim.requiredEvidence, [string]$commercialReadinessClaim.forbiddenInference, [string]$commercialReadinessClaim.notes)) -join " ")
+foreach ($needle in @("Phase 12 slice 1", "--require-environment-commercial-readiness", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "14 required rows", "4 ready rows", "7 host-gated rows", "3 blocked rows", "0 missing rows", "14 package-visible rows", "14 validation-guarded rows", "14 legal-notice-current rows", "optional_dependency_legal_records_current=1", "adjacent_broad_non_claims_declared=1", "native_handle_access=0", "broad_environment_ready_claimed=0")) {
+    if (-not $commercialReadinessClaimText.Contains($needle)) {
+        Write-Error "engine manifest environment_commercial_ready Phase 12 blocker gate text missing: $needle"
+    }
+}
+
 $environmentCommercialCounterRuleText = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentCommercialClaimCounterRules
 foreach ($needle in @("environmentCommercialClaimMatrix", "packageCounter equal to the claim id", "lower_snake_case", "environmentCommercialUnsupportedAdjacentClaims")) {
     if (-not $environmentCommercialCounterRuleText.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentCommercialClaimCounterRules missing: $needle"
+    }
+}
+$environmentCommercialAggregateGateGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentCommercialAggregateCloseoutGatePhase12
+foreach ($needle in @("EnvironmentCommercialReadinessStatus", "EnvironmentCommercialReadinessRequirementKind", "EnvironmentCommercialReadinessRequirementStatus", "EnvironmentCommercialReadinessRequirementInputRow", "EnvironmentCommercialReadinessDesc", "EnvironmentCommercialReadinessRequirementRow", "EnvironmentCommercialReadinessPlan", "environment_commercial_readiness_status_label", "environment_commercial_readiness_requirement_id", "environment_commercial_readiness_requirement_status_label", "plan_environment_commercial_readiness", "desktop-runtime-sample-game-environment-commercial-readiness", "--require-environment-commercial-readiness", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "environment_commercial_required_rows=14", "environment_commercial_ready_rows=4", "environment_commercial_host_gated_rows=7", "environment_commercial_blocked_rows=3", "environment_commercial_missing_rows=0", "environment_commercial_package_visible_rows=14", "environment_commercial_validation_guarded_rows=14", "environment_commercial_legal_notice_current_rows=14", "environment_commercial_optional_dependency_legal_records_current=1", "environment_commercial_adjacent_broad_non_claims_declared=1", "environment_commercial_native_handle_access=0", "environment_commercial_broad_environment_ready_claimed=0", "strict Vulkan aggregate", "Metal host aggregate", "physical weather simulation", "broad environment_ready")) {
+    if (-not $environmentCommercialAggregateGateGuidance.Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEnvironmentCommercialAggregateCloseoutGatePhase12 missing: $needle"
+    }
+}
+foreach ($sourceSurface in @(
+        @{ Path = "engine/environment/include/mirakana/environment/environment_commercial_readiness.hpp"; Needles = @("EnvironmentCommercialReadinessStatus", "EnvironmentCommercialReadinessRequirementKind", "EnvironmentCommercialReadinessDesc", "EnvironmentCommercialReadinessPlan", "plan_environment_commercial_readiness") },
+        @{ Path = "engine/environment/src/environment_commercial_readiness.cpp"; Needles = @("strict_vulkan_aggregate", "metal_host_aggregate", "backend_parity", "physical_weather_simulation", "request_commercial_ready", "environment_commercial_ready =") },
+        @{ Path = "tests/unit/environment_tests.cpp"; Needles = @("environment commercial readiness gate reports exact blockers before promotion", "plan.required_row_count == 14U", "plan.ready_row_count == 4U", "plan.host_gated_row_count == 7U", "plan.blocked_row_count == 3U", "environment commercial readiness rejects incomplete package-visible evidence") },
+        @{ Path = "games/sample_desktop_runtime_game/main.cpp"; Needles = @("--require-environment-commercial-readiness", "environment_commercial_readiness_status", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "require_environment_commercial_readiness") },
+        @{ Path = "tools/validation-recipe-core.ps1"; Needles = @("Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "--require-environment-commercial-readiness") },
+        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs") },
+        @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("environment_commercial_readiness_status", "environment_commercial_ready", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed") },
+        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "desktop-runtime-sample-game-environment-commercial-readiness", "environment_commercial_blocked_rows=3") }
+    )) {
+    $sourceSurfaceText = Get-JsonContractSurfaceText $sourceSurface.Path
+    foreach ($needle in @($sourceSurface.Needles)) {
+        if (-not $sourceSurfaceText.Contains([string]$needle)) {
+            Write-Error "$($sourceSurface.Path) missing environment commercial blocker gate needle: $needle"
+        }
     }
 }
 $environmentBackendParityGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentBackendParityPhase7
