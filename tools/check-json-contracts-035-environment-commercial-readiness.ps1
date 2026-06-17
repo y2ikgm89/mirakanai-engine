@@ -43,7 +43,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_metal_host_aggregate_ready = "host-gated"
     environment_backend_parity_ready = "unsupported"
     environment_platform_windows_d3d12_ready = "ready"
-    environment_platform_windows_vulkan_ready = "host-gated"
+    environment_platform_windows_vulkan_ready = "ready"
     environment_platform_linux_vulkan_ready = "host-gated"
     environment_platform_macos_metal_ready = "host-gated"
     environment_platform_ios_metal_ready = "host-gated"
@@ -118,6 +118,15 @@ if ($null -eq $backendParityClaim -or
     -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_ready=0")) {
     Write-Error "engine manifest environment_backend_parity_ready must require the MK_renderer environment parity matrix contract plus the Apple-host Metal parity evidence bridge without ready promotion"
 }
+$windowsVulkanPlatformClaim = $environmentCommercialClaimsById["environment_platform_windows_vulkan_ready"]
+if ($null -eq $windowsVulkanPlatformClaim -or
+    [string]$windowsVulkanPlatformClaim.state -ne "ready" -or
+    @($windowsVulkanPlatformClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence" -or
+    -not [string]$windowsVulkanPlatformClaim.requiredEvidence.Contains("environment_platform_windows_vulkan_ready=1") -or
+    -not [string]$windowsVulkanPlatformClaim.notes.Contains("environment_platform_windows_vulkan_evidence_requested=1") -or
+    -not [string]$windowsVulkanPlatformClaim.notes.Contains("environment_platform_readiness_ready=0")) {
+    Write-Error "engine manifest environment_platform_windows_vulkan_ready must be ready only through the Windows strict Vulkan platform evidence bridge without all-platform promotion"
+}
 $broadOptimizationClaim = $environmentCommercialClaimsById["environment_broad_optimization_ready"]
 if ($null -eq $broadOptimizationClaim -or
     @($broadOptimizationClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-optimization-measurement" -or
@@ -187,8 +196,8 @@ $expectedEnvironmentPlatformReadinessRows = @(
     @{
         id = "environment_platform_windows_vulkan"
         claimId = "environment_platform_windows_vulkan_ready"
-        state = "host-gated"
-        needles = @("Vulkan SDK", "validation layers", "SPIR-V", "D3D12", "environment_platform_windows_vulkan_ready=0")
+        state = "ready"
+        needles = @("Vulkan SDK", "validation layers", "SPIR-V", "D3D12", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence", "environment_platform_windows_vulkan_evidence_requested=1", "environment_platform_windows_vulkan_strict_aggregate_ready=1", "environment_platform_windows_vulkan_ready=1", "environment_platform_readiness_ready=0")
     },
     @{
         id = "environment_platform_linux_vulkan"
@@ -704,7 +713,7 @@ foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", 
     }
 }
 $environmentPlatformReadinessGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8
-foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_all_platform_unconditional_ready=0")) {
+foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_vulkan_evidence_requested=1", "environment_platform_windows_vulkan_ready=1", "environment_all_platform_unconditional_ready=0")) {
     if (-not $environmentPlatformReadinessGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8 missing: $needle"
     }

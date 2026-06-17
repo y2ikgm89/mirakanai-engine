@@ -123,6 +123,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_vulkan_strict_aggregate{false};
     bool require_environment_backend_parity{false};
     bool require_environment_platform_readiness{false};
+    bool require_environment_platform_windows_vulkan_evidence{false};
     bool require_environment_optimization_measurement{false};
     bool require_environment_weather_simulation_package{false};
     bool require_environment_weather_simulation_vulkan_solver_package{false};
@@ -2075,6 +2076,8 @@ struct EnvironmentBackendParitySmokeEvidence {
 
 struct EnvironmentPlatformReadinessSmokeEvidence {
     bool requested{false};
+    bool windows_vulkan_evidence_requested{false};
+    bool windows_vulkan_strict_aggregate_ready{false};
     bool ready{false};
     std::uint32_t rows{0U};
     std::uint32_t ready_rows{0U};
@@ -3474,7 +3477,8 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
 }
 
 [[nodiscard]] EnvironmentPlatformReadinessSmokeEvidence build_environment_platform_readiness_smoke_evidence(
-    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate) {
+    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate,
+    const EnvironmentVulkanStrictAggregateEvidence& vulkan_strict_aggregate) {
     EnvironmentPlatformReadinessSmokeEvidence evidence;
     evidence.requested = options.require_environment_platform_readiness;
     if (!evidence.requested) {
@@ -3482,10 +3486,16 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
     }
 
     evidence.rows = 6U;
-    evidence.windows_d3d12_ready = environment_ready_aggregate.ready && environment_ready_aggregate.d3d12_primary_ready;
-    evidence.ready_rows = evidence.windows_d3d12_ready ? 1U : 0U;
+    evidence.windows_vulkan_evidence_requested = options.require_environment_platform_windows_vulkan_evidence;
+    evidence.windows_vulkan_strict_aggregate_ready =
+        evidence.windows_vulkan_evidence_requested && vulkan_strict_aggregate.ready;
+    evidence.windows_d3d12_ready = !evidence.windows_vulkan_evidence_requested && environment_ready_aggregate.ready &&
+                                   environment_ready_aggregate.d3d12_primary_ready;
+    evidence.windows_vulkan_ready = evidence.windows_vulkan_strict_aggregate_ready;
+    evidence.requires_windows_vulkan_host_evidence = !evidence.windows_vulkan_ready;
+    evidence.ready_rows = (evidence.windows_d3d12_ready ? 1U : 0U) + (evidence.windows_vulkan_ready ? 1U : 0U);
     evidence.host_gated_rows = evidence.rows - evidence.ready_rows;
-    evidence.diagnostics = evidence.windows_d3d12_ready ? 0U : 1U;
+    evidence.diagnostics = (evidence.windows_d3d12_ready || evidence.windows_vulkan_ready) ? 0U : 1U;
 
     auto hash_mix = [](std::uint64_t& hash, std::uint64_t value) noexcept {
         hash ^= value;
@@ -3496,6 +3506,8 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
     hash_mix(hash, evidence.rows);
     hash_mix(hash, evidence.ready_rows);
     hash_mix(hash, evidence.host_gated_rows);
+    hash_mix(hash, evidence.windows_vulkan_evidence_requested ? 1U : 0U);
+    hash_mix(hash, evidence.windows_vulkan_strict_aggregate_ready ? 1U : 0U);
     hash_mix(hash, evidence.windows_d3d12_ready ? 1U : 0U);
     hash_mix(hash, evidence.windows_vulkan_ready ? 1U : 0U);
     hash_mix(hash, evidence.linux_vulkan_ready ? 1U : 0U);
@@ -5229,6 +5241,12 @@ void enable_environment_platform_readiness_requirements(DesktopRuntimeGameOption
     enable_environment_ready_aggregate_requirements(options);
 }
 
+void enable_environment_platform_windows_vulkan_evidence_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    options.require_environment_platform_readiness = true;
+    enable_environment_vulkan_strict_aggregate_requirements(options);
+    options.require_environment_platform_windows_vulkan_evidence = true;
+}
+
 void enable_environment_optimization_measurement_requirements(DesktopRuntimeGameOptions& options) noexcept {
     options.require_environment_optimization_measurement = true;
     enable_environment_ready_aggregate_requirements(options);
@@ -5715,6 +5733,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-platform-readiness") {
             enable_environment_platform_readiness_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-platform-windows-vulkan-evidence") {
+            enable_environment_platform_windows_vulkan_evidence_requirements(options);
             continue;
         }
         if (arg == "--require-environment-optimization-measurement") {
@@ -8103,8 +8125,8 @@ int main(int argc, char** argv) {
         environment_volumetric_cloud_vulkan, environment_profile, environment_quality_budget);
     const auto environment_backend_parity =
         build_environment_backend_parity_smoke_evidence(options, environment_ready_aggregate);
-    const auto environment_platform_readiness =
-        build_environment_platform_readiness_smoke_evidence(options, environment_ready_aggregate);
+    const auto environment_platform_readiness = build_environment_platform_readiness_smoke_evidence(
+        options, environment_ready_aggregate, environment_vulkan_strict_aggregate);
     const auto environment_optimization_measurement =
         build_environment_optimization_measurement_smoke_evidence(options, environment_ready_aggregate);
     const auto environment_weather_simulation_package = build_environment_weather_simulation_package_evidence(
@@ -9969,6 +9991,10 @@ int main(int argc, char** argv) {
         std::cout
             << " environment_platform_readiness_status=host_evidence_required"
             << " environment_platform_readiness_ready=" << (environment_platform_readiness.ready ? 1 : 0)
+            << " environment_platform_windows_vulkan_evidence_requested="
+            << (environment_platform_readiness.windows_vulkan_evidence_requested ? 1 : 0)
+            << " environment_platform_windows_vulkan_strict_aggregate_ready="
+            << (environment_platform_readiness.windows_vulkan_strict_aggregate_ready ? 1 : 0)
             << " environment_platform_readiness_rows=" << environment_platform_readiness.rows
             << " environment_platform_readiness_ready_rows=" << environment_platform_readiness.ready_rows
             << " environment_platform_readiness_host_gated_rows=" << environment_platform_readiness.host_gated_rows
@@ -10705,15 +10731,25 @@ int main(int argc, char** argv) {
              !environment_backend_parity.plan.diagnostics.empty())) {
             return 3;
         }
-        if (environment_platform_readiness.requested &&
-            (!environment_platform_readiness.windows_d3d12_ready ||
-             environment_platform_readiness.windows_vulkan_ready || environment_platform_readiness.linux_vulkan_ready ||
-             environment_platform_readiness.macos_metal_ready || environment_platform_readiness.ios_metal_ready ||
-             environment_platform_readiness.android_vulkan_ready || environment_platform_readiness.ready ||
-             environment_platform_readiness.ready_rows != 1U || environment_platform_readiness.host_gated_rows != 5U ||
-             environment_platform_readiness.diagnostics != 0U || environment_platform_readiness.native_handle_access ||
-             environment_platform_readiness.invoked_gpu_commands || environment_platform_readiness.replay_hash == 0U)) {
-            return 3;
+        if (environment_platform_readiness.requested) {
+            const bool expected_windows_vulkan_ready = options.require_environment_platform_windows_vulkan_evidence;
+            const bool expected_windows_d3d12_ready = !expected_windows_vulkan_ready;
+            if (environment_platform_readiness.windows_d3d12_ready != expected_windows_d3d12_ready ||
+                environment_platform_readiness.windows_vulkan_evidence_requested != expected_windows_vulkan_ready ||
+                environment_platform_readiness.windows_vulkan_strict_aggregate_ready != expected_windows_vulkan_ready ||
+                environment_platform_readiness.windows_vulkan_ready != expected_windows_vulkan_ready ||
+                environment_platform_readiness.requires_windows_vulkan_host_evidence !=
+                    !expected_windows_vulkan_ready ||
+                environment_platform_readiness.linux_vulkan_ready || environment_platform_readiness.macos_metal_ready ||
+                environment_platform_readiness.ios_metal_ready || environment_platform_readiness.android_vulkan_ready ||
+                environment_platform_readiness.ready || environment_platform_readiness.ready_rows != 1U ||
+                environment_platform_readiness.host_gated_rows != 5U ||
+                environment_platform_readiness.diagnostics != 0U ||
+                environment_platform_readiness.native_handle_access ||
+                environment_platform_readiness.invoked_gpu_commands ||
+                environment_platform_readiness.replay_hash == 0U) {
+                return 3;
+            }
         }
         if (environment_optimization_measurement.requested &&
             (environment_optimization_measurement.plan.status !=

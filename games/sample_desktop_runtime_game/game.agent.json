@@ -165,6 +165,7 @@
         "environment-asset-pipeline-openexr-ktx-basis-ready",
         "environment-preset-library-package",
         "environment-platform-readiness",
+        "environment-platform-windows-vulkan-evidence",
         "environment-weather-simulation-package",
         "environment-artist-workflow-package",
         "environment-commercial-readiness",
@@ -215,6 +216,7 @@
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
         "desktop-runtime-sample-game-environment-platform-readiness",
+        "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence",
         "desktop-runtime-sample-game-environment-optimization-measurement",
         "desktop-runtime-sample-game-environment-weather-simulation-package",
         "desktop-runtime-sample-game-environment-artist-workflow-package",
@@ -272,6 +274,13 @@
           "evidence": "The selected environment platform readiness package smoke reports --require-environment-platform-readiness, environment_platform_readiness_status=host_evidence_required, environment_platform_readiness_ready=0, environment_platform_readiness_rows=6, environment_platform_readiness_ready_rows=1, environment_platform_readiness_host_gated_rows=5, environment_platform_windows_d3d12_ready=1, environment_platform_windows_vulkan_ready=0, environment_platform_linux_vulkan_ready=0, environment_platform_macos_metal_ready=0, environment_platform_ios_metal_ready=0, environment_platform_android_vulkan_ready=0, environment_platform_requires_windows_vulkan_host_evidence=1, environment_platform_requires_linux_vulkan_host_evidence=1, environment_platform_requires_macos_metal_host_evidence=1, environment_platform_requires_ios_metal_host_evidence=1, environment_platform_requires_android_vulkan_host_evidence=1, environment_all_platform_unconditional_ready=0, environment_platform_diagnostics=0, environment_platform_native_handle_access=0, environment_platform_invoked_gpu_commands=0, and a positive replay hash without promoting all-platform, commercial, broad optimization, backend-parity-ready, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-platform-readiness"
+          ]
+        },
+        {
+          "id": "environment-platform-windows-vulkan-evidence-bridge",
+          "evidence": "The selected Windows Vulkan platform evidence bridge reports desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence, --require-environment-platform-windows-vulkan-evidence, --require-vulkan-renderer, --require-environment-vulkan-strict-aggregate, environment_platform_readiness_status=host_evidence_required, environment_platform_readiness_ready=0, environment_platform_readiness_rows=6, environment_platform_readiness_ready_rows=1, environment_platform_readiness_host_gated_rows=5, environment_platform_windows_vulkan_evidence_requested=1, environment_platform_windows_vulkan_strict_aggregate_ready=1, environment_platform_windows_d3d12_ready=0, environment_platform_windows_vulkan_ready=1, environment_platform_requires_windows_vulkan_host_evidence=0, environment_platform_linux_vulkan_ready=0, environment_platform_macos_metal_ready=0, environment_platform_ios_metal_ready=0, environment_platform_android_vulkan_ready=0, environment_all_platform_unconditional_ready=0, environment_platform_diagnostics=0, environment_platform_native_handle_access=0, environment_platform_invoked_gpu_commands=0, and a positive replay hash without promoting D3D12 inference, Linux Vulkan, Android Vulkan, Metal, all-platform, commercial, broad optimization, backend-parity-ready, or broad environment_ready claims.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence"
           ]
         },
         {
@@ -1952,6 +1961,7 @@
         "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
         "desktop-runtime-sample-game-environment-backend-parity",
         "desktop-runtime-sample-game-environment-platform-readiness",
+        "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence",
         "desktop-runtime-sample-game-environment-optimization-measurement",
         "desktop-runtime-sample-game-environment-artist-workflow-package"
       ],
@@ -2142,6 +2152,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-platform-readiness",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-platform-readiness')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-renderer','--require-environment-vulkan-strict-aggregate','--require-environment-platform-windows-vulkan-evidence')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-optimization-measurement",
