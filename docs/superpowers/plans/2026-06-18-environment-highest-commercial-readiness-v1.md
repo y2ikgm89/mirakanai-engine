@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7 tool gap as blocked with implementation code edits forbidden until the Context7 rows are ready. Task 1 static validation passed; publication is pending. This file does not promote any readiness claim by itself.
+**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7 tool gap as blocked with implementation code edits forbidden until the Context7 rows are ready. Task 1 landed in PR #669 with hosted validation passing. This file does not promote any readiness claim by itself.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -180,7 +180,7 @@ Create or modify these files as the plan executes:
 | `tools/validate-environment-weather-physics.ps1` | Task 10 | Weather solver validation dataset and image verifier. |
 | `engine/environment/include/mirakana/environment/commercial_readiness_v2.hpp` | Task 2 | Clean-break dependency graph and readiness result API. |
 | `engine/environment/src/commercial_readiness_v2.cpp` | Task 2 | Dependency graph evaluation. |
-| `engine/environment/tests/commercial_readiness_v2_tests.cpp` | Task 2 | Fail-closed readiness tests. |
+| `tests/unit/environment_commercial_readiness_v2_tests.cpp` | Task 2 | Fail-closed readiness tests registered by the root CMake test target pattern. |
 | `engine/renderer/include/mirakana/renderer/environment_backend_parity_v2.hpp` | Task 6 | Backend-local parity row model. |
 | `engine/renderer/src/environment_backend_parity_v2.cpp` | Task 6 | Backend parity evaluation. |
 | `engine/runtime_rhi/include/mirakana/runtime_rhi/environment_platform_evidence_v2.hpp` | Tasks 4-6 | Runtime package evidence API for platform rows. |
@@ -294,9 +294,12 @@ check-ai-integration.ps1 exits 0
 **Files:**
 - Create: `engine/environment/include/mirakana/environment/commercial_readiness_v2.hpp`
 - Create: `engine/environment/src/commercial_readiness_v2.cpp`
-- Create: `engine/environment/tests/commercial_readiness_v2_tests.cpp`
+- Create: `tests/unit/environment_commercial_readiness_v2_tests.cpp`
 - Modify: `engine/environment/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
 - Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+
+Register the focused test as a root `CMakeLists.txt` unit-test target following the existing `MK_environment_*_tests` pattern. Do not create an `engine/environment/tests/` directory.
 
 - [ ] **Step 1: Write tests first**
 
@@ -365,8 +368,8 @@ Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_commercial_readiness_v2_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_commercial_readiness_v2_tests
 ```
 
 Expected:
@@ -1071,3 +1074,8 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
 | 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-18 | Task 2 plan alignment | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | pass | `text-format-check: ok` |
+| 2026-06-18 | Task 2 plan alignment | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
+| 2026-06-18 | Task 2 plan alignment | `git diff --check` | pass | no whitespace errors |
+| 2026-06-18 | Task 2 plan alignment | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 2 plan alignment | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
