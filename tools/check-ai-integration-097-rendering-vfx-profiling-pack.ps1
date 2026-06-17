@@ -233,7 +233,6 @@ foreach ($docSurface in @(
 }
 
 foreach ($needle in @(
-        "production-rendering-vfx-profiling-v1",
         '"unsupportedProductionGaps": []',
         "engine/renderer/include/mirakana/renderer/production_vfx_profiling.hpp",
         "RendererProductionBackendEvidenceRow",
@@ -247,6 +246,9 @@ foreach ($needle in @(
         "currentRendererProductionVfxProfiling"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
+}
+if ([string]$productionLoop.recommendedNextPlan.id -ne "environment-highest-commercial-readiness-v1") {
+    Assert-ContainsText $manifestText "production-rendering-vfx-profiling-v1" "engine/agent/manifest.json"
 }
 
 foreach ($needle in @(

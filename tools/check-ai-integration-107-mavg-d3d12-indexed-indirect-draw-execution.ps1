@@ -81,7 +81,7 @@ foreach ($needle in @(
     Assert-ContainsText $mavgRhiPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-rhi-indirect-draw-v1.md prerequisite transition"
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
     foreach ($needle in @(
             "mavg-d3d12-indexed-indirect-draw-execution-v1",
             "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-draw-execution-v1.md",
@@ -117,7 +117,7 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect draw evidence"
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
     foreach ($needle in @("mavg-d3d12-indexed-indirect-draw-execution-v1", "D3D12 ExecuteIndirect", "mavg-vulkan-indexed-indirect-draw-execution-v1", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #537-#539", "PR #547")) {
         Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence + " " + [string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext) $needle "engine/agent/manifest.json recommendedNextPlan MAVG D3D12 completed prerequisite evidence"
     }

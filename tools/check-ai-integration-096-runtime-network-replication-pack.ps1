@@ -239,7 +239,6 @@ foreach ($needle in @(
         "production-network-replication-v1",
         "sandbox-world-network-modding-gate-v1",
         '"unsupportedProductionGaps": []',
-        "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/production_network_replication.hpp",
         "RuntimeNetworkReplicationSessionDesc",
         "RuntimeNetworkReplicationPlan",
@@ -252,4 +251,7 @@ foreach ($needle in @(
         "currentSandboxWorldNetworkModding"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
+}
+if ([string]$productionLoop.recommendedNextPlan.id -ne "environment-highest-commercial-readiness-v1") {
+    Assert-ContainsText $manifestText "production-rendering-vfx-profiling-v1" "engine/agent/manifest.json"
 }

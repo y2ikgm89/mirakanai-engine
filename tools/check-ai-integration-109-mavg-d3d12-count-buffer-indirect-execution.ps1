@@ -83,7 +83,7 @@ foreach ($needle in @(
     Assert-ContainsText $mavgVulkanPlanText $needle "docs/superpowers/plans/2026-06-08-mavg-vulkan-indexed-indirect-draw-execution-v1.md prerequisite transition"
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
     foreach ($needle in @(
             "mavg-d3d12-count-buffer-indirect-execution-v1",
             "docs/superpowers/plans/2026-06-08-mavg-d3d12-count-buffer-indirect-execution-v1.md",
