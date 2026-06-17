@@ -62,6 +62,34 @@ Write-Host (
 )
 
 Write-Host (
+    "environment-backend-parity-metal-evidence: environment_backend_parity_status=host_evidence_required " +
+    "environment_backend_parity_ready=0 " +
+    "environment_backend_parity_metal_evidence_requested=1 " +
+    "environment_backend_parity_metal_evidence_ready=1 " +
+    "environment_backend_parity_metal_host=1 " +
+    "environment_backend_parity_required_backends=3 " +
+    "environment_backend_parity_required_features=7 " +
+    "environment_backend_parity_metal_ready_rows=7 " +
+    "environment_backend_parity_host_validated_backends=1 " +
+    "environment_backend_parity_d3d12_primary=0 " +
+    "environment_backend_parity_vulkan_strict=0 " +
+    "environment_backend_parity_cross_host_aggregate_ready=0 " +
+    "environment_backend_parity_profile_revision_ready=1 " +
+    "environment_backend_parity_preset_pack_revision_ready=1 " +
+    "environment_backend_parity_package_revision_ready=1 " +
+    "environment_backend_parity_quality_tier_ready=1 " +
+    "environment_backend_parity_resource_class_ready=1 " +
+    "environment_backend_parity_output_tolerance_ready=1 " +
+    "environment_backend_parity_counter_semantics_ready=1 " +
+    "environment_backend_parity_unsupported_rows_ready=1 " +
+    "environment_backend_parity_diagnostics=0 " +
+    "environment_backend_parity_native_handle_access=0 " +
+    "environment_backend_parity_d3d12_inferred=0 " +
+    "environment_backend_parity_vulkan_inferred=0 " +
+    "environment_backend_parity_replay_hash=2026061704"
+)
+
+Write-Host (
     "environment-commercial-metal-evidence: environment_commercial_readiness_status=blocked " +
     "environment_commercial_ready=0 " +
     "environment_commercial_required_rows=14 " +

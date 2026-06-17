@@ -5613,7 +5613,8 @@
         "state": "unsupported",
         "validationRecipeIds": [
           "agent-contract",
-          "desktop-runtime-sample-game-environment-backend-parity"
+          "desktop-runtime-sample-game-environment-backend-parity",
+          "renderer-metal-environment-aggregate-apple-host-evidence"
         ],
         "packageCounter": "environment_backend_parity_ready",
         "dependsOn": [
@@ -5621,9 +5622,9 @@
           "environment_vulkan_strict_aggregate_ready",
           "environment_metal_host_aggregate_ready"
         ],
-        "requiredEvidence": "MK_renderer EnvironmentBackendParityRequest / plan_environment_backend_parity value rows prove D3D12 primary, strict Vulkan aggregate, and Apple-host Metal aggregate evidence for the same normalized feature id set, same profile revision, same preset pack revision, same package revision, same quality tier, same quality-budget class, same resource class, same output tolerance class, matching package counter semantics, matching unsupported-row list, zero diagnostics, zero fallback rows, zero native-handle access, and no cross-backend inference.",
+        "requiredEvidence": "MK_renderer EnvironmentBackendParityRequest / plan_environment_backend_parity value rows prove D3D12 primary, strict Vulkan aggregate, and Apple-host Metal aggregate evidence for the same normalized feature id set, same profile revision, same preset pack revision, same package revision, same quality tier, same quality-budget class, same resource class, same output tolerance class, matching package counter semantics, matching unsupported-row list, zero diagnostics, zero fallback rows, zero native-handle access, environment_backend_parity_metal_evidence_ready=1 from renderer-metal-environment-aggregate-apple-host-evidence, and no cross-backend inference.",
         "forbiddenInference": "Policy-only tests, feature-count-only equality, two-backend parity, screenshot comparison without backend counter parity, stale profile or preset revisions, missing Apple-host Metal aggregate evidence, fallback activation, or native handle access.",
-        "notes": "desktop-runtime-sample-game-environment-backend-parity is a host_evidence_required package-visible review recipe only: it emits environment_backend_parity_ready=0 with D3D12 and strict Vulkan ready rows plus Apple-host Metal host-gated rows. Backend parity remains unsupported until the environment parity matrix is populated with fresh ready backend-local package-visible rows from all three selected backends."
+        "notes": "desktop-runtime-sample-game-environment-backend-parity is a host_evidence_required package-visible review recipe only: it emits environment_backend_parity_ready=0 with D3D12 and strict Vulkan ready rows plus Apple-host Metal host-gated rows. renderer-metal-environment-aggregate-apple-host-evidence now emits a separate Apple-host Metal parity bridge view with environment_backend_parity_metal_evidence_ready=1, environment_backend_parity_metal_host=1, environment_backend_parity_ready=0, and no D3D12/Vulkan inference. Backend parity remains unsupported until the environment parity matrix is populated with fresh ready backend-local package-visible rows from all three selected backends."
       },
       {
         "id": "environment_platform_windows_d3d12_ready",
