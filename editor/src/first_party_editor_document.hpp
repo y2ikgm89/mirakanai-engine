@@ -71,6 +71,15 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t accessibility_hidden_nodes{0};
     std::uint32_t accessibility_unsupported_pattern_diagnostics{0};
     bool accessibility_native_handles_exposed{false};
+    std::uint32_t environment_artist_workflow_command_plan_rows{0};
+    std::uint32_t environment_artist_workflow_execution_review_rows{0};
+    std::uint32_t environment_artist_workflow_external_execution_rows{0};
+    std::uint32_t environment_artist_workflow_operator_review_rows{0};
+    bool environment_artist_workflow_executes_backend{false};
+    bool environment_artist_workflow_executes_package_scripts{false};
+    bool environment_artist_workflow_executes_validation_recipes{false};
+    bool environment_artist_workflow_native_handles_exposed{false};
+    bool environment_artist_workflow_ready_claimed{false};
     std::string docking_status{"not_rendered"};
     std::uint32_t dock_tab_header_count{0};
     std::uint32_t dock_split_gutter_count{0};

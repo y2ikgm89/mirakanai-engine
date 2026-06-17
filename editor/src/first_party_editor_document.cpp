@@ -8,6 +8,7 @@
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/editor_rich_text.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -128,6 +129,104 @@ void append_rich_text_document(ui::UiDocument& document, const ui::ElementId& pa
     for (const auto& element : model.document.traverse()) {
         add_or_throw(document, clone_element_desc(element, parent));
     }
+}
+
+void append_ui_document(ui::UiDocument& document, const ui::ElementId& parent, const ui::UiDocument& source) {
+    for (const auto& element : source.traverse()) {
+        add_or_throw(document, clone_element_desc(element, parent));
+    }
+}
+
+[[nodiscard]] std::string bool_label(bool value) {
+    return value ? "true" : "false";
+}
+
+[[nodiscard]] std::string command_status_label(EnvironmentArtistWorkflowCommandStatus status) {
+    switch (status) {
+    case EnvironmentArtistWorkflowCommandStatus::accepted:
+        return "accepted";
+    case EnvironmentArtistWorkflowCommandStatus::rejected_invalid_request:
+        return "rejected_invalid_request";
+    case EnvironmentArtistWorkflowCommandStatus::rejected_stale_revision:
+        return "rejected_stale_revision";
+    case EnvironmentArtistWorkflowCommandStatus::rejected_unsafe_execution:
+        return "rejected_unsafe_execution";
+    }
+    return "rejected_invalid_request";
+}
+
+[[nodiscard]] bool command_plan_executes_backend(const NativeEditorEnvironmentArtistWorkflowCommandPlanRow& row) {
+    return row.dry_run.invokes_backend || row.apply.invokes_backend;
+}
+
+[[nodiscard]] bool
+command_plan_executes_package_scripts(const NativeEditorEnvironmentArtistWorkflowCommandPlanRow& row) {
+    return row.dry_run.executes_package_scripts || row.apply.executes_package_scripts;
+}
+
+[[nodiscard]] bool command_plan_exposes_native_handles(const NativeEditorEnvironmentArtistWorkflowCommandPlanRow& row) {
+    return row.dry_run.exposes_native_handles || row.apply.exposes_native_handles;
+}
+
+void append_environment_artist_workflow_command_plan_rows(ui::UiDocument& document, const ui::ElementId& root,
+                                                          const NativeEditorApp& app) {
+    const std::string plans_id = "environment_artist_workflow_shell_execution_bridge.command_plans";
+    auto plans_root = child(plans_id, root, ui::SemanticRole::list);
+    plans_root.accessibility_label = "Environment Artist Workflow Command Plans";
+    add_or_throw(document, std::move(plans_root));
+    const ui::ElementId plans_root_id{plans_id};
+
+    for (const auto& row : app.environment_artist_workflow_command_plans()) {
+        const std::string row_id = plans_id + "." + row.command_id;
+        auto item = child(row_id, plans_root_id, ui::SemanticRole::list_item);
+        item.enabled = false;
+        item.text = text(row.label);
+        add_or_throw(document, std::move(item));
+        const ui::ElementId item_id{row_id};
+        append_label(document, item_id, row_id + ".dry_run_status", command_status_label(row.dry_run.status));
+        append_label(document, item_id, row_id + ".dry_run_report_rows",
+                     std::to_string(row.dry_run.report_rows.size()));
+        append_label(document, item_id, row_id + ".apply_status", command_status_label(row.apply.status));
+        append_label(document, item_id, row_id + ".apply_revision_checked", bool_label(row.apply.revision_checked));
+        append_label(document, item_id, row_id + ".rollback_metadata_available",
+                     bool_label(row.apply.rollback_metadata_available));
+        append_label(document, item_id, row_id + ".requires_confirmation", bool_label(row.apply.requires_confirmation));
+        append_label(document, item_id, row_id + ".before_revision", std::to_string(row.apply.before_revision));
+        append_label(document, item_id, row_id + ".after_revision", std::to_string(row.apply.after_revision));
+        append_label(document, item_id, row_id + ".executes_backend", bool_label(command_plan_executes_backend(row)));
+        append_label(document, item_id, row_id + ".executes_package_scripts",
+                     bool_label(command_plan_executes_package_scripts(row)));
+        append_label(document, item_id, row_id + ".native_handles_exposed",
+                     bool_label(command_plan_exposes_native_handles(row)));
+    }
+}
+
+void append_environment_artist_workflow_shell_execution_bridge(ui::UiDocument& document, const NativeEditorApp& app,
+                                                               const ui::ElementId& parent) {
+    auto root = child("environment_artist_workflow_shell_execution_bridge", parent, ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Artist Workflow Execution Bridge";
+    root.enabled = false;
+    add_or_throw(document, std::move(root));
+    const ui::ElementId root_id{"environment_artist_workflow_shell_execution_bridge"};
+    const auto& review = app.environment_artist_workflow_execution_review();
+
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.status",
+                 review.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.visible_workflow_wired",
+                 bool_label(review.visible_first_party_workflow_wired));
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.complete_ready_claimed",
+                 bool_label(review.complete_artist_workflow_ready_claimed));
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.executes_backend",
+                 bool_label(review.invokes_backend));
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.executes_package_scripts",
+                 bool_label(review.executes_package_scripts));
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.executes_validation_recipes",
+                 bool_label(review.executes_validation_recipes));
+    append_label(document, root_id, "environment_artist_workflow_shell_execution_bridge.native_handles_exposed",
+                 bool_label(review.exposes_native_handles));
+
+    append_environment_artist_workflow_command_plan_rows(document, root_id, app);
+    append_ui_document(document, root_id, make_environment_artist_workflow_execution_review_ui_model(review));
 }
 
 void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, std::string_view panel_id,
@@ -330,6 +429,7 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
     }
     result.docking_status = "single_window_ready";
     append_dock_node(document, app, layout, *dock_root, element_id("editor.dock"), result);
+    append_environment_artist_workflow_shell_execution_bridge(document, app, root_id);
     if (ui::empty(result.focused_element)) {
         for (const auto& element : document.traverse()) {
             if (element.role == ui::SemanticRole::button && element.enabled) {
@@ -351,6 +451,19 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const auto& accessibility = app.accessibility_state();
     const auto& viewport_display = app.viewport_display();
     const auto& material_preview_display = app.material_preview_display();
+    const auto workflow_command_plans = app.environment_artist_workflow_command_plans();
+    const auto& workflow_review = app.environment_artist_workflow_execution_review();
+    const auto workflow_executes_backend =
+        workflow_review.invokes_backend ||
+        std::ranges::any_of(workflow_command_plans, [](const auto& row) { return command_plan_executes_backend(row); });
+    const auto workflow_executes_package_scripts =
+        workflow_review.executes_package_scripts || std::ranges::any_of(workflow_command_plans, [](const auto& row) {
+            return command_plan_executes_package_scripts(row);
+        });
+    const auto workflow_native_handles_exposed =
+        workflow_review.exposes_native_handles || std::ranges::any_of(workflow_command_plans, [](const auto& row) {
+            return command_plan_exposes_native_handles(row);
+        });
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -396,6 +509,18 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .accessibility_hidden_nodes = accessibility.hidden_nodes,
         .accessibility_unsupported_pattern_diagnostics = accessibility.unsupported_pattern_diagnostics,
         .accessibility_native_handles_exposed = accessibility.native_handles_exposed,
+        .environment_artist_workflow_command_plan_rows = static_cast<std::uint32_t>(workflow_command_plans.size()),
+        .environment_artist_workflow_execution_review_rows =
+            static_cast<std::uint32_t>(workflow_review.stage_rows.size()),
+        .environment_artist_workflow_external_execution_rows = static_cast<std::uint32_t>(std::ranges::count_if(
+            workflow_review.stage_rows, [](const auto& row) { return row.external_execution_required; })),
+        .environment_artist_workflow_operator_review_rows = static_cast<std::uint32_t>(
+            std::ranges::count_if(workflow_review.stage_rows, [](const auto& row) { return row.operator_reviewed; })),
+        .environment_artist_workflow_executes_backend = workflow_executes_backend,
+        .environment_artist_workflow_executes_package_scripts = workflow_executes_package_scripts,
+        .environment_artist_workflow_executes_validation_recipes = workflow_review.executes_validation_recipes,
+        .environment_artist_workflow_native_handles_exposed = workflow_native_handles_exposed,
+        .environment_artist_workflow_ready_claimed = workflow_review.complete_artist_workflow_ready_claimed,
         .docking_status = document.docking_status,
         .dock_tab_header_count = document.tab_header_count,
         .dock_split_gutter_count = document.split_gutter_count,

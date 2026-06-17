@@ -699,3 +699,8 @@ foreach ($needle in @("EnvironmentArtistWorkflowReadyRequirementKind", "Environm
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentArtistWorkflowPhase11 missing slice 6: $needle"
     }
 }
+foreach ($needle in @("Phase 11 slice 7", "NativeEditorEnvironmentArtistWorkflowCommandPlanRow", "environment_artist_workflow_command_plans", "environment_artist_workflow_execution_review", "environment_artist_workflow_shell_execution_bridge", "FirstPartyEditorShellSmokeCounters", "environment_artist_workflow_* rows", "five command-plan rows", "eight execution-review rows", "one external execution row", "one operator review row", "dry-run/apply reports", "revision-checked apply", "undo/rollback metadata", "publish confirmation", "zero backend/package-script/validation-recipe/native-handle execution", "complete_artist_workflow_ready_claimed=false")) {
+    if (-not $environmentArtistWorkflowGuidance.Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEnvironmentArtistWorkflowPhase11 missing slice 7: $needle"
+    }
+}
