@@ -46,16 +46,27 @@ The claim is valid only when all dependency rows below are ready in the same pac
 | `environment_backend_parity_ready` | `1` | D3D12, Vulkan, and Metal rows all satisfy the same environment feature matrix without transferring proof across APIs or hosts. |
 | `environment_platform_readiness_ready` | `1` | Exact platform rows for Windows D3D12, Windows Vulkan, Linux Vulkan, macOS Metal, iOS Metal, and Android Vulkan are ready. |
 | `environment_broad_optimization_ready` | `1` | Seven named workloads are measured before/after on D3D12, strict Vulkan, and Apple-host Metal, with retained profiler artifacts and no over-budget rows. |
-| `environment_aaa_preset_asset_library_ready` | `1` | First-party or explicitly licensed production preset packs meet the count, provenance, package, screenshot, budget, and artist workflow criteria in Task 7. |
+| `environment_aaa_preset_asset_library_ready` | `1` | First-party or explicitly licensed production preset packs meet the count, provenance, package, screenshot, budget, and artist workflow criteria in Task 8. |
 | `environment_asset_pipeline_openexr_ktx_basis_full_ready` | `1` | Source-to-cooked pipeline handles the declared OpenEXR and KTX2/Basis matrix, device format selection, color metadata, package replay, and runtime cooked-only ingest. |
 | `environment_physical_weather_simulation_ready` | `1` | Coupled CPU reference and GPU solver rows meet validation dataset, conservation, budget, visual regression, and backend parity thresholds. |
 | `environment_artist_workflow_production_ready` | `1` | Visible editor shell supports import, cook, package, preview, compare, validate, report, revise, undo/redo, batch, and review flows without editor-core backend execution. |
+
+Commercial v2 row names are clean-break rows, not renames, aliases, compatibility bridges, or implicit promotions from earlier selected rows:
+
+| Existing selected row | Commercial v2 row | Allowed use |
+| --- | --- | --- |
+| `environment_vulkan_strict_aggregate_ready` | `environment_strict_vulkan_aggregate_ready` | Historical input evidence only. Task 4 must re-emit Windows, Linux, and Android Vulkan platform rows plus the v2 aggregate in its own package-visible report. |
+| `environment_metal_host_aggregate_ready` | `environment_metal_aggregate_ready` | Historical Apple-host input evidence only. Task 5 must re-emit macOS and iOS Metal platform rows plus the v2 aggregate in its own package-visible report. |
+| `environment_aaa_preset_library_ready` | `environment_aaa_preset_asset_library_ready` | Selected package evidence only. Task 8 must prove the larger production asset-library count, provenance, screenshots, budgets, and workflow rows. |
+| `environment_asset_pipeline_openexr_ktx_basis_ready` | `environment_asset_pipeline_openexr_ktx_basis_full_ready` | Selected source-to-package evidence only. Task 9 must prove the full declared image, compression, metadata, runtime cooked-only, replay, and backend target matrix. |
+| `environment_artist_workflow_ready` | `environment_artist_workflow_production_ready` | Selected workflow evidence only. Task 11 must prove visible shell execution, revision safety, batch, compare, undo/redo, and package validation rows. |
 
 Forbidden promotion paths:
 
 - D3D12 evidence must not promote Vulkan, Metal, all-platform, broad optimization, physical weather, or commercial readiness.
 - Windows Vulkan evidence must not promote Linux Vulkan or Android Vulkan.
 - macOS Metal evidence must not promote iOS Metal.
+- Earlier selected rows may seed review inputs, but every commercial v2 row must be re-emitted by its owning task with fresh package-visible counters before it can participate in the final aggregate.
 - Backend parity must not promote all-platform readiness unless all exact platform rows are ready.
 - Asset-library row counts must not promote AAA readiness without provenance, package, validation, screenshot, and budget rows.
 - Weather visual quality review must not promote physical simulation without solver validation, conservation, and backend parity rows.
@@ -64,7 +75,9 @@ Forbidden promotion paths:
 
 ## Official Source And Context7 Gate
 
-Context7 is mandatory for implementation. In this session the Context7 MCP tools were not exposed by tool discovery, so this plan records the exact refresh gate and official fallback sources. If Context7 remains unavailable when a code task starts, that task is blocked and must not edit implementation files.
+Context7 is mandatory for SDK/API/dependency implementation. In this session the Context7 MCP tools were not exposed by tool discovery, so this plan records the exact refresh gate and official fallback sources. If Context7 remains unavailable when a code task starts, that task is blocked and must not edit implementation files.
+
+Task 1 may still edit only plan, spec, docs, manifest fragments, and composed manifest files to record the active plan and the blocked Context7 status. Task 1 must not edit C++, shader, CMake, package, editor, renderer, importer, tool, or game runtime implementation files while `environment_highest_readiness_code_edit_allowed=0`.
 
 Before each task that touches SDK/API/dependency behavior, run `resolve-library-id` and `query-docs` for the exact query row, then record the resolved library id, date, and implementation implication in the task PR:
 
@@ -168,7 +181,7 @@ Create or modify these files as the plan executes:
 
 - [ ] **Step 1: Resolve Context7 documentation rows**
 
-Run the Context7 calls listed in `Official Source And Context7 Gate`. If any Context7 call is unavailable, stop the implementation and record:
+Run the Context7 calls listed in `Official Source And Context7 Gate`. If any Context7 call is unavailable, keep this task limited to docs/spec/manifest selection and record:
 
 ```text
 environment_highest_readiness_context7_status=blocked
@@ -176,9 +189,25 @@ environment_highest_readiness_context7_missing_tools=1
 environment_highest_readiness_code_edit_allowed=0
 ```
 
+No later task may edit implementation files until the same row is updated to:
+
+```text
+environment_highest_readiness_context7_status=ready
+environment_highest_readiness_context7_missing_tools=0
+environment_highest_readiness_code_edit_allowed=1
+```
+
 - [ ] **Step 2: Create the spec with exact target counters**
 
 Create `docs/specs/2026-06-18-environment-highest-commercial-readiness-v1.md` with the final counter list from `Scope Contract`, the official-source table, and the clean-break no-compatibility rule. The spec must contain no placeholder wording.
+
+The spec must repeat the commercial v2 row-name policy exactly:
+
+```text
+commercial v2 rows are new rows
+existing selected rows are input evidence only
+no rename, alias, compatibility bridge, or implicit carry-forward is allowed
+```
 
 - [ ] **Step 3: Select this plan in manifest fragments**
 
@@ -604,6 +633,34 @@ environment_optimization_measurement_over_budget=0
 environment_broad_optimization_ready=1
 ```
 
+Each workload/backend pair must also record and satisfy:
+
+```text
+cpu_frame_p95_budget_us
+gpu_frame_p95_budget_us
+memory_peak_budget_bytes
+upload_budget_bytes
+stutter_frames_budget
+shader_compile_or_pipeline_cache_budget_ms
+cpu_frame_p95_after_us<=cpu_frame_p95_budget_us
+gpu_frame_p95_after_us<=gpu_frame_p95_budget_us
+memory_peak_after_bytes<=memory_peak_budget_bytes
+upload_after_bytes<=upload_budget_bytes
+stutter_frames_after<=stutter_frames_budget
+shader_compile_or_pipeline_cache_after_ms<=shader_compile_or_pipeline_cache_budget_ms
+artifact_hash_sha256 matches ^[0-9a-f]{64}$
+profiler_artifact_path starts with artifacts/environment/optimization/
+trace_event_json_path starts with artifacts/environment/optimization/
+```
+
+The retained artifact root is fixed as:
+
+```text
+artifacts/environment/optimization/<task-id>/<backend>/<workload>/
+```
+
+The validator must fail if a path escapes this root, if a hash is missing, if a before/after pair is absent, or if a row is over budget. Thresholds may be revised only by editing this plan, the spec, and the validation recipe in the same PR.
+
 - [ ] **Step 4: Validate artifact checker**
 
 Run:
@@ -927,8 +984,10 @@ Expected:
 all commands exit 0
 environment_highest_commercial_ready=1
 environment_commercial_ready=1
-environment_ready=1 only when broad environment ready contract is updated in the same closeout
+environment_ready is unchanged by this plan
 ```
+
+This plan does not promote broad `environment_ready=1`. Any future broad engine readiness promotion requires a separately selected plan or architecture decision, updated static guards, and explicit non-environment subsystem evidence.
 
 ## Execution Order
 
