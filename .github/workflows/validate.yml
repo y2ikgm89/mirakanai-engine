@@ -891,11 +891,11 @@ jobs:
         run: |
           ccache --zero-stats
 
-      - name: Renderer Metal Apple host evidence recipe
+      - name: Environment Metal aggregate host evidence recipe
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
-          ./tools/validate-renderer-metal-apple.ps1 -Jobs $jobs
+          ./tools/validate-environment-metal-host-aggregate.ps1 -Jobs $jobs
 
       - name: Configure
         run: cmake --preset ci-macos-appleclang
