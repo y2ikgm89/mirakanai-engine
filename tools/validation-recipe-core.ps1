@@ -661,6 +661,21 @@ function Get-SampleDesktopRuntimeGameEnvironmentPlatformReadinessSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameEnvironmentPlatformWindowsVulkanEvidenceSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-renderer',
+        '--require-environment-vulkan-strict-aggregate',
+        '--require-environment-platform-windows-vulkan-evidence'
+    )
+}
+
 function Get-SampleDesktopRuntimeGameEnvironmentOptimizationMeasurementSmokeArgs {
     return @(
         '--smoke',

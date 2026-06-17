@@ -329,6 +329,10 @@ $sampleEnvironmentPlatformReadinessDryRun = Assert-DryRunRecipe -Recipe "desktop
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-platform-readiness", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentPlatformReadinessDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-platform-readiness"
 }
+$sampleEnvironmentPlatformWindowsVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-environment-vulkan-strict-aggregate", "--require-environment-platform-windows-vulkan-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentPlatformWindowsVulkanDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence"
+}
 $sampleEnvironmentOptimizationMeasurementDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-optimization-measurement" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-optimization-measurement", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentOptimizationMeasurementDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-optimization-measurement"
@@ -429,6 +433,11 @@ if ($missingMetalTextureAssetPipelineCompressedUploadGate.status -ne "rejected" 
 $missingEnvironmentPlatformReadinessGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-platform-readiness") -ExpectedExitCode 2
 if ($missingEnvironmentPlatformReadinessGate.status -ne "rejected" -or @($missingEnvironmentPlatformReadinessGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "environment platform readiness recipe must require d3d12-windows-primary acknowledgement before execute"
+}
+
+$missingEnvironmentPlatformWindowsVulkanGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence") -ExpectedExitCode 2
+if ($missingEnvironmentPlatformWindowsVulkanGate.status -ne "rejected" -or @($missingEnvironmentPlatformWindowsVulkanGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "environment platform Windows Vulkan evidence recipe must require vulkan-strict acknowledgement before execute"
 }
 
 $missingEnvironmentOptimizationMeasurementGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-optimization-measurement") -ExpectedExitCode 2

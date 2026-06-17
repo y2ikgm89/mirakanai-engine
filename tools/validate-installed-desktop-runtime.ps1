@@ -186,6 +186,7 @@ $requiresEnvironmentCommercialReadiness = $requiresEnvironmentCommercialReadines
     $requiresEnvironmentCommercialVulkanEvidence
 $requiresEnvironmentCommercialFullReadiness = $requiresEnvironmentCommercialReadinessFlag -and
     -not $requiresEnvironmentCommercialVulkanEvidence
+$requiresEnvironmentPlatformWindowsVulkanEvidence = @($SmokeArgs) -contains "--require-environment-platform-windows-vulkan-evidence"
 $requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
 $requiresEnvironmentArtistWorkflowPackage = (@($SmokeArgs) -contains "--require-environment-artist-workflow-package") -or
     $requiresEnvironmentCommercialFullReadiness
@@ -196,10 +197,15 @@ $requiresEnvironmentPresetLibraryPackage = (@($SmokeArgs) -contains "--require-e
     $requiresEnvironmentArtistWorkflowPackage -or
     $requiresEnvironmentCommercialReadiness
 $requiresEnvironmentVulkanStrictAggregate = (@($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate") -or
-    $requiresEnvironmentCommercialVulkanEvidence
+    $requiresEnvironmentCommercialVulkanEvidence -or
+    $requiresEnvironmentPlatformWindowsVulkanEvidence
 $requiresEnvironmentBackendParity = (@($SmokeArgs) -contains "--require-environment-backend-parity") -or
     $requiresEnvironmentCommercialFullReadiness
-$requiresEnvironmentPlatformReadiness = (@($SmokeArgs) -contains "--require-environment-platform-readiness") -or
+$requiresEnvironmentPlatformReadinessFlag = @($SmokeArgs) -contains "--require-environment-platform-readiness"
+$requiresEnvironmentD3d12PlatformReadiness = $requiresEnvironmentPlatformReadinessFlag -or
+    $requiresEnvironmentCommercialFullReadiness
+$requiresEnvironmentPlatformReadiness = $requiresEnvironmentD3d12PlatformReadiness -or
+    $requiresEnvironmentPlatformWindowsVulkanEvidence -or
     $requiresEnvironmentCommercialFullReadiness
 $requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require-environment-optimization-measurement"
 $requiresEnvironmentWeatherSimulationVulkanSolverPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-vulkan-solver-package"
@@ -245,7 +251,7 @@ $requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-envi
 $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environment-audio-playback"
 $requiresEnvironmentReadyAggregate = (@($SmokeArgs) -contains "--require-environment-ready-aggregate") -or
     $requiresEnvironmentBackendParity -or
-    $requiresEnvironmentPlatformReadiness -or
+    $requiresEnvironmentD3d12PlatformReadiness -or
     $requiresEnvironmentOptimizationMeasurement -or
     $requiresEnvironmentArtistWorkflowPackage -or
     $requiresEnvironmentCommercialFullReadiness
@@ -5988,36 +5994,46 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
     }
     if ($requiresEnvironmentPlatformReadiness) {
+        $environmentPlatformExpectedFields = @{
+            "environment_platform_readiness_status" = "host_evidence_required"
+            "environment_platform_readiness_ready" = "0"
+            "environment_platform_windows_vulkan_evidence_requested" = "0"
+            "environment_platform_windows_vulkan_strict_aggregate_ready" = "0"
+            "environment_platform_readiness_rows" = "6"
+            "environment_platform_readiness_ready_rows" = "1"
+            "environment_platform_readiness_host_gated_rows" = "5"
+            "environment_platform_windows_d3d12_ready" = "1"
+            "environment_platform_windows_vulkan_ready" = "0"
+            "environment_platform_linux_vulkan_ready" = "0"
+            "environment_platform_macos_metal_ready" = "0"
+            "environment_platform_ios_metal_ready" = "0"
+            "environment_platform_android_vulkan_ready" = "0"
+            "environment_platform_requires_windows_vulkan_host_evidence" = "1"
+            "environment_platform_requires_linux_vulkan_host_evidence" = "1"
+            "environment_platform_requires_macos_metal_host_evidence" = "1"
+            "environment_platform_requires_ios_metal_host_evidence" = "1"
+            "environment_platform_requires_android_vulkan_host_evidence" = "1"
+            "environment_all_platform_unconditional_ready" = "0"
+            "environment_platform_backend_parity_ready" = "0"
+            "environment_platform_commercial_ready" = "0"
+            "environment_platform_broad_environment_ready" = "0"
+            "environment_platform_broad_optimization_ready" = "0"
+            "environment_platform_native_handle_access" = "0"
+            "environment_platform_invoked_gpu_commands" = "0"
+            "environment_platform_diagnostics" = "0"
+        }
+        if ($requiresEnvironmentPlatformWindowsVulkanEvidence) {
+            $environmentPlatformExpectedFields["environment_platform_windows_vulkan_evidence_requested"] = "1"
+            $environmentPlatformExpectedFields["environment_platform_windows_vulkan_strict_aggregate_ready"] = "1"
+            $environmentPlatformExpectedFields["environment_platform_windows_d3d12_ready"] = "0"
+            $environmentPlatformExpectedFields["environment_platform_windows_vulkan_ready"] = "1"
+            $environmentPlatformExpectedFields["environment_platform_requires_windows_vulkan_host_evidence"] = "0"
+        }
         Assert-InstalledDesktopRuntimeStatusFields `
             -SmokeOutput $smokeOutput `
             -EscapedGameTarget $escapedGameTarget `
             -Context "environment platform readiness" `
-            -ExpectedFields @{
-                "environment_platform_readiness_status" = "host_evidence_required"
-                "environment_platform_readiness_ready" = "0"
-                "environment_platform_readiness_rows" = "6"
-                "environment_platform_readiness_ready_rows" = "1"
-                "environment_platform_readiness_host_gated_rows" = "5"
-                "environment_platform_windows_d3d12_ready" = "1"
-                "environment_platform_windows_vulkan_ready" = "0"
-                "environment_platform_linux_vulkan_ready" = "0"
-                "environment_platform_macos_metal_ready" = "0"
-                "environment_platform_ios_metal_ready" = "0"
-                "environment_platform_android_vulkan_ready" = "0"
-                "environment_platform_requires_windows_vulkan_host_evidence" = "1"
-                "environment_platform_requires_linux_vulkan_host_evidence" = "1"
-                "environment_platform_requires_macos_metal_host_evidence" = "1"
-                "environment_platform_requires_ios_metal_host_evidence" = "1"
-                "environment_platform_requires_android_vulkan_host_evidence" = "1"
-                "environment_all_platform_unconditional_ready" = "0"
-                "environment_platform_backend_parity_ready" = "0"
-                "environment_platform_commercial_ready" = "0"
-                "environment_platform_broad_environment_ready" = "0"
-                "environment_platform_broad_optimization_ready" = "0"
-                "environment_platform_native_handle_access" = "0"
-                "environment_platform_invoked_gpu_commands" = "0"
-                "environment_platform_diagnostics" = "0"
-            }
+            -ExpectedFields $environmentPlatformExpectedFields
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_platform_readiness_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment platform readiness replay hash."
         }

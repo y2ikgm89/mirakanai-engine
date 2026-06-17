@@ -5640,20 +5640,21 @@
       },
       {
         "id": "environment_platform_windows_vulkan_ready",
-        "state": "host-gated",
+        "state": "ready",
         "validationRecipeIds": [
           "shader-toolchain",
           "desktop-runtime-sample-game-environment-commercial-vulkan-evidence",
           "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
-          "desktop-runtime-sample-game-environment-platform-readiness"
+          "desktop-runtime-sample-game-environment-platform-readiness",
+          "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence"
         ],
         "packageCounter": "environment_platform_windows_vulkan_ready",
         "dependsOn": [
           "environment_vulkan_strict_aggregate_ready"
         ],
-        "requiredEvidence": "Windows Vulkan recipe with Vulkan SDK tools, validation layers, SPIR-V validation, strict runtime package smoke, Windows Vulkan runtime/driver evidence, and readback counters.",
+        "requiredEvidence": "Windows Vulkan recipe with Vulkan SDK tools, VK_LAYER_KHRONOS_validation, SPIR-V validation, strict runtime package smoke, Windows Vulkan runtime/driver evidence, strict aggregate readback counters, environment_platform_windows_vulkan_evidence_requested=1, environment_platform_windows_vulkan_strict_aggregate_ready=1, environment_platform_windows_vulkan_ready=1, environment_platform_requires_windows_vulkan_host_evidence=0, and environment_platform_readiness_ready=0.",
         "forbiddenInference": "D3D12 evidence, Linux Vulkan evidence, Android Vulkan evidence, or Vulkan compile-only evidence.",
-        "notes": "Windows Vulkan readiness is a distinct host-gated platform/backend row. The commercial Vulkan bridge accepts the selected strict Vulkan package execution only for the commercial blocker's Windows Vulkan dependency counter; it must not promote Linux Vulkan, Android Vulkan, backend parity, all-platform readiness, or broad environment_ready."
+        "notes": "Phase 12 slice 5 adds desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence / --require-environment-platform-windows-vulkan-evidence as the Windows Vulkan platform evidence bridge. It emits environment_platform_windows_vulkan_evidence_requested=1, environment_platform_windows_vulkan_strict_aggregate_ready=1, environment_platform_windows_vulkan_ready=1, environment_platform_requires_windows_vulkan_host_evidence=0, and environment_platform_readiness_ready=0 without promoting D3D12 by inference, Linux Vulkan, Android Vulkan, Metal, backend parity, all-platform readiness, commercial readiness, broad optimization, or broad environment_ready."
       },
       {
         "id": "environment_platform_linux_vulkan_ready",
@@ -5861,7 +5862,7 @@
       {
         "id": "environment_platform_windows_vulkan",
         "claimId": "environment_platform_windows_vulkan_ready",
-        "state": "host-gated",
+        "state": "ready",
         "hostOs": "windows",
         "backend": "vulkan",
         "runtimeTarget": "sample_desktop_runtime_game",
@@ -5885,7 +5886,8 @@
         "validationRecipeIds": [
           "shader-toolchain",
           "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
-          "desktop-runtime-sample-game-environment-platform-readiness"
+          "desktop-runtime-sample-game-environment-platform-readiness",
+          "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence"
         ],
         "featureSet": [
           "profile_v2",
@@ -5897,17 +5899,21 @@
           "ibl",
           "quality_budget"
         ],
-        "packageSmoke": "--require-environment-vulkan-strict-aggregate on a Windows Vulkan host plus --require-environment-platform-readiness",
+        "packageSmoke": "--require-vulkan-renderer plus --require-environment-vulkan-strict-aggregate and --require-environment-platform-windows-vulkan-evidence on a Windows Vulkan host",
         "packageCounters": [
-          "environment_platform_windows_vulkan_ready=0",
-          "environment_platform_requires_windows_vulkan_host_evidence=1",
+          "environment_platform_windows_vulkan_evidence_requested=1",
+          "environment_platform_windows_vulkan_strict_aggregate_ready=1",
+          "environment_platform_windows_d3d12_ready=0",
+          "environment_platform_windows_vulkan_ready=1",
+          "environment_platform_requires_windows_vulkan_host_evidence=0",
           "environment_platform_readiness_host_gated_rows=5",
+          "environment_platform_readiness_ready=0",
           "environment_all_platform_unconditional_ready=0"
         ],
         "hostGate": "vulkan-strict",
-        "blockerReason": "Requires Windows Vulkan SDK, Windows Vulkan runtime/driver, validation layers, SPIR-V validation, strict package smoke, and D3D12 inference remains forbidden.",
+        "blockerReason": "none",
         "forbiddenInference": "D3D12 evidence, Linux Vulkan evidence, Android Vulkan evidence, Vulkan compile-only rows, or strict aggregate rows without Windows Vulkan package execution.",
-        "notes": "Windows Vulkan is host-gated until a Windows Vulkan package lane emits backend-local platform counters."
+        "notes": "Phase 12 slice 5 promotes only the Windows Vulkan platform/backend row through the strict Vulkan package lane. This does not imply Linux Vulkan, Android Vulkan, Metal, backend parity, all-platform readiness, commercial readiness, broad optimization, or broad environment_ready."
       },
       {
         "id": "environment_platform_linux_vulkan",
