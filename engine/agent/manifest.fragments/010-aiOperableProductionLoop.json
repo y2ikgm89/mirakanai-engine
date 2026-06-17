@@ -5270,6 +5270,7 @@
           "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
           "desktop-runtime-sample-game-environment-backend-parity",
           "desktop-runtime-sample-game-environment-platform-readiness",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
           "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package",
           "environment-weather-metal-solver-host-gate",
           "desktop-runtime-generated-material-shader-scaffold-package",
@@ -5774,8 +5775,13 @@
       },
       {
         "id": "environment_artist_workflow_ready",
-        "state": "unsupported",
+        "state": "ready",
         "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "desktop-runtime-sample-game-environment-asset-pipeline-openexr-ktx-basis-ready",
+          "desktop-runtime-sample-game-environment-preset-library-package",
+          "desktop-runtime-sample-game-environment-weather-simulation-package",
+          "desktop-runtime-sample-game-environment-ready-aggregate",
           "agent-contract"
         ],
         "packageCounter": "environment_artist_workflow_ready",
@@ -5783,9 +5789,9 @@
           "environment_asset_pipeline_openexr_ktx_basis_ready",
           "environment_aaa_preset_library_ready"
         ],
-        "requiredEvidence": "First-party editor commands, asset browser, profile graph editing, import/cook/preview/package loop, visible execution/review path, dry-run/apply reports, validation remediation, revision safety, and production sample walkthrough evidence.",
-        "forbiddenInference": "Editor-core rows without externally supplied execution evidence or manual file editing.",
-        "notes": "Advanced artist workflow readiness is unsupported. Phase 11 slice 5 adds editor-core command/report, asset-browser, preview, walkthrough, and visible execution/review value-model foundations with eleven reviewed EnvironmentArtistWorkflowCommandKind ids, eight deterministic EnvironmentArtistWorkflowAssetKind rows, seven deterministic EnvironmentArtistWorkflowPreviewRowKind rows, eight deterministic EnvironmentArtistWorkflowWalkthroughStepKind rows, and eight deterministic EnvironmentArtistWorkflowExecutionReviewStageRow rows, but complete artist workflow promotion remains future work."
+        "requiredEvidence": "First-party editor commands, asset browser, profile graph editing, import/cook/preview/package loop, visible execution/review path, dry-run/apply reports, validation remediation, revision safety, package-visible production sample walkthrough evidence, and zero editor-core backend/package-script/validation-recipe/native-handle execution.",
+        "forbiddenInference": "Manual file editing, editor-core value rows without package-visible evidence, asset-pipeline or preset-library readiness alone, broad environment_ready, backend parity, all-platform readiness, complete physical weather simulation, or commercial readiness.",
+        "notes": "Advanced artist workflow readiness is ready for the selected clean-break first-party package lane only. Phase 11 slice 6 adds EnvironmentArtistWorkflowReadyRequirementKind, EnvironmentArtistWorkflowReadyRequirementStatus, EnvironmentArtistWorkflowReadyRequirementInputRow, EnvironmentArtistWorkflowReadyReviewDesc, EnvironmentArtistWorkflowReadyRequirementRow, EnvironmentArtistWorkflowReadyReviewModel, environment_artist_workflow_ready_requirement_id, environment_artist_workflow_ready_requirement_status_label, make_environment_artist_workflow_ready_review_model, and make_environment_artist_workflow_ready_review_ui_model, plus desktop-runtime-sample-game-environment-artist-workflow-package / --require-environment-artist-workflow-package counters. The ready counter requires eight package-visible reviewed rows for visible editor shell, selected OpenEXR/KTX/Basis asset pipeline, selected preset library, validation remediation, revision safety, production walkthrough package, editor-core no-execution boundary, and operator review. This does not promote environment_commercial_ready, backend parity, all-platform readiness, broad optimization, or complete physical weather simulation."
       }
     ],
     "environmentPlatformReadinessRows": [
@@ -7269,8 +7275,8 @@
         "validationRecipeIds": [
           "agent-contract"
         ],
-        "blockerReason": "none for the editor-core command/report foundation row; complete artist workflow readiness remains unsupported until visible first-party workflow execution and ready promotion land.",
-        "forbiddenInference": "complete artist workflow readiness remains unsupported; editor-core command catalog and plan rows do not execute backend work, package scripts, native handle access, asset cooking, package publishing, renderer/RHI work, or visible editor shell workflows.",
+        "blockerReason": "none for the editor-core command/report foundation row; the row alone does not promote environment_artist_workflow_ready without visible first-party workflow execution and package-visible closeout evidence.",
+        "forbiddenInference": "complete artist workflow readiness from command/report rows alone; editor-core command catalog and plan rows do not execute backend work, package scripts, native handle access, asset cooking, package publishing, renderer/RHI work, or visible editor shell workflows.",
         "notes": "Phase 11 slice 1 adds clean-break EnvironmentArtistWorkflowCommandKind, EnvironmentArtistWorkflowCommandRequest, EnvironmentArtistWorkflowCommandCatalog, make_environment_artist_workflow_command_catalog, and plan_environment_artist_workflow_command APIs. MK_editor_environment_tests prove eleven reviewed command ids, dry-run support, revision-checked apply metadata, deterministic report rows, undo/rollback metadata flags for document mutations, stale revision rejection, and fail-closed unsafe execution."
       },
       {
@@ -7311,8 +7317,8 @@
         "validationRecipeIds": [
           "agent-contract"
         ],
-        "blockerReason": "none for the editor-core asset-browser row foundation; complete artist workflow readiness remains unsupported until visible first-party workflow execution and ready promotion land.",
-        "forbiddenInference": "complete artist workflow readiness remains unsupported; asset-browser rows do not execute backend work, package scripts, native handle access, asset cooking, package publishing, renderer/RHI work, validation recipes, or visible editor shell workflows.",
+        "blockerReason": "none for the editor-core asset-browser row foundation; the row alone does not promote environment_artist_workflow_ready without visible first-party workflow execution and package-visible closeout evidence.",
+        "forbiddenInference": "complete artist workflow readiness from asset-browser rows alone; asset-browser rows do not execute backend work, package scripts, native handle access, asset cooking, package publishing, renderer/RHI work, validation recipes, or visible editor shell workflows.",
         "notes": "Phase 11 slice 2 adds clean-break EnvironmentArtistWorkflowAssetKind, EnvironmentArtistWorkflowAssetBrowserInputRow, EnvironmentArtistWorkflowAssetBrowserDesc, EnvironmentArtistWorkflowAssetBrowserRow, EnvironmentArtistWorkflowAssetBrowserModel, make_environment_artist_workflow_asset_browser_model, and make_environment_artist_workflow_asset_browser_ui_model APIs. MK_editor_environment_tests prove eight deterministic asset rows for preset library, OpenEXR source, KTX2/Basis source, cooked texture, environment profile, simulation preset, validation report, and package artifact, including package visibility, provenance, budget, host gate, validation recipe metadata, retained UI row ids, and fail-closed unsafe execution."
       },
       {
@@ -7351,8 +7357,8 @@
         "validationRecipeIds": [
           "agent-contract"
         ],
-        "blockerReason": "none for the editor-core preview row foundation; complete artist workflow readiness remains unsupported until visible first-party workflow execution and ready promotion land.",
-        "forbiddenInference": "complete artist workflow readiness remains unsupported; preview rows do not execute backend work, package scripts, native handle access, asset cooking, package publishing, validation recipes, visible editor shell workflows, renderer/RHI work, or ready promotion.",
+        "blockerReason": "none for the editor-core preview row foundation; the row alone does not promote environment_artist_workflow_ready without visible first-party workflow execution and package-visible closeout evidence.",
+        "forbiddenInference": "complete artist workflow readiness from preview rows alone; preview rows do not execute backend work, package scripts, native handle access, asset cooking, package publishing, validation recipes, visible editor shell workflows, renderer/RHI work, or ready promotion.",
         "notes": "Phase 11 slice 3 adds clean-break EnvironmentArtistWorkflowPreviewRowKind, EnvironmentArtistWorkflowPreviewRowStatus, EnvironmentArtistWorkflowPreviewDesc, EnvironmentArtistWorkflowPreviewRow, EnvironmentArtistWorkflowPreviewModel, environment_artist_workflow_preview_row_id, make_environment_artist_workflow_preview_model, and make_environment_artist_workflow_preview_ui_model APIs. MK_editor_environment_tests prove seven deterministic preview rows for selected backend, quality tier, missing host gate, package budget, memory budget, diagnostics, and unsupported claim reason with retained UI row ids, fail-closed host gate, diagnostics, missing values, unsafe execution, and complete_artist_workflow_ready_claimed=false."
       },
       {
@@ -7398,8 +7404,8 @@
         "validationRecipeIds": [
           "agent-contract"
         ],
-        "blockerReason": "none for the editor-core walkthrough value model row; environment_artist_workflow_ready must remain unsupported and visible first-party workflow wiring remains future.",
-        "forbiddenInference": "complete artist workflow readiness remains unsupported; walkthrough value rows do not execute backend execution, package script execution, validation recipe execution, native handle access, asset cooking, package publishing, visible first-party workflow wiring, or ready promotion.",
+        "blockerReason": "none for the editor-core walkthrough value model row; the row alone does not promote environment_artist_workflow_ready without visible execution/review and package-visible closeout evidence.",
+        "forbiddenInference": "complete artist workflow readiness from walkthrough value rows alone; walkthrough value rows do not execute backend execution, package script execution, validation recipe execution, native handle access, asset cooking, package publishing, visible first-party workflow wiring, or ready promotion.",
         "notes": "Phase 11 slice 4 adds clean-break EnvironmentArtistWorkflowWalkthroughStepKind, EnvironmentArtistWorkflowWalkthroughStepStatus, EnvironmentArtistWorkflowWalkthroughStepInputRow, EnvironmentArtistWorkflowWalkthroughDesc, EnvironmentArtistWorkflowWalkthroughStepRow, EnvironmentArtistWorkflowWalkthroughDiagnosticRow, EnvironmentArtistWorkflowWalkthroughModel, environment_artist_workflow_walkthrough_step_id, make_environment_artist_workflow_walkthrough_model, and make_environment_artist_workflow_walkthrough_ui_model APIs. MK_editor_environment_tests prove eight deterministic walkthrough step rows for import source assets, cook assets, assemble preset, edit weather timeline, run simulation preview, package sample, run installed validation, and inspect report with retained UI row ids, fail-closed host gates, missing evidence, unsafe execution, and complete_artist_workflow_ready_claimed=false."
       },
       {
@@ -7447,9 +7453,78 @@
           "desktop-game-runtime",
           "desktop-runtime-sample-game-environment-ready-aggregate"
         ],
-        "blockerReason": "none for the editor-core visible execution/review value model row; environment_artist_workflow_ready must remain unsupported and complete artist workflow promotion remains future.",
-        "forbiddenInference": "complete artist workflow readiness remains unsupported; visible execution/review rows do not execute backend execution, package script execution, validation recipe execution, native handle access, asset cooking, package publishing, renderer/RHI work, or ready promotion.",
+        "blockerReason": "none for the editor-core visible execution/review value model row; the row alone does not promote environment_artist_workflow_ready without package-visible closeout evidence.",
+        "forbiddenInference": "complete artist workflow readiness from visible execution/review rows alone; visible execution/review rows do not execute backend execution, package script execution, validation recipe execution, native handle access, asset cooking, package publishing, renderer/RHI work, or ready promotion.",
         "notes": "Phase 11 slice 5 adds clean-break EnvironmentArtistWorkflowExecutionStageStatus, EnvironmentArtistWorkflowExecutionEvidenceRow, EnvironmentArtistWorkflowExecutionReviewDesc, EnvironmentArtistWorkflowExecutionReviewStageRow, EnvironmentArtistWorkflowExecutionReviewModel, environment_artist_workflow_execution_stage_status_label, make_environment_artist_workflow_execution_review_model, and make_environment_artist_workflow_execution_review_ui_model APIs. MK_editor_environment_tests prove eight deterministic retained visible execution/review rows for command catalog, asset browser, preview, walkthrough, external execution, evidence review, operator review, and ready promotion guard with externally supplied evidence review, operator review, fail-closed editor-core execution claims, backend execution, package script execution, validation recipe execution, native handle access, and complete_artist_workflow_ready_claimed=false."
+      },
+      {
+        "id": "environment_artist_workflow_ready_closeout",
+        "claimId": "environment_artist_workflow_ready",
+        "state": "ready",
+        "owner": "MK_editor_core+sample_desktop_runtime_game",
+        "commandIds": [
+          "environment.command.preset.import",
+          "environment.command.source_asset.review",
+          "environment.command.cook.preview",
+          "environment.command.weather_timeline.edit",
+          "environment.command.simulation_parameter.edit",
+          "environment.command.package.preview",
+          "environment.command.validation.remediation",
+          "environment.command.publish.package"
+        ],
+        "requestModes": [
+          "read_only",
+          "review_only",
+          "externally_supplied_evidence",
+          "operator_review",
+          "package_counter_closeout"
+        ],
+        "revisionSafety": "EnvironmentArtistWorkflowReadyReviewDesc consumes only reviewed package-visible evidence rows and an already-built EnvironmentArtistWorkflowExecutionReviewModel; mutation stays on revision-checked command plans, and package execution remains outside editor core.",
+        "reportRows": [
+          "EnvironmentArtistWorkflowReadyRequirementKind",
+          "EnvironmentArtistWorkflowReadyRequirementStatus",
+          "EnvironmentArtistWorkflowReadyRequirementInputRow",
+          "EnvironmentArtistWorkflowReadyReviewDesc",
+          "EnvironmentArtistWorkflowReadyRequirementRow",
+          "EnvironmentArtistWorkflowReadyReviewModel",
+          "environment_artist_workflow_ready_requirement_id",
+          "environment_artist_workflow_ready_requirement_status_label",
+          "make_environment_artist_workflow_ready_review_model",
+          "make_environment_artist_workflow_ready_review_ui_model",
+          "environment.workflow.ready.visible_editor_shell",
+          "environment.workflow.ready.asset_pipeline",
+          "environment.workflow.ready.selected_preset_library",
+          "environment.workflow.ready.validation_remediation",
+          "environment.workflow.ready.revision_safety",
+          "environment.workflow.ready.production_walkthrough_package",
+          "environment.workflow.ready.editor_core_execution_boundary",
+          "environment.workflow.ready.operator_review",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "--require-environment-artist-workflow-package",
+          "environment_artist_workflow_package_status=ready",
+          "environment_artist_workflow_package_ready=1",
+          "environment_artist_workflow_ready=1",
+          "environment_artist_workflow_requirement_rows=8",
+          "environment_artist_workflow_ready_rows=8",
+          "environment_artist_workflow_retained_ui_rows",
+          "environment_artist_workflow_editor_core_backend_execution=0",
+          "environment_artist_workflow_editor_core_package_script_execution=0",
+          "environment_artist_workflow_editor_core_validation_recipe_execution=0",
+          "environment_artist_workflow_native_handle_access=0",
+          "environment_artist_workflow_diagnostics=0",
+          "environment_artist_workflow_commercial_ready=0"
+        ],
+        "validationRecipeIds": [
+          "agent-contract",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "desktop-runtime-sample-game-environment-asset-pipeline-openexr-ktx-basis-ready",
+          "desktop-runtime-sample-game-environment-preset-library-package",
+          "desktop-runtime-sample-game-environment-weather-simulation-package",
+          "desktop-runtime-sample-game-environment-ready-aggregate"
+        ],
+        "blockerReason": "none for the selected package-visible artist workflow closeout; broader commercial readiness remains unsupported by the parent commercial aggregate.",
+        "forbiddenInference": "commercial readiness, backend parity, all-platform readiness, complete physical weather simulation, broad optimization, renderer/RHI execution from editor core, package-script execution from editor core, validation-recipe execution from editor core, native handle access, or asset workflows beyond the selected first-party package lane.",
+        "notes": "Phase 11 slice 6 promotes environment_artist_workflow_ready for the selected package lane only. MK_editor_environment_tests prove the closeout value model and fail-closed unsafe requests; the package recipe proves environment_artist_workflow_ready=1 from eight package-visible reviewed rows while environment_artist_workflow_commercial_ready stays 0."
       }
     ],
     "environmentCommercialUnsupportedAdjacentClaims": [

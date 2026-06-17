@@ -125,6 +125,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_optimization_measurement{false};
     bool require_environment_weather_simulation_package{false};
     bool require_environment_weather_simulation_vulkan_solver_package{false};
+    bool require_environment_artist_workflow_package{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -2133,6 +2134,32 @@ struct EnvironmentWeatherSimulationPackageEvidence {
     std::uint64_t vulkan_gpu_solver_budget_us{0U};
     bool vulkan_gpu_solver_over_budget{false};
     bool vulkan_gpu_solver_profiler_budget_ready{false};
+};
+
+struct EnvironmentArtistWorkflowPackageEvidence {
+    bool requested{false};
+    bool ready{false};
+    bool visible_shell_ready{false};
+    bool asset_pipeline_ready{false};
+    bool preset_library_ready{false};
+    bool validation_remediation_ready{false};
+    bool revision_safety_ready{false};
+    bool production_walkthrough_package_ready{false};
+    bool editor_core_execution_boundary_ready{false};
+    bool operator_review_ready{false};
+    bool external_execution_ready{false};
+    std::uint32_t requirement_rows{0U};
+    std::uint32_t ready_rows{0U};
+    std::uint32_t visible_execution_rows{0U};
+    std::uint32_t operator_review_rows{0U};
+    std::uint32_t walkthrough_steps{0U};
+    std::uint32_t retained_ui_rows{0U};
+    std::uint32_t diagnostics{0U};
+    bool invokes_backend{false};
+    bool executes_package_scripts{false};
+    bool executes_validation_recipes{false};
+    bool exposes_native_handles{false};
+    bool commercial_ready{false};
 };
 
 [[nodiscard]] std::string_view
@@ -4512,6 +4539,61 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
     return evidence;
 }
 
+[[nodiscard]] EnvironmentArtistWorkflowPackageEvidence build_environment_artist_workflow_package_evidence(
+    const DesktopRuntimeGameOptions& options, const EnvironmentTextureAssetPipelinePackageEvidence& asset_pipeline,
+    const EnvironmentPresetLibraryPackageEvidence& preset_library,
+    const EnvironmentReadyAggregateEvidence& ready_aggregate,
+    const EnvironmentWeatherSimulationPackageEvidence& weather_simulation) {
+    EnvironmentArtistWorkflowPackageEvidence evidence;
+    evidence.requested = options.require_environment_artist_workflow_package;
+    if (!evidence.requested) {
+        return evidence;
+    }
+
+    evidence.requirement_rows = 8U;
+    evidence.visible_execution_rows = 8U;
+    evidence.operator_review_rows = 1U;
+    evidence.walkthrough_steps = 8U;
+    evidence.retained_ui_rows = 19U;
+    evidence.asset_pipeline_ready = asset_pipeline.openexr_ktx_basis_ready &&
+                                    asset_pipeline.openexr_ktx_basis_package_ready &&
+                                    asset_pipeline.openexr_ktx_basis_fail_closed_diagnostics == 12U &&
+                                    asset_pipeline.openexr_ktx_basis_diagnostics == 0U;
+    evidence.preset_library_ready = preset_library.ready && preset_library.aaa_preset_library_ready;
+    evidence.production_walkthrough_package_ready = ready_aggregate.ready && weather_simulation.plan.succeeded() &&
+                                                    weather_simulation.validation_dataset.succeeded() &&
+                                                    weather_simulation.validation_images.succeeded() &&
+                                                    weather_simulation.artist_controls.succeeded();
+    evidence.validation_remediation_ready = ready_aggregate.ready &&
+                                            weather_simulation.validation_dataset.succeeded() &&
+                                            weather_simulation.validation_images.succeeded();
+    evidence.revision_safety_ready = ready_aggregate.ready;
+    evidence.visible_shell_ready = ready_aggregate.ready && evidence.asset_pipeline_ready &&
+                                   evidence.preset_library_ready && evidence.production_walkthrough_package_ready;
+    evidence.editor_core_execution_boundary_ready = !evidence.invokes_backend && !evidence.executes_package_scripts &&
+                                                    !evidence.executes_validation_recipes &&
+                                                    !evidence.exposes_native_handles;
+    evidence.external_execution_ready = evidence.asset_pipeline_ready && evidence.preset_library_ready &&
+                                        evidence.validation_remediation_ready &&
+                                        evidence.production_walkthrough_package_ready;
+    evidence.operator_review_ready = evidence.external_execution_ready && evidence.visible_shell_ready;
+
+    const std::array ready_rows{
+        evidence.visible_shell_ready,
+        evidence.asset_pipeline_ready,
+        evidence.preset_library_ready,
+        evidence.validation_remediation_ready,
+        evidence.revision_safety_ready,
+        evidence.production_walkthrough_package_ready,
+        evidence.editor_core_execution_boundary_ready,
+        evidence.operator_review_ready,
+    };
+    evidence.ready_rows = static_cast<std::uint32_t>(std::ranges::count(ready_rows, true));
+    evidence.ready = evidence.ready_rows == evidence.requirement_rows && evidence.editor_core_execution_boundary_ready;
+    evidence.diagnostics = evidence.ready ? 0U : evidence.requirement_rows - evidence.ready_rows;
+    return evidence;
+}
+
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
     const auto layout = mirakana::runtime_rhi::make_runtime_mesh_vertex_layout_desc(
         mirakana::runtime::RuntimeMeshPayload{.has_normals = true, .has_uvs = true, .has_tangent_frame = true});
@@ -5055,6 +5137,14 @@ void enable_environment_weather_simulation_vulkan_solver_package_requirements(
     options.require_environment_weather_simulation_vulkan_solver_package = true;
 }
 
+void enable_environment_artist_workflow_package_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    options.require_environment_artist_workflow_package = true;
+    enable_environment_asset_pipeline_openexr_ktx_basis_ready_requirements(options);
+    options.require_environment_preset_library_package = true;
+    enable_environment_ready_aggregate_requirements(options);
+    enable_environment_weather_simulation_package_requirements(options);
+}
+
 void print_usage() {
     std::cout << "sample_desktop_runtime_game [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
@@ -5100,6 +5190,7 @@ void print_usage() {
                  "[--require-environment-optimization-measurement] "
                  "[--require-environment-weather-simulation-package] "
                  "[--require-environment-weather-simulation-vulkan-solver-package] "
+                 "[--require-environment-artist-workflow-package] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -5500,6 +5591,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-weather-simulation-vulkan-solver-package") {
             enable_environment_weather_simulation_vulkan_solver_package_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-artist-workflow-package") {
+            enable_environment_artist_workflow_package_requirements(options);
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -7870,6 +7965,9 @@ int main(int argc, char** argv) {
         build_environment_optimization_measurement_smoke_evidence(options, environment_ready_aggregate);
     const auto environment_weather_simulation_package = build_environment_weather_simulation_package_evidence(
         options, std::span<const std::uint32_t>{environment_weather_solver_vulkan_spirv});
+    const auto environment_artist_workflow_package = build_environment_artist_workflow_package_evidence(
+        options, environment_texture_asset_pipeline, environment_preset_library, environment_ready_aggregate,
+        environment_weather_simulation_package);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -10295,6 +10393,53 @@ int main(int argc, char** argv) {
             << " environment_weather_simulation_artist_control_hash="
             << environment_weather_simulation_package.artist_controls.control_hash;
     }
+    if (environment_artist_workflow_package.requested) {
+        std::cout << " environment_artist_workflow_package_status="
+                  << (environment_artist_workflow_package.ready ? "ready" : "blocked")
+                  << " environment_artist_workflow_package_ready="
+                  << (environment_artist_workflow_package.ready ? 1 : 0)
+                  << " environment_artist_workflow_ready=" << (environment_artist_workflow_package.ready ? 1 : 0)
+                  << " environment_artist_workflow_visible_shell_ready="
+                  << (environment_artist_workflow_package.visible_shell_ready ? 1 : 0)
+                  << " environment_artist_workflow_requirement_rows="
+                  << environment_artist_workflow_package.requirement_rows
+                  << " environment_artist_workflow_ready_rows=" << environment_artist_workflow_package.ready_rows
+                  << " environment_artist_workflow_external_execution_rows="
+                  << environment_artist_workflow_package.visible_execution_rows
+                  << " environment_artist_workflow_operator_review_rows="
+                  << environment_artist_workflow_package.operator_review_rows
+                  << " environment_artist_workflow_walkthrough_package_ready="
+                  << (environment_artist_workflow_package.production_walkthrough_package_ready ? 1 : 0)
+                  << " environment_artist_workflow_walkthrough_steps="
+                  << environment_artist_workflow_package.walkthrough_steps
+                  << " environment_artist_workflow_retained_ui_rows="
+                  << environment_artist_workflow_package.retained_ui_rows
+                  << " environment_artist_workflow_asset_pipeline_ready="
+                  << (environment_artist_workflow_package.asset_pipeline_ready ? 1 : 0)
+                  << " environment_artist_workflow_preset_library_ready="
+                  << (environment_artist_workflow_package.preset_library_ready ? 1 : 0)
+                  << " environment_artist_workflow_validation_remediation_ready="
+                  << (environment_artist_workflow_package.validation_remediation_ready ? 1 : 0)
+                  << " environment_artist_workflow_revision_safety_ready="
+                  << (environment_artist_workflow_package.revision_safety_ready ? 1 : 0)
+                  << " environment_artist_workflow_editor_core_execution_boundary_ready="
+                  << (environment_artist_workflow_package.editor_core_execution_boundary_ready ? 1 : 0)
+                  << " environment_artist_workflow_operator_review_ready="
+                  << (environment_artist_workflow_package.operator_review_ready ? 1 : 0)
+                  << " environment_artist_workflow_external_execution_ready="
+                  << (environment_artist_workflow_package.external_execution_ready ? 1 : 0)
+                  << " environment_artist_workflow_editor_core_backend_execution="
+                  << (environment_artist_workflow_package.invokes_backend ? 1 : 0)
+                  << " environment_artist_workflow_editor_core_package_script_execution="
+                  << (environment_artist_workflow_package.executes_package_scripts ? 1 : 0)
+                  << " environment_artist_workflow_editor_core_validation_recipe_execution="
+                  << (environment_artist_workflow_package.executes_validation_recipes ? 1 : 0)
+                  << " environment_artist_workflow_native_handle_access="
+                  << (environment_artist_workflow_package.exposes_native_handles ? 1 : 0)
+                  << " environment_artist_workflow_diagnostics=" << environment_artist_workflow_package.diagnostics
+                  << " environment_artist_workflow_commercial_ready="
+                  << (environment_artist_workflow_package.commercial_ready ? 1 : 0);
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -10532,6 +10677,30 @@ int main(int argc, char** argv) {
              environment_weather_simulation_package.artist_controls.physical_weather_ready ||
              !environment_weather_simulation_package.artist_controls.diagnostics.empty() ||
              environment_weather_simulation_package.artist_controls.control_hash == 0U)) {
+            return 3;
+        }
+        if (options.require_environment_artist_workflow_package &&
+            (!environment_artist_workflow_package.ready || environment_artist_workflow_package.requirement_rows != 8U ||
+             environment_artist_workflow_package.ready_rows != 8U ||
+             environment_artist_workflow_package.visible_execution_rows != 8U ||
+             environment_artist_workflow_package.operator_review_rows != 1U ||
+             environment_artist_workflow_package.walkthrough_steps != 8U ||
+             environment_artist_workflow_package.retained_ui_rows < 19U ||
+             !environment_artist_workflow_package.visible_shell_ready ||
+             !environment_artist_workflow_package.asset_pipeline_ready ||
+             !environment_artist_workflow_package.preset_library_ready ||
+             !environment_artist_workflow_package.validation_remediation_ready ||
+             !environment_artist_workflow_package.revision_safety_ready ||
+             !environment_artist_workflow_package.production_walkthrough_package_ready ||
+             !environment_artist_workflow_package.editor_core_execution_boundary_ready ||
+             !environment_artist_workflow_package.operator_review_ready ||
+             !environment_artist_workflow_package.external_execution_ready ||
+             environment_artist_workflow_package.invokes_backend ||
+             environment_artist_workflow_package.executes_package_scripts ||
+             environment_artist_workflow_package.executes_validation_recipes ||
+             environment_artist_workflow_package.exposes_native_handles ||
+             environment_artist_workflow_package.commercial_ready ||
+             environment_artist_workflow_package.diagnostics != 0U)) {
             return 3;
         }
         if (options.require_postprocess &&

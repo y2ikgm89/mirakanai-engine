@@ -181,15 +181,19 @@ $requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload = @($SmokeArgs) -c
 $requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineMetalCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-metal-compressed-upload"
 $requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
-$requiresEnvironmentAssetPipelineOpenExrKtxBasisReady = @($SmokeArgs) -contains "--require-environment-asset-pipeline-openexr-ktx-basis-ready"
-$requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
+$requiresEnvironmentArtistWorkflowPackage = @($SmokeArgs) -contains "--require-environment-artist-workflow-package"
+$requiresEnvironmentAssetPipelineOpenExrKtxBasisReady = (@($SmokeArgs) -contains "--require-environment-asset-pipeline-openexr-ktx-basis-ready") -or
+    $requiresEnvironmentArtistWorkflowPackage
+$requiresEnvironmentPresetLibraryPackage = (@($SmokeArgs) -contains "--require-environment-preset-library-package") -or
+    $requiresEnvironmentArtistWorkflowPackage
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
 $requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
 $requiresEnvironmentPlatformReadiness = @($SmokeArgs) -contains "--require-environment-platform-readiness"
 $requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require-environment-optimization-measurement"
 $requiresEnvironmentWeatherSimulationVulkanSolverPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-vulkan-solver-package"
 $requiresEnvironmentWeatherSimulationPackage = (@($SmokeArgs) -contains "--require-environment-weather-simulation-package") -or
-    $requiresEnvironmentWeatherSimulationVulkanSolverPackage
+    $requiresEnvironmentWeatherSimulationVulkanSolverPackage -or
+    $requiresEnvironmentArtistWorkflowPackage
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
     $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
@@ -202,7 +206,8 @@ $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-pr
     $requiresEnvironmentVulkanStrictAggregate -or
     $requiresEnvironmentBackendParity -or
     $requiresEnvironmentPlatformReadiness -or
-    $requiresEnvironmentOptimizationMeasurement
+    $requiresEnvironmentOptimizationMeasurement -or
+    $requiresEnvironmentArtistWorkflowPackage
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -227,7 +232,8 @@ $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environme
 $requiresEnvironmentReadyAggregate = (@($SmokeArgs) -contains "--require-environment-ready-aggregate") -or
     $requiresEnvironmentBackendParity -or
     $requiresEnvironmentPlatformReadiness -or
-    $requiresEnvironmentOptimizationMeasurement
+    $requiresEnvironmentOptimizationMeasurement -or
+    $requiresEnvironmentArtistWorkflowPackage
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -6357,6 +6363,43 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_artist_control_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation artist control hash."
         }
+    }
+    if ($requiresEnvironmentArtistWorkflowPackage) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment artist workflow package" `
+            -ExpectedFields @{
+                "environment_artist_workflow_package_status" = "ready"
+                "environment_artist_workflow_package_ready" = "1"
+                "environment_artist_workflow_ready" = "1"
+                "environment_artist_workflow_visible_shell_ready" = "1"
+                "environment_artist_workflow_requirement_rows" = "8"
+                "environment_artist_workflow_ready_rows" = "8"
+                "environment_artist_workflow_external_execution_rows" = "8"
+                "environment_artist_workflow_operator_review_rows" = "1"
+                "environment_artist_workflow_walkthrough_package_ready" = "1"
+                "environment_artist_workflow_walkthrough_steps" = "8"
+                "environment_artist_workflow_asset_pipeline_ready" = "1"
+                "environment_artist_workflow_preset_library_ready" = "1"
+                "environment_artist_workflow_validation_remediation_ready" = "1"
+                "environment_artist_workflow_revision_safety_ready" = "1"
+                "environment_artist_workflow_editor_core_execution_boundary_ready" = "1"
+                "environment_artist_workflow_operator_review_ready" = "1"
+                "environment_artist_workflow_external_execution_ready" = "1"
+                "environment_artist_workflow_editor_core_backend_execution" = "0"
+                "environment_artist_workflow_editor_core_package_script_execution" = "0"
+                "environment_artist_workflow_editor_core_validation_recipe_execution" = "0"
+                "environment_artist_workflow_native_handle_access" = "0"
+                "environment_artist_workflow_diagnostics" = "0"
+                "environment_artist_workflow_commercial_ready" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_artist_workflow_retained_ui_rows=(1[9-9]|[2-9]\d+)\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove retained artist workflow UI row evidence."
+        }
+    }
+    if (-not $requiresEnvironmentArtistWorkflowPackage -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_artist_workflow_ready=1\b") {
+        Write-Error "Installed sample_desktop_runtime_game smoke must not claim environment_artist_workflow_ready without the artist workflow package recipe."
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {
         Assert-InstalledDesktopRuntimeStatusFields `

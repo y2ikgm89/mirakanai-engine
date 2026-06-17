@@ -337,6 +337,10 @@ $sampleEnvironmentWeatherSimulationPackageDryRun = Assert-DryRunRecipe -Recipe "
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-weather-simulation-package", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentWeatherSimulationPackageDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-weather-simulation-package"
 }
+$sampleEnvironmentArtistWorkflowPackageDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-artist-workflow-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-artist-workflow-package", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentArtistWorkflowPackageDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-artist-workflow-package"
+}
 $sampleEnvironmentWeatherSimulationVulkanSolverDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-weather-simulation-vulkan-solver-package", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentWeatherSimulationVulkanSolverDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package"

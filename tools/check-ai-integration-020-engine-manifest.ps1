@@ -1525,6 +1525,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
             "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-environment-material-weathering", "desktop-runtime-sample-game-environment-ibl-renderer-execution", "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution", "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
             "desktop-runtime-sample-game-environment-backend-parity", "desktop-runtime-sample-game-environment-platform-readiness",
+            "desktop-runtime-sample-game-environment-artist-workflow-package",
             "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package", "environment-weather-metal-solver-host-gate",
             "desktop-runtime-generated-material-shader-scaffold-package", "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
             "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package", "installed-2d-performance-baseline-smoke", "installed-2d-long-run-readiness-smoke", "host-2d-long-run-readiness-soak",
@@ -1534,8 +1535,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 37) {
-        Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 37 recipes"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 38) {
+        Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 38 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine/agent/manifest.json run-validation-recipe must not expose a ready apply mode"
@@ -1545,13 +1546,12 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
     Assert-ContainsText $runnerText "Get-ValidationRecipeCommandPlan" "tools/run-validation-recipe.ps1"
     Assert-ContainsText $runnerText "Invoke-ValidationRecipeCommandPlan" "tools/run-validation-recipe.ps1"
     $runnerCoreScript = Resolve-RequiredAgentPath "tools/validation-recipe-core.ps1"; $runnerCoreText = Get-Content -LiteralPath $runnerCoreScript -Raw
-    foreach ($needle in @("Test-ValidationRecipeRequest", "New-ValidationRecipeDryRunResult", "New-ValidationRecipeRejectedResult", "Get-SampleDesktopRuntimeGameEnvironmentReadyAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentVulkanStrictAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentPlatformReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentOptimizationMeasurementSmokeArgs")) {
+    foreach ($needle in @("Test-ValidationRecipeRequest", "New-ValidationRecipeDryRunResult", "New-ValidationRecipeRejectedResult", "Get-SampleDesktopRuntimeGameEnvironmentReadyAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentVulkanStrictAggregateSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentPlatformReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentOptimizationMeasurementSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentArtistWorkflowPackageSmokeArgs")) {
         Assert-ContainsText $runnerCoreText $needle "tools/validation-recipe-core.ps1"
     }
-    Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameEnvironmentLightingRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"
-    Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameVulkanEnvironmentIblRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"
+    Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameEnvironmentLightingRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"; Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameVulkanEnvironmentIblRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"
     Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-ibl-renderer-execution" "tools/run-validation-recipe-plans.ps1"
-    Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-ready-aggregate" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-vulkan-strict-aggregate" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-platform-readiness" "tools/run-validation-recipe-plans.ps1"
+    Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-ready-aggregate" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-vulkan-strict-aggregate" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-platform-readiness" "tools/run-validation-recipe-plans.ps1"; Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-artist-workflow-package" "tools/run-validation-recipe-plans.ps1"
     foreach ($forbiddenRunnerPattern in @(
         "\bInvoke-Expression\b",
         "\biex\b",
