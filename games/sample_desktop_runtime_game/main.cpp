@@ -128,6 +128,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_weather_simulation_vulkan_solver_package{false};
     bool require_environment_artist_workflow_package{false};
     bool require_environment_commercial_readiness{false};
+    bool require_environment_commercial_vulkan_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -2166,6 +2167,9 @@ struct EnvironmentArtistWorkflowPackageEvidence {
 
 struct EnvironmentCommercialReadinessSmokeEvidence {
     bool requested{false};
+    bool vulkan_evidence_requested{false};
+    bool strict_vulkan_ready{false};
+    bool windows_vulkan_ready{false};
     mirakana::EnvironmentCommercialReadinessPlan plan{};
 };
 
@@ -4617,7 +4621,8 @@ make_environment_commercial_requirement_row(mirakana::EnvironmentCommercialReadi
 }
 
 [[nodiscard]] EnvironmentCommercialReadinessSmokeEvidence build_environment_commercial_readiness_smoke_evidence(
-    const DesktopRuntimeGameOptions& options, const EnvironmentBackendParitySmokeEvidence& backend_parity,
+    const DesktopRuntimeGameOptions& options, const EnvironmentVulkanStrictAggregateEvidence& vulkan_strict_aggregate,
+    const EnvironmentBackendParitySmokeEvidence& backend_parity,
     const EnvironmentPlatformReadinessSmokeEvidence& platform_readiness,
     const EnvironmentOptimizationMeasurementSmokeEvidence& optimization_measurement,
     const EnvironmentTextureAssetPipelinePackageEvidence& asset_pipeline,
@@ -4629,9 +4634,12 @@ make_environment_commercial_requirement_row(mirakana::EnvironmentCommercialReadi
 
     EnvironmentCommercialReadinessSmokeEvidence evidence;
     evidence.requested = options.require_environment_commercial_readiness;
+    evidence.vulkan_evidence_requested = options.require_environment_commercial_vulkan_evidence;
     if (!evidence.requested) {
         return evidence;
     }
+    evidence.strict_vulkan_ready = evidence.vulkan_evidence_requested && vulkan_strict_aggregate.ready;
+    evidence.windows_vulkan_ready = evidence.strict_vulkan_ready;
 
     const auto ready_or_blocked = [](bool ready) noexcept { return ready ? Status::ready : Status::blocked; };
     const auto ready_or_host_gated = [](bool ready) noexcept { return ready ? Status::ready : Status::host_gated; };
@@ -4642,7 +4650,7 @@ make_environment_commercial_requirement_row(mirakana::EnvironmentCommercialReadi
                 .requirements =
                     {
                         make_environment_commercial_requirement_row(
-                            Kind::strict_vulkan_aggregate, Status::host_gated,
+                            Kind::strict_vulkan_aggregate, ready_or_host_gated(evidence.strict_vulkan_ready),
                             "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
                             "environment_vulkan_strict_aggregate_ready"),
                         make_environment_commercial_requirement_row(
@@ -4659,7 +4667,7 @@ make_environment_commercial_requirement_row(mirakana::EnvironmentCommercialReadi
                             "desktop-runtime-sample-game-environment-ready-aggregate",
                             "environment_platform_windows_d3d12_ready"),
                         make_environment_commercial_requirement_row(
-                            Kind::platform_windows_vulkan, ready_or_host_gated(platform_readiness.windows_vulkan_ready),
+                            Kind::platform_windows_vulkan, ready_or_host_gated(evidence.windows_vulkan_ready),
                             "desktop-runtime-sample-game-environment-platform-readiness",
                             "environment_platform_windows_vulkan_ready"),
                         make_environment_commercial_requirement_row(
@@ -5264,6 +5272,13 @@ void enable_environment_commercial_readiness_requirements(DesktopRuntimeGameOpti
     enable_environment_artist_workflow_package_requirements(options);
 }
 
+void enable_environment_commercial_vulkan_evidence_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    options.require_environment_commercial_readiness = true;
+    options.require_environment_commercial_vulkan_evidence = true;
+    enable_environment_vulkan_strict_aggregate_requirements(options);
+    options.require_environment_preset_library_package = true;
+}
+
 void print_usage() {
     std::cout << "sample_desktop_runtime_game [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
@@ -5311,6 +5326,7 @@ void print_usage() {
                  "[--require-environment-weather-simulation-vulkan-solver-package] "
                  "[--require-environment-artist-workflow-package] "
                  "[--require-environment-commercial-readiness] "
+                 "[--require-environment-commercial-vulkan-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -5719,6 +5735,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-commercial-readiness") {
             enable_environment_commercial_readiness_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-commercial-vulkan-evidence") {
+            enable_environment_commercial_vulkan_evidence_requirements(options);
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -8093,9 +8113,9 @@ int main(int argc, char** argv) {
         options, environment_texture_asset_pipeline, environment_preset_library, environment_ready_aggregate,
         environment_weather_simulation_package);
     const auto environment_commercial_readiness = build_environment_commercial_readiness_smoke_evidence(
-        options, environment_backend_parity, environment_platform_readiness, environment_optimization_measurement,
-        environment_texture_asset_pipeline, environment_preset_library, environment_weather_simulation_package,
-        environment_artist_workflow_package);
+        options, environment_vulkan_strict_aggregate, environment_backend_parity, environment_platform_readiness,
+        environment_optimization_measurement, environment_texture_asset_pipeline, environment_preset_library,
+        environment_weather_simulation_package, environment_artist_workflow_package);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -10588,6 +10608,12 @@ int main(int argc, char** argv) {
                   << " environment_commercial_native_handle_access=" << plan.native_handle_access_count
                   << " environment_commercial_broad_environment_ready_claimed="
                   << (plan.broad_environment_ready_claimed ? 1 : 0)
+                  << " environment_commercial_vulkan_evidence_requested="
+                  << (environment_commercial_readiness.vulkan_evidence_requested ? 1 : 0)
+                  << " environment_commercial_strict_vulkan_aggregate_ready="
+                  << (environment_commercial_readiness.strict_vulkan_ready ? 1 : 0)
+                  << " environment_commercial_windows_vulkan_ready="
+                  << (environment_commercial_readiness.windows_vulkan_ready ? 1 : 0)
                   << " environment_commercial_replay_hash=" << plan.replay_hash;
     }
     std::cout << '\n';
@@ -10853,23 +10879,42 @@ int main(int argc, char** argv) {
              environment_artist_workflow_package.diagnostics != 0U)) {
             return 3;
         }
-        if (options.require_environment_commercial_readiness &&
-            (environment_commercial_readiness.plan.status != mirakana::EnvironmentCommercialReadinessStatus::blocked ||
-             environment_commercial_readiness.plan.environment_commercial_ready ||
-             environment_commercial_readiness.plan.required_row_count != 14U ||
-             environment_commercial_readiness.plan.ready_row_count != 4U ||
-             environment_commercial_readiness.plan.host_gated_row_count != 7U ||
-             environment_commercial_readiness.plan.blocked_row_count != 3U ||
-             environment_commercial_readiness.plan.missing_row_count != 0U ||
-             environment_commercial_readiness.plan.package_visible_row_count != 14U ||
-             environment_commercial_readiness.plan.validation_guarded_row_count != 14U ||
-             environment_commercial_readiness.plan.legal_notice_current_row_count != 14U ||
-             !environment_commercial_readiness.plan.optional_dependency_legal_records_current ||
-             !environment_commercial_readiness.plan.adjacent_broad_non_claims_declared ||
-             environment_commercial_readiness.plan.native_handle_access_count != 0U ||
-             environment_commercial_readiness.plan.broad_environment_ready_claimed ||
-             environment_commercial_readiness.plan.replay_hash == 0U)) {
-            return 3;
+        if (options.require_environment_commercial_readiness) {
+            const auto expected_commercial_ready_rows =
+                options.require_environment_commercial_vulkan_evidence ? 3U : 4U;
+            const auto expected_commercial_host_gated_rows =
+                options.require_environment_commercial_vulkan_evidence ? 5U : 7U;
+            const auto expected_commercial_blocked_rows =
+                options.require_environment_commercial_vulkan_evidence ? 6U : 3U;
+            if (environment_commercial_readiness.plan.status !=
+                    mirakana::EnvironmentCommercialReadinessStatus::blocked ||
+                environment_commercial_readiness.plan.environment_commercial_ready ||
+                environment_commercial_readiness.plan.required_row_count != 14U ||
+                environment_commercial_readiness.plan.ready_row_count != expected_commercial_ready_rows ||
+                environment_commercial_readiness.plan.host_gated_row_count != expected_commercial_host_gated_rows ||
+                environment_commercial_readiness.plan.blocked_row_count != expected_commercial_blocked_rows ||
+                environment_commercial_readiness.plan.missing_row_count != 0U ||
+                environment_commercial_readiness.plan.package_visible_row_count != 14U ||
+                environment_commercial_readiness.plan.validation_guarded_row_count != 14U ||
+                environment_commercial_readiness.plan.legal_notice_current_row_count != 14U ||
+                !environment_commercial_readiness.plan.optional_dependency_legal_records_current ||
+                !environment_commercial_readiness.plan.adjacent_broad_non_claims_declared ||
+                environment_commercial_readiness.plan.native_handle_access_count != 0U ||
+                environment_commercial_readiness.plan.broad_environment_ready_claimed ||
+                environment_commercial_readiness.plan.replay_hash == 0U) {
+                return 3;
+            }
+            if (options.require_environment_commercial_vulkan_evidence &&
+                (!environment_commercial_readiness.strict_vulkan_ready ||
+                 !environment_commercial_readiness.windows_vulkan_ready)) {
+                return 3;
+            }
+            if (!options.require_environment_commercial_vulkan_evidence &&
+                (environment_commercial_readiness.vulkan_evidence_requested ||
+                 environment_commercial_readiness.strict_vulkan_ready ||
+                 environment_commercial_readiness.windows_vulkan_ready)) {
+                return 3;
+            }
         }
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::Win32DesktopPresentationPostprocessStatus::ready ||
