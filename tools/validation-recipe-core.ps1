@@ -726,6 +726,21 @@ function Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-renderer',
+        '--require-environment-vulkan-strict-aggregate',
+        '--require-environment-commercial-vulkan-evidence'
+    )
+}
+
 function Get-GeneratedMaterialShaderScaffoldPackageVulkanSmokeArgs {
     return @(
         '--smoke',
