@@ -188,6 +188,11 @@ find_artist_workflow_walkthrough_row(const mirakana::editor::EnvironmentArtistWo
     return it == model.rows.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] std::string artist_workflow_walkthrough_status_element_id(std::string_view step_id) {
+    return "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough." + std::string{step_id} +
+           ".status";
+}
+
 [[nodiscard]] const mirakana::editor::EnvironmentArtistWorkflowExecutionReviewStageRow*
 find_artist_workflow_execution_row(const mirakana::editor::EnvironmentArtistWorkflowExecutionReviewModel& model,
                                    std::string_view id) noexcept {
@@ -1536,22 +1541,14 @@ MK_TEST("editor environment artist workflow promotes ready after package-visible
                         mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package,
                         "environment_artist_workflow_walkthrough_package",
                         {
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "import_source_assets.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "cook_assets.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "assemble_preset.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "edit_weather_timeline.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "run_simulation_preview.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "package_sample.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "run_installed_validation.status",
-                            "environment_artist_workflow_walkthrough.rows.environment.workflow.walkthrough."
-                            "inspect_report.status",
+                            artist_workflow_walkthrough_status_element_id("import_source_assets"),
+                            artist_workflow_walkthrough_status_element_id("cook_assets"),
+                            artist_workflow_walkthrough_status_element_id("assemble_preset"),
+                            artist_workflow_walkthrough_status_element_id("edit_weather_timeline"),
+                            artist_workflow_walkthrough_status_element_id("run_simulation_preview"),
+                            artist_workflow_walkthrough_status_element_id("package_sample"),
+                            artist_workflow_walkthrough_status_element_id("run_installed_validation"),
+                            artist_workflow_walkthrough_status_element_id("inspect_report"),
                         }),
                     requirement(
                         mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary,
