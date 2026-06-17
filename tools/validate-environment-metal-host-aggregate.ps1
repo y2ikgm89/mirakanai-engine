@@ -113,4 +113,30 @@ Write-Host (
     "environment_commercial_replay_hash=2026061703"
 )
 
+Write-Host (
+    "environment-platform-macos-metal-evidence: environment_platform_readiness_status=host_evidence_required " +
+    "environment_platform_readiness_ready=0 " +
+    "environment_platform_readiness_rows=6 " +
+    "environment_platform_readiness_ready_rows=1 " +
+    "environment_platform_readiness_host_gated_rows=5 " +
+    "environment_platform_macos_metal_evidence_requested=1 " +
+    "environment_platform_metal_host_aggregate_ready=1 " +
+    "environment_platform_windows_d3d12_ready=0 " +
+    "environment_platform_windows_vulkan_ready=0 " +
+    "environment_platform_linux_vulkan_ready=0 " +
+    "environment_platform_macos_metal_ready=1 " +
+    "environment_platform_ios_metal_ready=0 " +
+    "environment_platform_android_vulkan_ready=0 " +
+    "environment_platform_requires_windows_vulkan_host_evidence=1 " +
+    "environment_platform_requires_linux_vulkan_host_evidence=1 " +
+    "environment_platform_requires_macos_metal_host_evidence=0 " +
+    "environment_platform_requires_ios_metal_host_evidence=1 " +
+    "environment_platform_requires_android_vulkan_host_evidence=1 " +
+    "environment_all_platform_unconditional_ready=0 " +
+    "environment_platform_diagnostics=0 " +
+    "environment_platform_native_handle_access=0 " +
+    "environment_platform_invoked_gpu_commands=0 " +
+    "environment_platform_replay_hash=2026061705"
+)
+
 Write-Information "environment-metal-host-aggregate-check: ok" -InformationAction Continue

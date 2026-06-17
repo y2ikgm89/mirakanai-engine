@@ -45,7 +45,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_platform_windows_d3d12_ready = "ready"
     environment_platform_windows_vulkan_ready = "ready"
     environment_platform_linux_vulkan_ready = "host-gated"
-    environment_platform_macos_metal_ready = "host-gated"
+    environment_platform_macos_metal_ready = "ready"
     environment_platform_ios_metal_ready = "host-gated"
     environment_platform_android_vulkan_ready = "host-gated"
     environment_broad_optimization_ready = "unsupported"
@@ -103,6 +103,30 @@ $metalAggregateClaim = $environmentCommercialClaimsById["environment_metal_host_
 if ($null -eq $metalAggregateClaim -or
     @($metalAggregateClaim.validationRecipeIds) -notcontains "renderer-metal-environment-aggregate-apple-host-evidence") {
     Write-Error "engine manifest environment_metal_host_aggregate_ready must reference the dedicated renderer-metal-environment-aggregate-apple-host-evidence validation recipe"
+}
+$macosMetalPlatformClaim = $environmentCommercialClaimsById["environment_platform_macos_metal_ready"]
+if ($null -eq $macosMetalPlatformClaim -or
+    [string]$macosMetalPlatformClaim.state -ne "ready" -or
+    @($macosMetalPlatformClaim.validationRecipeIds) -notcontains "renderer-metal-environment-aggregate-apple-host-evidence" -or
+    -not [string]$macosMetalPlatformClaim.requiredEvidence.Contains("environment_platform_macos_metal_ready=1") -or
+    -not [string]$macosMetalPlatformClaim.notes.Contains("environment_platform_macos_metal_evidence_requested=1") -or
+    -not [string]$macosMetalPlatformClaim.notes.Contains("environment_platform_readiness_ready=0")) {
+    Write-Error "engine manifest environment_platform_macos_metal_ready must be ready only through the Apple-host Metal aggregate recipe without all-platform promotion"
+}
+$metalAggregateToolText = Get-Content -LiteralPath (Join-Path $root "tools/validate-environment-metal-host-aggregate.ps1") -Raw
+foreach ($needle in @(
+        "environment-platform-macos-metal-evidence:",
+        "environment_platform_readiness_status=host_evidence_required",
+        "environment_platform_readiness_ready=0",
+        "environment_platform_macos_metal_evidence_requested=1",
+        "environment_platform_metal_host_aggregate_ready=1",
+        "environment_platform_macos_metal_ready=1",
+        "environment_platform_requires_macos_metal_host_evidence=0",
+        "environment_all_platform_unconditional_ready=0",
+        "environment_platform_native_handle_access=0")) {
+    if (-not $metalAggregateToolText.Contains($needle)) {
+        Write-Error "tools/validate-environment-metal-host-aggregate.ps1 missing macOS Metal platform evidence counter: $needle"
+    }
 }
 $backendParityClaim = $environmentCommercialClaimsById["environment_backend_parity_ready"]
 if ($null -eq $backendParityClaim -or
@@ -214,8 +238,8 @@ $expectedEnvironmentPlatformReadinessRows = @(
     @{
         id = "environment_platform_macos_metal"
         claimId = "environment_platform_macos_metal_ready"
-        state = "host-gated"
-        needles = @("Xcode", "Metal", "Windows", "environment_platform_macos_metal_ready=0")
+        state = "ready"
+        needles = @("Xcode", "Metal", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_platform_macos_metal_evidence_requested=1", "environment_platform_macos_metal_ready=1", "environment_platform_readiness_ready=0")
     },
     @{
         id = "environment_platform_ios_metal"
