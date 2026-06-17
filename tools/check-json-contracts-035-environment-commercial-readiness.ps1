@@ -39,9 +39,9 @@ $expectedEnvironmentCommercialClaimIds = @(
 )
 $expectedEnvironmentCommercialClaimStates = @{
     environment_commercial_ready = "unsupported"
-    environment_vulkan_strict_aggregate_ready = "host-gated"
-    environment_metal_host_aggregate_ready = "host-gated"
-    environment_backend_parity_ready = "unsupported"
+    environment_vulkan_strict_aggregate_ready = "ready"
+    environment_metal_host_aggregate_ready = "ready"
+    environment_backend_parity_ready = "ready"
     environment_platform_windows_d3d12_ready = "ready"
     environment_platform_windows_vulkan_ready = "ready"
     environment_platform_linux_vulkan_ready = "host-gated"
@@ -107,16 +107,22 @@ if ($null -eq $metalAggregateClaim -or
 $backendParityClaim = $environmentCommercialClaimsById["environment_backend_parity_ready"]
 if ($null -eq $backendParityClaim -or
     @($backendParityClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-backend-parity" -or
+    @($backendParityClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-backend-parity-ready" -or
     @($backendParityClaim.validationRecipeIds) -notcontains "renderer-metal-environment-aggregate-apple-host-evidence" -or
+    [string]$backendParityClaim.state -ne "ready" -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("plan_environment_backend_parity") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_ready=1") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_ready_closeout_requested=1") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_metal_evidence_ready=1") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("normalized feature id") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("profile revision") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("preset pack revision") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("counter semantics") -or
+    -not [string]$backendParityClaim.notes.Contains("desktop-runtime-sample-game-environment-backend-parity-ready") -or
     -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_metal_host=1") -or
+    -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_ready=1") -or
     -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_ready=0")) {
-    Write-Error "engine manifest environment_backend_parity_ready must require the MK_renderer environment parity matrix contract plus the Apple-host Metal parity evidence bridge without ready promotion"
+    Write-Error "engine manifest environment_backend_parity_ready must be promoted only by the MK_renderer environment parity matrix plus the Apple-host Metal bridge and package-visible ready closeout recipe"
 }
 $windowsVulkanPlatformClaim = $environmentCommercialClaimsById["environment_platform_windows_vulkan_ready"]
 if ($null -eq $windowsVulkanPlatformClaim -or
@@ -707,7 +713,7 @@ foreach ($sourceSurface in @(
     }
 }
 $environmentBackendParityGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentBackendParityPhase7
-foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", "EnvironmentBackendParityRequest", "plan_environment_backend_parity", "normalized feature ids", "same profile revision", "same preset pack revision", "counter semantics", "host_evidence_required", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_backend_parity_metal_evidence_requested=1", "environment_backend_parity_metal_evidence_ready=1", "environment_backend_parity_metal_host=1", "environment_backend_parity_ready=0", "environment_backend_parity_cross_host_aggregate_ready=0")) {
+foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", "desktop-runtime-sample-game-environment-backend-parity-ready", "--require-environment-backend-parity-ready", "EnvironmentBackendParityRequest", "plan_environment_backend_parity", "normalized feature ids", "same profile revision", "same preset pack revision", "counter semantics", "host_evidence_required", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_backend_parity_metal_evidence_requested=1", "environment_backend_parity_metal_evidence_ready=1", "environment_backend_parity_metal_host=1", "environment_backend_parity_ready=0", "environment_backend_parity_ready=1", "environment_backend_parity_ready_rows=21", "environment_backend_parity_host_gated_rows=0", "environment_backend_parity_cross_host_aggregate_ready=1", "environment_backend_parity_cross_host_aggregate_ready=0")) {
     if (-not $environmentBackendParityGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentBackendParityPhase7 missing: $needle"
     }

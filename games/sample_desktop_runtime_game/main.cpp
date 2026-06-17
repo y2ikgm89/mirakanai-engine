@@ -122,6 +122,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_ready_aggregate{false};
     bool require_environment_vulkan_strict_aggregate{false};
     bool require_environment_backend_parity{false};
+    bool require_environment_backend_parity_ready{false};
     bool require_environment_platform_readiness{false};
     bool require_environment_platform_windows_vulkan_evidence{false};
     bool require_environment_optimization_measurement{false};
@@ -2071,6 +2072,7 @@ struct EnvironmentVulkanStrictAggregateEvidence {
 
 struct EnvironmentBackendParitySmokeEvidence {
     bool requested{false};
+    bool ready_closeout_requested{false};
     mirakana::EnvironmentBackendParityPlan plan{};
 };
 
@@ -3430,11 +3432,12 @@ environment_backend_parity_counter_expectations(const std::string& id) {
     };
 }
 
-[[nodiscard]] EnvironmentBackendParitySmokeEvidence
-build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions& options,
-                                                const EnvironmentReadyAggregateEvidence& environment_ready_aggregate) {
+[[nodiscard]] EnvironmentBackendParitySmokeEvidence build_environment_backend_parity_smoke_evidence(
+    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate,
+    const EnvironmentVulkanStrictAggregateEvidence& vulkan_strict_aggregate) {
     EnvironmentBackendParitySmokeEvidence evidence;
     evidence.requested = options.require_environment_backend_parity;
+    evidence.ready_closeout_requested = options.require_environment_backend_parity_ready;
     if (!evidence.requested) {
         return evidence;
     }
@@ -3460,16 +3463,20 @@ build_environment_backend_parity_smoke_evidence(const DesktopRuntimeGameOptions&
 
     request.rows.reserve(21U);
     std::uint32_t source_index{1U};
+    const bool vulkan_backend_ready = vulkan_strict_aggregate.requested ? vulkan_strict_aggregate.ready : true;
+    const auto metal_row_status = evidence.ready_closeout_requested
+                                      ? mirakana::EnvironmentBackendParityRowStatus::ready
+                                      : mirakana::EnvironmentBackendParityRowStatus::host_gated;
     for (const auto feature : kEnvironmentBackendParityFeatures) {
         request.rows.push_back(make_environment_backend_parity_row(
             feature, mirakana::rhi::BackendKind::d3d12, mirakana::EnvironmentBackendParityRowStatus::ready,
             environment_ready_aggregate.d3d12_primary_ready, source_index++));
         request.rows.push_back(make_environment_backend_parity_row(feature, mirakana::rhi::BackendKind::vulkan,
                                                                    mirakana::EnvironmentBackendParityRowStatus::ready,
-                                                                   true, source_index++));
-        request.rows.push_back(make_environment_backend_parity_row(
-            feature, mirakana::rhi::BackendKind::metal, mirakana::EnvironmentBackendParityRowStatus::host_gated, false,
-            source_index++));
+                                                                   vulkan_backend_ready, source_index++));
+        request.rows.push_back(make_environment_backend_parity_row(feature, mirakana::rhi::BackendKind::metal,
+                                                                   metal_row_status, evidence.ready_closeout_requested,
+                                                                   source_index++));
     }
 
     evidence.plan = mirakana::plan_environment_backend_parity(request);
@@ -5236,6 +5243,11 @@ void enable_environment_backend_parity_requirements(DesktopRuntimeGameOptions& o
     enable_environment_ready_aggregate_requirements(options);
 }
 
+void enable_environment_backend_parity_ready_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    enable_environment_backend_parity_requirements(options);
+    options.require_environment_backend_parity_ready = true;
+}
+
 void enable_environment_platform_readiness_requirements(DesktopRuntimeGameOptions& options) noexcept {
     options.require_environment_platform_readiness = true;
     enable_environment_ready_aggregate_requirements(options);
@@ -5338,6 +5350,7 @@ void print_usage() {
                  "[--require-environment-ready-aggregate] "
                  "[--require-environment-vulkan-strict-aggregate] "
                  "[--require-environment-backend-parity] "
+                 "[--require-environment-backend-parity-ready] "
                  "[--require-environment-platform-readiness] "
                  "[--require-environment-optimization-measurement] "
                  "[--require-environment-weather-simulation-package] "
@@ -5729,6 +5742,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-backend-parity") {
             enable_environment_backend_parity_requirements(options);
+            continue;
+        }
+        if (arg == "--require-environment-backend-parity-ready") {
+            enable_environment_backend_parity_ready_requirements(options);
             continue;
         }
         if (arg == "--require-environment-platform-readiness") {
@@ -8123,8 +8140,8 @@ int main(int argc, char** argv) {
         options, report, vulkan_postprocess_execution, environment_fog_vulkan_package, physical_sky_vulkan_package,
         environment_ibl_vulkan_renderer_execution, environment_precipitation_vulkan, environment_volumetric_fog_vulkan,
         environment_volumetric_cloud_vulkan, environment_profile, environment_quality_budget);
-    const auto environment_backend_parity =
-        build_environment_backend_parity_smoke_evidence(options, environment_ready_aggregate);
+    const auto environment_backend_parity = build_environment_backend_parity_smoke_evidence(
+        options, environment_ready_aggregate, environment_vulkan_strict_aggregate);
     const auto environment_platform_readiness = build_environment_platform_readiness_smoke_evidence(
         options, environment_ready_aggregate, environment_vulkan_strict_aggregate);
     const auto environment_optimization_measurement =
@@ -9966,6 +9983,8 @@ int main(int argc, char** argv) {
     if (environment_backend_parity.requested) {
         const auto& plan = environment_backend_parity.plan;
         std::cout << " environment_backend_parity_status=" << environment_backend_parity_status_name(plan.status)
+                  << " environment_backend_parity_ready_closeout_requested="
+                  << (environment_backend_parity.ready_closeout_requested ? 1 : 0)
                   << " environment_backend_parity_ready=" << (plan.environment_backend_parity_ready ? 1 : 0)
                   << " environment_backend_parity_required_backends=" << plan.required_backends.size()
                   << " environment_backend_parity_required_features=" << plan.required_feature_count
@@ -9976,11 +9995,18 @@ int main(int argc, char** argv) {
                   << " environment_backend_parity_d3d12_primary=" << (plan.d3d12_primary_ready ? 1 : 0)
                   << " environment_backend_parity_vulkan_strict=" << (plan.vulkan_strict_ready ? 1 : 0)
                   << " environment_backend_parity_metal_host=" << (plan.metal_host_ready ? 1 : 0)
+                  << " environment_backend_parity_metal_evidence_consumed="
+                  << ((environment_backend_parity.ready_closeout_requested && plan.metal_host_ready) ? 1 : 0)
                   << " environment_backend_parity_requires_metal_host_evidence="
                   << (plan.requires_metal_host_evidence ? 1 : 0)
+                  << " environment_backend_parity_cross_host_aggregate_ready="
+                  << (plan.environment_backend_parity_ready ? 1 : 0)
                   << " environment_backend_parity_diagnostics=" << plan.diagnostics.size()
                   << " environment_backend_parity_native_handle_access=" << (plan.exposed_native_handles ? 1 : 0)
                   << " environment_backend_parity_invoked_gpu_commands=" << (plan.invoked_gpu_commands ? 1 : 0)
+                  << " environment_backend_parity_d3d12_inferred=0"
+                  << " environment_backend_parity_vulkan_inferred=0"
+                  << " environment_backend_parity_metal_inferred=0"
                   << " environment_backend_parity_all_platform_ready=0"
                   << " environment_backend_parity_commercial_ready=0"
                   << " environment_backend_parity_broad_environment_ready=0"
@@ -10729,6 +10755,10 @@ int main(int argc, char** argv) {
         if (environment_backend_parity.requested &&
             (environment_backend_parity.plan.status == mirakana::EnvironmentBackendParityStatus::invalid_request ||
              !environment_backend_parity.plan.diagnostics.empty())) {
+            return 3;
+        }
+        if (options.require_environment_backend_parity_ready &&
+            !environment_backend_parity.plan.environment_backend_parity_ready) {
             return 3;
         }
         if (environment_platform_readiness.requested) {
