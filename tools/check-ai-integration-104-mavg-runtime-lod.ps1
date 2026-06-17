@@ -17,6 +17,7 @@ $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $loopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+if ([string]$productionLoop.recommendedNextPlan.id -eq "environment-highest-commercial-readiness-v1") { $loopFragmentText = $planRegistryText }
 
 foreach ($needle in @(
         "RuntimeMavgPageStreamingCandidateRow",

@@ -13,7 +13,7 @@ $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-arc
 $productionMasterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
-$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "environment-commercial-excellence-v1") {
+$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
     @{ Text = $aiLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
 } else {
     @{ Text = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $mavgRecencyPlanText) -join " "; Label = "production loop completed context" }
@@ -94,17 +94,22 @@ foreach ($surface in @(
 $recommendedPlanText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence),
     ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext),
     ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.reason)) -join " "
-foreach ($needle in @(
-        "MAVG Resident Page Recency Eviction Order v1",
-        "RuntimeMavgPageStreamingRecencyRow",
-        "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency",
-        "resident_page_last_used_generation",
-        "duplicate_recency_row_count",
-        "missing_recency_row_count",
-        "runtime-inferred LRU/frequency",
-        "unsupportedProductionGaps = []"
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @(
+        "environment-commercial-excellence-v1",
+        "environment-highest-commercial-readiness-v1"
     )) {
-    Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json recommendedNextPlan recency eviction evidence"
+    foreach ($needle in @(
+            "MAVG Resident Page Recency Eviction Order v1",
+            "RuntimeMavgPageStreamingRecencyRow",
+            "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency",
+            "resident_page_last_used_generation",
+            "duplicate_recency_row_count",
+            "missing_recency_row_count",
+            "runtime-inferred LRU/frequency",
+            "unsupportedProductionGaps = []"
+        )) {
+        Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json recommendedNextPlan recency eviction evidence"
+    }
 }
 
 $runtimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime" })

@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Candidate highest-level plan. This file does not promote any readiness claim and does not replace `currentActivePlan` until Task 1 updates the manifest fragments and composed manifest.
+**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7 tool gap as blocked with implementation code edits forbidden until the Context7 rows are ready. Task 1 static validation passed; publication is pending. This file does not promote any readiness claim by itself.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -77,7 +77,7 @@ Forbidden promotion paths:
 
 Context7 is mandatory for SDK/API/dependency implementation. In this session the Context7 MCP tools were not exposed by tool discovery, so this plan records the exact refresh gate and official fallback sources. If Context7 remains unavailable when a code task starts, that task is blocked and must not edit implementation files.
 
-Task 1 may still edit only plan, spec, docs, manifest fragments, and composed manifest files to record the active plan and the blocked Context7 status. Task 1 must not edit C++, shader, CMake, package, editor, renderer, importer, tool, or game runtime implementation files while `environment_highest_readiness_code_edit_allowed=0`.
+Task 1 may still edit only plan, spec, docs, manifest fragments, composed manifest output, and the static checks that validate this active-plan selection to record the blocked Context7 status. Task 1 must not edit C++, shader, CMake, package, editor, renderer, importer, tool, or game runtime implementation files while `environment_highest_readiness_code_edit_allowed=0`.
 
 Before each task that touches SDK/API/dependency behavior, run `resolve-library-id` and `query-docs` for the exact query row, then record the resolved library id, date, and implementation implication in the task PR:
 
@@ -139,7 +139,9 @@ Create or modify these files as the plan executes:
 | --- | --- | --- |
 | `docs/specs/2026-06-18-environment-highest-commercial-readiness-v1.md` | Task 1 | Product and architecture specification for the highest-level environment capability. |
 | `docs/superpowers/plans/2026-06-18-environment-highest-commercial-readiness-v1.md` | All tasks | Live implementation checklist and validation evidence. |
+| `docs/superpowers/plans/2026-06-13-environment-commercial-excellence-v1.md` | Task 1 | Retained preceding milestone status once this plan becomes active. |
 | `docs/superpowers/plans/README.md` | Task 1, closeout | Plan registry and candidate/active selection notes. |
+| `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` | Task 1, closeout | Master-plan pointer to the active environment milestone. |
 | `docs/current-capabilities.md` | Each closeout | Human-readable capability truth and non-claims. |
 | `docs/roadmap.md` | Each closeout | Roadmap-level status and next slice. |
 | `engine/agent/manifest.fragments/009-validationRecipes.json` | Tasks 2-12 | Machine-readable validation recipes. |
@@ -147,6 +149,27 @@ Create or modify these files as the plan executes:
 | `engine/agent/manifest.fragments/014-gameCodeGuidance.json` | Tasks 4-12 | Game-facing validation recipes and platform capability guidance. |
 | `engine/agent/manifest.json` | Tasks 1-12 | Composed manifest output only. Do not hand-edit. |
 | `schemas/engine-agent.schema.json` | Tasks 2, 12 | Schema support for new readiness rows when existing schema cannot express them. |
+| `tools/check-ai-integration-010-agent-baseline.ps1` | Task 1, closeout | Static guard for recommended plan selection text. |
+| `tools/check-ai-integration-020-engine-manifest.ps1` | Task 1, closeout | Static guard for recommended plan and legacy closeout exclusions. |
+| `tools/check-ai-integration-030-runtime-rendering.ps1` | Task 1, closeout | Static guard for renderer/runtime active-plan selection and retained evidence boundaries. |
+| `tools/check-ai-integration-094-runtime-sandbox-world-pack.ps1` | Task 1, closeout | Static guard for active-plan selection without reopening completed sandbox world pack evidence. |
+| `tools/check-ai-integration-095-runtime-simulation-management-pack.ps1` | Task 1, closeout | Static guard for active-plan selection without reopening completed simulation management pack evidence. |
+| `tools/check-ai-integration-096-runtime-network-replication-pack.ps1` | Task 1, closeout | Static guard for active-plan selection without reopening completed network replication pack evidence. |
+| `tools/check-ai-integration-097-rendering-vfx-profiling-pack.ps1` | Task 1, closeout | Static guard for active-plan selection without reopening completed rendering/VFX profiling evidence. |
+| `tools/check-ai-integration-104-mavg-runtime-lod.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-105-mavg-gpu-culling-indirect.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-106-mavg-rhi-indirect-draw.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-107-mavg-d3d12-indexed-indirect-draw-execution.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-108-mavg-vulkan-indexed-indirect-draw-execution.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-109-mavg-d3d12-count-buffer-indirect-execution.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-110-mavg-vulkan-count-buffer-indirect-execution.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-113-mavg-vulkan-gpu-culling-dispatch.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-114-mavg-vulkan-compute-generated-indirect-consumption.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-115-mavg-payload-byte-range-page-loader.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-120-mavg-resident-page-recency-eviction-order.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-ai-integration-121-mavg-streaming-upload-overlap-evidence.ps1` | Task 1, closeout | Static guard for active-plan selection without requiring MAVG closeout text in the new environment plan. |
+| `tools/check-json-contracts-030-tooling-contracts.ps1` | Task 1, closeout | JSON contract guard for recommended plan selection text. |
+| `tools/check-json-contracts-040-agent-surfaces.ps1` | Task 1, closeout | JSON contract guard for active-plan selection and retained evidence boundaries. |
 | `tools/run-validation-recipe-plans.ps1` | Tasks 2-12 | Host-gate diagnostics and guarded execution routing. |
 | `tools/check-json-contracts-035-environment-commercial-readiness.ps1` | Tasks 2-12 | Static guard for exact counters, forbidden inference, and ready-gate dependencies. |
 | `tools/check-validation-recipe-runner.ps1` | Tasks 2-12 | Dry-run and host-ack coverage for new recipes. |
@@ -175,11 +198,35 @@ Create or modify these files as the plan executes:
 
 **Files:**
 - Modify: `docs/superpowers/plans/README.md`
+- Modify: `docs/superpowers/plans/2026-06-13-environment-commercial-excellence-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/roadmap.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.json`
+- Modify: `tools/check-ai-integration-010-agent-baseline.ps1`
+- Modify: `tools/check-ai-integration-020-engine-manifest.ps1`
+- Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
+- Modify: `tools/check-ai-integration-094-runtime-sandbox-world-pack.ps1`
+- Modify: `tools/check-ai-integration-095-runtime-simulation-management-pack.ps1`
+- Modify: `tools/check-ai-integration-096-runtime-network-replication-pack.ps1`
+- Modify: `tools/check-ai-integration-097-rendering-vfx-profiling-pack.ps1`
+- Modify: `tools/check-ai-integration-104-mavg-runtime-lod.ps1`
+- Modify: `tools/check-ai-integration-105-mavg-gpu-culling-indirect.ps1`
+- Modify: `tools/check-ai-integration-106-mavg-rhi-indirect-draw.ps1`
+- Modify: `tools/check-ai-integration-107-mavg-d3d12-indexed-indirect-draw-execution.ps1`
+- Modify: `tools/check-ai-integration-108-mavg-vulkan-indexed-indirect-draw-execution.ps1`
+- Modify: `tools/check-ai-integration-109-mavg-d3d12-count-buffer-indirect-execution.ps1`
+- Modify: `tools/check-ai-integration-110-mavg-vulkan-count-buffer-indirect-execution.ps1`
+- Modify: `tools/check-ai-integration-113-mavg-vulkan-gpu-culling-dispatch.ps1`
+- Modify: `tools/check-ai-integration-114-mavg-vulkan-compute-generated-indirect-consumption.ps1`
+- Modify: `tools/check-ai-integration-115-mavg-payload-byte-range-page-loader.ps1`
+- Modify: `tools/check-ai-integration-120-mavg-resident-page-recency-eviction-order.ps1`
+- Modify: `tools/check-ai-integration-121-mavg-streaming-upload-overlap-evidence.ps1`
+- Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
+- Modify: `tools/check-json-contracts-040-agent-surfaces.ps1`
 - Create: `docs/specs/2026-06-18-environment-highest-commercial-readiness-v1.md`
 
-- [ ] **Step 1: Resolve Context7 documentation rows**
+- [x] **Step 1: Resolve Context7 documentation rows**
 
 Run the Context7 calls listed in `Official Source And Context7 Gate`. If any Context7 call is unavailable, keep this task limited to docs/spec/manifest selection and record:
 
@@ -197,7 +244,7 @@ environment_highest_readiness_context7_missing_tools=0
 environment_highest_readiness_code_edit_allowed=1
 ```
 
-- [ ] **Step 2: Create the spec with exact target counters**
+- [x] **Step 2: Create the spec with exact target counters**
 
 Create `docs/specs/2026-06-18-environment-highest-commercial-readiness-v1.md` with the final counter list from `Scope Contract`, the official-source table, and the clean-break no-compatibility rule. The spec must contain no placeholder wording.
 
@@ -209,7 +256,7 @@ existing selected rows are input evidence only
 no rename, alias, compatibility bridge, or implicit carry-forward is allowed
 ```
 
-- [ ] **Step 3: Select this plan in manifest fragments**
+- [x] **Step 3: Select this plan in manifest fragments**
 
 Set:
 
@@ -225,7 +272,7 @@ Set:
 }
 ```
 
-- [ ] **Step 4: Compose and verify**
+- [x] **Step 4: Compose and verify**
 
 Run:
 
@@ -1018,3 +1065,9 @@ Record validation here as each PR lands.
 | 2026-06-18 | Plan creation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `json-contract-check: ok` |
 | 2026-06-18 | Plan creation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Plan creation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
+| 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | pass | `text-format-check: ok` |
+| 2026-06-18 | Task 1 active-plan selection | `git diff --check` | pass | no whitespace errors |
+| 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
+| 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
+| 2026-06-18 | Task 1 active-plan selection | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
