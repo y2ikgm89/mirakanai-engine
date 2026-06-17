@@ -22,6 +22,7 @@
 
 #include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
+#include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/process.hpp"
 #include "mirakana/rhi/rhi.hpp"
@@ -1261,6 +1262,49 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     MK_REQUIRE(material->count == 3U);
     MK_REQUIRE(!material->native_handles_public);
     MK_REQUIRE(find_ai_operation_status_row(snapshot, "editor.ai.validation_recipe.execution") == nullptr);
+}
+
+MK_TEST("editor first party shell exposes environment artist workflow execution bridge rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(contains_element(shell_document.document, "environment_artist_workflow_shell_execution_bridge"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_shell_execution_bridge.command_plans.environment.command."
+                                "source_asset.review.dry_run_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_shell_execution_bridge.command_plans.environment.command."
+                                "cook.preview.apply_revision_checked"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_shell_execution_bridge.command_plans.environment.command."
+                                "package.preview.rollback_metadata_available"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_shell_execution_bridge.command_plans.environment.command."
+                                "validation.remediation.apply_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_shell_execution_bridge.command_plans.environment.command."
+                                "publish.package.requires_confirmation"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_execution_review.rows.environment.workflow.execution."
+                                "external_execution.status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_execution_review.rows.environment.workflow.execution."
+                                "operator_review.status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "environment_artist_workflow_execution_review.rows.environment.workflow.execution."
+                                "ready_promotion_guard.value"));
+
+    MK_REQUIRE(counters.environment_artist_workflow_command_plan_rows == 5U);
+    MK_REQUIRE(counters.environment_artist_workflow_execution_review_rows == 8U);
+    MK_REQUIRE(counters.environment_artist_workflow_external_execution_rows == 1U);
+    MK_REQUIRE(counters.environment_artist_workflow_operator_review_rows == 1U);
+    MK_REQUIRE(!counters.environment_artist_workflow_executes_backend);
+    MK_REQUIRE(!counters.environment_artist_workflow_executes_package_scripts);
+    MK_REQUIRE(!counters.environment_artist_workflow_executes_validation_recipes);
+    MK_REQUIRE(!counters.environment_artist_workflow_native_handles_exposed);
+    MK_REQUIRE(!counters.environment_artist_workflow_ready_claimed);
 }
 
 MK_TEST("editor native shell app updates resources panel from native host availability") {

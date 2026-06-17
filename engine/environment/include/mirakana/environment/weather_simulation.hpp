@@ -55,6 +55,8 @@ enum class EnvironmentWeatherSimulationSolverBudgetDiagnosticCode : std::uint8_t
     invalid_profiler_artifact,
     missing_production_solver_package_evidence,
     missing_production_solver_core_evidence,
+    missing_broad_physical_accuracy_evidence,
+    missing_visual_quality_evidence,
     unsupported_native_handle_access,
     unsupported_production_solver_ready_claim,
 };
@@ -196,6 +198,8 @@ struct EnvironmentWeatherSimulationSolverBudgetDesc {
     bool artist_controls_ready{false};
     bool production_solver_package_counter_reviewed{false};
     bool production_solver_core_reviewed{false};
+    bool broad_physical_accuracy_reviewed{false};
+    bool visual_quality_reviewed{false};
     bool request_native_handle_access{false};
     bool request_production_solver_ready_claim{false};
 };
@@ -227,7 +231,12 @@ struct EnvironmentWeatherSimulationSolverBudgetPlan {
     std::uint32_t production_solver_package_counter_rows{0U};
     bool production_solver_core_review_ready{false};
     std::uint32_t production_solver_core_rows{0U};
+    bool broad_physical_accuracy_review_ready{false};
+    std::uint32_t broad_physical_accuracy_rows{0U};
+    bool visual_quality_review_ready{false};
+    std::uint32_t visual_quality_rows{0U};
     bool production_solver_ready{false};
+    bool physical_weather_ready{false};
     bool invokes_gpu{false};
     bool invokes_backend{false};
     bool exposes_native_handles{false};

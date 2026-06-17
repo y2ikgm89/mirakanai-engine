@@ -12,6 +12,7 @@
 #include "mirakana/scene/scene.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <span>
 #include <string_view>
@@ -108,6 +109,242 @@ make_default_inspector_rows(const ProjectDocument& project, const EnvironmentAut
         EditorAssetListRow{.id = "material_default", .path = "assets/materials/default.material", .kind = "material"},
         EditorAssetListRow{.id = "shader_editor", .path = "assets/shaders/editor_preview.shader", .kind = "shader"},
     };
+}
+
+[[nodiscard]] NativeEditorEnvironmentArtistWorkflowCommandPlanRow
+make_environment_artist_workflow_shell_command_row(const EnvironmentAuthoringDocument& document,
+                                                   EnvironmentArtistWorkflowCommandKind kind) {
+    auto dry_run =
+        plan_environment_artist_workflow_command(document, EnvironmentArtistWorkflowCommandRequest{
+                                                               .kind = kind,
+                                                               .mode = EnvironmentArtistWorkflowCommandMode::dry_run,
+                                                               .expected_revision = document.revision(),
+                                                           });
+    auto apply =
+        plan_environment_artist_workflow_command(document, EnvironmentArtistWorkflowCommandRequest{
+                                                               .kind = kind,
+                                                               .mode = EnvironmentArtistWorkflowCommandMode::apply,
+                                                               .expected_revision = document.revision(),
+                                                               .user_confirmed = true,
+                                                           });
+    return NativeEditorEnvironmentArtistWorkflowCommandPlanRow{
+        .command_id = dry_run.command_id,
+        .label = dry_run.label,
+        .dry_run = std::move(dry_run),
+        .apply = std::move(apply),
+    };
+}
+
+[[nodiscard]] std::vector<NativeEditorEnvironmentArtistWorkflowCommandPlanRow>
+make_default_environment_artist_workflow_command_plans(const EnvironmentAuthoringDocument& document) {
+    constexpr std::array kinds{
+        EnvironmentArtistWorkflowCommandKind::source_asset_review,
+        EnvironmentArtistWorkflowCommandKind::cook_preview,
+        EnvironmentArtistWorkflowCommandKind::package_preview,
+        EnvironmentArtistWorkflowCommandKind::validation_remediation,
+        EnvironmentArtistWorkflowCommandKind::publish_package,
+    };
+
+    std::vector<NativeEditorEnvironmentArtistWorkflowCommandPlanRow> rows;
+    rows.reserve(kinds.size());
+    for (const auto kind : kinds) {
+        rows.push_back(make_environment_artist_workflow_shell_command_row(document, kind));
+    }
+    return rows;
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowAssetBrowserModel make_default_environment_artist_workflow_asset_browser() {
+    return make_environment_artist_workflow_asset_browser_model(EnvironmentArtistWorkflowAssetBrowserDesc{
+        .assets =
+            {
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::preset_library,
+                    .path = "runtime/assets/desktop_runtime/environment_presets.gepresetpack",
+                    .available = true,
+                    .package_visible = true,
+                    .provenance_recorded = true,
+                    .budget_recorded = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-preset-library-package",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::openexr_source,
+                    .path = "assets/source/environment/storm.exr",
+                    .available = true,
+                    .provenance_recorded = true,
+                    .validation_recipe_id = "asset-importers",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::ktx2_basis_source,
+                    .path = "assets/source/environment/clouds.ktx2",
+                    .available = true,
+                    .provenance_recorded = true,
+                    .validation_recipe_id = "asset-importers",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::cooked_texture,
+                    .path = "runtime/assets/desktop_runtime/environment_clouds.geasset",
+                    .available = true,
+                    .package_visible = true,
+                    .budget_recorded = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-texture-package",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::environment_profile,
+                    .path = "runtime/assets/desktop_runtime/default_outdoor.geenv",
+                    .available = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-ready-aggregate",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::simulation_preset,
+                    .path = "runtime/assets/desktop_runtime/weather_simulation.geweather",
+                    .available = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-weather-simulation-package",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::validation_report,
+                    .path = "artifacts/environment/validation-report.txt",
+                    .available = true,
+                    .validation_recipe_id = "agent-contract",
+                },
+                EnvironmentArtistWorkflowAssetBrowserInputRow{
+                    .kind = EnvironmentArtistWorkflowAssetKind::package_artifact,
+                    .path = "out/package/sample_desktop_runtime_game",
+                    .available = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-game-runtime",
+                },
+            },
+    });
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowPreviewModel make_default_environment_artist_workflow_preview() {
+    return make_environment_artist_workflow_preview_model(EnvironmentArtistWorkflowPreviewDesc{
+        .selected_backend = "d3d12",
+        .quality_tier = "ultra",
+        .package_budget_bytes = 4194304U,
+        .memory_budget_bytes = 67108864U,
+        .unsupported_claim_reason = "complete artist workflow readiness waits for full commercial closeout",
+    });
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowWalkthroughModel make_default_environment_artist_workflow_walkthrough() {
+    return make_environment_artist_workflow_walkthrough_model(EnvironmentArtistWorkflowWalkthroughDesc{
+        .steps =
+            {
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::import_source_assets,
+                    .evidence_id = "source-assets-reviewed",
+                    .completed = true,
+                    .reviewed = true,
+                    .validation_recipe_id = "asset-importers",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::cook_assets,
+                    .evidence_id = "environment-cook-preview",
+                    .completed = true,
+                    .reviewed = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-texture-package",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::assemble_preset,
+                    .evidence_id = "preset-pack-assembled",
+                    .completed = true,
+                    .reviewed = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-preset-library-package",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::edit_weather_timeline,
+                    .evidence_id = "weather-timeline-edited",
+                    .completed = true,
+                    .reviewed = true,
+                    .validation_recipe_id = "agent-contract",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::run_simulation_preview,
+                    .evidence_id = "weather-simulation-preview",
+                    .completed = true,
+                    .reviewed = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-weather-simulation-package",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::package_sample,
+                    .evidence_id = "sample-package-built",
+                    .completed = true,
+                    .reviewed = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-game-runtime",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::run_installed_validation,
+                    .evidence_id = "installed-validation-run",
+                    .completed = true,
+                    .reviewed = true,
+                    .package_visible = true,
+                    .validation_recipe_id = "desktop-runtime-sample-game-environment-ready-aggregate",
+                },
+                EnvironmentArtistWorkflowWalkthroughStepInputRow{
+                    .kind = EnvironmentArtistWorkflowWalkthroughStepKind::inspect_report,
+                    .evidence_id = "artist-report-reviewed",
+                    .completed = true,
+                    .reviewed = true,
+                    .validation_recipe_id = "agent-contract",
+                },
+            },
+    });
+}
+
+[[nodiscard]] EnvironmentArtistWorkflowExecutionReviewModel
+make_default_environment_artist_workflow_execution_review(const EnvironmentAuthoringDocument& document) {
+    return make_environment_artist_workflow_execution_review_model(EnvironmentArtistWorkflowExecutionReviewDesc{
+        .command_catalog = make_environment_artist_workflow_command_catalog(document),
+        .asset_browser = make_default_environment_artist_workflow_asset_browser(),
+        .preview = make_default_environment_artist_workflow_preview(),
+        .walkthrough = make_default_environment_artist_workflow_walkthrough(),
+        .evidence_rows =
+            {
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "asset-importers",
+                    .passed = true,
+                    .summary = "source asset importer lane passed",
+                },
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "desktop-runtime-sample-game-environment-texture-package",
+                    .passed = true,
+                    .summary = "texture package lane passed",
+                },
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "desktop-runtime-sample-game-environment-preset-library-package",
+                    .passed = true,
+                    .summary = "preset package lane passed",
+                },
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "agent-contract",
+                    .passed = true,
+                    .summary = "agent contract check passed",
+                },
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "desktop-runtime-sample-game-environment-weather-simulation-package",
+                    .passed = true,
+                    .summary = "weather simulation package lane passed",
+                },
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "desktop-game-runtime",
+                    .passed = true,
+                    .summary = "desktop runtime package lane passed",
+                },
+                EnvironmentArtistWorkflowExecutionEvidenceRow{
+                    .recipe_id = "desktop-runtime-sample-game-environment-ready-aggregate",
+                    .passed = true,
+                    .summary = "installed aggregate lane passed",
+                },
+            },
+        .operator_reviewed = true,
+        .operator_review_id = "environment-artist-workflow-visible-review",
+    });
 }
 
 [[nodiscard]] EditorMaterialAssetPreviewPanelModel make_default_material_preview_panel_model() {
@@ -304,6 +541,10 @@ struct NativeEditorApp::Impl {
           environment_authoring_inspector(make_default_environment_authoring_inspector(environment_authoring)),
           inspector_rows(make_default_inspector_rows(project, environment_authoring_inspector)),
           asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
+          environment_artist_workflow_command_plans(
+              make_default_environment_artist_workflow_command_plans(environment_authoring)),
+          environment_artist_workflow_execution_review(
+              make_default_environment_artist_workflow_execution_review(environment_authoring)),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
           profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()),
           material_preview(make_default_material_preview_panel_model()),
@@ -332,6 +573,8 @@ struct NativeEditorApp::Impl {
     std::vector<EditorPropertyRow> inspector_rows;
     std::vector<EditorAssetListRow> asset_rows;
     std::vector<EditorDiagnosticRow> console_rows;
+    std::vector<NativeEditorEnvironmentArtistWorkflowCommandPlanRow> environment_artist_workflow_command_plans;
+    EnvironmentArtistWorkflowExecutionReviewModel environment_artist_workflow_execution_review;
     EditorResourcePanelModel resources;
     EditorAiCommandPanelModel ai_commands;
     EditorProfilerPanelModel profiler;
@@ -463,6 +706,16 @@ const EditorResourcePanelModel& NativeEditorApp::resources() const noexcept {
 
 const EditorAiCommandPanelModel& NativeEditorApp::ai_commands() const noexcept {
     return impl_->ai_commands;
+}
+
+std::span<const NativeEditorEnvironmentArtistWorkflowCommandPlanRow>
+NativeEditorApp::environment_artist_workflow_command_plans() const noexcept {
+    return impl_->environment_artist_workflow_command_plans;
+}
+
+const EnvironmentArtistWorkflowExecutionReviewModel&
+NativeEditorApp::environment_artist_workflow_execution_review() const noexcept {
+    return impl_->environment_artist_workflow_execution_review;
 }
 
 const EditorProfilerPanelModel& NativeEditorApp::profiler() const noexcept {

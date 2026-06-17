@@ -1032,6 +1032,10 @@ class VulkanRuntimeTexture {
 struct VulkanRuntimeTextureCreateResult {
     VulkanRuntimeTexture texture;
     VulkanRuntimeTextureCreatePlan plan;
+    bool format_feature_query_invoked{false};
+    bool format_features_supported{false};
+    std::uint32_t required_format_features{0};
+    std::uint32_t optimal_tiling_format_features{0};
     bool created{false};
     std::string diagnostic;
 };

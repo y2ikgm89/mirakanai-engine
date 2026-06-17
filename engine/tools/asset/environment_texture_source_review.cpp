@@ -97,6 +97,15 @@ void add_diagnostic(std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagn
     });
 }
 
+void add_diagnostic(std::vector<EnvironmentTexturePayloadCookDiagnostic>& diagnostics,
+                    EnvironmentTexturePayloadCookDiagnosticCode code, std::string message, std::string path = {}) {
+    diagnostics.push_back(EnvironmentTexturePayloadCookDiagnostic{
+        .code = code,
+        .message = std::move(message),
+        .path = std::move(path),
+    });
+}
+
 [[nodiscard]] OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode
 decode_diagnostic_code(OpenExrTextureSourceReviewDiagnosticCode code) noexcept {
     switch (code) {
@@ -198,6 +207,72 @@ void append_diagnostics(std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeD
                         const std::vector<EnvironmentTextureGeassetPayloadDiagnostic>& input) {
     for (const auto& diagnostic : input) {
         add_diagnostic(output, ktx_transcode_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
+    }
+}
+
+[[nodiscard]] EnvironmentTexturePayloadCookDiagnosticCode
+cook_diagnostic_code(OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode code) noexcept {
+    switch (code) {
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_request:
+        return EnvironmentTexturePayloadCookDiagnosticCode::invalid_request;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::asset_importers_disabled:
+        return EnvironmentTexturePayloadCookDiagnosticCode::asset_importers_disabled;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::openexr_read_failed:
+        return EnvironmentTexturePayloadCookDiagnosticCode::openexr_read_failed;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_openexr_layout:
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_openexr_channels:
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_openexr_metadata:
+        return EnvironmentTexturePayloadCookDiagnosticCode::source_review_failed;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_cook_metadata:
+        return EnvironmentTexturePayloadCookDiagnosticCode::invalid_cook_metadata;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::invalid_payload:
+        return EnvironmentTexturePayloadCookDiagnosticCode::invalid_payload;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::unsupported_claim:
+        return EnvironmentTexturePayloadCookDiagnosticCode::unsupported_claim;
+    case OpenExrEnvironmentTexturePayloadDecodeDiagnosticCode::none:
+        break;
+    }
+    return EnvironmentTexturePayloadCookDiagnosticCode::invalid_request;
+}
+
+[[nodiscard]] EnvironmentTexturePayloadCookDiagnosticCode
+cook_diagnostic_code(Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode code) noexcept {
+    switch (code) {
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_request:
+        return EnvironmentTexturePayloadCookDiagnosticCode::invalid_request;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::asset_importers_disabled:
+        return EnvironmentTexturePayloadCookDiagnosticCode::asset_importers_disabled;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::ktx_read_failed:
+        return EnvironmentTexturePayloadCookDiagnosticCode::ktx_read_failed;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::ktx_transcode_failed:
+        return EnvironmentTexturePayloadCookDiagnosticCode::ktx_transcode_failed;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_layout:
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_ktx_format:
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_ktx_metadata:
+        return EnvironmentTexturePayloadCookDiagnosticCode::source_review_failed;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_cook_metadata:
+        return EnvironmentTexturePayloadCookDiagnosticCode::invalid_cook_metadata;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::invalid_payload:
+        return EnvironmentTexturePayloadCookDiagnosticCode::invalid_payload;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::unsupported_claim:
+        return EnvironmentTexturePayloadCookDiagnosticCode::unsupported_claim;
+    case Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnosticCode::none:
+        break;
+    }
+    return EnvironmentTexturePayloadCookDiagnosticCode::invalid_request;
+}
+
+void append_diagnostics(std::vector<EnvironmentTexturePayloadCookDiagnostic>& output,
+                        const std::vector<OpenExrEnvironmentTexturePayloadDecodeDiagnostic>& input) {
+    for (const auto& diagnostic : input) {
+        add_diagnostic(output, cook_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
+    }
+}
+
+void append_diagnostics(std::vector<EnvironmentTexturePayloadCookDiagnostic>& output,
+                        const std::vector<Ktx2BasisEnvironmentTexturePayloadTranscodeDiagnostic>& input) {
+    for (const auto& diagnostic : input) {
+        add_diagnostic(output, cook_diagnostic_code(diagnostic.code), diagnostic.message, diagnostic.path);
     }
 }
 
@@ -434,6 +509,9 @@ void append_backend_policy_rows(std::ostringstream& output, const TextureCookMet
         const auto prefix = std::string{"texture.backend."} + std::to_string(index) + ".";
         output << prefix << "backend=" << texture_cook_backend_name_v1(decision->backend) << '\n';
         output << prefix << "device_format=" << decision->device_format << '\n';
+        output << prefix << "payload_transcode_target=" << decision->payload_transcode_target << '\n';
+        output << prefix << "format_support_evidence_id=" << decision->format_support_evidence_id << '\n';
+        output << prefix << "official_format_support_api=" << decision->official_format_support_api << '\n';
         output << prefix << "compression=" << texture_compression_kind_name_v2(decision->compression) << '\n';
         output << prefix << "transcode=" << texture_cook_transcode_kind_name_v1(decision->transcode) << '\n';
         output << prefix << "estimated_gpu_bytes=" << decision->estimated_gpu_bytes << '\n';
@@ -504,6 +582,7 @@ serialize_environment_texture_geasset_payload_v1(const EnvironmentTextureGeasset
 
 struct TextureBackendFormatSelection {
     std::string device_format;
+    std::string payload_transcode_target;
     TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
     TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
     std::uint64_t estimated_gpu_bytes{0};
@@ -519,6 +598,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::d3d12:
             return TextureBackendFormatSelection{
                 .device_format = "DXGI_FORMAT_R16G16B16A16_FLOAT",
+                .payload_transcode_target = "not_required",
                 .compression = TextureCompressionKindV2::none,
                 .transcode = TextureCookTranscodeKindV1::offline_policy,
                 .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
@@ -530,6 +610,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::vulkan_android:
             return TextureBackendFormatSelection{
                 .device_format = "VK_FORMAT_R16G16B16A16_SFLOAT",
+                .payload_transcode_target = "not_required",
                 .compression = TextureCompressionKindV2::none,
                 .transcode = TextureCookTranscodeKindV1::offline_policy,
                 .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
@@ -541,6 +622,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::metal_ios:
             return TextureBackendFormatSelection{
                 .device_format = "MTLPixelFormatRGBA16Float",
+                .payload_transcode_target = "not_required",
                 .compression = TextureCompressionKindV2::none,
                 .transcode = TextureCookTranscodeKindV1::offline_policy,
                 .estimated_gpu_bytes = estimate_rgba16_float_bytes(source.width, source.height),
@@ -559,6 +641,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::d3d12:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "DXGI_FORMAT_BC7_UNORM_SRGB" : "DXGI_FORMAT_BC7_UNORM",
+                .payload_transcode_target = "KTX_TTF_BC7_RGBA",
                 .compression = TextureCompressionKindV2::bc7,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -569,6 +652,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::vulkan:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "VK_FORMAT_BC7_SRGB_BLOCK" : "VK_FORMAT_BC7_UNORM_BLOCK",
+                .payload_transcode_target = "KTX_TTF_BC7_RGBA",
                 .compression = TextureCompressionKindV2::bc7,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -579,6 +663,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::metal_macos:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
                 .compression = TextureCompressionKindV2::astc_4x4,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -589,6 +674,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::vulkan_android:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "VK_FORMAT_ASTC_4x4_SRGB_BLOCK" : "VK_FORMAT_ASTC_4x4_UNORM_BLOCK",
+                .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
                 .compression = TextureCompressionKindV2::astc_4x4,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -599,6 +685,7 @@ struct TextureBackendFormatSelection {
         case TextureCookBackendV1::metal_ios:
             return TextureBackendFormatSelection{
                 .device_format = srgb ? "MTLPixelFormatASTC_4x4_sRGB" : "MTLPixelFormatASTC_4x4_LDR",
+                .payload_transcode_target = "KTX_TTF_ASTC_4x4_RGBA",
                 .compression = TextureCompressionKindV2::astc_4x4,
                 .transcode = TextureCookTranscodeKindV1::basis_transcode_policy,
                 .estimated_gpu_bytes = estimate_block4x4_bytes(source),
@@ -1433,6 +1520,79 @@ Ktx2BasisEnvironmentTexturePayloadTranscodeResultV1 transcode_ktx2_basis_environ
 #endif
 }
 
+bool has_environment_texture_payload_cook() noexcept {
+    return has_openexr_environment_texture_payload_decode() || has_ktx2_basis_environment_texture_payload_transcode();
+}
+
+bool has_environment_texture_payload_cook_diagnostic(const EnvironmentTexturePayloadCookResultV1& result,
+                                                     EnvironmentTexturePayloadCookDiagnosticCode code) noexcept {
+    return std::ranges::any_of(result.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+EnvironmentTexturePayloadCookResultV1
+cook_environment_texture_payload_v1(const EnvironmentTexturePayloadCookRequestV1& request) {
+    EnvironmentTexturePayloadCookResultV1 result;
+
+    const bool has_openexr_source = request.openexr_source_review.has_value();
+    const bool has_ktx2_basis_source = request.ktx2_basis_source_review.has_value();
+    if (has_openexr_source == has_ktx2_basis_source) {
+        add_diagnostic(result.diagnostics, EnvironmentTexturePayloadCookDiagnosticCode::invalid_request,
+                       "environment texture payload cook requires exactly one reviewed source request",
+                       request.geasset_path);
+    }
+    if (request.gpu_upload_invoked) {
+        add_diagnostic(result.diagnostics, EnvironmentTexturePayloadCookDiagnosticCode::unsupported_claim,
+                       "environment texture payload cook cannot claim runtime GPU upload execution",
+                       request.geasset_path);
+    }
+    if (request.broad_asset_pipeline_ready) {
+        add_diagnostic(result.diagnostics, EnvironmentTexturePayloadCookDiagnosticCode::unsupported_claim,
+                       "environment texture payload cook cannot claim broad asset-pipeline readiness",
+                       request.geasset_path);
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    if (has_openexr_source) {
+        const auto decoded = decode_openexr_environment_texture_payload_v1(
+            OpenExrEnvironmentTexturePayloadDecodeRequestV1{.asset = request.asset,
+                                                            .geasset_path = request.geasset_path,
+                                                            .source_revision = request.source_revision,
+                                                            .source_review = *request.openexr_source_review,
+                                                            .backend_evidence = request.backend_evidence,
+                                                            .require_all_backends = request.require_all_backends,
+                                                            .gpu_upload_invoked = false,
+                                                            .broad_asset_pipeline_ready = false});
+        result.source = decoded.source;
+        result.cook_metadata = decoded.cook_metadata;
+        result.payload_bytes = decoded.payload_bytes;
+        result.decode_stage = decoded.decode_stage;
+        result.transcode_stage = decoded.succeeded() ? "not_required" : std::string{};
+        result.payload = decoded.payload;
+        append_diagnostics(result.diagnostics, decoded.diagnostics);
+        return result;
+    }
+
+    const auto transcoded = transcode_ktx2_basis_environment_texture_payload_v1(
+        Ktx2BasisEnvironmentTexturePayloadTranscodeRequestV1{.asset = request.asset,
+                                                             .geasset_path = request.geasset_path,
+                                                             .source_revision = request.source_revision,
+                                                             .source_review = *request.ktx2_basis_source_review,
+                                                             .backend_evidence = request.backend_evidence,
+                                                             .require_all_backends = request.require_all_backends,
+                                                             .gpu_upload_invoked = false,
+                                                             .broad_asset_pipeline_ready = false});
+    result.source = transcoded.source;
+    result.cook_metadata = transcoded.cook_metadata;
+    result.payload_bytes = transcoded.payload_bytes;
+    result.decode_stage = transcoded.decode_stage;
+    result.transcode_stage = transcoded.transcode_stage;
+    result.payload = transcoded.payload;
+    append_diagnostics(result.diagnostics, transcoded.diagnostics);
+    return result;
+}
+
 TextureBackendFormatPolicyResultV1
 plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1& request) {
     TextureBackendFormatPolicyResultV1 result;
@@ -1507,6 +1667,13 @@ plan_texture_backend_format_policy_v1(const TextureBackendFormatPolicyRequestV1&
         metadata.backend_decisions.push_back(TextureCookBackendDecisionV1{
             .backend = backend,
             .device_format = selection.device_format.empty() ? "unsupported" : selection.device_format,
+            .payload_transcode_target = supported && !selection.payload_transcode_target.empty()
+                                            ? selection.payload_transcode_target
+                                            : "unsupported",
+            .format_support_evidence_id =
+                evidence == nullptr || !clean_text_token(evidence->evidence_id) ? "missing" : evidence->evidence_id,
+            .official_format_support_api =
+                evidence == nullptr || !clean_text_token(evidence->official_api) ? "missing" : evidence->official_api,
             .compression = selection.compression == TextureCompressionKindV2::unknown ? TextureCompressionKindV2::none
                                                                                       : selection.compression,
             .transcode = selection.transcode == TextureCookTranscodeKindV1::unknown

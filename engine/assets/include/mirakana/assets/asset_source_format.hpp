@@ -84,6 +84,9 @@ struct TextureSourceDocumentV2 {
 struct TextureCookBackendDecisionV1 {
     TextureCookBackendV1 backend{TextureCookBackendV1::unknown};
     std::string device_format;
+    std::string payload_transcode_target;
+    std::string format_support_evidence_id;
+    std::string official_format_support_api;
     TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
     TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
     std::uint64_t estimated_gpu_bytes{0};

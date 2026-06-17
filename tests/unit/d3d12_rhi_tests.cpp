@@ -3,6 +3,7 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/cloud_layer_policy.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
@@ -1586,12 +1587,30 @@ MK_TEST("d3d12 device context records placed resource aliasing barriers on copy 
 
     MK_REQUIRE(context != nullptr);
 
-    const auto aliases = context->create_placed_texture_alias_group(
+    const auto non_common_aliases = context->create_placed_texture_alias_group(
         mirakana::rhi::TextureDesc{
             .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
             .format = mirakana::rhi::Format::rgba8_unorm,
             .usage = mirakana::rhi::TextureUsage::copy_source | mirakana::rhi::TextureUsage::copy_destination |
                      mirakana::rhi::TextureUsage::shader_resource,
+        },
+        2);
+
+    MK_REQUIRE(non_common_aliases.size() == 2);
+    const auto rejected_commands = context->create_command_list(mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(!context->texture_aliasing_barrier(rejected_commands, non_common_aliases[0], non_common_aliases[1]));
+    MK_REQUIRE(context->close_command_list(rejected_commands));
+    context->destroy_committed_resource(non_common_aliases[0]);
+    context->destroy_committed_resource(non_common_aliases[1]);
+    MK_REQUIRE(context->stats().texture_aliasing_barriers == 0);
+    MK_REQUIRE(context->stats().placed_resource_aliasing_barriers == 0);
+    MK_REQUIRE(context->stats().placed_resources_alive == 0);
+
+    const auto aliases = context->create_placed_texture_alias_group(
+        mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::shader_resource,
         },
         2);
 
@@ -9837,6 +9856,168 @@ MK_TEST("d3d12 runtime rhi texture upload stages padded texture bytes") {
     MK_REQUIRE(stats.buffer_texture_copies == 1);
     MK_REQUIRE(stats.command_lists_submitted == 1);
     MK_REQUIRE(stats.fence_waits == 1);
+}
+
+MK_TEST("d3d12 runtime environment texture upload execution records backend readback evidence") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const mirakana::runtime::RuntimeEnvironmentTexturePayload payload{
+        .asset = mirakana::AssetId::from_name("textures/environment/d3d12_runtime_upload"),
+        .handle = mirakana::runtime::RuntimeAssetHandle{7},
+        .asset_path = "runtime/assets/desktop_runtime/environment_upload_plan_rgba8.texture.geasset",
+        .source_path = "source/textures/environment/d3d12_runtime_upload.ktx2",
+        .source_hash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        .provenance_id = "provenance.environment.d3d12_runtime_upload",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::ktx2_basis,
+        .color_space = mirakana::TextureColorSpaceV2::srgb,
+        .sampler_class = mirakana::TextureSamplerClassV2::color,
+        .width = 2,
+        .height = 2,
+        .mip_count = 1,
+        .estimated_source_bytes = 16,
+        .estimated_decoded_bytes = 16,
+        .max_estimated_gpu_bytes = 16,
+        .backend_policy_count = 5,
+        .unsupported_host_diagnostic_count = 0,
+        .payload_hash = mirakana::hash_asset_cooked_content("102030405060708090a0b0c0d0e0f001"),
+        .decode_stage = "ktxTexture2_CreateFromNamedFile.load-image-data",
+        .basis_transcode_stage = "ktxTexture2_TranscodeBasis.KTX_TTF_RGBA32",
+        .pixel_decode_invoked = false,
+        .basis_transcode_invoked = true,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+        .bytes = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0, 0x01},
+    };
+
+    const auto result = mirakana::runtime_rhi::execute_runtime_environment_texture_payload_upload(*device, payload);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.backend_kind == mirakana::rhi::BackendKind::d3d12);
+    MK_REQUIRE(result.backend_upload_ready);
+    MK_REQUIRE(result.upload_plan_ready);
+    MK_REQUIRE(result.backend_api_invoked);
+    MK_REQUIRE(result.gpu_upload_invoked);
+    MK_REQUIRE(result.readback_invoked);
+    MK_REQUIRE(result.readback_checksum_matched);
+    MK_REQUIRE(result.descriptor_sampled_texture_bound);
+    MK_REQUIRE(result.native_handle_accessed == false);
+    MK_REQUIRE(result.texture_desc.format == mirakana::rhi::Format::rgba8_unorm);
+    MK_REQUIRE(result.copy_region.buffer_row_length == 64);
+    MK_REQUIRE(result.row_pitch_bytes == 256);
+    MK_REQUIRE(result.source_row_bytes == 8);
+    MK_REQUIRE(result.uploaded_bytes == 512);
+    MK_REQUIRE(result.readback_bytes == 512);
+    MK_REQUIRE(result.compact_readback_bytes == payload.bytes.size());
+    MK_REQUIRE(result.source_checksum == result.readback_checksum);
+    MK_REQUIRE(result.descriptor_writes == 1);
+    MK_REQUIRE(result.resource_transitions >= 4);
+    MK_REQUIRE(result.copy_to_texture_count == 1);
+    MK_REQUIRE(result.copy_to_readback_count == 1);
+
+    const auto stats = device->stats();
+    MK_REQUIRE(stats.buffer_texture_copies >= 1);
+    MK_REQUIRE(stats.texture_buffer_copies >= 1);
+    MK_REQUIRE(stats.resource_transitions >= 2);
+    MK_REQUIRE(stats.fence_waits >= 2);
+}
+
+MK_TEST("d3d12 runtime environment texture upload execution records BC7 backend target readback evidence") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const mirakana::runtime::RuntimeEnvironmentTexturePayload payload{
+        .asset = mirakana::AssetId::from_name("textures/environment/d3d12_runtime_upload_bc7"),
+        .handle = mirakana::runtime::RuntimeAssetHandle{8},
+        .asset_path = "runtime/assets/desktop_runtime/environment_upload_plan_bc7.texture.geasset",
+        .source_path = "source/textures/environment/d3d12_runtime_upload_bc7.ktx2",
+        .source_hash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        .provenance_id = "provenance.environment.d3d12_runtime_upload_bc7",
+        .license_id = "LicenseRef-Proprietary",
+        .source_kind = mirakana::TextureSourceKindV2::ktx2_basis,
+        .color_space = mirakana::TextureColorSpaceV2::srgb,
+        .sampler_class = mirakana::TextureSamplerClassV2::color,
+        .width = 4,
+        .height = 4,
+        .mip_count = 1,
+        .estimated_source_bytes = 16,
+        .estimated_decoded_bytes = 64,
+        .max_estimated_gpu_bytes = 16,
+        .backend_policy_count = 1,
+        .unsupported_host_diagnostic_count = 0,
+        .payload_hash = mirakana::hash_asset_cooked_content("00112233445566778899aabbccddeeff"),
+        .decode_stage = "ktxTexture2_CreateFromNamedFile.LOAD_IMAGE_DATA",
+        .basis_transcode_stage = "ktxTexture2_TranscodeBasis.BC7_OR_ASTC_POLICY",
+        .pixel_decode_invoked = false,
+        .basis_transcode_invoked = true,
+        .gpu_upload_invoked = false,
+        .broad_asset_pipeline_ready = false,
+        .backend_decisions = {mirakana::TextureCookBackendDecisionV1{
+            .backend = mirakana::TextureCookBackendV1::d3d12,
+            .device_format = "DXGI_FORMAT_BC7_UNORM_SRGB",
+            .payload_transcode_target = "KTX_TTF_BC7_RGBA",
+            .format_support_evidence_id = "d3d12-bc7-format-support",
+            .official_format_support_api = "ID3D12Device::CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT)",
+            .compression = mirakana::TextureCompressionKindV2::bc7,
+            .transcode = mirakana::TextureCookTranscodeKindV1::basis_transcode_policy,
+            .estimated_gpu_bytes = 16,
+            .supported = true,
+            .host_validated = true,
+            .diagnostic = {},
+        }},
+        .bytes = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
+    };
+    mirakana::runtime_rhi::RuntimeEnvironmentTextureUploadExecutionOptions options;
+    options.backend_target = mirakana::TextureCookBackendV1::d3d12;
+    options.backend_target_compressed_payload = true;
+
+    const auto result =
+        mirakana::runtime_rhi::execute_runtime_environment_texture_payload_upload(*device, payload, options);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.backend_kind == mirakana::rhi::BackendKind::d3d12);
+    MK_REQUIRE(result.backend_target == mirakana::TextureCookBackendV1::d3d12);
+    MK_REQUIRE(result.backend_target_compressed_payload);
+    MK_REQUIRE(result.backend_upload_ready);
+    MK_REQUIRE(result.upload_plan_ready);
+    MK_REQUIRE(result.backend_format_support_proven);
+    MK_REQUIRE(result.backend_upload_plan.succeeded());
+    MK_REQUIRE(result.device_format == "DXGI_FORMAT_BC7_UNORM_SRGB");
+    MK_REQUIRE(result.payload_transcode_target == "KTX_TTF_BC7_RGBA");
+    MK_REQUIRE(result.format_support_evidence_id == "d3d12-bc7-format-support");
+    MK_REQUIRE(result.official_format_support_api.find("D3D12_FEATURE_FORMAT_SUPPORT") != std::string::npos);
+    MK_REQUIRE(result.compression == mirakana::TextureCompressionKindV2::bc7);
+    MK_REQUIRE(result.transcode == mirakana::TextureCookTranscodeKindV1::basis_transcode_policy);
+    MK_REQUIRE(result.backend_api_invoked);
+    MK_REQUIRE(result.gpu_upload_invoked);
+    MK_REQUIRE(result.readback_invoked);
+    MK_REQUIRE(result.readback_checksum_matched);
+    MK_REQUIRE(result.descriptor_sampled_texture_bound);
+    MK_REQUIRE(result.native_handle_accessed == false);
+    MK_REQUIRE(result.texture_desc.format == mirakana::rhi::Format::bc7_unorm_srgb);
+    MK_REQUIRE(result.copy_region.buffer_row_length == 64);
+    MK_REQUIRE(result.format_block_width == 4);
+    MK_REQUIRE(result.format_block_height == 4);
+    MK_REQUIRE(result.format_block_bytes == 16);
+    MK_REQUIRE(result.source_row_bytes == 16);
+    MK_REQUIRE(result.row_pitch_bytes == 256);
+    MK_REQUIRE(result.uploaded_bytes == 256);
+    MK_REQUIRE(result.readback_bytes == 256);
+    MK_REQUIRE(result.compact_readback_bytes == payload.bytes.size());
+    MK_REQUIRE(result.source_checksum == result.readback_checksum);
+    MK_REQUIRE(!result.strict_vulkan_ready);
+    MK_REQUIRE(!result.metal_host_ready);
+    MK_REQUIRE(!result.backend_parity_ready);
+    MK_REQUIRE(!result.broad_asset_pipeline_ready);
+
+    const auto stats = device->stats();
+    MK_REQUIRE(stats.buffer_texture_copies >= 1);
+    MK_REQUIRE(stats.texture_buffer_copies >= 1);
+    MK_REQUIRE(stats.resource_transitions >= 2);
+    MK_REQUIRE(stats.fence_waits >= 2);
 }
 
 MK_TEST("d3d12 rhi device rejects invalid buffer copy commands") {

@@ -3,6 +3,7 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/environment/environment_commercial_readiness.hpp"
 #include "mirakana/environment/environment_io.hpp"
 #include "mirakana/environment/environment_preset_pack.hpp"
 #include "mirakana/environment/environment_profile.hpp"
@@ -11,6 +12,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -27,6 +29,113 @@ namespace {
 }
 
 } // namespace
+
+MK_TEST("environment commercial readiness gate reports exact blockers before promotion") {
+    using Kind = mirakana::EnvironmentCommercialReadinessRequirementKind;
+    using Status = mirakana::EnvironmentCommercialReadinessRequirementStatus;
+
+    const auto row = [](Kind kind, Status status, std::string evidence_id, std::string package_counter) {
+        return mirakana::EnvironmentCommercialReadinessRequirementInputRow{
+            .kind = kind,
+            .status = status,
+            .evidence_id = std::move(evidence_id),
+            .package_counter = std::move(package_counter),
+            .package_visible = true,
+            .legal_notice_current = true,
+            .validation_guarded = true,
+        };
+    };
+
+    const auto plan = mirakana::plan_environment_commercial_readiness(mirakana::EnvironmentCommercialReadinessDesc{
+        .requirements =
+            {
+                row(Kind::strict_vulkan_aggregate, Status::host_gated,
+                    "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
+                    "environment_vulkan_strict_aggregate_ready"),
+                row(Kind::metal_host_aggregate, Status::host_gated,
+                    "renderer-metal-environment-aggregate-apple-host-evidence",
+                    "environment_metal_host_aggregate_ready"),
+                row(Kind::backend_parity, Status::blocked, "desktop-runtime-sample-game-environment-backend-parity",
+                    "environment_backend_parity_ready"),
+                row(Kind::platform_windows_d3d12, Status::ready,
+                    "desktop-runtime-sample-game-environment-ready-aggregate",
+                    "environment_platform_windows_d3d12_ready"),
+                row(Kind::platform_windows_vulkan, Status::host_gated,
+                    "desktop-runtime-sample-game-environment-platform-readiness",
+                    "environment_platform_windows_vulkan_ready"),
+                row(Kind::platform_linux_vulkan, Status::host_gated,
+                    "desktop-runtime-sample-game-environment-platform-readiness",
+                    "environment_platform_linux_vulkan_ready"),
+                row(Kind::platform_macos_metal, Status::host_gated, "renderer-metal-apple-host-evidence",
+                    "environment_platform_macos_metal_ready"),
+                row(Kind::platform_ios_metal, Status::host_gated, "ios-simulator-smoke",
+                    "environment_platform_ios_metal_ready"),
+                row(Kind::platform_android_vulkan, Status::host_gated, "mobile-packaging",
+                    "environment_platform_android_vulkan_ready"),
+                row(Kind::broad_optimization, Status::blocked,
+                    "desktop-runtime-sample-game-environment-optimization-measurement",
+                    "environment_broad_optimization_ready"),
+                row(Kind::asset_pipeline_openexr_ktx_basis, Status::ready,
+                    "desktop-runtime-sample-game-environment-asset-pipeline-openexr-ktx-basis-ready",
+                    "environment_asset_pipeline_openexr_ktx_basis_ready"),
+                row(Kind::aaa_preset_library, Status::ready,
+                    "desktop-runtime-sample-game-environment-preset-library-package",
+                    "environment_aaa_preset_library_ready"),
+                row(Kind::physical_weather_simulation, Status::blocked,
+                    "desktop-runtime-sample-game-environment-weather-simulation-package",
+                    "environment_physical_weather_simulation_ready"),
+                row(Kind::artist_workflow, Status::ready,
+                    "desktop-runtime-sample-game-environment-artist-workflow-package",
+                    "environment_artist_workflow_ready"),
+            },
+        .optional_dependency_legal_records_current = true,
+        .adjacent_broad_non_claims_declared = true,
+        .request_commercial_ready = true,
+    });
+
+    MK_REQUIRE(plan.status == mirakana::EnvironmentCommercialReadinessStatus::blocked);
+    MK_REQUIRE(!plan.environment_commercial_ready);
+    MK_REQUIRE(plan.required_row_count == 14U);
+    MK_REQUIRE(plan.ready_row_count == 4U);
+    MK_REQUIRE(plan.host_gated_row_count == 7U);
+    MK_REQUIRE(plan.blocked_row_count == 3U);
+    MK_REQUIRE(plan.missing_row_count == 0U);
+    MK_REQUIRE(plan.package_visible_row_count == 14U);
+    MK_REQUIRE(plan.validation_guarded_row_count == 14U);
+    MK_REQUIRE(plan.legal_notice_current_row_count == 14U);
+    MK_REQUIRE(plan.native_handle_access_count == 0U);
+    MK_REQUIRE(!plan.broad_environment_ready_claimed);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("environment commercial readiness rejects incomplete package-visible evidence") {
+    const auto plan = mirakana::plan_environment_commercial_readiness(mirakana::EnvironmentCommercialReadinessDesc{
+        .requirements =
+            {
+                mirakana::EnvironmentCommercialReadinessRequirementInputRow{
+                    .kind = mirakana::EnvironmentCommercialReadinessRequirementKind::artist_workflow,
+                    .status = mirakana::EnvironmentCommercialReadinessRequirementStatus::ready,
+                    .evidence_id = "desktop-runtime-sample-game-environment-artist-workflow-package",
+                    .package_counter = "environment_artist_workflow_ready",
+                    .package_visible = false,
+                    .legal_notice_current = true,
+                    .validation_guarded = false,
+                },
+            },
+        .optional_dependency_legal_records_current = false,
+        .adjacent_broad_non_claims_declared = false,
+        .request_commercial_ready = true,
+    });
+
+    MK_REQUIRE(plan.status == mirakana::EnvironmentCommercialReadinessStatus::blocked);
+    MK_REQUIRE(!plan.environment_commercial_ready);
+    MK_REQUIRE(plan.required_row_count == 14U);
+    MK_REQUIRE(plan.missing_row_count == 13U);
+    MK_REQUIRE(plan.package_visible_row_count == 0U);
+    MK_REQUIRE(plan.validation_guarded_row_count == 0U);
+    MK_REQUIRE(plan.legal_notice_current_row_count == 1U);
+    MK_REQUIRE(plan.blocked_row_count >= 13U);
+}
 
 MK_TEST("environment profile validation accepts clean first party defaults") {
     mirakana::EnvironmentProfileDesc desc{};

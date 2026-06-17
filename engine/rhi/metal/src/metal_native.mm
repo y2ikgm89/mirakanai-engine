@@ -8,6 +8,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 #include <cstdint>
+#include <exception>
 #include <memory>
 #include <string>
 #include <utility>
@@ -61,25 +62,18 @@ void end_render_encoder_object(void* object) noexcept {
         return MTLPixelFormatRGBA8Unorm;
     case Format::bgra8_unorm:
         return MTLPixelFormatBGRA8Unorm;
+    case Format::astc_4x4_unorm:
+        return MTLPixelFormatASTC_4x4_LDR;
+    case Format::astc_4x4_srgb:
+        return MTLPixelFormatASTC_4x4_sRGB;
     case Format::unknown:
     case Format::depth24_stencil8:
+    case Format::bc7_unorm:
+    case Format::bc7_unorm_srgb:
         return MTLPixelFormatInvalid;
     }
 
     return MTLPixelFormatInvalid;
-}
-
-[[nodiscard]] std::uint64_t bytes_per_pixel(Format format) noexcept {
-    switch (format) {
-    case Format::rgba8_unorm:
-    case Format::bgra8_unorm:
-        return 4;
-    case Format::unknown:
-    case Format::depth24_stencil8:
-        return 0;
-    }
-
-    return 0;
 }
 
 [[nodiscard]] MTLTextureUsage metal_texture_usage(TextureUsage usage) noexcept {
@@ -442,6 +436,96 @@ MetalRuntimeCommandBufferSubmitResult commit_and_wait_native_command_buffer(Meta
     return result;
 }
 
+MetalRuntimeTextureUploadResult upload_native_texture_bytes(MetalRuntimeTexture& texture,
+                                                            const MetalRuntimeTextureUploadDesc& desc) {
+    MetalRuntimeTextureUploadResult result;
+    if (!texture.owns_texture()) {
+        result.diagnostic = "Metal texture is required before texture upload";
+        return result;
+    }
+    if (desc.bytes == nullptr || desc.byte_count == 0) {
+        result.diagnostic = "Metal texture upload bytes are required";
+        return result;
+    }
+
+    const auto extent = texture.extent();
+    std::uint64_t row_bytes = 0;
+    std::uint64_t byte_count = 0;
+    try {
+        row_bytes = format_copy_row_bytes(texture.format(), extent.width);
+        byte_count = format_copy_compact_bytes(
+            texture.format(), Extent3D{.width = extent.width, .height = extent.height, .depth = 1});
+    } catch (const std::exception&) {
+        result.diagnostic = "Metal texture upload format is unsupported";
+        return result;
+    }
+    if (desc.byte_count != byte_count) {
+        result.diagnostic = "Metal texture upload byte count does not match format footprint";
+        return result;
+    }
+
+    if (texture.impl_->device_owner == nullptr || texture.impl_->device_owner->command_queue == nullptr ||
+        texture.impl_->device_owner->device == nullptr) {
+        result.diagnostic = "Metal command queue is required before texture upload";
+        return result;
+    }
+
+    id<MTLDevice> metal_device = (__bridge id<MTLDevice>)texture.impl_->device_owner->device;
+    id<MTLCommandQueue> command_queue = (__bridge id<MTLCommandQueue>)texture.impl_->device_owner->command_queue;
+    id<MTLTexture> metal_texture = (__bridge id<MTLTexture>)texture.impl_->texture;
+    id<MTLBuffer> upload_buffer = [metal_device newBufferWithBytes:desc.bytes
+                                                            length:static_cast<NSUInteger>(byte_count)
+                                                           options:MTLResourceStorageModeShared];
+    if (upload_buffer == nil) {
+        result.diagnostic = "Metal texture upload buffer creation failed";
+        return result;
+    }
+
+    id<MTLCommandBuffer> command_buffer = [command_queue commandBuffer];
+    id<MTLBlitCommandEncoder> blit_encoder = [command_buffer blitCommandEncoder];
+    if (command_buffer == nil || blit_encoder == nil) {
+        result.diagnostic = "Metal texture upload command creation failed";
+        release_objc_object((__bridge_retained void*)upload_buffer);
+        return result;
+    }
+
+    metal_set_gpu_debug_label(upload_buffer,
+                              metal_next_debug_label(texture.impl_->device_owner.get(), "GameEngine.RHI.Metal.UploadBuffer"));
+    metal_set_gpu_debug_label(command_buffer,
+                              metal_next_debug_label(texture.impl_->device_owner.get(), "GameEngine.RHI.Metal.UploadCommandBuffer"));
+    metal_set_gpu_debug_label(blit_encoder,
+                              metal_next_debug_label(texture.impl_->device_owner.get(), "GameEngine.RHI.Metal.UploadBlitEncoder"));
+
+    [blit_encoder copyFromBuffer:upload_buffer
+                    sourceOffset:0
+               sourceBytesPerRow:static_cast<NSUInteger>(row_bytes)
+             sourceBytesPerImage:static_cast<NSUInteger>(byte_count)
+                      sourceSize:MTLSizeMake(extent.width, extent.height, 1)
+                       toTexture:metal_texture
+                destinationSlice:0
+                destinationLevel:0
+               destinationOrigin:MTLOriginMake(0, 0, 0)];
+    [blit_encoder endEncoding];
+    [command_buffer commit];
+    [command_buffer waitUntilCompleted];
+
+    if (command_buffer.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal texture upload command buffer failed";
+        release_objc_object((__bridge_retained void*)upload_buffer);
+        return result;
+    }
+
+    result.uploaded = true;
+    result.extent = extent;
+    result.format = texture.format();
+    result.source_bytes = byte_count;
+    result.source_row_bytes = row_bytes;
+    result.diagnostic = "Metal texture upload completed";
+
+    release_objc_object((__bridge_retained void*)upload_buffer);
+    return result;
+}
+
 MetalRuntimeTextureReadbackResult read_native_texture_bytes(MetalRuntimeDevice& device, MetalRuntimeTexture& texture) {
     MetalRuntimeTextureReadbackResult result;
     if (!device.owns_command_queue()) {
@@ -453,15 +537,17 @@ MetalRuntimeTextureReadbackResult read_native_texture_bytes(MetalRuntimeDevice& 
         return result;
     }
 
-    const auto pixel_bytes = bytes_per_pixel(texture.format());
-    if (pixel_bytes == 0) {
+    const auto extent = texture.extent();
+    std::uint64_t row_bytes = 0;
+    std::uint64_t byte_count = 0;
+    try {
+        row_bytes = format_copy_row_bytes(texture.format(), extent.width);
+        byte_count = format_copy_compact_bytes(
+            texture.format(), Extent3D{.width = extent.width, .height = extent.height, .depth = 1});
+    } catch (const std::exception&) {
         result.diagnostic = "Metal texture readback format is unsupported";
         return result;
     }
-
-    const auto extent = texture.extent();
-    const auto row_bytes = static_cast<std::uint64_t>(extent.width) * pixel_bytes;
-    const auto byte_count = row_bytes * static_cast<std::uint64_t>(extent.height);
 
     id<MTLDevice> metal_device = (__bridge id<MTLDevice>)device.impl_->device;
     id<MTLCommandQueue> command_queue = (__bridge id<MTLCommandQueue>)device.impl_->command_queue;

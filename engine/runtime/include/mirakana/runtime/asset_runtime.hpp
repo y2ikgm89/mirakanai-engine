@@ -92,6 +92,7 @@ struct RuntimeEnvironmentTexturePayload {
     bool basis_transcode_invoked{false};
     bool gpu_upload_invoked{false};
     bool broad_asset_pipeline_ready{false};
+    std::vector<TextureCookBackendDecisionV1> backend_decisions;
     std::vector<std::uint8_t> bytes;
 };
 
@@ -111,6 +112,34 @@ struct RuntimeEnvironmentTexturePayloadUploadPlanResult {
     std::uint32_t mip_count{0};
     std::uint64_t payload_bytes{0};
     std::uint64_t upload_source_bytes{0};
+    bool runtime_codec_invoked{false};
+    bool runtime_basis_transcode_invoked{false};
+    bool backend_api_invoked{false};
+    bool gpu_upload_invoked{false};
+    bool broad_asset_pipeline_ready{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+struct RuntimeEnvironmentTextureBackendPayloadUploadPlanResult {
+    std::vector<RuntimeEnvironmentTexturePayloadUploadPlanDiagnostic> diagnostics;
+    TextureCookBackendV1 backend{TextureCookBackendV1::unknown};
+    std::string device_format;
+    std::string payload_transcode_target;
+    std::string format_support_evidence_id;
+    std::string official_format_support_api;
+    TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
+    TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    std::uint32_t mip_count{0};
+    std::uint32_t block_width{0};
+    std::uint32_t block_height{0};
+    std::uint32_t block_bytes{0};
+    std::uint64_t payload_bytes{0};
+    std::uint64_t upload_source_bytes{0};
+    bool upload_plan_ready{false};
+    bool backend_format_support_proven{false};
     bool runtime_codec_invoked{false};
     bool runtime_basis_transcode_invoked{false};
     bool backend_api_invoked{false};
@@ -361,6 +390,9 @@ runtime_environment_texture_payload(const RuntimeAssetRecord& record);
 [[nodiscard]] RuntimeEnvironmentTexturePayloadUploadPlanResult plan_runtime_environment_texture_payload_upload(
     const RuntimeEnvironmentTexturePayload& payload,
     TextureSourcePixelFormat expected_pixel_format = TextureSourcePixelFormat::rgba8_unorm);
+[[nodiscard]] RuntimeEnvironmentTextureBackendPayloadUploadPlanResult
+plan_runtime_environment_texture_backend_payload_upload(const RuntimeEnvironmentTexturePayload& payload,
+                                                        TextureCookBackendV1 backend);
 [[nodiscard]] RuntimePayloadAccessResult<RuntimeMeshPayload> runtime_mesh_payload(const RuntimeAssetRecord& record);
 [[nodiscard]] RuntimePayloadAccessResult<RuntimeMorphMeshCpuPayload>
 runtime_morph_mesh_cpu_payload(const RuntimeAssetRecord& record);

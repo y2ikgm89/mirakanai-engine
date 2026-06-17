@@ -34,6 +34,16 @@ struct MetalRuntimeDevice::Impl {
     }
 };
 
+struct MetalRuntimeDevicePrivateAccess {
+    [[nodiscard]] static void* device(const MetalRuntimeDevice& runtime_device) noexcept {
+        return runtime_device.impl_ != nullptr ? runtime_device.impl_->device : nullptr;
+    }
+
+    [[nodiscard]] static void* command_queue(const MetalRuntimeDevice& runtime_device) noexcept {
+        return runtime_device.impl_ != nullptr ? runtime_device.impl_->command_queue : nullptr;
+    }
+};
+
 struct MetalRuntimeCommandBuffer::Impl {
     std::shared_ptr<MetalRuntimeDevice::Impl> device_owner;
     void* command_buffer{nullptr};
