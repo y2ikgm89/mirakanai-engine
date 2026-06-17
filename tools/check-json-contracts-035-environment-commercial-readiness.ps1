@@ -233,7 +233,7 @@ $expectedEnvironmentPlatformReadinessRows = @(
         id = "environment_platform_linux_vulkan"
         claimId = "environment_platform_linux_vulkan_ready"
         state = "host-gated"
-        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "environment_platform_linux_vulkan_ready=0")
+        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "environment_platform_linux_vulkan_ready=0")
     },
     @{
         id = "environment_platform_macos_metal"

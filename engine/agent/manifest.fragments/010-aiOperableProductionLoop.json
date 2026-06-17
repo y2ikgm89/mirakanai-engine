@@ -5674,9 +5674,9 @@
         "dependsOn": [
           "environment_vulkan_strict_aggregate_ready"
         ],
-        "requiredEvidence": "Linux Vulkan recipe with required Vulkan SDK tools, validation layers, SPIR-V validation, strict runtime package smoke, and readback counters.",
+        "requiredEvidence": "Linux Vulkan readiness requires a first-party Linux desktop/runtime host plus a Linux package validation recipe, Vulkan SDK tools, Linux Vulkan ICD/runtime/driver evidence such as vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val validation, strict Linux runtime package smoke, and readback counters.",
         "forbiddenInference": "Windows Vulkan evidence or Linux compile-only evidence.",
-        "notes": "Linux Vulkan readiness is host-gated separately from the Windows strict Vulkan route."
+        "notes": "Linux Vulkan readiness is host-gated separately from the Windows strict Vulkan route. The current desktop runtime package lane and tools/package-desktop-runtime.ps1 are Win32/x64-windows evidence only and are forbidden as Linux Vulkan platform proof until a first-party Linux desktop/runtime host and Linux package recipe exist."
       },
       {
         "id": "environment_platform_macos_metal_ready",
@@ -5883,8 +5883,8 @@
           "spirv-val",
           "Vulkan SDK tools",
           "Vulkan validation layers",
-          "tools/package-desktop-runtime.ps1",
-          "tools/validate-installed-desktop-runtime.ps1"
+          "future first-party Linux desktop runtime package recipe",
+          "future Linux installed package validator"
         ],
         "validationRecipeIds": [
           "shader-toolchain",
@@ -5957,7 +5957,7 @@
           "ibl",
           "quality_budget"
         ],
-        "packageSmoke": "Linux Vulkan strict runtime package smoke plus --require-environment-platform-readiness",
+        "packageSmoke": "Future Linux desktop/runtime host package smoke with strict Vulkan renderer execution plus --require-environment-platform-readiness; current Win32 desktop runtime package smoke is forbidden as Linux evidence",
         "packageCounters": [
           "environment_platform_linux_vulkan_ready=0",
           "environment_platform_requires_linux_vulkan_host_evidence=1",
@@ -5965,9 +5965,9 @@
           "environment_all_platform_unconditional_ready=0"
         ],
         "hostGate": "vulkan-strict-linux",
-        "blockerReason": "Requires Linux Vulkan SDK, Linux Vulkan runtime/driver, validation layers, SPIR-V validation, strict package smoke, and Windows Vulkan evidence is forbidden.",
+        "blockerReason": "Requires a first-party Linux desktop/runtime host, Linux package recipe, Linux Vulkan SDK, Linux Vulkan ICD/runtime/driver, validation layers, SPIR-V validation, strict package smoke, and readback counters; Windows Vulkan and Win32 package evidence are forbidden.",
         "forbiddenInference": "Windows Vulkan evidence, desktop D3D12 evidence, Android Vulkan evidence, or Linux compile-only evidence.",
-        "notes": "Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts."
+        "notes": "Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
       },
       {
         "id": "environment_platform_macos_metal",
