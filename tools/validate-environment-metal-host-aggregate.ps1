@@ -61,4 +61,28 @@ Write-Host (
     "environment_metal_host_aggregate_commercial_ready=0"
 )
 
+Write-Host (
+    "environment-commercial-metal-evidence: environment_commercial_readiness_status=blocked " +
+    "environment_commercial_ready=0 " +
+    "environment_commercial_required_rows=14 " +
+    "environment_commercial_ready_rows=2 " +
+    "environment_commercial_host_gated_rows=5 " +
+    "environment_commercial_blocked_rows=7 " +
+    "environment_commercial_missing_rows=0 " +
+    "environment_commercial_package_visible_rows=14 " +
+    "environment_commercial_validation_guarded_rows=14 " +
+    "environment_commercial_legal_notice_current_rows=14 " +
+    "environment_commercial_optional_dependency_legal_records_current=1 " +
+    "environment_commercial_adjacent_broad_non_claims_declared=1 " +
+    "environment_commercial_native_handle_access=0 " +
+    "environment_commercial_broad_environment_ready_claimed=0 " +
+    "environment_commercial_vulkan_evidence_requested=0 " +
+    "environment_commercial_strict_vulkan_aggregate_ready=0 " +
+    "environment_commercial_windows_vulkan_ready=0 " +
+    "environment_commercial_metal_evidence_requested=1 " +
+    "environment_commercial_metal_host_aggregate_ready=1 " +
+    "environment_commercial_macos_metal_ready=1 " +
+    "environment_commercial_replay_hash=2026061703"
+)
+
 Write-Information "environment-metal-host-aggregate-check: ok" -InformationAction Continue
