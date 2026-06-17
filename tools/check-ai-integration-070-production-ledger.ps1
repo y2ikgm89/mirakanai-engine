@@ -1473,8 +1473,9 @@ foreach ($needle in @(
     "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_d3d12_ready=1",
     "environment_platform_windows_vulkan_ready=0", "environment_all_platform_unconditional_ready=0",
     "environment_optimization_measurement_status=host_evidence_required", "environment_optimization_measurement_required_workloads=7", "environment_broad_optimization_ready=0",
-    "--require-environment-texture-asset-pipeline-package", "environment_texture_asset_pipeline_package_status=ready", "payload texture decode and Basis transcode evidence", "one selected RGBA8 upload-plan-ready payload", "environment_texture_asset_pipeline_upload_plan_ready_records=1",
+    "--require-environment-texture-asset-pipeline-package", "--require-environment-texture-asset-pipeline-d3d12-upload", "environment_texture_asset_pipeline_package_status=ready", "payload texture decode and Basis transcode evidence", "one selected RGBA8 upload-plan-ready payload", "environment_texture_asset_pipeline_upload_plan_ready_records=1",
     "environment_texture_asset_pipeline_upload_plan_runtime_codec_invoked=0", "environment_texture_asset_pipeline_upload_plan_runtime_basis_transcode_invoked=0", "environment_texture_asset_pipeline_upload_plan_backend_api_invoked=0", "environment_texture_asset_pipeline_upload_plan_gpu_upload_invoked=0", "environment_texture_asset_pipeline_upload_plan_broad_ready=0",
+    "environment_texture_asset_pipeline_d3d12_upload_ready=1", "environment_texture_asset_pipeline_d3d12_upload_backend_api_invoked=1", "environment_texture_asset_pipeline_d3d12_upload_gpu_upload_invoked=1", "environment_texture_asset_pipeline_d3d12_upload_readback_invoked=1", "environment_texture_asset_pipeline_d3d12_upload_checksum_matched=1", "environment_texture_asset_pipeline_d3d12_upload_descriptor_bound=1", "environment_texture_asset_pipeline_d3d12_upload_row_pitch_bytes=256", "environment_texture_asset_pipeline_d3d12_upload_uploaded_bytes=256", "environment_texture_asset_pipeline_d3d12_upload_readback_bytes=256", "environment_texture_asset_pipeline_d3d12_upload_native_handle_access=0", "environment_texture_asset_pipeline_d3d12_upload_backend_parity_ready=0", "environment_texture_asset_pipeline_d3d12_upload_broad_ready=0",
     "production text/font/image/atlas/accessibility remains unsupported", "public native or RHI handle access remains unsupported", "general production renderer quality remains unsupported"
 )) {
     Assert-ContainsText $sample3dManifestText $needle $sample3dManifestPath
@@ -1526,7 +1527,7 @@ foreach ($needle in @(
     "mirakana/animation/skeleton.hpp",
     "--require-native-ui-overlay",
     "--require-native-ui-textured-sprite-atlas",
-    "--require-environment-texture-asset-pipeline-package",
+    "--require-environment-texture-asset-pipeline-package", "--require-environment-texture-asset-pipeline-d3d12-upload",
     "--require-environment-preset-library-package",
     "--require-environment-vulkan-strict-aggregate",
     "environment_preset_library_package_status=",
@@ -1543,7 +1544,7 @@ foreach ($needle in @(
     "environment_aaa_preset_library_ready=",
     "environment_preset_library_diagnostics=",
     "environment_texture_asset_pipeline_package_status=",
-    "environment_texture_asset_pipeline_backend_policy_rows=", "environment_texture_asset_pipeline_payload_records=", "environment_texture_asset_pipeline_payload_byte_rows=", "environment_texture_asset_pipeline_payload_hash_rows=",
+    "environment_texture_asset_pipeline_backend_policy_rows=", "environment_texture_asset_pipeline_payload_records=", "environment_texture_asset_pipeline_payload_byte_rows=", "environment_texture_asset_pipeline_payload_hash_rows=", "environment_texture_asset_pipeline_d3d12_upload_ready=", "environment_texture_asset_pipeline_d3d12_upload_backend_api_invoked=", "environment_texture_asset_pipeline_d3d12_upload_gpu_upload_invoked=", "environment_texture_asset_pipeline_d3d12_upload_readback_invoked=", "environment_texture_asset_pipeline_d3d12_upload_checksum_matched=", "environment_texture_asset_pipeline_d3d12_upload_descriptor_bound=", "environment_texture_asset_pipeline_d3d12_upload_source_row_bytes=", "environment_texture_asset_pipeline_d3d12_upload_row_pitch_bytes=", "environment_texture_asset_pipeline_d3d12_upload_uploaded_bytes=", "environment_texture_asset_pipeline_d3d12_upload_readback_bytes=", "environment_texture_asset_pipeline_d3d12_upload_compact_readback_bytes=", "environment_texture_asset_pipeline_d3d12_upload_descriptor_writes=", "environment_texture_asset_pipeline_d3d12_upload_resource_transitions=", "environment_texture_asset_pipeline_d3d12_upload_copy_to_texture_count=", "environment_texture_asset_pipeline_d3d12_upload_copy_to_readback_count=", "environment_texture_asset_pipeline_d3d12_upload_native_handle_access=", "environment_texture_asset_pipeline_d3d12_upload_backend_parity_ready=", "environment_texture_asset_pipeline_d3d12_upload_broad_ready=", "environment_texture_asset_pipeline_d3d12_upload_diagnostics=",
     "environment_vulkan_strict_aggregate_status=",
     "environment_vulkan_strict_aggregate_ready=",
     "environment_vulkan_strict_aggregate_descriptor_set_bindings=",

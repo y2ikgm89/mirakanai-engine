@@ -78,6 +78,71 @@ struct RuntimeTextureUploadResult {
     }
 };
 
+struct RuntimeEnvironmentTextureUploadExecutionOptions {
+    RuntimeTextureUploadOptions texture_upload_options;
+    TextureCookBackendV1 backend_target{TextureCookBackendV1::unknown};
+    bool create_sampled_texture_descriptor{true};
+    bool readback_after_upload{true};
+    bool wait_for_readback_completion{true};
+    bool backend_target_compressed_payload{false};
+};
+
+struct RuntimeEnvironmentTextureUploadExecutionResult {
+    runtime::RuntimeEnvironmentTexturePayloadUploadPlanResult upload_plan;
+    runtime::RuntimeEnvironmentTextureBackendPayloadUploadPlanResult backend_upload_plan;
+    RuntimeTextureUploadResult upload;
+    rhi::DescriptorSetLayoutHandle descriptor_set_layout;
+    rhi::DescriptorSetHandle descriptor_set;
+    rhi::BufferHandle readback_buffer;
+    rhi::TextureDesc texture_desc;
+    rhi::BufferTextureCopyRegion copy_region;
+    rhi::FenceValue readback_fence{};
+    rhi::BackendKind backend_kind{rhi::BackendKind::null};
+    std::string backend_name;
+    TextureCookBackendV1 backend_target{TextureCookBackendV1::unknown};
+    std::string device_format;
+    std::string payload_transcode_target;
+    std::string format_support_evidence_id;
+    std::string official_format_support_api;
+    TextureCompressionKindV2 compression{TextureCompressionKindV2::unknown};
+    TextureCookTranscodeKindV1 transcode{TextureCookTranscodeKindV1::unknown};
+    std::uint64_t source_row_bytes{0};
+    std::uint64_t row_pitch_bytes{0};
+    std::uint64_t uploaded_bytes{0};
+    std::uint64_t readback_bytes{0};
+    std::uint64_t compact_readback_bytes{0};
+    std::uint64_t source_checksum{0};
+    std::uint64_t readback_checksum{0};
+    std::size_t descriptor_writes{0};
+    std::size_t resource_transitions{0};
+    std::size_t copy_to_texture_count{0};
+    std::size_t copy_to_readback_count{0};
+    std::size_t format_support_queries{0};
+    std::uint32_t format_block_width{0};
+    std::uint32_t format_block_height{0};
+    std::uint32_t format_block_bytes{0};
+    bool upload_plan_ready{false};
+    bool backend_target_compressed_payload{false};
+    bool backend_format_support_proven{false};
+    bool backend_api_invoked{false};
+    bool gpu_upload_invoked{false};
+    bool readback_invoked{false};
+    bool readback_checksum_matched{false};
+    bool descriptor_sampled_texture_bound{false};
+    bool backend_upload_ready{false};
+    bool native_handle_accessed{false};
+    bool strict_vulkan_ready{false};
+    bool metal_host_ready{false};
+    bool backend_parity_ready{false};
+    bool broad_asset_pipeline_ready{false};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && upload_plan_ready && upload.succeeded() && gpu_upload_invoked &&
+               readback_invoked && readback_checksum_matched;
+    }
+};
+
 struct RuntimeMeshUploadOptions {
     rhi::BufferUsage vertex_usage{rhi::BufferUsage::vertex | rhi::BufferUsage::copy_destination};
     rhi::BufferUsage index_usage{rhi::BufferUsage::index | rhi::BufferUsage::copy_destination};
@@ -341,6 +406,11 @@ wait_for_runtime_uploads_on_queue(rhi::IRhiDevice& device, rhi::QueueKind consum
 [[nodiscard]] RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                                                                 const runtime::RuntimeTexturePayload& payload,
                                                                 const RuntimeTextureUploadOptions& options = {});
+
+[[nodiscard]] RuntimeEnvironmentTextureUploadExecutionResult
+execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
+                                                   const runtime::RuntimeEnvironmentTexturePayload& payload,
+                                                   const RuntimeEnvironmentTextureUploadExecutionOptions& options = {});
 
 [[nodiscard]] RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device,
                                                           const runtime::RuntimeMeshPayload& payload,

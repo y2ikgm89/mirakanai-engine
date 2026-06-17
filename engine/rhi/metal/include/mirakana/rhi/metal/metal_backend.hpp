@@ -210,6 +210,8 @@ struct MetalRuntimeTextureCreateResult;
 struct MetalRuntimeDrawableAcquireResult;
 struct MetalRuntimeRenderEncoderCreateResult;
 struct MetalRuntimeCommandBufferSubmitResult;
+struct MetalRuntimeTextureUploadDesc;
+struct MetalRuntimeTextureUploadResult;
 struct MetalRuntimeTextureReadbackResult;
 struct MetalRuntimeDrawablePresentResult;
 
@@ -270,6 +272,7 @@ class MetalRuntimeDevice {
                                                                        MetalRuntimeTexture& texture);
     friend MetalNativeEnvironmentFeatureHostEvidenceResult
     create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc);
+    friend struct MetalRuntimeDevicePrivateAccess;
 };
 
 class MetalRuntimeCommandBuffer {
@@ -346,6 +349,8 @@ class MetalRuntimeTexture {
     friend MetalRuntimeRenderEncoderCreateResult create_native_render_encoder(MetalRuntimeCommandBuffer& command_buffer,
                                                                               MetalRuntimeTexture& texture,
                                                                               const MetalRenderEncoderDesc& desc);
+    friend MetalRuntimeTextureUploadResult upload_native_texture_bytes(MetalRuntimeTexture& texture,
+                                                                       const MetalRuntimeTextureUploadDesc& desc);
     friend MetalRuntimeTextureReadbackResult read_native_texture_bytes(MetalRuntimeDevice& device,
                                                                        MetalRuntimeTexture& texture);
 };
@@ -458,6 +463,20 @@ struct MetalRuntimeCommandBufferSubmitResult {
     std::string diagnostic;
 };
 
+struct MetalRuntimeTextureUploadDesc {
+    const void* bytes{nullptr};
+    std::uint64_t byte_count{0};
+};
+
+struct MetalRuntimeTextureUploadResult {
+    bool uploaded{false};
+    Extent2D extent{};
+    Format format{Format::unknown};
+    std::uint64_t source_bytes{0};
+    std::uint64_t source_row_bytes{0};
+    std::string diagnostic;
+};
+
 struct MetalRuntimeTextureReadbackResult {
     bool read{false};
     Extent2D extent{};
@@ -511,6 +530,8 @@ create_native_render_encoder(MetalRuntimeCommandBuffer& command_buffer, MetalRun
                              const MetalRenderEncoderDesc& desc = {});
 [[nodiscard]] MetalRuntimeCommandBufferSubmitResult
 commit_and_wait_native_command_buffer(MetalRuntimeCommandBuffer& command_buffer);
+[[nodiscard]] MetalRuntimeTextureUploadResult upload_native_texture_bytes(MetalRuntimeTexture& texture,
+                                                                          const MetalRuntimeTextureUploadDesc& desc);
 [[nodiscard]] MetalRuntimeTextureReadbackResult read_native_texture_bytes(MetalRuntimeDevice& device,
                                                                           MetalRuntimeTexture& texture);
 [[nodiscard]] MetalRuntimeDrawablePresentResult present_native_drawable(MetalRuntimeCommandBuffer& command_buffer,

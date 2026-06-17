@@ -115,6 +115,12 @@ namespace {
         return DXGI_FORMAT_B8G8R8A8_UNORM;
     case Format::depth24_stencil8:
         return DXGI_FORMAT_D24_UNORM_S8_UINT;
+    case Format::bc7_unorm:
+        return DXGI_FORMAT_BC7_UNORM;
+    case Format::bc7_unorm_srgb:
+        return DXGI_FORMAT_BC7_UNORM_SRGB;
+    case Format::astc_4x4_unorm:
+    case Format::astc_4x4_srgb:
     case Format::unknown:
         break;
     }
@@ -127,6 +133,10 @@ namespace {
 
 [[nodiscard]] bool is_d3d12_depth_stencil_format(Format format) noexcept {
     return format == Format::depth24_stencil8;
+}
+
+[[nodiscard]] bool is_d3d12_sampled_texture_format(Format format) noexcept {
+    return is_d3d12_color_render_format(format) || format == Format::bc7_unorm || format == Format::bc7_unorm_srgb;
 }
 
 [[nodiscard]] DXGI_FORMAT to_dxgi_vertex_format(VertexFormat format) noexcept {
@@ -196,6 +206,10 @@ namespace {
     case DXGI_FORMAT_D24_UNORM_S8_UINT:
     case DXGI_FORMAT_R24G8_TYPELESS:
         return Format::depth24_stencil8;
+    case DXGI_FORMAT_BC7_UNORM:
+        return Format::bc7_unorm;
+    case DXGI_FORMAT_BC7_UNORM_SRGB:
+        return Format::bc7_unorm_srgb;
     default:
         break;
     }
@@ -434,7 +448,6 @@ struct D3d12LinearTextureFootprint {
         throw std::invalid_argument("d3d12 rhi buffer texture copy offset must be 512-byte aligned");
     }
 
-    const auto texel_bytes = static_cast<std::uint64_t>(bytes_per_texel(format));
     const auto row_length = region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
     const auto image_height =
         region.buffer_image_height == 0 ? region.texture_extent.height : region.buffer_image_height;
@@ -444,16 +457,20 @@ struct D3d12LinearTextureFootprint {
     if (image_height < region.texture_extent.height) {
         throw std::invalid_argument("d3d12 rhi buffer texture copy image height is smaller than the copy height");
     }
+    if (format_is_block_compressed(format) &&
+        ((region.buffer_row_length != 0 && row_length % format_block_width(format) != 0U) ||
+         (region.buffer_image_height != 0 && image_height % format_block_height(format) != 0U))) {
+        throw std::invalid_argument("d3d12 rhi block-compressed copy layout must align to format blocks");
+    }
 
-    const auto row_pitch =
-        checked_mul_u64(row_length, texel_bytes, "d3d12 rhi buffer texture copy row pitch overflowed");
+    const auto row_pitch = format_copy_row_bytes(format, row_length);
     if (row_pitch == 0 || row_pitch > (std::numeric_limits<UINT>::max)() ||
         row_pitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT != 0) {
         throw std::invalid_argument("d3d12 rhi buffer texture copy row pitch must be 256-byte aligned");
     }
 
-    const auto image_pitch =
-        checked_mul_u64(image_height, row_pitch, "d3d12 rhi buffer texture copy image pitch overflowed");
+    const auto image_pitch = checked_mul_u64(format_copy_row_count(format, image_height), row_pitch,
+                                             "d3d12 rhi buffer texture copy image pitch overflowed");
     const auto copy_bytes =
         checked_mul_u64(region.texture_extent.depth, image_pitch, "d3d12 rhi buffer texture copy footprint overflowed");
     const auto required_bytes =
@@ -1751,6 +1768,16 @@ struct DeviceContext::Impl {
         return resource_heaps[handle.value - 1U] != nullptr;
     }
 
+    [[nodiscard]] bool resource_in_common_state(NativeResourceHandle handle) const noexcept {
+        if (handle.value == 0) {
+            return true;
+        }
+        if (handle.value > resource_states.size()) {
+            return false;
+        }
+        return resource_states[handle.value - 1U] == D3D12_RESOURCE_STATE_COMMON;
+    }
+
     [[nodiscard]] bool resources_share_placed_alias_group(NativeResourceHandle lhs,
                                                           NativeResourceHandle rhs) const noexcept {
         if (lhs.value == 0 || rhs.value == 0 || lhs.value > resource_heaps.size() ||
@@ -2714,7 +2741,7 @@ bool DeviceContext::write_descriptor(const NativeDescriptorWriteDesc& desc) {
         break;
     }
     case DescriptorType::sampled_texture: {
-        const bool color_srv = is_d3d12_color_render_format(from_dxgi_format(resource_desc.Format));
+        const bool color_srv = is_d3d12_sampled_texture_format(from_dxgi_format(resource_desc.Format));
         const bool sampled_depth_srv = resource_desc.Format == DXGI_FORMAT_R24G8_TYPELESS &&
                                        (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) != 0;
         const bool sampled_texture_2d =
@@ -3148,6 +3175,10 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
     ID3D12Resource* after_resource = after.value == 0 ? nullptr : impl_->resource_record(after);
     if (command_record == nullptr || command_record->closed || (before.value != 0 && before_resource == nullptr) ||
         (after.value != 0 && after_resource == nullptr)) {
+        return false;
+    }
+    if (command_record->queue == QueueKind::copy &&
+        (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
         return false;
     }
 

@@ -176,19 +176,46 @@ $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentTextureAssetPipelinePackage = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-package"
-$requiresEnvironmentPresetLibraryPackage = @($SmokeArgs) -contains "--require-environment-preset-library-package"
+$requiresEnvironmentTextureAssetPipelineD3d12Upload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-upload"
+$requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-d3d12-compressed-upload"
+$requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-compressed-upload"
+$requiresEnvironmentTextureAssetPipelineMetalCompressedUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-metal-compressed-upload"
+$requiresEnvironmentCommercialReadiness = @($SmokeArgs) -contains "--require-environment-commercial-readiness"
+$requiresEnvironmentTextureAssetPipelineVulkanUpload = @($SmokeArgs) -contains "--require-environment-texture-asset-pipeline-vulkan-upload"
+$requiresEnvironmentArtistWorkflowPackage = (@($SmokeArgs) -contains "--require-environment-artist-workflow-package") -or
+    $requiresEnvironmentCommercialReadiness
+$requiresEnvironmentAssetPipelineOpenExrKtxBasisReady = (@($SmokeArgs) -contains "--require-environment-asset-pipeline-openexr-ktx-basis-ready") -or
+    $requiresEnvironmentArtistWorkflowPackage -or
+    $requiresEnvironmentCommercialReadiness
+$requiresEnvironmentPresetLibraryPackage = (@($SmokeArgs) -contains "--require-environment-preset-library-package") -or
+    $requiresEnvironmentArtistWorkflowPackage -or
+    $requiresEnvironmentCommercialReadiness
 $requiresEnvironmentVulkanStrictAggregate = @($SmokeArgs) -contains "--require-environment-vulkan-strict-aggregate"
-$requiresEnvironmentBackendParity = @($SmokeArgs) -contains "--require-environment-backend-parity"
-$requiresEnvironmentPlatformReadiness = @($SmokeArgs) -contains "--require-environment-platform-readiness"
+$requiresEnvironmentBackendParity = (@($SmokeArgs) -contains "--require-environment-backend-parity") -or
+    $requiresEnvironmentCommercialReadiness
+$requiresEnvironmentPlatformReadiness = (@($SmokeArgs) -contains "--require-environment-platform-readiness") -or
+    $requiresEnvironmentCommercialReadiness
 $requiresEnvironmentOptimizationMeasurement = @($SmokeArgs) -contains "--require-environment-optimization-measurement"
-$requiresEnvironmentWeatherSimulationPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-package"
+$requiresEnvironmentWeatherSimulationVulkanSolverPackage = @($SmokeArgs) -contains "--require-environment-weather-simulation-vulkan-solver-package"
+$requiresEnvironmentWeatherSimulationPackage = (@($SmokeArgs) -contains "--require-environment-weather-simulation-package") -or
+    $requiresEnvironmentWeatherSimulationVulkanSolverPackage -or
+    $requiresEnvironmentArtistWorkflowPackage -or
+    $requiresEnvironmentCommercialReadiness
 $requiresEnvironmentProfile = (@($SmokeArgs) -contains "--require-environment-profile") -or
     $requiresEnvironmentTextureAssetPipelinePackage -or
+    $requiresEnvironmentTextureAssetPipelineD3d12Upload -or
+    $requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload -or
+    $requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload -or
+    $requiresEnvironmentTextureAssetPipelineMetalCompressedUpload -or
+    $requiresEnvironmentTextureAssetPipelineVulkanUpload -or
+    $requiresEnvironmentAssetPipelineOpenExrKtxBasisReady -or
     $requiresEnvironmentPresetLibraryPackage -or
     $requiresEnvironmentVulkanStrictAggregate -or
     $requiresEnvironmentBackendParity -or
     $requiresEnvironmentPlatformReadiness -or
-    $requiresEnvironmentOptimizationMeasurement
+    $requiresEnvironmentOptimizationMeasurement -or
+    $requiresEnvironmentArtistWorkflowPackage -or
+    $requiresEnvironmentCommercialReadiness
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
@@ -213,7 +240,9 @@ $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environme
 $requiresEnvironmentReadyAggregate = (@($SmokeArgs) -contains "--require-environment-ready-aggregate") -or
     $requiresEnvironmentBackendParity -or
     $requiresEnvironmentPlatformReadiness -or
-    $requiresEnvironmentOptimizationMeasurement
+    $requiresEnvironmentOptimizationMeasurement -or
+    $requiresEnvironmentArtistWorkflowPackage -or
+    $requiresEnvironmentCommercialReadiness
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -1159,6 +1188,205 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "environment_texture_asset_pipeline_upload_plan_broad_ready" = "0"
                 "environment_texture_asset_pipeline_diagnostics" = "0"
             }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineD3d12Upload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline D3D12 upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_d3d12_upload_requested" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_ready" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_source_row_bytes" = "4"
+                "environment_texture_asset_pipeline_d3d12_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_upload_compact_readback_bytes" = "4"
+                "environment_texture_asset_pipeline_d3d12_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_d3d12_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_upload_diagnostics" = "0"
+            }
+        foreach ($field in @("environment_texture_asset_pipeline_d3d12_upload_resource_transitions")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 environment texture upload positive count: $field"
+            }
+        }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineD3d12CompressedUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline D3D12 BC7 compressed upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_requested" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_ready" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_backend_format_support_proven" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_source_row_bytes" = "16"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_compact_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_block_width" = "4"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_block_height" = "4"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_block_bytes" = "16"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_d3d12_compressed_upload_diagnostics" = "0"
+            }
+        foreach ($field in @("environment_texture_asset_pipeline_d3d12_compressed_upload_resource_transitions")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 environment texture compressed upload positive count: $field"
+            }
+        }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineVulkanCompressedUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline Vulkan BC7 compressed upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_requested" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_ready" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_backend_format_support_proven" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_source_row_bytes" = "16"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_compact_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_block_width" = "4"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_block_height" = "4"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_block_bytes" = "16"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_metal_host_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_diagnostics" = "0"
+            }
+        foreach ($field in @(
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_resource_transitions",
+                "environment_texture_asset_pipeline_vulkan_compressed_upload_format_support_queries"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan environment texture compressed upload positive count: $field"
+            }
+        }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineMetalCompressedUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline Metal ASTC compressed upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_metal_compressed_upload_requested" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_ready" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_backend_format_support_proven" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_texture_usage_shader_resource" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_texture_usage_copy_source" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_source_row_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_row_pitch_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_uploaded_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_compact_readback_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_block_width" = "4"
+                "environment_texture_asset_pipeline_metal_compressed_upload_block_height" = "4"
+                "environment_texture_asset_pipeline_metal_compressed_upload_block_bytes" = "16"
+                "environment_texture_asset_pipeline_metal_compressed_upload_format_support_evidence_rows" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_strict_vulkan_ready" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_metal_host_ready" = "1"
+                "environment_texture_asset_pipeline_metal_compressed_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_metal_compressed_upload_diagnostics" = "0"
+            }
+    }
+    if ($requiresEnvironmentTextureAssetPipelineVulkanUpload) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment texture asset-pipeline Vulkan upload execution" `
+            -ExpectedFields @{
+                "environment_texture_asset_pipeline_vulkan_upload_requested" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_ready" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_strict_ready" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_backend_api_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_gpu_upload_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_readback_invoked" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_checksum_matched" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_descriptor_bound" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_source_row_bytes" = "4"
+                "environment_texture_asset_pipeline_vulkan_upload_row_pitch_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_upload_uploaded_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_upload_readback_bytes" = "256"
+                "environment_texture_asset_pipeline_vulkan_upload_compact_readback_bytes" = "4"
+                "environment_texture_asset_pipeline_vulkan_upload_descriptor_writes" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_copy_to_texture_count" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_copy_to_readback_count" = "1"
+                "environment_texture_asset_pipeline_vulkan_upload_native_handle_access" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_metal_host_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_backend_parity_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_broad_ready" = "0"
+                "environment_texture_asset_pipeline_vulkan_upload_diagnostics" = "0"
+            }
+        foreach ($field in @("environment_texture_asset_pipeline_vulkan_upload_resource_transitions")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan environment texture upload positive count: $field"
+            }
+        }
+    }
+    if ($requiresEnvironmentAssetPipelineOpenExrKtxBasisReady) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment asset-pipeline OpenEXR/KTX/Basis ready closeout" `
+            -ExpectedFields @{
+                "environment_asset_pipeline_openexr_ktx_basis_ready_requested" = "1"
+                "environment_asset_pipeline_openexr_ktx_basis_ready" = "1"
+                "environment_asset_pipeline_openexr_ktx_basis_package_ready" = "1"
+                "environment_asset_pipeline_openexr_ktx_basis_source_to_package_rows" = "3"
+                "environment_asset_pipeline_openexr_ktx_basis_backend_decision_rows" = "15"
+                "environment_asset_pipeline_openexr_ktx_basis_runtime_upload_rows" = "5"
+                "environment_asset_pipeline_openexr_ktx_basis_host_validated_rows" = "5"
+                "environment_asset_pipeline_openexr_ktx_basis_fail_closed_diagnostics" = "12"
+                "environment_asset_pipeline_openexr_ktx_basis_backend_parity_ready" = "0"
+                "environment_asset_pipeline_openexr_ktx_basis_commercial_ready" = "0"
+                "environment_asset_pipeline_openexr_ktx_basis_broad_environment_ready" = "0"
+                "environment_asset_pipeline_openexr_ktx_basis_diagnostics" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_asset_pipeline_openexr_ktx_basis_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive OpenEXR/KTX/Basis asset-pipeline replay hash"
+        }
     }
     if ($requiresEnvironmentPresetLibraryPackage) {
         if (-not $requiresEnvironmentReadyAggregate -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
@@ -6031,7 +6259,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_production_solver_package_counter_rows" = "1"
                 "environment_weather_simulation_production_solver_core_review_ready" = "1"
                 "environment_weather_simulation_production_solver_core_rows" = "1"
+                "environment_weather_simulation_broad_physical_accuracy_review_ready" = "1"
+                "environment_weather_simulation_broad_physical_accuracy_rows" = "1"
+                "environment_weather_simulation_visual_quality_review_ready" = "1"
+                "environment_weather_simulation_visual_quality_rows" = "1"
                 "environment_weather_simulation_production_solver_ready" = "0"
+                "environment_weather_simulation_physical_weather_ready" = "0"
                 "environment_weather_simulation_solver_budget_diagnostics" = "0"
                 "environment_weather_simulation_validation_dataset_status" = "ready"
                 "environment_weather_simulation_validation_dataset_ready" = "1"
@@ -6062,6 +6295,39 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_weather_simulation_artist_control_physical_weather_ready" = "0"
                 "environment_weather_simulation_artist_control_diagnostics" = "0"
             }
+        if ($requiresEnvironmentWeatherSimulationVulkanSolverPackage) {
+            Assert-InstalledDesktopRuntimeStatusFields `
+                -SmokeOutput $smokeOutput `
+                -EscapedGameTarget $escapedGameTarget `
+                -Context "environment weather simulation Vulkan solver package" `
+                -ExpectedFields @{
+                    "environment_weather_simulation_vulkan_gpu_solver_ready" = "1"
+                    "environment_weather_simulation_vulkan_gpu_solver_strict_ready" = "1"
+                    "environment_weather_simulation_vulkan_gpu_solver_cells" = "4"
+                    "environment_weather_simulation_vulkan_gpu_solver_dispatches" = "1"
+                    "environment_weather_simulation_vulkan_gpu_solver_descriptor_set_bindings" = "3"
+                    "environment_weather_simulation_vulkan_gpu_solver_native_handle_access" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_backend_parity_ready" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_d3d12_inferred" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_metal_inferred" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_failure_stage" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_budget_us" = "500000"
+                    "environment_weather_simulation_vulkan_gpu_solver_over_budget" = "0"
+                    "environment_weather_simulation_vulkan_gpu_solver_profiler_budget_ready" = "1"
+                    "environment_weather_simulation_production_solver_ready" = "0"
+                    "environment_weather_simulation_physical_weather_ready" = "0"
+                    "environment_physical_weather_simulation_ready" = "0"
+                }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_vulkan_gpu_solver_barriers=[2-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment weather simulation solver sync2 barrier evidence."
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_vulkan_gpu_solver_hash=[1-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove a positive Vulkan environment weather simulation solver readback hash."
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_vulkan_gpu_solver_elapsed_us=[1-9]\d*\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove a positive Vulkan environment weather simulation solver elapsed-time counter."
+            }
+        }
         foreach ($field in @(
                 "environment_weather_simulation_total_water_before_mg",
                 "environment_weather_simulation_total_water_after_mg",
@@ -6106,6 +6372,71 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_weather_simulation_artist_control_hash=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove a positive environment weather simulation artist control hash."
         }
+    }
+    if ($requiresEnvironmentArtistWorkflowPackage) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment artist workflow package" `
+            -ExpectedFields @{
+                "environment_artist_workflow_package_status" = "ready"
+                "environment_artist_workflow_package_ready" = "1"
+                "environment_artist_workflow_ready" = "1"
+                "environment_artist_workflow_visible_shell_ready" = "1"
+                "environment_artist_workflow_requirement_rows" = "8"
+                "environment_artist_workflow_ready_rows" = "8"
+                "environment_artist_workflow_external_execution_rows" = "8"
+                "environment_artist_workflow_operator_review_rows" = "1"
+                "environment_artist_workflow_walkthrough_package_ready" = "1"
+                "environment_artist_workflow_walkthrough_steps" = "8"
+                "environment_artist_workflow_asset_pipeline_ready" = "1"
+                "environment_artist_workflow_preset_library_ready" = "1"
+                "environment_artist_workflow_validation_remediation_ready" = "1"
+                "environment_artist_workflow_revision_safety_ready" = "1"
+                "environment_artist_workflow_editor_core_execution_boundary_ready" = "1"
+                "environment_artist_workflow_operator_review_ready" = "1"
+                "environment_artist_workflow_external_execution_ready" = "1"
+                "environment_artist_workflow_editor_core_backend_execution" = "0"
+                "environment_artist_workflow_editor_core_package_script_execution" = "0"
+                "environment_artist_workflow_editor_core_validation_recipe_execution" = "0"
+                "environment_artist_workflow_native_handle_access" = "0"
+                "environment_artist_workflow_diagnostics" = "0"
+                "environment_artist_workflow_commercial_ready" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_artist_workflow_retained_ui_rows=(1[9-9]|[2-9]\d+)\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove retained artist workflow UI row evidence."
+        }
+    }
+    if ($requiresEnvironmentCommercialReadiness) {
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment commercial readiness" `
+            -ExpectedFields @{
+                "environment_commercial_readiness_status" = "blocked"
+                "environment_commercial_ready" = "0"
+                "environment_commercial_required_rows" = "14"
+                "environment_commercial_ready_rows" = "4"
+                "environment_commercial_host_gated_rows" = "7"
+                "environment_commercial_blocked_rows" = "3"
+                "environment_commercial_missing_rows" = "0"
+                "environment_commercial_package_visible_rows" = "14"
+                "environment_commercial_validation_guarded_rows" = "14"
+                "environment_commercial_legal_notice_current_rows" = "14"
+                "environment_commercial_optional_dependency_legal_records_current" = "1"
+                "environment_commercial_adjacent_broad_non_claims_declared" = "1"
+                "environment_commercial_native_handle_access" = "0"
+                "environment_commercial_broad_environment_ready_claimed" = "0"
+            }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_commercial_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove a positive environment commercial readiness replay hash."
+        }
+    }
+    if (-not $requiresEnvironmentArtistWorkflowPackage -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_artist_workflow_ready=1\b") {
+        Write-Error "Installed sample_desktop_runtime_game smoke must not claim environment_artist_workflow_ready without the artist workflow package recipe."
+    }
+    if (-not $requiresEnvironmentCommercialReadiness -and $smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_commercial_ready=1\b") {
+        Write-Error "Installed sample_desktop_runtime_game smoke must not claim environment_commercial_ready without the commercial readiness recipe."
     }
     if ($requiresEnvironmentVulkanStrictAggregate) {
         Assert-InstalledDesktopRuntimeStatusFields `

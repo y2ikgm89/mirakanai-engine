@@ -744,7 +744,26 @@ plan_environment_weather_simulation_solver_budget(const EnvironmentWeatherSimula
         desc.validation_dataset_ready && desc.validation_images_ready && desc.artist_controls_ready &&
         !plan.exposes_native_handles && plan.diagnostics.empty();
     plan.production_solver_core_rows = plan.production_solver_core_review_ready ? 1U : 0U;
+    if (desc.broad_physical_accuracy_reviewed && !plan.production_solver_core_review_ready) {
+        add_diagnostic(
+            plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_broad_physical_accuracy_evidence,
+            "broad_physical_accuracy_reviewed",
+            "weather simulation broad physical accuracy review requires ready production solver core evidence");
+    }
+    plan.broad_physical_accuracy_review_ready = desc.broad_physical_accuracy_reviewed &&
+                                                plan.production_solver_core_review_ready &&
+                                                !plan.exposes_native_handles && plan.diagnostics.empty();
+    plan.broad_physical_accuracy_rows = plan.broad_physical_accuracy_review_ready ? 1U : 0U;
+    if (desc.visual_quality_reviewed && !plan.broad_physical_accuracy_review_ready) {
+        add_diagnostic(plan, EnvironmentWeatherSimulationSolverBudgetDiagnosticCode::missing_visual_quality_evidence,
+                       "visual_quality_reviewed",
+                       "weather simulation visual quality review requires ready broad physical accuracy evidence");
+    }
+    plan.visual_quality_review_ready = desc.visual_quality_reviewed && plan.broad_physical_accuracy_review_ready &&
+                                       !plan.exposes_native_handles && plan.diagnostics.empty();
+    plan.visual_quality_rows = plan.visual_quality_review_ready ? 1U : 0U;
     plan.production_solver_ready = false;
+    plan.physical_weather_ready = false;
 
     if (plan.cpu_budget_over || plan.gpu_budget_over) {
         plan.status = EnvironmentWeatherSimulationSolverBudgetStatus::budget_exceeded;

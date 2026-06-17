@@ -87,6 +87,13 @@ struct NativeEditorReviewedProcessResult {
     std::string diagnostic;
 };
 
+struct NativeEditorEnvironmentArtistWorkflowCommandPlanRow {
+    std::string command_id;
+    std::string label;
+    EnvironmentArtistWorkflowCommandPlan dry_run;
+    EnvironmentArtistWorkflowCommandPlan apply;
+};
+
 class NativeEditorApp {
   public:
     explicit NativeEditorApp(NativeEditorLaunchOptions options);
@@ -122,6 +129,10 @@ class NativeEditorApp {
     [[nodiscard]] std::span<const EditorDiagnosticRow> console_rows() const noexcept;
     [[nodiscard]] const EditorResourcePanelModel& resources() const noexcept;
     [[nodiscard]] const EditorAiCommandPanelModel& ai_commands() const noexcept;
+    [[nodiscard]] std::span<const NativeEditorEnvironmentArtistWorkflowCommandPlanRow>
+    environment_artist_workflow_command_plans() const noexcept;
+    [[nodiscard]] const EnvironmentArtistWorkflowExecutionReviewModel&
+    environment_artist_workflow_execution_review() const noexcept;
     [[nodiscard]] const EditorProfilerPanelModel& profiler() const noexcept;
     [[nodiscard]] const EditorTimelinePanelModel& timeline() const noexcept;
     [[nodiscard]] std::vector<ProjectSettingsError> project_settings_errors() const;

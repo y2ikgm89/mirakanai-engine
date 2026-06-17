@@ -44,6 +44,11 @@ function Get-ValidationRecipeCommandPlan {
         $diagMetalEnvironmentAggregate = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Environment Metal host aggregate evidence requires macOS with full Xcode/Metal tools, delegates to renderer-metal-apple-host-evidence, and only then emits environment_metal_host_aggregate_* counters for selected sky, fog, cloud, precipitation, IBL, Metal resource, pipeline, synchronization, draw/dispatch, and readback proof. It does not mark backend parity, all-platform readiness, broad optimization, commercial readiness, Vulkan readiness, D3D12 readiness, or broad environment_ready ready by inference.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagMetalEnvironmentAggregate)
     }
+    elseif ($RecipeName -eq 'environment-weather-metal-solver-host-gate') {
+        $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-environment-weather-metal-solver-host-gate.ps1'
+        $diagMetalWeatherSolver = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Environment weather Metal solver evidence requires macOS with full Xcode/Metal tools. It validates only the selected Metal compute weather solver metallib, command queue/buffer, compute pipeline, buffer bindings 0/1/2, one dispatch, readback hash, and elapsed/budget counters. It does not run the Metal aggregate recipe and must not mark backend parity, Vulkan/Metal solver parity, production solver readiness, complete physical weather simulation, all-platform readiness, commercial readiness, or broad environment_ready ready by inference.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagMetalWeatherSolver)
+    }
     elseif ($RecipeName -eq 'desktop-game-runtime') {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-desktop-game-runtime.ps1'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @()
@@ -312,6 +317,81 @@ function Get-ValidationRecipeCommandPlan {
         $diagEnvironmentVulkanStrict = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment aggregate validation is restricted to the reviewed sample_desktop_runtime_game Vulkan package lane and proves selected profile v2, Vulkan physical sky, height fog, IBL renderer execution, volumetric fog compute, volumetric cloud renderer execution, rain precipitation renderer execution, quality-budget counters, descriptor-set bindings, strict toolchain rows, Vulkan validation layer enablement, SPIR-V validation, dynamic rendering, synchronization2, resource usage/layout rows, synchronization2 barriers, draw/dispatch/upload/readback counters, and zero diagnostics/native-handle/fallback counters without claiming D3D12 by inference, Metal host readiness, backend parity, broad optimization, all-platform readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentVulkanStrict)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-upload') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-texture-asset-pipeline-vulkan-upload'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentTextureVulkanUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment texture asset-pipeline upload validation is restricted to the reviewed sample_desktop_runtime_game Vulkan runtime RHI upload/readback lane. It proves the selected package RGBA8 payload through IRhiDevice texture upload, descriptor write, Vulkan readback, compact checksum comparison, row-pitch evidence, positive resource transitions, and zero native-handle/Metal/backend-parity/broad-ready counters without requiring scene SPIR-V artifacts or claiming backend-target compressed payload execution.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentTextureVulkanUpload)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-texture-asset-pipeline-d3d12-compressed-upload') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-texture-asset-pipeline-d3d12-compressed-upload'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentTextureD3d12CompressedUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment texture asset-pipeline compressed upload validation is restricted to the reviewed sample_desktop_runtime_game D3D12 WARP backend-target BC7 lane. It proves official D3D12 format-support evidence, BC7 block footprint rows, IRhiDevice texture upload, descriptor write, D3D12 readback, compact checksum comparison, row-pitch evidence, positive resource transitions, and zero native-handle/backend-parity/broad-ready counters without claiming Vulkan BC7, Metal/ASTC execution, backend parity, broad asset-pipeline coverage beyond the selected OpenEXR/KTX/Basis closeout lane, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagEnvironmentTextureD3d12CompressedUpload)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-texture-asset-pipeline-vulkan-compressed-upload') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-texture-asset-pipeline-vulkan-compressed-upload'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentTextureVulkanCompressedUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment texture asset-pipeline compressed upload validation is restricted to the reviewed sample_desktop_runtime_game Vulkan backend-target BC7 lane. It proves official vkGetPhysicalDeviceFormatProperties evidence for the selected BC7 sampled-image and transfer feature set, BC7 block footprint rows, IRhiDevice texture upload, descriptor write, Vulkan readback, compact checksum comparison, row-pitch evidence, positive resource transitions, and zero native-handle/Metal/backend-parity/broad-ready counters without claiming Metal/ASTC execution, backend parity, all-platform readiness, broad asset-pipeline coverage beyond the selected OpenEXR/KTX/Basis closeout lane, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentTextureVulkanCompressedUpload)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-texture-asset-pipeline-metal-compressed-upload') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-texture-asset-pipeline-metal-compressed-upload'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentTextureMetalCompressedUpload = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Apple-host Metal environment texture asset-pipeline compressed upload validation is restricted to the reviewed sample_desktop_runtime_game Metal ASTC lane. It proves official Apple Metal Feature Set Tables / MTLPixelFormat ASTC 4x4 evidence, ASTC block footprint rows, Metal private texture upload through MTLBlitCommandEncoder copyFromBuffer, Metal readback, compact checksum comparison, texture usage rows, and zero public native-handle/Vulkan/backend-parity/broad-ready counters without claiming Metal aggregate readiness, backend parity, all-platform readiness, broad asset-pipeline coverage beyond the selected OpenEXR/KTX/Basis closeout lane, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Metal') -Diagnostics @($diagEnvironmentTextureMetalCompressedUpload)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-asset-pipeline-openexr-ktx-basis-ready') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package',
+            'runtime/sample_desktop_runtime_game.geindex',
+            '--require-environment-texture-asset-pipeline-package',
+            '--require-environment-asset-pipeline-openexr-ktx-basis-ready'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagEnvironmentAssetPipelineReady = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'OpenEXR/KTX/Basis asset-pipeline closeout validates the selected source-to-package cooker, package smoke, D3D12/Vulkan RGBA8 upload/readback rows, D3D12/Vulkan BC7 compressed upload/readback rows, and separately hosted Apple Metal ASTC recipe evidence. It emits environment_asset_pipeline_openexr_ktx_basis_ready=1 only for this selected package-visible lane and does not claim backend parity, all-platform readiness, runtime source parsing, runtime optional codec/transcode execution, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary', 'vulkan-strict', 'metal-apple') -RequiredAcknowledgements @('d3d12-windows-primary', 'vulkan-strict', 'metal-apple') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentAssetPipelineReady)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-backend-parity') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentBackendParitySmokeArgs)
@@ -337,8 +417,29 @@ function Get-ValidationRecipeCommandPlan {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentWeatherSimulationPackageSmokeArgs)
         $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
-        $diagEnvironmentWeatherSimulation = New-RunnerDiagnostic -Severity 'info' -Code 'package-evidence-reviewed' -Message 'Environment weather simulation package validation is restricted to the reviewed sample_desktop_runtime_game package lane. It emits deterministic CPU reference counters for one clamped timestep, four cells, water-conservation/error bounds, CPU fallback use, selected CPU reference solver elapsed/budget counters, selected D3D12 WARP GPU solver elapsed/budget/dispatch/barrier/hash counters, solver_budget_status=host_evidence_required, zero diagnostics/native-handle/backend-parity side effects, profiler artifacts=2, profiler tool rows=2, profiler backend rows=1, profiler budget ready=1, production solver package counter review ready=1, production solver package counter rows=1, selected production solver core review ready=1, production solver core rows=1, production solver ready=0, and environment_physical_weather_simulation_ready=0; it does not promote complete physical weather simulation, Vulkan/Metal parity, backend parity, broad optimization, commercial readiness, or broad environment_ready claims.' -ValidationRecipe $RecipeName
+        $diagEnvironmentWeatherSimulation = New-RunnerDiagnostic -Severity 'info' -Code 'package-evidence-reviewed' -Message 'Environment weather simulation package validation is restricted to the reviewed sample_desktop_runtime_game package lane. It emits deterministic CPU reference counters for one clamped timestep, four cells, water-conservation/error bounds, CPU fallback use, selected CPU reference solver elapsed/budget counters, selected D3D12 WARP GPU solver elapsed/budget/dispatch/barrier/hash counters, solver_budget_status=host_evidence_required, zero diagnostics/native-handle/backend-parity side effects, profiler artifacts=2, profiler tool rows=2, profiler backend rows=1, profiler budget ready=1, production solver package counter review ready=1, production solver package counter rows=1, selected production solver core review ready=1, production solver core rows=1, selected broad physical accuracy review ready=1, broad physical accuracy rows=1, selected visual quality review ready=1, visual quality rows=1, production solver ready=0, physical weather ready=0, and environment_physical_weather_simulation_ready=0; it does not promote complete physical weather simulation, Vulkan/Metal parity, backend parity, broad optimization, commercial readiness, or broad environment_ready claims.' -ValidationRecipe $RecipeName
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagEnvironmentWeatherSimulation)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-artist-workflow-package') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentArtistWorkflowPackageSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagEnvironmentArtistWorkflow = New-RunnerDiagnostic -Severity 'info' -Code 'package-evidence-reviewed' -Message 'Environment artist workflow package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 package lane. It proves environment_artist_workflow_ready=1 through eight package-visible reviewed rows covering visible editor shell, OpenEXR/KTX/Basis asset pipeline, selected preset library, validation remediation, revision safety, production walkthrough package, editor-core no-execution boundary, and operator review. It requires zero backend/package-script/validation-recipe/native-handle execution from editor core and keeps environment_artist_workflow_commercial_ready=0.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagEnvironmentArtistWorkflow)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-commercial-readiness') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagEnvironmentCommercial = New-RunnerDiagnostic -Severity 'info' -Code 'host-evidence-required' -Message 'Environment commercial readiness closeout validation aggregates the exact selected strict Vulkan, Metal host, backend parity, platform, broad optimization, OpenEXR/KTX/Basis asset-pipeline, AAA preset-library, physical-weather, and artist-workflow rows. It currently emits environment_commercial_ready=0 with exact ready, host-gated, and blocked dependency counts; commercial readiness may be promoted only after every dependency row is ready, package-visible, legally current, validation-guarded, and adjacent broad non-claims remain explicit.' -ValidationRecipe $RecipeName -HostGate 'commercial-environment-closeout'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary', 'vulkan-strict', 'metal-apple', 'android-gameactivity', 'commercial-environment-closeout') -RequiredAcknowledgements @('d3d12-windows-primary', 'vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentCommercial)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentWeatherSimulationVulkanSolverPackageSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagEnvironmentWeatherSimulationVulkan = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan environment weather simulation solver package validation requires local Vulkan runtime, DXC SPIR-V CodeGen, and spirv-val readiness. It proves explicit cs_environment_weather SPIR-V execution through descriptor-set binding count, compute dispatch count, sync2 barrier count, readback hash, elapsed/budget counters, and zero native-handle/backend-parity/D3D12-inference/Metal-inference claims while keeping production solver ready, physical weather ready, all-platform readiness, and broad environment_ready false.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagEnvironmentWeatherSimulationVulkan)
     }
     elseif ($RecipeName -eq 'desktop-runtime-generated-material-shader-scaffold-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_generated_desktop_runtime_material_shader_package' } else { $SelectedGameTarget }

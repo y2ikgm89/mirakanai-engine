@@ -207,6 +207,10 @@ inline constexpr std::uint32_t vulkan_format_r16g16b16a16_sfloat = 97;
 inline constexpr std::uint32_t vulkan_format_r8g8b8a8_unorm = 37;
 inline constexpr std::uint32_t vulkan_format_b8g8r8a8_unorm = 44;
 inline constexpr std::uint32_t vulkan_format_d24_unorm_s8_uint = 129;
+inline constexpr std::uint32_t vulkan_format_bc7_unorm_block = 145;
+inline constexpr std::uint32_t vulkan_format_bc7_srgb_block = 146;
+inline constexpr std::uint32_t vulkan_format_astc_4x4_unorm_block = 157;
+inline constexpr std::uint32_t vulkan_format_astc_4x4_srgb_block = 158;
 inline constexpr std::uint32_t vulkan_color_space_srgb_nonlinear = 0;
 inline constexpr std::uint32_t vulkan_image_usage_transfer_src_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_image_usage_transfer_dst_bit = 0x00000002U;
@@ -216,6 +220,12 @@ inline constexpr std::uint32_t vulkan_image_usage_color_attachment_bit = 0x00000
 inline constexpr std::uint32_t vulkan_image_usage_depth_stencil_attachment_bit = 0x00000020U;
 inline constexpr std::uint32_t vulkan_image_create_cube_compatible_bit = 0x00000010U;
 inline constexpr std::uint32_t vulkan_image_create_alias_bit = 0x00000400U;
+inline constexpr std::uint32_t vulkan_format_feature_sampled_image_bit = 0x00000001U;
+inline constexpr std::uint32_t vulkan_format_feature_storage_image_bit = 0x00000002U;
+inline constexpr std::uint32_t vulkan_format_feature_color_attachment_bit = 0x00000080U;
+inline constexpr std::uint32_t vulkan_format_feature_depth_stencil_attachment_bit = 0x00000200U;
+inline constexpr std::uint32_t vulkan_format_feature_transfer_src_bit = 0x00004000U;
+inline constexpr std::uint32_t vulkan_format_feature_transfer_dst_bit = 0x00008000U;
 inline constexpr std::uint32_t vulkan_buffer_usage_transfer_src_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_buffer_usage_transfer_dst_bit = 0x00000002U;
 inline constexpr std::uint32_t vulkan_buffer_usage_uniform_buffer_bit = 0x00000010U;
@@ -625,6 +635,12 @@ struct NativeVulkanPhysicalDeviceMemoryProperties {
     std::array<NativeVulkanMemoryType, vulkan_max_memory_types> memory_types{};
     std::uint32_t memory_heap_count;
     std::array<NativeVulkanMemoryHeap, vulkan_max_memory_heaps> memory_heaps{};
+};
+
+struct NativeVulkanFormatProperties {
+    std::uint32_t linear_tiling_features;
+    std::uint32_t optimal_tiling_features;
+    std::uint32_t buffer_features;
 };
 
 struct NativeVulkanShaderModuleCreateInfo {
@@ -1091,6 +1107,8 @@ using VulkanGetPhysicalDeviceProperties2 = void(MK_VULKAN_CALL*)(NativeVulkanPhy
                                                                  NativeVulkanPhysicalDeviceProperties2*);
 using VulkanGetPhysicalDeviceMemoryProperties = void(MK_VULKAN_CALL*)(NativeVulkanPhysicalDevice,
                                                                       NativeVulkanPhysicalDeviceMemoryProperties*);
+using VulkanGetPhysicalDeviceFormatProperties = void(MK_VULKAN_CALL*)(NativeVulkanPhysicalDevice, std::uint32_t,
+                                                                      NativeVulkanFormatProperties*);
 using VulkanCreateWin32Surface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
                                                                const NativeVulkanWin32SurfaceCreateInfo*, const void*,
                                                                NativeVulkanSurface*);
@@ -2173,6 +2191,14 @@ template <typename AvailableDeviceExtensions>
         return Format::rgba8_unorm;
     case vulkan_format_b8g8r8a8_unorm:
         return Format::bgra8_unorm;
+    case vulkan_format_bc7_unorm_block:
+        return Format::bc7_unorm;
+    case vulkan_format_bc7_srgb_block:
+        return Format::bc7_unorm_srgb;
+    case vulkan_format_astc_4x4_unorm_block:
+        return Format::astc_4x4_unorm;
+    case vulkan_format_astc_4x4_srgb_block:
+        return Format::astc_4x4_srgb;
     default:
         return Format::unknown;
     }
@@ -2180,6 +2206,11 @@ template <typename AvailableDeviceExtensions>
 
 [[nodiscard]] bool dynamic_rendering_color_format_supported(Format format) noexcept {
     return format == Format::rgba8_unorm || format == Format::bgra8_unorm;
+}
+
+[[nodiscard]] bool sampled_texture_format_supported(Format format) noexcept {
+    return dynamic_rendering_color_format_supported(format) || format == Format::depth24_stencil8 ||
+           format == Format::bc7_unorm || format == Format::bc7_unorm_srgb;
 }
 
 [[nodiscard]] bool dynamic_rendering_depth_format_supported(Format format) noexcept {
@@ -2229,10 +2260,41 @@ template <typename AvailableDeviceExtensions>
         return vulkan_format_b8g8r8a8_unorm;
     case Format::depth24_stencil8:
         return vulkan_format_d24_unorm_s8_uint;
+    case Format::bc7_unorm:
+        return vulkan_format_bc7_unorm_block;
+    case Format::bc7_unorm_srgb:
+        return vulkan_format_bc7_srgb_block;
+    case Format::astc_4x4_unorm:
+        return vulkan_format_astc_4x4_unorm_block;
+    case Format::astc_4x4_srgb:
+        return vulkan_format_astc_4x4_srgb_block;
     case Format::unknown:
         return 0;
     }
     return 0;
+}
+
+[[nodiscard]] std::uint32_t required_vulkan_format_features(const VulkanTextureUsagePlan& usage) noexcept {
+    std::uint32_t features = 0;
+    if (usage.sampled) {
+        features |= vulkan_format_feature_sampled_image_bit;
+    }
+    if (usage.storage) {
+        features |= vulkan_format_feature_storage_image_bit;
+    }
+    if (usage.color_attachment) {
+        features |= vulkan_format_feature_color_attachment_bit;
+    }
+    if (usage.depth_stencil_attachment) {
+        features |= vulkan_format_feature_depth_stencil_attachment_bit;
+    }
+    if (usage.transfer_source) {
+        features |= vulkan_format_feature_transfer_src_bit;
+    }
+    if (usage.transfer_destination) {
+        features |= vulkan_format_feature_transfer_dst_bit;
+    }
+    return features;
 }
 
 [[nodiscard]] std::uint32_t native_vulkan_image_aspect_flags(Format format) noexcept {
@@ -2932,6 +2994,7 @@ struct VulkanRuntimeDevice::Impl {
     NativeVulkanQueue present_queue{nullptr};
     VulkanDestroyInstance destroy_instance{nullptr};
     VulkanGetPhysicalDeviceMemoryProperties get_physical_device_memory_properties{nullptr};
+    VulkanGetPhysicalDeviceFormatProperties get_physical_device_format_properties{nullptr};
     VulkanCreateWin32Surface create_win32_surface{nullptr};
     VulkanDestroySurface destroy_surface{nullptr};
     VulkanGetPhysicalDeviceSurfaceCapabilities get_surface_capabilities{nullptr};
@@ -3617,10 +3680,7 @@ class VulkanRhiDevice final : public IRhiDevice {
             if (desc.format == Format::unknown) {
                 continue;
             }
-            const auto texels = static_cast<std::uint64_t>(desc.extent.width) *
-                                static_cast<std::uint64_t>(desc.extent.height) *
-                                static_cast<std::uint64_t>(desc.extent.depth);
-            total += texels * static_cast<std::uint64_t>(mirakana::rhi::bytes_per_texel(desc.format));
+            total += mirakana::rhi::format_copy_compact_bytes(desc.format, desc.extent);
         }
         diagnostics.committed_resources_byte_estimate = total;
         diagnostics.committed_resources_byte_estimate_available = true;
@@ -3664,6 +3724,12 @@ class VulkanRhiDevice final : public IRhiDevice {
 
     [[nodiscard]] TextureHandle create_texture(const TextureDesc& desc) override {
         auto result = create_runtime_texture(device_, VulkanRuntimeTextureDesc{desc});
+        if (result.format_feature_query_invoked) {
+            ++stats_.format_support_queries;
+            if (!result.format_features_supported) {
+                ++stats_.format_support_query_failures;
+            }
+        }
         if (!result.created) {
             throw std::invalid_argument("vulkan rhi texture description is invalid or unsupported: " +
                                         result.diagnostic);
@@ -7507,8 +7573,7 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
         plan.diagnostic = "Vulkan runtime texture extent is required";
         return plan;
     }
-    if (!dynamic_rendering_color_format_supported(desc.texture.format) &&
-        !dynamic_rendering_depth_format_supported(desc.texture.format)) {
+    if (native_vulkan_format(desc.texture.format) == 0) {
         plan.diagnostic = "Vulkan runtime texture format is unsupported";
         return plan;
     }
@@ -7522,6 +7587,20 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
     }
     if (has_flag(desc.texture.usage, TextureUsage::shared)) {
         plan.diagnostic = "Vulkan runtime texture shared usage is not supported yet";
+        return plan;
+    }
+    if (has_flag(desc.texture.usage, TextureUsage::render_target) &&
+        !dynamic_rendering_color_format_supported(desc.texture.format)) {
+        plan.diagnostic = "Vulkan runtime texture render target format is unsupported";
+        return plan;
+    }
+    if (has_flag(desc.texture.usage, TextureUsage::shader_resource) &&
+        !sampled_texture_format_supported(desc.texture.format)) {
+        plan.diagnostic = "Vulkan runtime texture sampled format is unsupported";
+        return plan;
+    }
+    if (has_flag(desc.texture.usage, TextureUsage::storage) && format_is_block_compressed(desc.texture.format)) {
+        plan.diagnostic = "Vulkan runtime texture storage usage is unsupported for block-compressed formats";
         return plan;
     }
     if (desc.texture.format == Format::depth24_stencil8) {
@@ -8851,6 +8930,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
     const auto get_physical_device_memory_properties = reinterpret_cast<VulkanGetPhysicalDeviceMemoryProperties>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceMemoryProperties"));
+    const auto get_physical_device_format_properties = reinterpret_cast<VulkanGetPhysicalDeviceFormatProperties>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceFormatProperties"));
     const auto enumerate_physical_devices = reinterpret_cast<VulkanEnumeratePhysicalDevices>(
         get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices"));
     const auto create_device = reinterpret_cast<VulkanCreateDevice>(get_instance_proc_addr(instance, "vkCreateDevice"));
@@ -9110,6 +9191,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->present_queue = present_queue;
     impl->destroy_instance = destroy_instance;
     impl->get_physical_device_memory_properties = get_physical_device_memory_properties;
+    impl->get_physical_device_format_properties = get_physical_device_format_properties;
     impl->create_win32_surface = create_win32_surface;
     impl->destroy_surface = destroy_surface;
     impl->get_surface_capabilities = get_surface_capabilities;
@@ -9232,6 +9314,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
     const auto get_physical_device_memory_properties = reinterpret_cast<VulkanGetPhysicalDeviceMemoryProperties>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceMemoryProperties"));
+    const auto get_physical_device_format_properties = reinterpret_cast<VulkanGetPhysicalDeviceFormatProperties>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceFormatProperties"));
     const auto enumerate_physical_devices = reinterpret_cast<VulkanEnumeratePhysicalDevices>(
         get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices"));
     const auto create_device = reinterpret_cast<VulkanCreateDevice>(get_instance_proc_addr(instance, "vkCreateDevice"));
@@ -9482,6 +9566,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->present_queue = present_queue;
     impl->destroy_instance = destroy_instance;
     impl->get_physical_device_memory_properties = get_physical_device_memory_properties;
+    impl->get_physical_device_format_properties = get_physical_device_format_properties;
     impl->create_win32_surface = create_win32_surface;
     impl->destroy_surface = destroy_surface;
     impl->get_surface_capabilities = get_surface_capabilities;
@@ -11132,6 +11217,27 @@ VulkanRuntimeTextureCreateResult create_runtime_texture(VulkanRuntimeDevice& dev
         (device.impl_->create_image_view == nullptr || device.impl_->destroy_image_view == nullptr)) {
         result.diagnostic = "Vulkan runtime texture image-view commands are unavailable";
         return result;
+    }
+    if (format_is_block_compressed(result.plan.format)) {
+        result.format_feature_query_invoked = true;
+        result.required_format_features = required_vulkan_format_features(result.plan.usage);
+        if (device.impl_->get_physical_device_format_properties == nullptr) {
+            result.diagnostic = "Vulkan physical device format properties command is unavailable";
+            return result;
+        }
+        NativeVulkanFormatProperties format_properties{};
+        device.impl_->get_physical_device_format_properties(
+            device.impl_->physical_device, native_vulkan_format(result.plan.format), &format_properties);
+        result.optimal_tiling_format_features = format_properties.optimal_tiling_features;
+        result.format_features_supported = result.required_format_features != 0U &&
+                                           (format_properties.optimal_tiling_features &
+                                            result.required_format_features) == result.required_format_features;
+        if (!result.format_features_supported) {
+            result.diagnostic = "Vulkan runtime texture format features are unsupported";
+            return result;
+        }
+    } else {
+        result.format_features_supported = true;
     }
 
     const NativeVulkanImageCreateInfo image_create_info{

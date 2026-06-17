@@ -489,6 +489,29 @@ artist_workflow_walkthrough_label(EnvironmentArtistWorkflowWalkthroughStepKind k
     return "Environment Artist Workflow Execution";
 }
 
+[[nodiscard]] std::string_view
+artist_workflow_ready_requirement_label(EnvironmentArtistWorkflowReadyRequirementKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowReadyRequirementKind::visible_editor_shell:
+        return "Visible Editor Shell";
+    case EnvironmentArtistWorkflowReadyRequirementKind::asset_pipeline:
+        return "Asset Pipeline";
+    case EnvironmentArtistWorkflowReadyRequirementKind::selected_preset_library:
+        return "Selected Preset Library";
+    case EnvironmentArtistWorkflowReadyRequirementKind::validation_remediation:
+        return "Validation Remediation";
+    case EnvironmentArtistWorkflowReadyRequirementKind::revision_safety:
+        return "Revision Safety";
+    case EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package:
+        return "Production Walkthrough Package";
+    case EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary:
+        return "Editor Core Execution Boundary";
+    case EnvironmentArtistWorkflowReadyRequirementKind::operator_review:
+        return "Operator Review";
+    }
+    return "Environment Artist Workflow Ready Requirement";
+}
+
 [[nodiscard]] EnvironmentArtistWorkflowCommandKind
 walkthrough_step_command_kind(EnvironmentArtistWorkflowWalkthroughStepKind kind) noexcept {
     switch (kind) {
@@ -557,6 +580,14 @@ find_execution_evidence(std::span<const EnvironmentArtistWorkflowExecutionEviden
     return it == evidence_rows.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const EnvironmentArtistWorkflowReadyRequirementInputRow*
+find_ready_requirement_input(std::span<const EnvironmentArtistWorkflowReadyRequirementInputRow> rows,
+                             EnvironmentArtistWorkflowReadyRequirementKind kind) noexcept {
+    const auto it = std::ranges::find_if(
+        rows, [kind](const EnvironmentArtistWorkflowReadyRequirementInputRow& row) { return row.kind == kind; });
+    return it == rows.end() ? nullptr : &(*it);
+}
+
 void append_execution_unsupported(EnvironmentArtistWorkflowExecutionReviewModel& model, std::string_view claim,
                                   std::string diagnostic) {
     append_unique_string(model.unsupported_claims, claim);
@@ -574,6 +605,14 @@ void push_execution_stage(EnvironmentArtistWorkflowExecutionReviewModel& model,
         model.has_host_gates = true;
     }
     model.stage_rows.push_back(std::move(row));
+}
+
+void append_ready_unsupported(EnvironmentArtistWorkflowReadyReviewModel& model, std::string_view claim,
+                              std::string diagnostic) {
+    append_unique_string(model.unsupported_claims, claim);
+    if (!diagnostic.empty()) {
+        model.diagnostics.push_back(std::move(diagnostic));
+    }
 }
 
 [[nodiscard]] EnvironmentArtistWorkflowExecutionStageStatus
@@ -990,6 +1029,42 @@ std::string_view environment_artist_workflow_execution_stage_status_label(
     case EnvironmentArtistWorkflowExecutionStageStatus::host_gated:
         return "host_gated";
     case EnvironmentArtistWorkflowExecutionStageStatus::blocked:
+        return "blocked";
+    }
+    return "blocked";
+}
+
+std::string_view
+environment_artist_workflow_ready_requirement_id(EnvironmentArtistWorkflowReadyRequirementKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentArtistWorkflowReadyRequirementKind::visible_editor_shell:
+        return "environment.workflow.ready.visible_editor_shell";
+    case EnvironmentArtistWorkflowReadyRequirementKind::asset_pipeline:
+        return "environment.workflow.ready.asset_pipeline";
+    case EnvironmentArtistWorkflowReadyRequirementKind::selected_preset_library:
+        return "environment.workflow.ready.selected_preset_library";
+    case EnvironmentArtistWorkflowReadyRequirementKind::validation_remediation:
+        return "environment.workflow.ready.validation_remediation";
+    case EnvironmentArtistWorkflowReadyRequirementKind::revision_safety:
+        return "environment.workflow.ready.revision_safety";
+    case EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package:
+        return "environment.workflow.ready.production_walkthrough_package";
+    case EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary:
+        return "environment.workflow.ready.editor_core_execution_boundary";
+    case EnvironmentArtistWorkflowReadyRequirementKind::operator_review:
+        return "environment.workflow.ready.operator_review";
+    }
+    return "environment.workflow.ready.invalid";
+}
+
+std::string_view environment_artist_workflow_ready_requirement_status_label(
+    EnvironmentArtistWorkflowReadyRequirementStatus status) noexcept {
+    switch (status) {
+    case EnvironmentArtistWorkflowReadyRequirementStatus::ready:
+        return "ready";
+    case EnvironmentArtistWorkflowReadyRequirementStatus::missing:
+        return "missing";
+    case EnvironmentArtistWorkflowReadyRequirementStatus::blocked:
         return "blocked";
     }
     return "blocked";
@@ -1878,6 +1953,233 @@ make_environment_artist_workflow_execution_review_ui_model(const EnvironmentArti
                      join_strings(row.host_gates));
         append_label(document, item_id,
                      "environment_artist_workflow_execution_review.rows." + row.row_id + ".blocked_by",
+                     join_strings(row.blocked_by));
+    }
+
+    return document;
+}
+
+EnvironmentArtistWorkflowReadyReviewModel
+make_environment_artist_workflow_ready_review_model(const EnvironmentArtistWorkflowReadyReviewDesc& desc) {
+    constexpr std::array kinds{
+        EnvironmentArtistWorkflowReadyRequirementKind::visible_editor_shell,
+        EnvironmentArtistWorkflowReadyRequirementKind::asset_pipeline,
+        EnvironmentArtistWorkflowReadyRequirementKind::selected_preset_library,
+        EnvironmentArtistWorkflowReadyRequirementKind::validation_remediation,
+        EnvironmentArtistWorkflowReadyRequirementKind::revision_safety,
+        EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package,
+        EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary,
+        EnvironmentArtistWorkflowReadyRequirementKind::operator_review,
+    };
+
+    const auto expected_evidence_id = [](EnvironmentArtistWorkflowReadyRequirementKind kind) -> std::string_view {
+        switch (kind) {
+        case EnvironmentArtistWorkflowReadyRequirementKind::visible_editor_shell:
+            return "environment-artist-workflow-visible-shell";
+        case EnvironmentArtistWorkflowReadyRequirementKind::asset_pipeline:
+            return "environment_asset_pipeline_openexr_ktx_basis_ready";
+        case EnvironmentArtistWorkflowReadyRequirementKind::selected_preset_library:
+            return "environment_aaa_preset_library_ready";
+        case EnvironmentArtistWorkflowReadyRequirementKind::validation_remediation:
+            return "environment.command.validation.remediation";
+        case EnvironmentArtistWorkflowReadyRequirementKind::revision_safety:
+            return "environment.workflow.revision_checked";
+        case EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package:
+            return "environment_artist_workflow_walkthrough_package";
+        case EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary:
+            return "environment-artist-workflow-editor-core-no-execution";
+        case EnvironmentArtistWorkflowReadyRequirementKind::operator_review:
+            return "environment-artist-workflow-operator-review";
+        }
+        return "";
+    };
+
+    const auto execution_stage_ready = [&desc](std::string_view row_id) {
+        const auto it = std::ranges::find_if(
+            desc.execution_review.stage_rows,
+            [row_id](const EnvironmentArtistWorkflowExecutionReviewStageRow& row) { return row.row_id == row_id; });
+        return it != desc.execution_review.stage_rows.end() &&
+               it->status == EnvironmentArtistWorkflowExecutionStageStatus::ready;
+    };
+
+    EnvironmentArtistWorkflowReadyReviewModel model;
+    model.rows.reserve(kinds.size());
+
+    for (const auto& claim : desc.execution_review.unsupported_claims) {
+        if (claim != "environment_artist_workflow_ready") {
+            append_ready_unsupported(model, claim, "execution review carries unsupported claim " + claim);
+        }
+    }
+
+    const auto reject_request = [&model](bool requested, std::string_view claim, std::string_view diagnostic) {
+        if (requested) {
+            append_ready_unsupported(model, claim, std::string{diagnostic});
+        }
+    };
+    reject_request(desc.request_backend_execution, "backend execution",
+                   "environment artist workflow ready review rejects backend execution from editor core");
+    reject_request(desc.request_package_script_execution, "package script execution",
+                   "environment artist workflow ready review rejects package script execution from editor core");
+    reject_request(desc.request_validation_recipe_execution, "validation recipe execution",
+                   "environment artist workflow ready review rejects validation recipe execution from editor core");
+    reject_request(desc.request_native_handle_access, "native handle access",
+                   "environment artist workflow ready review rejects native handle access");
+
+    const bool unsafe_request =
+        desc.request_backend_execution || desc.request_package_script_execution ||
+        desc.request_validation_recipe_execution || desc.request_native_handle_access ||
+        desc.execution_review.invokes_backend || desc.execution_review.executes_package_scripts ||
+        desc.execution_review.executes_validation_recipes || desc.execution_review.exposes_native_handles ||
+        desc.execution_review.has_blocking_diagnostics;
+
+    for (const auto kind : kinds) {
+        EnvironmentArtistWorkflowReadyRequirementRow row{
+            .row_id = std::string{environment_artist_workflow_ready_requirement_id(kind)},
+            .label = std::string{artist_workflow_ready_requirement_label(kind)},
+            .kind = kind,
+            .diagnostic = "missing package-visible reviewed evidence",
+        };
+
+        const auto* input = find_ready_requirement_input(desc.requirements, kind);
+        if (input != nullptr) {
+            row.evidence_id = input->evidence_id;
+            row.reviewed = input->reviewed;
+            row.package_visible = input->package_visible;
+            row.retained_ui_row_ids = input->retained_ui_row_ids;
+        }
+
+        const bool evidence_id_matches = input != nullptr && input->evidence_id == expected_evidence_id(kind);
+        bool base_ready = input != nullptr && input->ready && input->reviewed && input->package_visible &&
+                          evidence_id_matches && !input->retained_ui_row_ids.empty();
+        bool derived_ready = true;
+
+        switch (kind) {
+        case EnvironmentArtistWorkflowReadyRequirementKind::visible_editor_shell:
+            derived_ready = desc.execution_review.status == EnvironmentAuthoringStatus::ready &&
+                            desc.execution_review.visible_first_party_workflow_wired;
+            break;
+        case EnvironmentArtistWorkflowReadyRequirementKind::asset_pipeline:
+        case EnvironmentArtistWorkflowReadyRequirementKind::selected_preset_library:
+        case EnvironmentArtistWorkflowReadyRequirementKind::validation_remediation:
+        case EnvironmentArtistWorkflowReadyRequirementKind::revision_safety:
+            break;
+        case EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package:
+            derived_ready = input != nullptr && input->retained_ui_row_ids.size() >= 8U;
+            break;
+        case EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary:
+            derived_ready = !unsafe_request;
+            break;
+        case EnvironmentArtistWorkflowReadyRequirementKind::operator_review:
+            derived_ready = execution_stage_ready("environment.workflow.execution.operator_review");
+            break;
+        }
+
+        if (base_ready && derived_ready) {
+            row.status = EnvironmentArtistWorkflowReadyRequirementStatus::ready;
+            row.diagnostic = "package-visible reviewed evidence is ready";
+            ++model.ready_rows;
+        } else if (input == nullptr || !base_ready) {
+            row.status = EnvironmentArtistWorkflowReadyRequirementStatus::missing;
+            if (input == nullptr) {
+                append_unique_string(row.blocked_by, "missing-requirement-row");
+            }
+            if (input != nullptr && !input->ready) {
+                append_unique_string(row.blocked_by, "not-ready");
+            }
+            if (input != nullptr && !input->reviewed) {
+                append_unique_string(row.blocked_by, "not-reviewed");
+            }
+            if (input != nullptr && !input->package_visible) {
+                append_unique_string(row.blocked_by, "not-package-visible");
+            }
+            if (input != nullptr && !evidence_id_matches) {
+                append_unique_string(row.blocked_by, "unexpected-evidence-id");
+            }
+            if (input != nullptr && input->retained_ui_row_ids.empty()) {
+                append_unique_string(row.blocked_by, "missing-retained-ui-row");
+            }
+        } else {
+            row.status = EnvironmentArtistWorkflowReadyRequirementStatus::blocked;
+            row.diagnostic = "derived editor workflow boundary is blocked";
+            if (kind == EnvironmentArtistWorkflowReadyRequirementKind::production_walkthrough_package) {
+                append_unique_string(row.blocked_by, "incomplete-walkthrough-ui-evidence");
+            }
+            if (kind == EnvironmentArtistWorkflowReadyRequirementKind::editor_core_execution_boundary) {
+                append_unique_string(row.blocked_by, "editor-core-execution-requested");
+            }
+            if (kind == EnvironmentArtistWorkflowReadyRequirementKind::visible_editor_shell) {
+                append_unique_string(row.blocked_by, "visible-workflow-not-ready");
+            }
+            if (kind == EnvironmentArtistWorkflowReadyRequirementKind::operator_review) {
+                append_unique_string(row.blocked_by, "operator-review-not-ready");
+            }
+        }
+
+        if (row.status != EnvironmentArtistWorkflowReadyRequirementStatus::ready) {
+            model.diagnostics.push_back(row.row_id + ": " + row.diagnostic);
+        }
+        model.rows.push_back(std::move(row));
+    }
+
+    const bool all_requirements_ready = model.rows.size() == kinds.size() && model.ready_rows == model.rows.size();
+    if (!all_requirements_ready || !desc.request_environment_artist_workflow_ready ||
+        !model.unsupported_claims.empty()) {
+        append_ready_unsupported(model, "environment_artist_workflow_ready",
+                                 all_requirements_ready
+                                     ? "environment_artist_workflow_ready request is missing or blocked"
+                                     : "environment_artist_workflow_ready requires all package-visible reviewed rows");
+    }
+
+    if (desc.request_environment_artist_workflow_ready && all_requirements_ready && model.unsupported_claims.empty()) {
+        model.environment_artist_workflow_ready = true;
+        model.status = EnvironmentAuthoringStatus::ready;
+    }
+
+    return model;
+}
+
+mirakana::ui::UiDocument
+make_environment_artist_workflow_ready_review_ui_model(const EnvironmentArtistWorkflowReadyReviewModel& model) {
+    mirakana::ui::UiDocument document;
+    auto root = make_element("environment_artist_workflow_ready_review", mirakana::ui::SemanticRole::panel);
+    root.accessibility_label = "Environment Artist Workflow Ready Review";
+    add_or_throw(document, std::move(root));
+
+    const mirakana::ui::ElementId root_id{"environment_artist_workflow_ready_review"};
+    append_label(document, root_id, "environment_artist_workflow_ready_review.status",
+                 model.status == EnvironmentAuthoringStatus::ready ? "ready" : "blocked");
+    append_label(document, root_id, "environment_artist_workflow_ready_review.environment_artist_workflow_ready",
+                 bool_text(model.environment_artist_workflow_ready));
+    append_label(document, root_id, "environment_artist_workflow_ready_review.package_counter",
+                 model.package_counter_id);
+    append_label(document, root_id, "environment_artist_workflow_ready_review.ready_rows",
+                 std::to_string(model.ready_rows));
+
+    auto rows_root =
+        make_child("environment_artist_workflow_ready_review.rows", root_id, mirakana::ui::SemanticRole::list);
+    rows_root.accessibility_label = "Environment Artist Workflow Ready Review Rows";
+    add_or_throw(document, std::move(rows_root));
+    const mirakana::ui::ElementId rows_id{"environment_artist_workflow_ready_review.rows"};
+
+    for (const auto& row : model.rows) {
+        auto item = make_child("environment_artist_workflow_ready_review.rows." + row.row_id, rows_id,
+                               mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.label);
+        item.enabled = false;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{"environment_artist_workflow_ready_review.rows." + row.row_id};
+        append_label(document, item_id, "environment_artist_workflow_ready_review.rows." + row.row_id + ".status",
+                     std::string{environment_artist_workflow_ready_requirement_status_label(row.status)});
+        append_label(document, item_id, "environment_artist_workflow_ready_review.rows." + row.row_id + ".value",
+                     row.evidence_id);
+        append_label(document, item_id, "environment_artist_workflow_ready_review.rows." + row.row_id + ".reviewed",
+                     bool_text(row.reviewed));
+        append_label(document, item_id, "environment_artist_workflow_ready_review.rows." + row.row_id + ".package",
+                     bool_text(row.package_visible));
+        append_label(document, item_id,
+                     "environment_artist_workflow_ready_review.rows." + row.row_id + ".retained_ui_rows",
+                     join_strings(row.retained_ui_row_ids));
+        append_label(document, item_id, "environment_artist_workflow_ready_review.rows." + row.row_id + ".blocked_by",
                      join_strings(row.blocked_by));
     }
 
