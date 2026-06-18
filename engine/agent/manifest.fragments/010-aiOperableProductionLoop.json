@@ -19,9 +19,9 @@
       "authoritativeDocReadyRows": 11,
       "sourceGateStatus": "ready",
       "codeEditAllowed": 1,
-      "latestCloseoutEvidence": "Environment Highest Commercial Readiness v1 Task 1 selects currentActivePlan with official docs/Context7 gates. Source gate ready on 2026-06-18 and records environment_highest_readiness_context7_verified_rows=9, environment_highest_readiness_context7_partial_rows=2, environment_highest_readiness_official_fallback_rows=2, environment_highest_readiness_authoritative_doc_ready_rows=11, environment_highest_readiness_source_gate_status=ready, and environment_highest_readiness_code_edit_allowed=1 with official_fallback.apple_metal_framework_api=ready and official_fallback.khronos_gltf_spec=ready for Apple Metal framework API and Khronos glTF. Task 2 adds the clean-break MK_environment EnvironmentCommercialReadinessV2RowStatus, EnvironmentCommercialReadinessV2Row, EnvironmentCommercialReadinessV2Result, and evaluate_environment_commercial_readiness_v2 contract plus MK_environment_commercial_readiness_v2_tests for 16 exact rows, dependency gates, duplicate diagnostics, no cross-backend/platform inference, diagnostics=false, and native_handle_access=false. Task 3 registers dry-run-only highest commercial recipe skeletons. Task 4 replaces environment-platform-linux-vulkan-package and environment-platform-android-vulkan-package with explicit host validators: tools/validate-linux-vulkan-runtime-host.ps1 requires host=linux, vulkaninfo_ready=1, VK_LAYER_KHRONOS_validation_ready=1, dxc_spirv_codegen_ready=1, spirv_val_ready=1, linux_icd_runtime_ready=1, first_party_linux_runtime_host_ready=1, linux_package_script_ready=1, linux_installed_validator_ready=1, environment_platform_linux_vulkan_ready=1, and environment_platform_requires_linux_vulkan_host_evidence=0; tools/validate-android-vulkan-runtime-host.ps1 requires Android SDK/NDK, adb device or emulator, Android Vulkan manifest feature declarations, packaged or enabled VK_LAYER_KHRONOS_validation, android_package_smoke_ready=1, android_vulkan_readback_ready=1, environment_platform_android_vulkan_ready=1, and environment_platform_requires_android_vulkan_host_evidence=0. Task 5 replaces environment-platform-ios-metal-package with tools/validate-apple-metal-platform-host.ps1 and app-written iOS Metal evidence: host=macos, full Xcode, iOS Simulator SDK/runtime or device evidence, ios_package_smoke_ready=1, ios_metal_feature_set_checked=1, ios_metal_command_queue_ready=1, ios_metal_pipeline_ready=1, ios_metal_readback_ready=1, environment_platform_ios_metal_ready=1, environment_platform_requires_ios_metal_host_evidence=0, and environment_all_platform_unconditional_ready=0 are required before iOS Metal can be ready. Task 6 adds MK_renderer EnvironmentBackendParityV2Row / evaluate_environment_backend_parity_v2 plus tools/validate-environment-backend-parity-v2.ps1; the v2 closeout requires 15 normalized feature rows across D3D12, strict Vulkan, and Metal, 45 backend-local ready rows, zero host-gated/blocked/unsupported rows, zero D3D12/Vulkan/Metal inference, zero diagnostics, zero native-handle access, zero GPU command execution, and environment_backend_parity_ready=1 while keeping all-platform, commercial, broad optimization, and broad environment_ready unpromoted. Task 7 replaces environment-broad-optimization-cross-backend-measurement with tools/validate-environment-optimization-artifacts.ps1; the fail-closed validator requires 21 retained profiler/trace/budget rows across d3d12, vulkan_strict, and metal_apple_host under artifacts/environment/optimization/<task-id>/<backend>/<workload>/, SHA-256 verified profiler artifacts, trace-event JSON files, zero escaped paths, zero invalid hashes, zero missing artifacts, zero over-budget rows, and keeps current incomplete evidence at environment_broad_optimization_ready=0 with environment_optimization_measurement_missing_artifacts=21 until real official artifacts are supplied. Task 8 replaces environment-aaa-preset-asset-library-production with tools/validate-environment-aaa-preset-asset-library.ps1 plus MK_environment EnvironmentPresetAssetLibraryProductionDesc / evaluate_environment_preset_asset_library_production; the AAA preset asset library validator builds and runs MK_environment_tests, requires 156 first-party objective asset rows across ten categories, 144 preview screenshot rows, 8 sample-scene consumption rows, complete license/provenance and package-budget rows, zero external asset rows, zero missing objective rows, zero backend/package-script/native-handle access, and emits environment_aaa_preset_asset_library_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 9 replaces environment-asset-pipeline-openexr-ktx-basis-full with tools/validate-environment-asset-pipeline-full.ps1 plus MK_tools EnvironmentTexturePipelineV2Desc / evaluate_environment_texture_pipeline_v2_full; the validator builds and runs MK_environment_texture_pipeline_v2_tests, validates the optional asset-importers build lane, requires 14 package-visible host-validated OpenEXR/KTX2/Basis/backend/runtime rows, and emits environment_asset_pipeline_openexr_ktx_basis_full_ready=1 while environment_ready=0 and environment_commercial_ready=0. Remaining skeleton recipes are environment-highest-commercial-readiness-closeout, environment-physical-weather-simulation-closeout, and environment-artist-workflow-production-closeout; the aggregate skeleton still returns environment_highest_commercial_ready=0, environment_commercial_ready=0, and environment_ready_promotion_blocked_until_all_rows_ready=1. Later tasks must still prove all-platform readiness, broad measured optimization artifacts, physical weather simulation, production artist workflow, commercial aggregate, and broad environment_ready rows. This selection keeps broad environment_ready, environment_highest_commercial_ready, environment_commercial_ready, and unsupportedProductionGaps = [] unchanged.",
+      "latestCloseoutEvidence": "Environment Highest Commercial Readiness v1 Task 1 selects currentActivePlan with official docs/Context7 gates. Source gate ready on 2026-06-18 and records environment_highest_readiness_context7_verified_rows=9, environment_highest_readiness_context7_partial_rows=2, environment_highest_readiness_official_fallback_rows=2, environment_highest_readiness_authoritative_doc_ready_rows=11, environment_highest_readiness_source_gate_status=ready, and environment_highest_readiness_code_edit_allowed=1 with official_fallback.apple_metal_framework_api=ready and official_fallback.khronos_gltf_spec=ready for Apple Metal framework API and Khronos glTF. Task 2 adds the clean-break MK_environment EnvironmentCommercialReadinessV2RowStatus, EnvironmentCommercialReadinessV2Row, EnvironmentCommercialReadinessV2Result, and evaluate_environment_commercial_readiness_v2 contract plus MK_environment_commercial_readiness_v2_tests for 16 exact rows, dependency gates, duplicate diagnostics, no cross-backend/platform inference, diagnostics=false, and native_handle_access=false. Task 3 registers dry-run-only highest commercial recipe skeletons. Task 4 replaces environment-platform-linux-vulkan-package and environment-platform-android-vulkan-package with explicit host validators. Task 5 replaces environment-platform-ios-metal-package with tools/validate-apple-metal-platform-host.ps1 and app-written iOS Metal evidence. Task 6 adds MK_renderer EnvironmentBackendParityV2Row / evaluate_environment_backend_parity_v2 plus tools/validate-environment-backend-parity-v2.ps1; the v2 closeout requires 15 normalized feature rows across D3D12, strict Vulkan, and Metal, 45 backend-local ready rows, zero inference, zero diagnostics, zero native-handle access, zero GPU command execution, and environment_backend_parity_ready=1 while keeping all-platform, commercial, broad optimization, and broad environment_ready unpromoted. Task 7 replaces environment-broad-optimization-cross-backend-measurement with tools/validate-environment-optimization-artifacts.ps1 and keeps current incomplete evidence at environment_broad_optimization_ready=0 with environment_optimization_measurement_missing_artifacts=21 until real official artifacts are supplied. Task 8 replaces environment-aaa-preset-asset-library-production with tools/validate-environment-aaa-preset-asset-library.ps1 and emits environment_aaa_preset_asset_library_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 9 replaces environment-asset-pipeline-openexr-ktx-basis-full with tools/validate-environment-asset-pipeline-full.ps1 and emits environment_asset_pipeline_openexr_ktx_basis_full_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 10 replaces environment-physical-weather-simulation-closeout with tools/validate-environment-weather-physics.ps1 and emits environment_physical_weather_simulation_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 11 replaces environment-artist-workflow-production-closeout with tools/validate-environment-artist-workflow-production.ps1 and emits environment_artist_workflow_production_ready=1 with 14 workflow rows while environment_ready=0 and environment_commercial_ready=0. The only remaining highest-commercial skeleton recipe is environment-highest-commercial-readiness-closeout; the aggregate skeleton still returns environment_highest_commercial_ready=0, environment_commercial_ready=0, and environment_ready_promotion_blocked_until_all_rows_ready=1. Later tasks must still prove all-platform readiness, broad measured optimization artifacts, commercial aggregate, and broad environment_ready rows. This selection keeps broad environment_ready, environment_highest_commercial_ready, environment_commercial_ready, and unsupportedProductionGaps = [] unchanged.",
       "retainedCompletedEvidence": "Renderer RHI Resource Foundation 1.0 Scope Closeout v1 remains historical completed evidence. Environment Highest Commercial Readiness v1 does not reopen that scope or infer broad renderer, backend, platform, optimization, asset-pipeline, weather, artist-workflow, commercial, or broad environment_ready readiness from it.",
-      "reason": "Select Environment Highest Commercial Readiness v1 as the active post-1.0 clean-break milestone. Tasks 1-9 record the official source lock, create the exact spec, keep Context7 truth honest at 9 verified and 2 partial rows, replace platform-host skeletons with exact validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the fail-closed optimization artifact validator, promote the production AAA preset asset library dependency row, and promote only the full OpenEXR/KTX2/Basis asset pipeline dependency row through the Task 9 full OpenEXR/KTX2/Basis asset-pipeline validator. This selection still requires later all-platform readiness, broad measured optimization artifact evidence, physical weather simulation, production artist workflow, and commercial aggregate evidence before any broad claim. It does not promote environment_highest_commercial_ready, environment_commercial_ready, environment_all_platform_unconditional_ready, environment_broad_optimization_ready, environment_physical_weather_simulation_ready, environment_artist_workflow_production_ready, or broad environment_ready."
+      "reason": "Select Environment Highest Commercial Readiness v1 as the active post-1.0 clean-break milestone. Tasks 1-11 record the official source lock, create the exact spec, keep Context7 truth honest at 9 verified and 2 partial rows, replace platform-host skeletons with exact validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the fail-closed optimization artifact validator, promote the production AAA preset asset library dependency row, promote only the full OpenEXR/KTX2/Basis asset pipeline dependency row, promote only the physical weather simulation dependency row, and promote only the production artist workflow dependency row through the Task 11 validator. This selection still requires all-platform readiness, broad measured optimization artifact evidence, and commercial aggregate evidence before any broad claim. It does not promote environment_highest_commercial_ready, environment_commercial_ready, environment_all_platform_unconditional_ready, environment_broad_optimization_ready, or broad environment_ready."
     },
     "recipeStatusEnum": [
       "ready",
@@ -5575,7 +5575,7 @@
           "environment_asset_pipeline_openexr_ktx_basis_ready",
           "environment_aaa_preset_library_ready",
           "environment_physical_weather_simulation_ready",
-          "environment_artist_workflow_ready"
+          "environment_artist_workflow_production_ready"
         ],
         "requiredEvidence": "All selected target rows pass on their required hosts, package-visible counters are positive where expected, static checks enforce non-claims, docs/manifest/plan registry are synced, and hosted or host-gated PR evidence is recorded.",
         "forbiddenInference": "Any single backend aggregate, product-doc comparison, editor-only readiness, or unresolved adjacent non-claim.",
@@ -5820,6 +5820,28 @@
         "requiredEvidence": "First-party editor commands, asset browser, profile graph editing, import/cook/preview/package loop, visible execution/review path, dry-run/apply reports, validation remediation, revision safety, package-visible production sample walkthrough evidence, and zero editor-core backend/package-script/validation-recipe/native-handle execution.",
         "forbiddenInference": "Manual file editing, editor-core value rows without package-visible evidence, asset-pipeline or preset-library readiness alone, broad environment_ready, backend parity, all-platform readiness, complete physical weather simulation, or commercial readiness.",
         "notes": "Advanced artist workflow readiness is ready for the selected clean-break first-party package lane only. Phase 11 slice 6 adds EnvironmentArtistWorkflowReadyRequirementKind, EnvironmentArtistWorkflowReadyRequirementStatus, EnvironmentArtistWorkflowReadyRequirementInputRow, EnvironmentArtistWorkflowReadyReviewDesc, EnvironmentArtistWorkflowReadyRequirementRow, EnvironmentArtistWorkflowReadyReviewModel, environment_artist_workflow_ready_requirement_id, environment_artist_workflow_ready_requirement_status_label, make_environment_artist_workflow_ready_review_model, and make_environment_artist_workflow_ready_review_ui_model, plus desktop-runtime-sample-game-environment-artist-workflow-package / --require-environment-artist-workflow-package counters. The ready counter requires eight package-visible reviewed rows for visible editor shell, selected OpenEXR/KTX/Basis asset pipeline, selected preset library, validation remediation, revision safety, production walkthrough package, editor-core no-execution boundary, and operator review. This does not promote environment_commercial_ready, backend parity, all-platform readiness, broad optimization, or complete physical weather simulation."
+      },
+      {
+        "id": "environment_artist_workflow_production_ready",
+        "state": "ready",
+        "validationRecipeIds": [
+          "environment-artist-workflow-production-closeout",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "environment-asset-pipeline-openexr-ktx-basis-full",
+          "environment-aaa-preset-asset-library-production",
+          "environment-physical-weather-simulation-closeout",
+          "environment-broad-optimization-cross-backend-measurement",
+          "agent-contract"
+        ],
+        "packageCounter": "environment_artist_workflow_production_ready",
+        "dependsOn": [
+          "environment_asset_pipeline_openexr_ktx_basis_ready",
+          "environment_aaa_preset_library_ready",
+          "environment_physical_weather_simulation_ready"
+        ],
+        "requiredEvidence": "EnvironmentArtistWorkflowProductionCloseoutDesc / evaluate_environment_artist_workflow_production_closeout package-visible closeout with 14 visible workflow rows for OpenEXR import, KTX2/Basis import, glTF material import, USD/MaterialX/OCIO review, package cooking, D3D12/Vulkan/Metal-host live preview evidence, weather timeline editing, preset batch apply, validation reports, profiler artifact review, undo/redo revision safety, operator review, zero editor-core backend/package-script/validation-recipe/native-handle execution, and tools/validate-environment-artist-workflow-production.ps1 -RequireReady.",
+        "forbiddenInference": "Selected artist workflow package rows alone, editor-core value rows alone, unreviewed content mutation, asset-pipeline readiness alone, preset-library readiness alone, physical-weather readiness alone, backend parity, all-platform readiness, broad optimization, commercial readiness, or broad environment_ready.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 11 promotes environment_artist_workflow_production_ready=1 only after tools/validate-environment-artist-workflow-production.ps1 builds and runs MK_editor_environment_tests, packages sample_desktop_runtime_game with the reviewed artist workflow package smoke, and emits all 14 workflow_*_ready counters plus environment_artist_workflow_production_requirement_rows=14, environment_artist_workflow_production_ready_rows=14, environment_artist_workflow_editor_core_backend_execution=0, environment_artist_workflow_editor_core_package_script_execution=0, environment_artist_workflow_editor_core_validation_recipe_execution=0, environment_artist_workflow_native_handle_access=0, environment_ready=0, and environment_commercial_ready=0."
       }
     ],
     "environmentPlatformReadinessRows": [
@@ -7683,6 +7705,81 @@
         "blockerReason": "none for the selected package-visible artist workflow closeout; broader commercial readiness remains unsupported by the parent commercial aggregate.",
         "forbiddenInference": "commercial readiness, backend parity, all-platform readiness, complete physical weather simulation, broad optimization, renderer/RHI execution from editor core, package-script execution from editor core, validation-recipe execution from editor core, native handle access, or asset workflows beyond the selected first-party package lane.",
         "notes": "Phase 11 slice 6 promotes environment_artist_workflow_ready for the selected package lane only. MK_editor_environment_tests prove the closeout value model and fail-closed unsafe requests; the package recipe proves environment_artist_workflow_ready=1 from eight package-visible reviewed rows while environment_artist_workflow_commercial_ready stays 0."
+      },
+      {
+        "id": "environment_artist_workflow_production_closeout",
+        "claimId": "environment_artist_workflow_production_ready",
+        "state": "ready",
+        "owner": "MK_editor_core+sample_desktop_runtime_game",
+        "commandIds": [
+          "environment.command.preset.import",
+          "environment.command.source_asset.review",
+          "environment.command.cook.preview",
+          "environment.command.weather_timeline.edit",
+          "environment.command.simulation_parameter.edit",
+          "environment.command.package.preview",
+          "environment.command.validation.remediation",
+          "environment.command.publish.package"
+        ],
+        "requestModes": [
+          "read_only",
+          "review_only",
+          "externally_supplied_evidence",
+          "operator_review",
+          "package_counter_closeout",
+          "production_closeout"
+        ],
+        "revisionSafety": "EnvironmentArtistWorkflowProductionCloseoutDesc consumes reviewed package-visible host-validated workflow evidence plus the selected EnvironmentArtistWorkflowReadyReviewModel; mutation stays on revision-checked command plans, and package execution remains outside editor core.",
+        "reportRows": [
+          "EnvironmentArtistWorkflowProductionRequirementKind",
+          "EnvironmentArtistWorkflowProductionRequirementStatus",
+          "EnvironmentArtistWorkflowProductionRequirementInputRow",
+          "EnvironmentArtistWorkflowProductionCloseoutDesc",
+          "EnvironmentArtistWorkflowProductionRequirementRow",
+          "EnvironmentArtistWorkflowProductionCloseoutModel",
+          "environment_artist_workflow_production_requirement_id",
+          "environment_artist_workflow_production_requirement_status_label",
+          "environment_artist_workflow_production_closeout_status_label",
+          "evaluate_environment_artist_workflow_production_closeout",
+          "make_environment_artist_workflow_production_closeout_ui_model",
+          "environment-artist-workflow-production-closeout",
+          "tools/validate-environment-artist-workflow-production.ps1",
+          "workflow_import_openexr_ready=1",
+          "workflow_import_ktx2_basis_ready=1",
+          "workflow_import_gltf_material_ready=1",
+          "workflow_review_usd_materialx_ocio_ready=1",
+          "workflow_cook_package_ready=1",
+          "workflow_live_preview_d3d12_ready=1",
+          "workflow_live_preview_vulkan_ready=1",
+          "workflow_live_preview_metal_host_ready=1",
+          "workflow_weather_timeline_edit_ready=1",
+          "workflow_preset_batch_apply_ready=1",
+          "workflow_validation_report_ready=1",
+          "workflow_profiler_artifact_review_ready=1",
+          "workflow_undo_redo_revision_safety_ready=1",
+          "workflow_operator_review_ready=1",
+          "environment_artist_workflow_production_requirement_rows=14",
+          "environment_artist_workflow_production_ready_rows=14",
+          "environment_artist_workflow_production_ready=1",
+          "environment_artist_workflow_editor_core_backend_execution=0",
+          "environment_artist_workflow_editor_core_package_script_execution=0",
+          "environment_artist_workflow_editor_core_validation_recipe_execution=0",
+          "environment_artist_workflow_native_handle_access=0",
+          "environment_ready=0",
+          "environment_commercial_ready=0"
+        ],
+        "validationRecipeIds": [
+          "agent-contract",
+          "environment-artist-workflow-production-closeout",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "environment-asset-pipeline-openexr-ktx-basis-full",
+          "environment-aaa-preset-asset-library-production",
+          "environment-physical-weather-simulation-closeout",
+          "desktop-runtime-sample-game-environment-ready-aggregate"
+        ],
+        "blockerReason": "none for the Task 11 production artist workflow closeout lane; commercial readiness remains blocked by all-platform, broad optimization, and final aggregate gates.",
+        "forbiddenInference": "commercial readiness, all-platform readiness, broad optimization readiness, broad environment_ready, native backend handle access, renderer/RHI execution from editor core, package-script execution from editor core, validation-recipe execution from editor core, or unreviewed content mutation.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 11 promotes environment_artist_workflow_production_ready=1 only after 14 package-visible workflow rows are ready and the validator proves zero editor-core backend/package-script/validation-recipe/native-handle side effects while keeping environment_ready=0 and environment_commercial_ready=0."
       }
     ],
     "environmentCommercialUnsupportedAdjacentClaims": [
@@ -7729,7 +7826,7 @@
         "id": "environment_unreviewed_content_mutation_ready",
         "state": "unsupported",
         "requiredBeforeReadyClaim": [
-          "environment_artist_workflow_ready"
+          "environment_artist_workflow_production_ready"
         ],
         "notes": "Production authoring must use reviewed dry-run/apply rows rather than unreviewed package or content mutation."
       },

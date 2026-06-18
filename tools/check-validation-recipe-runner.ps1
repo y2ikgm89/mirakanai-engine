@@ -427,6 +427,41 @@ function Assert-EnvironmentPhysicalWeatherSimulationCloseoutDryRun {
     return $result
 }
 
+function Assert-EnvironmentArtistWorkflowProductionCloseoutDryRun {
+    $result = Assert-DryRunRecipe -Recipe "environment-artist-workflow-production-closeout" -ExpectedArgv @("-File", "tools/validate-environment-artist-workflow-production.ps1", "-RequireReady")
+    foreach ($needle in @(
+            "environment_artist_workflow_production_status=ready",
+            "environment_artist_workflow_production_ready=1",
+            "workflow_import_openexr_ready=1",
+            "workflow_import_ktx2_basis_ready=1",
+            "workflow_import_gltf_material_ready=1",
+            "workflow_review_usd_materialx_ocio_ready=1",
+            "workflow_cook_package_ready=1",
+            "workflow_live_preview_d3d12_ready=1",
+            "workflow_live_preview_vulkan_ready=1",
+            "workflow_live_preview_metal_host_ready=1",
+            "workflow_weather_timeline_edit_ready=1",
+            "workflow_preset_batch_apply_ready=1",
+            "workflow_validation_report_ready=1",
+            "workflow_profiler_artifact_review_ready=1",
+            "workflow_undo_redo_revision_safety_ready=1",
+            "workflow_operator_review_ready=1",
+            "environment_artist_workflow_production_requirement_rows=14",
+            "environment_artist_workflow_production_ready_rows=14",
+            "environment_artist_workflow_editor_core_backend_execution=0",
+            "environment_artist_workflow_editor_core_package_script_execution=0",
+            "environment_artist_workflow_editor_core_validation_recipe_execution=0",
+            "environment_artist_workflow_native_handle_access=0",
+            "environment_ready=0",
+            "environment_commercial_ready=0")) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run environment artist workflow production closeout row"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "host_gate=environment-artist-workflow-visible-shell-host")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run environment artist workflow production closeout row"
+    }
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -651,7 +686,7 @@ Assert-EnvironmentOptimizationArtifactDryRun | Out-Null
 Assert-EnvironmentAssetPipelineFullDryRun | Out-Null
 Assert-EnvironmentPresetAssetLibraryProductionDryRun | Out-Null
 Assert-EnvironmentPhysicalWeatherSimulationCloseoutDryRun | Out-Null
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-artist-workflow-production-closeout" -HostGate "environment-artist-workflow-visible-shell-host" -ReadyCounter "environment_artist_workflow_production_ready" | Out-Null
+Assert-EnvironmentArtistWorkflowProductionCloseoutDryRun | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
 $materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-scene-shaders", "--require-material-graph-authoring")) {

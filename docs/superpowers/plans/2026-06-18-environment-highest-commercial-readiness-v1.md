@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-10 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, and replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator. Task 10 promotes `environment_physical_weather_simulation_ready=1` only; commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, production artist workflow readiness, final aggregate readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-11 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, and replace the production artist workflow skeleton with a 14-row package-visible closeout validator. Task 11 promotes `environment_artist_workflow_production_ready=1` only; commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, final aggregate readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -1047,12 +1047,13 @@ Task 10 promotes only `environment_physical_weather_simulation_ready=1`. It does
 **Files:**
 - Create: `editor/core/include/mirakana/editor/environment_artist_workflow_v2.hpp`
 - Create: `editor/core/src/environment_artist_workflow_v2.cpp`
-- Create: `editor/core/tests/environment_artist_workflow_v2_tests.cpp`
-- Create: `editor/src/environment_artist_workflow_shell_v2.cpp`
+- Modify: `tests/unit/editor_environment_tests.cpp`
+- Reuse: `editor/src/first_party_editor_document.cpp` / `editor/src/native_editor_app.cpp` visible shell bridge rows
 - Modify: `editor/src/**`
 - Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Create: `tools/validate-environment-artist-workflow-production.ps1`
 
-- [ ] **Step 1: Define visible workflow rows**
+- [x] **Step 1: Define visible workflow rows**
 
 Promotion requires:
 
@@ -1074,17 +1075,17 @@ workflow_operator_review_ready=1
 environment_artist_workflow_production_ready=1
 ```
 
-- [ ] **Step 2: Keep editor-core side effects blocked**
+- [x] **Step 2: Keep editor-core side effects blocked**
 
 `MK_editor_core` may build value models, command plans, and reports. It must not execute package scripts, validation recipes, GPU commands, filesystem mutation outside reviewed document apply paths, native handles, or dependency tools.
 
-- [ ] **Step 3: Validate shell execution**
+- [x] **Step 3: Validate shell execution**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_environment_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-artist-workflow-production-closeout
 ```
 
@@ -1095,6 +1096,12 @@ environment_artist_workflow_production_ready=1
 environment_artist_workflow_editor_core_backend_execution=0
 environment_artist_workflow_native_handle_access=0
 ```
+
+Task 11 evidence (2026-06-19):
+
+- Added the clean-break `EnvironmentArtistWorkflowProduction*` value model in `MK_editor_core`, with fail-closed review rows for OpenEXR import, KTX2/Basis import, glTF material import, USD/MaterialX/OCIO review, package cooking, D3D12/Vulkan/Metal-host live preview, weather timeline editing, preset batch apply, validation report review, profiler artifact review, undo/redo revision safety, and operator review.
+- Added `tools/validate-environment-artist-workflow-production.ps1 -RequireReady`, which builds/runs `MK_editor_environment_tests`, packages `sample_desktop_runtime_game` with `--require-environment-artist-workflow-package`, verifies all 14 production workflow counters, and keeps editor-core backend/package-script/validation-recipe/native-handle side effects at 0.
+- Task 11 promotes only `environment_artist_workflow_production_ready=1`. It does not promote commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, final aggregate readiness, or broad `environment_ready`.
 
 ## Task 12: Final Commercial Aggregate Closeout
 
@@ -1273,3 +1280,6 @@ Record validation here as each PR lands.
 | 2026-06-19 | Task 10 focused CTest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_weather_simulation_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
 | 2026-06-19 | Task 10 weather physics validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-weather-physics.ps1 -RequireReady` | pass | built and ran `MK_environment_weather_simulation_tests`, `MK_d3d12_environment_weather_solver_tests`, `MK_vulkan_environment_weather_solver_tests`, and `MK_metal_environment_weather_solver_tests`; `100% tests passed, 0 tests failed out of 4`; emitted `environment_physical_weather_simulation_ready=1`, `environment_weather_simulation_backend_parity_ready=1`, `environment_weather_simulation_validation_failures=0`, `environment_ready=0`, and `environment_commercial_ready=0` |
 | 2026-06-19 | Task 10 recipe execute | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-physical-weather-simulation-closeout` | pass | status `passed`; argv routes through `tools/validate-environment-weather-physics.ps1 -RequireReady`; emitted the same Task 10 ready and non-promotion counters |
+| 2026-06-19 | Task 11 production artist workflow TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests` | expected fail | missing `environment_artist_workflow_v2.hpp` |
+| 2026-06-19 | Task 11 focused build/test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_environment_tests` | pass | built and ran `MK_editor_environment_tests`; production closeout tests cover exact visible package rows and unsafe/weak evidence failure |
+| 2026-06-19 | Task 11 validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-artist-workflow-production.ps1 -RequireReady` | pass | builds/runs `MK_editor_environment_tests`, packages `sample_desktop_runtime_game`, and emits `environment_artist_workflow_production_ready=1`, `workflow_import_openexr_ready=1`, `workflow_live_preview_vulkan_ready=1`, `environment_artist_workflow_production_requirement_rows=14`, `environment_artist_workflow_production_ready_rows=14`, `environment_ready=0`, and `environment_commercial_ready=0` |

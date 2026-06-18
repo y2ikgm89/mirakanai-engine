@@ -744,7 +744,39 @@ function Get-ValidationRecipeCommandPlan {
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentWeatherPhysics)
     }
     elseif ($RecipeName -eq 'environment-artist-workflow-production-closeout') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-artist-workflow-visible-shell-host' -ReadyCounter 'environment_artist_workflow_production_ready'
+        $expectedCounters = @(
+            'validation_recipe=environment-artist-workflow-production-closeout',
+            'environment_artist_workflow_production_status=ready',
+            'environment_artist_workflow_production_ready=1',
+            'workflow_import_openexr_ready=1',
+            'workflow_import_ktx2_basis_ready=1',
+            'workflow_import_gltf_material_ready=1',
+            'workflow_review_usd_materialx_ocio_ready=1',
+            'workflow_cook_package_ready=1',
+            'workflow_live_preview_d3d12_ready=1',
+            'workflow_live_preview_vulkan_ready=1',
+            'workflow_live_preview_metal_host_ready=1',
+            'workflow_weather_timeline_edit_ready=1',
+            'workflow_preset_batch_apply_ready=1',
+            'workflow_validation_report_ready=1',
+            'workflow_profiler_artifact_review_ready=1',
+            'workflow_undo_redo_revision_safety_ready=1',
+            'workflow_operator_review_ready=1',
+            'environment_artist_workflow_production_requirement_rows=14',
+            'environment_artist_workflow_production_ready_rows=14',
+            'environment_artist_workflow_editor_core_backend_execution=0',
+            'environment_artist_workflow_editor_core_package_script_execution=0',
+            'environment_artist_workflow_editor_core_validation_recipe_execution=0',
+            'environment_artist_workflow_native_handle_access=0',
+            'environment_ready=0',
+            'environment_commercial_ready=0'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-artist-workflow-production.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentArtistWorkflowProduction = New-RunnerDiagnostic -Severity 'info' -Code 'local-value-validation' -Message 'Environment production artist workflow closeout builds and runs MK_editor_environment_tests, then packages sample_desktop_runtime_game with the reviewed artist workflow package smoke. It requires 14 package-visible workflow rows covering OpenEXR import, KTX2/Basis import, glTF material import, USD/MaterialX/OCIO review, package cooking, D3D12/Vulkan/Metal-host live preview evidence, weather timeline editing, preset batch apply, validation report, profiler artifact review, undo/redo revision safety, and operator review. It keeps editor-core backend, package-script, validation-recipe, native-handle side effects, broad environment_ready, and commercial readiness at 0.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentArtistWorkflowProduction)
     }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-commercial-vulkan-evidence') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
