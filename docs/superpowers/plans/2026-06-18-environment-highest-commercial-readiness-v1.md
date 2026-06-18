@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7 gate as blocked with implementation code edits forbidden until every required Context7 row is ready. Task 1 landed in PR #669 with hosted validation passing. The 2026-06-18 Context7 gate continuation verified Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows, recorded Metal and glTF as partial, and keeps implementation code edits forbidden. This file does not promote any readiness claim by itself.
+**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7/source gate. Task 1 landed in PR #669 with hosted validation passing. The 2026-06-18 Context7 gate continuation verified Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows, recorded Metal and glTF as Context7-partial, then recorded official Apple/Khronos fallback rows for those two partial rows. Implementation code edits are allowed for later task-owned slices only because all eleven rows now have authoritative documentation coverage. This file does not promote any readiness claim by itself.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -75,9 +75,9 @@ Forbidden promotion paths:
 
 ## Official Source And Context7 Gate
 
-Context7 is mandatory for SDK/API/dependency implementation. Task 1 originally recorded the exact refresh gate and official fallback sources while Context7 MCP tools were not exposed by tool discovery. The 2026-06-18 continuation confirmed the Context7 MCP tools are callable, and later verified the Vulkan SDK tooling, OpenUSD, MaterialX, and OpenColorIO rows. Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows are fully verified so far; Metal and glTF remain partial; implementation tasks remain blocked until every required row below is ready. If Context7 remains unavailable or a required Context7 row has no authoritative match when a code task starts, that task is blocked and must not edit implementation files.
+Context7 is mandatory for SDK/API/dependency implementation. Task 1 originally recorded the exact refresh gate and official fallback sources while Context7 MCP tools were not exposed by tool discovery. The 2026-06-18 continuation confirmed the Context7 MCP tools are callable, and later verified the Vulkan SDK tooling, OpenUSD, MaterialX, and OpenColorIO rows. Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows are fully verified through Context7. Metal and glTF remain Context7-partial because Context7 does not expose official Apple Metal framework API docs or official Khronos glTF specification docs, but the source gate is ready because official Apple/Khronos fallback rows are recorded below. If Context7 is unavailable for a future SDK/API/dependency change, or no authoritative Context7/fallback source is recorded for the touched row, that task is blocked and must not edit implementation files.
 
-Task 1 may still edit only plan, spec, docs, manifest fragments, composed manifest output, and the static checks that validate this active-plan selection to record the blocked Context7 status. Task 1 must not edit C++, shader, CMake, package, editor, renderer, importer, tool, or game runtime implementation files while `environment_highest_readiness_code_edit_allowed=0`.
+Task 1 may still edit only plan, spec, docs, manifest fragments, composed manifest output, and the static checks that validate this active-plan/source-gate selection. Later tasks may edit task-owned C++, shader, CMake, package, editor, renderer, importer, tool, or game runtime implementation files only after their task-specific docs/Context7/fallback evidence is refreshed.
 
 Before each task that touches SDK/API/dependency behavior, run `resolve-library-id` and `query-docs` for the exact query row, then record the resolved library id, date, and implementation implication in the task PR:
 
@@ -101,11 +101,11 @@ Context7 verification evidence:
 | --- | --- | --- | --- | --- |
 | `context7.vulkan` | verified | `/khronosgroup/vulkan-docs` | 2026-06-18 | Strict Vulkan rows must prove API-validation-layer coverage, SPIR-V validation, synchronization2 barriers, dynamic-rendering execution, readback evidence, and no cross-backend inference. |
 | `context7.vulkan_sdk` | verified | `/khronosgroup/vulkan-tools` | 2026-06-18 | Vulkan SDK/tooling host gates must retain `vulkaninfo --json` or equivalent capability output, ICD/tool visibility, Vulkan Profiles JSON evidence, Android `adb` execution and pullback where applicable, and no strict package promotion without local tool evidence. |
-| `context7.metal` | partial | `/dogukanveziroglu/metal-shading-language-specification` | 2026-06-18 | Context7 covers Metal shading language resource bindings and argument-buffer structures, but Apple framework API behavior for command queues, resources, feature tables, synchronization, and readback still requires official Apple documentation before Metal implementation work. |
+| `context7.metal` | partial | `/dogukanveziroglu/metal-shading-language-specification` | 2026-06-18 | Context7 covers Metal shading language resource bindings and argument-buffer structures only. Apple framework API behavior must use the official Apple fallback row before Metal implementation work. |
 | `context7.d3d12` | verified | `/websites/learn_microsoft_en-us_windows_win32_direct3d12` | 2026-06-18 | D3D12 rows must prove debug-layer or GPU-based-validation coverage where host-supported, explicit resource barriers, upload/readback heap evidence, texture state transitions, and no cross-backend inference. |
 | `context7.openexr` | verified | `/academysoftwarefoundation/openexr` | 2026-06-18 | OpenEXR ingest must explicitly handle scanline/tiled images, channel and pixel types, metadata attributes, multipart/deep image policy, and fail-closed validation before production asset-pipeline promotion. |
 | `context7.ktx` | verified | `/khronosgroup/ktx-software` | 2026-06-18 | KTX2/Basis ingest must validate the container, distinguish ETC1S and UASTC, select transcode targets from backend/device capabilities, preserve metadata rows, and keep runtime ingest cooked-only and fail-closed. |
-| `context7.gltf` | partial | `/jkuhlmann/cgltf` | 2026-06-18 | Context7 exposes an implementation library for parsing/loading/validating glTF data, but not the official Khronos glTF 2.0 and `KHR_texture_basisu` specification; glTF implementation remains blocked until official Khronos fallback evidence is recorded beside any library-specific implementation choice. |
+| `context7.gltf` | partial | `/jkuhlmann/cgltf` | 2026-06-18 | Context7 exposes implementation libraries for parsing/loading/validating glTF data, but not the official Khronos glTF 2.0 and `KHR_texture_basisu` specifications. glTF implementation must use the official Khronos fallback row beside any library-specific implementation choice. |
 | `context7.openusd` | verified | `/websites/openusd_release` | 2026-06-18 | OpenUSD pipeline rows must prove composition and prim-index behavior, variant/export policy, material variant editing context, asset-path resolution, and fail-closed pipeline validation before USD-backed asset workflow promotion. |
 | `context7.materialx` | verified | `/academysoftwarefoundation/materialx` | 2026-06-18 | MaterialX workflow rows must prove material graph exchange, looks and assignments, target-specific shader definitions, standard surface/PBR models, texture library structure, USD/glTF interoperability intent, and fail-closed validation before look-development asset promotion. |
 | `context7.ocio` | verified | `/academysoftwarefoundation/opencolorio` | 2026-06-18 | OpenColorIO rows must prove config loading, color-space-aware default views, display/view transforms, processor creation, CPU and generated GPU transform evidence, and fail-closed color-management validation before production color pipeline promotion. |
@@ -114,13 +114,26 @@ Context7 verification evidence:
 Current gate rows:
 
 ```text
-environment_highest_readiness_context7_status=blocked
+environment_highest_readiness_context7_status=partial
 environment_highest_readiness_context7_missing_tools=0
 environment_highest_readiness_context7_verified_rows=9
 environment_highest_readiness_context7_partial_rows=2
 environment_highest_readiness_context7_pending_rows=0
-environment_highest_readiness_code_edit_allowed=0
+environment_highest_readiness_official_fallback_rows=2
+environment_highest_readiness_authoritative_doc_rows=11
+environment_highest_readiness_authoritative_doc_ready_rows=11
+environment_highest_readiness_source_gate_status=ready
+environment_highest_readiness_code_edit_allowed=1
+official_fallback.apple_metal_framework_api=ready
+official_fallback.khronos_gltf_spec=ready
 ```
+
+Official fallback evidence:
+
+| Row | Status | Official sources | Date | Implementation implication |
+| --- | --- | --- | --- | --- |
+| `official_fallback.apple_metal_framework_api` | ready | Apple Developer `MTLCommandQueue`, `MTLCommandBuffer`, `MTLBlitCommandEncoder`, `MTLTextureUsage`, argument-buffer guidance, GPU feature detection, and Metal Feature Set Tables | 2026-06-18 | Metal work may start only with Apple-host command queue, command buffer, blit upload/readback, texture-usage, synchronization, feature-table, and macOS/iOS host evidence. This does not promote Metal aggregate, backend parity, all-platform, commercial, or broad environment readiness. |
+| `official_fallback.khronos_gltf_spec` | ready | Khronos glTF 2.0 specification, Khronos `KHR_texture_basisu`, and KTX 2.0 specification | 2026-06-18 | glTF/KTX2/Basis work may start only with runtime-asset-delivery, PBR material texture metadata, KTX2 image, Basis Universal supercompression/transcode, and fail-closed validation evidence. This does not promote full asset-pipeline, commercial, or broad environment readiness. |
 
 Official fallback links checked for this plan on 2026-06-18:
 
@@ -130,12 +143,18 @@ Official fallback links checked for this plan on 2026-06-18:
 - LunarG Vulkan SDK Linux getting started: <https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html>
 - Android Vulkan validation layers: <https://developer.android.com/ndk/guides/graphics/validation-layer>
 - Apple Metal Feature Set Tables: <https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf>
+- Apple Metal `MTLCommandQueue`: <https://developer.apple.com/documentation/metal/mtlcommandqueue>
+- Apple Metal `MTLCommandBuffer`: <https://developer.apple.com/documentation/metal/mtlcommandbuffer>
+- Apple Metal `MTLBlitCommandEncoder`: <https://developer.apple.com/documentation/metal/mtlblitcommandencoder>
+- Apple Metal `MTLTextureUsage`: <https://developer.apple.com/documentation/metal/mtltextureusage>
 - Apple Metal argument buffers: <https://developer.apple.com/documentation/Metal/managing-groups-of-resources-with-argument-buffers>
 - Apple Metal CPU performance with argument buffers: <https://developer.apple.com/documentation/metal/improving-cpu-performance-by-using-argument-buffers>
+- Apple Metal GPU feature detection: <https://developer.apple.com/documentation/Metal/detecting-gpu-features-and-metal-software-versions>
 - Microsoft D3D12 resource barriers: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12>
 - Microsoft D3D12 debug layer and GPU-based validation: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-d3d12-debug-layer-gpu-based-validation>
 - Khronos glTF 2.0 specification: <https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html>
 - Khronos glTF `KHR_texture_basisu` extension: <https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_texture_basisu/README.md>
+- Khronos KTX 2.0 specification: <https://registry.khronos.org/KTX/specs/2.0/ktxspec.v2.html>
 - Khronos KTX overview: <https://www.khronos.org/ktx/>
 - OpenEXR Technical Introduction: <https://openexr.com/en/latest/TechnicalIntroduction.html>
 - OpenUSD introduction: <https://openusd.org/dev/intro.html>
@@ -256,19 +275,19 @@ Create or modify these files as the plan executes:
 
 - [x] **Step 1: Resolve Context7 documentation rows**
 
-Run the Context7 calls listed in `Official Source And Context7 Gate`. If any Context7 call is unavailable, keep this task limited to docs/spec/manifest selection and record:
+Run the Context7 calls listed in `Official Source And Context7 Gate`. If any future SDK/API/dependency task has neither an authoritative Context7 result nor an explicit official fallback row, keep that task limited to docs/spec/manifest selection and record:
 
 ```text
-environment_highest_readiness_context7_status=blocked
-environment_highest_readiness_context7_missing_tools=1
+environment_highest_readiness_source_gate_status=blocked
+environment_highest_readiness_authoritative_doc_ready_rows=<less-than-required>
 environment_highest_readiness_code_edit_allowed=0
 ```
 
 No later task may edit implementation files until the same row is updated to:
 
 ```text
-environment_highest_readiness_context7_status=ready
-environment_highest_readiness_context7_missing_tools=0
+environment_highest_readiness_source_gate_status=ready
+environment_highest_readiness_authoritative_doc_ready_rows=11
 environment_highest_readiness_code_edit_allowed=1
 ```
 
@@ -1119,3 +1138,10 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
 | 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | pass | composed `engine/agent/manifest.json` from fragments |
+| 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | pass | `text-format-check: ok` |
+| 2026-06-18 | Task 1 official fallback source gate | `git diff --check` | pass | no whitespace errors |
+| 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
+| 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
+| 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Metal/Apple checks remain host-gated or diagnostic-only on Windows |
