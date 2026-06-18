@@ -223,6 +223,33 @@ function Assert-HighestCommercialSkeletonDryRun {
     return $result
 }
 
+function Assert-EnvironmentPlatformVulkanHostGateDryRun {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Recipe,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptSuffix,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostGate,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$ExpectedNeedles
+    )
+
+    $result = Assert-DryRunRecipe -Recipe $Recipe -ExpectedArgv @("-File", $ScriptSuffix, "-RequireReady")
+    Assert-ArrayContains $result.hostGates $HostGate "dry-run host gates for $Recipe"
+    foreach ($needle in $ExpectedNeedles) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run platform Vulkan row for $Recipe"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run platform Vulkan row for $Recipe"
+    }
+
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -390,8 +417,39 @@ $highestCommercialReadinessDryRun = Assert-HighestCommercialSkeletonDryRun -Reci
 foreach ($needle in @("environment_commercial_ready=0", "environment_ready_promotion_blocked_until_all_rows_ready=1")) {
     Assert-ArgvContainsText -Result $highestCommercialReadinessDryRun -Expected $needle -Label "dry-run skeleton row for environment-highest-commercial-readiness-closeout"
 }
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-linux-vulkan-package" -HostGate "linux-vulkan-runtime-host" -ReadyCounter "environment_platform_linux_vulkan_ready" | Out-Null
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-android-vulkan-package" -HostGate "android-vulkan-runtime-host" -ReadyCounter "environment_platform_android_vulkan_ready" | Out-Null
+Assert-EnvironmentPlatformVulkanHostGateDryRun `
+    -Recipe "environment-platform-linux-vulkan-package" `
+    -ScriptSuffix "tools/validate-linux-vulkan-runtime-host.ps1" `
+    -HostGate "linux-vulkan-runtime-host" `
+    -ExpectedNeedles @(
+        "environment-platform-linux-vulkan-package",
+        "host=linux",
+        "vulkaninfo_ready=1",
+        "VK_LAYER_KHRONOS_validation_ready=1",
+        "dxc_spirv_codegen_ready=1",
+        "spirv_val_ready=1",
+        "linux_icd_runtime_ready=1",
+        "first_party_linux_runtime_host_ready=1",
+        "linux_package_script_ready=1",
+        "linux_installed_validator_ready=1",
+        "environment_platform_linux_vulkan_ready=1",
+        "environment_platform_requires_linux_vulkan_host_evidence=0") | Out-Null
+Assert-EnvironmentPlatformVulkanHostGateDryRun `
+    -Recipe "environment-platform-android-vulkan-package" `
+    -ScriptSuffix "tools/validate-android-vulkan-runtime-host.ps1" `
+    -HostGate "android-vulkan-runtime-host" `
+    -ExpectedNeedles @(
+        "environment-platform-android-vulkan-package",
+        "host_has_android_sdk=1",
+        "host_has_android_ndk=1",
+        "adb_device_or_emulator_ready=1",
+        "android_vulkan_profile_ready=1",
+        "android_validation_layer_packaged=1",
+        "VK_LAYER_KHRONOS_validation_ready=1",
+        "android_package_smoke_ready=1",
+        "android_vulkan_readback_ready=1",
+        "environment_platform_android_vulkan_ready=1",
+        "environment_platform_requires_android_vulkan_host_evidence=0") | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-ios-metal-package" -HostGate "ios-metal-host" -ReadyCounter "environment_platform_ios_metal_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-backend-parity-v2-closeout" -HostGate "environment-backend-parity-v2-closeout" -ReadyCounter "environment_backend_parity_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-broad-optimization-cross-backend-measurement" -HostGate "environment-optimization-artifact-host" -ReadyCounter "environment_broad_optimization_ready" | Out-Null

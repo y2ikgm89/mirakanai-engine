@@ -51,6 +51,30 @@ function Get-ValidationRecipeCommandPlan {
         return New-RecipePlanRow -Recipe $Recipe -CommandPlan @($entry) -HostGates @($HostGate) -RequiredAcknowledgements @($HostGate) -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagnostic)
     }
 
+    function Get-EnvironmentPlatformVulkanHostPlan {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$Recipe,
+
+            [Parameter(Mandatory = $true)]
+            [string]$ScriptPath,
+
+            [Parameter(Mandatory = $true)]
+            [string]$HostGate,
+
+            [Parameter(Mandatory = $true)]
+            [string[]]$ExpectedEvidenceCounters,
+
+            [Parameter(Mandatory = $true)]
+            [string]$Message
+        )
+
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + @($ExpectedEvidenceCounters)
+        $entry = Get-PwshScriptCommandPlan -ScriptPath $ScriptPath -ScriptArguments $scriptArguments
+        $diagnostic = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message $Message -ValidationRecipe $Recipe -HostGate $HostGate
+        return New-RecipePlanRow -Recipe $Recipe -CommandPlan @($entry) -HostGates @($HostGate) -RequiredAcknowledgements @($HostGate) -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagnostic)
+    }
+
     if ($RecipeName -eq 'agent-contract') {
         # validate.ps1 already runs check-json-contracts.ps1 before this recipe; keep
         # agent-contract execution focused on check-ai-integration.ps1 to avoid redundant multi-minute schema work.
@@ -488,10 +512,47 @@ function Get-ValidationRecipeCommandPlan {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'commercial-environment-highest-closeout' -ReadyCounter 'environment_highest_commercial_ready' -AdditionalCounters @('environment_commercial_ready=0', 'environment_ready_promotion_blocked_until_all_rows_ready=1')
     }
     elseif ($RecipeName -eq 'environment-platform-linux-vulkan-package') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'linux-vulkan-runtime-host' -ReadyCounter 'environment_platform_linux_vulkan_ready'
+        return Get-EnvironmentPlatformVulkanHostPlan `
+            -Recipe $RecipeName `
+            -ScriptPath 'tools/validate-linux-vulkan-runtime-host.ps1' `
+            -HostGate 'linux-vulkan-runtime-host' `
+            -ExpectedEvidenceCounters @(
+                'validation_recipe=environment-platform-linux-vulkan-package',
+                'host=linux',
+                'vulkaninfo_ready=1',
+                'VK_LAYER_KHRONOS_validation_ready=1',
+                'dxc_spirv_codegen_ready=1',
+                'spirv_val_ready=1',
+                'linux_icd_runtime_ready=1',
+                'first_party_linux_runtime_host_ready=1',
+                'linux_package_script_ready=1',
+                'linux_installed_validator_ready=1',
+                'environment_platform_linux_vulkan_ready=1',
+                'environment_platform_requires_linux_vulkan_host_evidence=0',
+                'environment_all_platform_unconditional_ready=0'
+            ) `
+            -Message 'Linux Vulkan platform validation requires a Linux host with Vulkan SDK tools, vulkaninfo summary evidence, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime evidence, first-party Linux runtime host/package script/installed validator rows, and no Windows Vulkan, Android Vulkan, or compile-only inference.'
     }
     elseif ($RecipeName -eq 'environment-platform-android-vulkan-package') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'android-vulkan-runtime-host' -ReadyCounter 'environment_platform_android_vulkan_ready'
+        return Get-EnvironmentPlatformVulkanHostPlan `
+            -Recipe $RecipeName `
+            -ScriptPath 'tools/validate-android-vulkan-runtime-host.ps1' `
+            -HostGate 'android-vulkan-runtime-host' `
+            -ExpectedEvidenceCounters @(
+                'validation_recipe=environment-platform-android-vulkan-package',
+                'host_has_android_sdk=1',
+                'host_has_android_ndk=1',
+                'adb_device_or_emulator_ready=1',
+                'android_vulkan_profile_ready=1',
+                'android_validation_layer_packaged=1',
+                'VK_LAYER_KHRONOS_validation_ready=1',
+                'android_package_smoke_ready=1',
+                'android_vulkan_readback_ready=1',
+                'environment_platform_android_vulkan_ready=1',
+                'environment_platform_requires_android_vulkan_host_evidence=0',
+                'environment_all_platform_unconditional_ready=0'
+            ) `
+            -Message 'Android Vulkan platform validation requires Android SDK, NDK, adb device or emulator evidence, manifest Vulkan version/level feature declarations, packaged or enabled VK_LAYER_KHRONOS_validation, Android package smoke, Android Vulkan readback evidence, and no desktop Vulkan or Linux Vulkan inference.'
     }
     elseif ($RecipeName -eq 'environment-platform-ios-metal-package') {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'ios-metal-host' -ReadyCounter 'environment_platform_ios_metal_ready'

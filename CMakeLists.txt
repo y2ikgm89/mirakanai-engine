@@ -783,6 +783,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_rhi_mavg_streaming_upload_overlap_evidence_tests)
     add_test(NAME MK_runtime_rhi_mavg_streaming_upload_overlap_evidence_tests COMMAND MK_runtime_rhi_mavg_streaming_upload_overlap_evidence_tests)
 
+    add_executable(MK_env_platform_v2_tests
+        tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp
+    )
+    target_link_libraries(MK_env_platform_v2_tests PRIVATE MK_runtime_rhi)
+    target_include_directories(MK_env_platform_v2_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_env_platform_v2_tests)
+    add_test(NAME MK_runtime_rhi_environment_platform_evidence_v2_tests COMMAND MK_env_platform_v2_tests)
+
     add_executable(MK_runtime_scene_rhi_tests
         tests/unit/runtime_scene_rhi_tests.cpp
     )
