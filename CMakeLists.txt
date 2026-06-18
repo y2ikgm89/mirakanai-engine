@@ -1083,6 +1083,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_environment_tests)
     add_test(NAME MK_environment_tests COMMAND MK_environment_tests)
 
+    add_executable(MK_environment_commercial_readiness_v2_tests
+        tests/unit/environment_commercial_readiness_v2_tests.cpp
+    )
+    target_link_libraries(MK_environment_commercial_readiness_v2_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_commercial_readiness_v2_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_commercial_readiness_v2_tests)
+    add_test(NAME MK_environment_commercial_readiness_v2_tests COMMAND MK_environment_commercial_readiness_v2_tests)
+
     add_executable(MK_runtime_host_tests
         tests/unit/runtime_host_tests.cpp
     )

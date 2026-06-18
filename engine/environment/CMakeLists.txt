@@ -1,5 +1,6 @@
 add_library(mirakana_environment
     src/cloud_layer.cpp
+    src/commercial_readiness_v2.cpp
     src/environment_commercial_readiness.cpp
     src/environment_io.cpp
     src/environment_preset_pack.cpp

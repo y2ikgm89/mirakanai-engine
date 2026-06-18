@@ -123,6 +123,40 @@ Required dependency rows:
 | `environment_physical_weather_simulation_ready` | `1` | Coupled CPU reference and GPU solver rows meet validation dataset, conservation, budget, visual regression, and backend parity thresholds. |
 | `environment_artist_workflow_production_ready` | `1` | Visible editor shell supports import, cook, package, preview, compare, validate, report, revise, undo/redo, batch, and review flows without editor-core backend execution. |
 
+## Task 2 Commercial Readiness V2 Contract
+
+Task 2 adds a clean-break `MK_environment` value contract:
+
+```text
+EnvironmentCommercialReadinessV2RowStatus
+EnvironmentCommercialReadinessV2Row
+EnvironmentCommercialReadinessV2Result
+evaluate_environment_commercial_readiness_v2
+```
+
+The evaluator requires these exact 16 rows before it may emit `highest_commercial_ready=1` or `commercial_ready=1`:
+
+```text
+environment_strict_vulkan_aggregate_ready
+environment_metal_aggregate_ready
+environment_backend_parity_ready
+environment_platform_windows_d3d12_ready
+environment_platform_windows_vulkan_ready
+environment_platform_linux_vulkan_ready
+environment_platform_macos_metal_ready
+environment_platform_ios_metal_ready
+environment_platform_android_vulkan_ready
+environment_platform_readiness_ready
+environment_all_platform_unconditional_ready
+environment_broad_optimization_ready
+environment_asset_pipeline_openexr_ktx_basis_full_ready
+environment_aaa_preset_asset_library_ready
+environment_physical_weather_simulation_ready
+environment_artist_workflow_production_ready
+```
+
+Missing rows count as `dependency_gated_rows`. Duplicate required row ids are diagnostics and keep both commercial booleans false. D3D12 rows must not infer Vulkan or Metal rows, macOS Metal rows must not infer iOS Metal rows, and backend parity must not infer all-platform readiness while Linux Vulkan, Android Vulkan, or iOS Metal rows are missing. License/provenance gaps, solver validation gaps, visible-shell workflow gaps, diagnostics, or native handle access keep both commercial booleans false.
+
 ## Clean-Break Row Policy
 
 Commercial v2 rows are new rows.
