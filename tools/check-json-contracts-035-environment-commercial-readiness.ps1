@@ -16,11 +16,14 @@ foreach ($requiredSchemaField in @("environmentCommercialClaimMatrix", "environm
 }
 
 $environmentCommercialValidationRecipeNames = @{}
+$environmentCommercialValidationRecipesByName = @{}
 foreach ($validationRecipe in @($engineForEnvironmentCommercial.validationRecipes)) {
-    $environmentCommercialValidationRecipeNames[[string]$validationRecipe.name] = $true
+    $recipeName = [string]$validationRecipe.name
+    $environmentCommercialValidationRecipeNames[$recipeName] = $true
+    $environmentCommercialValidationRecipesByName[$recipeName] = $validationRecipe
 }
 
-$expectedHighestCommercialRecipeSkeletonIds = @(
+$expectedHighestCommercialRecipeIds = @(
     "environment-highest-commercial-readiness-closeout",
     "environment-platform-linux-vulkan-package",
     "environment-platform-android-vulkan-package",
@@ -32,9 +35,58 @@ $expectedHighestCommercialRecipeSkeletonIds = @(
     "environment-physical-weather-simulation-closeout",
     "environment-artist-workflow-production-closeout"
 )
-foreach ($recipeId in $expectedHighestCommercialRecipeSkeletonIds) {
+foreach ($recipeId in $expectedHighestCommercialRecipeIds) {
     if (-not $environmentCommercialValidationRecipeNames.ContainsKey($recipeId)) {
-        Write-Error "engine manifest validationRecipes missing Environment Highest Commercial Readiness v1 Task 3 skeleton recipe: $recipeId"
+        Write-Error "engine manifest validationRecipes missing Environment Highest Commercial Readiness v1 recipe: $recipeId"
+    }
+}
+$expectedRemainingHighestCommercialRecipeSkeletonIds = @(
+    "environment-highest-commercial-readiness-closeout",
+    "environment-platform-ios-metal-package",
+    "environment-backend-parity-v2-closeout",
+    "environment-broad-optimization-cross-backend-measurement",
+    "environment-asset-pipeline-openexr-ktx-basis-full",
+    "environment-aaa-preset-asset-library-production",
+    "environment-physical-weather-simulation-closeout",
+    "environment-artist-workflow-production-closeout"
+)
+foreach ($recipeId in $expectedRemainingHighestCommercialRecipeSkeletonIds) {
+    $recipe = $environmentCommercialValidationRecipesByName[$recipeId]
+    if ($null -ne $recipe -and -not ([string]$recipe.command).Contains("validation_recipe_skeleton=1")) {
+        Write-Error "engine manifest validationRecipes '$recipeId' must remain a dry-run-only skeleton until its owning task replaces it"
+    }
+}
+$expectedEnvironmentPlatformVulkanHostRecipes = @(
+    @{
+        Recipe = "environment-platform-linux-vulkan-package"
+        Script = "tools/validate-linux-vulkan-runtime-host.ps1"
+        Forbidden = "validation_recipe_skeleton=1"
+        Needles = @("host=linux", "vulkaninfo_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "dxc_spirv_codegen_ready=1", "spirv_val_ready=1", "linux_icd_runtime_ready=1", "first_party_linux_runtime_host_ready=1", "linux_package_script_ready=1", "linux_installed_validator_ready=1", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0")
+    },
+    @{
+        Recipe = "environment-platform-android-vulkan-package"
+        Script = "tools/validate-android-vulkan-runtime-host.ps1"
+        Forbidden = "validation_recipe_skeleton=1"
+        Needles = @("host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_vulkan_profile_ready=1", "android_validation_layer_packaged=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
+    }
+)
+foreach ($recipeContract in $expectedEnvironmentPlatformVulkanHostRecipes) {
+    $recipeId = [string]$recipeContract.Recipe
+    $recipe = $environmentCommercialValidationRecipesByName[$recipeId]
+    if ($null -eq $recipe) {
+        continue
+    }
+    $recipeText = [string]::Join(" ", @([string]$recipe.command, [string]$recipe.purpose))
+    if (-not $recipeText.Contains([string]$recipeContract.Script)) {
+        Write-Error "engine manifest validationRecipes '$recipeId' must route through $($recipeContract.Script)"
+    }
+    if ($recipeText.Contains([string]$recipeContract.Forbidden)) {
+        Write-Error "engine manifest validationRecipes '$recipeId' must not remain a dry-run skeleton after Task 4"
+    }
+    foreach ($needle in @($recipeContract.Needles)) {
+        if (-not $recipeText.Contains([string]$needle)) {
+            Write-Error "engine manifest validationRecipes '$recipeId' missing Task 4 Vulkan platform host needle: $needle"
+        }
     }
 }
 
@@ -251,7 +303,7 @@ $expectedEnvironmentPlatformReadinessRows = @(
         id = "environment_platform_linux_vulkan"
         claimId = "environment_platform_linux_vulkan_ready"
         state = "host-gated"
-        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "environment_platform_linux_vulkan_ready=0")
+        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "tools/validate-linux-vulkan-runtime-host.ps1", "environment-platform-linux-vulkan-package", "linux-vulkan-runtime-host", "vulkaninfo_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "dxc_spirv_codegen_ready=1", "spirv_val_ready=1", "linux_icd_runtime_ready=1", "first_party_linux_runtime_host_ready=1", "linux_package_script_ready=1", "linux_installed_validator_ready=1", "environment_platform_linux_vulkan_ready=0", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0")
     },
     @{
         id = "environment_platform_macos_metal"
@@ -269,7 +321,7 @@ $expectedEnvironmentPlatformReadinessRows = @(
         id = "environment_platform_android_vulkan"
         claimId = "environment_platform_android_vulkan_ready"
         state = "host-gated"
-        needles = @("Android SDK", "NDK", "Vulkan", "desktop Vulkan", "environment_platform_android_vulkan_ready=0")
+        needles = @("Android SDK", "NDK", "Vulkan", "desktop Vulkan", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-android-vulkan-package", "android-vulkan-runtime-host", "host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_vulkan_profile_ready=1", "android_validation_layer_packaged=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "environment_platform_android_vulkan_ready=0", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
     },
     @{
         id = "environment_platform_unconditional_all_platform"
@@ -746,11 +798,16 @@ foreach ($sourceSurface in @(
         @{ Path = "engine/environment/CMakeLists.txt"; Needles = @("src/commercial_readiness_v2.cpp") },
         @{ Path = "games/sample_desktop_runtime_game/main.cpp"; Needles = @("--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence", "environment_commercial_readiness_status", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested", "require_environment_commercial_readiness", "require_environment_commercial_vulkan_evidence") },
         @{ Path = "tools/validation-recipe-core.ps1"; Needles = @("Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence") },
-        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") },
+        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "vulkaninfo_ready=1", "android_vulkan_readback_ready=1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") },
+        @{ Path = "tools/validate-linux-vulkan-runtime-host.ps1"; Needles = @("Find-VulkanInfoCommand", "--summary", "VK_LAYER_KHRONOS_validation", "dxc_spirv_codegen_ready", "spirv_val_ready", "linux_icd_runtime_ready", "first_party_linux_runtime_host_ready", "linux_package_script_ready", "linux_installed_validator_ready", "environment_platform_linux_vulkan_ready", "windows_vulkan_inferred=0") },
+        @{ Path = "tools/validate-android-vulkan-runtime-host.ps1"; Needles = @("enable_gpu_debug_layers", "gpu_debug_layers", "VK_LAYER_KHRONOS_validation", "android.hardware.vulkan.version", "android.hardware.vulkan.level", "android_validation_layer_packaged", "android_package_smoke_ready", "android_vulkan_readback_ready", "environment_platform_android_vulkan_ready", "desktop_vulkan_inferred=0") },
         @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("environment_commercial_readiness_status", "environment_commercial_ready", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested") },
         @{ Path = "tools/validate-environment-metal-host-aggregate.ps1"; Needles = @("environment_backend_parity_metal_evidence_requested=1", "environment_backend_parity_metal_evidence_ready=1", "environment_backend_parity_metal_host=1", "environment_backend_parity_ready=0", "environment_backend_parity_cross_host_aggregate_ready=0", "environment_backend_parity_d3d12_inferred=0", "environment_backend_parity_vulkan_inferred=0", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "environment_commercial_ready_rows=2", "environment_commercial_blocked_rows=7") },
         @{ Path = ".github/workflows/validate.yml"; Needles = @("Environment Metal aggregate host evidence recipe", "validate-environment-metal-host-aggregate.ps1") },
-        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") }
+        @{ Path = "engine/runtime_rhi/include/mirakana/runtime_rhi/environment_platform_evidence_v2.hpp"; Needles = @("EnvironmentPlatformEvidenceV2RowStatus", "EnvironmentPlatformEvidenceV2PlatformId", "EnvironmentPlatformEvidenceV2Row", "EnvironmentPlatformEvidenceV2Result", "evaluate_environment_platform_evidence_v2", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "linux_package_script_ready", "android_vulkan_readback_ready") },
+        @{ Path = "tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp"; Needles = @("windows_vulkan_evidence_does_not_promote_linux_or_android_vulkan", "linux_vulkan_ready_requires_exact_linux_host_gate_and_tool_rows", "android_vulkan_ready_requires_android_device_validation_layer_package_and_readback", "native_handle_or_inferred_platform_rows_keep_ready_false") },
+        @{ Path = "CMakeLists.txt"; Needles = @("MK_env_platform_v2_tests", "tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp") },
+        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") }
     )) {
     $sourceSurfaceText = Get-JsonContractSurfaceText $sourceSurface.Path
     foreach ($needle in @($sourceSurface.Needles)) {

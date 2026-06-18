@@ -487,7 +487,7 @@ DryRun does not execute package, GPU, or host commands
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `tools/run-validation-recipe-plans.ps1`
 
-- [ ] **Step 1: Implement Linux Vulkan host gate**
+- [x] **Step 1: Implement Linux Vulkan host gate**
 
 The Linux gate must require:
 
@@ -505,7 +505,7 @@ environment_platform_linux_vulkan_ready=1
 environment_platform_requires_linux_vulkan_host_evidence=0
 ```
 
-- [ ] **Step 2: Implement Android Vulkan host gate**
+- [x] **Step 2: Implement Android Vulkan host gate**
 
 The Android gate must require:
 
@@ -521,11 +521,11 @@ android_vulkan_readback_ready=1
 environment_platform_android_vulkan_ready=1
 ```
 
-- [ ] **Step 3: Keep Windows Vulkan separate**
+- [x] **Step 3: Keep Windows Vulkan separate**
 
 Windows Vulkan remains its own strict package row. It must not set Linux or Android rows.
 
-- [ ] **Step 4: Validate dry-run and no-inference guards**
+- [x] **Step 4: Validate dry-run and no-inference guards**
 
 Run:
 
@@ -541,6 +541,35 @@ Expected:
 Linux and Android recipes require explicit host gates
 environment_platform_windows_vulkan_ready does not appear as proof for Linux or Android rows
 check-json-contracts.ps1 exits 0
+```
+
+Task 4 evidence (2026-06-18):
+
+```text
+Context7 source refresh:
+- /khronosgroup/vulkan-tools: vulkaninfo --summary/--json, recognized layers, device properties, extensions, and Vulkan Profiles JSON output.
+- /khronosgroup/vulkan-docs: SPIR-V shader module validation, valid SPIR-V code, Shader capability, unsupported capabilities/extensions forbidden.
+- /websites/developer_android: Android Vulkan validation layers, adb GPU debug layer settings, android.hardware.vulkan.version, and android.hardware.vulkan.level declarations.
+
+RED:
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests failed before implementation because mirakana/runtime_rhi/environment_platform_evidence_v2.hpp was missing.
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1 failed before implementation because environment-platform-linux-vulkan-package still used the skeleton argv and did not include -File tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady.
+
+GREEN focused validation:
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-platform-linux-vulkan-package
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-platform-android-vulkan-package
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+```
+
+Result:
+
+```text
+environment-platform-linux-vulkan-package now routes through tools/validate-linux-vulkan-runtime-host.ps1 and requires host=linux, vulkaninfo_ready=1, VK_LAYER_KHRONOS_validation_ready=1, dxc_spirv_codegen_ready=1, spirv_val_ready=1, linux_icd_runtime_ready=1, first_party_linux_runtime_host_ready=1, linux_package_script_ready=1, linux_installed_validator_ready=1, environment_platform_linux_vulkan_ready=1, and environment_platform_requires_linux_vulkan_host_evidence=0 before a Linux row can be ready.
+environment-platform-android-vulkan-package now routes through tools/validate-android-vulkan-runtime-host.ps1 and requires host_has_android_sdk=1, host_has_android_ndk=1, adb_device_or_emulator_ready=1, android_vulkan_profile_ready=1, android_validation_layer_packaged=1, VK_LAYER_KHRONOS_validation_ready=1, android_package_smoke_ready=1, android_vulkan_readback_ready=1, environment_platform_android_vulkan_ready=1, and environment_platform_requires_android_vulkan_host_evidence=0 before an Android row can be ready.
+Windows Vulkan evidence remains separate and cannot promote Linux or Android rows. Commercial readiness, unconditional all-platform readiness, and broad environment_ready remain 0/unclaimed.
 ```
 
 ## Task 5: Close Apple Metal Platform Rows
