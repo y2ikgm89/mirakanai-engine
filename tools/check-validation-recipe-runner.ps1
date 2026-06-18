@@ -186,6 +186,43 @@ function Assert-ArgvContainsText {
     }
 }
 
+function Assert-ArgvDoesNotContainText {
+    param(
+        [Parameter(Mandatory = $true)][object]$Result,
+        [Parameter(Mandatory = $true)][string]$Unexpected,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $joined = [string]::Join("`n", @($Result.argv | ForEach-Object { [string]$_ }))
+    if ($joined.Contains($Unexpected)) {
+        Write-Error "$Label must not contain text: $Unexpected"
+    }
+}
+
+function Assert-HighestCommercialSkeletonDryRun {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Recipe,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostGate,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ReadyCounter
+    )
+
+    $result = Assert-DryRunRecipe -Recipe $Recipe -ExpectedArgv @("-Command")
+    Assert-ArrayContains $result.hostGates $HostGate "dry-run host gates for $Recipe"
+    foreach ($needle in @($Recipe, "validation_recipe_skeleton=1", "ready_claim=0", "$ReadyCounter=0")) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run skeleton row for $Recipe"
+    }
+    foreach ($needle in @("tools/package-desktop-runtime.ps1", "validate-linux-vulkan-runtime-host.ps1", "validate-android-vulkan-runtime-host.ps1", "validate-apple-metal-platform-host.ps1", "validate-environment-optimization-artifacts.ps1", "validate-environment-weather-physics.ps1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run skeleton row for $Recipe"
+    }
+
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -349,6 +386,19 @@ $sampleEnvironmentWeatherSimulationVulkanSolverDryRun = Assert-DryRunRecipe -Rec
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-weather-simulation-vulkan-solver-package", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentWeatherSimulationVulkanSolverDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package"
 }
+$highestCommercialReadinessDryRun = Assert-HighestCommercialSkeletonDryRun -Recipe "environment-highest-commercial-readiness-closeout" -HostGate "commercial-environment-highest-closeout" -ReadyCounter "environment_highest_commercial_ready"
+foreach ($needle in @("environment_commercial_ready=0", "environment_ready_promotion_blocked_until_all_rows_ready=1")) {
+    Assert-ArgvContainsText -Result $highestCommercialReadinessDryRun -Expected $needle -Label "dry-run skeleton row for environment-highest-commercial-readiness-closeout"
+}
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-linux-vulkan-package" -HostGate "linux-vulkan-runtime-host" -ReadyCounter "environment_platform_linux_vulkan_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-android-vulkan-package" -HostGate "android-vulkan-runtime-host" -ReadyCounter "environment_platform_android_vulkan_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-ios-metal-package" -HostGate "ios-metal-host" -ReadyCounter "environment_platform_ios_metal_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-backend-parity-v2-closeout" -HostGate "environment-backend-parity-v2-closeout" -ReadyCounter "environment_backend_parity_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-broad-optimization-cross-backend-measurement" -HostGate "environment-optimization-artifact-host" -ReadyCounter "environment_broad_optimization_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-asset-pipeline-openexr-ktx-basis-full" -HostGate "environment-asset-pipeline-full-optional-dependencies" -ReadyCounter "environment_asset_pipeline_openexr_ktx_basis_full_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-aaa-preset-asset-library-production" -HostGate "environment-aaa-asset-library-production-assets" -ReadyCounter "environment_aaa_preset_asset_library_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-physical-weather-simulation-closeout" -HostGate "environment-weather-physics-dataset-host" -ReadyCounter "environment_physical_weather_simulation_ready" | Out-Null
+Assert-HighestCommercialSkeletonDryRun -Recipe "environment-artist-workflow-production-closeout" -HostGate "environment-artist-workflow-visible-shell-host" -ReadyCounter "environment_artist_workflow_production_ready" | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
 $materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-scene-shaders", "--require-material-graph-authoring")) {

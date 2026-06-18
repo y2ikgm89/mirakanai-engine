@@ -170,6 +170,16 @@
         "environment-artist-workflow-package",
         "environment-commercial-readiness",
         "environment-commercial-vulkan-evidence",
+        "environment-highest-commercial-readiness-closeout",
+        "environment-platform-linux-vulkan-package",
+        "environment-platform-android-vulkan-package",
+        "environment-platform-ios-metal-package",
+        "environment-backend-parity-v2-closeout",
+        "environment-broad-optimization-cross-backend-measurement",
+        "environment-asset-pipeline-openexr-ktx-basis-full",
+        "environment-aaa-preset-asset-library-production",
+        "environment-physical-weather-simulation-closeout",
+        "environment-artist-workflow-production-closeout",
         "environment-quality-budget-evidence",
         "animation",
         "framegraph-multiqueue",
@@ -223,6 +233,16 @@
         "desktop-runtime-sample-game-environment-artist-workflow-package",
         "desktop-runtime-sample-game-environment-commercial-readiness",
         "desktop-runtime-sample-game-environment-commercial-vulkan-evidence",
+        "environment-highest-commercial-readiness-closeout",
+        "environment-platform-linux-vulkan-package",
+        "environment-platform-android-vulkan-package",
+        "environment-platform-ios-metal-package",
+        "environment-backend-parity-v2-closeout",
+        "environment-broad-optimization-cross-backend-measurement",
+        "environment-asset-pipeline-openexr-ktx-basis-full",
+        "environment-aaa-preset-asset-library-production",
+        "environment-physical-weather-simulation-closeout",
+        "environment-artist-workflow-production-closeout",
         "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
@@ -332,6 +352,22 @@
           "evidence": "The selected strict Vulkan commercial evidence bridge reports desktop-runtime-sample-game-environment-commercial-vulkan-evidence, --require-environment-commercial-vulkan-evidence, environment_commercial_readiness_status=blocked, environment_commercial_ready=0, environment_commercial_required_rows=14, environment_commercial_ready_rows=3, environment_commercial_host_gated_rows=5, environment_commercial_blocked_rows=6, environment_commercial_vulkan_evidence_requested=1, environment_commercial_strict_vulkan_aggregate_ready=1, environment_commercial_windows_vulkan_ready=1, zero native handle access, zero broad environment ready claim, and a positive replay hash without promoting commercial readiness, D3D12 commercial rows, Metal readiness, Linux Vulkan readiness, Android Vulkan readiness, backend parity, all-platform readiness, complete physical weather simulation, broad optimization, broad asset-pipeline coverage, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-commercial-vulkan-evidence"
+          ]
+        },
+        {
+          "id": "environment-highest-commercial-readiness-skeletons",
+          "evidence": "Task 3 registers dry-run-only skeleton recipes for environment-highest-commercial-readiness-closeout, environment-platform-linux-vulkan-package, environment-platform-android-vulkan-package, environment-platform-ios-metal-package, environment-backend-parity-v2-closeout, environment-broad-optimization-cross-backend-measurement, environment-asset-pipeline-openexr-ktx-basis-full, environment-aaa-preset-asset-library-production, environment-physical-weather-simulation-closeout, and environment-artist-workflow-production-closeout. The dry-run rows carry command, host gate, validation_recipe_skeleton=1, ready_claim=0, package_command_executed=0, gpu_command_executed=0, host_command_executed=0, and environment_ready_promotion_blocked_until_all_rows_ready=1 for the aggregate closeout, while environment_highest_commercial_ready=0, environment_commercial_ready=0, Linux Vulkan, Android Vulkan, iOS Metal, backend parity v2, broad optimization, full OpenEXR/KTX2/Basis, AAA preset asset library, physical weather, and production artist workflow ready counters remain 0.",
+          "recipeIds": [
+            "environment-highest-commercial-readiness-closeout",
+            "environment-platform-linux-vulkan-package",
+            "environment-platform-android-vulkan-package",
+            "environment-platform-ios-metal-package",
+            "environment-backend-parity-v2-closeout",
+            "environment-broad-optimization-cross-backend-measurement",
+            "environment-asset-pipeline-openexr-ktx-basis-full",
+            "environment-aaa-preset-asset-library-production",
+            "environment-physical-weather-simulation-closeout",
+            "environment-artist-workflow-production-closeout"
           ]
         },
         {
@@ -2201,6 +2237,46 @@
     {
       "name": "desktop-runtime-sample-game-environment-commercial-vulkan-evidence",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-renderer','--require-environment-vulkan-strict-aggregate','--require-environment-commercial-vulkan-evidence')\""
+    },
+    {
+      "name": "environment-highest-commercial-readiness-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-highest-commercial-readiness-closeout validation_recipe_skeleton=1 host_gate=commercial-environment-highest-closeout ready_claim=0 environment_highest_commercial_ready=0 environment_commercial_ready=0 environment_ready_promotion_blocked_until_all_rows_ready=1 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-platform-linux-vulkan-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-linux-vulkan-package validation_recipe_skeleton=1 host_gate=linux-vulkan-runtime-host ready_claim=0 environment_platform_linux_vulkan_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-platform-android-vulkan-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-android-vulkan-package validation_recipe_skeleton=1 host_gate=android-vulkan-runtime-host ready_claim=0 environment_platform_android_vulkan_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-platform-ios-metal-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-ios-metal-package validation_recipe_skeleton=1 host_gate=ios-metal-host ready_claim=0 environment_platform_ios_metal_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-backend-parity-v2-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-backend-parity-v2-closeout validation_recipe_skeleton=1 host_gate=environment-backend-parity-v2-closeout ready_claim=0 environment_backend_parity_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-broad-optimization-cross-backend-measurement",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-broad-optimization-cross-backend-measurement validation_recipe_skeleton=1 host_gate=environment-optimization-artifact-host ready_claim=0 environment_broad_optimization_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-asset-pipeline-openexr-ktx-basis-full",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-asset-pipeline-openexr-ktx-basis-full validation_recipe_skeleton=1 host_gate=environment-asset-pipeline-full-optional-dependencies ready_claim=0 environment_asset_pipeline_openexr_ktx_basis_full_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-aaa-preset-asset-library-production",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-aaa-preset-asset-library-production validation_recipe_skeleton=1 host_gate=environment-aaa-asset-library-production-assets ready_claim=0 environment_aaa_preset_asset_library_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-physical-weather-simulation-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-physical-weather-simulation-closeout validation_recipe_skeleton=1 host_gate=environment-weather-physics-dataset-host ready_claim=0 environment_physical_weather_simulation_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
+    },
+    {
+      "name": "environment-artist-workflow-production-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-artist-workflow-production-closeout validation_recipe_skeleton=1 host_gate=environment-artist-workflow-visible-shell-host ready_claim=0 environment_artist_workflow_production_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package",

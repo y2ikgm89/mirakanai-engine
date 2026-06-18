@@ -15,6 +15,42 @@ function Get-ValidationRecipeCommandPlan {
 
     $packageScript = 'tools/package-desktop-runtime.ps1'
 
+    function Get-EnvironmentHighestCommercialSkeletonPlan {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$Recipe,
+
+            [Parameter(Mandatory = $true)]
+            [string]$HostGate,
+
+            [Parameter(Mandatory = $true)]
+            [string]$ReadyCounter,
+
+            [string[]]$AdditionalCounters = @()
+        )
+
+        $counterRows = @(
+            "validation_recipe=$Recipe",
+            "validation_recipe_skeleton=1",
+            "host_gate=$HostGate",
+            "ready_claim=0",
+            "$ReadyCounter=0",
+            "package_command_executed=0",
+            "gpu_command_executed=0",
+            "host_command_executed=0"
+        ) + @($AdditionalCounters)
+        $scriptText = "Write-Output " + (ConvertTo-PwshSingleQuotedLiteral ([string]::Join(' ', $counterRows)))
+        $entry = New-CommandPlanEntry -Command 'pwsh' -Argv @(
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-Command',
+            $scriptText
+        )
+        $diagnostic = New-RunnerDiagnostic -Severity 'info' -Code 'skeleton-ready-claim-zero' -Message "Highest commercial readiness skeleton recipe '$Recipe' is registered for reviewed dry-run routing only; all ready claims remain 0 until its owning implementation task replaces the skeleton with package-visible evidence." -ValidationRecipe $Recipe -HostGate $HostGate
+        return New-RecipePlanRow -Recipe $Recipe -CommandPlan @($entry) -HostGates @($HostGate) -RequiredAcknowledgements @($HostGate) -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagnostic)
+    }
+
     if ($RecipeName -eq 'agent-contract') {
         # validate.ps1 already runs check-json-contracts.ps1 before this recipe; keep
         # agent-contract execution focused on check-ai-integration.ps1 to avoid redundant multi-minute schema work.
@@ -447,6 +483,36 @@ function Get-ValidationRecipeCommandPlan {
         $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -RequireVulkanShaders -SmokeArgs $smokeTail
         $diagEnvironmentCommercial = New-RunnerDiagnostic -Severity 'info' -Code 'host-evidence-required' -Message 'Environment commercial readiness closeout validation aggregates the exact selected strict Vulkan, Metal host, backend parity, platform, broad optimization, OpenEXR/KTX/Basis asset-pipeline, AAA preset-library, physical-weather, and artist-workflow rows. It currently emits environment_commercial_ready=0 with exact ready, host-gated, and blocked dependency counts; commercial readiness may be promoted only after every dependency row is ready, package-visible, legally current, validation-guarded, and adjacent broad non-claims remain explicit.' -ValidationRecipe $RecipeName -HostGate 'commercial-environment-closeout'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary', 'vulkan-strict', 'metal-apple', 'android-gameactivity', 'commercial-environment-closeout') -RequiredAcknowledgements @('d3d12-windows-primary', 'vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentCommercial)
+    }
+    elseif ($RecipeName -eq 'environment-highest-commercial-readiness-closeout') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'commercial-environment-highest-closeout' -ReadyCounter 'environment_highest_commercial_ready' -AdditionalCounters @('environment_commercial_ready=0', 'environment_ready_promotion_blocked_until_all_rows_ready=1')
+    }
+    elseif ($RecipeName -eq 'environment-platform-linux-vulkan-package') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'linux-vulkan-runtime-host' -ReadyCounter 'environment_platform_linux_vulkan_ready'
+    }
+    elseif ($RecipeName -eq 'environment-platform-android-vulkan-package') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'android-vulkan-runtime-host' -ReadyCounter 'environment_platform_android_vulkan_ready'
+    }
+    elseif ($RecipeName -eq 'environment-platform-ios-metal-package') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'ios-metal-host' -ReadyCounter 'environment_platform_ios_metal_ready'
+    }
+    elseif ($RecipeName -eq 'environment-backend-parity-v2-closeout') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-backend-parity-v2-closeout' -ReadyCounter 'environment_backend_parity_ready'
+    }
+    elseif ($RecipeName -eq 'environment-broad-optimization-cross-backend-measurement') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-optimization-artifact-host' -ReadyCounter 'environment_broad_optimization_ready'
+    }
+    elseif ($RecipeName -eq 'environment-asset-pipeline-openexr-ktx-basis-full') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-asset-pipeline-full-optional-dependencies' -ReadyCounter 'environment_asset_pipeline_openexr_ktx_basis_full_ready'
+    }
+    elseif ($RecipeName -eq 'environment-aaa-preset-asset-library-production') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-aaa-asset-library-production-assets' -ReadyCounter 'environment_aaa_preset_asset_library_ready'
+    }
+    elseif ($RecipeName -eq 'environment-physical-weather-simulation-closeout') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-weather-physics-dataset-host' -ReadyCounter 'environment_physical_weather_simulation_ready'
+    }
+    elseif ($RecipeName -eq 'environment-artist-workflow-production-closeout') {
+        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-artist-workflow-visible-shell-host' -ReadyCounter 'environment_artist_workflow_production_ready'
     }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-commercial-vulkan-evidence') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
