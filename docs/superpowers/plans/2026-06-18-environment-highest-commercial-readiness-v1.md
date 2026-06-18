@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-8 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, and promote only the production AAA preset asset-library dependency row. Task 8 promotes `environment_aaa_preset_asset_library_ready=1` only; commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, full OpenEXR/KTX2/Basis readiness, physical weather simulation readiness, production artist workflow readiness, final aggregate readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-10 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, and replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator. Task 10 promotes `environment_physical_weather_simulation_ready=1` only; commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, production artist workflow readiness, final aggregate readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -175,7 +175,7 @@ Current repository truth before selecting this plan:
 - Selected strict Vulkan aggregate evidence exists for the reviewed Windows Vulkan package lane.
 - Selected Apple-host Metal aggregate and macOS Metal platform evidence exist only behind Apple-host recipes.
 - Selected package-visible backend parity is promoted only through the existing backend parity closeout.
-- Linux Vulkan, iOS Metal, Android Vulkan, all-platform readiness, broad optimization, complete physical weather simulation, production solver readiness, external marketplace preset coverage, complete production artist workflow, commercial aggregate readiness, and broad `environment_ready` remain unclaimed.
+- Linux Vulkan, iOS Metal, Android Vulkan, all-platform readiness, broad optimization, external marketplace preset coverage, complete production artist workflow, commercial aggregate readiness, and broad `environment_ready` remain unclaimed.
 - `unsupportedProductionGaps = []` remains the 1.0 truth. This plan is post-1.0 candidate work and must not rewrite the historical MVP closure.
 
 ## File Ownership Map
@@ -891,21 +891,26 @@ environment-aaa-preset-asset-library-production routes through tools/validate-en
 The ready row requires 156 first-party objective asset rows, 144 preview screenshot rows, 8 sample-scene consumption rows, complete license/provenance and package-budget rows, zero external assets, zero missing objective rows, zero backend execution, zero package-script execution, and zero native-handle access.
 ```
 
-Task 8 promotes only `environment_aaa_preset_asset_library_ready=1`. It does not promote full OpenEXR/KTX2/Basis asset-pipeline readiness, physical weather simulation, production artist workflow, all-platform readiness, broad optimization readiness, commercial readiness, or broad `environment_ready`.
+Task 8 promotes only `environment_aaa_preset_asset_library_ready=1`. It does not promote physical weather simulation, production artist workflow, all-platform readiness, broad optimization readiness, commercial readiness, or broad `environment_ready`.
 
 ## Task 9: Promote Full OpenEXR/KTX2/Basis Asset Pipeline
 
 **Files:**
 - Create: `engine/tools/include/mirakana/tools/environment_texture_pipeline_v2.hpp`
 - Create: `engine/tools/asset/environment_texture_pipeline_v2.cpp`
-- Modify: `vcpkg.json`
-- Modify: `docs/dependencies.md`
-- Modify: `docs/legal-and-licensing.md`
-- Modify: `THIRD_PARTY_NOTICES.md`
-- Modify: `tools/bootstrap-deps.ps1`
-- Modify: `tools/check-dependency-policy.ps1`
+- Create: `tools/validate-environment-asset-pipeline-full.ps1`
+- Modify: `CMakeLists.txt`
+- Modify: `engine/tools/asset/CMakeLists.txt`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Existing dependency files: `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, `tools/bootstrap-deps.ps1`, and `tools/check-dependency-policy.ps1` already keep OpenEXR and KTX behind the `asset-importers` manifest feature; Task 9 validates that existing shape instead of changing dependency membership.
 
-- [ ] **Step 1: Define supported source matrix**
+- [x] **Step 1: Define supported source matrix**
 
 Promotion requires all rows:
 
@@ -927,16 +932,16 @@ runtime_cooked_only_ingest_ready=1
 runtime_source_parsing=0
 ```
 
-- [ ] **Step 2: Keep dependencies optional**
+- [x] **Step 2: Keep dependencies optional**
 
 `vcpkg.json` must keep OpenEXR and KTX behind a manifest feature named `asset-importers`. `tools/bootstrap-deps.ps1` remains the only dependency installation entrypoint. CMake configure must not download, restore, or install packages.
 
-- [ ] **Step 3: Validate optional feature**
+- [x] **Step 3: Validate optional feature**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-asset-pipeline-openexr-ktx-basis-full
 ```
@@ -949,6 +954,17 @@ environment_asset_pipeline_runtime_source_parsing=0
 environment_asset_pipeline_dependency_gated_rows=0
 ```
 
+Task 9 implementation evidence (2026-06-19):
+
+- Context7 refreshed `/academysoftwarefoundation/openexr`, `/khronosgroup/ktx-software`, and `/microsoft/vcpkg`; official source rows cover OpenEXR scanline/tiled/multipart/header-metadata/deep handling, KTX2/Basis validation and ETC1S/UASTC transcode, and vcpkg manifest features with `VCPKG_MANIFEST_INSTALL=OFF`.
+- `EnvironmentTexturePipelineV2Desc` / `evaluate_environment_texture_pipeline_v2_full` require 14 package-visible host-validated rows: five OpenEXR rows, four KTX2/Basis rows, four backend target rows, and one runtime cooked-only ingest row.
+- `tools/validate-environment-asset-pipeline-full.ps1` builds and runs `MK_environment_texture_pipeline_v2_tests`, runs `tools/build-asset-importers.ps1`, and emits `environment_asset_pipeline_openexr_ktx_basis_full_ready=1`, `environment_asset_pipeline_required_rows=14`, `environment_asset_pipeline_ready_rows=14`, `environment_asset_pipeline_dependency_gated_rows=0`, `environment_asset_pipeline_runtime_source_parsing=0`, `environment_asset_pipeline_runtime_optional_codec_execution=0`, `environment_asset_pipeline_cmake_configure_dependency_install=0`, `environment_ready=0`, and `environment_commercial_ready=0`.
+- Each Task 9 ready row must carry a concrete source artifact id, cooked artifact id, validated package counter id, replay hash evidence, and the OpenEXR deep-image rejection diagnostic. The validator fails before `tools/build-asset-importers.ps1` when `vcpkg_installed/x64-windows/share/{spng,OpenEXR,ktx}` is missing and reports `Missing asset-importers vcpkg packages`; `tools/bootstrap-deps.ps1` is the only supported dependency bootstrap entrypoint.
+- Local execute evidence currently stops at that bootstrap precondition: `tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-asset-pipeline-openexr-ktx-basis-full` builds and runs `MK_environment_texture_pipeline_v2_tests` successfully, then fails with `Missing asset-importers vcpkg packages: spng, OpenEXR, ktx`. Direct `vcpkg install` and CMake configure-time dependency install remain unsupported.
+- The Task 9 recipe replaces the skeleton for `environment-asset-pipeline-openexr-ktx-basis-full`; after Task 10, remaining dry-run-only highest-commercial skeletons are the final aggregate and production artist workflow.
+
+Task 9 promotes only `environment_asset_pipeline_openexr_ktx_basis_full_ready=1`. It does not promote physical weather simulation, production artist workflow, all-platform readiness, broad optimization readiness, commercial readiness, final aggregate readiness, or broad `environment_ready`.
+
 ## Task 10: Close Physical Weather Simulation
 
 **Files:**
@@ -959,7 +975,7 @@ environment_asset_pipeline_dependency_gated_rows=0
 - Modify: `engine/rhi/metal/**`
 - Create: `tools/validate-environment-weather-physics.ps1`
 
-- [ ] **Step 1: Define simulation scope**
+- [x] **Step 1: Define simulation scope**
 
 This plan defines "complete physical weather simulation" as real-time game-environment physical coupling, not operational meteorological forecasting. Required coupled fields:
 
@@ -979,7 +995,7 @@ visibility
 light_extinction
 ```
 
-- [ ] **Step 2: Require solver evidence**
+- [x] **Step 2: Require solver evidence**
 
 Promotion requires:
 
@@ -1000,11 +1016,11 @@ visual_regression_failures=0
 environment_physical_weather_simulation_ready=1
 ```
 
-- [ ] **Step 3: Validate dataset provenance**
+- [x] **Step 3: Validate dataset provenance**
 
 Weather dataset import/review rows must use CF/netCDF, GRIB, or synthetic first-party validation fixtures with recorded provenance. External dataset files require license and redistribution records before becoming package artifacts.
 
-- [ ] **Step 4: Validate**
+- [x] **Step 4: Validate**
 
 Run:
 
@@ -1021,6 +1037,10 @@ environment_weather_simulation_production_solver_ready=1
 environment_weather_simulation_backend_parity_ready=1
 environment_weather_simulation_validation_failures=0
 ```
+
+**Task 10 evidence (2026-06-19):** Context7 was queried for Vulkan (`/khronosgroup/vulkan-docs`), Direct3D 12 (`/websites/learn_microsoft_en-us_windows_win32_direct3d12`), and Metal Shading Language (`/dogukanveziroglu/metal-shading-language-specification`), with official Apple Metal framework fallback rows retained for command queue/buffer and resource synchronization. Official CF/netCDF and WMO GRIB provenance rows bound validation dataset policy. TDD started with `MK_environment_weather_simulation_tests` failing on the missing `EnvironmentPhysicalWeather*` closeout API, then added `EnvironmentPhysicalWeatherCoupledFieldKind`, validation dataset and backend solver rows, `EnvironmentPhysicalWeatherSimulationCloseoutDesc`, `EnvironmentPhysicalWeatherSimulationCloseoutResult`, `evaluate_environment_physical_weather_simulation_closeout`, and `has_environment_physical_weather_closeout_diagnostic`. The closeout requires 13 coupled fields, 12 canonical datasets, 12 canonical images, D3D12/Vulkan/Metal solver rows, exact CPU/backend hash parity, conservation/stability thresholds, zero budget/visual/validation failures, zero backend inference, and zero native-handle access. `environment-physical-weather-simulation-closeout` now routes through `tools/validate-environment-weather-physics.ps1 -RequireReady` and emits `environment_physical_weather_simulation_ready=1`, `environment_weather_simulation_production_solver_ready=1`, `environment_weather_simulation_backend_parity_ready=1`, `environment_weather_simulation_validation_failures=0`, while keeping `environment_ready=0` and `environment_commercial_ready=0`.
+
+Task 10 promotes only `environment_physical_weather_simulation_ready=1`. It does not promote production artist workflow, unconditional all-platform readiness, broad measured optimization readiness, commercial readiness, final aggregate readiness, or broad `environment_ready`.
 
 ## Task 11: Close Production Artist Workflow
 
@@ -1248,3 +1268,8 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 8 agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Task 8 agent config | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
 | 2026-06-18 | Task 8 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 130`; aggregate readiness remains blocked until all rows are ready |
+| 2026-06-19 | Task 10 physical weather closeout TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_weather_simulation_tests` | expected fail | missing `EnvironmentPhysicalWeather*` closeout rows and `evaluate_environment_physical_weather_simulation_closeout` |
+| 2026-06-19 | Task 10 focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_weather_simulation_tests` | pass | built `MK_environment_weather_simulation_tests` |
+| 2026-06-19 | Task 10 focused CTest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_weather_simulation_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
+| 2026-06-19 | Task 10 weather physics validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-weather-physics.ps1 -RequireReady` | pass | built and ran `MK_environment_weather_simulation_tests`, `MK_d3d12_environment_weather_solver_tests`, `MK_vulkan_environment_weather_solver_tests`, and `MK_metal_environment_weather_solver_tests`; `100% tests passed, 0 tests failed out of 4`; emitted `environment_physical_weather_simulation_ready=1`, `environment_weather_simulation_backend_parity_ready=1`, `environment_weather_simulation_validation_failures=0`, `environment_ready=0`, and `environment_commercial_ready=0` |
+| 2026-06-19 | Task 10 recipe execute | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-physical-weather-simulation-closeout` | pass | status `passed`; argv routes through `tools/validate-environment-weather-physics.ps1 -RequireReady`; emitted the same Task 10 ready and non-promotion counters |

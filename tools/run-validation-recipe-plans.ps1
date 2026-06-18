@@ -611,7 +611,57 @@ function Get-ValidationRecipeCommandPlan {
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('environment-optimization-artifact-host') -RequiredAcknowledgements @('environment-optimization-artifact-host') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentOptimizationArtifacts)
     }
     elseif ($RecipeName -eq 'environment-asset-pipeline-openexr-ktx-basis-full') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-asset-pipeline-full-optional-dependencies' -ReadyCounter 'environment_asset_pipeline_openexr_ktx_basis_full_ready'
+        $expectedCounters = @(
+            'validation_recipe=environment-asset-pipeline-openexr-ktx-basis-full',
+            'environment_asset_pipeline_openexr_ktx_basis_full_status=ready',
+            'environment_asset_pipeline_openexr_ktx_basis_full_ready=1',
+            'environment_asset_pipeline_required_rows=14',
+            'environment_asset_pipeline_ready_rows=14',
+            'environment_asset_pipeline_openexr_rows=5',
+            'environment_asset_pipeline_ktx2_basis_rows=4',
+            'environment_asset_pipeline_backend_target_rows=4',
+            'environment_asset_pipeline_runtime_rows=1',
+            'environment_asset_pipeline_dependency_gated_rows=0',
+            'environment_asset_pipeline_package_visible_rows=14',
+            'environment_asset_pipeline_host_validated_rows=14',
+            'environment_asset_pipeline_source_artifact_rows=14',
+            'environment_asset_pipeline_cooked_artifact_rows=14',
+            'environment_asset_pipeline_package_counter_rows=14',
+            'environment_asset_pipeline_replay_hash_rows=14',
+            'environment_asset_pipeline_rejection_diagnostic_rows=1',
+            'openexr_scanline_rgba16f_ready=1',
+            'openexr_tiled_rgba16f_ready=1',
+            'openexr_multipart_ready=1',
+            'openexr_metadata_preservation_ready=1',
+            'openexr_deep_image_rejected_with_diagnostic=1',
+            'ktx2_basis_etc1s_transcode_ready=1',
+            'ktx2_basis_uastc_transcode_ready=1',
+            'ktx2_mip_level_validation_ready=1',
+            'ktx2_color_space_metadata_ready=1',
+            'd3d12_bc7_target_ready=1',
+            'vulkan_bc7_target_ready=1',
+            'metal_astc_target_ready=1',
+            'android_vulkan_astc_target_ready=1',
+            'runtime_cooked_only_ingest_ready=1',
+            'runtime_source_parsing=0',
+            'environment_asset_pipeline_runtime_source_parsing=0',
+            'environment_asset_pipeline_runtime_optional_codec_execution=0',
+            'environment_asset_pipeline_native_handle_access=0',
+            'environment_asset_pipeline_gpu_command_executed=0',
+            'environment_asset_pipeline_package_command_executed=0',
+            'environment_asset_pipeline_cmake_configure_dependency_install=0',
+            'environment_asset_pipeline_optional_dependency_feature=asset-importers',
+            'environment_asset_pipeline_openexr_dependency_recorded=1',
+            'environment_asset_pipeline_ktx_dependency_recorded=1',
+            'environment_ready=0',
+            'environment_commercial_ready=0'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-asset-pipeline-full.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentAssetPipelineFull = New-RunnerDiagnostic -Severity 'info' -Code 'local-value-validation' -Message 'Environment full OpenEXR/KTX2/Basis asset-pipeline validation builds and runs MK_environment_texture_pipeline_v2_tests, validates the optional asset-importers build lane, and requires 14 package-visible host-validated rows for OpenEXR scanline/tiled/multipart/metadata/deep rejection, KTX2/Basis ETC1S and UASTC transcode, mip and color metadata, D3D12/Vulkan BC7, Metal/Android Vulkan ASTC, and runtime cooked-only ingest. It keeps runtime source parsing, runtime optional codec execution, native-handle access, GPU command execution, package command execution, broad environment_ready, and commercial readiness at 0.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentAssetPipelineFull)
     }
     elseif ($RecipeName -eq 'environment-aaa-preset-asset-library-production') {
         $expectedCounters = @(
@@ -651,7 +701,47 @@ function Get-ValidationRecipeCommandPlan {
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentPresetAssetLibrary)
     }
     elseif ($RecipeName -eq 'environment-physical-weather-simulation-closeout') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-weather-physics-dataset-host' -ReadyCounter 'environment_physical_weather_simulation_ready'
+        $expectedCounters = @(
+            'validation_recipe=environment-physical-weather-simulation-closeout',
+            'environment_physical_weather_simulation_status=ready',
+            'environment_physical_weather_simulation_ready=1',
+            'environment_weather_simulation_cpu_reference_solver_ready=1',
+            'environment_weather_simulation_production_solver_ready=1',
+            'environment_weather_simulation_backend_parity_ready=1',
+            'environment_weather_simulation_physical_weather_ready=1',
+            'environment_weather_simulation_d3d12_gpu_solver_ready=1',
+            'environment_weather_simulation_vulkan_gpu_solver_ready=1',
+            'environment_weather_simulation_metal_gpu_solver_ready=1',
+            'environment_weather_simulation_coupled_field_rows=13',
+            'environment_weather_simulation_required_field_rows=13',
+            'environment_weather_simulation_canonical_dataset_rows=12',
+            'environment_weather_simulation_dataset_provenance_rows=12',
+            'environment_weather_simulation_cf_netcdf_or_grib_or_synthetic_rows=12',
+            'environment_weather_simulation_canonical_image_rows=12',
+            'environment_weather_simulation_backend_solver_rows=3',
+            'environment_weather_simulation_host_validated_backend_rows=3',
+            'environment_weather_simulation_compute_dispatch_rows=3',
+            'environment_weather_simulation_synchronization_rows=3',
+            'environment_weather_simulation_readback_rows=3',
+            'environment_weather_simulation_mass_conservation_relative_error_max=0.001',
+            'environment_weather_simulation_energy_or_stability_error_max=0.002',
+            'environment_weather_simulation_negative_density_cells=0',
+            'environment_weather_simulation_nan_or_inf_cells=0',
+            'environment_weather_simulation_solver_budget_overages=0',
+            'environment_weather_simulation_visual_regression_failures=0',
+            'environment_weather_simulation_validation_failures=0',
+            'environment_weather_simulation_backend_inference=0',
+            'environment_weather_simulation_native_handle_access=0',
+            'environment_weather_simulation_package_visible_rows=41',
+            'environment_ready=0',
+            'environment_commercial_ready=0'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-weather-physics.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentWeatherPhysics = New-RunnerDiagnostic -Severity 'info' -Code 'local-value-validation' -Message 'Environment physical weather simulation closeout builds and runs the CPU closeout plus D3D12, strict Vulkan, and Metal weather solver tests. It requires 13 coupled physical fields, 12 canonical validation datasets with synthetic/CF-netCDF/GRIB provenance, 12 canonical validation images, D3D12/Vulkan/Metal host-validated compute dispatch/synchronization/readback rows, backend parity, mass conservation <=0.005, energy/stability <=0.010, zero negative-density cells, zero NaN/Inf cells, zero budget overages, zero visual regression failures, zero backend inference, zero native-handle access, and keeps broad environment_ready and commercial readiness at 0.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentWeatherPhysics)
     }
     elseif ($RecipeName -eq 'environment-artist-workflow-production-closeout') {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-artist-workflow-visible-shell-host' -ReadyCounter 'environment_artist_workflow_production_ready'
