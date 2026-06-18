@@ -5,13 +5,14 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
 
 namespace mirakana::runtime_rhi {
 
-enum class EnvironmentPlatformEvidenceV2RowStatus {
+enum class EnvironmentPlatformEvidenceV2RowStatus : std::uint8_t {
     missing,
     ready,
     host_gated,
@@ -19,7 +20,7 @@ enum class EnvironmentPlatformEvidenceV2RowStatus {
     unsupported,
 };
 
-enum class EnvironmentPlatformEvidenceV2PlatformId {
+enum class EnvironmentPlatformEvidenceV2PlatformId : std::uint8_t {
     windows_d3d12,
     windows_vulkan,
     linux_vulkan,
@@ -79,7 +80,7 @@ struct EnvironmentPlatformEvidenceV2Result {
 
 namespace detail {
 
-[[nodiscard]] inline constexpr std::size_t platform_index(EnvironmentPlatformEvidenceV2PlatformId platform) {
+[[nodiscard]] constexpr std::size_t platform_index(EnvironmentPlatformEvidenceV2PlatformId platform) {
     switch (platform) {
     case EnvironmentPlatformEvidenceV2PlatformId::windows_d3d12:
         return 0U;
