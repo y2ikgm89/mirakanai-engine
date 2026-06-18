@@ -348,7 +348,7 @@ check-ai-integration.ps1 exits 0
 
 Register the focused test as a root `CMakeLists.txt` unit-test target following the existing `MK_environment_*_tests` pattern. Do not create an `engine/environment/tests/` directory.
 
-- [ ] **Step 1: Write tests first**
+- [x] **Step 1: Write tests first**
 
 Add tests for:
 
@@ -365,7 +365,7 @@ native_handle_access_keeps_ready_0
 diagnostics_keep_ready_0
 ```
 
-- [ ] **Step 2: Implement clean-break API names**
+- [x] **Step 2: Implement clean-break API names**
 
 Use these public names:
 
@@ -409,7 +409,7 @@ EnvironmentCommercialReadinessV2Result evaluate_environment_commercial_readiness
 }
 ```
 
-- [ ] **Step 3: Validate focused tests**
+- [x] **Step 3: Validate focused tests**
 
 Run:
 
@@ -1145,3 +1145,11 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
 | 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Task 1 official fallback source gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Metal/Apple checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-18 | Task 2 commercial readiness v2 TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_commercial_readiness_v2_tests` | expected fail | `commercial_readiness_v2.hpp`: no such file |
+| 2026-06-18 | Task 2 commercial readiness v2 focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_commercial_readiness_v2_tests` | pass | built `MK_environment_commercial_readiness_v2_tests` |
+| 2026-06-18 | Task 2 commercial readiness v2 focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_commercial_readiness_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
+| 2026-06-18 | Task 2 duplicate row review fix RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_commercial_readiness_v2_tests` | expected fail | `duplicate_required_row_id_keeps_ready_0`: `!result.highest_commercial_ready` |
+| 2026-06-18 | Task 2 duplicate row review fix GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_commercial_readiness_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
+| 2026-06-18 | Task 2 commercial readiness v2 focused tidy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/environment/src/commercial_readiness_v2.cpp,tests/unit/environment_commercial_readiness_v2_tests.cpp` | pass | `tidy-check: ok (2 files)` |
+| 2026-06-18 | Task 2 commercial readiness v2 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-18 | Task 2 commercial readiness v2 publication preflight | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` | pass | `publication-preflight: ok` |
