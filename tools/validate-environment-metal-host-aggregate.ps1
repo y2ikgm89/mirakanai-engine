@@ -115,12 +115,25 @@ Write-Host (
 
 Write-Host (
     "environment-platform-macos-metal-evidence: environment_platform_readiness_status=host_evidence_required " +
+    "validation_recipe=renderer-metal-environment-aggregate-apple-host-evidence " +
+    "host_gate=metal-apple " +
+    "host=macos " +
     "environment_platform_readiness_ready=0 " +
     "environment_platform_readiness_rows=6 " +
     "environment_platform_readiness_ready_rows=1 " +
     "environment_platform_readiness_host_gated_rows=5 " +
     "environment_platform_macos_metal_evidence_requested=1 " +
     "environment_platform_metal_host_aggregate_ready=1 " +
+    "xcodebuild_ready=1 " +
+    "xcrun_metal_ready=1 " +
+    "metal_feature_set_table_checked=1 " +
+    "metal_command_queue_ready=1 " +
+    "metal_command_buffer_ready=1 " +
+    "metal_render_pipeline_ready=1 " +
+    "metal_compute_pipeline_ready=1 " +
+    "metal_texture_usage_rows_ready=1 " +
+    "metal_resource_synchronization_ready=1 " +
+    "metal_readback_ready=1 " +
     "environment_platform_windows_d3d12_ready=0 " +
     "environment_platform_windows_vulkan_ready=0 " +
     "environment_platform_linux_vulkan_ready=0 " +

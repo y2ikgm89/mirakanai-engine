@@ -250,6 +250,33 @@ function Assert-EnvironmentPlatformVulkanHostGateDryRun {
     return $result
 }
 
+function Assert-EnvironmentPlatformHostGateDryRun {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Recipe,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptSuffix,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostGate,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$ExpectedNeedles
+    )
+
+    $result = Assert-DryRunRecipe -Recipe $Recipe -ExpectedArgv @("-File", $ScriptSuffix, "-RequireReady")
+    Assert-ArrayContains $result.hostGates $HostGate "dry-run host gates for $Recipe"
+    foreach ($needle in $ExpectedNeedles) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run platform row for $Recipe"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run platform row for $Recipe"
+    }
+
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -450,7 +477,22 @@ Assert-EnvironmentPlatformVulkanHostGateDryRun `
         "android_vulkan_readback_ready=1",
         "environment_platform_android_vulkan_ready=1",
         "environment_platform_requires_android_vulkan_host_evidence=0") | Out-Null
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-platform-ios-metal-package" -HostGate "ios-metal-host" -ReadyCounter "environment_platform_ios_metal_ready" | Out-Null
+Assert-EnvironmentPlatformHostGateDryRun `
+    -Recipe "environment-platform-ios-metal-package" `
+    -ScriptSuffix "tools/validate-apple-metal-platform-host.ps1" `
+    -HostGate "ios-metal-host" `
+    -ExpectedNeedles @(
+        "environment-platform-ios-metal-package",
+        "host=macos",
+        "xcode_ios_sdk_ready=1",
+        "ios_simulator_or_device_ready=1",
+        "ios_metal_feature_set_checked=1",
+        "ios_package_smoke_ready=1",
+        "ios_metal_command_queue_ready=1",
+        "ios_metal_pipeline_ready=1",
+        "ios_metal_readback_ready=1",
+        "environment_platform_ios_metal_ready=1",
+        "environment_platform_requires_ios_metal_host_evidence=0") | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-backend-parity-v2-closeout" -HostGate "environment-backend-parity-v2-closeout" -ReadyCounter "environment_backend_parity_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-broad-optimization-cross-backend-measurement" -HostGate "environment-optimization-artifact-host" -ReadyCounter "environment_broad_optimization_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-asset-pipeline-openexr-ktx-basis-full" -HostGate "environment-asset-pipeline-full-optional-dependencies" -ReadyCounter "environment_asset_pipeline_openexr_ktx_basis_full_ready" | Out-Null

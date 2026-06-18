@@ -62,12 +62,36 @@ foreach ($file in @(
     "platform/ios/CMakeLists.txt",
     "platform/ios/Info.plist.in",
     "platform/ios/Sources/MirakanaiIOSApp/AppDelegate.mm",
+    "platform/ios/Sources/MirakanaiIOSApp/IosMetalEvidence.metal",
     "tools/build-mobile-apple.ps1",
     "tools/smoke-ios-package.ps1",
     "tools/check-mobile-packaging.ps1"
 )) {
     Assert-RequiredFile $file
 }
+
+Assert-FileContainsText "platform/ios/CMakeLists.txt" @(
+    "IosMetalEvidence.metal",
+    "default.metallib",
+    "xcrun",
+    "metallib"
+)
+
+Assert-FileContainsText "platform/ios/Sources/MirakanaiIOSApp/AppDelegate.mm" @(
+    "newCommandQueue",
+    "newComputePipelineStateWithFunction",
+    "mirakanai_ios_metal_evidence.txt",
+    "ios_metal_command_queue_ready=",
+    "ios_metal_pipeline_ready=",
+    "ios_metal_readback_ready="
+)
+
+Assert-FileContainsText "tools/smoke-ios-package.ps1" @(
+    "ios_metal_evidence",
+    "ios_metal_command_queue_ready=1",
+    "ios_metal_pipeline_ready=1",
+    "ios_metal_readback_ready=1"
+)
 
 Assert-FileContainsText ".github/workflows/ios-validate.yml" @(
     "runs-on: macos-26",

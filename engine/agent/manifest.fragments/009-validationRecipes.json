@@ -367,8 +367,8 @@
     },
     {
       "name": "environment-platform-ios-metal-package",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-ios-metal-package validation_recipe_skeleton=1 host_gate=ios-metal-host ready_claim=0 environment_platform_ios_metal_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
-      "purpose": "Task 3 skeleton for the iOS Metal platform package row. It records the ios-metal-host gate and keeps environment_platform_ios_metal_ready=0 until Task 5 adds Apple-host iOS Metal package evidence."
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters validation_recipe=environment-platform-ios-metal-package host=macos xcode_ios_sdk_ready=1 ios_simulator_or_device_ready=1 ios_metal_feature_set_checked=1 ios_package_smoke_ready=1 ios_metal_command_queue_ready=1 ios_metal_pipeline_ready=1 ios_metal_readback_ready=1 environment_platform_ios_metal_ready=1 environment_platform_requires_ios_metal_host_evidence=0 environment_all_platform_unconditional_ready=0",
+      "purpose": "Task 5 iOS Metal platform host gate. It requires a macOS host with full Xcode, iOS Simulator SDK/runtime or device evidence, an iOS package smoke that reads app-written Metal command queue, compute pipeline, command buffer, feature-set, and readback counters, and keeps environment_all_platform_unconditional_ready=0 without macOS desktop Metal inference."
     },
     {
       "name": "environment-backend-parity-v2-closeout",

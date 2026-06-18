@@ -51,6 +51,23 @@ struct EnvironmentPlatformEvidenceV2Row {
     bool android_validation_layer_packaged{false};
     bool android_package_smoke_ready{false};
     bool android_vulkan_readback_ready{false};
+    bool xcodebuild_ready{false};
+    bool xcrun_metal_ready{false};
+    bool metal_feature_set_table_checked{false};
+    bool metal_command_queue_ready{false};
+    bool metal_command_buffer_ready{false};
+    bool metal_render_pipeline_ready{false};
+    bool metal_compute_pipeline_ready{false};
+    bool metal_texture_usage_rows_ready{false};
+    bool metal_resource_synchronization_ready{false};
+    bool metal_readback_ready{false};
+    bool xcode_ios_sdk_ready{false};
+    bool ios_simulator_or_device_ready{false};
+    bool ios_metal_feature_set_checked{false};
+    bool ios_package_smoke_ready{false};
+    bool ios_metal_command_queue_ready{false};
+    bool ios_metal_pipeline_ready{false};
+    bool ios_metal_readback_ready{false};
     bool environment_platform_ready_counter{false};
     bool requires_host_evidence{true};
     bool inferred_from_other_platform{false};
@@ -126,12 +143,19 @@ namespace detail {
 
 [[nodiscard]] inline bool macos_metal_ready(const EnvironmentPlatformEvidenceV2Row& row) {
     return base_ready(row, "environment_platform_macos_metal",
-                      "renderer-metal-environment-aggregate-apple-host-evidence", "metal-apple");
+                      "renderer-metal-environment-aggregate-apple-host-evidence", "metal-apple") &&
+           row.xcodebuild_ready && row.xcrun_metal_ready && row.metal_feature_set_table_checked &&
+           row.metal_command_queue_ready && row.metal_command_buffer_ready && row.metal_render_pipeline_ready &&
+           row.metal_compute_pipeline_ready && row.metal_texture_usage_rows_ready &&
+           row.metal_resource_synchronization_ready && row.metal_readback_ready;
 }
 
 [[nodiscard]] inline bool ios_metal_ready(const EnvironmentPlatformEvidenceV2Row& row) {
     return base_ready(row, "environment_platform_ios_metal", "environment-platform-ios-metal-package",
-                      "ios-metal-host");
+                      "ios-metal-host") &&
+           row.xcodebuild_ready && row.xcode_ios_sdk_ready && row.ios_simulator_or_device_ready &&
+           row.ios_metal_feature_set_checked && row.ios_package_smoke_ready && row.ios_metal_command_queue_ready &&
+           row.ios_metal_pipeline_ready && row.ios_metal_readback_ready;
 }
 
 [[nodiscard]] inline bool android_vulkan_ready(const EnvironmentPlatformEvidenceV2Row& row) {
