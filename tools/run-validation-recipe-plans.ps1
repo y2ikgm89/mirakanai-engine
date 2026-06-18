@@ -586,7 +586,29 @@ function Get-ValidationRecipeCommandPlan {
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagEnvironmentBackendParityV2)
     }
     elseif ($RecipeName -eq 'environment-broad-optimization-cross-backend-measurement') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-optimization-artifact-host' -ReadyCounter 'environment_broad_optimization_ready'
+        $expectedCounters = @(
+            'validation_recipe=environment-broad-optimization-cross-backend-measurement',
+            'environment_optimization_measurement_status=ready',
+            'environment_optimization_measurement_ready=1',
+            'environment_optimization_measurement_workload_rows=21',
+            'environment_optimization_measurement_backend_rows=3',
+            'environment_optimization_measurement_before_after_pairs=21',
+            'environment_optimization_measurement_profiler_artifacts=21',
+            'environment_optimization_measurement_trace_event_json=21',
+            'environment_optimization_measurement_missing_artifacts=0',
+            'environment_optimization_measurement_invalid_hashes=0',
+            'environment_optimization_measurement_path_escapes=0',
+            'environment_optimization_measurement_over_budget=0',
+            'environment_broad_optimization_ready=1',
+            'environment_ready=0',
+            'environment_commercial_ready=0'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-optimization-artifacts.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentOptimizationArtifacts = New-RunnerDiagnostic -Severity 'info' -Code 'host-evidence-required' -Message 'Environment broad optimization cross-backend measurement validates retained official profiler and trace artifacts under artifacts/environment/optimization/<task-id>/<backend>/<workload>/ for seven workloads across d3d12, vulkan_strict, and metal_apple_host. It requires 21 before/after CPU/GPU/memory/upload/barrier/shader-cache/stutter rows, GPU timestamp frequency rows, SHA-256 verified profiler artifacts, trace-event JSON files, zero escaped paths, zero invalid hashes, zero missing artifacts, zero over-budget rows, and keeps broad environment_ready and commercial readiness at 0.' -ValidationRecipe $RecipeName -HostGate 'environment-optimization-artifact-host'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('environment-optimization-artifact-host') -RequiredAcknowledgements @('environment-optimization-artifact-host') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentOptimizationArtifacts)
     }
     elseif ($RecipeName -eq 'environment-asset-pipeline-openexr-ktx-basis-full') {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-asset-pipeline-full-optional-dependencies' -ReadyCounter 'environment_asset_pipeline_openexr_ktx_basis_full_ready'

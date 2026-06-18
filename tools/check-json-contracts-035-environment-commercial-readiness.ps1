@@ -42,7 +42,6 @@ foreach ($recipeId in $expectedHighestCommercialRecipeIds) {
 }
 $expectedRemainingHighestCommercialRecipeSkeletonIds = @(
     "environment-highest-commercial-readiness-closeout",
-    "environment-broad-optimization-cross-backend-measurement",
     "environment-asset-pipeline-openexr-ktx-basis-full",
     "environment-aaa-preset-asset-library-production",
     "environment-physical-weather-simulation-closeout",
@@ -114,6 +113,39 @@ if ($null -eq $environmentBackendParityV2Recipe) {
     }
     if ($environmentBackendParityV2RecipeText.Contains("validation_recipe_skeleton=1")) {
         Write-Error "engine manifest validationRecipes 'environment-backend-parity-v2-closeout' must not remain a dry-run skeleton after Task 6"
+    }
+}
+
+$environmentOptimizationArtifactRecipe = $environmentCommercialValidationRecipesByName["environment-broad-optimization-cross-backend-measurement"]
+if ($null -eq $environmentOptimizationArtifactRecipe) {
+    Write-Error "engine manifest validationRecipes missing environment-broad-optimization-cross-backend-measurement"
+} else {
+    $environmentOptimizationArtifactRecipeText = [string]::Join(" ", @([string]$environmentOptimizationArtifactRecipe.command, [string]$environmentOptimizationArtifactRecipe.purpose))
+    foreach ($needle in @(
+            "tools/validate-environment-optimization-artifacts.ps1",
+            "-RequireReady",
+            "artifacts/environment/optimization/<task-id>/<backend>/<workload>/",
+            "d3d12",
+            "vulkan_strict",
+            "metal_apple_host",
+            "environment_optimization_measurement_workload_rows=21",
+            "environment_optimization_measurement_backend_rows=3",
+            "environment_optimization_measurement_before_after_pairs=21",
+            "environment_optimization_measurement_profiler_artifacts=21",
+            "environment_optimization_measurement_trace_event_json=21",
+            "environment_optimization_measurement_missing_artifacts=0",
+            "environment_optimization_measurement_invalid_hashes=0",
+            "environment_optimization_measurement_path_escapes=0",
+            "environment_optimization_measurement_over_budget=0",
+            "environment_broad_optimization_ready=1",
+            "environment_ready=0",
+            "environment_commercial_ready=0")) {
+        if (-not $environmentOptimizationArtifactRecipeText.Contains($needle)) {
+            Write-Error "engine manifest validationRecipes 'environment-broad-optimization-cross-backend-measurement' missing artifact closeout needle: $needle"
+        }
+    }
+    if ($environmentOptimizationArtifactRecipeText.Contains("validation_recipe_skeleton=1")) {
+        Write-Error "engine manifest validationRecipes 'environment-broad-optimization-cross-backend-measurement' must not remain a dry-run skeleton after Task 7"
     }
 }
 
@@ -258,10 +290,46 @@ if ($null -eq $windowsVulkanPlatformClaim -or
 $broadOptimizationClaim = $environmentCommercialClaimsById["environment_broad_optimization_ready"]
 if ($null -eq $broadOptimizationClaim -or
     @($broadOptimizationClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-optimization-measurement" -or
+    @($broadOptimizationClaim.validationRecipeIds) -notcontains "environment-broad-optimization-cross-backend-measurement" -or
     -not [string]$broadOptimizationClaim.requiredEvidence.Contains("plan_environment_optimization_measurement") -or
+    -not [string]$broadOptimizationClaim.requiredEvidence.Contains("artifacts/environment/optimization/<task-id>/<backend>/<workload>/") -or
+    -not [string]$broadOptimizationClaim.requiredEvidence.Contains("21 CPU/GPU/memory/upload/barrier/shader-cache/stutter before/after rows") -or
+    -not [string]$broadOptimizationClaim.requiredEvidence.Contains("SHA-256 verified profiler artifacts") -or
+    -not [string]$broadOptimizationClaim.requiredEvidence.Contains("zero escaped paths") -or
     -not [string]$broadOptimizationClaim.requiredEvidence.Contains("before/after traces") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("tools/validate-environment-optimization-artifacts.ps1") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_missing_artifacts=21") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_over_budget=0") -or
     -not [string]$broadOptimizationClaim.notes.Contains("environment_broad_optimization_ready=0")) {
-    Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract without ready promotion"
+    Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract plus the fail-closed retained artifact validator without ready promotion"
+}
+$environmentOptimizationArtifactToolText = Get-Content -LiteralPath (Join-Path $root "tools/validate-environment-optimization-artifacts.ps1") -Raw
+foreach ($needle in @(
+        "artifacts/environment/optimization",
+        "preset_pack_flythrough",
+        "storm_precipitation",
+        "dense_volumetric_fog",
+        "volumetric_cloud_sunset",
+        "snowfield_material_weathering",
+        "weather_simulation_stress",
+        "asset_library_cold_load",
+        "d3d12",
+        "vulkan_strict",
+        "metal_apple_host",
+        "cpu_frame_p95_before_us",
+        "gpu_frame_p95_before_us",
+        "gpu_timestamp_ticks_per_second",
+        "profiler_artifact_path",
+        "trace_event_json_path",
+        "artifact_hash_sha256",
+        "environment_optimization_measurement_missing_artifacts",
+        "environment_optimization_measurement_invalid_hashes",
+        "environment_optimization_measurement_path_escapes",
+        "environment_optimization_measurement_over_budget",
+        "environment_broad_optimization_ready")) {
+    if (-not $environmentOptimizationArtifactToolText.Contains($needle)) {
+        Write-Error "tools/validate-environment-optimization-artifacts.ps1 missing retained artifact validator needle: $needle"
+    }
 }
 $assetPipelineClaim = $environmentCommercialClaimsById["environment_asset_pipeline_openexr_ktx_basis_ready"]
 if ($null -eq $assetPipelineClaim -or

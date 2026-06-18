@@ -277,6 +277,30 @@ function Assert-EnvironmentPlatformHostGateDryRun {
     return $result
 }
 
+function Assert-EnvironmentOptimizationArtifactDryRun {
+    $result = Assert-DryRunRecipe -Recipe "environment-broad-optimization-cross-backend-measurement" -ExpectedArgv @("-File", "tools/validate-environment-optimization-artifacts.ps1", "-RequireReady")
+    Assert-ArrayContains $result.hostGates "environment-optimization-artifact-host" "dry-run host gates for environment-broad-optimization-cross-backend-measurement"
+    foreach ($needle in @(
+            "environment_optimization_measurement_workload_rows=21",
+            "environment_optimization_measurement_backend_rows=3",
+            "environment_optimization_measurement_before_after_pairs=21",
+            "environment_optimization_measurement_profiler_artifacts=21",
+            "environment_optimization_measurement_missing_artifacts",
+            "environment_optimization_measurement_invalid_hashes",
+            "environment_optimization_measurement_path_escapes",
+            "environment_optimization_measurement_over_budget=0",
+            "environment_broad_optimization_ready=1",
+            "environment_ready=0",
+            "environment_commercial_ready=0")) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run environment optimization artifact row"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run environment optimization artifact row"
+    }
+
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -497,7 +521,7 @@ $backendParityV2DryRun = Assert-DryRunRecipe -Recipe "environment-backend-parity
 foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
     Assert-ArgvDoesNotContainText -Result $backendParityV2DryRun -Unexpected $needle -Label "dry-run backend parity v2 closeout"
 }
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-broad-optimization-cross-backend-measurement" -HostGate "environment-optimization-artifact-host" -ReadyCounter "environment_broad_optimization_ready" | Out-Null
+Assert-EnvironmentOptimizationArtifactDryRun | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-asset-pipeline-openexr-ktx-basis-full" -HostGate "environment-asset-pipeline-full-optional-dependencies" -ReadyCounter "environment_asset_pipeline_openexr_ktx_basis_full_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-aaa-preset-asset-library-production" -HostGate "environment-aaa-asset-library-production-assets" -ReadyCounter "environment_aaa_preset_asset_library_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-physical-weather-simulation-closeout" -HostGate "environment-weather-physics-dataset-host" -ReadyCounter "environment_physical_weather_simulation_ready" | Out-Null

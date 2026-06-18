@@ -709,7 +709,7 @@ Expected:
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `games/sample_desktop_runtime_game/game.agent.json`
 
-- [ ] **Step 1: Lock workloads**
+- [x] **Step 1: Lock workloads**
 
 The workload matrix is fixed:
 
@@ -731,7 +731,7 @@ vulkan_strict
 metal_apple_host
 ```
 
-- [ ] **Step 2: Require retained artifacts**
+- [x] **Step 2: Require retained artifacts**
 
 Each workload/backend pair must record:
 
@@ -756,7 +756,7 @@ trace_event_json_path
 artifact_hash_sha256
 ```
 
-- [ ] **Step 3: Require budgets**
+- [x] **Step 3: Require budgets**
 
 Promotion requires:
 
@@ -797,7 +797,7 @@ artifacts/environment/optimization/<task-id>/<backend>/<workload>/
 
 The validator must fail if a path escapes this root, if a hash is missing, if a before/after pair is absent, or if a row is over budget. Thresholds may be revised only by editing this plan, the spec, and the validation recipe in the same PR.
 
-- [ ] **Step 4: Validate artifact checker**
+- [x] **Step 4: Validate artifact checker**
 
 Run:
 
@@ -805,7 +805,7 @@ Run:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1 -RequireReady
 ```
 
-Expected when artifacts are incomplete:
+Expected when artifacts are incomplete (`-RequireReady` prints this state, then exits non-zero):
 
 ```text
 environment_broad_optimization_ready=0
@@ -818,6 +818,17 @@ Expected at closeout:
 environment_broad_optimization_ready=1
 environment_optimization_measurement_missing_artifacts=0
 ```
+
+Task 7 implementation evidence:
+
+```text
+tools/validate-environment-optimization-artifacts.ps1 exists and validates the fixed 7 workload x 3 backend matrix.
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1 -> exits 0 with environment_optimization_measurement_missing_artifacts=21, environment_optimization_measurement_workload_rows=0, environment_optimization_measurement_backend_rows=0, environment_optimization_measurement_profiler_artifacts=0, environment_optimization_measurement_over_budget=0, environment_broad_optimization_ready=0.
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1 -RequireReady -> exits non-zero after printing the same fail-closed counters because no retained official profiler artifacts are present yet.
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1 -> exits 0 with environment-broad-optimization-cross-backend-measurement routed through tools/validate-environment-optimization-artifacts.ps1 -RequireReady instead of a skeleton.
+```
+
+Task 7 does not promote `environment_broad_optimization_ready`. Real closeout remains blocked until all 21 retained official profiler/trace artifacts and budgets pass.
 
 ## Task 8: Build The AAA Preset Asset Library As Objective Rows
 
