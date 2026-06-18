@@ -10,16 +10,16 @@ Promote the environment capability to commercial readiness only when strict Vulk
 
 ## Current Task 1 Gate
 
-Context7 is required before SDK/API/dependency implementation work. Task 1 originally recorded the gate as blocked because the callable Context7 MCP tools were not exposed after tool discovery and install-candidate discovery. The 2026-06-18 continuation confirmed the tools are callable, but the gate remains blocked until all required SDK/API/dependency rows are verified. A later 2026-06-18 pass verified the Vulkan SDK tools and OpenUSD rows, and recorded glTF as partial because Context7 did not expose official Khronos glTF specification documentation.
+Context7 is required before SDK/API/dependency implementation work. Task 1 originally recorded the gate as blocked because the callable Context7 MCP tools were not exposed after tool discovery and install-candidate discovery. The 2026-06-18 continuation confirmed the tools are callable, but the gate remains blocked until all required SDK/API/dependency rows are verified. Later 2026-06-18 passes verified the Vulkan SDK tools, OpenUSD, MaterialX, and OpenColorIO rows, and recorded Metal and glTF as partial because Context7 did not expose official Apple Metal framework API documentation or official Khronos glTF specification documentation.
 
 Current gate rows:
 
 ```text
 environment_highest_readiness_context7_status=blocked
 environment_highest_readiness_context7_missing_tools=0
-environment_highest_readiness_context7_verified_rows=7
+environment_highest_readiness_context7_verified_rows=9
 environment_highest_readiness_context7_partial_rows=2
-environment_highest_readiness_context7_pending_rows=2
+environment_highest_readiness_context7_pending_rows=0
 environment_highest_readiness_code_edit_allowed=0
 ```
 
@@ -35,6 +35,8 @@ Context7 verification evidence:
 | `context7.ktx` | verified | `/khronosgroup/ktx-software` | 2026-06-18 | KTX2/Basis ingest must validate the container, distinguish ETC1S and UASTC, select transcode targets from backend/device capabilities, preserve metadata rows, and keep runtime ingest cooked-only and fail-closed. |
 | `context7.gltf` | partial | `/jkuhlmann/cgltf` | 2026-06-18 | Context7 exposes an implementation library for parsing/loading/validating glTF data, but not the official Khronos glTF 2.0 and `KHR_texture_basisu` specification; glTF implementation remains blocked until official Khronos fallback evidence is recorded beside any library-specific implementation choice. |
 | `context7.openusd` | verified | `/websites/openusd_release` | 2026-06-18 | OpenUSD pipeline rows must prove composition and prim-index behavior, variant/export policy, material variant editing context, asset-path resolution, and fail-closed pipeline validation before USD-backed asset workflow promotion. |
+| `context7.materialx` | verified | `/academysoftwarefoundation/materialx` | 2026-06-18 | MaterialX workflow rows must prove material graph exchange, looks and assignments, target-specific shader definitions, standard surface/PBR models, texture library structure, USD/glTF interoperability intent, and fail-closed validation before look-development asset promotion. |
+| `context7.ocio` | verified | `/academysoftwarefoundation/opencolorio` | 2026-06-18 | OpenColorIO rows must prove config loading, color-space-aware default views, display/view transforms, processor creation, CPU and generated GPU transform evidence, and fail-closed color-management validation before production color pipeline promotion. |
 | `context7.vcpkg` | verified | `/microsoft/vcpkg` | 2026-06-18 | Optional dependencies belong in `vcpkg.json` manifest features with explicit feature selection, pinned baselines, repository bootstrap entrypoints, and no package installation from CMake configure. |
 
 Task 1 may edit only:

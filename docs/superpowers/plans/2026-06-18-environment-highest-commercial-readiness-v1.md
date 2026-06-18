@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7 gate as blocked with implementation code edits forbidden until every required Context7 row is ready. Task 1 landed in PR #669 with hosted validation passing. The 2026-06-18 Context7 gate continuation verified Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, and vcpkg rows, recorded Metal and glTF as partial, and keeps implementation code edits forbidden. This file does not promote any readiness claim by itself.
+**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7 gate as blocked with implementation code edits forbidden until every required Context7 row is ready. Task 1 landed in PR #669 with hosted validation passing. The 2026-06-18 Context7 gate continuation verified Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows, recorded Metal and glTF as partial, and keeps implementation code edits forbidden. This file does not promote any readiness claim by itself.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -75,7 +75,7 @@ Forbidden promotion paths:
 
 ## Official Source And Context7 Gate
 
-Context7 is mandatory for SDK/API/dependency implementation. Task 1 originally recorded the exact refresh gate and official fallback sources while Context7 MCP tools were not exposed by tool discovery. The 2026-06-18 continuation confirmed the Context7 MCP tools are callable, and later verified the Vulkan SDK tooling and OpenUSD rows. Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, and vcpkg rows are fully verified so far; Metal and glTF remain partial; implementation tasks remain blocked until every required row below is ready. If Context7 remains unavailable or a required Context7 row has no authoritative match when a code task starts, that task is blocked and must not edit implementation files.
+Context7 is mandatory for SDK/API/dependency implementation. Task 1 originally recorded the exact refresh gate and official fallback sources while Context7 MCP tools were not exposed by tool discovery. The 2026-06-18 continuation confirmed the Context7 MCP tools are callable, and later verified the Vulkan SDK tooling, OpenUSD, MaterialX, and OpenColorIO rows. Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows are fully verified so far; Metal and glTF remain partial; implementation tasks remain blocked until every required row below is ready. If Context7 remains unavailable or a required Context7 row has no authoritative match when a code task starts, that task is blocked and must not edit implementation files.
 
 Task 1 may still edit only plan, spec, docs, manifest fragments, composed manifest output, and the static checks that validate this active-plan selection to record the blocked Context7 status. Task 1 must not edit C++, shader, CMake, package, editor, renderer, importer, tool, or game runtime implementation files while `environment_highest_readiness_code_edit_allowed=0`.
 
@@ -107,6 +107,8 @@ Context7 verification evidence:
 | `context7.ktx` | verified | `/khronosgroup/ktx-software` | 2026-06-18 | KTX2/Basis ingest must validate the container, distinguish ETC1S and UASTC, select transcode targets from backend/device capabilities, preserve metadata rows, and keep runtime ingest cooked-only and fail-closed. |
 | `context7.gltf` | partial | `/jkuhlmann/cgltf` | 2026-06-18 | Context7 exposes an implementation library for parsing/loading/validating glTF data, but not the official Khronos glTF 2.0 and `KHR_texture_basisu` specification; glTF implementation remains blocked until official Khronos fallback evidence is recorded beside any library-specific implementation choice. |
 | `context7.openusd` | verified | `/websites/openusd_release` | 2026-06-18 | OpenUSD pipeline rows must prove composition and prim-index behavior, variant/export policy, material variant editing context, asset-path resolution, and fail-closed pipeline validation before USD-backed asset workflow promotion. |
+| `context7.materialx` | verified | `/academysoftwarefoundation/materialx` | 2026-06-18 | MaterialX workflow rows must prove material graph exchange, looks and assignments, target-specific shader definitions, standard surface/PBR models, texture library structure, USD/glTF interoperability intent, and fail-closed validation before look-development asset promotion. |
+| `context7.ocio` | verified | `/academysoftwarefoundation/opencolorio` | 2026-06-18 | OpenColorIO rows must prove config loading, color-space-aware default views, display/view transforms, processor creation, CPU and generated GPU transform evidence, and fail-closed color-management validation before production color pipeline promotion. |
 | `context7.vcpkg` | verified | `/microsoft/vcpkg` | 2026-06-18 | Optional dependencies belong in `vcpkg.json` manifest features with explicit feature selection, pinned baselines, repository bootstrap entrypoints, and no package installation from CMake configure. |
 
 Current gate rows:
@@ -114,9 +116,9 @@ Current gate rows:
 ```text
 environment_highest_readiness_context7_status=blocked
 environment_highest_readiness_context7_missing_tools=0
-environment_highest_readiness_context7_verified_rows=7
+environment_highest_readiness_context7_verified_rows=9
 environment_highest_readiness_context7_partial_rows=2
-environment_highest_readiness_context7_pending_rows=2
+environment_highest_readiness_context7_pending_rows=0
 environment_highest_readiness_code_edit_allowed=0
 ```
 
@@ -1111,3 +1113,9 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 1 Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
 | 2026-06-18 | Task 1 Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Task 1 Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | pass | `text-format-check: ok` |
+| 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `git diff --check` | pass | no whitespace errors |
+| 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
+| 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
+| 2026-06-18 | Task 1 MaterialX/OpenColorIO Context7 gate continuation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | pass | `validate: static ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
