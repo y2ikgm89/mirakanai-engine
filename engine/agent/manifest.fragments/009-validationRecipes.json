@@ -351,6 +351,56 @@
       "purpose": "Build the selected sample_desktop_runtime_game D3D12 package lane and emit complete artist workflow package counters through --require-environment-artist-workflow-package, expecting environment_artist_workflow_package_status=ready, environment_artist_workflow_package_ready=1, environment_artist_workflow_ready=1, visible shell ready=1, requirement_rows=8, ready_rows=8, external_execution_rows=8, operator_review_rows=1, walkthrough_package_ready=1, walkthrough_steps=8, positive retained UI row evidence, selected OpenEXR/KTX/Basis asset pipeline ready=1, selected preset library ready=1, validation remediation ready=1, revision safety ready=1, editor-core execution boundary ready=1, operator review ready=1, external execution ready=1, zero editor-core backend/package-script/validation-recipe/native-handle execution, diagnostics=0, and environment_artist_workflow_commercial_ready=0 without promoting commercial readiness, backend parity, all-platform readiness, complete physical weather simulation, or broad environment_ready."
     },
     {
+      "name": "environment-highest-commercial-readiness-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-highest-commercial-readiness-closeout validation_recipe_skeleton=1 host_gate=commercial-environment-highest-closeout ready_claim=0 environment_highest_commercial_ready=0 environment_commercial_ready=0 environment_ready_promotion_blocked_until_all_rows_ready=1 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for the final highest commercial aggregate closeout. Dry-run evidence must show the recipe id, commercial-environment-highest-closeout host gate, environment_highest_commercial_ready=0, environment_commercial_ready=0, environment_ready_promotion_blocked_until_all_rows_ready=1, and zero package/GPU/host command execution until Task 12 replaces this skeleton with package-visible evidence."
+    },
+    {
+      "name": "environment-platform-linux-vulkan-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-linux-vulkan-package validation_recipe_skeleton=1 host_gate=linux-vulkan-runtime-host ready_claim=0 environment_platform_linux_vulkan_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for the Linux Vulkan platform package row. It records the linux-vulkan-runtime-host gate and keeps environment_platform_linux_vulkan_ready=0 until Task 4 adds the first-party Linux Vulkan runtime host package evidence."
+    },
+    {
+      "name": "environment-platform-android-vulkan-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-android-vulkan-package validation_recipe_skeleton=1 host_gate=android-vulkan-runtime-host ready_claim=0 environment_platform_android_vulkan_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for the Android Vulkan platform package row. It records the android-vulkan-runtime-host gate and keeps environment_platform_android_vulkan_ready=0 until Task 4 adds Android Vulkan device or emulator evidence."
+    },
+    {
+      "name": "environment-platform-ios-metal-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-platform-ios-metal-package validation_recipe_skeleton=1 host_gate=ios-metal-host ready_claim=0 environment_platform_ios_metal_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for the iOS Metal platform package row. It records the ios-metal-host gate and keeps environment_platform_ios_metal_ready=0 until Task 5 adds Apple-host iOS Metal package evidence."
+    },
+    {
+      "name": "environment-backend-parity-v2-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-backend-parity-v2-closeout validation_recipe_skeleton=1 host_gate=environment-backend-parity-v2-closeout ready_claim=0 environment_backend_parity_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for clean-break backend parity v2. It keeps environment_backend_parity_ready=0 until Task 6 proves D3D12, strict Vulkan, and Metal through backend-local rows without inference."
+    },
+    {
+      "name": "environment-broad-optimization-cross-backend-measurement",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-broad-optimization-cross-backend-measurement validation_recipe_skeleton=1 host_gate=environment-optimization-artifact-host ready_claim=0 environment_broad_optimization_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for cross-backend optimization measurement. It records the artifact host gate and keeps environment_broad_optimization_ready=0 until Task 7 retains official profiler artifacts and budget evidence for all required workloads."
+    },
+    {
+      "name": "environment-asset-pipeline-openexr-ktx-basis-full",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-asset-pipeline-openexr-ktx-basis-full validation_recipe_skeleton=1 host_gate=environment-asset-pipeline-full-optional-dependencies ready_claim=0 environment_asset_pipeline_openexr_ktx_basis_full_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for the full OpenEXR/KTX2/Basis asset pipeline. It keeps environment_asset_pipeline_openexr_ktx_basis_full_ready=0 until Task 9 proves the declared source matrix, optional dependency gates, cooked-only runtime ingest, metadata, and backend target selection."
+    },
+    {
+      "name": "environment-aaa-preset-asset-library-production",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-aaa-preset-asset-library-production validation_recipe_skeleton=1 host_gate=environment-aaa-asset-library-production-assets ready_claim=0 environment_aaa_preset_asset_library_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for the production AAA preset asset library. It keeps environment_aaa_preset_asset_library_ready=0 until Task 8 proves objective counts, provenance, package evidence, screenshots, budgets, and artist workflow rows."
+    },
+    {
+      "name": "environment-physical-weather-simulation-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-physical-weather-simulation-closeout validation_recipe_skeleton=1 host_gate=environment-weather-physics-dataset-host ready_claim=0 environment_physical_weather_simulation_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for complete physical weather simulation. It keeps environment_physical_weather_simulation_ready=0 until Task 10 proves coupled CPU/GPU solver, validation dataset, conservation, visual regression, and backend parity evidence."
+    },
+    {
+      "name": "environment-artist-workflow-production-closeout",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-artist-workflow-production-closeout validation_recipe_skeleton=1 host_gate=environment-artist-workflow-visible-shell-host ready_claim=0 environment_artist_workflow_production_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
+      "purpose": "Task 3 skeleton for production artist workflow closeout. It keeps environment_artist_workflow_production_ready=0 until Task 11 proves visible shell import, cook, package, preview, compare, validate, report, revise, undo/redo, batch, and review flows."
+    },
+    {
       "name": "desktop-runtime-sample-game-environment-commercial-readiness",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-commercial-readiness')\"",
       "purpose": "Build the selected sample_desktop_runtime_game D3D12 package lane, compile target-specific Vulkan shader artifacts for host-gated rows, and emit the Phase 12 commercial readiness blocker gate through --require-environment-commercial-readiness. Expected counters include environment_commercial_readiness_status=blocked, environment_commercial_ready=0, required_rows=14, ready_rows=4, host_gated_rows=7, blocked_rows=3, missing_rows=0, package_visible_rows=14, validation_guarded_rows=14, legal_notice_current_rows=14, optional_dependency_legal_records_current=1, adjacent_broad_non_claims_declared=1, native_handle_access=0, broad_environment_ready_claimed=0, and a positive replay hash. This recipe must not promote commercial readiness, backend parity, all-platform readiness, broad optimization, complete physical weather simulation, broad asset-pipeline coverage, or broad environment_ready."

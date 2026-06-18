@@ -433,7 +433,7 @@ Expected:
 - Modify: `tools/check-validation-recipe-runner.ps1`
 - Modify: `games/sample_desktop_runtime_game/game.agent.json`
 
-- [ ] **Step 1: Add recipe ids**
+- [x] **Step 1: Add recipe ids**
 
 Add these recipe ids without enabling broad ready output:
 
@@ -450,7 +450,7 @@ environment-physical-weather-simulation-closeout
 environment-artist-workflow-production-closeout
 ```
 
-- [ ] **Step 2: Add dry-run assertions**
+- [x] **Step 2: Add dry-run assertions**
 
 Each recipe must have a dry-run row with command, host gate, and ready claim set to `0`. `environment-highest-commercial-readiness-closeout` must report:
 
@@ -460,7 +460,7 @@ environment_commercial_ready=0
 environment_ready_promotion_blocked_until_all_rows_ready=1
 ```
 
-- [ ] **Step 3: Validate recipe runner**
+- [x] **Step 3: Validate recipe runner**
 
 Run:
 
@@ -1153,3 +1153,8 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 2 commercial readiness v2 focused tidy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/environment/src/commercial_readiness_v2.cpp,tests/unit/environment_commercial_readiness_v2_tests.cpp` | pass | `tidy-check: ok (2 files)` |
 | 2026-06-18 | Task 2 commercial readiness v2 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; Apple/Metal checks remain host-gated or diagnostic-only on Windows |
 | 2026-06-18 | Task 2 commercial readiness v2 publication preflight | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` | pass | `publication-preflight: ok` |
+| 2026-06-18 | Task 3 validation recipe skeletons RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | expected fail | `environment-highest-commercial-readiness-closeout exited 2, expected 0` |
+| 2026-06-18 | Task 3 validation recipe skeletons RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | expected fail | missing `environment-highest-commercial-readiness-closeout` validation recipe |
+| 2026-06-18 | Task 3 validation recipe skeletons GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
+| 2026-06-18 | Task 3 validation recipe skeletons dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-highest-commercial-readiness-closeout` | pass | prints `environment-highest-commercial-readiness-closeout`, `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, and `environment_ready_promotion_blocked_until_all_rows_ready=1`; no package, GPU, or host command executed |
+| 2026-06-18 | Task 3 validation recipe skeletons JSON contract | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |

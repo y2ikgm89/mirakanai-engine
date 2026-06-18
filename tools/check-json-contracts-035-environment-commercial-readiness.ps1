@@ -20,6 +20,24 @@ foreach ($validationRecipe in @($engineForEnvironmentCommercial.validationRecipe
     $environmentCommercialValidationRecipeNames[[string]$validationRecipe.name] = $true
 }
 
+$expectedHighestCommercialRecipeSkeletonIds = @(
+    "environment-highest-commercial-readiness-closeout",
+    "environment-platform-linux-vulkan-package",
+    "environment-platform-android-vulkan-package",
+    "environment-platform-ios-metal-package",
+    "environment-backend-parity-v2-closeout",
+    "environment-broad-optimization-cross-backend-measurement",
+    "environment-asset-pipeline-openexr-ktx-basis-full",
+    "environment-aaa-preset-asset-library-production",
+    "environment-physical-weather-simulation-closeout",
+    "environment-artist-workflow-production-closeout"
+)
+foreach ($recipeId in $expectedHighestCommercialRecipeSkeletonIds) {
+    if (-not $environmentCommercialValidationRecipeNames.ContainsKey($recipeId)) {
+        Write-Error "engine manifest validationRecipes missing Environment Highest Commercial Readiness v1 Task 3 skeleton recipe: $recipeId"
+    }
+}
+
 $expectedEnvironmentCommercialClaimIds = @(
     "environment_commercial_ready",
     "environment_vulkan_strict_aggregate_ready",
@@ -728,11 +746,11 @@ foreach ($sourceSurface in @(
         @{ Path = "engine/environment/CMakeLists.txt"; Needles = @("src/commercial_readiness_v2.cpp") },
         @{ Path = "games/sample_desktop_runtime_game/main.cpp"; Needles = @("--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence", "environment_commercial_readiness_status", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested", "require_environment_commercial_readiness", "require_environment_commercial_vulkan_evidence") },
         @{ Path = "tools/validation-recipe-core.ps1"; Needles = @("Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence") },
-        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs") },
+        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") },
         @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("environment_commercial_readiness_status", "environment_commercial_ready", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested") },
         @{ Path = "tools/validate-environment-metal-host-aggregate.ps1"; Needles = @("environment_backend_parity_metal_evidence_requested=1", "environment_backend_parity_metal_evidence_ready=1", "environment_backend_parity_metal_host=1", "environment_backend_parity_ready=0", "environment_backend_parity_cross_host_aggregate_ready=0", "environment_backend_parity_d3d12_inferred=0", "environment_backend_parity_vulkan_inferred=0", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "environment_commercial_ready_rows=2", "environment_commercial_blocked_rows=7") },
         @{ Path = ".github/workflows/validate.yml"; Needles = @("Environment Metal aggregate host evidence recipe", "validate-environment-metal-host-aggregate.ps1") },
-        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6") }
+        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") }
     )) {
     $sourceSurfaceText = Get-JsonContractSurfaceText $sourceSurface.Path
     foreach ($needle in @($sourceSurface.Needles)) {
