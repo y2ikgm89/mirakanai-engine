@@ -42,7 +42,6 @@ foreach ($recipeId in $expectedHighestCommercialRecipeIds) {
 }
 $expectedRemainingHighestCommercialRecipeSkeletonIds = @(
     "environment-highest-commercial-readiness-closeout",
-    "environment-backend-parity-v2-closeout",
     "environment-broad-optimization-cross-backend-measurement",
     "environment-asset-pipeline-openexr-ktx-basis-full",
     "environment-aaa-preset-asset-library-production",
@@ -92,6 +91,29 @@ foreach ($recipeContract in $expectedEnvironmentPlatformHostRecipes) {
         if (-not $recipeText.Contains([string]$needle)) {
             Write-Error "engine manifest validationRecipes '$recipeId' missing platform host-validator needle: $needle"
         }
+    }
+}
+
+$environmentBackendParityV2Recipe = $environmentCommercialValidationRecipesByName["environment-backend-parity-v2-closeout"]
+if ($null -eq $environmentBackendParityV2Recipe) {
+    Write-Error "engine manifest validationRecipes missing environment-backend-parity-v2-closeout"
+} else {
+    $environmentBackendParityV2RecipeText = [string]::Join(" ", @([string]$environmentBackendParityV2Recipe.command, [string]$environmentBackendParityV2Recipe.purpose))
+    foreach ($needle in @(
+            "tools/validate-environment-backend-parity-v2.ps1",
+            "-RequireReady",
+            "environment_backend_parity_ready=1",
+            "15-feature",
+            "45 backend-local ready rows",
+            "zero D3D12/Vulkan/Metal inference counters",
+            "zero native-handle access",
+            "zero GPU command execution")) {
+        if (-not $environmentBackendParityV2RecipeText.Contains($needle)) {
+            Write-Error "engine manifest validationRecipes 'environment-backend-parity-v2-closeout' missing v2 closeout needle: $needle"
+        }
+    }
+    if ($environmentBackendParityV2RecipeText.Contains("validation_recipe_skeleton=1")) {
+        Write-Error "engine manifest validationRecipes 'environment-backend-parity-v2-closeout' must not remain a dry-run skeleton after Task 6"
     }
 }
 
@@ -208,20 +230,21 @@ if ($null -eq $backendParityClaim -or
     @($backendParityClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-backend-parity" -or
     @($backendParityClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-backend-parity-ready" -or
     @($backendParityClaim.validationRecipeIds) -notcontains "renderer-metal-environment-aggregate-apple-host-evidence" -or
+    @($backendParityClaim.validationRecipeIds) -notcontains "environment-backend-parity-v2-closeout" -or
     [string]$backendParityClaim.state -ne "ready" -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("plan_environment_backend_parity") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("EnvironmentBackendParityV2Row") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("evaluate_environment_backend_parity_v2") -or
     -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_ready=1") -or
-    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_ready_closeout_requested=1") -or
-    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_metal_evidence_ready=1") -or
-    -not [string]$backendParityClaim.requiredEvidence.Contains("normalized feature id") -or
-    -not [string]$backendParityClaim.requiredEvidence.Contains("profile revision") -or
-    -not [string]$backendParityClaim.requiredEvidence.Contains("preset pack revision") -or
-    -not [string]$backendParityClaim.requiredEvidence.Contains("counter semantics") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_required_features=15") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_rows=45") -or
+    -not [string]$backendParityClaim.requiredEvidence.Contains("environment_backend_parity_ready_rows=45") -or
     -not [string]$backendParityClaim.notes.Contains("desktop-runtime-sample-game-environment-backend-parity-ready") -or
+    -not [string]$backendParityClaim.notes.Contains("environment-backend-parity-v2-closeout") -or
     -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_metal_host=1") -or
     -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_ready=1") -or
     -not [string]$backendParityClaim.notes.Contains("environment_backend_parity_ready=0")) {
-    Write-Error "engine manifest environment_backend_parity_ready must be promoted only by the MK_renderer environment parity matrix plus the Apple-host Metal bridge and package-visible ready closeout recipe"
+    Write-Error "engine manifest environment_backend_parity_ready must be promoted only by the retained MK_renderer parity matrix plus the clean-break environment backend parity v2 closeout recipe"
 }
 $windowsVulkanPlatformClaim = $environmentCommercialClaimsById["environment_platform_windows_vulkan_ready"]
 if ($null -eq $windowsVulkanPlatformClaim -or
@@ -803,7 +826,8 @@ foreach ($sourceSurface in @(
         @{ Path = "engine/environment/CMakeLists.txt"; Needles = @("src/commercial_readiness_v2.cpp") },
         @{ Path = "games/sample_desktop_runtime_game/main.cpp"; Needles = @("--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence", "environment_commercial_readiness_status", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested", "require_environment_commercial_readiness", "require_environment_commercial_vulkan_evidence") },
         @{ Path = "tools/validation-recipe-core.ps1"; Needles = @("Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence") },
-        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "vulkaninfo_ready=1", "android_vulkan_readback_ready=1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") },
+        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "vulkaninfo_ready=1", "android_vulkan_readback_ready=1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "tools/validate-environment-backend-parity-v2.ps1", "45 backend-local ready rows", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") },
+        @{ Path = "tools/validate-environment-backend-parity-v2.ps1"; Needles = @("MK_env_backend_parity_v2_tests", "environment_backend_parity_v2_status=ready", "environment_backend_parity_required_features=15", "environment_backend_parity_rows=45", "environment_backend_parity_ready_rows=45", "environment_backend_parity_host_gated_rows=0", "environment_backend_parity_d3d12_inferred=0", "environment_backend_parity_vulkan_inferred=0", "environment_backend_parity_metal_inferred=0", "environment_backend_parity_native_handle_access=0", "environment_backend_parity_invoked_gpu_commands=0", "environment_backend_parity_all_platform_ready=0", "environment_backend_parity_commercial_ready=0", "environment_backend_parity_broad_optimization_ready=0", "environment_backend_parity_broad_environment_ready=0") },
         @{ Path = "tools/validate-linux-vulkan-runtime-host.ps1"; Needles = @("Find-VulkanInfoCommand", "--summary", "VK_LAYER_KHRONOS_validation", "dxc_spirv_codegen_ready", "spirv_val_ready", "linux_icd_runtime_ready", "first_party_linux_runtime_host_ready", "linux_package_script_ready", "linux_installed_validator_ready", "environment_platform_linux_vulkan_ready", "windows_vulkan_inferred=0") },
         @{ Path = "tools/validate-android-vulkan-runtime-host.ps1"; Needles = @("enable_gpu_debug_layers", "gpu_debug_layers", "VK_LAYER_KHRONOS_validation", "android.hardware.vulkan.version", "android.hardware.vulkan.level", "android_validation_layer_packaged", "android_package_smoke_ready", "android_vulkan_readback_ready", "environment_platform_android_vulkan_ready", "desktop_vulkan_inferred=0") },
         @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("environment_commercial_readiness_status", "environment_commercial_ready", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested") },
@@ -812,6 +836,11 @@ foreach ($sourceSurface in @(
         @{ Path = "engine/runtime_rhi/include/mirakana/runtime_rhi/environment_platform_evidence_v2.hpp"; Needles = @("EnvironmentPlatformEvidenceV2RowStatus", "EnvironmentPlatformEvidenceV2PlatformId", "EnvironmentPlatformEvidenceV2Row", "EnvironmentPlatformEvidenceV2Result", "evaluate_environment_platform_evidence_v2", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "linux_package_script_ready", "android_vulkan_readback_ready") },
         @{ Path = "tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp"; Needles = @("windows_vulkan_evidence_does_not_promote_linux_or_android_vulkan", "linux_vulkan_ready_requires_exact_linux_host_gate_and_tool_rows", "android_vulkan_ready_requires_android_device_validation_layer_package_and_readback", "native_handle_or_inferred_platform_rows_keep_ready_false") },
         @{ Path = "CMakeLists.txt"; Needles = @("MK_env_platform_v2_tests", "tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp") },
+        @{ Path = "engine/renderer/include/mirakana/renderer/environment_backend_parity_v2.hpp"; Needles = @("EnvironmentBackendParityV2Status", "EnvironmentBackendParityV2Feature", "EnvironmentBackendParityV2Row", "EnvironmentBackendParityV2Result", "evaluate_environment_backend_parity_v2", "environment_all_platform_unconditional_ready", "native_handle_access", "inferred_from_other_backend") },
+        @{ Path = "engine/renderer/src/environment_backend_parity_v2.cpp"; Needles = @("physical_sky", "height_fog", "volumetric_fog", "volumetric_cloud", "cloud_layer", "rain_precipitation", "snow_precipitation", "material_weathering", "environment_lighting_ibl", "postprocess_depth_input", "texture_payload_rgba8_upload", "texture_payload_bc7_or_astc_upload", "weather_solver_gpu", "debug_profiling_policy", "quality_budget", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate", "renderer-metal-environment-aggregate-apple-host-evidence") },
+        @{ Path = "tests/unit/renderer_environment_backend_parity_v2_tests.cpp"; Needles = @("d3d12_vulkan_ready_metal_missing_keeps_parity_0", "macos_metal_ready_ios_metal_missing_keeps_all_platform_0", "ready_rows_with_native_handle_access_keep_parity_0", "ready_rows_with_diagnostics_keep_parity_0", "all_backend_rows_ready_promotes_backend_parity_1", "result.required_rows == 45U", "result.required_features == 15U") },
+        @{ Path = "CMakeLists.txt"; Needles = @("MK_env_backend_parity_v2_tests", "tests/unit/renderer_environment_backend_parity_v2_tests.cpp") },
+        @{ Path = "engine/renderer/CMakeLists.txt"; Needles = @("src/environment_backend_parity_v2.cpp") },
         @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "environment-artist-workflow-production-closeout", "environment_ready_promotion_blocked_until_all_rows_ready=1") }
     )) {
     $sourceSurfaceText = Get-JsonContractSurfaceText $sourceSurface.Path

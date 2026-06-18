@@ -641,10 +641,15 @@ environment_all_platform_unconditional_ready=0
 **Files:**
 - Create: `engine/renderer/include/mirakana/renderer/environment_backend_parity_v2.hpp`
 - Create: `engine/renderer/src/environment_backend_parity_v2.cpp`
-- Create: `engine/renderer/tests/environment_backend_parity_v2_tests.cpp`
+- Create: `tests/unit/renderer_environment_backend_parity_v2_tests.cpp`
+- Create: `tools/validate-environment-backend-parity-v2.ps1`
+- Modify: `CMakeLists.txt`
+- Modify: `engine/renderer/CMakeLists.txt`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
 - Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
 
-- [ ] **Step 1: Define exact parity matrix**
+- [x] **Step 1: Define exact parity matrix**
 
 Required feature rows:
 
@@ -666,7 +671,7 @@ debug_profiling_policy
 quality_budget
 ```
 
-- [ ] **Step 2: Write fail-closed tests**
+- [x] **Step 2: Write fail-closed tests**
 
 Tests must prove:
 
@@ -675,16 +680,19 @@ d3d12_vulkan_ready_metal_missing_keeps_parity_0
 macos_metal_ready_ios_metal_missing_keeps_all_platform_0
 ready_rows_with_native_handle_access_keep_parity_0
 ready_rows_with_diagnostics_keep_parity_0
+explicit_missing_row_counts_as_missing_and_keeps_parity_0
 all_backend_rows_ready_promotes_backend_parity_1
 ```
 
-- [ ] **Step 3: Validate**
+- [x] **Step 3: Validate**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-backend-parity-v2.ps1 -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-backend-parity-v2-closeout
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected:
@@ -1196,3 +1204,11 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 5 iOS Metal recipe dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-platform-ios-metal-package` | pass | argv routes through `tools/validate-apple-metal-platform-host.ps1 -RequireReady -Platform ios` with exact iOS Metal expected counters |
 | 2026-06-18 | Task 5 validation recipe runner | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
 | 2026-06-18 | Task 5 Apple host static evidence | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` | pass | reports Windows host-gated blockers and static iOS Metal evidence file/package hooks |
+| 2026-06-18 | Task 6 backend parity v2 TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_env_backend_parity_v2_tests` | expected fail | `explicit_missing_row_counts_as_missing_and_keeps_parity_0`: `result.missing_rows == 1U` |
+| 2026-06-18 | Task 6 backend parity v2 focused validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-backend-parity-v2.ps1 -RequireReady` | pass | `environment_backend_parity_v2_status=ready`, `environment_backend_parity_ready=1`, `environment_backend_parity_rows=45`, `environment_backend_parity_ready_rows=45`, `environment_backend_parity_all_platform_ready=0`, `environment_backend_parity_commercial_ready=0` |
+| 2026-06-18 | Task 6 backend parity v2 recipe dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-backend-parity-v2-closeout` | pass | argv routes through `tools/validate-environment-backend-parity-v2.ps1 -RequireReady`; no host gate |
+| 2026-06-18 | Task 6 validation recipe runner | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
+| 2026-06-18 | Task 6 JSON contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 6 agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
+| 2026-06-18 | Task 6 formatting | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | pass | `format-check: ok` |
+| 2026-06-18 | Task 6 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 130`; Apple host checks remain host-gated or diagnostic-only on Windows |

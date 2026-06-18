@@ -493,7 +493,10 @@ Assert-EnvironmentPlatformHostGateDryRun `
         "ios_metal_readback_ready=1",
         "environment_platform_ios_metal_ready=1",
         "environment_platform_requires_ios_metal_host_evidence=0") | Out-Null
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-backend-parity-v2-closeout" -HostGate "environment-backend-parity-v2-closeout" -ReadyCounter "environment_backend_parity_ready" | Out-Null
+$backendParityV2DryRun = Assert-DryRunRecipe -Recipe "environment-backend-parity-v2-closeout" -ExpectedArgv @("-File", "tools/validate-environment-backend-parity-v2.ps1", "-RequireReady")
+foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
+    Assert-ArgvDoesNotContainText -Result $backendParityV2DryRun -Unexpected $needle -Label "dry-run backend parity v2 closeout"
+}
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-broad-optimization-cross-backend-measurement" -HostGate "environment-optimization-artifact-host" -ReadyCounter "environment_broad_optimization_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-asset-pipeline-openexr-ktx-basis-full" -HostGate "environment-asset-pipeline-full-optional-dependencies" -ReadyCounter "environment_asset_pipeline_openexr_ktx_basis_full_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-aaa-preset-asset-library-production" -HostGate "environment-aaa-asset-library-production-assets" -ReadyCounter "environment_aaa_preset_asset_library_ready" | Out-Null

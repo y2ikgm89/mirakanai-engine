@@ -372,8 +372,8 @@
     },
     {
       "name": "environment-backend-parity-v2-closeout",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"Write-Output 'validation_recipe=environment-backend-parity-v2-closeout validation_recipe_skeleton=1 host_gate=environment-backend-parity-v2-closeout ready_claim=0 environment_backend_parity_ready=0 package_command_executed=0 gpu_command_executed=0 host_command_executed=0'\"",
-      "purpose": "Task 3 skeleton for clean-break backend parity v2. It keeps environment_backend_parity_ready=0 until Task 6 proves D3D12, strict Vulkan, and Metal through backend-local rows without inference."
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-backend-parity-v2.ps1 -RequireReady",
+      "purpose": "Task 6 clean-break backend parity v2 closeout. It builds and runs MK_env_backend_parity_v2_tests and expects environment_backend_parity_ready=1 only from a 15-feature by 3-backend matrix with 45 backend-local ready rows, zero host-gated/blocked/unsupported rows, zero D3D12/Vulkan/Metal inference counters, zero diagnostics, zero native-handle access, zero GPU command execution, and no all-platform, commercial, broad optimization, or broad environment_ready promotion."
     },
     {
       "name": "environment-broad-optimization-cross-backend-measurement",
