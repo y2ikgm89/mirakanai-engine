@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Task 1 selected this highest-level plan as `currentActivePlan`, created the exact spec, and records the Context7/source gate. Task 1 landed in PR #669 with hosted validation passing. The 2026-06-18 Context7 gate continuation verified Vulkan, Vulkan SDK tooling, D3D12, OpenEXR, KTX, OpenUSD, MaterialX, OpenColorIO, and vcpkg rows, recorded Metal and glTF as Context7-partial, then recorded official Apple/Khronos fallback rows for those two partial rows. Implementation code edits are allowed for later task-owned slices only because all eleven rows now have authoritative documentation coverage. This file does not promote any readiness claim by itself.
+**Status:** Active. Tasks 1-8 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, and promote only the production AAA preset asset-library dependency row. Task 8 promotes `environment_aaa_preset_asset_library_ready=1` only; commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, full OpenEXR/KTX2/Basis readiness, physical weather simulation readiness, production artist workflow readiness, final aggregate readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -840,7 +840,7 @@ Task 7 does not promote `environment_broad_optimization_ready`. Real closeout re
 - Modify: `docs/legal-and-licensing.md`
 - Modify: `THIRD_PARTY_NOTICES.md`
 
-- [ ] **Step 1: Define non-subjective asset counts**
+- [x] **Step 1: Define non-subjective asset counts**
 
 `environment_aaa_preset_asset_library_ready=1` requires:
 
@@ -861,11 +861,11 @@ license_provenance_rows=all_assets
 package_budget_rows=all_assets
 ```
 
-- [ ] **Step 2: Prefer first-party assets**
+- [x] **Step 2: Prefer first-party assets**
 
 Use first-party generated or hand-authored content for default preset packs. Any third-party asset requires an entry in `THIRD_PARTY_NOTICES.md` with name, source URL, retrieved date, version or commit, copyright holder, SPDX license, modification status, and distribution target.
 
-- [ ] **Step 3: Validate**
+- [x] **Step 3: Validate**
 
 Run:
 
@@ -881,6 +881,17 @@ environment_aaa_preset_asset_library_ready=1
 environment_preset_asset_license_missing_rows=0
 environment_preset_asset_package_budget_overages=0
 ```
+
+Task 8 implementation evidence:
+
+```text
+MK_environment now exposes EnvironmentPresetAssetCategory, EnvironmentPresetAssetLibraryAssetRow, EnvironmentPresetAssetLibraryPreviewScreenshotRow, EnvironmentPresetAssetLibrarySampleSceneRow, EnvironmentPresetAssetLibraryProductionDesc, EnvironmentPresetAssetLibraryProductionResult, and evaluate_environment_preset_asset_library_production.
+tools/validate-environment-aaa-preset-asset-library.ps1 builds and runs MK_environment_tests before emitting ready counters.
+environment-aaa-preset-asset-library-production routes through tools/validate-environment-aaa-preset-asset-library.ps1 -RequireReady instead of a skeleton.
+The ready row requires 156 first-party objective asset rows, 144 preview screenshot rows, 8 sample-scene consumption rows, complete license/provenance and package-budget rows, zero external assets, zero missing objective rows, zero backend execution, zero package-script execution, and zero native-handle access.
+```
+
+Task 8 promotes only `environment_aaa_preset_asset_library_ready=1`. It does not promote full OpenEXR/KTX2/Basis asset-pipeline readiness, physical weather simulation, production artist workflow, all-platform readiness, broad optimization readiness, commercial readiness, or broad `environment_ready`.
 
 ## Task 9: Promote Full OpenEXR/KTX2/Basis Asset Pipeline
 
@@ -1223,3 +1234,17 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 6 agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
 | 2026-06-18 | Task 6 formatting | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | pass | `format-check: ok` |
 | 2026-06-18 | Task 6 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 130`; Apple host checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-18 | Task 8 preset asset library TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_tests` | expected fail | missing `EnvironmentPresetAssetLibraryProductionDesc` / `evaluate_environment_preset_asset_library_production` |
+| 2026-06-18 | Task 8 preset asset library focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_tests` | pass | built `MK_environment_tests` |
+| 2026-06-18 | Task 8 preset asset library focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
+| 2026-06-18 | Task 8 validation recipe runner | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
+| 2026-06-18 | Task 8 recipe dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-aaa-preset-asset-library-production` | pass | argv routes through `tools/validate-environment-aaa-preset-asset-library.ps1 -RequireReady`; no host gate |
+| 2026-06-18 | Task 8 dependency policy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | pass | `dependency-policy-check: ok` |
+| 2026-06-18 | Task 8 recipe execute | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-aaa-preset-asset-library-production` | pass | builds/runs `MK_environment_tests`, emits `environment_aaa_preset_asset_library_ready=1`, `environment_aaa_preset_asset_library_asset_rows=156`, `environment_aaa_preset_asset_library_preview_screenshot_rows=144`, `environment_preset_asset_license_missing_rows=0`, `environment_preset_asset_package_budget_overages=0`, `environment_ready=0`, and `environment_commercial_ready=0` |
+| 2026-06-18 | Task 8 JSON contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 8 focused tidy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/environment/src/environment_preset_pack.cpp,tests/unit/environment_tests.cpp` | pass | `tidy-check: ok (2 files)` |
+| 2026-06-18 | Task 8 formatting | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | pass | `text-format-check: ok`; `format-check: ok` |
+| 2026-06-18 | Task 8 public API boundaries | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | pass | `public-api-boundary-check: ok` |
+| 2026-06-18 | Task 8 agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | `ai-integration-check: ok` |
+| 2026-06-18 | Task 8 agent config | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | pass | `agent-config-check: ok` |
+| 2026-06-18 | Task 8 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 130`; aggregate readiness remains blocked until all rows are ready |

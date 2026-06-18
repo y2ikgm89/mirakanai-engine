@@ -9,9 +9,11 @@
 #include "mirakana/environment/environment_profile.hpp"
 #include "mirakana/environment/environment_quality_budget.hpp"
 
+#include <array>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -29,6 +31,63 @@ namespace {
 }
 
 } // namespace
+
+[[nodiscard]] static mirakana::EnvironmentPresetAssetLibraryProductionDesc make_ready_preset_asset_library_desc() {
+    using Category = mirakana::EnvironmentPresetAssetCategory;
+
+    mirakana::EnvironmentPresetAssetLibraryProductionDesc desc{};
+    const std::array<std::pair<Category, std::size_t>, 10U> category_counts{{
+        {Category::sky_atmosphere, 24U},
+        {Category::volumetric_cloud, 24U},
+        {Category::fog_volume, 16U},
+        {Category::rain, 12U},
+        {Category::snow, 12U},
+        {Category::wind, 12U},
+        {Category::material_weathering, 24U},
+        {Category::lighting_ibl, 12U},
+        {Category::weather_timeline, 12U},
+        {Category::biome_environment, 8U},
+    }};
+
+    std::size_t ordinal{0U};
+    for (const auto [category, count] : category_counts) {
+        for (std::size_t index = 0U; index < count; ++index) {
+            const auto suffix = std::to_string(ordinal);
+            desc.asset_rows.push_back(mirakana::EnvironmentPresetAssetLibraryAssetRow{
+                .id = "environment.production.asset." + suffix,
+                .category = category,
+                .provenance_id = "provenance.environment.production." + suffix,
+                .license_id = "LicenseRef-Proprietary",
+                .package_budget_id = "environment.production.budget." + suffix,
+                .license_provenance_ready = true,
+                .package_budget_ready = true,
+            });
+            ++ordinal;
+        }
+    }
+
+    for (std::size_t index = 0U; index < 144U; ++index) {
+        desc.preview_screenshot_rows.push_back(mirakana::EnvironmentPresetAssetLibraryPreviewScreenshotRow{
+            .id = "environment.production.preview." + std::to_string(index),
+            .asset_id = desc.asset_rows[index % desc.asset_rows.size()].id,
+            .artifact_path = "artifacts/environment/preset_asset_library/preview_" + std::to_string(index) + ".png",
+            .artifact_hash_sha256 = std::string(64U, 'a'),
+            .reviewed = true,
+        });
+    }
+
+    for (std::size_t index = 0U; index < 8U; ++index) {
+        desc.sample_scene_rows.push_back(mirakana::EnvironmentPresetAssetLibrarySampleSceneRow{
+            .id = "environment.production.sample_scene." + std::to_string(index),
+            .asset_id = desc.asset_rows[index].id,
+            .scene_path = "runtime/assets/desktop_runtime/production_scene_" + std::to_string(index) + ".scene",
+            .package_visible = true,
+            .reviewed = true,
+        });
+    }
+
+    return desc;
+}
 
 MK_TEST("environment commercial readiness gate reports exact blockers before promotion") {
     using Kind = mirakana::EnvironmentCommercialReadinessRequirementKind;
@@ -697,6 +756,72 @@ MK_TEST("environment preset pack rejects missing provenance budgets and required
         validation, mirakana::EnvironmentPresetPackDiagnosticCode::missing_required_preset));
     MK_REQUIRE(mirakana::has_environment_preset_pack_diagnostic(
         validation, mirakana::EnvironmentPresetPackDiagnosticCode::missing_profile_reference));
+}
+
+MK_TEST("production preset asset library promotes only with objective aaa rows") {
+    const auto desc = make_ready_preset_asset_library_desc();
+
+    const auto result = mirakana::evaluate_environment_preset_asset_library_production(desc);
+
+    MK_REQUIRE(result.environment_aaa_preset_asset_library_ready);
+    MK_REQUIRE(result.asset_rows == 156U);
+    MK_REQUIRE(result.sky_atmosphere_presets == 24U);
+    MK_REQUIRE(result.volumetric_cloud_presets == 24U);
+    MK_REQUIRE(result.fog_volume_presets == 16U);
+    MK_REQUIRE(result.rain_presets == 12U);
+    MK_REQUIRE(result.snow_presets == 12U);
+    MK_REQUIRE(result.wind_presets == 12U);
+    MK_REQUIRE(result.material_weathering_presets == 24U);
+    MK_REQUIRE(result.lighting_ibl_presets == 12U);
+    MK_REQUIRE(result.weather_timeline_presets == 12U);
+    MK_REQUIRE(result.biome_environment_presets == 8U);
+    MK_REQUIRE(result.sample_scene_consumption_rows == 8U);
+    MK_REQUIRE(result.preview_screenshot_rows == 144U);
+    MK_REQUIRE(result.license_provenance_rows == result.asset_rows);
+    MK_REQUIRE(result.package_budget_rows == result.asset_rows);
+    MK_REQUIRE(result.license_missing_rows == 0U);
+    MK_REQUIRE(result.package_budget_overages == 0U);
+    MK_REQUIRE(!result.native_handle_access);
+    MK_REQUIRE(!result.diagnostics);
+}
+
+MK_TEST("selected seven preset library cannot promote production asset library") {
+    mirakana::EnvironmentPresetAssetLibraryProductionDesc desc{};
+    for (std::size_t index = 0U; index < 7U; ++index) {
+        desc.asset_rows.push_back(mirakana::EnvironmentPresetAssetLibraryAssetRow{
+            .id = "environment.selected.asset." + std::to_string(index),
+            .category = mirakana::EnvironmentPresetAssetCategory::sky_atmosphere,
+            .provenance_id = "provenance.environment.selected." + std::to_string(index),
+            .license_id = "LicenseRef-Proprietary",
+            .package_budget_id = "environment.selected.budget." + std::to_string(index),
+            .license_provenance_ready = true,
+            .package_budget_ready = true,
+        });
+    }
+
+    const auto result = mirakana::evaluate_environment_preset_asset_library_production(desc);
+
+    MK_REQUIRE(!result.environment_aaa_preset_asset_library_ready);
+    MK_REQUIRE(result.asset_rows == 7U);
+    MK_REQUIRE(result.sky_atmosphere_presets == 7U);
+    MK_REQUIRE(result.preview_screenshot_rows == 0U);
+    MK_REQUIRE(result.sample_scene_consumption_rows == 0U);
+    MK_REQUIRE(result.missing_objective_rows > 0U);
+}
+
+MK_TEST("production preset asset library fails closed on missing provenance and budget overage") {
+    auto desc = make_ready_preset_asset_library_desc();
+    desc.asset_rows[0].license_provenance_ready = false;
+    desc.asset_rows[1].package_budget_ready = false;
+    desc.request_native_handle_access = true;
+
+    const auto result = mirakana::evaluate_environment_preset_asset_library_production(desc);
+
+    MK_REQUIRE(!result.environment_aaa_preset_asset_library_ready);
+    MK_REQUIRE(result.license_missing_rows == 1U);
+    MK_REQUIRE(result.package_budget_overages == 1U);
+    MK_REQUIRE(result.native_handle_access);
+    MK_REQUIRE(result.diagnostics);
 }
 
 int main() {

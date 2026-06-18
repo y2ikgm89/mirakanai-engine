@@ -301,6 +301,39 @@ function Assert-EnvironmentOptimizationArtifactDryRun {
     return $result
 }
 
+function Assert-EnvironmentPresetAssetLibraryProductionDryRun {
+    $result = Assert-DryRunRecipe -Recipe "environment-aaa-preset-asset-library-production" -ExpectedArgv @("-File", "tools/validate-environment-aaa-preset-asset-library.ps1", "-RequireReady")
+    foreach ($needle in @(
+            "environment_aaa_preset_asset_library_ready=1",
+            "environment_aaa_preset_asset_library_sky_atmosphere_presets=24",
+            "environment_aaa_preset_asset_library_volumetric_cloud_presets=24",
+            "environment_aaa_preset_asset_library_fog_volume_presets=16",
+            "environment_aaa_preset_asset_library_rain_presets=12",
+            "environment_aaa_preset_asset_library_snow_presets=12",
+            "environment_aaa_preset_asset_library_wind_presets=12",
+            "environment_aaa_preset_asset_library_material_weathering_presets=24",
+            "environment_aaa_preset_asset_library_lighting_ibl_presets=12",
+            "environment_aaa_preset_asset_library_weather_timeline_presets=12",
+            "environment_aaa_preset_asset_library_biome_environment_presets=8",
+            "environment_aaa_preset_asset_library_preview_screenshot_rows=144",
+            "environment_aaa_preset_asset_library_sample_scene_consumption_rows=8",
+            "environment_preset_asset_license_missing_rows=0",
+            "environment_preset_asset_package_budget_overages=0",
+            "environment_preset_asset_external_asset_rows=0",
+            "environment_aaa_preset_asset_library_missing_objective_rows=0",
+            "environment_aaa_preset_asset_library_backend_execution=0",
+            "environment_aaa_preset_asset_library_package_script_execution=0",
+            "environment_aaa_preset_asset_library_native_handle_access=0",
+            "environment_ready=0",
+            "environment_commercial_ready=0")) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run environment preset asset library production row"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run environment preset asset library production row"
+    }
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -523,7 +556,7 @@ foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-run
 }
 Assert-EnvironmentOptimizationArtifactDryRun | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-asset-pipeline-openexr-ktx-basis-full" -HostGate "environment-asset-pipeline-full-optional-dependencies" -ReadyCounter "environment_asset_pipeline_openexr_ktx_basis_full_ready" | Out-Null
-Assert-HighestCommercialSkeletonDryRun -Recipe "environment-aaa-preset-asset-library-production" -HostGate "environment-aaa-asset-library-production-assets" -ReadyCounter "environment_aaa_preset_asset_library_ready" | Out-Null
+Assert-EnvironmentPresetAssetLibraryProductionDryRun | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-physical-weather-simulation-closeout" -HostGate "environment-weather-physics-dataset-host" -ReadyCounter "environment_physical_weather_simulation_ready" | Out-Null
 Assert-HighestCommercialSkeletonDryRun -Recipe "environment-artist-workflow-production-closeout" -HostGate "environment-artist-workflow-visible-shell-host" -ReadyCounter "environment_artist_workflow_production_ready" | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null

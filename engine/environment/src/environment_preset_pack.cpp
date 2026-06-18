@@ -394,6 +394,125 @@ bool has_environment_preset_pack_diagnostic(const EnvironmentPresetPackValidatio
     return std::ranges::any_of(result.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
+EnvironmentPresetAssetLibraryProductionResult
+evaluate_environment_preset_asset_library_production(const EnvironmentPresetAssetLibraryProductionDesc& desc) {
+    auto result = EnvironmentPresetAssetLibraryProductionResult{};
+    const auto count_row = [](std::uint32_t value, std::uint32_t required) noexcept {
+        return value >= required ? 0U : required - value;
+    };
+    const auto valid_hash = [](std::string_view value) noexcept {
+        if (value.size() != 64U) {
+            return false;
+        }
+        for (const auto ch : value) {
+            const bool decimal = ch >= '0' && ch <= '9';
+            const bool lower_hex = ch >= 'a' && ch <= 'f';
+            const bool upper_hex = ch >= 'A' && ch <= 'F';
+            if (!decimal && !lower_hex && !upper_hex) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    result.asset_rows = static_cast<std::uint32_t>(desc.asset_rows.size());
+    result.backend_execution = desc.request_backend_execution;
+    result.package_script_execution = desc.request_package_script_execution;
+    result.native_handle_access = desc.request_native_handle_access;
+
+    for (const auto& row : desc.asset_rows) {
+        if (!valid_text_token(row.id)) {
+            result.diagnostics = true;
+        }
+        switch (row.category) {
+        case EnvironmentPresetAssetCategory::sky_atmosphere:
+            ++result.sky_atmosphere_presets;
+            break;
+        case EnvironmentPresetAssetCategory::volumetric_cloud:
+            ++result.volumetric_cloud_presets;
+            break;
+        case EnvironmentPresetAssetCategory::fog_volume:
+            ++result.fog_volume_presets;
+            break;
+        case EnvironmentPresetAssetCategory::rain:
+            ++result.rain_presets;
+            break;
+        case EnvironmentPresetAssetCategory::snow:
+            ++result.snow_presets;
+            break;
+        case EnvironmentPresetAssetCategory::wind:
+            ++result.wind_presets;
+            break;
+        case EnvironmentPresetAssetCategory::material_weathering:
+            ++result.material_weathering_presets;
+            break;
+        case EnvironmentPresetAssetCategory::lighting_ibl:
+            ++result.lighting_ibl_presets;
+            break;
+        case EnvironmentPresetAssetCategory::weather_timeline:
+            ++result.weather_timeline_presets;
+            break;
+        case EnvironmentPresetAssetCategory::biome_environment:
+            ++result.biome_environment_presets;
+            break;
+        }
+
+        if (row.license_provenance_ready && valid_text_token(row.provenance_id) && valid_text_token(row.license_id)) {
+            ++result.license_provenance_rows;
+        } else {
+            ++result.license_missing_rows;
+        }
+
+        if (row.package_budget_ready && valid_text_token(row.package_budget_id)) {
+            ++result.package_budget_rows;
+        } else {
+            ++result.package_budget_overages;
+        }
+    }
+
+    for (const auto& row : desc.preview_screenshot_rows) {
+        if (row.reviewed && valid_text_token(row.id) && valid_text_token(row.asset_id) &&
+            valid_text_token(row.artifact_path) && valid_hash(row.artifact_hash_sha256)) {
+            ++result.preview_screenshot_rows;
+        } else {
+            result.diagnostics = true;
+        }
+    }
+
+    for (const auto& row : desc.sample_scene_rows) {
+        if (row.reviewed && row.package_visible && valid_text_token(row.id) && valid_text_token(row.asset_id) &&
+            valid_text_token(row.scene_path)) {
+            ++result.sample_scene_consumption_rows;
+        } else {
+            result.diagnostics = true;
+        }
+    }
+
+    result.missing_objective_rows += count_row(result.sky_atmosphere_presets, 24U);
+    result.missing_objective_rows += count_row(result.volumetric_cloud_presets, 24U);
+    result.missing_objective_rows += count_row(result.fog_volume_presets, 16U);
+    result.missing_objective_rows += count_row(result.rain_presets, 12U);
+    result.missing_objective_rows += count_row(result.snow_presets, 12U);
+    result.missing_objective_rows += count_row(result.wind_presets, 12U);
+    result.missing_objective_rows += count_row(result.material_weathering_presets, 24U);
+    result.missing_objective_rows += count_row(result.lighting_ibl_presets, 12U);
+    result.missing_objective_rows += count_row(result.weather_timeline_presets, 12U);
+    result.missing_objective_rows += count_row(result.biome_environment_presets, 8U);
+    result.missing_objective_rows += count_row(result.sample_scene_consumption_rows, 8U);
+    result.missing_objective_rows += count_row(result.preview_screenshot_rows, 144U);
+
+    result.diagnostics = result.diagnostics || result.missing_objective_rows != 0U ||
+                         result.license_missing_rows != 0U || result.package_budget_overages != 0U ||
+                         result.backend_execution || result.package_script_execution || result.native_handle_access;
+    result.environment_aaa_preset_asset_library_ready =
+        result.missing_objective_rows == 0U && result.license_provenance_rows == result.asset_rows &&
+        result.package_budget_rows == result.asset_rows && result.license_missing_rows == 0U &&
+        result.package_budget_overages == 0U && !result.backend_execution && !result.package_script_execution &&
+        !result.native_handle_access && !result.diagnostics;
+
+    return result;
+}
+
 std::string serialize_environment_preset_pack_v1(const EnvironmentPresetPackDocumentV1& document) {
     const auto validation = validate_environment_preset_pack_v1(document);
     if (!validation.succeeded()) {
