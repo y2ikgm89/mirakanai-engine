@@ -71,7 +71,10 @@ foreach ($file in @(
 }
 
 Assert-FileContainsText "platform/ios/CMakeLists.txt" @(
-    "IosMetalEvidence.metal"
+    "IosMetalEvidence.metal",
+    "default.metallib",
+    "xcrun",
+    "metallib"
 )
 
 Assert-FileContainsText "platform/ios/Sources/MirakanaiIOSApp/AppDelegate.mm" @(

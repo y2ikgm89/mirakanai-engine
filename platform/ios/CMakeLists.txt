@@ -23,11 +23,39 @@ if(NOT EXISTS "${MK_IOS_GAME_MANIFEST}")
     message(FATAL_ERROR "MK_IOS_GAME_MANIFEST does not exist: ${MK_IOS_GAME_MANIFEST}")
 endif()
 
+find_program(MK_APPLE_XCRUN xcrun REQUIRED)
+
 add_subdirectory("${MK_IOS_MIRAKANAI_ROOT}" "${CMAKE_BINARY_DIR}/mirakanai")
+
+set(MK_IOS_METAL_EVIDENCE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/Sources/MirakanaiIOSApp/IosMetalEvidence.metal")
+set(MK_IOS_METAL_EVIDENCE_AIR "${CMAKE_CURRENT_BINARY_DIR}/IosMetalEvidence.air")
+set(MK_IOS_DEFAULT_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/default.metallib")
+set(MK_IOS_XCRUN_SDK "${CMAKE_OSX_SYSROOT}")
+if(MK_IOS_XCRUN_SDK MATCHES "[Ii][Pp]hone[Oo][Ss]")
+    set(MK_IOS_XCRUN_SDK "iphoneos")
+elseif(MK_IOS_XCRUN_SDK MATCHES "[Ii][Pp]hone[Ss]imulator")
+    set(MK_IOS_XCRUN_SDK "iphonesimulator")
+elseif(MK_IOS_XCRUN_SDK STREQUAL "")
+    set(MK_IOS_XCRUN_SDK "iphonesimulator")
+endif()
+
+add_custom_command(
+    OUTPUT "${MK_IOS_DEFAULT_METALLIB}"
+    COMMAND "${MK_APPLE_XCRUN}" --sdk "${MK_IOS_XCRUN_SDK}" metal -c "${MK_IOS_METAL_EVIDENCE_SOURCE}" -o "${MK_IOS_METAL_EVIDENCE_AIR}"
+    COMMAND "${MK_APPLE_XCRUN}" --sdk "${MK_IOS_XCRUN_SDK}" metallib "${MK_IOS_METAL_EVIDENCE_AIR}" -o "${MK_IOS_DEFAULT_METALLIB}"
+    DEPENDS "${MK_IOS_METAL_EVIDENCE_SOURCE}"
+    BYPRODUCTS "${MK_IOS_METAL_EVIDENCE_AIR}"
+    VERBATIM
+)
+
+set_source_files_properties("${MK_IOS_DEFAULT_METALLIB}" PROPERTIES
+    GENERATED TRUE
+    MACOSX_PACKAGE_LOCATION "Resources"
+)
 
 add_executable(MirakanaiIOS MACOSX_BUNDLE
     Sources/MirakanaiIOSApp/AppDelegate.mm
-    Sources/MirakanaiIOSApp/IosMetalEvidence.metal
+    "${MK_IOS_DEFAULT_METALLIB}"
     "${MK_IOS_GAME_MANIFEST}"
     "${CMAKE_CURRENT_LIST_DIR}/Resources/.gitkeep"
 )
