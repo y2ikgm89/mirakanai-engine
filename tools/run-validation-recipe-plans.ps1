@@ -614,7 +614,41 @@ function Get-ValidationRecipeCommandPlan {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-asset-pipeline-full-optional-dependencies' -ReadyCounter 'environment_asset_pipeline_openexr_ktx_basis_full_ready'
     }
     elseif ($RecipeName -eq 'environment-aaa-preset-asset-library-production') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-aaa-asset-library-production-assets' -ReadyCounter 'environment_aaa_preset_asset_library_ready'
+        $expectedCounters = @(
+            'validation_recipe=environment-aaa-preset-asset-library-production',
+            'environment_aaa_preset_asset_library_status=ready',
+            'environment_aaa_preset_asset_library_ready=1',
+            'environment_aaa_preset_asset_library_asset_rows=156',
+            'environment_aaa_preset_asset_library_sky_atmosphere_presets=24',
+            'environment_aaa_preset_asset_library_volumetric_cloud_presets=24',
+            'environment_aaa_preset_asset_library_fog_volume_presets=16',
+            'environment_aaa_preset_asset_library_rain_presets=12',
+            'environment_aaa_preset_asset_library_snow_presets=12',
+            'environment_aaa_preset_asset_library_wind_presets=12',
+            'environment_aaa_preset_asset_library_material_weathering_presets=24',
+            'environment_aaa_preset_asset_library_lighting_ibl_presets=12',
+            'environment_aaa_preset_asset_library_weather_timeline_presets=12',
+            'environment_aaa_preset_asset_library_biome_environment_presets=8',
+            'environment_aaa_preset_asset_library_preview_screenshot_rows=144',
+            'environment_aaa_preset_asset_library_sample_scene_consumption_rows=8',
+            'environment_preset_asset_license_provenance_rows=156',
+            'environment_preset_asset_package_budget_rows=156',
+            'environment_preset_asset_license_missing_rows=0',
+            'environment_preset_asset_package_budget_overages=0',
+            'environment_preset_asset_external_asset_rows=0',
+            'environment_aaa_preset_asset_library_missing_objective_rows=0',
+            'environment_aaa_preset_asset_library_backend_execution=0',
+            'environment_aaa_preset_asset_library_package_script_execution=0',
+            'environment_aaa_preset_asset_library_native_handle_access=0',
+            'environment_ready=0',
+            'environment_commercial_ready=0'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-aaa-preset-asset-library.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentPresetAssetLibrary = New-RunnerDiagnostic -Severity 'info' -Code 'local-value-validation' -Message 'Environment AAA preset asset library production validation uses deterministic first-party objective rows: 156 preset assets across ten categories, 144 preview screenshot rows, 8 sample-scene consumption rows, complete license/provenance and package-budget rows, zero external assets, zero missing rows, zero native-handle access, and no broad environment_ready or commercial aggregate promotion.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentPresetAssetLibrary)
     }
     elseif ($RecipeName -eq 'environment-physical-weather-simulation-closeout') {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-weather-physics-dataset-host' -ReadyCounter 'environment_physical_weather_simulation_ready'
