@@ -17,9 +17,9 @@ Current gate rows:
 ```text
 environment_highest_readiness_context7_status=blocked
 environment_highest_readiness_context7_missing_tools=0
-environment_highest_readiness_context7_verified_rows=2
+environment_highest_readiness_context7_verified_rows=5
 environment_highest_readiness_context7_partial_rows=1
-environment_highest_readiness_context7_pending_rows=8
+environment_highest_readiness_context7_pending_rows=5
 environment_highest_readiness_code_edit_allowed=0
 ```
 
@@ -30,6 +30,9 @@ Context7 verification evidence:
 | `context7.vulkan` | verified | `/khronosgroup/vulkan-docs` | 2026-06-18 | Strict Vulkan rows must prove API-validation-layer coverage, SPIR-V validation, synchronization2 barriers, dynamic-rendering execution, readback evidence, and no cross-backend inference. |
 | `context7.metal` | partial | `/dogukanveziroglu/metal-shading-language-specification` | 2026-06-18 | Context7 covers Metal shading language resource bindings and argument-buffer structures, but Apple framework API behavior for command queues, resources, feature tables, synchronization, and readback still requires official Apple documentation before Metal implementation work. |
 | `context7.d3d12` | verified | `/websites/learn_microsoft_en-us_windows_win32_direct3d12` | 2026-06-18 | D3D12 rows must prove debug-layer or GPU-based-validation coverage where host-supported, explicit resource barriers, upload/readback heap evidence, texture state transitions, and no cross-backend inference. |
+| `context7.openexr` | verified | `/academysoftwarefoundation/openexr` | 2026-06-18 | OpenEXR ingest must explicitly handle scanline/tiled images, channel and pixel types, metadata attributes, multipart/deep image policy, and fail-closed validation before production asset-pipeline promotion. |
+| `context7.ktx` | verified | `/khronosgroup/ktx-software` | 2026-06-18 | KTX2/Basis ingest must validate the container, distinguish ETC1S and UASTC, select transcode targets from backend/device capabilities, preserve metadata rows, and keep runtime ingest cooked-only and fail-closed. |
+| `context7.vcpkg` | verified | `/microsoft/vcpkg` | 2026-06-18 | Optional dependencies belong in `vcpkg.json` manifest features with explicit feature selection, pinned baselines, repository bootstrap entrypoints, and no package installation from CMake configure. |
 
 Task 1 may edit only:
 
