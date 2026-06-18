@@ -2,6 +2,7 @@ add_library(mirakana_renderer
     src/cloud_layer_policy.cpp
     src/environment_fog_policy.cpp
     src/environment_lighting_policy.cpp
+    src/environment_backend_parity_v2.cpp
     src/environment_parity.cpp
     src/environment_performance.cpp
     src/environment_policy.cpp

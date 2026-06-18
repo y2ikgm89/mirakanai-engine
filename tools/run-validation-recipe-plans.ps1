@@ -579,7 +579,11 @@ function Get-ValidationRecipeCommandPlan {
             -Message 'iOS Metal platform validation requires a macOS host with full Xcode, iOS Simulator SDK/runtime or device evidence, package smoke that reads an app-written Metal evidence file, Metal feature-set check, command queue, compute pipeline, command buffer, readback evidence, and no macOS-to-iOS or desktop Metal inference.'
     }
     elseif ($RecipeName -eq 'environment-backend-parity-v2-closeout') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-backend-parity-v2-closeout' -ReadyCounter 'environment_backend_parity_ready'
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-backend-parity-v2.ps1' `
+            -ScriptArguments @('-RequireReady')
+        $diagEnvironmentBackendParityV2 = New-RunnerDiagnostic -Severity 'info' -Code 'local-value-validation' -Message 'Environment backend parity v2 closeout builds and runs the MK_renderer value-only v2 parity tests. It expects a 15-feature by 3-backend matrix, 45 backend-local ready rows, zero host-gated/blocked/unsupported rows, zero native-handle/GPU-command side effects, zero D3D12/Vulkan/Metal inference counters, environment_backend_parity_ready=1, and no all-platform, commercial, broad optimization, or broad environment_ready promotion.' -ValidationRecipe $RecipeName
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagEnvironmentBackendParityV2)
     }
     elseif ($RecipeName -eq 'environment-broad-optimization-cross-backend-measurement') {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-optimization-artifact-host' -ReadyCounter 'environment_broad_optimization_ready'
