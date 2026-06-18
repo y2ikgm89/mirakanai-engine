@@ -65,11 +65,13 @@ function Get-ValidationRecipeCommandPlan {
             [Parameter(Mandatory = $true)]
             [string[]]$ExpectedEvidenceCounters,
 
+            [string[]]$AdditionalScriptArguments = @(),
+
             [Parameter(Mandatory = $true)]
             [string]$Message
         )
 
-        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + @($ExpectedEvidenceCounters)
+        $scriptArguments = @('-RequireReady') + @($AdditionalScriptArguments) + @('-ExpectedEvidenceCounters') + @($ExpectedEvidenceCounters)
         $entry = Get-PwshScriptCommandPlan -ScriptPath $ScriptPath -ScriptArguments $scriptArguments
         $diagnostic = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message $Message -ValidationRecipe $Recipe -HostGate $HostGate
         return New-RecipePlanRow -Recipe $Recipe -CommandPlan @($entry) -HostGates @($HostGate) -RequiredAcknowledgements @($HostGate) -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagnostic)
@@ -555,7 +557,26 @@ function Get-ValidationRecipeCommandPlan {
             -Message 'Android Vulkan platform validation requires Android SDK, NDK, adb device or emulator evidence, manifest Vulkan version/level feature declarations, packaged or enabled VK_LAYER_KHRONOS_validation, Android package smoke, Android Vulkan readback evidence, and no desktop Vulkan or Linux Vulkan inference.'
     }
     elseif ($RecipeName -eq 'environment-platform-ios-metal-package') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'ios-metal-host' -ReadyCounter 'environment_platform_ios_metal_ready'
+        return Get-EnvironmentPlatformVulkanHostPlan `
+            -Recipe $RecipeName `
+            -ScriptPath 'tools/validate-apple-metal-platform-host.ps1' `
+            -HostGate 'ios-metal-host' `
+            -AdditionalScriptArguments @('-Platform', 'ios') `
+            -ExpectedEvidenceCounters @(
+                'validation_recipe=environment-platform-ios-metal-package',
+                'host=macos',
+                'xcode_ios_sdk_ready=1',
+                'ios_simulator_or_device_ready=1',
+                'ios_metal_feature_set_checked=1',
+                'ios_package_smoke_ready=1',
+                'ios_metal_command_queue_ready=1',
+                'ios_metal_pipeline_ready=1',
+                'ios_metal_readback_ready=1',
+                'environment_platform_ios_metal_ready=1',
+                'environment_platform_requires_ios_metal_host_evidence=0',
+                'environment_all_platform_unconditional_ready=0'
+            ) `
+            -Message 'iOS Metal platform validation requires a macOS host with full Xcode, iOS Simulator SDK/runtime or device evidence, package smoke that reads an app-written Metal evidence file, Metal feature-set check, command queue, compute pipeline, command buffer, readback evidence, and no macOS-to-iOS or desktop Metal inference.'
     }
     elseif ($RecipeName -eq 'environment-backend-parity-v2-closeout') {
         return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'environment-backend-parity-v2-closeout' -ReadyCounter 'environment_backend_parity_ready'

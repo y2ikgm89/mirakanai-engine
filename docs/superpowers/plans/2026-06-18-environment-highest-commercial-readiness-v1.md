@@ -582,7 +582,7 @@ Windows Vulkan evidence remains separate and cannot promote Linux or Android row
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `tools/run-validation-recipe-plans.ps1`
 
-- [ ] **Step 1: Implement macOS Metal evidence**
+- [x] **Step 1: Implement macOS Metal evidence**
 
 The macOS row must require:
 
@@ -601,7 +601,7 @@ metal_readback_ready=1
 environment_platform_macos_metal_ready=1
 ```
 
-- [ ] **Step 2: Implement iOS Metal evidence**
+- [x] **Step 2: Implement iOS Metal evidence**
 
 The iOS row must require:
 
@@ -617,7 +617,7 @@ ios_metal_readback_ready=1
 environment_platform_ios_metal_ready=1
 ```
 
-- [ ] **Step 3: Validate host-gated behavior on non-Apple hosts**
+- [x] **Step 3: Validate host-gated behavior on non-Apple hosts**
 
 Run on Windows or Linux:
 
@@ -633,6 +633,8 @@ environment_platform_ios_metal_ready=0
 environment_platform_requires_ios_metal_host_evidence=1
 environment_all_platform_unconditional_ready=0
 ```
+
+**Task 5 evidence (2026-06-18):** Context7 was queried for Metal Shading Language coverage and returned `/dogukanveziroglu/metal-shading-language-specification` for shader binding semantics; framework/API requirements still use the recorded official Apple fallback for `MTLCommandQueue`, `MTLCommandBuffer`, `MTLBlitCommandEncoder`, `MTLTextureUsage`, and Metal Feature Set Tables. TDD started with `MK_runtime_rhi_environment_platform_evidence_v2_tests` failing on missing Metal platform fields, then added exact macOS/iOS rows to `EnvironmentPlatformEvidenceV2Row` so macOS requires `host=macos`, Xcode/Metal tool readiness, feature-table, command queue/buffer, render/compute pipeline, texture usage, synchronization, and readback counters, while iOS requires `host=macos`, iOS SDK/runtime or device evidence, package smoke, app-written feature-set, command queue, compute pipeline, command buffer, and readback counters. `environment-platform-ios-metal-package` now routes through `tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady` and no longer uses a skeleton command. `platform/ios` now builds `IosMetalEvidence.metal`; `AppDelegate.mm` writes `mirakanai_ios_metal_evidence.txt`; `tools/smoke-ios-package.ps1` reads that app data container file and fails unless required `ios_metal_*` counters are present. Local Windows evidence is intentionally host-gated: `tools/validate-apple-metal-platform-host.ps1` prints `environment_platform_ios_metal_ready=0`, `environment_platform_requires_ios_metal_host_evidence=1`, and `environment_all_platform_unconditional_ready=0`; the dry-run recipe prints the exact Apple validator argv and expected iOS counters. This closes only the Task 5 validator contract, not Apple-host ready evidence on this Windows machine.
 
 ## Task 6: Promote Backend Parity v2 Only From Backend-Local Rows
 
@@ -1187,3 +1189,10 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 3 validation recipe skeletons GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
 | 2026-06-18 | Task 3 validation recipe skeletons dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-highest-commercial-readiness-closeout` | pass | prints `environment-highest-commercial-readiness-closeout`, `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, and `environment_ready_promotion_blocked_until_all_rows_ready=1`; no package, GPU, or host command executed |
 | 2026-06-18 | Task 3 validation recipe skeletons JSON contract | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
+| 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
+| 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
+| 2026-06-18 | Task 5 Apple host validator Windows fail-closed | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-apple-metal-platform-host.ps1` | pass | `environment_platform_ios_metal_ready=0`, `environment_platform_requires_ios_metal_host_evidence=1`, `environment_all_platform_unconditional_ready=0` |
+| 2026-06-18 | Task 5 iOS Metal recipe dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-platform-ios-metal-package` | pass | argv routes through `tools/validate-apple-metal-platform-host.ps1 -RequireReady -Platform ios` with exact iOS Metal expected counters |
+| 2026-06-18 | Task 5 validation recipe runner | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
+| 2026-06-18 | Task 5 Apple host static evidence | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` | pass | reports Windows host-gated blockers and static iOS Metal evidence file/package hooks |

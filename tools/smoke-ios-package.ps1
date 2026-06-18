@@ -35,6 +35,16 @@ function Invoke-XcrunAllowFailure {
     return $LASTEXITCODE
 }
 
+function Invoke-XcrunCapture {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+
+    $output = @(& $script:xcrun @Arguments 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "xcrun $($Arguments -join ' ') failed: $($output -join "`n")"
+    }
+    return ($output -join "`n").Trim()
+}
+
 function Convert-IosRuntimeVersion {
     param([Parameter(Mandatory = $true)][string]$RuntimeIdentifier)
 
@@ -199,12 +209,34 @@ try {
     Invoke-CheckedCommand $xcrun "simctl" "get_app_container" $selectedDevice.Udid $BundleIdentifier "app"
     Invoke-CheckedCommand $xcrun "simctl" "launch" $selectedDevice.Udid $BundleIdentifier
     Start-Sleep -Seconds 2
+    $dataContainer = Invoke-XcrunCapture @("simctl", "get_app_container", $selectedDevice.Udid, $BundleIdentifier, "data")
+    $iosMetalEvidencePath = Join-Path $dataContainer "Library/Caches/mirakanai_ios_metal_evidence.txt"
+    if (-not (Test-Path -LiteralPath $iosMetalEvidencePath -PathType Leaf)) {
+        Write-Error "iOS Metal evidence file was not written by the launched app: $iosMetalEvidencePath"
+    }
+    $iosMetalEvidence = Get-Content -LiteralPath $iosMetalEvidencePath -Raw
+    foreach ($needle in @(
+            "ios_metal_feature_set_checked=1",
+            "ios_metal_command_queue_ready=1",
+            "ios_metal_pipeline_ready=1",
+            "ios_metal_command_buffer_ready=1",
+            "ios_metal_readback_ready=1")) {
+        if (-not $iosMetalEvidence.Contains($needle)) {
+            Write-Error "iOS Metal evidence did not contain required counter '$needle': $iosMetalEvidencePath"
+        }
+    }
     [void](Invoke-XcrunAllowFailure @("simctl", "terminate", $selectedDevice.Udid, $BundleIdentifier))
 
     Write-Host "ios-smoke: device=$($selectedDevice.Name)"
     Write-Host "ios-smoke: udid=$($selectedDevice.Udid)"
     Write-Host "ios-smoke: runtime=$($selectedDevice.RuntimeIdentifier)"
     Write-Host "ios-smoke: app=$appBundle"
+    Write-Host "ios-smoke: ios_metal_evidence=$iosMetalEvidencePath"
+    foreach ($line in ($iosMetalEvidence -split "`r?`n")) {
+        if (-not [string]::IsNullOrWhiteSpace($line)) {
+            Write-Host "ios-smoke: $line"
+        }
+    }
     Write-Host "ios-smoke: ok"
 }
 finally {

@@ -27,6 +27,7 @@ add_subdirectory("${MK_IOS_MIRAKANAI_ROOT}" "${CMAKE_BINARY_DIR}/mirakanai")
 
 add_executable(MirakanaiIOS MACOSX_BUNDLE
     Sources/MirakanaiIOSApp/AppDelegate.mm
+    Sources/MirakanaiIOSApp/IosMetalEvidence.metal
     "${MK_IOS_GAME_MANIFEST}"
     "${CMAKE_CURRENT_LIST_DIR}/Resources/.gitkeep"
 )

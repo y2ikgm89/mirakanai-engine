@@ -42,7 +42,6 @@ foreach ($recipeId in $expectedHighestCommercialRecipeIds) {
 }
 $expectedRemainingHighestCommercialRecipeSkeletonIds = @(
     "environment-highest-commercial-readiness-closeout",
-    "environment-platform-ios-metal-package",
     "environment-backend-parity-v2-closeout",
     "environment-broad-optimization-cross-backend-measurement",
     "environment-asset-pipeline-openexr-ktx-basis-full",
@@ -56,7 +55,7 @@ foreach ($recipeId in $expectedRemainingHighestCommercialRecipeSkeletonIds) {
         Write-Error "engine manifest validationRecipes '$recipeId' must remain a dry-run-only skeleton until its owning task replaces it"
     }
 }
-$expectedEnvironmentPlatformVulkanHostRecipes = @(
+$expectedEnvironmentPlatformHostRecipes = @(
     @{
         Recipe = "environment-platform-linux-vulkan-package"
         Script = "tools/validate-linux-vulkan-runtime-host.ps1"
@@ -68,9 +67,15 @@ $expectedEnvironmentPlatformVulkanHostRecipes = @(
         Script = "tools/validate-android-vulkan-runtime-host.ps1"
         Forbidden = "validation_recipe_skeleton=1"
         Needles = @("host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_vulkan_profile_ready=1", "android_validation_layer_packaged=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
+    },
+    @{
+        Recipe = "environment-platform-ios-metal-package"
+        Script = "tools/validate-apple-metal-platform-host.ps1"
+        Forbidden = "validation_recipe_skeleton=1"
+        Needles = @("host=macos", "xcode_ios_sdk_ready=1", "ios_simulator_or_device_ready=1", "ios_metal_feature_set_checked=1", "ios_package_smoke_ready=1", "ios_metal_command_queue_ready=1", "ios_metal_pipeline_ready=1", "ios_metal_readback_ready=1", "environment_platform_ios_metal_ready=1", "environment_platform_requires_ios_metal_host_evidence=0", "environment_all_platform_unconditional_ready=0")
     }
 )
-foreach ($recipeContract in $expectedEnvironmentPlatformVulkanHostRecipes) {
+foreach ($recipeContract in $expectedEnvironmentPlatformHostRecipes) {
     $recipeId = [string]$recipeContract.Recipe
     $recipe = $environmentCommercialValidationRecipesByName[$recipeId]
     if ($null -eq $recipe) {
@@ -81,11 +86,11 @@ foreach ($recipeContract in $expectedEnvironmentPlatformVulkanHostRecipes) {
         Write-Error "engine manifest validationRecipes '$recipeId' must route through $($recipeContract.Script)"
     }
     if ($recipeText.Contains([string]$recipeContract.Forbidden)) {
-        Write-Error "engine manifest validationRecipes '$recipeId' must not remain a dry-run skeleton after Task 4"
+        Write-Error "engine manifest validationRecipes '$recipeId' must not remain a dry-run skeleton after its platform host-validator task"
     }
     foreach ($needle in @($recipeContract.Needles)) {
         if (-not $recipeText.Contains([string]$needle)) {
-            Write-Error "engine manifest validationRecipes '$recipeId' missing Task 4 Vulkan platform host needle: $needle"
+            Write-Error "engine manifest validationRecipes '$recipeId' missing platform host-validator needle: $needle"
         }
     }
 }
