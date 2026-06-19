@@ -301,6 +301,30 @@ function Assert-EnvironmentOptimizationArtifactDryRun {
     return $result
 }
 
+function Assert-EnvironmentMetalOptimizationProducerDryRun {
+    $result = Assert-DryRunRecipe -Recipe "environment-metal-host-optimization-artifact-producer" -ExpectedArgv @("-File", "tools/generate-environment-metal-optimization-artifacts.ps1", "-RequireReady")
+    Assert-ArrayContains $result.hostGates "metal-apple" "dry-run host gates for environment-metal-host-optimization-artifact-producer"
+    foreach ($needle in @(
+            "validation_recipe=environment-metal-host-optimization-artifact-producer",
+            "environment_metal_host_optimization_artifact_ready=1",
+            "xcrun_xctrace_ready=1",
+            "xctrace_template=Metal_System_Trace",
+            "environment_metal_host_optimization_artifacts_written=7",
+            "environment_metal_host_optimization_profiler_artifacts=7",
+            "environment_metal_host_optimization_trace_event_json=7",
+            "environment_optimization_measurement_missing_artifacts=0",
+            "environment_broad_optimization_ready=1",
+            "environment_ready=0",
+            "environment_commercial_ready=0")) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run environment Metal optimization artifact producer"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-runtime.ps1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run environment Metal optimization artifact producer"
+    }
+
+    return $result
+}
+
 function Assert-EnvironmentPresetAssetLibraryProductionDryRun {
     $result = Assert-DryRunRecipe -Recipe "environment-aaa-preset-asset-library-production" -ExpectedArgv @("-File", "tools/validate-environment-aaa-preset-asset-library.ps1", "-RequireReady")
     foreach ($needle in @(
@@ -737,6 +761,7 @@ foreach ($needle in @("validation_recipe_skeleton=1", "tools/package-desktop-run
     Assert-ArgvDoesNotContainText -Result $backendParityV2DryRun -Unexpected $needle -Label "dry-run backend parity v2 closeout"
 }
 Assert-EnvironmentOptimizationArtifactDryRun | Out-Null
+Assert-EnvironmentMetalOptimizationProducerDryRun | Out-Null
 Assert-EnvironmentAssetPipelineFullDryRun | Out-Null
 Assert-EnvironmentPresetAssetLibraryProductionDryRun | Out-Null
 Assert-EnvironmentPhysicalWeatherSimulationCloseoutDryRun | Out-Null

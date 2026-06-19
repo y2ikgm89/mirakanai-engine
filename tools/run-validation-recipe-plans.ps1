@@ -665,6 +665,30 @@ function Get-ValidationRecipeCommandPlan {
         $diagEnvironmentOptimizationArtifacts = New-RunnerDiagnostic -Severity 'info' -Code 'host-evidence-required' -Message 'Environment broad optimization cross-backend measurement validates retained official profiler and trace artifacts under artifacts/environment/optimization/<task-id>/<backend>/<workload>/ for seven workloads across d3d12, vulkan_strict, and metal_apple_host. It requires 21 before/after CPU/GPU/memory/upload/barrier/shader-cache/stutter rows, GPU timestamp frequency rows, SHA-256 verified profiler artifacts, trace-event JSON files, zero escaped paths, zero invalid hashes, zero missing artifacts, zero over-budget rows, and keeps broad environment_ready and commercial readiness at 0.' -ValidationRecipe $RecipeName -HostGate 'environment-optimization-artifact-host'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('environment-optimization-artifact-host') -RequiredAcknowledgements @('environment-optimization-artifact-host') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentOptimizationArtifacts)
     }
+    elseif ($RecipeName -eq 'environment-metal-host-optimization-artifact-producer') {
+        $expectedCounters = @(
+            'validation_recipe=environment-metal-host-optimization-artifact-producer',
+            'host=macos',
+            'host_gate=metal-apple',
+            'environment_metal_host_optimization_artifact_status=ready',
+            'environment_metal_host_optimization_artifact_ready=1',
+            'xcrun_xctrace_ready=1',
+            'xctrace_template=Metal_System_Trace',
+            'environment_metal_host_optimization_artifacts_written=7',
+            'environment_metal_host_optimization_profiler_artifacts=7',
+            'environment_metal_host_optimization_trace_event_json=7',
+            'environment_optimization_measurement_missing_artifacts=0',
+            'environment_broad_optimization_ready=1',
+            'environment_ready=0',
+            'environment_commercial_ready=0'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/generate-environment-metal-optimization-artifacts.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentMetalOptimizationProducer = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Environment Metal host optimization artifact producer requires macOS with full Xcode, xcrun, and xctrace Metal System Trace. It profiles validate-environment-metal-host-aggregate.ps1, writes seven metal_apple_host evidence.json / trace-events.json / xctrace TOC profiler artifacts under artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/<workload>/, then runs the fail-closed cross-backend optimization artifact validator before broad optimization can become ready. It does not infer Linux Vulkan, Android Vulkan, all-platform readiness, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagEnvironmentMetalOptimizationProducer)
+    }
     elseif ($RecipeName -eq 'environment-asset-pipeline-openexr-ktx-basis-full') {
         $expectedCounters = @(
             'validation_recipe=environment-asset-pipeline-openexr-ktx-basis-full',

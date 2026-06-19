@@ -891,11 +891,22 @@ jobs:
         run: |
           ccache --zero-stats
 
-      - name: Environment Metal aggregate host evidence recipe
+      - name: Environment Metal aggregate host evidence recipe and optimization artifacts
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
-          ./tools/validate-environment-metal-host-aggregate.ps1 -Jobs $jobs
+          ./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs $jobs -RequireReady
+
+      - name: Upload Metal optimization artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: metal-host-optimization-artifacts
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**
+          if-no-files-found: warn
 
       - name: Configure
         run: cmake --preset ci-macos-appleclang
