@@ -28,21 +28,74 @@ $root = Get-RepoRoot
 $bootedByScript = $false
 $selectedDevice = $null
 
-function Invoke-XcrunAllowFailure {
-    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+function Invoke-XcrunCapture {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [int]$TimeoutSeconds = 120
+    )
 
-    & $script:xcrun @Arguments | Out-Null
-    return $LASTEXITCODE
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $script:xcrun
+    $startInfo.WorkingDirectory = $root
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    foreach ($argument in @($Arguments)) {
+        $startInfo.ArgumentList.Add($argument) | Out-Null
+    }
+    $startInfo.Environment.Clear()
+    foreach ($entry in Get-NormalizedProcessEnvironment) {
+        $startInfo.Environment[$entry.Key] = $entry.Value
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        $null = $process.Start()
+        $standardOutput = $process.StandardOutput.ReadToEndAsync()
+        $standardError = $process.StandardError.ReadToEndAsync()
+        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+        $timedOut = -not $completed
+        if ($timedOut) {
+            try {
+                $process.Kill($true)
+            } catch {
+                Write-Information "ios-smoke: failed to terminate timed-out xcrun process: $($_.Exception.Message)" -InformationAction Continue
+            }
+            $null = $process.WaitForExit(5000)
+        }
+
+        $null = $standardOutput.Wait(5000)
+        $null = $standardError.Wait(5000)
+        $output = if ($standardOutput.IsCompleted) { $standardOutput.Result } else { "" }
+        $errorOutput = if ($standardError.IsCompleted) { $standardError.Result } else { "" }
+        $combinedOutput = [string]::Join("`n", @($output, $errorOutput)).Trim()
+        if ($timedOut) {
+            Write-Error "xcrun $($Arguments -join ' ') timed out after $TimeoutSeconds second(s): $combinedOutput"
+        }
+        if ($process.ExitCode -ne 0) {
+            Write-Error "xcrun $($Arguments -join ' ') failed with exit code $($process.ExitCode): $combinedOutput"
+        }
+
+        return $output.Trim()
+    } finally {
+        $process.Dispose()
+    }
 }
 
-function Invoke-XcrunCapture {
-    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+function Invoke-XcrunAllowFailure {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [int]$TimeoutSeconds = 60
+    )
 
-    $output = @(& $script:xcrun @Arguments 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "xcrun $($Arguments -join ' ') failed: $($output -join "`n")"
+    try {
+        [void](Invoke-XcrunCapture -Arguments $Arguments -TimeoutSeconds $TimeoutSeconds)
+        return 0
+    } catch {
+        Write-Information "ios-smoke: allowed xcrun failure: $($_.Exception.Message)" -InformationAction Continue
+        return 1
     }
-    return ($output -join "`n").Trim()
 }
 
 function Convert-IosRuntimeVersion {
@@ -109,8 +162,26 @@ function Select-IosSimulator {
     }
 
     return $candidates |
-        Sort-Object @{ Expression = "RuntimeVersion"; Descending = $true }, @{ Expression = "Name"; Descending = $true } |
+        Sort-Object @{ Expression = { Get-IosSimulatorPreference $_ }; Ascending = $true },
+        @{ Expression = "RuntimeVersion"; Descending = $true },
+        @{ Expression = "Name"; Ascending = $true } |
         Select-Object -First 1
+}
+
+function Get-IosSimulatorPreference {
+    param([Parameter(Mandatory = $true)]$Device)
+
+    $name = [string]$Device.Name
+    if ($name -match "^iPhone [0-9]+$") {
+        return 0
+    }
+    if ($name -like "iPhone SE*") {
+        return 1
+    }
+    if ($name -notmatch "Pro|Max|Plus") {
+        return 2
+    }
+    return 3
 }
 
 function Wait-IosSimulatorBootOnce {
@@ -178,38 +249,54 @@ if ([string]::IsNullOrWhiteSpace($BundleIdentifier)) {
     $BundleIdentifier = "dev.mirakanai.ios"
 }
 
+Write-Information "ios-smoke: packaging preflight start" -InformationAction Continue
 & (Join-Path $PSScriptRoot "check-mobile-packaging.ps1") -RequireApple
+Write-Information "ios-smoke: packaging preflight ok" -InformationAction Continue
 
 $xcrun = Find-CommandOnCombinedPath "xcrun"
 if (-not $xcrun) {
     Write-Error "xcrun is required for iOS Simulator smoke. Install full Xcode and select it with xcode-select."
 }
 $script:xcrun = $xcrun
+Write-Information "ios-smoke: xcrun=$xcrun" -InformationAction Continue
 
 if (-not $SkipBuild) {
+    Write-Information "ios-smoke: build start game=$Game configuration=$Configuration platform=Simulator" -InformationAction Continue
     & (Join-Path $PSScriptRoot "build-mobile-apple.ps1") `
         -Game $Game `
         -Configuration $Configuration `
         -Platform Simulator `
         -BundleIdentifier $BundleIdentifier
+    Write-Information "ios-smoke: build done" -InformationAction Continue
+} else {
+    Write-Information "ios-smoke: build skipped" -InformationAction Continue
 }
 
 $appBundle = Find-IosAppBundle
+Write-Information "ios-smoke: app bundle=$appBundle" -InformationAction Continue
 $selectedDevice = Select-IosSimulator
+Write-Information "ios-smoke: selected device=$($selectedDevice.Name) udid=$($selectedDevice.Udid) runtime=$($selectedDevice.RuntimeIdentifier) state=$($selectedDevice.State)" -InformationAction Continue
 
 try {
     if ($selectedDevice.State -ne "Booted") {
+        Write-Information "ios-smoke: boot request device=$($selectedDevice.Udid)" -InformationAction Continue
         Invoke-CheckedCommand $xcrun "simctl" "boot" $selectedDevice.Udid
         $bootedByScript = $true
     }
 
     Wait-IosSimulatorBoot $selectedDevice.Udid -AllowRestart:($selectedDevice.State -ne "Booted")
 
-    Invoke-CheckedCommand $xcrun "simctl" "install" $selectedDevice.Udid $appBundle
-    Invoke-CheckedCommand $xcrun "simctl" "get_app_container" $selectedDevice.Udid $BundleIdentifier "app"
-    Invoke-CheckedCommand $xcrun "simctl" "launch" $selectedDevice.Udid $BundleIdentifier
+    Write-Information "ios-smoke: install start" -InformationAction Continue
+    [void](Invoke-XcrunCapture -Arguments @("simctl", "install", $selectedDevice.Udid, $appBundle) -TimeoutSeconds 240)
+    Write-Information "ios-smoke: install done" -InformationAction Continue
+    Write-Information "ios-smoke: verify app container start" -InformationAction Continue
+    [void](Invoke-XcrunCapture -Arguments @("simctl", "get_app_container", $selectedDevice.Udid, $BundleIdentifier, "app") -TimeoutSeconds 60)
+    Write-Information "ios-smoke: launch start" -InformationAction Continue
+    [void](Invoke-XcrunCapture -Arguments @("simctl", "launch", $selectedDevice.Udid, $BundleIdentifier) -TimeoutSeconds 120)
+    Write-Information "ios-smoke: launch done" -InformationAction Continue
     Start-Sleep -Seconds 2
-    $dataContainer = Invoke-XcrunCapture @("simctl", "get_app_container", $selectedDevice.Udid, $BundleIdentifier, "data")
+    Write-Information "ios-smoke: evidence container lookup start" -InformationAction Continue
+    $dataContainer = Invoke-XcrunCapture -Arguments @("simctl", "get_app_container", $selectedDevice.Udid, $BundleIdentifier, "data") -TimeoutSeconds 60
     $iosMetalEvidencePath = Join-Path $dataContainer "Library/Caches/mirakanai_ios_metal_evidence.txt"
     if (-not (Test-Path -LiteralPath $iosMetalEvidencePath -PathType Leaf)) {
         Write-Error "iOS Metal evidence file was not written by the launched app: $iosMetalEvidencePath"

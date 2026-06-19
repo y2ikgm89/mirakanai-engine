@@ -7,6 +7,7 @@ param(
     [string]$Platform = "all",
     [ValidateRange(0, 1024)]
     [int]$Jobs = 0,
+    [switch]$SkipIosBuild,
     [string[]]$ExpectedEvidenceCounters = @()
 )
 
@@ -60,6 +61,8 @@ function Invoke-ToolCapture {
     $process.StartInfo = $startInfo
     try {
         $null = $process.Start()
+        $standardOutput = $process.StandardOutput.ReadToEndAsync()
+        $standardError = $process.StandardError.ReadToEndAsync()
         $completed = $process.WaitForExit($TimeoutSeconds * 1000)
         if (-not $completed) {
             try {
@@ -67,16 +70,24 @@ function Invoke-ToolCapture {
             } catch {
                 Write-Verbose "failed to kill timed-out process '$FilePath': $_"
             }
+            $null = $process.WaitForExit(5000)
+            $null = $standardOutput.Wait(5000)
+            $null = $standardError.Wait(5000)
             return [pscustomobject]@{
                 ExitCode = -1
-                Output = ""
-                Error = "timeout"
+                Output = if ($standardOutput.IsCompleted) { $standardOutput.Result } else { "" }
+                Error = [string]::Join("`n", @(
+                        "timeout",
+                        $(if ($standardError.IsCompleted) { $standardError.Result } else { "" })
+                    )).Trim()
             }
         }
+        $null = $standardOutput.Wait(5000)
+        $null = $standardError.Wait(5000)
         return [pscustomobject]@{
             ExitCode = $process.ExitCode
-            Output = $process.StandardOutput.ReadToEnd()
-            Error = $process.StandardError.ReadToEnd()
+            Output = if ($standardOutput.IsCompleted) { $standardOutput.Result } else { "" }
+            Error = if ($standardError.IsCompleted) { $standardError.Result } else { "" }
         }
     } finally {
         $process.Dispose()
@@ -160,7 +171,7 @@ function Invoke-IosMetalEvidenceIfRequired {
     }
 
     $scriptPath = Join-Path $PSScriptRoot "smoke-ios-package.ps1"
-    $result = Invoke-ToolCapture -FilePath "pwsh" -Arguments @(
+    $smokeArguments = @(
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
@@ -174,9 +185,22 @@ function Invoke-IosMetalEvidenceIfRequired {
         "420",
         "-BootAttempts",
         "2"
-    ) -TimeoutSeconds 2700
+    )
+    if ($SkipIosBuild) {
+        $smokeArguments += "-SkipBuild"
+    }
+    $result = Invoke-ToolCapture -FilePath "pwsh" -Arguments $smokeArguments -TimeoutSeconds 2700
     $text = [string]::Join("`n", @($result.Output, $result.Error))
     $smokeReady = $result.ExitCode -eq 0 -and $text.Contains("ios-smoke: ok")
+    if (-not $smokeReady -and -not [string]::IsNullOrWhiteSpace($text)) {
+        Write-Output "ios-metal-smoke-output-begin"
+        foreach ($line in ($text -split "`r?`n")) {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                Write-Output "ios-metal-smoke-output: $line"
+            }
+        }
+        Write-Output "ios-metal-smoke-output-end"
+    }
 
     return [pscustomobject]@{
         PackageSmokeReady = $smokeReady

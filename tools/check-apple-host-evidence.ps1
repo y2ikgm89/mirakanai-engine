@@ -88,6 +88,9 @@ Assert-FileContainsText "platform/ios/Sources/MirakanaiIOSApp/AppDelegate.mm" @(
 
 Assert-FileContainsText "tools/smoke-ios-package.ps1" @(
     "ios_metal_evidence",
+    "ios-smoke: selected device=",
+    "ios-smoke: install start",
+    "TimeoutSeconds",
     "ios_metal_command_queue_ready=1",
     "ios_metal_pipeline_ready=1",
     "ios_metal_command_buffer_ready=1",
@@ -98,8 +101,10 @@ Assert-FileContainsText ".github/workflows/ios-validate.yml" @(
     "runs-on: macos-26",
     "xcodebuild -version",
     "xcrun --sdk iphonesimulator --show-sdk-path",
+    "xcrun simctl list devices available",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
-    "./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters `$expected",
+    "./tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator",
+    "./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -SkipIosBuild -ExpectedEvidenceCounters `$expected",
     "ios_metal_command_buffer_ready=1"
 )
 
