@@ -6137,6 +6137,9 @@
           "first_party_linux_runtime_host_ready=1",
           "linux_package_script_ready=1",
           "linux_installed_validator_ready=1",
+          "linux_package_smoke_ready=1",
+          "linux_vulkan_readback_ready=1",
+          "linux_vulkan_validation_log_clean=1",
           "environment_platform_linux_vulkan_ready=0",
           "environment_platform_linux_vulkan_ready=1",
           "environment_platform_requires_linux_vulkan_host_evidence=1",
@@ -6146,9 +6149,9 @@
           "environment_platform_windows_vulkan_inferred=0"
         ],
         "hostGate": "linux-vulkan-runtime-host",
-        "blockerReason": "Requires environment-platform-linux-vulkan-host-gate and environment-platform-linux-vulkan-package to pass on a Linux host with a first-party Linux desktop/runtime host through the Linux XCB runtime host foundation, Linux Vulkan presentation, Linux package recipe, Linux Vulkan SDK, Linux Vulkan ICD/runtime/driver, validation layers, SPIR-V validation, strict package smoke, and readback counters; Windows Vulkan and Win32 package evidence are forbidden.",
+        "blockerReason": "Requires environment-platform-linux-vulkan-host-gate and environment-platform-linux-vulkan-package to pass on a Linux host with a first-party Linux desktop/runtime host through the Linux XCB runtime host foundation, Linux Vulkan presentation, Linux package recipe, Linux installed package validator, Linux Vulkan SDK, Linux Vulkan ICD/runtime/driver, validation layers, SPIR-V validation, strict package smoke, Vulkan readback counters, and clean validation log counters; Windows Vulkan and Win32 package evidence are forbidden.",
         "forbiddenInference": "Windows Vulkan evidence, desktop D3D12 evidence, Android Vulkan evidence, or Linux compile-only evidence.",
-        "notes": "Task 4 routes Linux Vulkan through tools/validate-linux-vulkan-runtime-host.ps1 and the environment-platform-linux-vulkan-package recipe while retaining environment-platform-linux-vulkan-host-gate / vulkan-strict-linux as the prerequisite contract. Task 19 adds the RHI Linux XCB surface foundation and Task 20 adds MK_runtime_host_linux without Linux Vulkan presentation/package readiness. Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
+        "notes": "Task 4 routes Linux Vulkan through tools/validate-linux-vulkan-runtime-host.ps1 and the environment-platform-linux-vulkan-package recipe while retaining environment-platform-linux-vulkan-host-gate / vulkan-strict-linux as the prerequisite contract. Task 19 adds the RHI Linux XCB surface foundation and Task 20 adds MK_runtime_host_linux without Linux Vulkan presentation/package readiness. Task 22 adds tools/package-linux-runtime.ps1, tools/validate-installed-linux-runtime.ps1, linux_package_smoke_ready, linux_vulkan_readback_ready, and linux_vulkan_validation_log_clean as required counters while keeping Linux readiness unpromoted until a Linux host package smoke proves them. Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
       },
       {
         "id": "environment_platform_macos_metal",

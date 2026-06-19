@@ -47,6 +47,9 @@ using PlatformId = mirakana::runtime_rhi::EnvironmentPlatformEvidenceV2PlatformI
         .first_party_linux_runtime_host_ready = true,
         .linux_package_script_ready = true,
         .linux_installed_validator_ready = true,
+        .linux_package_smoke_ready = true,
+        .linux_vulkan_readback_ready = true,
+        .linux_vulkan_validation_log_clean = true,
         .environment_platform_ready_counter = true,
         .requires_host_evidence = false,
     };
@@ -141,6 +144,9 @@ MK_TEST("linux_vulkan_ready_requires_exact_linux_host_gate_and_tool_rows") {
     auto row = ready_linux_vulkan_row();
     row.validation_layer_ready = false;
     row.host_gate_id = "vulkan-strict";
+    row.linux_package_smoke_ready = false;
+    row.linux_vulkan_readback_ready = false;
+    row.linux_vulkan_validation_log_clean = false;
 
     const auto blocked =
         mirakana::runtime_rhi::evaluate_environment_platform_evidence_v2(std::vector<PlatformRow>{row});

@@ -583,11 +583,14 @@ function Get-ValidationRecipeCommandPlan {
                 'first_party_linux_runtime_host_ready=1',
                 'linux_package_script_ready=1',
                 'linux_installed_validator_ready=1',
+                'linux_package_smoke_ready=1',
+                'linux_vulkan_readback_ready=1',
+                'linux_vulkan_validation_log_clean=1',
                 'environment_platform_linux_vulkan_ready=1',
                 'environment_platform_requires_linux_vulkan_host_evidence=0',
                 'environment_all_platform_unconditional_ready=0'
             ) `
-            -Message 'Linux Vulkan platform validation requires a Linux host with Vulkan SDK tools, vulkaninfo summary evidence, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime evidence, first-party Linux runtime host/package script/installed validator rows, and no Windows Vulkan, Android Vulkan, or compile-only inference.'
+            -Message 'Linux Vulkan platform validation requires a Linux host with Vulkan SDK tools, vulkaninfo summary evidence, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime evidence, first-party Linux runtime host/package script/installed validator rows, package smoke, Vulkan readback, clean validation log evidence, and no Windows Vulkan, Android Vulkan, or compile-only inference.'
     }
     elseif ($RecipeName -eq 'environment-platform-android-vulkan-package') {
         return Get-EnvironmentPlatformVulkanHostPlan `
