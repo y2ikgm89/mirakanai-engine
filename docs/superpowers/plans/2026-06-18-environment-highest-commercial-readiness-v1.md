@@ -1437,6 +1437,33 @@ Task 12 evidence (2026-06-19):
 
 **Task 22 evidence (2026-06-20):** TDD RED first failed `tools/check-json-contracts.ps1` because `environment-platform-linux-vulkan-package` lacked `linux_package_smoke_ready=1`; the C++ RED failed `MK_env_platform_v2_tests` because `EnvironmentPlatformEvidenceV2Row` lacked the new Linux package smoke/readback/clean-log fields. GREEN will require focused platform evidence, Linux host validator fail-closed output, recipe/static checks, and full validation before publication.
 
+## Task 23: Add Host-Aware Vcpkg And Linux Runtime Package Preset Foundation Without Promotion
+
+**Goal:** Make the Linux runtime package lane use host-aware vcpkg bootstrap/executable resolution and a Linux-only CMake preset/triplet instead of reusing the Windows `desktop-runtime-release` preset, while preserving `environment_platform_linux_vulkan_ready=0` until real Linux package smoke evidence exists.
+
+**Context:** Context7 `/kitware/cmake` confirms CMake presets may define `generator`, `binaryDir`, and `cacheVariables` such as `CMAKE_BUILD_TYPE`. Context7 `/microsoft/vcpkg` confirms manifest-mode triplet selection is driven by `VCPKG_TARGET_TRIPLET` and that `VCPKG_MANIFEST_INSTALL=OFF` means dependencies are installed manually. Microsoft Learn confirms Windows vcpkg bootstrap uses `bootstrap-vcpkg.bat`, Unix uses `./bootstrap-vcpkg.sh`, and CI should call repository-owned `vcpkg` / `bootstrap-vcpkg` with a path prefix to avoid stale host-installed copies.
+
+**Constraints:**
+- Do not mark `environment_platform_linux_vulkan_ready`, `environment_strict_vulkan_aggregate_ready`, `environment_platform_readiness_ready`, `environment_all_platform_unconditional_ready`, `environment_commercial_ready`, or broad `environment_ready` ready in this task.
+- Do not reuse the Windows `desktop-runtime-release` / `x64-windows` preset as Linux proof.
+- Keep vcpkg installation in `tools/bootstrap-deps.ps1`; CMake configure must keep `VCPKG_MANIFEST_INSTALL=OFF`.
+
+**Files:**
+- Modify: `tools/common.ps1`
+- Modify: `tools/bootstrap-deps.ps1`
+- Modify: `CMakePresets.json`
+- Modify: `tools/package-linux-runtime.ps1`
+- Modify: validation/static checks, docs, plan registry, manifest fragments, and composed manifest.
+
+**Steps:**
+- [x] Add host-aware vcpkg executable and bootstrap script helpers that resolve `vcpkg.exe` / `bootstrap-vcpkg.bat` on Windows and `vcpkg` / `bootstrap-vcpkg.sh` on Unix-like hosts.
+- [x] Route `tools/bootstrap-deps.ps1` through the host-aware bootstrap helper while preserving the single supported dependency bootstrap entrypoint.
+- [x] Add the Linux-only `desktop-runtime-linux-release` configure/build/test/package presets with `generator=Ninja`, `CMAKE_BUILD_TYPE=Release`, `VCPKG_TARGET_TRIPLET=x64-linux`, and `VCPKG_MANIFEST_INSTALL=OFF`.
+- [x] Route `tools/package-linux-runtime.ps1` through `desktop-runtime-linux-release`, `out/build/desktop-runtime-linux-release`, `out/install/linux-runtime-release`, and `tools/validate-installed-linux-runtime.ps1`.
+- [x] Keep Linux/package/commercial aggregate rows host-gated until Linux presentation/package smoke emits every required counter on a Linux host.
+
+**Task 23 evidence (2026-06-20):** TDD RED first failed `tools/check-json-contracts.ps1` because `CMakePresets.json` lacked `desktop-runtime-linux-release`. The first GREEN pass added host-aware vcpkg helpers, host-specific bootstrap, a Linux-only CMake preset, and Linux package-script preset routing. Publication requires static/agent-surface checks and full validation before this candidate can merge.
+
 ## Execution Order
 
 Use this PR order:
@@ -1463,8 +1490,9 @@ Use this PR order:
 20. Task 20 Linux XCB runtime host foundation without Linux readiness promotion.
 21. Task 21 Android Vulkan GPU debug layer and offscreen readback smoke without Android readiness promotion.
 22. Task 22 Linux package and installed validator foundation without Linux readiness promotion.
+23. Task 23 host-aware vcpkg bootstrap and Linux runtime package preset foundation without Linux readiness promotion.
 
-Do not merge Task 22 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
+Do not merge Task 23 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
 
 ## Validation Evidence
 
@@ -1558,6 +1586,11 @@ Record validation here as each PR lands.
 | 2026-06-20 | Task 20 Linux runtime host focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests` | pass | built `MK_runtime_host_tests` after adding the Linux host value contract and `MK_runtime_host_linux` source tree |
 | 2026-06-20 | Task 20 Linux runtime host focused CTest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_tests` | pass | `100% tests passed, 0 tests failed out of 1`; tests cover invalid Linux host requests, non-Linux host gating, fallback reporting, and zero native-handle access |
 | 2026-06-20 | Task 20 Linux host validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | pass | Windows report remains host-gated with `environment_platform_linux_vulkan_ready=0` and `first_party_linux_runtime_host_ready=0`; the script now validates `engine/runtime_host/linux`, the public Linux runtime host header, and `MK_runtime_host_linux` CMake presence for the Linux-only first-party host row |
+| 2026-06-20 | Task 23 Linux preset RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | expected fail | `CMakePresets.json` was missing `desktop-runtime-linux-release` before adding the Linux-only preset and package-script routing |
+| 2026-06-20 | Task 23 static and agent-surface sync | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | pass | manifest compose, JSON contracts, recipe runner, format/text-format, agent config, and AI integration all pass after adding host-aware vcpkg bootstrap plus `desktop-runtime-linux-release` |
+| 2026-06-20 | Task 23 dependency-policy RED/GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | pass | initial full validation exposed the old guard requiring `x64-windows` for every vcpkg preset; the guard now accepts `x64-linux` only for `desktop-runtime-linux-release` while keeping other vcpkg presets on `x64-windows` |
+| 2026-06-20 | Task 23 Linux package fail-closed check | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-linux-runtime.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | expected fail / pass | Windows package invocation fails closed with `Linux runtime packaging requires a Linux host`; the host validator emits `environment_platform_linux_vulkan_ready=0`, `environment_platform_requires_linux_vulkan_host_evidence=1`, `linux_package_smoke_ready=0`, `linux_vulkan_readback_ready=0`, and `environment_platform_windows_vulkan_inferred=0` |
+| 2026-06-20 | Task 23 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple/Metal checks remain host-gated or diagnostic-only on Windows, and Linux Vulkan remains host-gated |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
