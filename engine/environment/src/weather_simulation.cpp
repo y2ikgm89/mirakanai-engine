@@ -76,6 +76,15 @@ void add_diagnostic(EnvironmentWeatherSimulationArtistControlPlan& plan,
     });
 }
 
+void add_diagnostic(EnvironmentPhysicalWeatherSimulationCloseoutResult& result,
+                    EnvironmentPhysicalWeatherCloseoutDiagnosticCode code, std::string field, std::string message) {
+    result.diagnostics.push_back(EnvironmentPhysicalWeatherCloseoutDiagnostic{
+        .code = code,
+        .field = std::move(field),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool finite_positive(const float value) noexcept {
     return std::isfinite(value) && value > 0.0F;
 }
@@ -178,6 +187,28 @@ void hash_combine_float(std::uint64_t& hash, const double value) noexcept {
     EnvironmentWeatherSimulationValidationImageKind::water_transfer,
 };
 
+[[nodiscard]] constexpr std::array required_physical_weather_fields{
+    EnvironmentPhysicalWeatherCoupledFieldKind::wind_velocity,
+    EnvironmentPhysicalWeatherCoupledFieldKind::humidity,
+    EnvironmentPhysicalWeatherCoupledFieldKind::temperature,
+    EnvironmentPhysicalWeatherCoupledFieldKind::pressure,
+    EnvironmentPhysicalWeatherCoupledFieldKind::water_vapor,
+    EnvironmentPhysicalWeatherCoupledFieldKind::cloud_water,
+    EnvironmentPhysicalWeatherCoupledFieldKind::rain_water,
+    EnvironmentPhysicalWeatherCoupledFieldKind::snow_mass,
+    EnvironmentPhysicalWeatherCoupledFieldKind::ground_wetness,
+    EnvironmentPhysicalWeatherCoupledFieldKind::snow_accumulation,
+    EnvironmentPhysicalWeatherCoupledFieldKind::fog_density,
+    EnvironmentPhysicalWeatherCoupledFieldKind::visibility,
+    EnvironmentPhysicalWeatherCoupledFieldKind::light_extinction,
+};
+
+[[nodiscard]] constexpr std::array required_physical_weather_backends{
+    EnvironmentPhysicalWeatherBackendKind::d3d12,
+    EnvironmentPhysicalWeatherBackendKind::vulkan,
+    EnvironmentPhysicalWeatherBackendKind::metal,
+};
+
 [[nodiscard]] std::string_view
 canonical_validation_case_id(const EnvironmentWeatherSimulationValidationCaseKind kind) noexcept {
     switch (kind) {
@@ -202,6 +233,99 @@ canonical_validation_case_id(const EnvironmentWeatherSimulationValidationCaseKin
 [[nodiscard]] bool valid_validation_case_id(const EnvironmentWeatherSimulationValidationCase& row) {
     return !row.case_id.empty() && std::ranges::all_of(row.case_id, is_case_id_char) &&
            row.case_id == canonical_validation_case_id(row.kind);
+}
+
+[[nodiscard]] std::string_view
+physical_weather_field_id(const EnvironmentPhysicalWeatherCoupledFieldKind field) noexcept {
+    switch (field) {
+    case EnvironmentPhysicalWeatherCoupledFieldKind::wind_velocity:
+        return "environment.physical_weather.field.wind_velocity";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::humidity:
+        return "environment.physical_weather.field.humidity";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::temperature:
+        return "environment.physical_weather.field.temperature";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::pressure:
+        return "environment.physical_weather.field.pressure";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::water_vapor:
+        return "environment.physical_weather.field.water_vapor";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::cloud_water:
+        return "environment.physical_weather.field.cloud_water";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::rain_water:
+        return "environment.physical_weather.field.rain_water";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::snow_mass:
+        return "environment.physical_weather.field.snow_mass";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::ground_wetness:
+        return "environment.physical_weather.field.ground_wetness";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::snow_accumulation:
+        return "environment.physical_weather.field.snow_accumulation";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::fog_density:
+        return "environment.physical_weather.field.fog_density";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::visibility:
+        return "environment.physical_weather.field.visibility";
+    case EnvironmentPhysicalWeatherCoupledFieldKind::light_extinction:
+        return "environment.physical_weather.field.light_extinction";
+    }
+    return {};
+}
+
+[[nodiscard]] bool valid_coupled_field_row(const EnvironmentPhysicalWeatherCoupledFieldRow& row) noexcept {
+    return row.ready && row.evidence_id == physical_weather_field_id(row.field);
+}
+
+[[nodiscard]] bool dataset_provenance_ready(const EnvironmentPhysicalWeatherValidationDatasetRow& row) noexcept {
+    const bool provenance_kind_supported =
+        row.provenance == EnvironmentPhysicalWeatherDatasetProvenanceKind::synthetic_first_party ||
+        row.provenance == EnvironmentPhysicalWeatherDatasetProvenanceKind::cf_netcdf ||
+        row.provenance == EnvironmentPhysicalWeatherDatasetProvenanceKind::external_grib;
+    return row.ready && provenance_kind_supported && !row.dataset_id.empty() && row.license_recorded &&
+           row.redistribution_recorded && row.canonical_hash != 0U;
+}
+
+[[nodiscard]] bool backend_solver_row_core_ready(const EnvironmentPhysicalWeatherBackendSolverRow& row) noexcept {
+    return row.ready && row.host_validated && row.compute_dispatch_recorded && row.synchronization_recorded &&
+           row.readback_recorded && row.normalized_output_hash != 0U && row.elapsed_us > 0U && row.budget_us > 0U &&
+           row.elapsed_us <= row.budget_us && row.mass_conservation_relative_error_max <= 0.005 &&
+           row.energy_or_stability_error_max <= 0.010 && row.negative_density_cells == 0U &&
+           row.nan_or_inf_cells == 0U && row.visual_regression_failures == 0U && !row.native_handle_access &&
+           !row.inferred_from_other_backend;
+}
+
+[[nodiscard]] bool has_backend_solver(const std::vector<EnvironmentPhysicalWeatherBackendSolverRow>& rows,
+                                      const EnvironmentPhysicalWeatherBackendKind backend) {
+    return std::ranges::any_of(rows, [backend](const auto& row) { return row.backend == backend; });
+}
+
+[[nodiscard]] std::uint64_t
+build_physical_weather_closeout_hash(const EnvironmentPhysicalWeatherSimulationCloseoutDesc& desc,
+                                     const EnvironmentPhysicalWeatherSimulationCloseoutResult& result) noexcept {
+    std::uint64_t hash = fnv_offset_basis;
+    hash_combine(hash, desc.cpu_reference_normalized_output_hash);
+    hash_combine(hash, result.coupled_field_rows);
+    hash_combine(hash, result.canonical_dataset_rows);
+    hash_combine(hash, result.canonical_image_rows);
+    hash_combine(hash, result.backend_solver_rows);
+    hash_combine_float(hash, result.mass_conservation_relative_error_max);
+    hash_combine_float(hash, result.energy_or_stability_error_max);
+    for (const auto& row : desc.coupled_fields) {
+        hash_combine(hash, static_cast<std::uint64_t>(row.field));
+        hash_combine_string(hash, row.evidence_id);
+        hash_combine(hash, row.ready ? 1U : 0U);
+    }
+    for (const auto& row : desc.validation_datasets) {
+        hash_combine_string(hash, row.dataset_id);
+        hash_combine(hash, static_cast<std::uint64_t>(row.provenance));
+        hash_combine(hash, row.canonical_hash);
+    }
+    for (const auto& row : desc.backend_solvers) {
+        hash_combine(hash, static_cast<std::uint64_t>(row.backend));
+        hash_combine(hash, row.normalized_output_hash);
+        hash_combine(hash, row.elapsed_us);
+        hash_combine(hash, row.budget_us);
+        hash_combine_float(hash, row.mass_conservation_relative_error_max);
+        hash_combine_float(hash, row.energy_or_stability_error_max);
+    }
+    hash_combine(hash, result.diagnostics.size());
+    return hash == 0ULL ? fnv_offset_basis : hash;
 }
 
 [[nodiscard]] bool has_validation_case(const EnvironmentWeatherSimulationValidationDatasetPlan& plan,
@@ -563,6 +687,10 @@ bool EnvironmentWeatherSimulationValidationImagePlan::succeeded() const noexcept
 bool EnvironmentWeatherSimulationArtistControlPlan::succeeded() const noexcept {
     return status == EnvironmentWeatherSimulationArtistControlStatus::ready && diagnostics.empty() &&
            artist_controls_ready;
+}
+
+bool EnvironmentPhysicalWeatherSimulationCloseoutResult::succeeded() const noexcept {
+    return diagnostics.empty() && physical_weather_ready && production_solver_ready && backend_parity_ready;
 }
 
 float environment_weather_saturation_vapor_kg_per_m2(const float temperature_celsius, const float air_pressure_hpa,
@@ -1102,6 +1230,178 @@ plan_environment_weather_simulation_artist_controls(const EnvironmentWeatherSimu
     return plan;
 }
 
+EnvironmentPhysicalWeatherSimulationCloseoutResult evaluate_environment_physical_weather_simulation_closeout(
+    const EnvironmentPhysicalWeatherSimulationCloseoutDesc& desc) {
+    EnvironmentPhysicalWeatherSimulationCloseoutResult result{};
+    result.cpu_reference_solver_ready =
+        desc.cpu_reference_solver_ready && desc.cpu_reference_normalized_output_hash != 0U;
+    result.coupled_field_rows = static_cast<std::uint32_t>(desc.coupled_fields.size());
+    result.canonical_dataset_rows = static_cast<std::uint32_t>(desc.validation_datasets.size());
+    result.canonical_image_rows = desc.canonical_image_rows;
+    result.backend_solver_rows = static_cast<std::uint32_t>(desc.backend_solvers.size());
+    result.mass_conservation_relative_error_max = 0.0;
+    result.energy_or_stability_error_max = 0.0;
+
+    if (!result.cpu_reference_solver_ready) {
+        add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_cpu_reference_solver,
+                       "cpu_reference_solver_ready",
+                       "physical weather closeout requires a CPU reference solver and normalized output hash");
+    }
+
+    std::vector<EnvironmentPhysicalWeatherCoupledFieldKind> seen_fields;
+    seen_fields.reserve(desc.coupled_fields.size());
+    bool coupled_fields_valid = true;
+    for (const auto& row : desc.coupled_fields) {
+        if (std::ranges::find(seen_fields, row.field) != seen_fields.end()) {
+            coupled_fields_valid = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::duplicate_coupled_field,
+                           std::string{physical_weather_field_id(row.field)},
+                           "physical weather closeout requires each coupled field exactly once");
+        } else {
+            seen_fields.push_back(row.field);
+        }
+
+        if (!valid_coupled_field_row(row)) {
+            coupled_fields_valid = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::invalid_coupled_field_evidence,
+                           std::string{physical_weather_field_id(row.field)},
+                           "physical weather closeout requires exact package-visible coupled-field evidence ids");
+        }
+    }
+
+    for (const auto field : required_physical_weather_fields) {
+        if (std::ranges::find(seen_fields, field) == seen_fields.end()) {
+            coupled_fields_valid = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_coupled_field,
+                           std::string{physical_weather_field_id(field)},
+                           "physical weather closeout is missing a required coupled simulation field");
+        }
+    }
+
+    bool datasets_ready = desc.validation_datasets.size() >= 12U;
+    if (!datasets_ready) {
+        add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_canonical_dataset,
+                       "validation_datasets",
+                       "physical weather closeout requires at least 12 canonical validation dataset rows");
+    }
+    for (const auto& row : desc.validation_datasets) {
+        if (!dataset_provenance_ready(row)) {
+            datasets_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_dataset_provenance,
+                           row.dataset_id,
+                           "physical weather datasets require ready provenance, license, redistribution, and hash");
+        }
+    }
+
+    const bool images_ready = desc.canonical_image_rows >= 12U;
+    if (!images_ready) {
+        add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_canonical_image,
+                       "canonical_image_rows",
+                       "physical weather closeout requires at least 12 canonical validation image rows");
+    }
+
+    bool backend_rows_ready = true;
+    std::vector<EnvironmentPhysicalWeatherBackendKind> seen_backends;
+    seen_backends.reserve(desc.backend_solvers.size());
+    for (const auto& row : desc.backend_solvers) {
+        result.mass_conservation_relative_error_max =
+            std::max(result.mass_conservation_relative_error_max, row.mass_conservation_relative_error_max);
+        result.energy_or_stability_error_max =
+            std::max(result.energy_or_stability_error_max, row.energy_or_stability_error_max);
+        result.negative_density_cells += row.negative_density_cells;
+        result.nan_or_inf_cells += row.nan_or_inf_cells;
+        result.visual_regression_failures += row.visual_regression_failures;
+
+        if (row.elapsed_us == 0U || row.budget_us == 0U || row.elapsed_us > row.budget_us) {
+            ++result.solver_budget_overages;
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::budget_overage, "solver_budget",
+                           "physical weather solver rows must provide non-zero elapsed/budget values within budget");
+        }
+
+        if (!row.ready || !row.host_validated || !row.compute_dispatch_recorded || !row.synchronization_recorded ||
+            !row.readback_recorded) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::backend_not_host_validated,
+                           "backend_solver",
+                           "physical weather backend rows require host validation, dispatch, sync, and readback proof");
+        }
+        if (row.inferred_from_other_backend) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::backend_inference,
+                           "backend_solver", "physical weather backend rows must not be inferred from another API");
+        }
+        if (row.native_handle_access) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::native_handle_access,
+                           "backend_solver", "physical weather closeout must not expose native backend handles");
+        }
+        if (row.mass_conservation_relative_error_max > 0.005 || row.energy_or_stability_error_max > 0.010 ||
+            row.negative_density_cells > 0U || row.nan_or_inf_cells > 0U) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::threshold_exceeded,
+                           "backend_solver",
+                           "physical weather backend rows exceeded conservation, stability, or density thresholds");
+        }
+        if (row.visual_regression_failures > 0U) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::visual_regression_failure,
+                           "visual_regression_failures",
+                           "physical weather backend rows require zero visual regression failures");
+        }
+        if (row.normalized_output_hash == 0U ||
+            row.normalized_output_hash != desc.cpu_reference_normalized_output_hash) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::backend_parity_mismatch,
+                           "normalized_output_hash",
+                           "physical weather backend rows must match the CPU reference normalized output hash");
+        }
+
+        if (std::ranges::find(seen_backends, row.backend) == seen_backends.end()) {
+            seen_backends.push_back(row.backend);
+        }
+        const bool row_core_ready = backend_solver_row_core_ready(row);
+        result.d3d12_gpu_solver_ready = result.d3d12_gpu_solver_ready ||
+                                        (row.backend == EnvironmentPhysicalWeatherBackendKind::d3d12 && row_core_ready);
+        result.vulkan_gpu_solver_ready =
+            result.vulkan_gpu_solver_ready ||
+            (row.backend == EnvironmentPhysicalWeatherBackendKind::vulkan && row_core_ready);
+        result.metal_gpu_solver_ready = result.metal_gpu_solver_ready ||
+                                        (row.backend == EnvironmentPhysicalWeatherBackendKind::metal && row_core_ready);
+    }
+
+    for (const auto backend : required_physical_weather_backends) {
+        if (!has_backend_solver(desc.backend_solvers, backend)) {
+            backend_rows_ready = false;
+            add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_backend_solver,
+                           "backend_solver",
+                           "physical weather closeout requires D3D12, Vulkan, and Metal backend solver rows");
+        }
+    }
+
+    if (desc.request_environment_ready_claim || desc.request_commercial_ready_claim) {
+        add_diagnostic(result, EnvironmentPhysicalWeatherCloseoutDiagnosticCode::broad_environment_ready_claim,
+                       "request_environment_ready_claim/request_commercial_ready_claim",
+                       "physical weather closeout cannot promote broad environment or commercial readiness");
+    }
+
+    const bool all_fields_ready =
+        coupled_fields_valid && seen_fields.size() == required_physical_weather_fields.size() &&
+        std::ranges::all_of(desc.coupled_fields, [](const auto& row) { return valid_coupled_field_row(row); });
+    const bool all_backends_present = result.d3d12_gpu_solver_ready && result.vulkan_gpu_solver_ready &&
+                                      result.metal_gpu_solver_ready &&
+                                      seen_backends.size() >= required_physical_weather_backends.size();
+    result.backend_parity_ready = result.cpu_reference_solver_ready && backend_rows_ready && all_backends_present &&
+                                  result.solver_budget_overages == 0U && result.visual_regression_failures == 0U &&
+                                  result.negative_density_cells == 0U && result.nan_or_inf_cells == 0U;
+    result.production_solver_ready = result.backend_parity_ready && datasets_ready && images_ready;
+    result.physical_weather_ready = result.production_solver_ready && all_fields_ready && result.diagnostics.empty();
+    result.environment_ready = false;
+    result.commercial_ready = false;
+    result.replay_hash = build_physical_weather_closeout_hash(desc, result);
+    return result;
+}
+
 bool has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
                                                    EnvironmentWeatherSimulationDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
@@ -1129,6 +1429,12 @@ bool has_environment_weather_simulation_artist_control_diagnostic(
     const EnvironmentWeatherSimulationArtistControlPlan& plan,
     EnvironmentWeatherSimulationArtistControlDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+bool has_environment_physical_weather_closeout_diagnostic(
+    const EnvironmentPhysicalWeatherSimulationCloseoutResult& result,
+    EnvironmentPhysicalWeatherCloseoutDiagnosticCode code) noexcept {
+    return std::ranges::any_of(result.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
 } // namespace mirakana

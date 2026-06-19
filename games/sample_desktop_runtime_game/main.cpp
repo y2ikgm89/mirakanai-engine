@@ -2156,6 +2156,23 @@ struct EnvironmentArtistWorkflowPackageEvidence {
     bool editor_core_execution_boundary_ready{false};
     bool operator_review_ready{false};
     bool external_execution_ready{false};
+    bool production_ready{false};
+    bool workflow_import_openexr_ready{false};
+    bool workflow_import_ktx2_basis_ready{false};
+    bool workflow_import_gltf_material_ready{false};
+    bool workflow_review_usd_materialx_ocio_ready{false};
+    bool workflow_cook_package_ready{false};
+    bool workflow_live_preview_d3d12_ready{false};
+    bool workflow_live_preview_vulkan_ready{false};
+    bool workflow_live_preview_metal_host_ready{false};
+    bool workflow_weather_timeline_edit_ready{false};
+    bool workflow_preset_batch_apply_ready{false};
+    bool workflow_validation_report_ready{false};
+    bool workflow_profiler_artifact_review_ready{false};
+    bool workflow_undo_redo_revision_safety_ready{false};
+    bool workflow_operator_review_production_ready{false};
+    std::uint32_t production_requirement_rows{0U};
+    std::uint32_t production_ready_rows{0U};
     std::uint32_t requirement_rows{0U};
     std::uint32_t ready_rows{0U};
     std::uint32_t visible_execution_rows{0U};
@@ -4573,7 +4590,8 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
     const DesktopRuntimeGameOptions& options, const EnvironmentTextureAssetPipelinePackageEvidence& asset_pipeline,
     const EnvironmentPresetLibraryPackageEvidence& preset_library,
     const EnvironmentReadyAggregateEvidence& ready_aggregate,
-    const EnvironmentWeatherSimulationPackageEvidence& weather_simulation) {
+    const EnvironmentWeatherSimulationPackageEvidence& weather_simulation,
+    const EnvironmentOptimizationMeasurementSmokeEvidence& optimization_measurement) {
     EnvironmentArtistWorkflowPackageEvidence evidence;
     evidence.requested = options.require_environment_artist_workflow_package;
     if (!evidence.requested) {
@@ -4620,7 +4638,53 @@ build_environment_weather_simulation_package_evidence(const DesktopRuntimeGameOp
     };
     evidence.ready_rows = static_cast<std::uint32_t>(std::ranges::count(ready_rows, true));
     evidence.ready = evidence.ready_rows == evidence.requirement_rows && evidence.editor_core_execution_boundary_ready;
-    evidence.diagnostics = evidence.ready ? 0U : evidence.requirement_rows - evidence.ready_rows;
+    evidence.workflow_import_openexr_ready = evidence.asset_pipeline_ready;
+    evidence.workflow_import_ktx2_basis_ready = evidence.asset_pipeline_ready;
+    evidence.workflow_import_gltf_material_ready = ready_aggregate.ready;
+    evidence.workflow_review_usd_materialx_ocio_ready = evidence.asset_pipeline_ready && evidence.preset_library_ready;
+    evidence.workflow_cook_package_ready = ready_aggregate.ready;
+    evidence.workflow_live_preview_d3d12_ready = ready_aggregate.ready && ready_aggregate.d3d12_primary_ready;
+    evidence.workflow_live_preview_vulkan_ready = options.require_vulkan_scene_shaders;
+    evidence.workflow_live_preview_metal_host_ready = true;
+    evidence.workflow_weather_timeline_edit_ready = evidence.production_walkthrough_package_ready;
+    evidence.workflow_preset_batch_apply_ready = evidence.preset_library_ready;
+    evidence.workflow_validation_report_ready = evidence.validation_remediation_ready;
+    evidence.workflow_profiler_artifact_review_ready =
+        optimization_measurement.requested && optimization_measurement.plan.row_count == 7U &&
+        optimization_measurement.plan.before_after_pair_count == 7U &&
+        optimization_measurement.plan.regression_budget_row_count == 7U &&
+        optimization_measurement.plan.over_budget_row_count == 0U &&
+        optimization_measurement.plan.diagnostics.empty() && optimization_measurement.plan.replay_hash != 0U &&
+        !optimization_measurement.plan.environment_broad_optimization_ready;
+    evidence.workflow_undo_redo_revision_safety_ready = evidence.revision_safety_ready;
+    evidence.workflow_operator_review_production_ready = evidence.operator_review_ready;
+
+    constexpr std::uint32_t production_rows = 14U;
+    const std::array production_ready_rows{
+        evidence.workflow_import_openexr_ready,
+        evidence.workflow_import_ktx2_basis_ready,
+        evidence.workflow_import_gltf_material_ready,
+        evidence.workflow_review_usd_materialx_ocio_ready,
+        evidence.workflow_cook_package_ready,
+        evidence.workflow_live_preview_d3d12_ready,
+        evidence.workflow_live_preview_vulkan_ready,
+        evidence.workflow_live_preview_metal_host_ready,
+        evidence.workflow_weather_timeline_edit_ready,
+        evidence.workflow_preset_batch_apply_ready,
+        evidence.workflow_validation_report_ready,
+        evidence.workflow_profiler_artifact_review_ready,
+        evidence.workflow_undo_redo_revision_safety_ready,
+        evidence.workflow_operator_review_production_ready,
+    };
+    evidence.production_requirement_rows = production_rows;
+    evidence.production_ready_rows = static_cast<std::uint32_t>(std::ranges::count(production_ready_rows, true));
+    evidence.production_ready = evidence.ready &&
+                                evidence.production_ready_rows == evidence.production_requirement_rows &&
+                                evidence.editor_core_execution_boundary_ready;
+    evidence.diagnostics = evidence.production_ready
+                               ? 0U
+                               : (evidence.requirement_rows - evidence.ready_rows) +
+                                     (evidence.production_requirement_rows - evidence.production_ready_rows);
     return evidence;
 }
 
@@ -5293,6 +5357,8 @@ void enable_environment_artist_workflow_package_requirements(DesktopRuntimeGameO
     options.require_environment_preset_library_package = true;
     enable_environment_ready_aggregate_requirements(options);
     enable_environment_weather_simulation_package_requirements(options);
+    enable_environment_optimization_measurement_requirements(options);
+    options.require_vulkan_scene_shaders = true;
 }
 
 void enable_environment_commercial_readiness_requirements(DesktopRuntimeGameOptions& options) noexcept {
@@ -8150,7 +8216,7 @@ int main(int argc, char** argv) {
         options, std::span<const std::uint32_t>{environment_weather_solver_vulkan_spirv});
     const auto environment_artist_workflow_package = build_environment_artist_workflow_package_evidence(
         options, environment_texture_asset_pipeline, environment_preset_library, environment_ready_aggregate,
-        environment_weather_simulation_package);
+        environment_weather_simulation_package, environment_optimization_measurement);
     const auto environment_commercial_readiness = build_environment_commercial_readiness_smoke_evidence(
         options, environment_vulkan_strict_aggregate, environment_backend_parity, environment_platform_readiness,
         environment_optimization_measurement, environment_texture_asset_pipeline, environment_preset_library,
@@ -10638,7 +10704,40 @@ int main(int argc, char** argv) {
                   << (environment_artist_workflow_package.exposes_native_handles ? 1 : 0)
                   << " environment_artist_workflow_diagnostics=" << environment_artist_workflow_package.diagnostics
                   << " environment_artist_workflow_commercial_ready="
-                  << (environment_artist_workflow_package.commercial_ready ? 1 : 0);
+                  << (environment_artist_workflow_package.commercial_ready ? 1 : 0) << " workflow_import_openexr_ready="
+                  << (environment_artist_workflow_package.workflow_import_openexr_ready ? 1 : 0)
+                  << " workflow_import_ktx2_basis_ready="
+                  << (environment_artist_workflow_package.workflow_import_ktx2_basis_ready ? 1 : 0)
+                  << " workflow_import_gltf_material_ready="
+                  << (environment_artist_workflow_package.workflow_import_gltf_material_ready ? 1 : 0)
+                  << " workflow_review_usd_materialx_ocio_ready="
+                  << (environment_artist_workflow_package.workflow_review_usd_materialx_ocio_ready ? 1 : 0)
+                  << " workflow_cook_package_ready="
+                  << (environment_artist_workflow_package.workflow_cook_package_ready ? 1 : 0)
+                  << " workflow_live_preview_d3d12_ready="
+                  << (environment_artist_workflow_package.workflow_live_preview_d3d12_ready ? 1 : 0)
+                  << " workflow_live_preview_vulkan_ready="
+                  << (environment_artist_workflow_package.workflow_live_preview_vulkan_ready ? 1 : 0)
+                  << " workflow_live_preview_metal_host_ready="
+                  << (environment_artist_workflow_package.workflow_live_preview_metal_host_ready ? 1 : 0)
+                  << " workflow_weather_timeline_edit_ready="
+                  << (environment_artist_workflow_package.workflow_weather_timeline_edit_ready ? 1 : 0)
+                  << " workflow_preset_batch_apply_ready="
+                  << (environment_artist_workflow_package.workflow_preset_batch_apply_ready ? 1 : 0)
+                  << " workflow_validation_report_ready="
+                  << (environment_artist_workflow_package.workflow_validation_report_ready ? 1 : 0)
+                  << " workflow_profiler_artifact_review_ready="
+                  << (environment_artist_workflow_package.workflow_profiler_artifact_review_ready ? 1 : 0)
+                  << " workflow_undo_redo_revision_safety_ready="
+                  << (environment_artist_workflow_package.workflow_undo_redo_revision_safety_ready ? 1 : 0)
+                  << " workflow_operator_review_ready="
+                  << (environment_artist_workflow_package.workflow_operator_review_production_ready ? 1 : 0)
+                  << " environment_artist_workflow_production_requirement_rows="
+                  << environment_artist_workflow_package.production_requirement_rows
+                  << " environment_artist_workflow_production_ready_rows="
+                  << environment_artist_workflow_package.production_ready_rows
+                  << " environment_artist_workflow_production_ready="
+                  << (environment_artist_workflow_package.production_ready ? 1 : 0);
     }
     if (environment_commercial_readiness.requested) {
         const auto& plan = environment_commercial_readiness.plan;
@@ -10942,6 +11041,23 @@ int main(int argc, char** argv) {
              environment_artist_workflow_package.executes_validation_recipes ||
              environment_artist_workflow_package.exposes_native_handles ||
              environment_artist_workflow_package.commercial_ready ||
+             !environment_artist_workflow_package.production_ready ||
+             environment_artist_workflow_package.production_requirement_rows != 14U ||
+             environment_artist_workflow_package.production_ready_rows != 14U ||
+             !environment_artist_workflow_package.workflow_import_openexr_ready ||
+             !environment_artist_workflow_package.workflow_import_ktx2_basis_ready ||
+             !environment_artist_workflow_package.workflow_import_gltf_material_ready ||
+             !environment_artist_workflow_package.workflow_review_usd_materialx_ocio_ready ||
+             !environment_artist_workflow_package.workflow_cook_package_ready ||
+             !environment_artist_workflow_package.workflow_live_preview_d3d12_ready ||
+             !environment_artist_workflow_package.workflow_live_preview_vulkan_ready ||
+             !environment_artist_workflow_package.workflow_live_preview_metal_host_ready ||
+             !environment_artist_workflow_package.workflow_weather_timeline_edit_ready ||
+             !environment_artist_workflow_package.workflow_preset_batch_apply_ready ||
+             !environment_artist_workflow_package.workflow_validation_report_ready ||
+             !environment_artist_workflow_package.workflow_profiler_artifact_review_ready ||
+             !environment_artist_workflow_package.workflow_undo_redo_revision_safety_ready ||
+             !environment_artist_workflow_package.workflow_operator_review_production_ready ||
              environment_artist_workflow_package.diagnostics != 0U)) {
             return 3;
         }

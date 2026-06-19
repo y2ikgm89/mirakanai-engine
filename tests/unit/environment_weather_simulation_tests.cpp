@@ -1006,6 +1006,219 @@ MK_TEST("environment weather simulation validation dataset fails closed for miss
                   unsupported_physical_weather_ready_claim));
 }
 
+[[nodiscard]] static std::vector<mirakana::EnvironmentPhysicalWeatherCoupledFieldRow>
+make_complete_physical_field_rows() {
+    using Field = mirakana::EnvironmentPhysicalWeatherCoupledFieldKind;
+    return {
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::wind_velocity,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.wind_velocity",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::humidity,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.humidity",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::temperature,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.temperature",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::pressure,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.pressure",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::water_vapor,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.water_vapor",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::cloud_water,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.cloud_water",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::rain_water,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.rain_water",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::snow_mass,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.snow_mass",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::ground_wetness,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.ground_wetness",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::snow_accumulation,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.snow_accumulation",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::fog_density,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.fog_density",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::visibility,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.visibility",
+        },
+        mirakana::EnvironmentPhysicalWeatherCoupledFieldRow{
+            .field = Field::light_extinction,
+            .ready = true,
+            .evidence_id = "environment.physical_weather.field.light_extinction",
+        },
+    };
+}
+
+[[nodiscard]] static std::vector<mirakana::EnvironmentPhysicalWeatherValidationDatasetRow>
+make_physical_weather_dataset_rows() {
+    std::vector<mirakana::EnvironmentPhysicalWeatherValidationDatasetRow> rows;
+    rows.reserve(12U);
+    for (std::uint32_t index = 0U; index < 12U; ++index) {
+        rows.push_back(mirakana::EnvironmentPhysicalWeatherValidationDatasetRow{
+            .dataset_id = "environment.physical_weather.synthetic.case_" + std::to_string(index),
+            .provenance = mirakana::EnvironmentPhysicalWeatherDatasetProvenanceKind::synthetic_first_party,
+            .ready = true,
+            .license_recorded = true,
+            .redistribution_recorded = true,
+            .canonical_hash = 0x6000U + index,
+        });
+    }
+    return rows;
+}
+
+[[nodiscard]] static std::vector<mirakana::EnvironmentPhysicalWeatherBackendSolverRow>
+make_physical_weather_backend_rows() {
+    using Backend = mirakana::EnvironmentPhysicalWeatherBackendKind;
+    return {
+        mirakana::EnvironmentPhysicalWeatherBackendSolverRow{
+            .backend = Backend::d3d12,
+            .ready = true,
+            .host_validated = true,
+            .compute_dispatch_recorded = true,
+            .synchronization_recorded = true,
+            .readback_recorded = true,
+            .normalized_output_hash = 0xABCDEFU,
+            .elapsed_us = 1200U,
+            .budget_us = 500000U,
+            .mass_conservation_relative_error_max = 0.001,
+            .energy_or_stability_error_max = 0.002,
+        },
+        mirakana::EnvironmentPhysicalWeatherBackendSolverRow{
+            .backend = Backend::vulkan,
+            .ready = true,
+            .host_validated = true,
+            .compute_dispatch_recorded = true,
+            .synchronization_recorded = true,
+            .readback_recorded = true,
+            .normalized_output_hash = 0xABCDEFU,
+            .elapsed_us = 1300U,
+            .budget_us = 500000U,
+            .mass_conservation_relative_error_max = 0.001,
+            .energy_or_stability_error_max = 0.002,
+        },
+        mirakana::EnvironmentPhysicalWeatherBackendSolverRow{
+            .backend = Backend::metal,
+            .ready = true,
+            .host_validated = true,
+            .compute_dispatch_recorded = true,
+            .synchronization_recorded = true,
+            .readback_recorded = true,
+            .normalized_output_hash = 0xABCDEFU,
+            .elapsed_us = 1400U,
+            .budget_us = 500000U,
+            .mass_conservation_relative_error_max = 0.001,
+            .energy_or_stability_error_max = 0.002,
+        },
+    };
+}
+
+MK_TEST("environment physical weather closeout promotes only from exact fields datasets images and backend parity") {
+    const mirakana::EnvironmentPhysicalWeatherSimulationCloseoutDesc desc{
+        .cpu_reference_solver_ready = true,
+        .cpu_reference_normalized_output_hash = 0xABCDEFU,
+        .coupled_fields = make_complete_physical_field_rows(),
+        .validation_datasets = make_physical_weather_dataset_rows(),
+        .canonical_image_rows = 12U,
+        .backend_solvers = make_physical_weather_backend_rows(),
+    };
+
+    const auto result = mirakana::evaluate_environment_physical_weather_simulation_closeout(desc);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.physical_weather_ready);
+    MK_REQUIRE(result.production_solver_ready);
+    MK_REQUIRE(result.backend_parity_ready);
+    MK_REQUIRE(result.cpu_reference_solver_ready);
+    MK_REQUIRE(result.d3d12_gpu_solver_ready);
+    MK_REQUIRE(result.vulkan_gpu_solver_ready);
+    MK_REQUIRE(result.metal_gpu_solver_ready);
+    MK_REQUIRE(result.coupled_field_rows == 13U);
+    MK_REQUIRE(result.canonical_dataset_rows == 12U);
+    MK_REQUIRE(result.canonical_image_rows == 12U);
+    MK_REQUIRE(result.backend_solver_rows == 3U);
+    MK_REQUIRE(result.mass_conservation_relative_error_max <= 0.005);
+    MK_REQUIRE(result.energy_or_stability_error_max <= 0.010);
+    MK_REQUIRE(result.negative_density_cells == 0U);
+    MK_REQUIRE(result.nan_or_inf_cells == 0U);
+    MK_REQUIRE(result.solver_budget_overages == 0U);
+    MK_REQUIRE(result.visual_regression_failures == 0U);
+    MK_REQUIRE(result.environment_ready == false);
+    MK_REQUIRE(result.commercial_ready == false);
+    MK_REQUIRE(result.replay_hash != 0U);
+    MK_REQUIRE(result.diagnostics.empty());
+}
+
+MK_TEST("environment physical weather closeout fails closed for weak provenance inference or thresholds") {
+    auto desc = mirakana::EnvironmentPhysicalWeatherSimulationCloseoutDesc{
+        .cpu_reference_solver_ready = true,
+        .cpu_reference_normalized_output_hash = 0xABCDEFU,
+        .coupled_fields = make_complete_physical_field_rows(),
+        .validation_datasets = make_physical_weather_dataset_rows(),
+        .canonical_image_rows = 11U,
+        .backend_solvers = make_physical_weather_backend_rows(),
+    };
+    desc.coupled_fields.pop_back();
+    desc.validation_datasets.front().provenance =
+        mirakana::EnvironmentPhysicalWeatherDatasetProvenanceKind::external_grib;
+    desc.validation_datasets.front().license_recorded = false;
+    desc.backend_solvers[1].normalized_output_hash = 0xBADU;
+    desc.backend_solvers[1].inferred_from_other_backend = true;
+    desc.backend_solvers[2].mass_conservation_relative_error_max = 0.006;
+    desc.backend_solvers[2].visual_regression_failures = 1U;
+
+    const auto result = mirakana::evaluate_environment_physical_weather_simulation_closeout(desc);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.physical_weather_ready);
+    MK_REQUIRE(!result.production_solver_ready);
+    MK_REQUIRE(!result.backend_parity_ready);
+    MK_REQUIRE(result.coupled_field_rows == 12U);
+    MK_REQUIRE(result.canonical_dataset_rows == 12U);
+    MK_REQUIRE(result.canonical_image_rows == 11U);
+    MK_REQUIRE(result.visual_regression_failures == 1U);
+    MK_REQUIRE(mirakana::has_environment_physical_weather_closeout_diagnostic(
+        result, mirakana::EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_coupled_field));
+    MK_REQUIRE(mirakana::has_environment_physical_weather_closeout_diagnostic(
+        result, mirakana::EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_dataset_provenance));
+    MK_REQUIRE(mirakana::has_environment_physical_weather_closeout_diagnostic(
+        result, mirakana::EnvironmentPhysicalWeatherCloseoutDiagnosticCode::missing_canonical_image));
+    MK_REQUIRE(mirakana::has_environment_physical_weather_closeout_diagnostic(
+        result, mirakana::EnvironmentPhysicalWeatherCloseoutDiagnosticCode::backend_parity_mismatch));
+    MK_REQUIRE(mirakana::has_environment_physical_weather_closeout_diagnostic(
+        result, mirakana::EnvironmentPhysicalWeatherCloseoutDiagnosticCode::backend_inference));
+    MK_REQUIRE(mirakana::has_environment_physical_weather_closeout_diagnostic(
+        result, mirakana::EnvironmentPhysicalWeatherCloseoutDiagnosticCode::threshold_exceeded));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

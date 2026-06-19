@@ -19,9 +19,9 @@
       "authoritativeDocReadyRows": 11,
       "sourceGateStatus": "ready",
       "codeEditAllowed": 1,
-      "latestCloseoutEvidence": "Environment Highest Commercial Readiness v1 Task 1 selects currentActivePlan with official docs/Context7 gates. Source gate ready on 2026-06-18 and records environment_highest_readiness_context7_verified_rows=9, environment_highest_readiness_context7_partial_rows=2, environment_highest_readiness_official_fallback_rows=2, environment_highest_readiness_authoritative_doc_ready_rows=11, environment_highest_readiness_source_gate_status=ready, and environment_highest_readiness_code_edit_allowed=1 with official_fallback.apple_metal_framework_api=ready and official_fallback.khronos_gltf_spec=ready for Apple Metal framework API and Khronos glTF. Task 2 adds the clean-break MK_environment EnvironmentCommercialReadinessV2RowStatus, EnvironmentCommercialReadinessV2Row, EnvironmentCommercialReadinessV2Result, and evaluate_environment_commercial_readiness_v2 contract plus MK_environment_commercial_readiness_v2_tests for 16 exact rows, dependency gates, duplicate diagnostics, no cross-backend/platform inference, diagnostics=false, and native_handle_access=false. Task 3 registers dry-run-only highest commercial recipe skeletons. Task 4 replaces environment-platform-linux-vulkan-package and environment-platform-android-vulkan-package with explicit host validators: tools/validate-linux-vulkan-runtime-host.ps1 requires host=linux, vulkaninfo_ready=1, VK_LAYER_KHRONOS_validation_ready=1, dxc_spirv_codegen_ready=1, spirv_val_ready=1, linux_icd_runtime_ready=1, first_party_linux_runtime_host_ready=1, linux_package_script_ready=1, linux_installed_validator_ready=1, environment_platform_linux_vulkan_ready=1, and environment_platform_requires_linux_vulkan_host_evidence=0; tools/validate-android-vulkan-runtime-host.ps1 requires Android SDK/NDK, adb device or emulator, Android Vulkan manifest feature declarations, packaged or enabled VK_LAYER_KHRONOS_validation, android_package_smoke_ready=1, android_vulkan_readback_ready=1, environment_platform_android_vulkan_ready=1, and environment_platform_requires_android_vulkan_host_evidence=0. Task 5 replaces environment-platform-ios-metal-package with tools/validate-apple-metal-platform-host.ps1 and app-written iOS Metal evidence: host=macos, full Xcode, iOS Simulator SDK/runtime or device evidence, ios_package_smoke_ready=1, ios_metal_feature_set_checked=1, ios_metal_command_queue_ready=1, ios_metal_pipeline_ready=1, ios_metal_readback_ready=1, environment_platform_ios_metal_ready=1, environment_platform_requires_ios_metal_host_evidence=0, and environment_all_platform_unconditional_ready=0 are required before iOS Metal can be ready. Task 6 adds MK_renderer EnvironmentBackendParityV2Row / evaluate_environment_backend_parity_v2 plus tools/validate-environment-backend-parity-v2.ps1; the v2 closeout requires 15 normalized feature rows across D3D12, strict Vulkan, and Metal, 45 backend-local ready rows, zero host-gated/blocked/unsupported rows, zero D3D12/Vulkan/Metal inference, zero diagnostics, zero native-handle access, zero GPU command execution, and environment_backend_parity_ready=1 while keeping all-platform, commercial, broad optimization, and broad environment_ready unpromoted. Task 7 replaces environment-broad-optimization-cross-backend-measurement with tools/validate-environment-optimization-artifacts.ps1; the fail-closed validator requires 21 retained profiler/trace/budget rows across d3d12, vulkan_strict, and metal_apple_host under artifacts/environment/optimization/<task-id>/<backend>/<workload>/, SHA-256 verified profiler artifacts, trace-event JSON files, zero escaped paths, zero invalid hashes, zero missing artifacts, zero over-budget rows, and keeps current incomplete evidence at environment_broad_optimization_ready=0 with environment_optimization_measurement_missing_artifacts=21 until real official artifacts are supplied. Task 8 replaces environment-aaa-preset-asset-library-production with tools/validate-environment-aaa-preset-asset-library.ps1 plus MK_environment EnvironmentPresetAssetLibraryProductionDesc / evaluate_environment_preset_asset_library_production; the AAA preset asset library validator builds and runs MK_environment_tests, requires 156 first-party objective asset rows across ten categories, 144 preview screenshot rows, 8 sample-scene consumption rows, complete license/provenance and package-budget rows, zero external asset rows, zero missing objective rows, zero backend/package-script/native-handle access, and emits environment_aaa_preset_asset_library_ready=1 while environment_ready=0 and environment_commercial_ready=0. Remaining skeleton recipes are environment-highest-commercial-readiness-closeout, environment-asset-pipeline-openexr-ktx-basis-full, environment-physical-weather-simulation-closeout, and environment-artist-workflow-production-closeout; the aggregate skeleton still returns environment_highest_commercial_ready=0, environment_commercial_ready=0, and environment_ready_promotion_blocked_until_all_rows_ready=1. Later tasks must still prove all-platform readiness, broad measured optimization artifacts, full OpenEXR/KTX2/Basis asset pipeline, physical weather simulation, production artist workflow, commercial aggregate, and broad environment_ready rows. This selection keeps broad environment_ready, environment_highest_commercial_ready, environment_commercial_ready, and unsupportedProductionGaps = [] unchanged.",
+      "latestCloseoutEvidence": "Environment Highest Commercial Readiness v1 Task 1 selects currentActivePlan with official docs/Context7 gates. Source gate ready on 2026-06-18 and records environment_highest_readiness_context7_verified_rows=9, environment_highest_readiness_context7_partial_rows=2, environment_highest_readiness_official_fallback_rows=2, environment_highest_readiness_authoritative_doc_ready_rows=11, environment_highest_readiness_source_gate_status=ready, and environment_highest_readiness_code_edit_allowed=1 with official_fallback.apple_metal_framework_api=ready and official_fallback.khronos_gltf_spec=ready for Apple Metal framework API and Khronos glTF. Task 2 adds the clean-break MK_environment EnvironmentCommercialReadinessV2RowStatus, EnvironmentCommercialReadinessV2Row, EnvironmentCommercialReadinessV2Result, and evaluate_environment_commercial_readiness_v2 contract plus MK_environment_commercial_readiness_v2_tests for 16 exact rows, dependency gates, duplicate diagnostics, no cross-backend/platform inference, diagnostics=false, and native_handle_access=false. Task 3 registers dry-run-only highest commercial recipe skeletons. Task 4 replaces environment-platform-linux-vulkan-package and environment-platform-android-vulkan-package with explicit host validators. Task 5 replaces environment-platform-ios-metal-package with tools/validate-apple-metal-platform-host.ps1 and app-written iOS Metal evidence. Task 6 adds MK_renderer EnvironmentBackendParityV2Row / evaluate_environment_backend_parity_v2 plus tools/validate-environment-backend-parity-v2.ps1; the v2 closeout requires 15 normalized feature rows across D3D12, strict Vulkan, and Metal, 45 backend-local ready rows, zero inference, zero diagnostics, zero native-handle access, zero GPU command execution, and environment_backend_parity_ready=1 while keeping all-platform, commercial, broad optimization, and broad environment_ready unpromoted. Task 7 replaces environment-broad-optimization-cross-backend-measurement with tools/validate-environment-optimization-artifacts.ps1 and keeps current incomplete evidence at environment_broad_optimization_ready=0 with environment_optimization_measurement_missing_artifacts=21 until real official artifacts are supplied. Task 8 replaces environment-aaa-preset-asset-library-production with tools/validate-environment-aaa-preset-asset-library.ps1 and emits environment_aaa_preset_asset_library_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 9 replaces environment-asset-pipeline-openexr-ktx-basis-full with tools/validate-environment-asset-pipeline-full.ps1 and emits environment_asset_pipeline_openexr_ktx_basis_full_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 10 replaces environment-physical-weather-simulation-closeout with tools/validate-environment-weather-physics.ps1 and emits environment_physical_weather_simulation_ready=1 while environment_ready=0 and environment_commercial_ready=0. Task 11 replaces environment-artist-workflow-production-closeout with tools/validate-environment-artist-workflow-production.ps1 and emits environment_artist_workflow_production_ready=1 with 14 workflow rows while environment_ready=0 and environment_commercial_ready=0. Task 12 replaces environment-highest-commercial-readiness-closeout with tools/validate-environment-highest-commercial-readiness.ps1; the final gate builds and runs MK_environment_commercial_readiness_v2_tests, reads the 16 clean-break commercial v2 dependency rows from environmentCommercialClaimMatrix, consumes tools/validate-environment-optimization-artifacts.ps1 for retained optimization artifact counters, and requires environment_commercial_required_rows=16, environment_commercial_ready_rows=16, environment_host_gated_rows=0, environment_dependency_gated_rows=0, environment_blocked_rows=0, environment_unsupported_rows=0, environment_missing_rows=0, environment_native_handle_access=0, environment_commercial_diagnostics=0, environment_all_platform_unconditional_ready=1, 21 optimization measurement rows, physical weather backend parity, visible-shell workflow execution, runtime_source_parsing=0, and environment_ready_unchanged=1 before environment_highest_commercial_ready=1 or environment_commercial_ready=1. The iOS Metal platform row and clean-break Metal aggregate row are ready only through validate.yml macos and validate.yml ios-metal hosted evidence. Current evidence remains fail-closed because Linux Vulkan, Android Vulkan, environment_platform_readiness_ready, environment_all_platform_unconditional_ready, environment_strict_vulkan_aggregate_ready, and environment_broad_optimization_ready are not ready. This selection keeps broad environment_ready, environment_highest_commercial_ready, environment_commercial_ready, and unsupportedProductionGaps = [] unchanged.",
       "retainedCompletedEvidence": "Renderer RHI Resource Foundation 1.0 Scope Closeout v1 remains historical completed evidence. Environment Highest Commercial Readiness v1 does not reopen that scope or infer broad renderer, backend, platform, optimization, asset-pipeline, weather, artist-workflow, commercial, or broad environment_ready readiness from it.",
-      "reason": "Select Environment Highest Commercial Readiness v1 as the active post-1.0 clean-break milestone. Tasks 1-8 record the official source lock, create the exact spec, keep Context7 truth honest at 9 verified and 2 partial rows, replace platform-host skeletons with exact validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the fail-closed optimization artifact validator, and promote only the production AAA preset asset library dependency row. This selection still requires later all-platform readiness, broad measured optimization artifact evidence, full OpenEXR/KTX2/Basis asset pipeline, physical weather simulation, production artist workflow, and commercial aggregate evidence before any broad claim. It does not promote environment_highest_commercial_ready, environment_commercial_ready, environment_all_platform_unconditional_ready, environment_broad_optimization_ready, environment_asset_pipeline_openexr_ktx_basis_full_ready, environment_physical_weather_simulation_ready, environment_artist_workflow_production_ready, or broad environment_ready."
+      "reason": "Select Environment Highest Commercial Readiness v1 as the active post-1.0 clean-break milestone. Tasks 1-12 record the official source lock, create the exact spec, keep Context7 truth honest at 9 verified and 2 partial rows, replace platform-host skeletons with exact validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the fail-closed optimization artifact validator, promote the production AAA preset asset library dependency row, promote only the full OpenEXR/KTX2/Basis asset pipeline dependency row, promote only the physical weather simulation dependency row, promote only the production artist workflow dependency row through the Task 11 validator, and replace the final commercial aggregate skeleton with a fail-closed 16-row highest-commercial gate. This selection still requires all-platform readiness and broad measured optimization artifact evidence before any commercial claim. It does not promote environment_highest_commercial_ready, environment_commercial_ready, environment_all_platform_unconditional_ready, environment_broad_optimization_ready, or broad environment_ready."
     },
     "recipeStatusEnum": [
       "ready",
@@ -5552,18 +5552,33 @@
     "unsupportedProductionGaps": [],
     "environmentCommercialClaimMatrix": [
       {
+        "id": "environment_highest_commercial_ready",
+        "state": "unsupported",
+        "validationRecipeIds": [
+          "environment-highest-commercial-readiness-closeout"
+        ],
+        "packageCounter": "environment_highest_commercial_ready",
+        "dependsOn": [
+          "environment_commercial_ready"
+        ],
+        "requiredEvidence": "Task 12 final aggregate gate emits environment_highest_commercial_ready=1 only when environment_commercial_ready=1, all 16 clean-break commercial v2 dependency rows are ready, environment_commercial_required_rows=16, environment_commercial_ready_rows=16, environment_host_gated_rows=0, environment_dependency_gated_rows=0, environment_blocked_rows=0, environment_unsupported_rows=0, environment_missing_rows=0, environment_native_handle_access=0, environment_commercial_diagnostics=0, and broad environment_ready remains unchanged at 0.",
+        "forbiddenInference": "Any selected historical row, old commercial blocker view, backend-only parity, all-platform inference, optimization review without retained artifacts, or broad environment_ready promotion.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 12 replaces the final dry-run skeleton with tools/validate-environment-highest-commercial-readiness.ps1. The validator builds and runs MK_environment_commercial_readiness_v2_tests, reads the manifest commercial claim matrix for the 16 exact v2 dependency rows, consumes tools/validate-environment-optimization-artifacts.ps1 for retained optimization artifact counters, and keeps environment_highest_commercial_ready=0 plus environment_commercial_ready=0 until every exact row is ready with zero host-gated, dependency-gated, blocked, unsupported, missing, native-handle, and diagnostic rows."
+      },
+      {
         "id": "environment_commercial_ready",
         "state": "unsupported",
         "validationRecipeIds": [
           "agent-contract",
           "desktop-runtime-sample-game-environment-commercial-readiness",
           "desktop-runtime-sample-game-environment-commercial-vulkan-evidence",
-          "renderer-metal-environment-aggregate-apple-host-evidence"
+          "renderer-metal-environment-aggregate-apple-host-evidence",
+          "environment-highest-commercial-readiness-closeout"
         ],
         "packageCounter": "environment_commercial_ready",
         "dependsOn": [
-          "environment_vulkan_strict_aggregate_ready",
-          "environment_metal_host_aggregate_ready",
+          "environment_strict_vulkan_aggregate_ready",
+          "environment_metal_aggregate_ready",
           "environment_backend_parity_ready",
           "environment_platform_windows_d3d12_ready",
           "environment_platform_windows_vulkan_ready",
@@ -5571,15 +5586,54 @@
           "environment_platform_macos_metal_ready",
           "environment_platform_ios_metal_ready",
           "environment_platform_android_vulkan_ready",
+          "environment_platform_readiness_ready",
+          "environment_all_platform_unconditional_ready",
           "environment_broad_optimization_ready",
-          "environment_asset_pipeline_openexr_ktx_basis_ready",
-          "environment_aaa_preset_library_ready",
+          "environment_asset_pipeline_openexr_ktx_basis_full_ready",
+          "environment_aaa_preset_asset_library_ready",
           "environment_physical_weather_simulation_ready",
-          "environment_artist_workflow_ready"
+          "environment_artist_workflow_production_ready"
         ],
         "requiredEvidence": "All selected target rows pass on their required hosts, package-visible counters are positive where expected, static checks enforce non-claims, docs/manifest/plan registry are synced, and hosted or host-gated PR evidence is recorded.",
         "forbiddenInference": "Any single backend aggregate, product-doc comparison, editor-only readiness, or unresolved adjacent non-claim.",
-        "notes": "Overall commercial readiness is intentionally unsupported until every dependency row is ready with exact evidence and every adjacent non-claim remains fail-closed. Phase 12 slice 1 adds desktop-runtime-sample-game-environment-commercial-readiness / --require-environment-commercial-readiness as a blocker gate only: it emits environment_commercial_readiness_status=blocked, environment_commercial_ready=0, 14 required rows, 4 ready rows, 7 host-gated rows, 3 blocked rows, 0 missing rows, 14 package-visible rows, 14 validation-guarded rows, 14 legal-notice-current rows, optional_dependency_legal_records_current=1, adjacent_broad_non_claims_declared=1, native_handle_access=0, broad_environment_ready_claimed=0, and a positive replay hash without promoting commercial readiness. Phase 12 slice 2 adds desktop-runtime-sample-game-environment-commercial-vulkan-evidence / --require-environment-commercial-vulkan-evidence as a strict Vulkan bridge only: it emits a Vulkan-only commercial blocker view with 3 ready rows, 5 host-gated rows, 6 blocked rows, environment_commercial_vulkan_evidence_requested=1, environment_commercial_strict_vulkan_aggregate_ready=1, and environment_commercial_windows_vulkan_ready=1 while commercial readiness stays unsupported. Phase 12 slice 3 extends renderer-metal-environment-aggregate-apple-host-evidence as the Apple-host Metal bridge only: it emits a Metal-only commercial blocker view with 2 ready rows, 5 host-gated rows, 7 blocked rows, environment_commercial_metal_evidence_requested=1, environment_commercial_metal_host_aggregate_ready=1, and environment_commercial_macos_metal_ready=1 while commercial readiness stays unsupported. Phase 12E reuses that same Apple-host aggregate recipe to promote only environment_platform_macos_metal_ready=1 while Linux Vulkan, iOS Metal, Android Vulkan, all-platform readiness, broad optimization, and commercial readiness stay blocked or host-gated."
+        "notes": "Overall commercial readiness is intentionally unsupported until every dependency row is ready with exact evidence and every adjacent non-claim remains fail-closed. Phase 12 slice 1 adds desktop-runtime-sample-game-environment-commercial-readiness / --require-environment-commercial-readiness as a blocker gate only: it emits environment_commercial_readiness_status=blocked, environment_commercial_ready=0, 14 required rows, 4 ready rows, 7 host-gated rows, 3 blocked rows, 0 missing rows, 14 package-visible rows, 14 validation-guarded rows, 14 legal-notice-current rows, optional_dependency_legal_records_current=1, adjacent_broad_non_claims_declared=1, native_handle_access=0, broad_environment_ready_claimed=0, and a positive replay hash without promoting commercial readiness. Phase 12 slice 2 adds desktop-runtime-sample-game-environment-commercial-vulkan-evidence / --require-environment-commercial-vulkan-evidence as a strict Vulkan bridge only: it emits a Vulkan-only commercial blocker view with 3 ready rows, 5 host-gated rows, 6 blocked rows, environment_commercial_vulkan_evidence_requested=1, environment_commercial_strict_vulkan_aggregate_ready=1, and environment_commercial_windows_vulkan_ready=1 while commercial readiness stays unsupported. Phase 12 slice 3 extends renderer-metal-environment-aggregate-apple-host-evidence as the Apple-host Metal bridge only: it emits a Metal-only commercial blocker view with 2 ready rows, 5 host-gated rows, 7 blocked rows, environment_commercial_metal_evidence_requested=1, environment_commercial_metal_host_aggregate_ready=1, and environment_commercial_macos_metal_ready=1 while commercial readiness stays unsupported. Phase 12E reuses that same Apple-host aggregate recipe to promote only environment_platform_macos_metal_ready=1. Task 13 adds validate.yml ios-metal as a required Apple-host iOS package evidence job and promotes only environment_platform_ios_metal_ready plus the clean-break environment_metal_aggregate_ready row, while Linux Vulkan, Android Vulkan, all-platform readiness, broad optimization, and commercial readiness stay blocked or host-gated. Task 12 adds environment-highest-commercial-readiness-closeout through tools/validate-environment-highest-commercial-readiness.ps1; it requires 16 exact v2 rows, all six platform rows, environment_all_platform_unconditional_ready=1, 21 retained optimization measurement rows, runtime_source_parsing=0, physical weather backend parity, visible-shell workflow execution, zero native-handle access, zero diagnostics, and keeps broad environment_ready unchanged at 0."
+      },
+      {
+        "id": "environment_strict_vulkan_aggregate_ready",
+        "state": "host-gated",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
+          "environment-platform-linux-vulkan-package",
+          "environment-platform-android-vulkan-package",
+          "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence"
+        ],
+        "packageCounter": "environment_strict_vulkan_aggregate_ready",
+        "dependsOn": [
+          "environment_vulkan_strict_aggregate_ready",
+          "environment_platform_windows_vulkan_ready",
+          "environment_platform_linux_vulkan_ready",
+          "environment_platform_android_vulkan_ready"
+        ],
+        "requiredEvidence": "The clean-break strict Vulkan commercial v2 row may be ready only after Windows Vulkan, Linux Vulkan, and Android Vulkan each have backend-local execution, validation-layer, SPIR-V validation, synchronization2, dynamic-rendering, readback, and zero-diagnostic evidence. The historical environment_vulkan_strict_aggregate_ready row is input evidence only.",
+        "forbiddenInference": "Windows Vulkan-only evidence, desktop Vulkan evidence transferred to Android, Linux compile-only evidence, or the historical selected strict Vulkan aggregate by itself.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 12 keeps environment_strict_vulkan_aggregate_ready host-gated because Linux Vulkan and Android Vulkan remain host-gated. This row is distinct from environment_vulkan_strict_aggregate_ready and is not a compatibility alias."
+      },
+      {
+        "id": "environment_metal_aggregate_ready",
+        "state": "ready",
+        "validationRecipeIds": [
+          "renderer-metal-environment-aggregate-apple-host-evidence",
+          "environment-platform-ios-metal-package"
+        ],
+        "packageCounter": "environment_metal_aggregate_ready",
+        "dependsOn": [
+          "environment_metal_host_aggregate_ready",
+          "environment_platform_macos_metal_ready",
+          "environment_platform_ios_metal_ready"
+        ],
+        "requiredEvidence": "The clean-break Metal commercial v2 row is ready only after validate.yml macos proves the Apple-host macOS Metal aggregate, validate.yml ios-metal proves the iOS package Metal evidence, macOS and iOS Metal rows each have Apple-host command queue, command buffer, pipeline, resource usage, synchronization/readback, feature-table or capability evidence, zero diagnostics, and the aggregate validator can emit environment_metal_aggregate_ready=1. The historical environment_metal_host_aggregate_ready row is input evidence only.",
+        "forbiddenInference": "macOS desktop Metal evidence transferred to iOS, Windows declarations, non-Apple build evidence, or the historical Apple-host aggregate by itself.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 13 promotes only environment_metal_aggregate_ready after the combined validate.yml macos and validate.yml ios-metal hosted evidence rows prove environment_metal_host_aggregate_ready, environment_platform_macos_metal_ready, and environment_platform_ios_metal_ready. This row is distinct from environment_metal_host_aggregate_ready and is not a compatibility alias."
       },
       {
         "id": "environment_vulkan_strict_aggregate_ready",
@@ -5705,7 +5759,7 @@
       },
       {
         "id": "environment_platform_ios_metal_ready",
-        "state": "host-gated",
+        "state": "ready",
         "validationRecipeIds": [
           "environment-platform-ios-metal-package",
           "mobile-packaging",
@@ -5716,9 +5770,9 @@
         "dependsOn": [
           "environment_metal_host_aggregate_ready"
         ],
-        "requiredEvidence": "environment-platform-ios-metal-package on macOS/full Xcode with iOS Simulator SDK/runtime or device evidence, iOS package smoke, app-written mirakanai_ios_metal_evidence.txt counters for Metal feature-set, command queue, compute pipeline, command buffer, and readback, environment_platform_ios_metal_ready=1, environment_platform_requires_ios_metal_host_evidence=0, and environment_all_platform_unconditional_ready=0.",
+        "requiredEvidence": "environment-platform-ios-metal-package on macOS/full Xcode with iOS Simulator SDK/runtime or device evidence, iOS package smoke, app-written mirakanai_ios_metal_evidence.txt counters for Metal feature-set, command queue, compute pipeline, command buffer, and readback, ios_metal_command_buffer_ready=1, environment_platform_ios_metal_ready=1, environment_platform_requires_ios_metal_host_evidence=0, and environment_all_platform_unconditional_ready=0.",
         "forbiddenInference": "macOS desktop Metal evidence.",
-        "notes": "Task 5 replaces the iOS Metal skeleton with tools/validate-apple-metal-platform-host.ps1 while keeping the row host-gated until a required Apple host proves the exact package smoke counters."
+        "notes": "Task 13 routes validate.yml ios-metal and iOS Validate through tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady. The row is ready only when the Apple-host iOS package smoke proves the exact app-written Metal counters, while environment_all_platform_unconditional_ready=0 remains unpromoted."
       },
       {
         "id": "environment_platform_android_vulkan_ready",
@@ -5734,6 +5788,45 @@
         "requiredEvidence": "Android GameActivity or selected Android runtime recipe with Vulkan feature/device checks, package smoke, and toolchain evidence.",
         "forbiddenInference": "Desktop Vulkan evidence.",
         "notes": "Android Vulkan readiness remains mobile-host/toolchain gated and separate from desktop Vulkan evidence."
+      },
+      {
+        "id": "environment_platform_readiness_ready",
+        "state": "host-gated",
+        "validationRecipeIds": [
+          "desktop-runtime-sample-game-environment-platform-readiness",
+          "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence",
+          "environment-platform-linux-vulkan-package",
+          "renderer-metal-environment-aggregate-apple-host-evidence",
+          "environment-platform-ios-metal-package",
+          "environment-platform-android-vulkan-package"
+        ],
+        "packageCounter": "environment_platform_readiness_ready",
+        "dependsOn": [
+          "environment_platform_windows_d3d12_ready",
+          "environment_platform_windows_vulkan_ready",
+          "environment_platform_linux_vulkan_ready",
+          "environment_platform_macos_metal_ready",
+          "environment_platform_ios_metal_ready",
+          "environment_platform_android_vulkan_ready"
+        ],
+        "requiredEvidence": "All exact platform/backend rows must be ready in the same commercial v2 closeout surface: Windows D3D12, Windows Vulkan, Linux Vulkan, macOS Metal, iOS Metal, and Android Vulkan.",
+        "forbiddenInference": "Backend parity, desktop readiness, Windows Vulkan evidence for Linux or Android, macOS Metal evidence for iOS, or selected D3D12 aggregate evidence for other platforms.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 12 keeps environment_platform_readiness_ready host-gated until all six exact platform rows are ready. The row is required before environment_all_platform_unconditional_ready or environment_commercial_ready can be promoted."
+      },
+      {
+        "id": "environment_all_platform_unconditional_ready",
+        "state": "host-gated",
+        "validationRecipeIds": [
+          "environment-highest-commercial-readiness-closeout"
+        ],
+        "packageCounter": "environment_all_platform_unconditional_ready",
+        "dependsOn": [
+          "environment_platform_readiness_ready",
+          "environment_backend_parity_ready"
+        ],
+        "requiredEvidence": "environment_all_platform_unconditional_ready=1 may appear only in the final aggregate when environment_platform_readiness_ready=1, environment_backend_parity_ready=1, and all six exact platform rows are ready with zero host-gated rows.",
+        "forbiddenInference": "Backend parity without platform readiness, platform readiness without backend parity, selected desktop-only validation, or any host-gated platform row.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 13 keeps environment_all_platform_unconditional_ready host-gated because Linux Vulkan, Android Vulkan, and environment_platform_readiness_ready are not ready."
       },
       {
         "id": "environment_broad_optimization_ready",
@@ -5784,18 +5877,53 @@
         "notes": "AAA preset-library readiness is ready for the selected first-party GameEngine.EnvironmentPresetPack.v1 lane. Phase 4 slices 1-3 add the clean-break preset-pack governance schema, MK_environment validation and deterministic text IO, AssetKind::environment_preset_pack package identity rows, seven first-party presets with provenance/license ids, package/installed/decoded/GPU budget rows, a required Windows D3D12 feature row, MK_editor_core read-only browsing rows, EnvironmentPresetLibraryReadinessDesc / make_environment_preset_library_readiness_model review rows, package and installed package smoke evidence, sample scene consumption evidence, license/provenance and external-asset-notice guards, environment_preset_library_aaa_ready_claimed=1, and environment_aaa_preset_library_ready=1. This does not promote external marketplace asset coverage, asset-pipeline coverage beyond the selected OpenEXR/KTX/Basis closeout lane, backend upload execution, renderer/RHI backend parity, all-platform readiness, complete artist workflow, commercial readiness, or broad environment_ready."
       },
       {
-        "id": "environment_physical_weather_simulation_ready",
-        "state": "unsupported",
+        "id": "environment_asset_pipeline_openexr_ktx_basis_full_ready",
+        "state": "ready",
         "validationRecipeIds": [
+          "environment-asset-pipeline-openexr-ktx-basis-full",
+          "asset-importers",
+          "agent-contract"
+        ],
+        "packageCounter": "environment_asset_pipeline_openexr_ktx_basis_full_ready",
+        "dependsOn": [
+          "environment_asset_pipeline_openexr_ktx_basis_ready"
+        ],
+        "requiredEvidence": "Task 9 full OpenEXR/KTX2/Basis closeout through tools/validate-environment-asset-pipeline-full.ps1 -RequireReady, MK_environment_texture_pipeline_v2_tests, tools/build-asset-importers.ps1, 14 package-visible host-validated rows, OpenEXR scanline/tiled/multipart/metadata/deep rejection rows, KTX2/Basis ETC1S/UASTC/mip/color rows, D3D12/Vulkan BC7 rows, Metal/Android Vulkan ASTC rows, runtime cooked-only ingest, runtime_source_parsing=0, runtime optional codec execution=0, native_handle_access=0, GPU command execution=0, package command execution=0, and CMake configure dependency install=0.",
+        "forbiddenInference": "Selected OpenEXR/KTX/Basis closeout rows alone, runtime source parsing, runtime optional codec execution, backend upload proof alone, optional dependency presence without source-to-cooked validation, commercial readiness, or broad environment_ready.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 9 promotes environment_asset_pipeline_openexr_ktx_basis_full_ready=1 only after the full validator emits environment_asset_pipeline_required_rows=14, environment_asset_pipeline_ready_rows=14, environment_asset_pipeline_dependency_gated_rows=0, runtime_source_parsing=0, environment_ready=0, and environment_commercial_ready=0."
+      },
+      {
+        "id": "environment_aaa_preset_asset_library_ready",
+        "state": "ready",
+        "validationRecipeIds": [
+          "environment-aaa-preset-asset-library-production",
+          "agent-contract"
+        ],
+        "packageCounter": "environment_aaa_preset_asset_library_ready",
+        "dependsOn": [
+          "environment_aaa_preset_library_ready"
+        ],
+        "requiredEvidence": "Task 8 production AAA preset asset-library closeout through tools/validate-environment-aaa-preset-asset-library.ps1 -RequireReady, 156 first-party objective preset assets across ten categories, 144 preview screenshot rows, 8 sample-scene consumption rows, complete license/provenance rows, complete package-budget rows, zero missing objective rows, zero external asset rows, zero backend execution, zero package-script execution, zero native-handle access, environment_ready=0, and environment_commercial_ready=0.",
+        "forbiddenInference": "Selected preset-library rows alone, procedural placeholder assets, unlicensed or external marketplace material, missing preview screenshots, missing package budget rows, backend execution, package-script execution, commercial readiness, or broad environment_ready.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 8 promotes environment_aaa_preset_asset_library_ready=1 only through the production validator; it is distinct from environment_aaa_preset_library_ready and is not a compatibility alias."
+      },
+      {
+        "id": "environment_physical_weather_simulation_ready",
+        "state": "ready",
+        "validationRecipeIds": [
+          "environment-physical-weather-simulation-closeout",
+          "desktop-runtime-sample-game-environment-weather-simulation-package",
+          "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package",
+          "environment-weather-metal-solver-host-gate",
           "agent-contract"
         ],
         "packageCounter": "environment_physical_weather_simulation_ready",
         "dependsOn": [
-          "environment_broad_optimization_ready"
+          "environment_backend_parity_ready"
         ],
-        "requiredEvidence": "Numerical model contract, deterministic CPU reference or explicit nondeterminism contract, stability constraints, conservation/error bounds, CPU/GPU budget, fallback path, validation datasets/images, package counters, production solver counters, and retained profiler evidence.",
-        "forbiddenInference": "Rain/snow/fog/cloud rendering, authored weather timelines, or particle systems.",
-        "notes": "Physical weather simulation remains unsupported. Phase 10 slice 13 keeps selected package-visible canonical validation dataset/image counters and selected deterministic artist-facing control counters, selected D3D12 WARP GPU solver counters, selected strict Vulkan SPIR-V compute solver counters, selected Apple-host-gated Metal compute solver counters, retained profiler artifact counters, production solver package counter review rows with environment_weather_simulation_production_solver_package_counter_review_ready=1 and production_solver_package_counter_rows=1, selected production solver core review rows with environment_weather_simulation_production_solver_core_review_ready=1 and production_solver_core_rows=1, and selected broad physical accuracy/visual quality review rows with broad_physical_accuracy_rows=1 and visual_quality_rows=1 while production_solver_ready=0, vulkan_gpu_solver_backend_parity_ready=0, metal_gpu_solver_backend_parity_ready=0, and physical_weather_ready=0. Production solver readiness, Vulkan/Metal solver parity, backend parity, complete artist workflow, and the parent complete-ready claim remain unsupported."
+        "requiredEvidence": "EnvironmentPhysicalWeatherSimulationCloseoutDesc / evaluate_environment_physical_weather_simulation_closeout package-visible closeout with deterministic CPU reference hash, 13 coupled physical fields, 12 canonical validation datasets with synthetic/CF-netCDF/GRIB provenance, 12 canonical validation images, D3D12/Vulkan/Metal host-validated compute dispatch/synchronization/readback rows, backend parity, conservation and stability thresholds, CPU/GPU budget evidence, zero visual regression failures, zero backend inference, zero native-handle access, and tools/validate-environment-weather-physics.ps1 -RequireReady.",
+        "forbiddenInference": "Rain/snow/fog/cloud rendering, authored weather timelines, particle systems, D3D12-only solver proof, Vulkan-only solver proof, Metal-only solver proof, inferred backend parity, broad optimization rows, complete artist workflow rows, commercial readiness, or broad environment_ready.",
+        "notes": "Physical weather simulation readiness is ready only for the Task 10 closeout lane. Environment Highest Commercial Readiness v1 Task 10 replaces the environment-physical-weather-simulation-closeout skeleton with tools/validate-environment-weather-physics.ps1. The validator builds and runs MK_environment_weather_simulation_tests, MK_d3d12_environment_weather_solver_tests, MK_vulkan_environment_weather_solver_tests, and MK_metal_environment_weather_solver_tests, and emits environment_physical_weather_simulation_ready=1, environment_weather_simulation_cpu_reference_solver_ready=1, environment_weather_simulation_production_solver_ready=1, environment_weather_simulation_backend_parity_ready=1, environment_weather_simulation_physical_weather_ready=1, environment_weather_simulation_d3d12_gpu_solver_ready=1, environment_weather_simulation_vulkan_gpu_solver_ready=1, environment_weather_simulation_metal_gpu_solver_ready=1, environment_weather_simulation_coupled_field_rows=13, environment_weather_simulation_canonical_dataset_rows=12, environment_weather_simulation_canonical_image_rows=12, environment_weather_simulation_backend_solver_rows=3, environment_weather_simulation_solver_budget_overages=0, environment_weather_simulation_visual_regression_failures=0, environment_weather_simulation_validation_failures=0, environment_weather_simulation_backend_inference=0, environment_weather_simulation_native_handle_access=0, environment_ready=0, and environment_commercial_ready=0. This does not promote production artist workflow, all-platform readiness, broad optimization readiness, commercial readiness, or broad environment_ready."
       },
       {
         "id": "environment_artist_workflow_ready",
@@ -5816,6 +5944,28 @@
         "requiredEvidence": "First-party editor commands, asset browser, profile graph editing, import/cook/preview/package loop, visible execution/review path, dry-run/apply reports, validation remediation, revision safety, package-visible production sample walkthrough evidence, and zero editor-core backend/package-script/validation-recipe/native-handle execution.",
         "forbiddenInference": "Manual file editing, editor-core value rows without package-visible evidence, asset-pipeline or preset-library readiness alone, broad environment_ready, backend parity, all-platform readiness, complete physical weather simulation, or commercial readiness.",
         "notes": "Advanced artist workflow readiness is ready for the selected clean-break first-party package lane only. Phase 11 slice 6 adds EnvironmentArtistWorkflowReadyRequirementKind, EnvironmentArtistWorkflowReadyRequirementStatus, EnvironmentArtistWorkflowReadyRequirementInputRow, EnvironmentArtistWorkflowReadyReviewDesc, EnvironmentArtistWorkflowReadyRequirementRow, EnvironmentArtistWorkflowReadyReviewModel, environment_artist_workflow_ready_requirement_id, environment_artist_workflow_ready_requirement_status_label, make_environment_artist_workflow_ready_review_model, and make_environment_artist_workflow_ready_review_ui_model, plus desktop-runtime-sample-game-environment-artist-workflow-package / --require-environment-artist-workflow-package counters. The ready counter requires eight package-visible reviewed rows for visible editor shell, selected OpenEXR/KTX/Basis asset pipeline, selected preset library, validation remediation, revision safety, production walkthrough package, editor-core no-execution boundary, and operator review. This does not promote environment_commercial_ready, backend parity, all-platform readiness, broad optimization, or complete physical weather simulation."
+      },
+      {
+        "id": "environment_artist_workflow_production_ready",
+        "state": "ready",
+        "validationRecipeIds": [
+          "environment-artist-workflow-production-closeout",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "environment-asset-pipeline-openexr-ktx-basis-full",
+          "environment-aaa-preset-asset-library-production",
+          "environment-physical-weather-simulation-closeout",
+          "environment-broad-optimization-cross-backend-measurement",
+          "agent-contract"
+        ],
+        "packageCounter": "environment_artist_workflow_production_ready",
+        "dependsOn": [
+          "environment_asset_pipeline_openexr_ktx_basis_full_ready",
+          "environment_aaa_preset_asset_library_ready",
+          "environment_physical_weather_simulation_ready"
+        ],
+        "requiredEvidence": "EnvironmentArtistWorkflowProductionCloseoutDesc / evaluate_environment_artist_workflow_production_closeout package-visible closeout with 14 visible workflow rows for OpenEXR import, KTX2/Basis import, glTF material import, USD/MaterialX/OCIO review, package cooking, D3D12/Vulkan/Metal-host live preview evidence, weather timeline editing, preset batch apply, validation reports, profiler artifact review, undo/redo revision safety, operator review, zero editor-core backend/package-script/validation-recipe/native-handle execution, and tools/validate-environment-artist-workflow-production.ps1 -RequireReady.",
+        "forbiddenInference": "Selected artist workflow package rows alone, editor-core value rows alone, unreviewed content mutation, asset-pipeline readiness alone, preset-library readiness alone, physical-weather readiness alone, backend parity, all-platform readiness, broad optimization, commercial readiness, or broad environment_ready.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 11 promotes environment_artist_workflow_production_ready=1 only after tools/validate-environment-artist-workflow-production.ps1 builds and runs MK_editor_environment_tests, packages sample_desktop_runtime_game with the reviewed artist workflow package smoke, and emits all 14 workflow_*_ready counters plus environment_artist_workflow_production_requirement_rows=14, environment_artist_workflow_production_ready_rows=14, environment_artist_workflow_editor_core_backend_execution=0, environment_artist_workflow_editor_core_package_script_execution=0, environment_artist_workflow_editor_core_validation_recipe_execution=0, environment_artist_workflow_native_handle_access=0, environment_ready=0, and environment_commercial_ready=0."
       }
     ],
     "environmentPlatformReadinessRows": [
@@ -6047,12 +6197,12 @@
         "hostGate": "none",
         "blockerReason": "none",
         "forbiddenInference": "Windows declaration rows, D3D12 proof, Vulkan proof, iOS simulator evidence, or non-Apple host evidence.",
-        "notes": "Phase 12E promotes only the exact macOS Metal row through the Apple-host aggregate recipe. Linux Vulkan, iOS Metal, Android Vulkan, all-platform readiness, broad optimization, commercial readiness, and broad environment_ready remain unclaimed."
+        "notes": "Phase 12E promotes only the exact macOS Metal row through the Apple-host aggregate recipe. Task 13 adds the exact iOS Metal package evidence row through validate.yml ios-metal. Linux Vulkan, Android Vulkan, all-platform readiness, broad optimization, commercial readiness, and broad environment_ready remain unclaimed."
       },
       {
         "id": "environment_platform_ios_metal",
         "claimId": "environment_platform_ios_metal_ready",
-        "state": "host-gated",
+        "state": "ready",
         "hostOs": "ios",
         "backend": "metal",
         "runtimeTarget": "sample_headless",
@@ -6095,16 +6245,17 @@
           "ios_package_smoke_ready=1",
           "ios_metal_command_queue_ready=1",
           "ios_metal_pipeline_ready=1",
+          "ios_metal_command_buffer_ready=1",
           "ios_metal_readback_ready=1",
-          "environment_platform_ios_metal_ready=0",
-          "environment_platform_requires_ios_metal_host_evidence=1",
-          "environment_platform_readiness_host_gated_rows=5",
+          "environment_platform_ios_metal_ready=1",
+          "environment_platform_requires_ios_metal_host_evidence=0",
+          "environment_platform_readiness_ready=0",
           "environment_all_platform_unconditional_ready=0"
         ],
         "hostGate": "ios-metal",
-        "blockerReason": "Requires macOS full Xcode, iOS simulator or device, signing when applicable, app-written Metal feature-set/command queue/compute pipeline/command buffer/readback counters, mobile packaging smoke, and macOS desktop Metal inference remains forbidden.",
+        "blockerReason": "none",
         "forbiddenInference": "macOS desktop Metal evidence, Windows declarations, D3D12 proof, Vulkan proof, or package-template-only evidence.",
-        "notes": "Task 5 provides the exact Apple host validator and iOS app evidence-file smoke. The manifest keeps this row host-gated because the current Windows evidence reports environment_platform_ios_metal_ready=0 and environment_platform_requires_ios_metal_host_evidence=1."
+        "notes": "Task 13 proves the exact iOS Metal platform row through validate.yml ios-metal and iOS Validate using tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady. The row is ready only from macOS full Xcode, iOS simulator or device, app-written feature-set/command queue/compute pipeline/command buffer/readback counters, mobile package smoke, environment_platform_ios_metal_ready=1, and environment_platform_requires_ios_metal_host_evidence=0; environment_platform_readiness_ready=0 and environment_all_platform_unconditional_ready=0 remain unpromoted until Linux Vulkan and Android Vulkan are also ready."
       },
       {
         "id": "environment_platform_android_vulkan",
@@ -7305,6 +7456,87 @@
         "blockerReason": "none for selected deterministic artist-control counters; complete physical weather simulation readiness remains unsupported until GPU/backend solver evidence, retained profiler artifacts, production solver readiness, and complete artist workflow land.",
         "forbiddenInference": "complete physical weather simulation remains unsupported; selected artist-control counters do not prove raw solver internal access, GPU/backend execution, retained profiler artifacts, production solver readiness, visible editor workflow, package/content mutation, complete artist workflow, backend parity, broad optimization, commercial readiness, broad physical accuracy, visual quality, or broad environment_ready.",
         "notes": "Phase 10 slice 6 adds selected deterministic artist-facing control counters that author CPU preview initial conditions and forcing without exposing raw unstable solver internals or promoting environment_physical_weather_simulation_ready."
+      },
+      {
+        "id": "environment_weather_simulation_physical_closeout",
+        "claimId": "environment_physical_weather_simulation_ready",
+        "state": "ready",
+        "model": "Task 10 closeout over coupled CPU reference and D3D12, strict Vulkan, and Metal weather solver rows",
+        "runtimeTarget": "MK_environment plus RHI weather solver test targets",
+        "determinism": "deterministic",
+        "validationRecipeIds": [
+          "environment-physical-weather-simulation-closeout",
+          "agent-contract"
+        ],
+        "stateVariables": [
+          "wind_velocity",
+          "humidity",
+          "temperature",
+          "pressure",
+          "water_vapor",
+          "cloud_water",
+          "rain_water",
+          "snow_mass",
+          "ground_wetness",
+          "snow_accumulation",
+          "fog_density",
+          "visibility",
+          "light_extinction",
+          "backend_parity_ready",
+          "production_solver_ready",
+          "physical_weather_ready"
+        ],
+        "stabilityConstraints": [
+          "EnvironmentPhysicalWeatherSimulationCloseoutDesc requires a ready CPU reference solver and non-zero normalized output hash",
+          "all 13 coupled physical field evidence rows must be present and package-visible",
+          "at least 12 canonical validation dataset rows must carry synthetic_first_party, CF-netCDF, or GRIB provenance plus license, redistribution, and hash evidence",
+          "at least 12 canonical validation image rows must be present",
+          "D3D12, Vulkan, and Metal backend solver rows must each be host-validated with compute dispatch, synchronization, readback, and the same normalized output hash as CPU",
+          "mass conservation relative error must be <= 0.005 and energy/stability error must be <= 0.010",
+          "negative density cells, NaN/Inf cells, solver budget overages, visual regression failures, backend inference, and native-handle access must all be zero",
+          "the closeout must keep broad environment_ready and environment_commercial_ready at 0"
+        ],
+        "validatedEvidence": [
+          "EnvironmentPhysicalWeatherCoupledFieldKind",
+          "EnvironmentPhysicalWeatherValidationDatasetRow",
+          "EnvironmentPhysicalWeatherBackendSolverRow",
+          "EnvironmentPhysicalWeatherSimulationCloseoutDesc",
+          "EnvironmentPhysicalWeatherSimulationCloseoutResult",
+          "evaluate_environment_physical_weather_simulation_closeout",
+          "has_environment_physical_weather_closeout_diagnostic",
+          "tools/validate-environment-weather-physics.ps1",
+          "MK_environment_weather_simulation_tests",
+          "MK_d3d12_environment_weather_solver_tests",
+          "MK_vulkan_environment_weather_solver_tests",
+          "MK_metal_environment_weather_solver_tests",
+          "environment_physical_weather_simulation_ready=1",
+          "environment_weather_simulation_cpu_reference_solver_ready=1",
+          "environment_weather_simulation_production_solver_ready=1",
+          "environment_weather_simulation_backend_parity_ready=1",
+          "environment_weather_simulation_physical_weather_ready=1",
+          "environment_weather_simulation_d3d12_gpu_solver_ready=1",
+          "environment_weather_simulation_vulkan_gpu_solver_ready=1",
+          "environment_weather_simulation_metal_gpu_solver_ready=1",
+          "environment_weather_simulation_coupled_field_rows=13",
+          "environment_weather_simulation_canonical_dataset_rows=12",
+          "environment_weather_simulation_dataset_provenance_rows=12",
+          "environment_weather_simulation_cf_netcdf_or_grib_or_synthetic_rows=12",
+          "environment_weather_simulation_canonical_image_rows=12",
+          "environment_weather_simulation_backend_solver_rows=3",
+          "environment_weather_simulation_mass_conservation_relative_error_max=0.001",
+          "environment_weather_simulation_energy_or_stability_error_max=0.002",
+          "environment_weather_simulation_solver_budget_overages=0",
+          "environment_weather_simulation_visual_regression_failures=0",
+          "environment_weather_simulation_validation_failures=0",
+          "environment_weather_simulation_backend_inference=0",
+          "environment_weather_simulation_native_handle_access=0",
+          "environment_ready=0",
+          "environment_commercial_ready=0"
+        ],
+        "packageVisibility": "environment-physical-weather-simulation-closeout emits a package-visible ready line for the complete physical weather simulation dependency only; it keeps broad environment_ready and commercial readiness at zero.",
+        "blockerReason": "none for the Task 10 physical weather simulation closeout lane; commercial readiness remains blocked by production artist workflow, all-platform, broad optimization, and final aggregate gates.",
+        "forbiddenInference": "commercial readiness, all-platform readiness, broad optimization readiness, production artist workflow readiness, D3D12-only weather proof, Vulkan-only weather proof, Metal-only weather proof, native backend handle access, or broad environment_ready.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 10 promotes environment_physical_weather_simulation_ready=1 only after the closeout validator proves CPU/D3D12/Vulkan/Metal solver parity, canonical dataset/image evidence, conservation and stability thresholds, zero budget/visual/validation failures, zero backend inference, and zero native-handle access."
       }
     ],
     "environmentArtistWorkflowRows": [
@@ -7598,6 +7830,81 @@
         "blockerReason": "none for the selected package-visible artist workflow closeout; broader commercial readiness remains unsupported by the parent commercial aggregate.",
         "forbiddenInference": "commercial readiness, backend parity, all-platform readiness, complete physical weather simulation, broad optimization, renderer/RHI execution from editor core, package-script execution from editor core, validation-recipe execution from editor core, native handle access, or asset workflows beyond the selected first-party package lane.",
         "notes": "Phase 11 slice 6 promotes environment_artist_workflow_ready for the selected package lane only. MK_editor_environment_tests prove the closeout value model and fail-closed unsafe requests; the package recipe proves environment_artist_workflow_ready=1 from eight package-visible reviewed rows while environment_artist_workflow_commercial_ready stays 0."
+      },
+      {
+        "id": "environment_artist_workflow_production_closeout",
+        "claimId": "environment_artist_workflow_production_ready",
+        "state": "ready",
+        "owner": "MK_editor_core+sample_desktop_runtime_game",
+        "commandIds": [
+          "environment.command.preset.import",
+          "environment.command.source_asset.review",
+          "environment.command.cook.preview",
+          "environment.command.weather_timeline.edit",
+          "environment.command.simulation_parameter.edit",
+          "environment.command.package.preview",
+          "environment.command.validation.remediation",
+          "environment.command.publish.package"
+        ],
+        "requestModes": [
+          "read_only",
+          "review_only",
+          "externally_supplied_evidence",
+          "operator_review",
+          "package_counter_closeout",
+          "production_closeout"
+        ],
+        "revisionSafety": "EnvironmentArtistWorkflowProductionCloseoutDesc consumes reviewed package-visible host-validated workflow evidence plus the selected EnvironmentArtistWorkflowReadyReviewModel; mutation stays on revision-checked command plans, and package execution remains outside editor core.",
+        "reportRows": [
+          "EnvironmentArtistWorkflowProductionRequirementKind",
+          "EnvironmentArtistWorkflowProductionRequirementStatus",
+          "EnvironmentArtistWorkflowProductionRequirementInputRow",
+          "EnvironmentArtistWorkflowProductionCloseoutDesc",
+          "EnvironmentArtistWorkflowProductionRequirementRow",
+          "EnvironmentArtistWorkflowProductionCloseoutModel",
+          "environment_artist_workflow_production_requirement_id",
+          "environment_artist_workflow_production_requirement_status_label",
+          "environment_artist_workflow_production_closeout_status_label",
+          "evaluate_environment_artist_workflow_production_closeout",
+          "make_environment_artist_workflow_production_closeout_ui_model",
+          "environment-artist-workflow-production-closeout",
+          "tools/validate-environment-artist-workflow-production.ps1",
+          "workflow_import_openexr_ready=1",
+          "workflow_import_ktx2_basis_ready=1",
+          "workflow_import_gltf_material_ready=1",
+          "workflow_review_usd_materialx_ocio_ready=1",
+          "workflow_cook_package_ready=1",
+          "workflow_live_preview_d3d12_ready=1",
+          "workflow_live_preview_vulkan_ready=1",
+          "workflow_live_preview_metal_host_ready=1",
+          "workflow_weather_timeline_edit_ready=1",
+          "workflow_preset_batch_apply_ready=1",
+          "workflow_validation_report_ready=1",
+          "workflow_profiler_artifact_review_ready=1",
+          "workflow_undo_redo_revision_safety_ready=1",
+          "workflow_operator_review_ready=1",
+          "environment_artist_workflow_production_requirement_rows=14",
+          "environment_artist_workflow_production_ready_rows=14",
+          "environment_artist_workflow_production_ready=1",
+          "environment_artist_workflow_editor_core_backend_execution=0",
+          "environment_artist_workflow_editor_core_package_script_execution=0",
+          "environment_artist_workflow_editor_core_validation_recipe_execution=0",
+          "environment_artist_workflow_native_handle_access=0",
+          "environment_ready=0",
+          "environment_commercial_ready=0"
+        ],
+        "validationRecipeIds": [
+          "agent-contract",
+          "environment-artist-workflow-production-closeout",
+          "desktop-runtime-sample-game-environment-artist-workflow-package",
+          "environment-asset-pipeline-openexr-ktx-basis-full",
+          "environment-aaa-preset-asset-library-production",
+          "environment-physical-weather-simulation-closeout",
+          "desktop-runtime-sample-game-environment-ready-aggregate"
+        ],
+        "blockerReason": "none for the Task 11 production artist workflow closeout lane; commercial readiness remains blocked by all-platform, broad optimization, and final aggregate gates.",
+        "forbiddenInference": "commercial readiness, all-platform readiness, broad optimization readiness, broad environment_ready, native backend handle access, renderer/RHI execution from editor core, package-script execution from editor core, validation-recipe execution from editor core, or unreviewed content mutation.",
+        "notes": "Environment Highest Commercial Readiness v1 Task 11 promotes environment_artist_workflow_production_ready=1 only after 14 package-visible workflow rows are ready and the validator proves zero editor-core backend/package-script/validation-recipe/native-handle side effects while keeping environment_ready=0 and environment_commercial_ready=0."
       }
     ],
     "environmentCommercialUnsupportedAdjacentClaims": [
@@ -7644,7 +7951,7 @@
         "id": "environment_unreviewed_content_mutation_ready",
         "state": "unsupported",
         "requiredBeforeReadyClaim": [
-          "environment_artist_workflow_ready"
+          "environment_artist_workflow_production_ready"
         ],
         "notes": "Production authoring must use reviewed dry-run/apply rows rather than unreviewed package or content mutation."
       },
