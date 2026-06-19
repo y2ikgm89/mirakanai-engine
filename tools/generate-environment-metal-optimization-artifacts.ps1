@@ -96,7 +96,8 @@ function Write-Utf8NoBomText {
 
     Assert-PathUnderDirectory -Path $Path -Directory $artifactRootFull -Description "Generated Metal optimization text artifact"
     if ($PSCmdlet.ShouldProcess($Path, "Write UTF-8 text artifact")) {
-        [System.IO.File]::WriteAllText($Path, (ConvertTo-LfText $Text), [System.Text.UTF8Encoding]::new($false))
+        $normalizedText = (ConvertTo-LfText $Text).TrimEnd("`n") + "`n"
+        [System.IO.File]::WriteAllText($Path, $normalizedText, [System.Text.UTF8Encoding]::new($false))
     }
 }
 
@@ -352,6 +353,7 @@ $null = Invoke-CapturedTool `
 if (-not (Test-Path -LiteralPath $tocPath -PathType Leaf)) {
     Write-Error "xctrace export did not create the expected TOC artifact: $tocPath"
 }
+Write-Utf8NoBomText -Path $tocPath -Text (Get-Content -LiteralPath $tocPath -Raw)
 
 $templateCounter = ConvertTo-CounterValue -Value $MetalTemplateName
 $generatedRows = 0

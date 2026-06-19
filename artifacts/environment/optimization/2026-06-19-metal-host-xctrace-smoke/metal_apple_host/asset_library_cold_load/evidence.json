@@ -6,7 +6,7 @@
   "profiler_tool_family": "Apple Instruments Metal System Trace",
   "profiler_artifact_path": "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/asset_library_cold_load/xctrace-toc.xml",
   "trace_event_json_path": "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/asset_library_cold_load/trace-events.json",
-  "artifact_hash_sha256": "24b6af18e401a1431f50dfb93892cb4c918344894f93a1c4147b01cb04ab50e6",
+  "artifact_hash_sha256": "7b4ab5a0902e6a74af040105d0a269c1c31910bf516ab25db9ededa018ca47c2",
   "smoke_log_source": "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/_shared/metal-host-aggregate.log",
   "debug_profiling_log_source": "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/_shared/xctrace-record.log",
   "typeperf_counter_source": "xcrun xctrace Metal System Trace, validate-environment-metal-host-aggregate.ps1, repository optimization counter contract",
