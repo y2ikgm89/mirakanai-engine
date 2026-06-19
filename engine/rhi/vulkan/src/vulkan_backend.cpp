@@ -163,6 +163,7 @@ inline constexpr std::uint32_t vulkan_structure_type_physical_device_vulkan_1_3_
 inline constexpr std::uint32_t vulkan_structure_type_image_create_info = 14;
 inline constexpr std::uint32_t vulkan_structure_type_swapchain_create_info = 1000001000;
 inline constexpr std::uint32_t vulkan_structure_type_present_info = 1000001001;
+inline constexpr std::uint32_t vulkan_structure_type_xcb_surface_create_info = 1000005000;
 inline constexpr std::uint32_t vulkan_structure_type_win32_surface_create_info = 1000009000;
 inline constexpr std::size_t vulkan_physical_device_feature_bool_count = 55;
 inline constexpr std::size_t vulkan_max_physical_device_name_size = 256;
@@ -425,6 +426,14 @@ struct NativeVulkanWin32SurfaceCreateInfo {
     std::uint32_t flags;
     void* instance;
     void* window;
+};
+
+struct NativeVulkanXcbSurfaceCreateInfo {
+    std::uint32_t s_type;
+    const void* next;
+    std::uint32_t flags;
+    void* connection;
+    std::uint32_t window;
 };
 
 struct NativeVulkanSurfaceCapabilities {
@@ -1114,6 +1123,9 @@ using VulkanGetPhysicalDeviceFormatProperties = void(MK_VULKAN_CALL*)(NativeVulk
 using VulkanCreateWin32Surface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
                                                                const NativeVulkanWin32SurfaceCreateInfo*, const void*,
                                                                NativeVulkanSurface*);
+using VulkanCreateXcbSurface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
+                                                             const NativeVulkanXcbSurfaceCreateInfo*, const void*,
+                                                             NativeVulkanSurface*);
 using VulkanDestroySurface = void(MK_VULKAN_CALL*)(NativeVulkanInstance, NativeVulkanSurface, const void*);
 using VulkanGetPhysicalDeviceSurfaceSupport = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanPhysicalDevice, std::uint32_t,
                                                                             NativeVulkanSurface, std::uint32_t*);
@@ -2998,6 +3010,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanGetPhysicalDeviceMemoryProperties get_physical_device_memory_properties{nullptr};
     VulkanGetPhysicalDeviceFormatProperties get_physical_device_format_properties{nullptr};
     VulkanCreateWin32Surface create_win32_surface{nullptr};
+    VulkanCreateXcbSurface create_xcb_surface{nullptr};
     VulkanDestroySurface destroy_surface{nullptr};
     VulkanGetPhysicalDeviceSurfaceCapabilities get_surface_capabilities{nullptr};
     VulkanGetPhysicalDeviceSurfaceFormats get_surface_formats{nullptr};
@@ -8675,6 +8688,7 @@ std::vector<std::string> vulkan_surface_instance_extensions(RhiHostPlatform host
     case RhiHostPlatform::android:
         return {"VK_KHR_surface", "VK_KHR_android_surface"};
     case RhiHostPlatform::linux:
+        return {"VK_KHR_surface", "VK_KHR_xcb_surface"};
     case RhiHostPlatform::macos:
     case RhiHostPlatform::ios:
     case RhiHostPlatform::unknown:
@@ -8698,8 +8712,22 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
         result.diagnostic = "Vulkan surface support probing is unsupported on this host";
         return result;
     }
+    if (host == RhiHostPlatform::linux) {
+        if (surface.platform != SurfacePlatform::xcb || surface.context == 0) {
+            result.diagnostic = "Vulkan XCB surface support probing requires connection and window handles";
+            return result;
+        }
+#if !defined(__linux__)
+        result.diagnostic = "Vulkan XCB surface support probing requires a Linux host";
+        return result;
+#endif
+    }
 
 #if defined(_WIN32)
+    if (host != RhiHostPlatform::windows) {
+        result.diagnostic = "Vulkan surface support probing is unsupported on this host";
+        return result;
+    }
     auto* const window = reinterpret_cast<HWND>(surface.value);
     if (window == nullptr || IsWindow(window) == 0) {
         result.diagnostic = "Vulkan Win32 HWND is invalid";
@@ -8828,6 +8856,137 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
         destroy_instance(instance, nullptr);
     }
     FreeLibrary(library);
+
+    result.probed = true;
+    result.diagnostic = "Vulkan surface support probe ready";
+    return result;
+#elif defined(__linux__)
+    if (surface.value > std::numeric_limits<std::uint32_t>::max()) {
+        result.diagnostic = "Vulkan XCB window token exceeds xcb_window_t range";
+        return result;
+    }
+
+    const auto surface_instance_desc = make_surface_instance_desc(instance_desc, host);
+    result.snapshots = probe_runtime_physical_device_snapshots(loader_desc, surface_instance_desc);
+    if (!result.snapshots.enumerated) {
+        result.diagnostic = result.snapshots.diagnostic;
+        return result;
+    }
+
+    const auto runtime_library = resolve_runtime_library_name(loader_desc, host);
+    void* library = dlopen(runtime_library.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (library == nullptr) {
+        result.diagnostic = "Vulkan runtime library could not be loaded";
+        return result;
+    }
+
+    const auto get_instance_proc_addr = reinterpret_cast<VulkanGetInstanceProcAddr>(
+        dlsym(library, std::string{loader_desc.get_instance_proc_addr_symbol}.c_str()));
+    const auto commands = resolve_runtime_global_commands(get_instance_proc_addr);
+    if (commands.create_instance == nullptr) {
+        dlclose(library);
+        result.diagnostic = "Vulkan vkCreateInstance command is unavailable";
+        return result;
+    }
+
+    const auto extension_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_layers);
+    const auto application_info = make_native_application_info(surface_instance_desc);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
+    NativeVulkanInstance instance = nullptr;
+    const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
+    if (create_result != vulkan_success || instance == nullptr) {
+        dlclose(library);
+        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateInstance failed", create_result);
+        return result;
+    }
+
+    const auto create_xcb_surface =
+        reinterpret_cast<VulkanCreateXcbSurface>(get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR"));
+    const auto destroy_surface =
+        reinterpret_cast<VulkanDestroySurface>(get_instance_proc_addr(instance, "vkDestroySurfaceKHR"));
+    const auto get_surface_support = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceSupport>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
+    const auto enumerate_physical_devices = reinterpret_cast<VulkanEnumeratePhysicalDevices>(
+        get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices"));
+    const auto get_queue_family_properties = reinterpret_cast<VulkanGetPhysicalDeviceQueueFamilyProperties>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
+    const auto enumerate_device_extension_properties = reinterpret_cast<VulkanEnumerateDeviceExtensionProperties>(
+        get_instance_proc_addr(instance, "vkEnumerateDeviceExtensionProperties"));
+    const auto get_physical_device_features2 = reinterpret_cast<VulkanGetPhysicalDeviceFeatures2>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceFeatures2"));
+    const auto get_physical_device_properties2 = reinterpret_cast<VulkanGetPhysicalDeviceProperties2>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceProperties2"));
+    const auto destroy_instance =
+        reinterpret_cast<VulkanDestroyInstance>(get_instance_proc_addr(instance, "vkDestroyInstance"));
+    if (create_xcb_surface == nullptr || destroy_surface == nullptr || get_surface_support == nullptr ||
+        enumerate_physical_devices == nullptr || get_queue_family_properties == nullptr ||
+        enumerate_device_extension_properties == nullptr || get_physical_device_features2 == nullptr ||
+        get_physical_device_properties2 == nullptr) {
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic = "Vulkan surface support commands are unavailable";
+        return result;
+    }
+
+    NativeVulkanSurface native_surface = 0;
+    const auto surface_create_info = NativeVulkanXcbSurfaceCreateInfo{
+        .s_type = vulkan_structure_type_xcb_surface_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .connection = reinterpret_cast<void*>(surface.context),
+        .window = static_cast<std::uint32_t>(surface.value),
+    };
+    const auto surface_create_result = create_xcb_surface(instance, &surface_create_info, nullptr, &native_surface);
+    if (surface_create_result != vulkan_success || native_surface == 0) {
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateXcbSurfaceKHR failed", surface_create_result);
+        return result;
+    }
+    result.surface_created = true;
+
+    std::uint32_t physical_device_count = result.snapshots.count_probe.physical_device_count;
+    std::vector<NativeVulkanPhysicalDevice> physical_devices(physical_device_count);
+    const auto enumerate_result = enumerate_physical_devices(instance, &physical_device_count, physical_devices.data());
+    if (!is_successful_enumeration_result(enumerate_result)) {
+        destroy_surface(instance, native_surface, nullptr);
+        result.surface_destroyed = true;
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic =
+            vulkan_result_diagnostic("Vulkan physical device handle enumeration failed", enumerate_result);
+        return result;
+    }
+    physical_devices.resize(physical_device_count);
+    refresh_surface_probe_queue_family_snapshots(result.snapshots, physical_devices, get_physical_device_properties2,
+                                                 get_queue_family_properties, enumerate_device_extension_properties,
+                                                 get_physical_device_features2);
+
+    const auto device_count = std::min(result.snapshots.devices.size(), physical_devices.size());
+    for (std::size_t device_index = 0; device_index < device_count; ++device_index) {
+        for (auto& queue_family : result.snapshots.devices[device_index].queue_families) {
+            std::uint32_t supported = 0;
+            const auto support_result =
+                get_surface_support(physical_devices[device_index], queue_family.index, native_surface, &supported);
+            queue_family.supports_present = support_result == vulkan_success && supported != 0U;
+        }
+    }
+
+    destroy_surface(instance, native_surface, nullptr);
+    result.surface_destroyed = true;
+    if (destroy_instance != nullptr) {
+        destroy_instance(instance, nullptr);
+    }
+    dlclose(library);
 
     result.probed = true;
     result.diagnostic = "Vulkan surface support probe ready";
@@ -9332,12 +9491,16 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
 
     const auto destroy_instance =
         reinterpret_cast<VulkanDestroyInstance>(get_instance_proc_addr(instance, "vkDestroyInstance"));
-    const auto create_win32_surface =
-        reinterpret_cast<VulkanCreateWin32Surface>(get_instance_proc_addr(instance, "vkCreateWin32SurfaceKHR"));
+    const auto create_xcb_surface =
+        reinterpret_cast<VulkanCreateXcbSurface>(get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR"));
     const auto destroy_surface =
         reinterpret_cast<VulkanDestroySurface>(get_instance_proc_addr(instance, "vkDestroySurfaceKHR"));
     const auto get_surface_capabilities = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceCapabilities>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
+    const auto get_surface_formats = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceFormats>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
+    const auto get_surface_present_modes = reinterpret_cast<VulkanGetPhysicalDeviceSurfacePresentModes>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
     const auto get_physical_device_memory_properties = reinterpret_cast<VulkanGetPhysicalDeviceMemoryProperties>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceMemoryProperties"));
     const auto get_physical_device_format_properties = reinterpret_cast<VulkanGetPhysicalDeviceFormatProperties>(
@@ -9354,6 +9517,14 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         }
         dlclose(library);
         result.diagnostic = "Vulkan logical device instance commands are unavailable";
+        return result;
+    }
+    if (surface.value != 0 &&
+        (create_xcb_surface == nullptr || destroy_surface == nullptr || get_surface_capabilities == nullptr ||
+         get_surface_formats == nullptr || get_surface_present_modes == nullptr)) {
+        destroy_instance(instance, nullptr);
+        dlclose(library);
+        result.diagnostic = "Vulkan surface query instance commands are unavailable";
         return result;
     }
 
@@ -9593,9 +9764,11 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_instance = destroy_instance;
     impl->get_physical_device_memory_properties = get_physical_device_memory_properties;
     impl->get_physical_device_format_properties = get_physical_device_format_properties;
-    impl->create_win32_surface = create_win32_surface;
+    impl->create_xcb_surface = create_xcb_surface;
     impl->destroy_surface = destroy_surface;
     impl->get_surface_capabilities = get_surface_capabilities;
+    impl->get_surface_formats = get_surface_formats;
+    impl->get_surface_present_modes = get_surface_present_modes;
     impl->destroy_device = destroy_device;
     impl->device_wait_idle = device_wait_idle;
     impl->create_command_pool = create_command_pool;

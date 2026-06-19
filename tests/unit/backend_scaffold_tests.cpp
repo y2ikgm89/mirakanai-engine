@@ -1921,6 +1921,8 @@ MK_TEST("vulkan surface support probe plans platform extensions and rejects empt
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::windows);
     const auto android_extensions =
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::android);
+    const auto linux_extensions =
+        mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::linux);
     const auto macos_extensions =
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::macos);
 
@@ -1930,12 +1932,35 @@ MK_TEST("vulkan surface support probe plans platform extensions and rejects empt
     MK_REQUIRE(android_extensions.size() == 2);
     MK_REQUIRE(android_extensions[0] == "VK_KHR_surface");
     MK_REQUIRE(android_extensions[1] == "VK_KHR_android_surface");
+    MK_REQUIRE(linux_extensions.size() == 2);
+    MK_REQUIRE(linux_extensions[0] == "VK_KHR_surface");
+    MK_REQUIRE(linux_extensions[1] == "VK_KHR_xcb_surface");
     MK_REQUIRE(macos_extensions.empty());
+
+    const auto xcb_surface = mirakana::rhi::SurfaceHandle{
+        .value = 0x1002003U,
+        .context = 0x2003004U,
+        .platform = mirakana::rhi::SurfacePlatform::xcb,
+    };
+    MK_REQUIRE(xcb_surface.value == 0x1002003U);
+    MK_REQUIRE(xcb_surface.context == 0x2003004U);
+    MK_REQUIRE(xcb_surface.platform == mirakana::rhi::SurfacePlatform::xcb);
 
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc desc;
     desc.application_name = "GameEngineSurfaceSupportProbe";
     desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
     desc.required_extensions = {};
+
+    const auto missing_xcb_connection = mirakana::rhi::vulkan::probe_runtime_surface_support(
+        mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::RhiHostPlatform::linux}, desc,
+        mirakana::rhi::SurfaceHandle{
+            .value = 0x1002003U,
+            .context = 0U,
+            .platform = mirakana::rhi::SurfacePlatform::xcb,
+        });
+    MK_REQUIRE(!missing_xcb_connection.probed);
+    MK_REQUIRE(missing_xcb_connection.diagnostic ==
+               "Vulkan XCB surface support probing requires connection and window handles");
 
     const auto result = mirakana::rhi::vulkan::probe_runtime_surface_support({}, desc, mirakana::rhi::SurfaceHandle{});
 
