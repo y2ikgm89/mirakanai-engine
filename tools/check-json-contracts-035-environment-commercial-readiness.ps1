@@ -237,7 +237,9 @@ foreach ($needle in @(
         'record_runtime_dynamic_rendering_clear',
         'record_runtime_swapchain_image_readback',
         'present_runtime_swapchain_image',
-        'validation log capture remains fail-closed')) {
+        'VK_EXT_debug_utils',
+        'validation_log_snapshot',
+        'validation_log.clean()')) {
     if (-not $linuxHostContractText.Contains($needle)) {
         Write-Error "engine/runtime_host/src/linux_desktop_host_contract.cpp missing Linux Vulkan package probe needle: $needle"
     }
@@ -248,7 +250,11 @@ foreach ($needle in @(
         'Vulkan XCB swapchain requires connection and window handles',
         'Vulkan XCB surface commands are unavailable',
         'vkCreateXcbSurfaceKHR failed',
-        'SurfacePlatform::xcb')) {
+        'SurfacePlatform::xcb',
+        'VulkanRuntimeValidationLogSnapshot',
+        'vkCreateDebugUtilsMessengerEXT',
+        'vkDestroyDebugUtilsMessengerEXT',
+        'record_runtime_validation_message')) {
     if (-not $vulkanBackendText.Contains($needle)) {
         Write-Error "engine/rhi/vulkan/src/vulkan_backend.cpp missing Linux XCB swapchain owner needle: $needle"
     }
@@ -956,7 +962,7 @@ $expectedEnvironmentPlatformReadinessRows = @(
         id = "environment_platform_linux_vulkan"
         claimId = "environment_platform_linux_vulkan_ready"
         state = "host-gated"
-        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "environment-platform-linux-vulkan-host-gate", "tools/validate-linux-vulkan-runtime-host.ps1", "environment-platform-linux-vulkan-package", "linux-vulkan-runtime-host", "vulkan-strict-linux", "vulkaninfo_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "dxc_spirv_codegen_ready=1", "spirv_val_ready=1", "linux_icd_runtime_ready=1", "first_party_linux_runtime_host_ready=1", "linux_package_script_ready=1", "linux_installed_validator_ready=1", "linux_package_smoke_ready=1", "linux_vulkan_readback_ready=1", "linux_vulkan_validation_log_clean=1", "environment_platform_linux_vulkan_ready=0", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0", "environment_platform_windows_vulkan_inferred=0")
+        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "environment-platform-linux-vulkan-host-gate", "tools/validate-linux-vulkan-runtime-host.ps1", "environment-platform-linux-vulkan-package", "linux-vulkan-runtime-host", "vulkan-strict-linux", "vulkaninfo_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "dxc_spirv_codegen_ready=1", "spirv_val_ready=1", "linux_icd_runtime_ready=1", "first_party_linux_runtime_host_ready=1", "linux_package_script_ready=1", "linux_installed_validator_ready=1", "linux_package_smoke_ready=1", "linux_vulkan_readback_ready=1", "linux_vulkan_validation_log_clean=1", "VK_EXT_debug_utils", "validation_log_snapshot", "environment_platform_linux_vulkan_ready=0", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0", "environment_platform_windows_vulkan_inferred=0")
     },
     @{
         id = "environment_platform_macos_metal"
