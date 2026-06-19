@@ -219,7 +219,9 @@ $macosMetalReady = $xcodebuildReady -and $xcrunMetalReady -and $macosFeatureSetT
     $macosEvidence.ReadbackReady
 $iosMetalReady = $xcodebuildReady -and $iosSdkReady -and $iosSimulatorReady -and
     $iosEvidence.FeatureSetChecked -and $iosEvidence.PackageSmokeReady -and
-    $iosEvidence.CommandQueueReady -and $iosEvidence.PipelineReady -and $iosEvidence.ReadbackReady
+    $iosEvidence.CommandQueueReady -and $iosEvidence.PipelineReady -and
+    $iosEvidence.CommandBufferReady -and $iosEvidence.ReadbackReady
+$metalAggregateReady = $macosMetalReady -and $iosMetalReady
 
 foreach ($counter in @($ExpectedEvidenceCounters)) {
     if (-not [string]::IsNullOrWhiteSpace($counter)) {
@@ -254,18 +256,38 @@ $actualCounters = @(
     "ios_metal_readback_ready=$(ConvertTo-CounterBit $iosEvidence.ReadbackReady)",
     "environment_platform_ios_metal_ready=$(ConvertTo-CounterBit $iosMetalReady)",
     "environment_platform_requires_ios_metal_host_evidence=$(if ($iosMetalReady) { '0' } else { '1' })",
+    "environment_metal_aggregate_status=$(if ($metalAggregateReady) { 'ready' } else { 'host_evidence_required' })",
+    "environment_metal_aggregate_ready=$(ConvertTo-CounterBit $metalAggregateReady)",
+    "environment_metal_aggregate_macos_metal_ready=$(ConvertTo-CounterBit $macosMetalReady)",
+    "environment_metal_aggregate_ios_metal_ready=$(ConvertTo-CounterBit $iosMetalReady)",
+    "environment_metal_aggregate_native_handle_access=0",
+    "environment_metal_aggregate_diagnostics=0",
     "environment_all_platform_unconditional_ready=0",
     "macos_metal_inferred=0",
     "ios_metal_inferred=0",
     "native_handle_access=0"
 )
-Write-Output ([string]::Join(" ", $actualCounters))
+$actualLine = [string]::Join(" ", $actualCounters)
+Write-Output $actualLine
+
+$missingExpectedCounters = @()
+foreach ($counter in @($ExpectedEvidenceCounters)) {
+    if (-not [string]::IsNullOrWhiteSpace($counter) -and -not $actualLine.Contains($counter)) {
+        $missingExpectedCounters += $counter
+    }
+}
+if ($missingExpectedCounters.Count -gt 0) {
+    Write-Error "Apple Metal platform evidence is missing expected actual counters: $($missingExpectedCounters -join ', ')"
+}
 
 if ($RequireReady) {
     if (($Platform -eq "all" -or $Platform -eq "macos") -and -not $macosMetalReady) {
         Write-Error "macOS Metal platform evidence requires macOS with full Xcode, xcrun metal/metallib, Metal feature table/capability evidence, command queue/buffer, render and compute pipelines, texture usage rows, synchronization, and readback evidence."
     }
     if (($Platform -eq "all" -or $Platform -eq "ios") -and -not $iosMetalReady) {
-        Write-Error "iOS Metal platform evidence requires macOS with full Xcode, iOS Simulator SDK/runtime, iOS package smoke, Metal feature-set check, command queue, compute pipeline, and readback evidence."
+        Write-Error "iOS Metal platform evidence requires macOS with full Xcode, iOS Simulator SDK/runtime, iOS package smoke, Metal feature-set check, command queue, compute pipeline, command buffer, and readback evidence."
+    }
+    if ($Platform -eq "all" -and -not $metalAggregateReady) {
+        Write-Error "Apple Metal aggregate evidence requires both macOS Metal and iOS Metal platform evidence before environment_metal_aggregate_ready=1."
     }
 }

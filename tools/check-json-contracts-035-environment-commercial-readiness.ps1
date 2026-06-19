@@ -157,7 +157,7 @@ $expectedEnvironmentPlatformHostRecipes = @(
         Recipe = "environment-platform-ios-metal-package"
         Script = "tools/validate-apple-metal-platform-host.ps1"
         Forbidden = "validation_recipe_skeleton=1"
-        Needles = @("host=macos", "xcode_ios_sdk_ready=1", "ios_simulator_or_device_ready=1", "ios_metal_feature_set_checked=1", "ios_package_smoke_ready=1", "ios_metal_command_queue_ready=1", "ios_metal_pipeline_ready=1", "ios_metal_readback_ready=1", "environment_platform_ios_metal_ready=1", "environment_platform_requires_ios_metal_host_evidence=0", "environment_all_platform_unconditional_ready=0")
+        Needles = @("host=macos", "xcode_ios_sdk_ready=1", "ios_simulator_or_device_ready=1", "ios_metal_feature_set_checked=1", "ios_package_smoke_ready=1", "ios_metal_command_queue_ready=1", "ios_metal_pipeline_ready=1", "ios_metal_command_buffer_ready=1", "ios_metal_readback_ready=1", "environment_platform_ios_metal_ready=1", "environment_platform_requires_ios_metal_host_evidence=0", "environment_all_platform_unconditional_ready=0")
     }
 )
 foreach ($recipeContract in $expectedEnvironmentPlatformHostRecipes) {
@@ -309,7 +309,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_highest_commercial_ready = "unsupported"
     environment_commercial_ready = "unsupported"
     environment_strict_vulkan_aggregate_ready = "host-gated"
-    environment_metal_aggregate_ready = "host-gated"
+    environment_metal_aggregate_ready = "ready"
     environment_vulkan_strict_aggregate_ready = "ready"
     environment_metal_host_aggregate_ready = "ready"
     environment_backend_parity_ready = "ready"
@@ -317,7 +317,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_platform_windows_vulkan_ready = "ready"
     environment_platform_linux_vulkan_ready = "host-gated"
     environment_platform_macos_metal_ready = "ready"
-    environment_platform_ios_metal_ready = "host-gated"
+    environment_platform_ios_metal_ready = "ready"
     environment_platform_android_vulkan_ready = "host-gated"
     environment_platform_readiness_ready = "host-gated"
     environment_all_platform_unconditional_ready = "host-gated"
@@ -389,6 +389,30 @@ if ($null -eq $macosMetalPlatformClaim -or
     -not [string]$macosMetalPlatformClaim.notes.Contains("environment_platform_readiness_ready=0")) {
     Write-Error "engine manifest environment_platform_macos_metal_ready must be ready only through the Apple-host Metal aggregate recipe without all-platform promotion"
 }
+$iosMetalPlatformClaim = $environmentCommercialClaimsById["environment_platform_ios_metal_ready"]
+if ($null -eq $iosMetalPlatformClaim -or
+    [string]$iosMetalPlatformClaim.state -ne "ready" -or
+    @($iosMetalPlatformClaim.validationRecipeIds) -notcontains "environment-platform-ios-metal-package" -or
+    @($iosMetalPlatformClaim.validationRecipeIds) -notcontains "ios-simulator-smoke" -or
+    -not [string]$iosMetalPlatformClaim.requiredEvidence.Contains("environment_platform_ios_metal_ready=1") -or
+    -not [string]$iosMetalPlatformClaim.requiredEvidence.Contains("ios_metal_command_buffer_ready=1") -or
+    -not [string]$iosMetalPlatformClaim.notes.Contains("validate.yml ios-metal") -or
+    -not [string]$iosMetalPlatformClaim.notes.Contains("environment_all_platform_unconditional_ready=0")) {
+    Write-Error "engine manifest environment_platform_ios_metal_ready must be ready only through the Apple-host iOS Metal package validator without all-platform promotion"
+}
+$cleanBreakMetalAggregateClaim = $environmentCommercialClaimsById["environment_metal_aggregate_ready"]
+if ($null -eq $cleanBreakMetalAggregateClaim -or
+    [string]$cleanBreakMetalAggregateClaim.state -ne "ready" -or
+    @($cleanBreakMetalAggregateClaim.dependsOn) -notcontains "environment_metal_host_aggregate_ready" -or
+    @($cleanBreakMetalAggregateClaim.dependsOn) -notcontains "environment_platform_macos_metal_ready" -or
+    @($cleanBreakMetalAggregateClaim.dependsOn) -notcontains "environment_platform_ios_metal_ready" -or
+    -not [string]$cleanBreakMetalAggregateClaim.requiredEvidence.Contains("environment_metal_aggregate_ready=1") -or
+    -not [string]$cleanBreakMetalAggregateClaim.requiredEvidence.Contains("validate.yml macos") -or
+    -not [string]$cleanBreakMetalAggregateClaim.requiredEvidence.Contains("validate.yml ios-metal") -or
+    -not [string]$cleanBreakMetalAggregateClaim.notes.Contains("environment_metal_host_aggregate_ready") -or
+    -not [string]$cleanBreakMetalAggregateClaim.notes.Contains("not a compatibility alias")) {
+    Write-Error "engine manifest environment_metal_aggregate_ready must be ready only from the combined macOS and iOS Metal hosted evidence rows"
+}
 $metalAggregateToolText = Get-Content -LiteralPath (Join-Path $root "tools/validate-environment-metal-host-aggregate.ps1") -Raw
 foreach ($needle in @(
         "environment-platform-macos-metal-evidence:",
@@ -402,6 +426,19 @@ foreach ($needle in @(
         "environment_platform_native_handle_access=0")) {
     if (-not $metalAggregateToolText.Contains($needle)) {
         Write-Error "tools/validate-environment-metal-host-aggregate.ps1 missing macOS Metal platform evidence counter: $needle"
+    }
+}
+$appleMetalPlatformToolText = Get-Content -LiteralPath (Join-Path $root "tools/validate-apple-metal-platform-host.ps1") -Raw
+foreach ($needle in @(
+        '$iosEvidence.CommandBufferReady',
+        '$metalAggregateReady = $macosMetalReady -and $iosMetalReady',
+        'environment_metal_aggregate_ready=$(ConvertTo-CounterBit $metalAggregateReady)',
+        "environment_metal_aggregate_native_handle_access=0",
+        "environment_metal_aggregate_diagnostics=0",
+        '$missingExpectedCounters',
+        'Apple Metal platform evidence is missing expected actual counters')) {
+    if (-not $appleMetalPlatformToolText.Contains($needle)) {
+        Write-Error "tools/validate-apple-metal-platform-host.ps1 missing strict iOS/aggregate evidence guard: $needle"
     }
 }
 $backendParityClaim = $environmentCommercialClaimsById["environment_backend_parity_ready"]
@@ -808,8 +845,8 @@ $expectedEnvironmentPlatformReadinessRows = @(
     @{
         id = "environment_platform_ios_metal"
         claimId = "environment_platform_ios_metal_ready"
-        state = "host-gated"
-        needles = @("Xcode", "simulator", "signing", "macOS desktop Metal", "environment_platform_ios_metal_ready=0")
+        state = "ready"
+        needles = @("Xcode", "simulator", "signing", "tools/validate-apple-metal-platform-host.ps1", "ios_metal_command_buffer_ready=1", "environment_platform_ios_metal_ready=1", "environment_platform_requires_ios_metal_host_evidence=0", "environment_platform_readiness_ready=0")
     },
     @{
         id = "environment_platform_android_vulkan"
@@ -1293,7 +1330,7 @@ foreach ($needle in @("environmentCommercialClaimMatrix", "packageCounter equal 
     }
 }
 $environmentCommercialAggregateGateGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentCommercialAggregateCloseoutGatePhase12
-foreach ($needle in @("EnvironmentCommercialReadinessStatus", "EnvironmentCommercialReadinessRequirementKind", "EnvironmentCommercialReadinessRequirementStatus", "EnvironmentCommercialReadinessRequirementInputRow", "EnvironmentCommercialReadinessDesc", "EnvironmentCommercialReadinessRequirementRow", "EnvironmentCommercialReadinessPlan", "environment_commercial_readiness_status_label", "environment_commercial_readiness_requirement_id", "environment_commercial_readiness_requirement_status_label", "plan_environment_commercial_readiness", "EnvironmentCommercialReadinessV2RowStatus", "EnvironmentCommercialReadinessV2Row", "EnvironmentCommercialReadinessV2Result", "evaluate_environment_commercial_readiness_v2", "MK_environment_commercial_readiness_v2_tests", "16 required rows", "dependency_gated_rows", "environment_highest_commercial_ready=0", "no D3D12-to-Vulkan-or-Metal inference", "no macOS-to-iOS Metal inference", "duplicate required row ids become diagnostics", "license/solver/visible-shell dependency gates", "diagnostics=false", "native_handle_access=false", "desktop-runtime-sample-game-environment-commercial-readiness", "--require-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "--require-environment-commercial-vulkan-evidence", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "environment_commercial_required_rows=14", "environment_commercial_ready_rows=4", "environment_commercial_host_gated_rows=7", "environment_commercial_ready_rows=3", "environment_commercial_ready_rows=2", "environment_commercial_host_gated_rows=5", "environment_commercial_blocked_rows=6", "environment_commercial_blocked_rows=7", "environment_commercial_missing_rows=0", "environment_commercial_package_visible_rows=14", "environment_commercial_validation_guarded_rows=14", "environment_commercial_legal_notice_current_rows=14", "environment_commercial_optional_dependency_legal_records_current=1", "environment_commercial_adjacent_broad_non_claims_declared=1", "environment_commercial_native_handle_access=0", "environment_commercial_broad_environment_ready_claimed=0", "environment_commercial_vulkan_evidence_requested=1", "environment_commercial_strict_vulkan_aggregate_ready=1", "environment_commercial_windows_vulkan_ready=1", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "environment-highest-commercial-readiness-closeout", "tools/validate-environment-highest-commercial-readiness.ps1", "environment_highest_commercial_ready=1", "environment_commercial_required_rows=16", "environment_commercial_ready_rows=16", "environment_host_gated_rows=0", "environment_dependency_gated_rows=0", "environment_unsupported_rows=0", "environment_all_platform_unconditional_ready=1", "environment_optimization_measurement_workload_rows=21", "environment_weather_simulation_backend_parity_ready=1", "workflow_visible_shell_execution_ready=1", "runtime_source_parsing=0", "environment_ready_unchanged=1", "strict Vulkan aggregate", "Metal host aggregate", "physical weather simulation", "broad environment_ready")) {
+foreach ($needle in @("EnvironmentCommercialReadinessStatus", "EnvironmentCommercialReadinessRequirementKind", "EnvironmentCommercialReadinessRequirementStatus", "EnvironmentCommercialReadinessRequirementInputRow", "EnvironmentCommercialReadinessDesc", "EnvironmentCommercialReadinessRequirementRow", "EnvironmentCommercialReadinessPlan", "environment_commercial_readiness_status_label", "environment_commercial_readiness_requirement_id", "environment_commercial_readiness_requirement_status_label", "plan_environment_commercial_readiness", "EnvironmentCommercialReadinessV2RowStatus", "EnvironmentCommercialReadinessV2Row", "EnvironmentCommercialReadinessV2Result", "evaluate_environment_commercial_readiness_v2", "MK_environment_commercial_readiness_v2_tests", "16 required rows", "dependency_gated_rows", "environment_highest_commercial_ready=0", "no D3D12-to-Vulkan-or-Metal inference", "no macOS-to-iOS Metal inference", "no all-platform promotion from backend parity while Linux Vulkan or Android Vulkan rows are missing", "duplicate required row ids become diagnostics", "license/solver/visible-shell dependency gates", "diagnostics=false", "native_handle_access=false", "desktop-runtime-sample-game-environment-commercial-readiness", "--require-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "--require-environment-commercial-vulkan-evidence", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "environment_commercial_required_rows=14", "environment_commercial_ready_rows=4", "environment_commercial_host_gated_rows=7", "environment_commercial_ready_rows=3", "environment_commercial_ready_rows=2", "environment_commercial_host_gated_rows=5", "environment_commercial_blocked_rows=6", "environment_commercial_blocked_rows=7", "environment_commercial_missing_rows=0", "environment_commercial_package_visible_rows=14", "environment_commercial_validation_guarded_rows=14", "environment_commercial_legal_notice_current_rows=14", "environment_commercial_optional_dependency_legal_records_current=1", "environment_commercial_adjacent_broad_non_claims_declared=1", "environment_commercial_native_handle_access=0", "environment_commercial_broad_environment_ready_claimed=0", "environment_commercial_vulkan_evidence_requested=1", "environment_commercial_strict_vulkan_aggregate_ready=1", "environment_commercial_windows_vulkan_ready=1", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "validate.yml ios-metal", "environment_platform_ios_metal_ready", "environment_metal_aggregate_ready", "environment-highest-commercial-readiness-closeout", "tools/validate-environment-highest-commercial-readiness.ps1", "environment_highest_commercial_ready=1", "environment_commercial_required_rows=16", "environment_commercial_ready_rows=16", "environment_host_gated_rows=0", "environment_dependency_gated_rows=0", "environment_unsupported_rows=0", "environment_all_platform_unconditional_ready=1", "environment_optimization_measurement_workload_rows=21", "environment_weather_simulation_backend_parity_ready=1", "workflow_visible_shell_execution_ready=1", "runtime_source_parsing=0", "environment_ready_unchanged=1", "strict Vulkan aggregate", "Metal host aggregate", "physical weather simulation", "broad environment_ready")) {
     if (-not $environmentCommercialAggregateGateGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentCommercialAggregateCloseoutGatePhase12 missing: $needle"
     }

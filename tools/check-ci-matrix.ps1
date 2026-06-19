@@ -838,6 +838,45 @@ Assert-ContainsAll $macosJob @(
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml macos job"
 
+$iosMetalJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "ios-metal" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $iosMetalJob @(
+    "name: iOS Metal Evidence",
+    "needs: changes",
+    "if: needs.changes.outputs.macos == 'true'",
+    "runs-on: macos-26",
+    "timeout-minutes: 30",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "xcodebuild -version",
+    "xcode-select -p",
+    "xcrun --sdk iphonesimulator --show-sdk-path",
+    "xcrun simctl list runtimes",
+    "./tools/check-mobile-packaging.ps1 -RequireApple",
+    "Validate iOS Metal platform evidence",
+    "./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters `$expected",
+    "validation_recipe=environment-platform-ios-metal-package",
+    "host=macos",
+    "xcode_ios_sdk_ready=1",
+    "ios_simulator_or_device_ready=1",
+    "ios_metal_feature_set_checked=1",
+    "ios_package_smoke_ready=1",
+    "ios_metal_command_queue_ready=1",
+    "ios_metal_pipeline_ready=1",
+    "ios_metal_command_buffer_ready=1",
+    "ios_metal_readback_ready=1",
+    "environment_platform_ios_metal_ready=1",
+    "environment_platform_requires_ios_metal_host_evidence=0",
+    "environment_all_platform_unconditional_ready=0",
+    'if: ${{ failure() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: ios-metal-evidence-build",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/build/ios-Simulator-sample_headless-Debug/**/*.app",
+    "out/build/ios-Simulator-sample_headless-Debug/**/*.log",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml ios-metal job"
+
 $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "static-analysis" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $staticAnalysisJob @(
     "name: Full Repository Static Analysis",
@@ -903,6 +942,7 @@ Assert-ContainsAll $prGateJob @(
     "- linux-sanitizers",
     "- static-analysis",
     "- macos",
+    "- ios-metal",
     'if: ${{ always() && !cancelled() }}',
     "timeout-minutes: 10",
     'toJson(needs)',
@@ -931,9 +971,11 @@ Assert-ContainsAll $iosWorkflow @(
     "- master",
     '".github/workflows/ios-validate.yml"',
     '"platform/ios/**"',
+    '"tools/apple-host-helpers.ps1"',
     '"tools/build-mobile-apple.ps1"',
     '"tools/check-mobile-packaging.ps1"',
     '"tools/smoke-ios-package.ps1"',
+    '"tools/validate-apple-metal-platform-host.ps1"',
     "permissions:",
     "contents: read",
     "concurrency:",
@@ -953,7 +995,21 @@ Assert-ContainsAll $iosJob @(
     "xcrun --sdk iphonesimulator --show-sdk-path",
     "xcrun simctl list runtimes",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
-    "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
+    "Validate iOS Metal platform evidence",
+    "./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters `$expected",
+    "validation_recipe=environment-platform-ios-metal-package",
+    "host=macos",
+    "xcode_ios_sdk_ready=1",
+    "ios_simulator_or_device_ready=1",
+    "ios_metal_feature_set_checked=1",
+    "ios_package_smoke_ready=1",
+    "ios_metal_command_queue_ready=1",
+    "ios_metal_pipeline_ready=1",
+    "ios_metal_command_buffer_ready=1",
+    "ios_metal_readback_ready=1",
+    "environment_platform_ios_metal_ready=1",
+    "environment_platform_requires_ios_metal_host_evidence=0",
+    "environment_all_platform_unconditional_ready=0",
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: ios-simulator-build",
@@ -973,6 +1029,7 @@ Assert-CheckoutRetryContract -Text $linuxCoverageJob -Label ".github/workflows/v
 Assert-CheckoutRetryContract -Text $sanitizerJob -Label ".github/workflows/validate.yml linux-sanitizers checkout retry"
 Assert-CheckoutRetryContract -Text $staticAnalysisJob -Label ".github/workflows/validate.yml static-analysis checkout retry"
 Assert-CheckoutRetryContract -Text $macosJob -Label ".github/workflows/validate.yml macos checkout retry"
+Assert-CheckoutRetryContract -Text $iosMetalJob -Label ".github/workflows/validate.yml ios-metal checkout retry"
 Assert-CheckoutRetryContract -Text $iosJob -Label ".github/workflows/ios-validate.yml simulator-smoke checkout retry"
 
 Assert-CcacheStatsGuard -Text $linuxJob -Label ".github/workflows/validate.yml linux ccache stats guard"
@@ -991,6 +1048,7 @@ Assert-DoesNotContainText $validateWorkflow "command -v ninja-build" ".github/wo
 Assert-DoesNotContainText $validateWorkflow "brew install ninja ccache" ".github/workflows/validate.yml macOS bootstrap"
 Assert-MatchesText $validateWorkflow "^  static-analysis:\s*$" ".github/workflows/validate.yml static-analysis job id"
 Assert-MatchesText $validateWorkflow "^  macos:\s*$" ".github/workflows/validate.yml macos job id"
+Assert-MatchesText $validateWorkflow "^  ios-metal:\s*$" ".github/workflows/validate.yml ios-metal job id"
 Assert-MatchesText $validateWorkflow "^  pr-gate:\s*$" ".github/workflows/validate.yml pr-gate job id"
 Assert-MatchesText $iosWorkflow "^  simulator-smoke:\s*$" ".github/workflows/ios-validate.yml simulator-smoke job id"
 

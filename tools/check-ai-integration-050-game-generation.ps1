@@ -2129,7 +2129,8 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Needles = @(
             "workflow_dispatch",
             "check-mobile-packaging.ps1 -RequireApple",
-            "smoke-ios-package.ps1 -Game sample_headless -Configuration Debug",
+            "validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady",
+            "ios_metal_command_buffer_ready=1",
             "ios-simulator-build"
         )
     },

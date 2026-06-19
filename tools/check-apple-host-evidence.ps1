@@ -90,6 +90,7 @@ Assert-FileContainsText "tools/smoke-ios-package.ps1" @(
     "ios_metal_evidence",
     "ios_metal_command_queue_ready=1",
     "ios_metal_pipeline_ready=1",
+    "ios_metal_command_buffer_ready=1",
     "ios_metal_readback_ready=1"
 )
 
@@ -98,7 +99,8 @@ Assert-FileContainsText ".github/workflows/ios-validate.yml" @(
     "xcodebuild -version",
     "xcrun --sdk iphonesimulator --show-sdk-path",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
-    "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug"
+    "./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters `$expected",
+    "ios_metal_command_buffer_ready=1"
 )
 
 Assert-FileContainsText ".github/workflows/validate.yml" @(
