@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $root = Get-RepoRoot
+$packageName = "dev.mirakanai.android"
 
 function ConvertTo-CounterBit {
     param([bool]$Value)
@@ -133,18 +134,46 @@ function Test-AndroidDeviceReady {
     return $false
 }
 
-function Test-AndroidDebugValidationLayerReady {
-    param([AllowNull()][string]$Adb)
+function Test-AndroidGpuDebugLayerSettings {
+    param(
+        [AllowNull()][string]$Adb,
+        [Parameter(Mandatory = $true)][string]$PackageName
+    )
 
     if ([string]::IsNullOrWhiteSpace($Adb)) {
-        return $false
+        return [pscustomobject]@{
+            SettingsReady = $false
+            LayerAppInstalled = $false
+            ValidationLayerReady = $false
+        }
     }
     $enabled = Invoke-ToolCapture -FilePath $Adb -Arguments @("shell", "settings", "get", "global", "enable_gpu_debug_layers") -TimeoutSeconds 15
+    $debugApp = Invoke-ToolCapture -FilePath $Adb -Arguments @("shell", "settings", "get", "global", "gpu_debug_app") -TimeoutSeconds 15
+    $layerApp = Invoke-ToolCapture -FilePath $Adb -Arguments @("shell", "settings", "get", "global", "gpu_debug_layer_app") -TimeoutSeconds 15
     $layers = Invoke-ToolCapture -FilePath $Adb -Arguments @("shell", "settings", "get", "global", "gpu_debug_layers") -TimeoutSeconds 15
-    if ($enabled.ExitCode -ne 0 -or $layers.ExitCode -ne 0) {
-        return $false
+    if ($enabled.ExitCode -ne 0 -or $debugApp.ExitCode -ne 0 -or $layerApp.ExitCode -ne 0 -or $layers.ExitCode -ne 0) {
+        return [pscustomobject]@{
+            SettingsReady = $false
+            LayerAppInstalled = $false
+            ValidationLayerReady = $false
+        }
     }
-    return ([string]$enabled.Output).Trim() -eq "1" -and ([string]$layers.Output).Contains("VK_LAYER_KHRONOS_validation")
+    $enabledReady = ([string]$enabled.Output).Trim() -eq "1"
+    $debugAppReady = ([string]$debugApp.Output).Trim() -eq $PackageName
+    $layerAppText = ([string]$layerApp.Output).Trim()
+    $layerAppReady = $layerAppText.StartsWith("com.google.android.gapid.")
+    $validationLayerReady = ([string]$layers.Output).Contains("VK_LAYER_KHRONOS_validation")
+    $layerAppInstalled = $false
+    if ($layerAppReady) {
+        $layerAppPath = Invoke-ToolCapture -FilePath $Adb -Arguments @("shell", "pm", "path", $layerAppText) -TimeoutSeconds 15
+        $layerAppInstalled = $layerAppPath.ExitCode -eq 0 -and ([string]$layerAppPath.Output).Trim().StartsWith("package:")
+    }
+
+    return [pscustomobject]@{
+        SettingsReady = $enabledReady -and $debugAppReady -and $layerAppReady -and $validationLayerReady
+        LayerAppInstalled = $layerAppInstalled
+        ValidationLayerReady = $false
+    }
 }
 
 function Test-AndroidManifestVulkanProfileReady {
@@ -158,14 +187,13 @@ function Test-AndroidManifestVulkanProfileReady {
         $manifest.Contains('android:required="true"')
 }
 
-function Test-AndroidValidationLayerPackaged {
-    $jniLibRoot = Join-Path $root "platform/android/app/src/main/jniLibs"
-    if (-not (Test-Path -LiteralPath $jniLibRoot -PathType Container)) {
+function Test-AndroidGpuDebuggableReady {
+    $gradlePath = Join-Path $root "platform/android/app/build.gradle.kts"
+    if (-not (Test-Path -LiteralPath $gradlePath -PathType Leaf)) {
         return $false
     }
-    $layer = Get-ChildItem -LiteralPath $jniLibRoot -Recurse -File -Filter "libVkLayer_khronos_validation.so" |
-        Select-Object -First 1
-    return $null -ne $layer
+    $gradle = Get-Content -LiteralPath $gradlePath -Raw
+    return $gradle.Contains('getByName("debug")') -and $gradle.Contains("isDebuggable = true")
 }
 
 function Invoke-AndroidPackageSmokeIfRequired {
@@ -178,6 +206,8 @@ function Invoke-AndroidPackageSmokeIfRequired {
         return [pscustomobject]@{
             PackageSmokeReady = $false
             VulkanReadbackReady = $false
+            ValidationLayerEnumerated = $false
+            ValidationLogClean = $false
         }
     }
 
@@ -195,6 +225,8 @@ function Invoke-AndroidPackageSmokeIfRequired {
     return [pscustomobject]@{
         PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android-smoke: ok")
         VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_readback_ready=1")
+        ValidationLayerEnumerated = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_validation_layer_enumerated=1")
+        ValidationLogClean = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_validation_log_clean=1")
     }
 }
 
@@ -210,15 +242,18 @@ $androidSdkReady = -not [string]::IsNullOrWhiteSpace($androidSdk)
 $androidNdkReady = -not [string]::IsNullOrWhiteSpace($androidNdk)
 $adbDeviceReady = Test-AndroidDeviceReady -Adb $adb
 $androidVulkanProfileReady = Test-AndroidManifestVulkanProfileReady
-$androidValidationLayerPackaged = Test-AndroidValidationLayerPackaged
-$debugValidationLayerReady = Test-AndroidDebugValidationLayerReady -Adb $adb
-$validationLayerReady = $androidValidationLayerPackaged -or $debugValidationLayerReady
+$androidGpuDebuggableReady = Test-AndroidGpuDebuggableReady
+$gpuDebugLayerSettings = Test-AndroidGpuDebugLayerSettings -Adb $adb -PackageName $packageName
+$androidGpuDebugLayerSettingsReady = [bool]$gpuDebugLayerSettings.SettingsReady
+$androidGpuDebugLayerAppInstalled = [bool]$gpuDebugLayerSettings.LayerAppInstalled
 
 $preSmokeReady = $androidSdkReady -and $androidNdkReady -and $adbDeviceReady -and $androidVulkanProfileReady -and
-    $androidValidationLayerPackaged -and $validationLayerReady
+    $androidGpuDebuggableReady -and $androidGpuDebugLayerSettingsReady -and $androidGpuDebugLayerAppInstalled
 $smokeEvidence = Invoke-AndroidPackageSmokeIfRequired -ShouldRun:$RequireReady.IsPresent -PrerequisitesReady:$preSmokeReady
 
-$androidVulkanReady = $preSmokeReady -and $smokeEvidence.PackageSmokeReady -and $smokeEvidence.VulkanReadbackReady
+$validationLayerReady = $preSmokeReady -and $smokeEvidence.ValidationLayerEnumerated -and $smokeEvidence.ValidationLogClean
+$androidVulkanReady = $preSmokeReady -and $smokeEvidence.PackageSmokeReady -and $smokeEvidence.VulkanReadbackReady -and
+    $validationLayerReady
 
 foreach ($counter in @($ExpectedEvidenceCounters)) {
     if (-not [string]::IsNullOrWhiteSpace($counter)) {
@@ -233,10 +268,14 @@ $actualCounters = @(
     "host_has_android_ndk=$(ConvertTo-CounterBit $androidNdkReady)",
     "adb_device_or_emulator_ready=$(ConvertTo-CounterBit $adbDeviceReady)",
     "android_vulkan_profile_ready=$(ConvertTo-CounterBit $androidVulkanProfileReady)",
-    "android_validation_layer_packaged=$(ConvertTo-CounterBit $androidValidationLayerPackaged)",
+    "android_gpu_debuggable_ready=$(ConvertTo-CounterBit $androidGpuDebuggableReady)",
+    "android_gpu_debug_layer_settings_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerSettingsReady)",
+    "android_gpu_debug_layer_app_installed=$(ConvertTo-CounterBit $androidGpuDebugLayerAppInstalled)",
     "VK_LAYER_KHRONOS_validation_ready=$(ConvertTo-CounterBit $validationLayerReady)",
     "android_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
     "android_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
+    "android_vulkan_validation_layer_enumerated=$(ConvertTo-CounterBit $smokeEvidence.ValidationLayerEnumerated)",
+    "android_vulkan_validation_log_clean=$(ConvertTo-CounterBit $smokeEvidence.ValidationLogClean)",
     "environment_platform_android_vulkan_ready=$(ConvertTo-CounterBit $androidVulkanReady)",
     "environment_platform_requires_android_vulkan_host_evidence=$(if ($androidVulkanReady) { '0' } else { '1' })",
     "environment_all_platform_unconditional_ready=0",
@@ -244,8 +283,16 @@ $actualCounters = @(
     "linux_vulkan_inferred=0",
     "native_handle_access=0"
 )
-Write-Output ([string]::Join(" ", $actualCounters))
+$actualCounterLine = [string]::Join(" ", $actualCounters)
+Write-Output $actualCounterLine
+
+$missingExpectedCounters = @($ExpectedEvidenceCounters | Where-Object {
+    -not [string]::IsNullOrWhiteSpace($_) -and -not $actualCounterLine.Contains([string]$_)
+})
+if ($missingExpectedCounters.Count -gt 0) {
+    Write-Error "environment-platform-android-vulkan-package is missing expected actual counters: $($missingExpectedCounters -join ', ')"
+}
 
 if ($RequireReady -and -not $androidVulkanReady) {
-    Write-Error "environment-platform-android-vulkan-package requires Android SDK, NDK, adb device/emulator, Vulkan manifest feature declarations, packaged VK_LAYER_KHRONOS_validation, enabled validation layer evidence, package smoke, and Android Vulkan readback evidence."
+    Write-Error "environment-platform-android-vulkan-package requires Android SDK, NDK, adb device/emulator, Vulkan manifest feature declarations, Android debug build instrumentation, AGI GPU debug layer settings, installed AGI layer APK, VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, package smoke, and Android Vulkan readback evidence."
 }
