@@ -308,8 +308,6 @@ $recordArguments = @(
     $MetalTemplateName,
     "--output",
     $tracePath,
-    "--run-name",
-    "environment-metal-host-optimization-artifacts",
     "--no-prompt",
     "--launch",
     "--",
