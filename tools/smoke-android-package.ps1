@@ -8,7 +8,7 @@ param(
     [string]$DeviceSerial = "",
     [switch]$SkipBuild,
     [switch]$StartEmulator,
-[string]$AvdName = "Mirakanai_API36",
+    [string]$AvdName = "Mirakanai_API36",
     [int]$EmulatorPort = 5584,
     [int]$BootTimeoutSeconds = 180
 )
@@ -134,9 +134,48 @@ try {
     Wait-AndroidBoot $DeviceSerial
 
     [void](Invoke-AdbAllowFailure @("-s", $DeviceSerial, "uninstall", $packageName))
+    if ((Invoke-AdbAllowFailure @("-s", $DeviceSerial, "logcat", "-c")) -ne 0) {
+        Write-Error "Android smoke failed to clear logcat output before launch on $DeviceSerial."
+    }
     Invoke-CheckedCommand $adb "-s" $DeviceSerial "install" "-r" $apk
     Invoke-CheckedCommand $adb "-s" $DeviceSerial "shell" "am" "start" "-W" "-n" $activity
     Start-Sleep -Seconds 3
+
+    $mirakanaiLog = @(& $adb "-s" $DeviceSerial "logcat" "-d" "-s" "Mirakanai:I" "*:S")
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Android smoke failed to read Mirakanai logcat output from $DeviceSerial."
+    }
+    $readbackLines = @($mirakanaiLog | Where-Object { ([string]$_).Contains("android_vulkan_readback_ready=") })
+    if ($readbackLines.Count -eq 0) {
+        Write-Error "Android smoke did not find android_vulkan_readback_ready in Mirakanai logcat output."
+    }
+    $validationLayerLines = @($mirakanaiLog | Where-Object {
+        ([string]$_).Contains("android_vulkan_validation_layer_enumerated=")
+    })
+    if ($validationLayerLines.Count -eq 0) {
+        Write-Error "Android smoke did not find android_vulkan_validation_layer_enumerated in Mirakanai logcat output."
+    }
+    foreach ($line in $readbackLines) {
+        Write-Host "android-smoke-log: $line"
+    }
+    if (-not (($readbackLines -join "`n").Contains("android_vulkan_readback_ready=1"))) {
+        Write-Error "Android Vulkan readback smoke did not report android_vulkan_readback_ready=1."
+    }
+    if (-not (($validationLayerLines -join "`n").Contains("android_vulkan_validation_layer_enumerated=1"))) {
+        Write-Error "Android Vulkan smoke did not enumerate VK_LAYER_KHRONOS_validation."
+    }
+
+    $validationIssues = @(& $adb "-s" $DeviceSerial "logcat" "-d" "-v" "brief" "-s" "VALIDATION:W" "*:S" |
+        Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Android smoke failed to read Vulkan VALIDATION logcat output from $DeviceSerial."
+    }
+    if ($validationIssues.Count -gt 0) {
+        foreach ($line in $validationIssues) {
+            Write-Host "android-validation-log: $line"
+        }
+        Write-Error "Android Vulkan validation produced warning or error output."
+    }
 
     $processIds = @(& $adb "-s" $DeviceSerial "shell" "pidof" $packageName)
     if ($processIds.Count -eq 0 -or [string]::IsNullOrWhiteSpace(([string]$processIds[0]).Trim())) {
@@ -146,6 +185,10 @@ try {
     Invoke-CheckedCommand $adb "-s" $DeviceSerial "shell" "am" "force-stop" $packageName
     Write-Host "android-smoke: device=$DeviceSerial"
     Write-Host "android-smoke: apk=$apk"
+    Write-Host "android_vulkan_readback_ready=1"
+    Write-Host "android_vulkan_validation_layer_enumerated=1"
+    Write-Host "android_vulkan_validation_log_clean=1"
+    Write-Host "VK_LAYER_KHRONOS_validation_ready=1"
     Write-Host "android-smoke: ok"
 }
 finally {

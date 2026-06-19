@@ -733,10 +733,14 @@ Assert-EnvironmentPlatformVulkanHostGateDryRun `
         "host_has_android_ndk=1",
         "adb_device_or_emulator_ready=1",
         "android_vulkan_profile_ready=1",
-        "android_validation_layer_packaged=1",
+        "android_gpu_debuggable_ready=1",
+        "android_gpu_debug_layer_settings_ready=1",
+        "android_gpu_debug_layer_app_installed=1",
         "VK_LAYER_KHRONOS_validation_ready=1",
         "android_package_smoke_ready=1",
         "android_vulkan_readback_ready=1",
+        "android_vulkan_validation_layer_enumerated=1",
+        "android_vulkan_validation_log_clean=1",
         "environment_platform_android_vulkan_ready=1",
         "environment_platform_requires_android_vulkan_host_evidence=0") | Out-Null
 Assert-EnvironmentPlatformHostGateDryRun `
