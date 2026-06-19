@@ -350,7 +350,7 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_platform_android_vulkan_ready = "host-gated"
     environment_platform_readiness_ready = "host-gated"
     environment_all_platform_unconditional_ready = "host-gated"
-    environment_broad_optimization_ready = "unsupported"
+    environment_broad_optimization_ready = "ready"
     environment_asset_pipeline_openexr_ktx_basis_ready = "ready"
     environment_asset_pipeline_openexr_ktx_basis_full_ready = "ready"
     environment_aaa_preset_library_ready = "ready"
@@ -524,13 +524,17 @@ if ($null -eq $broadOptimizationClaim -or
     -not [string]$broadOptimizationClaim.requiredEvidence.Contains("zero escaped paths") -or
     -not [string]$broadOptimizationClaim.requiredEvidence.Contains("before/after traces") -or
     -not [string]$broadOptimizationClaim.notes.Contains("tools/validate-environment-optimization-artifacts.ps1") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_missing_artifacts=7") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_workload_rows=14") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_backend_rows=2") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_profiler_artifacts=14") -or
+    [string]$broadOptimizationClaim.state -ne "ready" -or
+    -not [string]$broadOptimizationClaim.notes.Contains("artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/<workload>/") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_missing_artifacts=0") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_workload_rows=21") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_backend_rows=3") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_profiler_artifacts=21") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_trace_event_json=21") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_invalid_hashes=0") -or
     -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_over_budget=0") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_broad_optimization_ready=0")) {
-    Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract plus the fail-closed retained artifact validator without ready promotion"
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_broad_optimization_ready=1")) {
+    Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract plus all 21 retained D3D12, strict Vulkan, and Apple-host Metal artifact rows before ready promotion"
 }
 $environmentOptimizationArtifactToolText = Get-Content -LiteralPath (Join-Path $root "tools/validate-environment-optimization-artifacts.ps1") -Raw
 foreach ($needle in @(
@@ -1413,7 +1417,7 @@ foreach ($sourceSurface in @(
         @{ Path = "tools/validate-android-vulkan-runtime-host.ps1"; Needles = @("enable_gpu_debug_layers", "gpu_debug_layers", "VK_LAYER_KHRONOS_validation", "android.hardware.vulkan.version", "android.hardware.vulkan.level", "android_validation_layer_packaged", "android_package_smoke_ready", "android_vulkan_readback_ready", "environment_platform_android_vulkan_ready", "desktop_vulkan_inferred=0") },
         @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("environment_commercial_readiness_status", "environment_commercial_ready", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested", "environment_artist_workflow_production_ready", "workflow_import_openexr_ready", "workflow_live_preview_vulkan_ready") },
         @{ Path = "tools/validate-environment-metal-host-aggregate.ps1"; Needles = @("environment_backend_parity_metal_evidence_requested=1", "environment_backend_parity_metal_evidence_ready=1", "environment_backend_parity_metal_host=1", "environment_backend_parity_ready=0", "environment_backend_parity_cross_host_aggregate_ready=0", "environment_backend_parity_d3d12_inferred=0", "environment_backend_parity_vulkan_inferred=0", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "environment_commercial_ready_rows=2", "environment_commercial_blocked_rows=7") },
-        @{ Path = "tools/generate-environment-metal-optimization-artifacts.ps1"; Needles = @("validation_recipe=environment-metal-host-optimization-artifact-producer", "xcrun", "xctrace", "Metal System Trace", "validate-environment-metal-host-aggregate.ps1", "validate-environment-optimization-artifacts.ps1", "metal_apple_host", "environment_metal_host_optimization_artifacts_written", "environment_broad_optimization_ready=1", "environment_ready=0", "environment_commercial_ready=0") },
+        @{ Path = "tools/generate-environment-metal-optimization-artifacts.ps1"; Needles = @("validation_recipe=environment-metal-host-optimization-artifact-producer", "xcrun", "xctrace", "Metal System Trace", "validate-environment-metal-host-aggregate.ps1", "validate-environment-optimization-artifacts.ps1", "metal_apple_host", "raw_xctrace_ci_artifact", "environment_metal_host_optimization_artifacts_written", "environment_broad_optimization_ready=1", "environment_ready=0", "environment_commercial_ready=0") },
         @{ Path = ".github/workflows/validate.yml"; Needles = @("Environment Metal aggregate host evidence recipe and optimization artifacts", "generate-environment-metal-optimization-artifacts.ps1", "Upload Metal optimization artifacts", "metal-host-optimization-artifacts") },
         @{ Path = "engine/runtime_rhi/include/mirakana/runtime_rhi/environment_platform_evidence_v2.hpp"; Needles = @("EnvironmentPlatformEvidenceV2RowStatus", "EnvironmentPlatformEvidenceV2PlatformId", "EnvironmentPlatformEvidenceV2Row", "EnvironmentPlatformEvidenceV2Result", "evaluate_environment_platform_evidence_v2", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "linux_package_script_ready", "android_vulkan_readback_ready") },
         @{ Path = "tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp"; Needles = @("windows_vulkan_evidence_does_not_promote_linux_or_android_vulkan", "linux_vulkan_ready_requires_exact_linux_host_gate_and_tool_rows", "android_vulkan_ready_requires_android_device_validation_layer_package_and_readback", "native_handle_or_inferred_platform_rows_keep_ready_false") },

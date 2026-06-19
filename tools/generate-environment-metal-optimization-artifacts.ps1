@@ -420,7 +420,7 @@ foreach ($metric in $metricRows) {
             profiler_tool = "xcrun xctrace"
             profiler_template = $MetalTemplateName
             profiler_artifact = $profilerArtifactRelative
-            raw_xctrace = $tracePathRelative
+            raw_xctrace_ci_artifact = "$taskRootRelative/_shared/metal-system.trace"
             aggregate_log = $aggregateLogRelative
         }
     }

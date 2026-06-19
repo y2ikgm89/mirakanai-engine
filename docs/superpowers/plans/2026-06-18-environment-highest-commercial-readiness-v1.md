@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-16 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, retain Windows D3D12 typeperf optimization artifacts for the seven workload rows, retain strict Vulkan timestamp/validation optimization artifacts for the same seven workload rows, and add the macOS-only Apple `xcrun xctrace` Metal optimization artifact producer/upload lane. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Tasks 14-15 add two backends of the three-backend optimization matrix; Task 16 adds the producer for the missing Metal backend rows without local Windows promotion. Current evidence has 10 ready rows, 5 host-gated rows, 1 unsupported row, 14 retained optimization workload/backend rows, and 7 missing Metal optimization artifacts until the Apple-host producer generates retained-reviewed artifacts. Commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-17 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, retain Windows D3D12 typeperf optimization artifacts, retain strict Vulkan timestamp/validation optimization artifacts, add the macOS-only Apple `xcrun xctrace` Metal optimization artifact producer/upload lane, and retain the PR #692 Apple-host Metal artifact output. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Tasks 14-17 complete the three-backend optimization matrix and promote only `environment_broad_optimization_ready`. Current evidence has 11 ready rows, 5 host-gated rows, 0 unsupported rows, 21 retained optimization workload/backend rows, and 0 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -168,14 +168,14 @@ Official fallback links checked for this plan on 2026-06-18:
 
 ## Current Starting Point
 
-Current repository truth before selecting this plan:
+Repository truth before selecting this plan:
 
 - `docs/superpowers/plans/2026-06-13-environment-commercial-excellence-v1.md` is the active milestone.
 - Selected D3D12 environment aggregate evidence exists.
 - Selected strict Vulkan aggregate evidence exists for the reviewed Windows Vulkan package lane.
 - Selected Apple-host Metal aggregate and macOS Metal platform evidence exist only behind Apple-host recipes.
 - Selected package-visible backend parity is promoted only through the existing backend parity closeout.
-- Linux Vulkan, Android Vulkan, all-platform readiness, broad optimization, external marketplace preset coverage, commercial aggregate readiness, and broad `environment_ready` remain unclaimed. iOS Metal and the clean-break Metal aggregate row are now claimed only through the Apple-host iOS package evidence job plus the existing macOS Metal aggregate job.
+- Linux Vulkan, Android Vulkan, all-platform readiness, broad optimization, external marketplace preset coverage, commercial aggregate readiness, and broad `environment_ready` were unclaimed at plan selection. Later tasks promote iOS Metal, the clean-break Metal aggregate row, and broad optimization only through their exact retained evidence; commercial readiness and broad `environment_ready` remain unclaimed.
 - `unsupportedProductionGaps = []` remains the 1.0 truth. This plan is post-1.0 candidate work and must not rewrite the historical MVP closure.
 
 ## File Ownership Map
@@ -1180,8 +1180,8 @@ Task 12 evidence (2026-06-19):
 - Replaced the final `environment-highest-commercial-readiness-closeout` skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`.
 - The validator builds/runs `MK_environment_commercial_readiness_v2_tests`, reads the 16 clean-break commercial v2 rows from `engine/agent/manifest.json.aiOperableProductionLoop.environmentCommercialClaimMatrix`, consumes `tools/validate-environment-optimization-artifacts.ps1` for retained optimization artifact counters, and requires zero host-gated/dependency-gated/blocked/unsupported/missing/native-handle/diagnostic rows before emitting `environment_highest_commercial_ready=1` or `environment_commercial_ready=1`.
 - Static guards now require `environment_commercial_ready=1` to be paired with `environment_all_platform_unconditional_ready=1`, all six exact platform rows, 21 optimization measurement rows, physical-weather backend parity, visible-shell workflow execution, `runtime_source_parsing=0`, and `environment_ready_unchanged=1`.
-- Current fail-closed evidence after Task 16 producer wiring is: `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=10`, `environment_host_gated_rows=5`, `environment_unsupported_rows=1`, `environment_optimization_measurement_workload_rows=14`, `environment_optimization_measurement_backend_rows=2`, `environment_optimization_measurement_profiler_artifacts=14`, `environment_optimization_measurement_missing_artifacts=7`, and `environment_broad_optimization_ready=0`. The Task 16 producer is intentionally host-gated on Windows and does not change these counters until Apple-host artifacts are generated and retained-reviewed.
-- This closes the final aggregate gate implementation, not the final commercial ready claim. Required remaining evidence is Linux Vulkan, Android Vulkan, strict Vulkan v2 aggregate commercial-row evidence, all-platform readiness, and the remaining 7 retained Metal host optimization profiler/trace/budget artifacts.
+- Current fail-closed evidence after Task 17 artifact retention is: `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=11`, `environment_host_gated_rows=5`, `environment_unsupported_rows=0`, `environment_optimization_measurement_workload_rows=21`, `environment_optimization_measurement_backend_rows=3`, `environment_optimization_measurement_profiler_artifacts=21`, `environment_optimization_measurement_missing_artifacts=0`, and `environment_broad_optimization_ready=1`.
+- This closes the final aggregate gate implementation and the broad optimization dependency row, not the final commercial ready claim. Required remaining evidence is Linux Vulkan, Android Vulkan, strict Vulkan v2 aggregate commercial-row evidence, platform readiness, and all-platform readiness.
 
 ## Task 13: Promote iOS Metal And Clean-Break Metal Aggregate Only From Required Hosted Evidence
 
@@ -1257,6 +1257,29 @@ Task 12 evidence (2026-06-19):
 
 **Task 16 evidence (2026-06-19):** Context7 was queried for `actions/upload-artifact` and the workflow uses the pinned v7 action with explicit path, retention, compression, and `if-no-files-found` behavior. Apple `xctrace` official command-line behavior was checked for Metal System Trace recording and export. The producer keeps local Windows execution host-gated, records no fake artifacts, and requires Apple-host aggregate readiness before the seven Metal workload rows can be generated. This task adds the production path to collect the remaining optimization evidence, but does not promote `environment_broad_optimization_ready`, `environment_commercial_ready`, `environment_all_platform_unconditional_ready`, or broad `environment_ready` by itself.
 
+## Task 17: Retain Apple Host Metal xctrace Artifacts And Promote Broad Optimization Only
+
+**Goal:** Retain the reviewed Apple-host Metal optimization artifacts produced by PR #692 and promote only `environment_broad_optimization_ready` after the full 7 workload x 3 backend retained artifact matrix validates.
+
+**Files:**
+- Add: `artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `docs/superpowers/plans/2026-06-18-environment-highest-commercial-readiness-v1.md`
+- Compose: `engine/agent/manifest.json`
+
+**Steps:**
+- [x] Download the passing PR #692 `metal-host-optimization-artifacts` CI artifact from run `27833247179`.
+- [x] Retain all seven `metal_apple_host` workload rows with `evidence.json`, `trace-events.json`, `xctrace-toc.xml`, and shared `xcrun xctrace` logs and raw-bundle CI artifact provenance under `artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/`.
+- [x] Promote only the `environment_broad_optimization_ready` commercial-claim dependency row after `tools/validate-environment-optimization-artifacts.ps1` reports 21/21 workload/backend rows, 3 backend rows, zero missing artifacts, zero invalid hashes, zero over-budget rows, and `environment_broad_optimization_ready=1`.
+- [x] Keep `environment_commercial_ready`, `environment_all_platform_unconditional_ready`, `environment_platform_readiness_ready`, `environment_strict_vulkan_aggregate_ready`, and broad `environment_ready` fail-closed.
+
+**Task 17 evidence (2026-06-20):** The retained artifact set covers `preset_pack_flythrough`, `storm_precipitation`, `dense_volumetric_fog`, `volumetric_cloud_sunset`, `snowfield_material_weathering`, `weather_simulation_stress`, and `asset_library_cold_load` for the `metal_apple_host` backend. This completes the retained optimization matrix across D3D12, strict Vulkan, and Apple-host Metal, so broad optimization is ready only for that exact measurement contract. Commercial readiness still remains blocked by host-gated Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and unconditional all-platform readiness.
+
 ## Execution Order
 
 Use this PR order:
@@ -1277,8 +1300,9 @@ Use this PR order:
 14. Task 14 D3D12 typeperf optimization artifacts.
 15. Task 15 strict Vulkan timestamp/validation optimization artifacts.
 16. Task 16 Metal host xcrun xctrace optimization artifact producer and upload lane.
+17. Task 17 retained Apple-host Metal xctrace artifacts and broad optimization dependency-row promotion.
 
-Do not merge Task 16 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final broad optimization row remains unready until the uploaded Apple-host artifacts are retained-reviewed and committed.
+Do not merge Task 17 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
 
 ## Validation Evidence
 
@@ -1358,6 +1382,8 @@ Record validation here as each PR lands.
 | 2026-06-19 | Task 16 static contracts and format | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | pass | producer recipe, macOS CI upload lane, manifest recipe, commercial-readiness static guard, agent integration, and text/C++ formatting are synchronized |
 | 2026-06-19 | Task 16 readiness counters | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1`; `git diff --check` | pass | retained D3D12 + strict Vulkan artifacts remain valid after LF normalization with `environment_optimization_measurement_workload_rows=14`, `environment_optimization_measurement_backend_rows=2`, `environment_optimization_measurement_invalid_hashes=0`, `environment_optimization_measurement_missing_artifacts=7`, `environment_broad_optimization_ready=0`; commercial aggregate remains `environment_commercial_ready_rows=10`, `environment_host_gated_rows=5`, `environment_unsupported_rows=1`, and `environment_commercial_ready=0` |
 | 2026-06-19 | Task 16 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple/Metal host checks remain host-gated or diagnostic-only on Windows, broad optimization remains fail-closed at 14/21 workload/backend rows, and commercial readiness remains `10/16` rows |
+| 2026-06-20 | Task 17 retained Metal optimization artifacts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1` | pass | retained D3D12 + strict Vulkan + Apple-host Metal artifacts validate with `environment_optimization_measurement_workload_rows=21`, `environment_optimization_measurement_backend_rows=3`, `environment_optimization_measurement_profiler_artifacts=21`, `environment_optimization_measurement_trace_event_json=21`, `environment_optimization_measurement_missing_artifacts=0`, `environment_optimization_measurement_invalid_hashes=0`, `environment_optimization_measurement_over_budget=0`, and `environment_broad_optimization_ready=1` |
+| 2026-06-20 | Task 17 commercial aggregate counters | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1` | pass | broad optimization is ready, while commercial aggregate remains fail-closed with `environment_commercial_ready=0`; expected remaining blockers are Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
