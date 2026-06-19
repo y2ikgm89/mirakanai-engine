@@ -562,6 +562,86 @@ jobs:
             out/build/ci-linux-clang/Testing/**/*.log
           if-no-files-found: warn
 
+  linux-vulkan:
+    name: Linux Vulkan Evidence
+    needs: changes
+    if: needs.changes.outputs.linux == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install LunarG Vulkan SDK and Lavapipe ICD
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends --no-install-suggests ca-certificates wget
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc >/dev/null
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list http://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends --no-install-suggests vulkan-sdk mesa-vulkan-drivers libvulkan1
+          if [ -f /usr/share/vulkan/icd.d/lvp_icd.x86_64.json ]; then
+            echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+            echo "VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          fi
+          command -v vulkaninfo
+          command -v dxc
+          command -v spirv-val
+          vulkaninfo --summary
+
+      - name: Validate Linux Vulkan host evidence
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out/validation-logs | Out-Null
+          $expected = @(
+            "validation_recipe=environment-platform-linux-vulkan-package",
+            "host=linux",
+            "host_matches=1",
+            "vulkaninfo_ready=1",
+            "VK_LAYER_KHRONOS_validation_ready=1",
+            "dxc_spirv_codegen_ready=1",
+            "spirv_val_ready=1",
+            "linux_icd_runtime_ready=1",
+            "first_party_linux_runtime_host_ready=0",
+            "linux_package_script_ready=0",
+            "linux_installed_validator_ready=0",
+            "environment_platform_linux_vulkan_ready=0",
+            "environment_platform_requires_linux_vulkan_host_evidence=1",
+            "environment_all_platform_unconditional_ready=0"
+          )
+          $failed = $false
+          try {
+            $output = ./tools/validate-linux-vulkan-runtime-host.ps1 -ExpectedEvidenceCounters $expected 2>&1
+          } catch {
+            $output = @($_)
+            $failed = $true
+          }
+          $output | Tee-Object -FilePath out/validation-logs/linux-vulkan-evidence.log
+          if ($failed) {
+            exit 1
+          }
+
+      - name: Upload Linux Vulkan evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-vulkan-evidence
+          retention-days: 14
+          include-hidden-files: false
+          path: |
+            out/validation-logs/linux-vulkan-evidence.log
+          if-no-files-found: error
+
   linux-coverage:
     name: Linux Coverage
     needs: changes
@@ -1000,6 +1080,7 @@ jobs:
       - agent-static
       - windows
       - linux
+      - linux-vulkan
       - windows-cpp23
       - linux-coverage
       - linux-sanitizers

@@ -700,6 +700,50 @@ Assert-ContainsAll $linuxJob @(
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml linux job"
 
+$linuxVulkanJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-vulkan" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $linuxVulkanJob @(
+    "name: Linux Vulkan Evidence",
+    "needs: changes",
+    "if: needs.changes.outputs.linux == 'true'",
+    "runs-on: ubuntu-24.04",
+    "timeout-minutes: 30",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Install LunarG Vulkan SDK and Lavapipe ICD",
+    "https://packages.lunarg.com/lunarg-signing-key-pub.asc",
+    "lunarg-vulkan-noble.list",
+    "vulkan-sdk mesa-vulkan-drivers libvulkan1",
+    "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+    "VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+    "command -v vulkaninfo",
+    "command -v dxc",
+    "command -v spirv-val",
+    "vulkaninfo --summary",
+    "Validate Linux Vulkan host evidence",
+    "./tools/validate-linux-vulkan-runtime-host.ps1 -ExpectedEvidenceCounters `$expected",
+    "validation_recipe=environment-platform-linux-vulkan-package",
+    "host=linux",
+    "host_matches=1",
+    "vulkaninfo_ready=1",
+    "VK_LAYER_KHRONOS_validation_ready=1",
+    "dxc_spirv_codegen_ready=1",
+    "spirv_val_ready=1",
+    "linux_icd_runtime_ready=1",
+    "first_party_linux_runtime_host_ready=0",
+    "linux_package_script_ready=0",
+    "linux_installed_validator_ready=0",
+    "environment_platform_linux_vulkan_ready=0",
+    "environment_platform_requires_linux_vulkan_host_evidence=1",
+    "environment_all_platform_unconditional_ready=0",
+    "out/validation-logs/linux-vulkan-evidence.log",
+    'if: ${{ always() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: linux-vulkan-evidence",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "if-no-files-found: error"
+) ".github/workflows/validate.yml linux-vulkan job"
+
 $linuxCoverageJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-coverage" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $linuxCoverageJob @(
     "name: Linux Coverage",
@@ -940,6 +984,7 @@ Assert-ContainsAll $prGateJob @(
     "- agent-static",
     "- windows",
     "- linux",
+    "- linux-vulkan",
     "- windows-cpp23",
     "- linux-coverage",
     "- linux-sanitizers",
@@ -1031,6 +1076,7 @@ Assert-CheckoutRetryContract -Text $agentStaticJob -Label ".github/workflows/val
 Assert-CheckoutRetryContract -Text $windowsJob -Label ".github/workflows/validate.yml windows checkout retry"
 Assert-CheckoutRetryContract -Text $windowsCpp23Job -Label ".github/workflows/validate.yml windows-cpp23 checkout retry"
 Assert-CheckoutRetryContract -Text $linuxJob -Label ".github/workflows/validate.yml linux checkout retry"
+Assert-CheckoutRetryContract -Text $linuxVulkanJob -Label ".github/workflows/validate.yml linux-vulkan checkout retry"
 Assert-CheckoutRetryContract -Text $linuxCoverageJob -Label ".github/workflows/validate.yml linux-coverage checkout retry"
 Assert-CheckoutRetryContract -Text $sanitizerJob -Label ".github/workflows/validate.yml linux-sanitizers checkout retry"
 Assert-CheckoutRetryContract -Text $staticAnalysisJob -Label ".github/workflows/validate.yml static-analysis checkout retry"
@@ -1048,6 +1094,7 @@ Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/valida
 Assert-MatchesText $validateWorkflow "^  windows-cpp23:\s*$" ".github/workflows/validate.yml windows-cpp23 job id"
 Assert-MatchesText $validateWorkflow "^  agent-static:\s*$" ".github/workflows/validate.yml agent-static job id"
 Assert-MatchesText $validateWorkflow "^  linux:\s*$" ".github/workflows/validate.yml linux job id"
+Assert-MatchesText $validateWorkflow "^  linux-vulkan:\s*$" ".github/workflows/validate.yml linux-vulkan job id"
 Assert-MatchesText $validateWorkflow "^  linux-coverage:\s*$" ".github/workflows/validate.yml linux-coverage job id"
 Assert-MatchesText $validateWorkflow "^  linux-sanitizers:\s*$" ".github/workflows/validate.yml linux-sanitizers job id"
 Assert-DoesNotContainText $validateWorkflow "command -v ninja-build" ".github/workflows/validate.yml command probes"

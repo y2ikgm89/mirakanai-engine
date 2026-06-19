@@ -193,7 +193,21 @@ $actualCounters = @(
     "android_vulkan_inferred=0",
     "native_handle_access=0"
 )
-Write-Output ([string]::Join(" ", $actualCounters))
+$actualCounterLine = [string]::Join(" ", $actualCounters)
+Write-Output $actualCounterLine
+
+$missingExpectedCounters = @()
+foreach ($counter in @($ExpectedEvidenceCounters)) {
+    if ([string]::IsNullOrWhiteSpace($counter)) {
+        continue
+    }
+    if (-not $actualCounterLine.Contains($counter)) {
+        $missingExpectedCounters += $counter
+    }
+}
+if ($missingExpectedCounters.Count -gt 0) {
+    Write-Error "environment-platform-linux-vulkan-package is missing expected actual counters: $($missingExpectedCounters -join ', ')"
+}
 
 if ($RequireReady -and -not $linuxVulkanReady) {
     Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, and installed validator evidence."

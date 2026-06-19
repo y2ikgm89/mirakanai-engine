@@ -6125,13 +6125,17 @@
         "packageSmoke": "Future Linux desktop/runtime host package smoke with strict Vulkan renderer execution plus --require-environment-platform-readiness; current Win32 desktop runtime package smoke is forbidden as Linux evidence",
         "packageCounters": [
           "host=linux",
+          "host_matches=1",
           "vulkaninfo_ready=1",
           "VK_LAYER_KHRONOS_validation_ready=1",
           "dxc_spirv_codegen_ready=1",
           "spirv_val_ready=1",
           "linux_icd_runtime_ready=1",
+          "first_party_linux_runtime_host_ready=0",
           "first_party_linux_runtime_host_ready=1",
+          "linux_package_script_ready=0",
           "linux_package_script_ready=1",
+          "linux_installed_validator_ready=0",
           "linux_installed_validator_ready=1",
           "environment_platform_linux_vulkan_ready=0",
           "environment_platform_linux_vulkan_ready=1",
@@ -6143,7 +6147,7 @@
         "hostGate": "linux-vulkan-runtime-host",
         "blockerReason": "Requires a first-party Linux desktop/runtime host, Linux package recipe, Linux Vulkan SDK, Linux Vulkan ICD/runtime/driver, validation layers, SPIR-V validation, strict package smoke, and readback counters; Windows Vulkan and Win32 package evidence are forbidden.",
         "forbiddenInference": "Windows Vulkan evidence, desktop D3D12 evidence, Android Vulkan evidence, or Linux compile-only evidence.",
-        "notes": "Task 4 routes Linux Vulkan through tools/validate-linux-vulkan-runtime-host.ps1 and the environment-platform-linux-vulkan-package recipe. Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
+        "notes": "Task 4 routes Linux Vulkan through tools/validate-linux-vulkan-runtime-host.ps1 and the environment-platform-linux-vulkan-package recipe. Task 14 adds validate.yml linux-vulkan hosted diagnostics for official LunarG SDK, Lavapipe ICD, vulkaninfo --summary, DXC SPIR-V, and spirv-val, but it intentionally expects first_party_linux_runtime_host_ready=0, linux_package_script_ready=0, linux_installed_validator_ready=0, and environment_platform_linux_vulkan_ready=0 until the first-party Linux runtime host/package/readback lane exists. Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
       },
       {
         "id": "environment_platform_macos_metal",

@@ -38,23 +38,47 @@ function Get-ToolRootVariants($base) {
         (Join-Path $base "apple/bin"),
         (Join-Path $base "tools/directx-dxc"),
         (Join-Path $base "tools/spirv-tools"),
+        (Join-Path $base "tools/vulkan-tools"),
         (Join-Path $base "directx-dxc"),
-        (Join-Path $base "spirv-tools")
+        (Join-Path $base "spirv-tools"),
+        (Join-Path $base "vulkan-tools")
     )
 }
 
 function Get-VcpkgToolRoots {
     $roots = @()
+    $triplets = @()
+    $defaultTriplet = Get-VcpkgDefaultTriplet
+    if (-not [string]::IsNullOrWhiteSpace($defaultTriplet)) {
+        $triplets += $defaultTriplet
+    }
+    foreach ($name in @("VCPKG_DEFAULT_TRIPLET", "VCPKG_TARGET_TRIPLET")) {
+        $value = Get-EnvironmentVariableAnyScope $name
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            $triplets += $value
+        }
+    }
+    $triplets += @("x64-windows", "x64-linux", "x64-osx", "arm64-osx")
+    $triplets = @($triplets | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+
+    $installedRoots = @()
     foreach ($name in @("VCPKG_ROOT", "VCPKG_INSTALLATION_ROOT")) {
         $value = Get-EnvironmentVariableAnyScope $name
         if (-not [string]::IsNullOrWhiteSpace($value)) {
-            $roots += Join-Path $value "installed/x64-windows/tools"
+            $installedRoots += Join-Path $value "installed"
         }
     }
 
-    $roots += Join-Path $root "vcpkg_installed/x64-windows/tools"
-    $roots += Join-Path $root "external/vcpkg/installed/x64-windows/tools"
-    return @($roots)
+    $installedRoots += Join-Path $root "vcpkg_installed"
+    $installedRoots += Join-Path $root "external/vcpkg/installed"
+    foreach ($installedRoot in @($installedRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)) {
+        foreach ($triplet in $triplets) {
+            $tripletRoot = Join-Path $installedRoot $triplet
+            $roots += $tripletRoot
+            $roots += Join-Path $tripletRoot "tools"
+        }
+    }
+    return @($roots | Select-Object -Unique)
 }
 
 function Get-ToolCandidates($name) {
@@ -74,7 +98,9 @@ function Get-ToolCandidates($name) {
         (Join-Path $root "external/dxc/bin"),
         (Join-Path $root "external/vulkan/bin"),
         (Join-Path $root "external/apple/bin"),
+        (Join-IfEnvSet "VULKAN_SDK" "bin"),
         (Join-IfEnvSet "VULKAN_SDK" "Bin"),
+        (Join-IfEnvSet "VK_SDK_PATH" "bin"),
         (Join-IfEnvSet "VK_SDK_PATH" "Bin")
     )
     $searchRoots += Get-ToolRootVariants (Get-EnvironmentVariableAnyScope "MK_SHADER_TOOLCHAIN_ROOT")
