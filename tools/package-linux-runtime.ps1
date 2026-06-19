@@ -78,6 +78,7 @@ Invoke-CheckedCommand $tools.CMake `
     "-DMK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE=$dxcTool" `
     "-DMK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE=$spirvValTool"
 Invoke-CheckedCommand $tools.CMake --build --preset linux-vulkan-runtime-release --target MK_linux_vulkan_runtime_package_build --parallel $jobsToUse
+Invoke-CheckedCommand $tools.CMake --build --preset linux-vulkan-runtime-release --target MK_vulkan_environment_weather_solver_tests --parallel $jobsToUse
 Invoke-CheckedCommand $tools.CTest --preset linux-vulkan-runtime-release --output-on-failure -R "MK_linux_vulkan_runtime_probe_tests|linux_vulkan_runtime_probe_smoke|MK_vulkan_environment_weather_solver_tests"
 
 $buildDir = Join-Path $root "out/build/linux-vulkan-runtime-release"
