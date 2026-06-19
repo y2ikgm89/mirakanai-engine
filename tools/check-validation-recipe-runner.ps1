@@ -724,6 +724,7 @@ Assert-EnvironmentPlatformHostGateDryRun `
         "ios_package_smoke_ready=1",
         "ios_metal_command_queue_ready=1",
         "ios_metal_pipeline_ready=1",
+        "ios_metal_command_buffer_ready=1",
         "ios_metal_readback_ready=1",
         "environment_platform_ios_metal_ready=1",
         "environment_platform_requires_ios_metal_host_evidence=0") | Out-Null

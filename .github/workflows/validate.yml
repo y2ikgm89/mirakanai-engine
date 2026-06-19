@@ -925,6 +925,69 @@ jobs:
           path: out/build/ci-macos-appleclang/Testing/**/*.log
           if-no-files-found: warn
 
+  ios-metal:
+    name: iOS Metal Evidence
+    needs: changes
+    if: needs.changes.outputs.macos == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Show Xcode environment
+        run: |
+          xcodebuild -version
+          xcode-select -p
+          xcrun --sdk iphonesimulator --show-sdk-path
+          xcrun simctl list runtimes
+
+      - name: Mobile packaging diagnostics
+        shell: pwsh
+        run: ./tools/check-mobile-packaging.ps1 -RequireApple
+
+      - name: Validate iOS Metal platform evidence
+        shell: pwsh
+        run: |
+          $expected = @(
+            "validation_recipe=environment-platform-ios-metal-package",
+            "host=macos",
+            "xcode_ios_sdk_ready=1",
+            "ios_simulator_or_device_ready=1",
+            "ios_metal_feature_set_checked=1",
+            "ios_package_smoke_ready=1",
+            "ios_metal_command_queue_ready=1",
+            "ios_metal_pipeline_ready=1",
+            "ios_metal_command_buffer_ready=1",
+            "ios_metal_readback_ready=1",
+            "environment_platform_ios_metal_ready=1",
+            "environment_platform_requires_ios_metal_host_evidence=0",
+            "environment_all_platform_unconditional_ready=0"
+          )
+          ./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters $expected
+
+      - name: Upload iOS build output
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-metal-evidence-build
+          retention-days: 14
+          include-hidden-files: false
+          path: |
+            out/build/ios-Simulator-sample_headless-Debug/**/*.app
+            out/build/ios-Simulator-sample_headless-Debug/**/*.log
+          if-no-files-found: warn
+
   pr-gate:
     name: PR Gate
     needs:
@@ -937,6 +1000,7 @@ jobs:
       - linux-sanitizers
       - static-analysis
       - macos
+      - ios-metal
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

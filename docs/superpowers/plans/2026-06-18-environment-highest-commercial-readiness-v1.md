@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-12 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, and replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`. Task 12 adds the final fail-closed gate but does not promote commercial readiness yet: current evidence still has 8 ready rows, 7 host-gated rows, 1 unsupported row, and 21 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-13 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, and add required `validate.yml ios-metal` evidence for iOS Metal. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; current evidence still has 10 ready rows, 5 host-gated rows, 1 unsupported row, and 21 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -175,7 +175,7 @@ Current repository truth before selecting this plan:
 - Selected strict Vulkan aggregate evidence exists for the reviewed Windows Vulkan package lane.
 - Selected Apple-host Metal aggregate and macOS Metal platform evidence exist only behind Apple-host recipes.
 - Selected package-visible backend parity is promoted only through the existing backend parity closeout.
-- Linux Vulkan, iOS Metal, Android Vulkan, all-platform readiness, broad optimization, external marketplace preset coverage, complete production artist workflow, commercial aggregate readiness, and broad `environment_ready` remain unclaimed.
+- Linux Vulkan, Android Vulkan, all-platform readiness, broad optimization, external marketplace preset coverage, commercial aggregate readiness, and broad `environment_ready` remain unclaimed. iOS Metal and the clean-break Metal aggregate row are now claimed only through the Apple-host iOS package evidence job plus the existing macOS Metal aggregate job.
 - `unsupportedProductionGaps = []` remains the 1.0 truth. This plan is post-1.0 candidate work and must not rewrite the historical MVP closure.
 
 ## File Ownership Map
@@ -613,6 +613,7 @@ ios_metal_feature_set_checked=1
 ios_package_smoke_ready=1
 ios_metal_command_queue_ready=1
 ios_metal_pipeline_ready=1
+ios_metal_command_buffer_ready=1
 ios_metal_readback_ready=1
 environment_platform_ios_metal_ready=1
 ```
@@ -1179,8 +1180,34 @@ Task 12 evidence (2026-06-19):
 - Replaced the final `environment-highest-commercial-readiness-closeout` skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`.
 - The validator builds/runs `MK_environment_commercial_readiness_v2_tests`, reads the 16 clean-break commercial v2 rows from `engine/agent/manifest.json.aiOperableProductionLoop.environmentCommercialClaimMatrix`, consumes `tools/validate-environment-optimization-artifacts.ps1` for retained optimization artifact counters, and requires zero host-gated/dependency-gated/blocked/unsupported/missing/native-handle/diagnostic rows before emitting `environment_highest_commercial_ready=1` or `environment_commercial_ready=1`.
 - Static guards now require `environment_commercial_ready=1` to be paired with `environment_all_platform_unconditional_ready=1`, all six exact platform rows, 21 optimization measurement rows, physical-weather backend parity, visible-shell workflow execution, `runtime_source_parsing=0`, and `environment_ready_unchanged=1`.
-- Current local fail-closed evidence is: `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=8`, `environment_host_gated_rows=7`, `environment_unsupported_rows=1`, `environment_optimization_measurement_missing_artifacts=21`, and `environment_broad_optimization_ready=0`.
-- This closes the final aggregate gate implementation, not the final commercial ready claim. Required remaining evidence is Linux Vulkan, Android Vulkan, iOS Metal, strict Vulkan v2 aggregate, Metal v2 aggregate, all-platform readiness, and 21 retained optimization profiler/trace/budget artifacts.
+- Current fail-closed evidence after Task 13 is: `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=10`, `environment_host_gated_rows=5`, `environment_unsupported_rows=1`, `environment_optimization_measurement_missing_artifacts=21`, and `environment_broad_optimization_ready=0`.
+- This closes the final aggregate gate implementation, not the final commercial ready claim. Required remaining evidence is Linux Vulkan, Android Vulkan, strict Vulkan v2 aggregate, all-platform readiness, and 21 retained optimization profiler/trace/budget artifacts.
+
+## Task 13: Promote iOS Metal And Clean-Break Metal Aggregate Only From Required Hosted Evidence
+
+**Files:**
+- Modify: `.github/workflows/validate.yml`
+- Modify: `.github/workflows/ios-validate.yml`
+- Modify: `tools/validate-apple-metal-platform-host.ps1`
+- Modify: `tools/check-ci-matrix.ps1`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Compose: `engine/agent/manifest.json`
+
+**Goal:** Make iOS Metal readiness and the clean-break Metal aggregate row reviewable through required hosted CI evidence, without promoting all-platform, commercial, broad optimization, or broad `environment_ready`.
+
+**Steps:**
+- [x] Add `ios-metal` to `.github/workflows/validate.yml` as a `macos-26` job required by `pr-gate`.
+- [x] Route both `ios-metal` and `ios-validate.yml` through `tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady`.
+- [x] Require `ios_metal_command_buffer_ready=1` in the recipe, manifest, game manifest, and dry-run/static guards.
+- [x] Make `tools/validate-apple-metal-platform-host.ps1` compare `ExpectedEvidenceCounters` against actual output instead of only echoing requested counters.
+- [x] Promote only `environment_platform_ios_metal_ready` and `environment_metal_aggregate_ready` in the clean-break claim matrix.
+
+**Task 13 evidence (2026-06-19):** Context7 was queried for GitHub Actions and GitHub runner images, confirming the official `needs` dependency model, conditional `if` jobs, and the hosted `macos-26` runner label. Official Apple fallback rows were refreshed for Xcode command-line tools, iOS Simulator/device execution, `MTLDevice.makeCommandQueue`, `MTLCommandBuffer`, and command-buffer completion evidence. The validator now gates iOS readiness on app-written feature-set, package smoke, command queue, compute pipeline, command buffer, and readback counters, then fails if any expected counter is absent from the actual output. `validate.yml` now includes the required `ios-metal` job in `pr-gate`, while the separate iOS workflow uses the same validator. This promotes only `environment_platform_ios_metal_ready` and `environment_metal_aggregate_ready`; `environment_commercial_ready`, `environment_all_platform_unconditional_ready`, `environment_broad_optimization_ready`, and broad `environment_ready` remain `0`.
 
 ## Execution Order
 
@@ -1198,8 +1225,9 @@ Use this PR order:
 10. Task 10 physical weather simulation.
 11. Task 11 production artist workflow.
 12. Task 12 commercial aggregate closeout.
+13. Task 13 iOS Metal hosted CI evidence and clean-break Metal aggregate row.
 
-Do not merge Task 12 until every prior PR has hosted evidence or an explicit host-gated blocker row has been removed by evidence.
+Do not merge Task 13 until its hosted `validate.yml ios-metal`, `macos`, and `PR Gate` checks pass for the task-owned PR head SHA.
 
 ## Validation Evidence
 
@@ -1258,6 +1286,10 @@ Record validation here as each PR lands.
 | 2026-06-19 | Task 12 final aggregate recipe dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-highest-commercial-readiness-closeout` | pass | routes through `tools/validate-environment-highest-commercial-readiness.ps1 -RequireReady` with 16 exact dependency rows, all six platform rows, 21 optimization measurement rows, visible-shell workflow evidence, `runtime_source_parsing=0`, and `environment_ready_unchanged=1` |
 | 2026-06-19 | Task 12 validation recipe runner | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
 | 2026-06-19 | Task 12 JSON contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-19 | Task 13 CI matrix contract | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` | pass | `ci-matrix-check: ok`; `validate.yml` now includes required `ios-metal` job in `pr-gate` |
+| 2026-06-19 | Task 13 recipe/static contract | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` | pass | recipe dry-run includes `ios_metal_command_buffer_ready=1`; JSON and AI surfaces are synced; Windows Apple evidence remains host-gated |
+| 2026-06-19 | Task 13 highest commercial fail-closed validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1` | pass | builds/runs `MK_environment_commercial_readiness_v2_tests`; emits `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=10`, `environment_host_gated_rows=5`, `environment_unsupported_rows=1`, `environment_metal_aggregate_ready=1`, `environment_platform_ios_metal_ready=1`, `environment_optimization_measurement_missing_artifacts=21`, and `environment_ready_unchanged=1` |
+| 2026-06-19 | Task 13 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple host checks remain host-gated/diagnostic-only on Windows |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |

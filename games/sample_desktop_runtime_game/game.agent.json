@@ -2259,7 +2259,7 @@
     },
     {
       "name": "environment-platform-ios-metal-package",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters validation_recipe=environment-platform-ios-metal-package host=macos xcode_ios_sdk_ready=1 ios_simulator_or_device_ready=1 ios_metal_feature_set_checked=1 ios_package_smoke_ready=1 ios_metal_command_queue_ready=1 ios_metal_pipeline_ready=1 ios_metal_readback_ready=1 environment_platform_ios_metal_ready=1 environment_platform_requires_ios_metal_host_evidence=0 environment_all_platform_unconditional_ready=0"
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -ExpectedEvidenceCounters validation_recipe=environment-platform-ios-metal-package host=macos xcode_ios_sdk_ready=1 ios_simulator_or_device_ready=1 ios_metal_feature_set_checked=1 ios_package_smoke_ready=1 ios_metal_command_queue_ready=1 ios_metal_pipeline_ready=1 ios_metal_command_buffer_ready=1 ios_metal_readback_ready=1 environment_platform_ios_metal_ready=1 environment_platform_requires_ios_metal_host_evidence=0 environment_all_platform_unconditional_ready=0"
     },
     {
       "name": "environment-backend-parity-v2-closeout",
