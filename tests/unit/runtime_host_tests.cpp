@@ -635,6 +635,47 @@ MK_TEST("linux desktop host contract stays value-only and host gated off linux")
 #endif
 }
 
+MK_TEST("linux desktop vulkan presentation report requires package smoke readback and clean validation log") {
+    const auto missing =
+        mirakana::evaluate_linux_desktop_vulkan_presentation_request(mirakana::LinuxDesktopVulkanPresentationRequest{});
+    MK_REQUIRE(!missing.ready());
+    MK_REQUIRE(missing.status == mirakana::LinuxDesktopVulkanPresentationStatus::host_gated);
+    MK_REQUIRE(!missing.linux_package_smoke_ready);
+    MK_REQUIRE(!missing.linux_vulkan_readback_ready);
+    MK_REQUIRE(!missing.linux_vulkan_validation_log_clean);
+    MK_REQUIRE(!missing.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!missing.native_handle_access);
+
+    auto ready_request = mirakana::LinuxDesktopVulkanPresentationRequest{
+        .linux_host = true,
+        .xcb_window_ready = true,
+        .vulkan_loader_ready = true,
+        .vulkan_xcb_surface_created = true,
+        .surface_support_probed = true,
+        .swapchain_created = true,
+        .frame_acquired = true,
+        .frame_presented = true,
+        .readback_nonzero = true,
+        .validation_log_clean = true,
+    };
+    const auto ready = mirakana::evaluate_linux_desktop_vulkan_presentation_request(ready_request);
+    MK_REQUIRE(ready.ready());
+    MK_REQUIRE(ready.status == mirakana::LinuxDesktopVulkanPresentationStatus::ready);
+    MK_REQUIRE(ready.linux_package_smoke_ready);
+    MK_REQUIRE(ready.linux_vulkan_readback_ready);
+    MK_REQUIRE(ready.linux_vulkan_validation_log_clean);
+    MK_REQUIRE(ready.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!ready.environment_platform_windows_vulkan_inferred);
+    MK_REQUIRE(!ready.native_handle_access);
+
+    ready_request.native_handle_access = true;
+    const auto leaked = mirakana::evaluate_linux_desktop_vulkan_presentation_request(ready_request);
+    MK_REQUIRE(!leaked.ready());
+    MK_REQUIRE(leaked.status == mirakana::LinuxDesktopVulkanPresentationStatus::native_handle_access);
+    MK_REQUIRE(leaked.native_handle_access);
+    MK_REQUIRE(!leaked.environment_platform_linux_vulkan_ready);
+}
+
 int main() {
     return mirakana::test::run_all();
 }

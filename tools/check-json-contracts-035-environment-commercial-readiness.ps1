@@ -181,6 +181,48 @@ foreach ($recipeContract in $expectedEnvironmentPlatformHostRecipes) {
     }
 }
 
+$desktopRuntimeGamesCMakeText = Get-Content -Raw -Path (Join-Path $root "games/CMakeLists.txt")
+foreach ($needle in @(
+        'HOST_BACKEND must be win32 or linux',
+        'HOST_BACKEND linux is only supported on Linux',
+        'MK_runtime_host_linux',
+        'sample_desktop_runtime_game/linux_main.cpp',
+        '--require-linux-vulkan-presentation-smoke',
+        '--require-linux-vulkan-readback',
+        '--require-linux-vulkan-validation-log')) {
+    if (-not $desktopRuntimeGamesCMakeText.Contains($needle)) {
+        Write-Error "games/CMakeLists.txt missing Linux Vulkan presentation package contract needle: $needle"
+    }
+}
+
+$linuxSampleRuntimeMainPath = Join-Path $root "games/sample_desktop_runtime_game/linux_main.cpp"
+if (-not (Test-Path -LiteralPath $linuxSampleRuntimeMainPath -PathType Leaf)) {
+    Write-Error "sample_desktop_runtime_game must provide a Linux-specific runtime package smoke entrypoint: games/sample_desktop_runtime_game/linux_main.cpp"
+} else {
+    $linuxSampleRuntimeMainText = Get-Content -Raw -Path $linuxSampleRuntimeMainPath
+    foreach ($needle in @(
+            'evaluate_linux_desktop_vulkan_presentation_request',
+            'linux_desktop_vulkan_presentation_status_name',
+            '--require-linux-vulkan-presentation-smoke',
+            '--require-linux-vulkan-readback',
+            '--require-linux-vulkan-validation-log',
+            'linux_package_smoke_ready=',
+            'linux_vulkan_readback_ready=',
+            'linux_vulkan_validation_log_clean=',
+            'environment_platform_linux_vulkan_ready=',
+            'environment_platform_windows_vulkan_inferred=0',
+            'VK_LAYER_KHRONOS_validation_ready=',
+            'native_handle_access=0')) {
+        if (-not $linuxSampleRuntimeMainText.Contains($needle)) {
+            Write-Error "games/sample_desktop_runtime_game/linux_main.cpp missing Linux Vulkan presentation package needle: $needle"
+        }
+    }
+    if ($linuxSampleRuntimeMainText.Contains('environment_platform_windows_vulkan_inferred=1') -or
+        $linuxSampleRuntimeMainText.Contains('native_handle_access=1')) {
+        Write-Error "games/sample_desktop_runtime_game/linux_main.cpp must not infer Windows Vulkan readiness or expose native handles"
+    }
+}
+
 $environmentBackendParityV2Recipe = $environmentCommercialValidationRecipesByName["environment-backend-parity-v2-closeout"]
 if ($null -eq $environmentBackendParityV2Recipe) {
     Write-Error "engine manifest validationRecipes missing environment-backend-parity-v2-closeout"
