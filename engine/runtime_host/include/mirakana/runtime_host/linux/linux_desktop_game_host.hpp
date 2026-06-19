@@ -61,6 +61,13 @@ struct LinuxDesktopVulkanPresentationRequest {
     bool native_handle_access{false};
 };
 
+struct LinuxDesktopVulkanPresentationProbeDesc {
+    std::string title{"MIRAIKANAI Linux Vulkan Smoke"};
+    WindowExtent extent{.width = 64, .height = 64};
+    const char* display_name{nullptr};
+    bool execute_runtime_smoke{true};
+};
+
 struct LinuxDesktopHostReadinessReport {
     LinuxDesktopHostStatus status{LinuxDesktopHostStatus::host_gated};
     bool linux_host{false};
@@ -112,6 +119,8 @@ linux_desktop_vulkan_presentation_status_name(LinuxDesktopVulkanPresentationStat
 evaluate_linux_desktop_host_request(const LinuxDesktopHostRequest& request);
 [[nodiscard]] LinuxDesktopVulkanPresentationReport
 evaluate_linux_desktop_vulkan_presentation_request(const LinuxDesktopVulkanPresentationRequest& request);
+[[nodiscard]] LinuxDesktopVulkanPresentationReport
+probe_linux_desktop_vulkan_presentation(const LinuxDesktopVulkanPresentationProbeDesc& desc = {});
 [[nodiscard]] LinuxDesktopHostReadinessReport probe_linux_desktop_host(const LinuxDesktopGameHostDesc& desc = {});
 
 class LinuxXcbWindow final : public IWindow {

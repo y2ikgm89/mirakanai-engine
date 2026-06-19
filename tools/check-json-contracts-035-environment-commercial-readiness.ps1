@@ -201,7 +201,8 @@ if (-not (Test-Path -LiteralPath $linuxSampleRuntimeMainPath -PathType Leaf)) {
 } else {
     $linuxSampleRuntimeMainText = Get-Content -Raw -Path $linuxSampleRuntimeMainPath
     foreach ($needle in @(
-            'evaluate_linux_desktop_vulkan_presentation_request',
+            'probe_linux_desktop_vulkan_presentation',
+            'LinuxDesktopVulkanPresentationProbeDesc',
             'linux_desktop_vulkan_presentation_status_name',
             '--require-linux-vulkan-presentation-smoke',
             '--require-linux-vulkan-readback',
@@ -220,6 +221,36 @@ if (-not (Test-Path -LiteralPath $linuxSampleRuntimeMainPath -PathType Leaf)) {
     if ($linuxSampleRuntimeMainText.Contains('environment_platform_windows_vulkan_inferred=1') -or
         $linuxSampleRuntimeMainText.Contains('native_handle_access=1')) {
         Write-Error "games/sample_desktop_runtime_game/linux_main.cpp must not infer Windows Vulkan readiness or expose native handles"
+    }
+}
+
+$linuxHostContractPath = Join-Path $root "engine/runtime_host/src/linux_desktop_host_contract.cpp"
+$linuxHostContractText = Get-Content -Raw -Path $linuxHostContractPath
+foreach ($needle in @(
+        'probe_linux_desktop_vulkan_presentation',
+        'LinuxPresentationXcbWindow',
+        'SurfacePlatform::xcb',
+        'probe_runtime_surface_support',
+        'create_runtime_device',
+        'create_runtime_swapchain',
+        'acquire_next_runtime_swapchain_image',
+        'record_runtime_dynamic_rendering_clear',
+        'record_runtime_swapchain_image_readback',
+        'present_runtime_swapchain_image',
+        'validation log capture remains fail-closed')) {
+    if (-not $linuxHostContractText.Contains($needle)) {
+        Write-Error "engine/runtime_host/src/linux_desktop_host_contract.cpp missing Linux Vulkan package probe needle: $needle"
+    }
+}
+
+$vulkanBackendText = Get-Content -Raw -Path (Join-Path $root "engine/rhi/vulkan/src/vulkan_backend.cpp")
+foreach ($needle in @(
+        'Vulkan XCB swapchain requires connection and window handles',
+        'Vulkan XCB surface commands are unavailable',
+        'vkCreateXcbSurfaceKHR failed',
+        'SurfacePlatform::xcb')) {
+    if (-not $vulkanBackendText.Contains($needle)) {
+        Write-Error "engine/rhi/vulkan/src/vulkan_backend.cpp missing Linux XCB swapchain owner needle: $needle"
     }
 }
 

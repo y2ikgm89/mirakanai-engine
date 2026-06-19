@@ -12517,14 +12517,28 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         result.diagnostic = "Vulkan swapchain color format is unsupported";
         return result;
     }
-    if (device.impl_->host != RhiHostPlatform::windows) {
+    const bool win32_surface = device.impl_->host == RhiHostPlatform::windows;
+    const bool xcb_surface = device.impl_->host == RhiHostPlatform::linux;
+    if (!win32_surface && !xcb_surface) {
         result.diagnostic = "Vulkan runtime swapchain ownership is unsupported on this host";
         return result;
     }
-    if (device.impl_->create_win32_surface == nullptr || device.impl_->destroy_surface == nullptr ||
-        device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
-        device.impl_->get_surface_present_modes == nullptr) {
+    if (win32_surface &&
+        (device.impl_->create_win32_surface == nullptr || device.impl_->destroy_surface == nullptr ||
+         device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
+         device.impl_->get_surface_present_modes == nullptr)) {
         result.diagnostic = "Vulkan Win32 surface commands are unavailable";
+        return result;
+    }
+    if (xcb_surface &&
+        (device.impl_->create_xcb_surface == nullptr || device.impl_->destroy_surface == nullptr ||
+         device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
+         device.impl_->get_surface_present_modes == nullptr)) {
+        result.diagnostic = "Vulkan XCB surface commands are unavailable";
+        return result;
+    }
+    if (xcb_surface && (desc.surface.platform != SurfacePlatform::xcb || desc.surface.context == 0)) {
+        result.diagnostic = "Vulkan XCB swapchain requires connection and window handles";
         return result;
     }
     if (device.impl_->create_swapchain == nullptr || device.impl_->destroy_swapchain == nullptr ||
@@ -12534,19 +12548,48 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         return result;
     }
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__linux__)
     NativeVulkanSurface surface = 0;
-    const auto surface_create_info = NativeVulkanWin32SurfaceCreateInfo{
-        .s_type = vulkan_structure_type_win32_surface_create_info,
-        .next = nullptr,
-        .flags = 0,
-        .instance = GetModuleHandleW(nullptr),
-        .window = reinterpret_cast<HWND>(desc.surface.value),
-    };
-    const auto surface_result =
-        device.impl_->create_win32_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+    VulkanResult surface_result = -1;
+    if (win32_surface) {
+#if defined(_WIN32)
+        const auto surface_create_info = NativeVulkanWin32SurfaceCreateInfo{
+            .s_type = vulkan_structure_type_win32_surface_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .instance = GetModuleHandleW(nullptr),
+            .window = reinterpret_cast<HWND>(desc.surface.value),
+        };
+        surface_result =
+            device.impl_->create_win32_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+#else
+        result.diagnostic = "Vulkan Win32 swapchain requires a Windows host";
+        return result;
+#endif
+    } else if (xcb_surface) {
+#if defined(__linux__)
+        if (desc.surface.value > std::numeric_limits<std::uint32_t>::max()) {
+            result.diagnostic = "Vulkan XCB window token exceeds xcb_window_t range";
+            return result;
+        }
+        const auto surface_create_info = NativeVulkanXcbSurfaceCreateInfo{
+            .s_type = vulkan_structure_type_xcb_surface_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .connection = reinterpret_cast<void*>(desc.surface.context),
+            .window = static_cast<std::uint32_t>(desc.surface.value),
+        };
+        surface_result =
+            device.impl_->create_xcb_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+#else
+        result.diagnostic = "Vulkan XCB swapchain requires a Linux host";
+        return result;
+#endif
+    }
     if (surface_result != vulkan_success || surface == 0) {
-        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateWin32SurfaceKHR failed", surface_result);
+        result.diagnostic = vulkan_result_diagnostic(win32_surface ? "Vulkan vkCreateWin32SurfaceKHR failed"
+                                                                   : "Vulkan vkCreateXcbSurfaceKHR failed",
+                                                     surface_result);
         return result;
     }
 

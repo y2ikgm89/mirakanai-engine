@@ -112,25 +112,13 @@ int main(int argc, char** argv) {
     const bool scene_package_ready = required_file_ready(options.required_scene_package_path);
 
     const auto presentation =
-        mirakana::evaluate_linux_desktop_vulkan_presentation_request(mirakana::LinuxDesktopVulkanPresentationRequest{
-#if defined(__linux__)
-            .linux_host = true,
-#else
-            .linux_host = false,
-#endif
-            .xcb_window_ready = false,
-            .vulkan_loader_ready = false,
-            .vulkan_xcb_surface_created = false,
-            .surface_support_probed = false,
-            .swapchain_created = false,
-            .frame_acquired = false,
-            .frame_presented = false,
-            .readback_nonzero = false,
-            .validation_log_clean = false,
-            .native_handle_access = false,
+        mirakana::probe_linux_desktop_vulkan_presentation(mirakana::LinuxDesktopVulkanPresentationProbeDesc{
+            .title = "MIRAIKANAI Linux Vulkan Package Smoke",
+            .extent = mirakana::WindowExtent{.width = 64, .height = 64},
+            .display_name = nullptr,
+            .execute_runtime_smoke = true,
         });
 
-    const bool validation_layer_ready = false;
     std::cout << "sample_desktop_runtime_game status="
               << mirakana::linux_desktop_vulkan_presentation_status_name(presentation.status)
               << " config_ready=" << bit(config_ready) << " scene_package_ready=" << bit(scene_package_ready)
@@ -140,7 +128,8 @@ int main(int argc, char** argv) {
               << " environment_platform_linux_vulkan_ready="
               << bit(presentation.environment_platform_linux_vulkan_ready)
               << " environment_platform_windows_vulkan_inferred=0"
-              << " VK_LAYER_KHRONOS_validation_ready=" << bit(validation_layer_ready) << " native_handle_access=0\n";
+              << " VK_LAYER_KHRONOS_validation_ready=" << bit(presentation.linux_vulkan_validation_log_clean)
+              << " native_handle_access=0\n";
 
     if (!config_ready || !scene_package_ready) {
         return 1;
