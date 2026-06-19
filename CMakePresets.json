@@ -241,8 +241,8 @@
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
         "MK_CXX_STANDARD": "23",
-        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
-        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "OFF",
+        "MK_ENABLE_IMPORT_STD": "OFF",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
         "MK_LINUX_RUNTIME_PACKAGE_TARGET": "linux_vulkan_runtime_probe"
       }

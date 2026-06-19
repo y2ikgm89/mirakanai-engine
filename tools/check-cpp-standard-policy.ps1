@@ -89,7 +89,7 @@ foreach ($presetName in @("dev", "desktop-runtime", "desktop-editor", "asset-imp
     }
 }
 
-foreach ($presetName in @("ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
+foreach ($presetName in @("linux-vulkan-runtime-release", "ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
     $configurePreset = $presets.configurePresets | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
     if (-not $configurePreset) {
         Write-Error "CMakePresets.json missing $presetName configure preset"
