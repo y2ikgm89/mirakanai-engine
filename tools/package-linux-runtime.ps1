@@ -45,6 +45,14 @@ $tools = Assert-CppBuildTools
 if (-not $tools.CPack) {
     Write-Error "CPack is required but was not found. Install official CMake 3.30+ with CPack."
 }
+$dxcTool = Find-CommandOnCombinedPath "dxc"
+if ([string]::IsNullOrWhiteSpace($dxcTool)) {
+    Write-Error "DXC with SPIR-V CodeGen is required. Install the official LunarG Vulkan SDK or another package that provides dxc on PATH."
+}
+$spirvValTool = Find-CommandOnCombinedPath "spirv-val"
+if ([string]::IsNullOrWhiteSpace($spirvValTool)) {
+    Write-Error "spirv-val is required. Install the official LunarG Vulkan SDK or SPIRV-Tools on PATH."
+}
 
 if ([string]::IsNullOrWhiteSpace($InstallPrefix)) {
     $InstallPrefix = Join-Path $root "out/install/linux-vulkan-runtime-release"
@@ -65,7 +73,10 @@ New-Item -ItemType Directory -Force -Path $evidenceDirPath | Out-Null
 
 $jobsToUse = Resolve-ParallelJobCount -Jobs $Jobs
 
-Invoke-CheckedCommand $tools.CMake --preset linux-vulkan-runtime-release
+Invoke-CheckedCommand $tools.CMake `
+    --preset linux-vulkan-runtime-release `
+    "-DMK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE=$dxcTool" `
+    "-DMK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE=$spirvValTool"
 Invoke-CheckedCommand $tools.CMake --build --preset linux-vulkan-runtime-release --target MK_linux_vulkan_runtime_package_build --parallel $jobsToUse
 Invoke-CheckedCommand $tools.CTest --preset linux-vulkan-runtime-release --output-on-failure -R "MK_linux_vulkan_runtime_probe_tests|linux_vulkan_runtime_probe_smoke|MK_vulkan_environment_weather_solver_tests"
 
