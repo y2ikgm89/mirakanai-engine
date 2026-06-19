@@ -28,6 +28,108 @@ MK_add_game(sample_2d_playable_foundation
         sample_2d_playable_foundation/main.cpp
 )
 
+if(UNIX AND NOT APPLE AND NOT ANDROID AND TARGET MK_runtime_host_linux)
+    add_executable(linux_vulkan_runtime_probe
+        linux_vulkan_runtime_probe/main.cpp
+    )
+    target_link_libraries(linux_vulkan_runtime_probe
+        PRIVATE
+            MK_runtime_host_linux
+    )
+    set_target_properties(linux_vulkan_runtime_probe PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/linux_vulkan_runtime_probe"
+        MK_LINUX_VULKAN_RUNTIME_PROBE TRUE
+    )
+    MK_apply_common_target_options(linux_vulkan_runtime_probe)
+    MK_disable_module_scanning_for_non_module_executable(linux_vulkan_runtime_probe)
+
+    if(BUILD_TESTING)
+        add_test(NAME linux_vulkan_runtime_probe_smoke COMMAND linux_vulkan_runtime_probe)
+        set_tests_properties(linux_vulkan_runtime_probe_smoke PROPERTIES
+            WORKING_DIRECTORY "$<TARGET_FILE_DIR:linux_vulkan_runtime_probe>"
+        )
+    endif()
+
+    set(MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE "")
+    if(DEFINED ENV{VULKAN_SDK})
+        find_program(MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE NAMES dxc HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin" NO_DEFAULT_PATH)
+    endif()
+    if(NOT MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE AND DEFINED ENV{VK_SDK_PATH})
+        find_program(MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE NAMES dxc HINTS "$ENV{VK_SDK_PATH}/bin" "$ENV{VK_SDK_PATH}/Bin" NO_DEFAULT_PATH)
+    endif()
+    if(NOT MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE)
+        find_program(MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE NAMES dxc)
+    endif()
+
+    set(MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE "")
+    if(DEFINED ENV{VULKAN_SDK})
+        find_program(MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE NAMES spirv-val HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin" NO_DEFAULT_PATH)
+    endif()
+    if(NOT MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE AND DEFINED ENV{VK_SDK_PATH})
+        find_program(MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE NAMES spirv-val HINTS "$ENV{VK_SDK_PATH}/bin" "$ENV{VK_SDK_PATH}/Bin" NO_DEFAULT_PATH)
+    endif()
+    if(NOT MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE)
+        find_program(MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE NAMES spirv-val)
+    endif()
+
+    if(MK_LINUX_RUNTIME_PACKAGE_TARGET STREQUAL "linux_vulkan_runtime_probe" AND NOT MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE)
+        message(FATAL_ERROR "DXC with SPIR-V CodeGen is required to package linux_vulkan_runtime_probe")
+    endif()
+    if(MK_LINUX_RUNTIME_PACKAGE_TARGET STREQUAL "linux_vulkan_runtime_probe" AND NOT MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE)
+        message(FATAL_ERROR "spirv-val is required to package linux_vulkan_runtime_probe")
+    endif()
+
+    if(MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE)
+        set(MK_LINUX_VULKAN_RUNTIME_SHADER_SOURCE "${CMAKE_SOURCE_DIR}/shaders/environment/weather_simulation.hlsl")
+        set(MK_LINUX_VULKAN_RUNTIME_SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/linux_vulkan_runtime_probe/shaders")
+        set(MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV
+            "${MK_LINUX_VULKAN_RUNTIME_SHADER_OUTPUT_DIR}/linux_vulkan_runtime_probe_environment_weather_solver.cs.spv"
+        )
+        add_custom_command(
+            OUTPUT "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${MK_LINUX_VULKAN_RUNTIME_SHADER_OUTPUT_DIR}"
+            COMMAND "${MK_LINUX_VULKAN_RUNTIME_DXC_EXECUTABLE}"
+                -nologo -E cs_environment_weather -T cs_6_0 -spirv -fspv-target-env=vulkan1.3
+                -Fo "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+                "${MK_LINUX_VULKAN_RUNTIME_SHADER_SOURCE}"
+            DEPENDS "${MK_LINUX_VULKAN_RUNTIME_SHADER_SOURCE}"
+            COMMENT "Compiling linux_vulkan_runtime_probe weather solver SPIR-V"
+            VERBATIM
+        )
+        add_custom_target(linux_vulkan_runtime_probe_shaders
+            DEPENDS "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+        )
+        if(MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE)
+            add_custom_target(linux_vulkan_runtime_probe_shader_validation
+                COMMAND "${MK_LINUX_VULKAN_RUNTIME_SPIRV_VAL_EXECUTABLE}" "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+                DEPENDS linux_vulkan_runtime_probe_shaders
+                COMMENT "Validating linux_vulkan_runtime_probe weather solver SPIR-V"
+                VERBATIM
+            )
+        endif()
+        add_custom_target(linux_vulkan_runtime_probe_runtime_files
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:linux_vulkan_runtime_probe>/shaders"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+                "$<TARGET_FILE_DIR:linux_vulkan_runtime_probe>/shaders/linux_vulkan_runtime_probe_environment_weather_solver.cs.spv"
+            DEPENDS "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+            VERBATIM
+        )
+        if(TARGET linux_vulkan_runtime_probe_shader_validation)
+            add_dependencies(linux_vulkan_runtime_probe linux_vulkan_runtime_probe_shader_validation)
+        else()
+            add_dependencies(linux_vulkan_runtime_probe linux_vulkan_runtime_probe_shaders)
+        endif()
+        add_dependencies(linux_vulkan_runtime_probe linux_vulkan_runtime_probe_runtime_files)
+        if(MK_LINUX_RUNTIME_PACKAGE_TARGET STREQUAL "linux_vulkan_runtime_probe")
+            install(FILES
+                "${MK_LINUX_VULKAN_RUNTIME_WEATHER_SOLVER_SPV}"
+                DESTINATION "${CMAKE_INSTALL_BINDIR}/shaders"
+            )
+        endif()
+    endif()
+endif()
+
 if(MK_DESKTOP_RUNTIME_ENABLED)
     function(MK_add_desktop_runtime_game target_name)
         cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST;HOST_BACKEND" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})

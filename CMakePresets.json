@@ -226,6 +226,28 @@
       }
     },
     {
+      "name": "linux-vulkan-runtime-release",
+      "displayName": "Linux Vulkan runtime release package build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/linux-vulkan-runtime-release",
+      "inherits": "normalized-configure-environment",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_LINUX_RUNTIME_PACKAGE_TARGET": "linux_vulkan_runtime_probe"
+      }
+    },
+    {
       "name": "clang-asan-ubsan",
       "displayName": "Clang Address/Undefined sanitizer build",
       "generator": "Ninja",
@@ -409,6 +431,12 @@
       "configuration": "Release"
     },
     {
+      "name": "linux-vulkan-runtime-release",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "linux-vulkan-runtime-release",
+      "configuration": "Release"
+    },
+    {
       "name": "clang-asan-ubsan",
       "inherits": "normalized-build-environment",
       "configurePreset": "clang-asan-ubsan",
@@ -529,6 +557,14 @@
       }
     },
     {
+      "name": "linux-vulkan-runtime-release",
+      "configurePreset": "linux-vulkan-runtime-release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
       "name": "clang-asan-ubsan",
       "configurePreset": "clang-asan-ubsan",
       "configuration": "Debug",
@@ -585,6 +621,16 @@
       "configurePreset": "desktop-runtime-release",
       "generators": [
         "ZIP"
+      ],
+      "configurations": [
+        "Release"
+      ]
+    },
+    {
+      "name": "linux-vulkan-runtime-release",
+      "configurePreset": "linux-vulkan-runtime-release",
+      "generators": [
+        "TGZ"
       ],
       "configurations": [
         "Release"

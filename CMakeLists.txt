@@ -21,6 +21,7 @@ option(MK_ENABLE_NETWORK_ENET "Build optional ENet loopback network transport ad
 option(MK_REQUIRE_DESKTOP_RUNTIME_DXIL "Require sample_desktop_runtime_shell DXIL artifacts when packaging the desktop runtime shell" OFF)
 option(MK_REQUIRE_DESKTOP_RUNTIME_SPIRV "Require Vulkan SPIR-V artifacts when packaging desktop runtime targets" OFF)
 set(MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET "" CACHE STRING "Registered desktop runtime game target to install for the desktop runtime package lane")
+set(MK_LINUX_RUNTIME_PACKAGE_TARGET "" CACHE STRING "Linux runtime target to install for the Linux Vulkan runtime package lane")
 set(MK_CXX_STANDARD "23" CACHE STRING "C++ standard level used by Mirakanai targets")
 set_property(CACHE MK_CXX_STANDARD PROPERTY STRINGS 23)
 set(MK_MSVC_CXX23_STANDARD_OPTION "/std:c++23preview" CACHE STRING "MSVC C++23 standard mode flag")
@@ -1321,6 +1322,16 @@ if(BUILD_TESTING)
         set_tests_properties(MK_vulkan_environment_weather_solver_tests PROPERTIES RUN_SERIAL TRUE)
     endif()
 
+    if(TARGET MK_runtime_host_linux)
+        add_executable(MK_linux_vulkan_runtime_probe_tests
+            tests/unit/linux_vulkan_runtime_probe_tests.cpp
+        )
+        target_link_libraries(MK_linux_vulkan_runtime_probe_tests PRIVATE MK_runtime_host_linux)
+        target_include_directories(MK_linux_vulkan_runtime_probe_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_linux_vulkan_runtime_probe_tests)
+        add_test(NAME MK_linux_vulkan_runtime_probe_tests COMMAND MK_linux_vulkan_runtime_probe_tests)
+    endif()
+
     add_executable(MK_metal_environment_weather_solver_tests
         tests/unit/metal_environment_weather_solver_tests.cpp
     )
@@ -1483,7 +1494,7 @@ set(MK_RUNTIME_TARGETS
 
 foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_wasapi mirakana_platform_win32
         MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
-        mirakana_runtime_network_enet)
+        mirakana_runtime_network_enet mirakana_platform_linux MK_runtime_host_linux)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
     endif()
@@ -1499,6 +1510,10 @@ endif()
 
 if(TARGET sample_desktop_runtime_game)
     list(APPEND MK_RUNTIME_TARGETS sample_desktop_runtime_game)
+endif()
+
+if(TARGET linux_vulkan_runtime_probe)
+    list(APPEND MK_RUNTIME_TARGETS linux_vulkan_runtime_probe)
 endif()
 
 function(MK_json_escape output_variable value)
@@ -1643,6 +1658,23 @@ if(NOT MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET STREQUAL "")
     set(MK_INSTALL_RUNTIME_TARGETS ${MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET})
 endif()
 
+if(NOT MK_LINUX_RUNTIME_PACKAGE_TARGET STREQUAL "")
+    if(NOT UNIX OR APPLE OR ANDROID)
+        message(FATAL_ERROR "MK_LINUX_RUNTIME_PACKAGE_TARGET is supported only on Linux hosts")
+    endif()
+    if(NOT TARGET ${MK_LINUX_RUNTIME_PACKAGE_TARGET})
+        message(FATAL_ERROR "MK_LINUX_RUNTIME_PACKAGE_TARGET does not name a CMake target: ${MK_LINUX_RUNTIME_PACKAGE_TARGET}")
+    endif()
+    get_property(MK_SELECTED_LINUX_VULKAN_RUNTIME_PROBE
+        TARGET ${MK_LINUX_RUNTIME_PACKAGE_TARGET}
+        PROPERTY MK_LINUX_VULKAN_RUNTIME_PROBE
+    )
+    if(NOT MK_SELECTED_LINUX_VULKAN_RUNTIME_PROBE)
+        message(FATAL_ERROR "MK_LINUX_RUNTIME_PACKAGE_TARGET must name the Linux Vulkan runtime probe target: ${MK_LINUX_RUNTIME_PACKAGE_TARGET}")
+    endif()
+    set(MK_INSTALL_RUNTIME_TARGETS ${MK_LINUX_RUNTIME_PACKAGE_TARGET})
+endif()
+
 if(MK_DESKTOP_RUNTIME_ENABLED)
     set(MK_DESKTOP_RUNTIME_GAME_METADATA_FILE "${CMAKE_BINARY_DIR}/desktop-runtime-games.json")
     MK_write_desktop_runtime_game_metadata(
@@ -1665,6 +1697,17 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             add_dependencies(MK_desktop_runtime_package_build ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})
         endif()
     endforeach()
+endif()
+
+if(NOT MK_LINUX_RUNTIME_PACKAGE_TARGET STREQUAL "")
+    add_custom_target(MK_linux_vulkan_runtime_package_build)
+    add_dependencies(MK_linux_vulkan_runtime_package_build
+        ${MK_LIBRARY_TARGETS}
+        ${MK_INSTALL_RUNTIME_TARGETS}
+    )
+    if(TARGET MK_linux_vulkan_runtime_probe_tests)
+        add_dependencies(MK_linux_vulkan_runtime_package_build MK_linux_vulkan_runtime_probe_tests)
+    endif()
 endif()
 
 # Install / export: MirakanaiTargets + MirakanaiConfig (see docs/building.md). Runtime executables are installed but not re-exported for find_package.
@@ -1762,8 +1805,16 @@ if(TARGET MK_platform_win32)
     install(DIRECTORY engine/platform/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
+if(TARGET MK_platform_linux)
+    install(DIRECTORY engine/platform/linux/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
+
 if(TARGET MK_runtime_host_win32)
     install(DIRECTORY engine/runtime_host/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
+
+if(TARGET MK_runtime_host_linux)
+    install(DIRECTORY engine/runtime_host/linux/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 if(TARGET MK_audio_wasapi)

@@ -36,6 +36,13 @@
       "notes": "Uses the selected sample_desktop_runtime_game desktop-runtime-release package smoke to prove Environment Production Excellence v1 Phase 8 package-visible quality budgets. Installed validation requires environment_quality_preset=high, environment_quality_budget_status=ready, environment_quality_budget_ready=1, environment_quality_budget_requested=1, environment_quality_budget_violations=0, environment_quality_budget_broad_optimization_claimed=0, and environment_quality_budget_broad_environment_ready_claimed=0. This is fail-closed quality-budget evidence only; it does not claim backend profiler timing, broad optimization, backend parity, or broad environment_ready."
     },
     {
+      "name": "linux-vulkan-runtime-release",
+      "platform": "linux",
+      "status": "validated-hosted-release-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-linux-runtime.ps1",
+      "notes": "Builds the Linux-only linux-vulkan-runtime-release preset, compiles the environment weather solver SPIR-V with DXC, validates it with spirv-val, installs linux_vulkan_runtime_probe plus its SPIR-V artifact, runs tools/validate-installed-linux-runtime.ps1 -RequireReady, retains out/evidence/linux-vulkan-runtime/linux-vulkan-runtime-evidence.txt, and feeds tools/validate-linux-vulkan-runtime-host.ps1 so environment-platform-linux-vulkan-package can emit linux_vulkan_runtime_probe_ready=1, linux_vulkan_runtime_readback_ready=1, linux_vulkan_runtime_probe_surface_family=offscreen_compute, and environment_platform_linux_vulkan_ready=1 without claiming Android Vulkan, all-platform readiness, broad optimization, commercial readiness, or broad environment_ready."
+    },
+    {
       "name": "asset-importers",
       "platform": "desktop",
       "status": "validated-optional",

@@ -693,6 +693,9 @@ Assert-EnvironmentPlatformVulkanHostGateDryRun `
         "first_party_linux_runtime_host_ready=1",
         "linux_package_script_ready=1",
         "linux_installed_validator_ready=1",
+        "linux_vulkan_runtime_probe_ready=1",
+        "linux_vulkan_runtime_readback_ready=1",
+        "linux_vulkan_runtime_probe_surface_family=offscreen_compute",
         "environment_platform_linux_vulkan_ready=1",
         "environment_platform_requires_linux_vulkan_host_evidence=0") | Out-Null
 Assert-EnvironmentPlatformVulkanHostGateDryRun `

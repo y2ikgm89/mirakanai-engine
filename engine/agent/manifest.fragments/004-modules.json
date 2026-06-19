@@ -430,6 +430,21 @@
       "purpose": "Editor-independent desktop game host contract. Currently provides DesktopGameRunner, DesktopRunConfig, DesktopRunResult, DesktopHostServices, and IDesktopEventPump so games can keep implementing mirakana::GameApp while a host drives IWindow lifecycle, VirtualInput, VirtualPointerInput, VirtualGamepadInput, VirtualLifecycle, optional renderer resize including swapchain-backed RhiFrameRenderer resize through IRenderer, optional DiagnosticsRecorder/IProfileClock frame instrumentation, backend-neutral renderer counter capture from IRenderer::stats(), and app update/stop status without exposing SDL, OS, RHI, or graphics API handles to game code. It also provides load_desktop_shader_bytecode_pair for host-independent packaged shader bytecode loading through IFileSystem with owned byte vectors, entry points, stable statuses, and diagnostics."
     },
     {
+      "name": "MK_runtime_host_linux",
+      "path": "engine/runtime_host/linux",
+      "status": "linux-vulkan-offscreen-package-probe",
+      "dependencies": [
+        "MK_environment",
+        "MK_platform",
+        "MK_rhi_vulkan",
+        "MK_runtime_host"
+      ],
+      "publicHeaders": [
+        "engine/runtime_host/linux/include/mirakana/runtime_host/linux/linux_vulkan_runtime_probe.hpp"
+      ],
+      "purpose": "Linux-only runtime host package probe for the exact Environment Highest Commercial Readiness v1 Linux Vulkan row. It provides LinuxVulkanRuntimeProbeDesc, LinuxVulkanRuntimeProbeResult, and run_linux_vulkan_runtime_probe to dispatch the packaged environment weather solver through the Vulkan RHI offscreen compute path, verify readback evidence, and emit first-party host counters while keeping native handles private and avoiding Linux window/present, Android Vulkan, all-platform, commercial, broad optimization, or broad environment_ready claims."
+    },
+    {
       "name": "MK_runtime_host_win32",
       "path": "engine/runtime_host/win32",
       "status": "windows-native-desktop-game-runtime-foundation",

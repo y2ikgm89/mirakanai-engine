@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-14 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, and add fail-closed `validate.yml linux-vulkan` hosted diagnostics for Linux Vulkan SDK/ICD/tool evidence. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Task 14 does not promote Linux Vulkan because the first-party Linux runtime host/package and installed validator remain missing. Current evidence still has 10 ready rows, 5 host-gated rows, 1 unsupported row, and 21 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-15 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, add fail-closed `validate.yml linux-vulkan` hosted diagnostics for Linux Vulkan SDK/ICD/tool evidence, and add the Linux Vulkan runtime package/probe/readback lane. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Task 15 promotes only the Linux Vulkan platform row through `linux_vulkan_runtime_probe`. Current evidence has 11 ready rows, 4 host-gated rows, 1 unsupported row, and 21 missing optimization artifacts. Commercial readiness, strict Vulkan v2 aggregate readiness, unconditional all-platform readiness, broad measured optimization readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -1232,6 +1232,34 @@ Task 12 evidence (2026-06-19):
 
 **Task 14 evidence (2026-06-19):** Context7 was queried for GitHub Actions runner labels, and official fallback documentation was refreshed for GitHub-hosted runners and the LunarG Ubuntu Vulkan SDK. The hosted job uses `ubuntu-24.04`, installs the LunarG `noble` SDK package source, checks `vulkaninfo --summary`, `dxc`, and `spirv-val`, pins Lavapipe through `VK_ICD_FILENAMES` / `VK_DRIVER_FILES` when available, writes `linux-vulkan-evidence` artifacts, and validates exact expected counters. This is diagnostic hosted evidence only: Linux Vulkan stays host-gated because `platform/linux`, `tools/package-linux-runtime.ps1`, `tools/validate-installed-linux-runtime.ps1`, strict Linux package smoke, and Linux runtime readback evidence are not implemented.
 
+## Task 15: Promote Linux Vulkan Runtime Package Probe
+
+**Files:**
+- Add: `engine/platform/linux/`
+- Add: `engine/runtime_host/linux/`
+- Add: `games/linux_vulkan_runtime_probe/`
+- Add: `tests/unit/linux_vulkan_runtime_probe_tests.cpp`
+- Add: `tools/package-linux-runtime.ps1`
+- Add: `tools/validate-installed-linux-runtime.ps1`
+- Modify: `.github/workflows/validate.yml`
+- Modify: `CMakeLists.txt`
+- Modify: `CMakePresets.json`
+- Modify: `engine/agent/manifest.fragments/*.json`
+- Modify: `docs/roadmap.md`
+- Compose: `engine/agent/manifest.json`
+
+**Goal:** Promote only `environment_platform_linux_vulkan_ready=1` with first-party Linux runtime host/package evidence while keeping Android Vulkan, strict Vulkan v2 aggregate, all-platform readiness, commercial readiness, broad optimization, and broad `environment_ready` fail-closed.
+
+**Steps:**
+- [x] Add first-party `engine/platform/linux` and `engine/runtime_host/linux` modules with no public native-handle exposure.
+- [x] Add `linux_vulkan_runtime_probe` as a Linux-only runtime target that dispatches the Vulkan environment weather compute solver offscreen and emits readback counters.
+- [x] Add `linux-vulkan-runtime-release` CMake/package presets and target-specific DXC SPIR-V plus `spirv-val` shader artifact validation.
+- [x] Add `tools/package-linux-runtime.ps1` and `tools/validate-installed-linux-runtime.ps1` so hosted Linux CI retains installed package evidence.
+- [x] Require `linux_vulkan_runtime_probe_ready=1`, `linux_vulkan_runtime_readback_ready=1`, and `linux_vulkan_runtime_probe_surface_family=offscreen_compute` in the recipe/static/manifest guards.
+- [x] Promote only the clean-break `environment_platform_linux_vulkan_ready` matrix row; keep `environment_all_platform_unconditional_ready=0` and `environment_commercial_ready=0`.
+
+**Task 15 evidence (2026-06-19):** Context7 was queried for Khronos Vulkan (`/khronosgroup/vulkan-docs`), Vulkan Tools (`/khronosgroup/vulkan-tools`), and CMake install/package documentation (`/websites/cmake_cmake_help`). The implementation follows the official split between Vulkan validation layers, Vulkan tool evidence such as `vulkaninfo --summary`, and CMake install/CPack package evidence. The Linux package lane builds `linux_vulkan_runtime_probe`, compiles the selected weather solver SPIR-V with DXC, validates it with `spirv-val`, installs the runtime probe plus shader artifact, runs the installed validator, records retained evidence, and only then lets `tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady` emit `environment_platform_linux_vulkan_ready=1`. This promotes only Linux Vulkan; Android Vulkan, strict Vulkan v2 aggregate, all-platform readiness, broad optimization, commercial readiness, and broad `environment_ready` remain unclaimed.
+
 ## Execution Order
 
 Use this PR order:
@@ -1250,8 +1278,9 @@ Use this PR order:
 12. Task 12 commercial aggregate closeout.
 13. Task 13 iOS Metal hosted CI evidence and clean-break Metal aggregate row.
 14. Task 14 Linux Vulkan hosted diagnostics and fail-closed counter hardening.
+15. Task 15 Linux Vulkan runtime package/probe/readback promotion.
 
-Do not merge Task 14 until its hosted `validate.yml linux-vulkan` and `PR Gate` checks pass for the task-owned PR head SHA. This hosted proof must still leave `environment_platform_linux_vulkan_ready=0`.
+Do not merge Task 15 until its hosted `validate.yml linux-vulkan` and `PR Gate` checks pass for the task-owned PR head SHA. This hosted proof must emit `environment_platform_linux_vulkan_ready=1` and still leave `environment_commercial_ready=0`.
 
 ## Validation Evidence
 
@@ -1320,6 +1349,9 @@ Record validation here as each PR lands.
 | 2026-06-19 | Task 14 Linux Vulkan hosted diagnostics contract | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -Command '& { $expected = @("validation_recipe=environment-platform-linux-vulkan-package", "host_matches=0", "environment_platform_linux_vulkan_ready=0", "environment_platform_requires_linux_vulkan_host_evidence=1", "environment_all_platform_unconditional_ready=0"); & ".\tools\validate-linux-vulkan-runtime-host.ps1" -ExpectedEvidenceCounters $expected }'` | pass | `validate.yml` now includes required `linux-vulkan` diagnostics; Windows local validator emits `host_matches=0` and keeps `environment_platform_linux_vulkan_ready=0` |
 | 2026-06-19 | Task 14 Linux Vulkan tool/search and aggregate check | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`; `git diff --check` | pass | shader toolchain finds D3D12 DXIL, Vulkan SPIR-V, DXC SPIR-V, and `spirv-val`; highest-commercial remains `10` ready rows, `5` host-gated rows, `1` unsupported row, and `21` missing optimization artifacts |
 | 2026-06-19 | Task 14 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple evidence remains host-gated on Windows and Linux Vulkan hosted proof must come from `validate.yml linux-vulkan` |
+| 2026-06-19 | Task 15 Linux Vulkan runtime package/probe contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -Command '& { $expected = @("validation_recipe=environment-platform-linux-vulkan-package", "host_matches=0", "environment_platform_linux_vulkan_ready=0", "environment_platform_requires_linux_vulkan_host_evidence=1", "environment_all_platform_unconditional_ready=0"); & ".\tools\validate-linux-vulkan-runtime-host.ps1" -ExpectedEvidenceCounters $expected }'` | pass | CI and recipe contracts now require `tools/package-linux-runtime.ps1`, installed validation, `linux_vulkan_runtime_probe_ready=1`, `linux_vulkan_runtime_readback_ready=1`, and `linux_vulkan_runtime_probe_surface_family=offscreen_compute`; Windows local validator remains fail-closed |
+| 2026-06-19 | Task 15 highest commercial focused validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1` | pass | builds/runs `MK_environment_commercial_readiness_v2_tests`; emits `environment_commercial_ready_rows=11`, `environment_host_gated_rows=4`, `environment_unsupported_rows=1`, `environment_platform_linux_vulkan_ready=1`, `environment_platform_android_vulkan_ready=0`, `environment_optimization_measurement_missing_artifacts=21`, and `environment_commercial_ready=0` |
+| 2026-06-19 | Task 15 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; hosted Linux package proof still must run on `ubuntu-24.04` PR CI for `tools/package-linux-runtime.ps1` |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |

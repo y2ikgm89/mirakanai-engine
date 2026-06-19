@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "name": "linux-vulkan-runtime-probe",
+  "displayName": "Linux Vulkan Runtime Probe",
+  "language": "C++23",
+  "entryPoint": "games/linux_vulkan_runtime_probe/main.cpp",
+  "target": "linux_vulkan_runtime_probe",
+  "engineModules": [
+    "MK_core",
+    "MK_environment",
+    "MK_platform",
+    "MK_rhi_vulkan",
+    "MK_runtime_host",
+    "MK_runtime_host_linux"
+  ],
+  "aiWorkflow": {
+    "spec": "games/linux_vulkan_runtime_probe/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-linux-runtime.ps1",
+    "allowedEditRoots": [
+      "games/linux_vulkan_runtime_probe",
+      "engine/platform/linux",
+      "engine/runtime_host/linux",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "runtime-probe-executable",
+    "runner": "mirakana::runtime_host::linux::run_linux_vulkan_runtime_probe",
+    "currentRuntime": "linux-vulkan-offscreen-compute-runtime-probe"
+  },
+  "backendReadiness": {
+    "platform": "linux",
+    "graphics": "package-visible Linux Vulkan ICD validation plus offscreen compute/readback proof",
+    "audio": "none",
+    "ui": "none"
+  },
+  "importerRequirements": {
+    "sourceFormats": [],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": false
+  },
+  "packagingTargets": [
+    "linux-vulkan-runtime-release"
+  ],
+  "validationRecipes": [
+    {
+      "name": "environment-platform-linux-vulkan-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-linux-runtime.ps1",
+      "evidence": "Installed linux_vulkan_runtime_probe emits linux_vulkan_runtime_probe_ready=1, linux_vulkan_runtime_readback_ready=1, linux_vulkan_runtime_probe_surface_family=offscreen_compute, first_party_linux_runtime_host_ready=1, native_handle_access=0, and no Windows or Android Vulkan inference before tools/validate-linux-vulkan-runtime-host.ps1 can promote environment_platform_linux_vulkan_ready=1."
+    }
+  ]
+}

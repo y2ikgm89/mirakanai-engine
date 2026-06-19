@@ -42,3 +42,7 @@ endif()
 if(WIN32)
     add_subdirectory(win32)
 endif()
+
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+    add_subdirectory(linux)
+endif()

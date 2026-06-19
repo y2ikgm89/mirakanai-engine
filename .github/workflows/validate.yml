@@ -567,7 +567,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.linux == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Checkout
         id: checkout
@@ -599,6 +599,10 @@ jobs:
           command -v spirv-val
           vulkaninfo --summary
 
+      - name: Build Linux Vulkan runtime package
+        shell: pwsh
+        run: ./tools/package-linux-runtime.ps1
+
       - name: Validate Linux Vulkan host evidence
         shell: pwsh
         run: |
@@ -612,16 +616,19 @@ jobs:
             "dxc_spirv_codegen_ready=1",
             "spirv_val_ready=1",
             "linux_icd_runtime_ready=1",
-            "first_party_linux_runtime_host_ready=0",
-            "linux_package_script_ready=0",
-            "linux_installed_validator_ready=0",
-            "environment_platform_linux_vulkan_ready=0",
-            "environment_platform_requires_linux_vulkan_host_evidence=1",
+            "first_party_linux_runtime_host_ready=1",
+            "linux_package_script_ready=1",
+            "linux_installed_validator_ready=1",
+            "linux_vulkan_runtime_probe_ready=1",
+            "linux_vulkan_runtime_readback_ready=1",
+            "linux_vulkan_runtime_probe_surface_family=offscreen_compute",
+            "environment_platform_linux_vulkan_ready=1",
+            "environment_platform_requires_linux_vulkan_host_evidence=0",
             "environment_all_platform_unconditional_ready=0"
           )
           $failed = $false
           try {
-            $output = ./tools/validate-linux-vulkan-runtime-host.ps1 -ExpectedEvidenceCounters $expected 2>&1
+            $output = ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -ExpectedEvidenceCounters $expected 2>&1
           } catch {
             $output = @($_)
             $failed = $true
@@ -640,6 +647,9 @@ jobs:
           include-hidden-files: false
           path: |
             out/validation-logs/linux-vulkan-evidence.log
+            out/evidence/linux-vulkan-runtime/linux-vulkan-runtime-evidence.txt
+            out/build/linux-vulkan-runtime-release/*.tar.gz
+            out/build/linux-vulkan-runtime-release/*.sha256
           if-no-files-found: error
 
   linux-coverage:

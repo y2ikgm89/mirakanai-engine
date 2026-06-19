@@ -3,6 +3,7 @@
 
 param(
     [switch]$RequireReady,
+    [string]$EvidenceFile = "",
     [string[]]$ExpectedEvidenceCounters = @()
 )
 
@@ -133,6 +134,20 @@ function Get-ShaderToolchainEvidence {
     }
 }
 
+function Get-CounterValue {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $pattern = "(^|\s)" + [System.Text.RegularExpressions.Regex]::Escape($Name) + "=([^\s]+)"
+    $match = [System.Text.RegularExpressions.Regex]::Match($Text, $pattern)
+    if (-not $match.Success) {
+        return $null
+    }
+    return $match.Groups[2].Value
+}
+
 $hostOs = Get-HostOsCounterValue
 $hostMatches = $hostOs -eq "linux"
 $shaderEvidence = Get-ShaderToolchainEvidence
@@ -148,14 +163,38 @@ if ($hostMatches -and $null -ne $vulkanInfoCommand) {
     $validationLayerReady = $vulkanInfo.ExitCode -eq 0 -and $vulkanInfoText.Contains("VK_LAYER_KHRONOS_validation")
 }
 
+if ([string]::IsNullOrWhiteSpace($EvidenceFile)) {
+    $EvidenceFile = Join-Path $root "out/evidence/linux-vulkan-runtime/linux-vulkan-runtime-evidence.txt"
+}
+
 $linuxPackageScript = Join-Path $root "tools/package-linux-runtime.ps1"
 $linuxInstalledValidator = Join-Path $root "tools/validate-installed-linux-runtime.ps1"
-$linuxHostRoot = Join-Path $root "platform/linux"
+$linuxPlatformRoot = Join-Path $root "engine/platform/linux"
+$linuxRuntimeHostRoot = Join-Path $root "engine/runtime_host/linux"
+
+$packageEvidenceText = ""
+if ($hostMatches -and (Test-Path -LiteralPath $EvidenceFile -PathType Leaf)) {
+    $packageEvidenceText = Get-Content -LiteralPath $EvidenceFile -Raw
+}
 
 $linuxIcdRuntimeReady = $hostMatches -and $vulkanInfoReady
-$firstPartyLinuxRuntimeHostReady = $hostMatches -and (Test-Path -LiteralPath $linuxHostRoot -PathType Container)
-$linuxPackageScriptReady = $hostMatches -and (Test-Path -LiteralPath $linuxPackageScript -PathType Leaf)
-$linuxInstalledValidatorReady = $hostMatches -and (Test-Path -LiteralPath $linuxInstalledValidator -PathType Leaf)
+$sourceLayoutReady = $hostMatches -and
+    (Test-Path -LiteralPath $linuxPlatformRoot -PathType Container) -and
+    (Test-Path -LiteralPath $linuxRuntimeHostRoot -PathType Container)
+$firstPartyLinuxRuntimeHostReady = $sourceLayoutReady -and
+    (Get-CounterValue -Text $packageEvidenceText -Name "first_party_linux_runtime_host_ready") -eq "1"
+$linuxPackageScriptReady = $hostMatches -and
+    (Test-Path -LiteralPath $linuxPackageScript -PathType Leaf) -and
+    (Get-CounterValue -Text $packageEvidenceText -Name "linux_package_script_ready") -eq "1"
+$linuxInstalledValidatorReady = $hostMatches -and
+    (Test-Path -LiteralPath $linuxInstalledValidator -PathType Leaf) -and
+    (Get-CounterValue -Text $packageEvidenceText -Name "linux_installed_validator_ready") -eq "1"
+$linuxVulkanRuntimeProbeReady = (Get-CounterValue -Text $packageEvidenceText -Name "linux_vulkan_runtime_probe_ready") -eq "1"
+$linuxVulkanRuntimeReadbackReady = (Get-CounterValue -Text $packageEvidenceText -Name "linux_vulkan_runtime_readback_ready") -eq "1"
+$linuxVulkanRuntimeProbeSurfaceFamily = Get-CounterValue -Text $packageEvidenceText -Name "linux_vulkan_runtime_probe_surface_family"
+if ([string]::IsNullOrWhiteSpace($linuxVulkanRuntimeProbeSurfaceFamily)) {
+    $linuxVulkanRuntimeProbeSurfaceFamily = "missing"
+}
 
 $linuxVulkanReady = $hostMatches -and
     $vulkanInfoReady -and
@@ -165,7 +204,10 @@ $linuxVulkanReady = $hostMatches -and
     $linuxIcdRuntimeReady -and
     $firstPartyLinuxRuntimeHostReady -and
     $linuxPackageScriptReady -and
-    $linuxInstalledValidatorReady
+    $linuxInstalledValidatorReady -and
+    $linuxVulkanRuntimeProbeReady -and
+    $linuxVulkanRuntimeReadbackReady -and
+    $linuxVulkanRuntimeProbeSurfaceFamily -eq "offscreen_compute"
 
 foreach ($counter in @($ExpectedEvidenceCounters)) {
     if (-not [string]::IsNullOrWhiteSpace($counter)) {
@@ -186,6 +228,9 @@ $actualCounters = @(
     "first_party_linux_runtime_host_ready=$(ConvertTo-CounterBit $firstPartyLinuxRuntimeHostReady)",
     "linux_package_script_ready=$(ConvertTo-CounterBit $linuxPackageScriptReady)",
     "linux_installed_validator_ready=$(ConvertTo-CounterBit $linuxInstalledValidatorReady)",
+    "linux_vulkan_runtime_probe_ready=$(ConvertTo-CounterBit $linuxVulkanRuntimeProbeReady)",
+    "linux_vulkan_runtime_readback_ready=$(ConvertTo-CounterBit $linuxVulkanRuntimeReadbackReady)",
+    "linux_vulkan_runtime_probe_surface_family=$linuxVulkanRuntimeProbeSurfaceFamily",
     "environment_platform_linux_vulkan_ready=$(ConvertTo-CounterBit $linuxVulkanReady)",
     "environment_platform_requires_linux_vulkan_host_evidence=$(if ($linuxVulkanReady) { '0' } else { '1' })",
     "environment_all_platform_unconditional_ready=0",
@@ -210,5 +255,5 @@ if ($missingExpectedCounters.Count -gt 0) {
 }
 
 if ($RequireReady -and -not $linuxVulkanReady) {
-    Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, and installed validator evidence."
+    Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script execution, installed validator evidence, and retained offscreen compute readback counters."
 }

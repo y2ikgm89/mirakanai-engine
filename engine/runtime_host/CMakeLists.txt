@@ -21,3 +21,7 @@ MK_apply_common_target_options(MK_runtime_host)
 if(WIN32 AND MK_DESKTOP_RUNTIME_ENABLED)
     add_subdirectory(win32)
 endif()
+
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+    add_subdirectory(linux)
+endif()
