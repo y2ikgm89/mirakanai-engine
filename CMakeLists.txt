@@ -727,6 +727,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_asset_environment_source_pipeline_tests)
     add_test(NAME MK_asset_environment_source_pipeline_tests COMMAND MK_asset_environment_source_pipeline_tests)
 
+    add_executable(MK_environment_texture_pipeline_v2_tests
+        tests/unit/environment_texture_pipeline_v2_tests.cpp
+    )
+    target_link_libraries(MK_environment_texture_pipeline_v2_tests PRIVATE MK_tools)
+    target_include_directories(MK_environment_texture_pipeline_v2_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_texture_pipeline_v2_tests)
+    add_test(NAME MK_environment_texture_pipeline_v2_tests COMMAND MK_environment_texture_pipeline_v2_tests)
+
     add_executable(MK_runtime_rhi_tests
         tests/unit/runtime_rhi_tests.cpp
     )

@@ -10,10 +10,12 @@ on:
       - "engine/**"
       - "games/**"
       - "platform/ios/**"
+      - "tools/apple-host-helpers.ps1"
       - "tools/build-mobile-apple.ps1"
       - "tools/check-mobile-packaging.ps1"
       - "tools/common.ps1"
       - "tools/smoke-ios-package.ps1"
+      - "tools/validate-apple-metal-platform-host.ps1"
   push:
     branches:
       - main
@@ -25,10 +27,12 @@ on:
       - "engine/**"
       - "games/**"
       - "platform/ios/**"
+      - "tools/apple-host-helpers.ps1"
       - "tools/build-mobile-apple.ps1"
       - "tools/check-mobile-packaging.ps1"
       - "tools/common.ps1"
       - "tools/smoke-ios-package.ps1"
+      - "tools/validate-apple-metal-platform-host.ps1"
 
 permissions:
   contents: read
@@ -41,7 +45,7 @@ jobs:
   simulator-smoke:
     name: iOS Simulator smoke
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -63,14 +67,35 @@ jobs:
           xcode-select -p
           xcrun --sdk iphonesimulator --show-sdk-path
           xcrun simctl list runtimes
+          xcrun simctl list devices available
 
       - name: Mobile packaging diagnostics
         shell: pwsh
         run: ./tools/check-mobile-packaging.ps1 -RequireApple
 
-      - name: Build and launch sample_headless on iOS Simulator
+      - name: Build iOS Simulator package
         shell: pwsh
-        run: ./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2
+        run: ./tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator
+
+      - name: Validate iOS Metal platform evidence
+        shell: pwsh
+        run: |
+          $expected = @(
+            "validation_recipe=environment-platform-ios-metal-package",
+            "host=macos",
+            "xcode_ios_sdk_ready=1",
+            "ios_simulator_or_device_ready=1",
+            "ios_metal_feature_set_checked=1",
+            "ios_package_smoke_ready=1",
+            "ios_metal_command_queue_ready=1",
+            "ios_metal_pipeline_ready=1",
+            "ios_metal_command_buffer_ready=1",
+            "ios_metal_readback_ready=1",
+            "environment_platform_ios_metal_ready=1",
+            "environment_platform_requires_ios_metal_host_evidence=0",
+            "environment_all_platform_unconditional_ready=0"
+          )
+          ./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -SkipIosBuild -ExpectedEvidenceCounters $expected
 
       - name: Upload iOS build output
         if: ${{ failure() && !cancelled() }}

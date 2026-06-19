@@ -6,6 +6,7 @@
 #include "first_party_editor_document.hpp"
 #include "native_editor_app.hpp"
 
+#include "mirakana/editor/environment_artist_workflow_v2.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/editor/history.hpp"
 #include "mirakana/environment/environment_io.hpp"
@@ -1662,6 +1663,230 @@ MK_TEST(
     MK_REQUIRE(boundary != nullptr);
     MK_REQUIRE(walkthrough->status != mirakana::editor::EnvironmentArtistWorkflowReadyRequirementStatus::ready);
     MK_REQUIRE(boundary->status == mirakana::editor::EnvironmentArtistWorkflowReadyRequirementStatus::blocked);
+}
+
+MK_TEST("editor environment artist workflow production closeout promotes only exact visible package rows") {
+    using Kind = mirakana::editor::EnvironmentArtistWorkflowProductionRequirementKind;
+
+    const auto row = [](Kind kind, std::string evidence_id, std::vector<std::string> retained_ui_row_ids) {
+        return mirakana::editor::EnvironmentArtistWorkflowProductionRequirementInputRow{
+            .kind = kind,
+            .evidence_id = std::move(evidence_id),
+            .ready = true,
+            .reviewed = true,
+            .package_visible = true,
+            .host_validated = true,
+            .validation_recipe_id = "environment-artist-workflow-production-closeout",
+            .retained_ui_row_ids = std::move(retained_ui_row_ids),
+        };
+    };
+
+    const auto
+        selected_package =
+            mirakana::
+                editor::
+                    make_environment_artist_workflow_ready_review_model(
+                        mirakana::editor::EnvironmentArtistWorkflowReadyReviewDesc{
+                            .execution_review = make_ready_artist_workflow_execution_review_model(),
+                            .requirements =
+                                {
+                                    mirakana::editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                        .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                            visible_editor_shell,
+                                        .evidence_id = "environment-artist-workflow-visible-shell",
+                                        .ready = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .retained_ui_row_ids = {"environment.workflow.execution.command_catalog"},
+                                    },
+                                    mirakana::editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                        .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                            asset_pipeline,
+                                        .evidence_id = "environment_asset_pipeline_openexr_ktx_basis_ready",
+                                        .ready = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .retained_ui_row_ids = {"environment.workflow.asset.openexr_source"},
+                                    },
+                                    mirakana::
+                                        editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                            .kind = mirakana::
+                                                editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                                    selected_preset_library,
+                                            .evidence_id = "environment_aaa_preset_library_ready",
+                                            .ready = true,
+                                            .reviewed = true,
+                                            .package_visible = true,
+                                            .retained_ui_row_ids = {"environment.workflow.asset.preset_library"},
+                                        },
+                                    mirakana::
+                                        editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                            .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                                validation_remediation,
+                                            .evidence_id = "environment.command.validation.remediation",
+                                            .ready = true,
+                                            .reviewed = true,
+                                            .package_visible = true,
+                                            .retained_ui_row_ids = {"environment.command.validation.remediation"},
+                                        },
+                                    mirakana::editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                        .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                            revision_safety,
+                                        .evidence_id = "environment.workflow.revision_checked",
+                                        .ready = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .retained_ui_row_ids = {"environment.workflow.report.revision_checked"},
+                                    },
+                                    mirakana::editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                        .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                            production_walkthrough_package,
+                                        .evidence_id = "environment_artist_workflow_walkthrough_package",
+                                        .ready = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .retained_ui_row_ids =
+                                            {
+                                                "environment.workflow.walkthrough.import_source_assets",
+                                                "environment.workflow.walkthrough.cook_assets",
+                                                "environment.workflow.walkthrough.assemble_preset",
+                                                "environment.workflow.walkthrough.edit_weather_timeline",
+                                                "environment.workflow.walkthrough.run_simulation_preview",
+                                                "environment.workflow.walkthrough.package_sample",
+                                                "environment.workflow.walkthrough.run_installed_validation",
+                                                "environment.workflow.walkthrough.inspect_report",
+                                            },
+                                    },
+                                    mirakana::editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                        .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                            editor_core_execution_boundary,
+                                        .evidence_id = "environment-artist-workflow-editor-core-no-execution",
+                                        .ready = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .retained_ui_row_ids = {"environment.workflow.execution.evidence_review"},
+                                    },
+                                    mirakana::editor::EnvironmentArtistWorkflowReadyRequirementInputRow{
+                                        .kind = mirakana::editor::EnvironmentArtistWorkflowReadyRequirementKind::
+                                            operator_review,
+                                        .evidence_id = "environment-artist-workflow-operator-review",
+                                        .ready = true,
+                                        .reviewed = true,
+                                        .package_visible = true,
+                                        .retained_ui_row_ids = {"environment.workflow.execution.operator_review"},
+                                    },
+                                },
+                            .request_environment_artist_workflow_ready = true,
+                        });
+
+    const auto model = mirakana::editor::evaluate_environment_artist_workflow_production_closeout(
+        mirakana::editor::EnvironmentArtistWorkflowProductionCloseoutDesc{
+            .selected_package_workflow = selected_package,
+            .requirements =
+                {
+                    row(Kind::import_openexr, "workflow_import_openexr_ready", {"environment.workflow.import.openexr"}),
+                    row(Kind::import_ktx2_basis, "workflow_import_ktx2_basis_ready",
+                        {"environment.workflow.import.ktx2_basis"}),
+                    row(Kind::import_gltf_material, "workflow_import_gltf_material_ready",
+                        {"environment.workflow.import.gltf_material"}),
+                    row(Kind::review_usd_materialx_ocio, "workflow_review_usd_materialx_ocio_ready",
+                        {"environment.workflow.review.usd_materialx_ocio"}),
+                    row(Kind::cook_package, "workflow_cook_package_ready", {"environment.workflow.cook.package"}),
+                    row(Kind::live_preview_d3d12, "workflow_live_preview_d3d12_ready",
+                        {"environment.workflow.preview.d3d12"}),
+                    row(Kind::live_preview_vulkan, "workflow_live_preview_vulkan_ready",
+                        {"environment.workflow.preview.vulkan"}),
+                    row(Kind::live_preview_metal_host, "workflow_live_preview_metal_host_ready",
+                        {"environment.workflow.preview.metal_host"}),
+                    row(Kind::weather_timeline_edit, "workflow_weather_timeline_edit_ready",
+                        {"environment.workflow.edit.weather_timeline"}),
+                    row(Kind::preset_batch_apply, "workflow_preset_batch_apply_ready",
+                        {"environment.workflow.batch.apply_presets"}),
+                    row(Kind::validation_report, "workflow_validation_report_ready",
+                        {"environment.workflow.report.validation"}),
+                    row(Kind::profiler_artifact_review, "workflow_profiler_artifact_review_ready",
+                        {"environment.workflow.report.profiler_artifacts"}),
+                    row(Kind::undo_redo_revision_safety, "workflow_undo_redo_revision_safety_ready",
+                        {"environment.workflow.revision.undo_redo"}),
+                    row(Kind::operator_review, "workflow_operator_review_ready",
+                        {"environment.workflow.operator.review"}),
+                },
+            .request_environment_artist_workflow_production_ready = true,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentArtistWorkflowProductionCloseoutStatus::ready);
+    MK_REQUIRE(model.environment_artist_workflow_production_ready);
+    MK_REQUIRE(model.required_rows == 14U);
+    MK_REQUIRE(model.ready_rows == 14U);
+    MK_REQUIRE(model.workflow_import_openexr_ready);
+    MK_REQUIRE(model.workflow_import_ktx2_basis_ready);
+    MK_REQUIRE(model.workflow_import_gltf_material_ready);
+    MK_REQUIRE(model.workflow_review_usd_materialx_ocio_ready);
+    MK_REQUIRE(model.workflow_cook_package_ready);
+    MK_REQUIRE(model.workflow_live_preview_d3d12_ready);
+    MK_REQUIRE(model.workflow_live_preview_vulkan_ready);
+    MK_REQUIRE(model.workflow_live_preview_metal_host_ready);
+    MK_REQUIRE(model.workflow_weather_timeline_edit_ready);
+    MK_REQUIRE(model.workflow_preset_batch_apply_ready);
+    MK_REQUIRE(model.workflow_validation_report_ready);
+    MK_REQUIRE(model.workflow_profiler_artifact_review_ready);
+    MK_REQUIRE(model.workflow_undo_redo_revision_safety_ready);
+    MK_REQUIRE(model.workflow_operator_review_ready);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.executes_validation_recipes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.diagnostics.empty());
+
+    const auto ui = mirakana::editor::make_environment_artist_workflow_production_closeout_ui_model(model);
+    MK_REQUIRE(contains_element(ui, "environment_artist_workflow_production_closeout.ready"));
+    MK_REQUIRE(contains_element(
+        ui, "environment_artist_workflow_production_closeout.rows.environment.workflow.production.live_preview_metal_"
+            "host.status"));
+}
+
+MK_TEST("editor environment artist workflow production closeout fails closed for unsafe or weak evidence") {
+    using Kind = mirakana::editor::EnvironmentArtistWorkflowProductionRequirementKind;
+
+    const auto model = mirakana::editor::evaluate_environment_artist_workflow_production_closeout(
+        mirakana::editor::EnvironmentArtistWorkflowProductionCloseoutDesc{
+            .selected_package_workflow = {},
+            .requirements =
+                {
+                    mirakana::editor::EnvironmentArtistWorkflowProductionRequirementInputRow{
+                        .kind = Kind::live_preview_metal_host,
+                        .evidence_id = "workflow_live_preview_metal_host_ready",
+                        .ready = true,
+                        .reviewed = true,
+                        .package_visible = true,
+                        .host_validated = false,
+                        .validation_recipe_id = "desktop-runtime-sample-game-environment-artist-workflow-package",
+                        .retained_ui_row_ids = {"environment.workflow.preview.metal_host"},
+                    },
+                },
+            .request_environment_artist_workflow_production_ready = true,
+            .request_backend_execution = true,
+            .request_package_script_execution = true,
+            .request_validation_recipe_execution = true,
+            .request_native_handle_access = true,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EnvironmentArtistWorkflowProductionCloseoutStatus::blocked);
+    MK_REQUIRE(!model.environment_artist_workflow_production_ready);
+    MK_REQUIRE(model.required_rows == 14U);
+    MK_REQUIRE(model.ready_rows == 0U);
+    MK_REQUIRE(!model.workflow_live_preview_metal_host_ready);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.executes_validation_recipes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(contains_value(model.unsupported_claims, "backend execution"));
+    MK_REQUIRE(contains_value(model.unsupported_claims, "package script execution"));
+    MK_REQUIRE(contains_value(model.unsupported_claims, "validation recipe execution"));
+    MK_REQUIRE(contains_value(model.unsupported_claims, "native handle access"));
+    MK_REQUIRE(contains_value(model.unsupported_claims, "selected package artist workflow not ready"));
+    MK_REQUIRE(contains_value(model.unsupported_claims, "environment_artist_workflow_production_ready"));
+    MK_REQUIRE(!model.diagnostics.empty());
 }
 
 MK_TEST("editor environment artist workflow execution review fails closed on unsafe requests") {

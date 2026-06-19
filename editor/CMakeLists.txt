@@ -6,6 +6,7 @@ add_library(MK_editor_core
     core/src/content_browser.cpp
     core/src/content_browser_import_panel.cpp
     core/src/editor_dock_layout.cpp
+    core/src/environment_artist_workflow_v2.cpp
     core/src/environment_authoring.cpp
     core/src/editor_rich_text.cpp
     core/src/game_module_driver.cpp

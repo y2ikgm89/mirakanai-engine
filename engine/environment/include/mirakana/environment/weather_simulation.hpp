@@ -76,6 +76,54 @@ enum class EnvironmentWeatherSimulationArtistControlStatus : std::uint8_t {
     ready,
 };
 
+enum class EnvironmentPhysicalWeatherCoupledFieldKind : std::uint8_t {
+    wind_velocity = 0,
+    humidity,
+    temperature,
+    pressure,
+    water_vapor,
+    cloud_water,
+    rain_water,
+    snow_mass,
+    ground_wetness,
+    snow_accumulation,
+    fog_density,
+    visibility,
+    light_extinction,
+};
+
+enum class EnvironmentPhysicalWeatherDatasetProvenanceKind : std::uint8_t {
+    synthetic_first_party = 0,
+    cf_netcdf,
+    external_grib,
+};
+
+enum class EnvironmentPhysicalWeatherBackendKind : std::uint8_t {
+    d3d12 = 0,
+    vulkan,
+    metal,
+};
+
+enum class EnvironmentPhysicalWeatherCloseoutDiagnosticCode : std::uint8_t {
+    none = 0,
+    missing_cpu_reference_solver,
+    missing_coupled_field,
+    duplicate_coupled_field,
+    invalid_coupled_field_evidence,
+    missing_canonical_dataset,
+    missing_dataset_provenance,
+    missing_canonical_image,
+    missing_backend_solver,
+    backend_not_host_validated,
+    backend_inference,
+    backend_parity_mismatch,
+    threshold_exceeded,
+    budget_overage,
+    visual_regression_failure,
+    native_handle_access,
+    broad_environment_ready_claim,
+};
+
 enum class EnvironmentWeatherSimulationValidationCaseKind : std::uint8_t {
     supersaturated_condensation = 0,
     forced_evaporation_precipitation,
@@ -426,6 +474,84 @@ struct EnvironmentWeatherSimulationArtistControlPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct EnvironmentPhysicalWeatherCoupledFieldRow {
+    EnvironmentPhysicalWeatherCoupledFieldKind field{EnvironmentPhysicalWeatherCoupledFieldKind::wind_velocity};
+    bool ready{false};
+    std::string evidence_id;
+};
+
+struct EnvironmentPhysicalWeatherValidationDatasetRow {
+    std::string dataset_id;
+    EnvironmentPhysicalWeatherDatasetProvenanceKind provenance{
+        EnvironmentPhysicalWeatherDatasetProvenanceKind::synthetic_first_party};
+    bool ready{false};
+    bool license_recorded{false};
+    bool redistribution_recorded{false};
+    std::uint64_t canonical_hash{0U};
+};
+
+struct EnvironmentPhysicalWeatherBackendSolverRow {
+    EnvironmentPhysicalWeatherBackendKind backend{EnvironmentPhysicalWeatherBackendKind::d3d12};
+    bool ready{false};
+    bool host_validated{false};
+    bool compute_dispatch_recorded{false};
+    bool synchronization_recorded{false};
+    bool readback_recorded{false};
+    std::uint64_t normalized_output_hash{0U};
+    std::uint64_t elapsed_us{0U};
+    std::uint64_t budget_us{0U};
+    double mass_conservation_relative_error_max{1.0};
+    double energy_or_stability_error_max{1.0};
+    std::uint32_t negative_density_cells{0U};
+    std::uint32_t nan_or_inf_cells{0U};
+    std::uint32_t visual_regression_failures{0U};
+    bool native_handle_access{false};
+    bool inferred_from_other_backend{false};
+};
+
+struct EnvironmentPhysicalWeatherSimulationCloseoutDesc {
+    bool cpu_reference_solver_ready{false};
+    std::uint64_t cpu_reference_normalized_output_hash{0U};
+    std::vector<EnvironmentPhysicalWeatherCoupledFieldRow> coupled_fields;
+    std::vector<EnvironmentPhysicalWeatherValidationDatasetRow> validation_datasets;
+    std::uint32_t canonical_image_rows{0U};
+    std::vector<EnvironmentPhysicalWeatherBackendSolverRow> backend_solvers;
+    bool request_environment_ready_claim{false};
+    bool request_commercial_ready_claim{false};
+};
+
+struct EnvironmentPhysicalWeatherCloseoutDiagnostic {
+    EnvironmentPhysicalWeatherCloseoutDiagnosticCode code{EnvironmentPhysicalWeatherCloseoutDiagnosticCode::none};
+    std::string field;
+    std::string message;
+};
+
+struct EnvironmentPhysicalWeatherSimulationCloseoutResult {
+    bool physical_weather_ready{false};
+    bool production_solver_ready{false};
+    bool backend_parity_ready{false};
+    bool cpu_reference_solver_ready{false};
+    bool d3d12_gpu_solver_ready{false};
+    bool vulkan_gpu_solver_ready{false};
+    bool metal_gpu_solver_ready{false};
+    std::uint32_t coupled_field_rows{0U};
+    std::uint32_t canonical_dataset_rows{0U};
+    std::uint32_t canonical_image_rows{0U};
+    std::uint32_t backend_solver_rows{0U};
+    double mass_conservation_relative_error_max{1.0};
+    double energy_or_stability_error_max{1.0};
+    std::uint32_t negative_density_cells{0U};
+    std::uint32_t nan_or_inf_cells{0U};
+    std::uint32_t solver_budget_overages{0U};
+    std::uint32_t visual_regression_failures{0U};
+    bool environment_ready{false};
+    bool commercial_ready{false};
+    std::uint64_t replay_hash{0U};
+    std::vector<EnvironmentPhysicalWeatherCloseoutDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] float environment_weather_saturation_vapor_kg_per_m2(float temperature_celsius, float air_pressure_hpa,
                                                                    float mixing_height_m) noexcept;
 
@@ -443,6 +569,9 @@ plan_environment_weather_simulation_validation_images(const EnvironmentWeatherSi
 
 [[nodiscard]] EnvironmentWeatherSimulationArtistControlPlan
 plan_environment_weather_simulation_artist_controls(const EnvironmentWeatherSimulationArtistControlDesc& desc);
+
+[[nodiscard]] EnvironmentPhysicalWeatherSimulationCloseoutResult
+evaluate_environment_physical_weather_simulation_closeout(const EnvironmentPhysicalWeatherSimulationCloseoutDesc& desc);
 
 [[nodiscard]] bool
 has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulationPlan& plan,
@@ -463,5 +592,9 @@ has_environment_weather_simulation_diagnostic(const EnvironmentWeatherSimulation
 [[nodiscard]] bool has_environment_weather_simulation_artist_control_diagnostic(
     const EnvironmentWeatherSimulationArtistControlPlan& plan,
     EnvironmentWeatherSimulationArtistControlDiagnosticCode code) noexcept;
+
+[[nodiscard]] bool
+has_environment_physical_weather_closeout_diagnostic(const EnvironmentPhysicalWeatherSimulationCloseoutResult& result,
+                                                     EnvironmentPhysicalWeatherCloseoutDiagnosticCode code) noexcept;
 
 } // namespace mirakana
