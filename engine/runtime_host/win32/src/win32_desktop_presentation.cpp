@@ -5774,6 +5774,7 @@ void apply_vulkan_strict_runtime_device_evidence(
                         .postprocess_vertex_shader = postprocess_vertex_shader,
                         .postprocess_fragment_stages =
                             std::vector<mirakana::rhi::ShaderHandle>{postprocess_fragment_shader},
+                        .postprocess_first_uniform_buffer = environment_fog_constants_buffer,
                         .wait_for_completion = true,
                         .enable_depth_input = enable_postprocess_depth_input,
                         .depth_format = rhi::Format::depth24_stencil8,

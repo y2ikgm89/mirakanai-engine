@@ -234,6 +234,7 @@ inline constexpr std::uint32_t vulkan_buffer_usage_index_buffer_bit = 0x00000040
 inline constexpr std::uint32_t vulkan_buffer_usage_vertex_buffer_bit = 0x00000080U;
 inline constexpr std::uint32_t vulkan_buffer_usage_indirect_buffer_bit = 0x00000100U;
 inline constexpr std::uint32_t vulkan_image_view_type_2d = 1;
+inline constexpr std::uint32_t vulkan_image_view_type_3d = 2;
 inline constexpr std::uint32_t vulkan_image_view_type_cube = 3;
 inline constexpr std::uint32_t vulkan_component_swizzle_identity = 0;
 inline constexpr std::uint32_t vulkan_image_aspect_color_bit = 0x00000001U;
@@ -243,6 +244,7 @@ inline constexpr std::uint32_t vulkan_memory_property_device_local_bit = 0x00000
 inline constexpr std::uint32_t vulkan_memory_property_host_visible_bit = 0x00000002U;
 inline constexpr std::uint32_t vulkan_memory_property_host_coherent_bit = 0x00000004U;
 inline constexpr std::uint32_t vulkan_image_type_2d = 1;
+inline constexpr std::uint32_t vulkan_image_type_3d = 2;
 inline constexpr std::uint32_t vulkan_image_tiling_optimal = 0;
 inline constexpr std::uint32_t vulkan_sharing_mode_exclusive = 0;
 inline constexpr std::uint32_t vulkan_sharing_mode_concurrent = 1;
@@ -3797,11 +3799,13 @@ class VulkanRhiDevice final : public IRhiDevice {
             throw std::invalid_argument("vulkan rhi swapchain frame synchronization failed: " + sync_result.diagnostic);
         }
 
+        const auto swapchain_image_count = swapchain_result.swapchain.image_count();
         swapchains_.push_back(std::move(swapchain_result.swapchain));
         swapchain_syncs_.push_back(std::move(sync_result.sync));
         swapchain_descs_.push_back(desc);
         swapchain_plans_.push_back(plan);
         swapchain_states_.push_back(ResourceState::present);
+        swapchain_image_states_.push_back(std::vector<ResourceState>(swapchain_image_count, ResourceState::undefined));
         swapchain_frame_reserved_.push_back(false);
         ++stats_.swapchains_created;
         return SwapchainHandle{static_cast<std::uint32_t>(swapchains_.size())};
@@ -3839,11 +3843,13 @@ class VulkanRhiDevice final : public IRhiDevice {
             throw std::invalid_argument("vulkan rhi swapchain frame synchronization failed: " + sync_result.diagnostic);
         }
 
+        const auto swapchain_image_count = swapchain_result.swapchain.image_count();
         swapchains_.at(index) = std::move(swapchain_result.swapchain);
         swapchain_syncs_.at(index) = std::move(sync_result.sync);
         swapchain_descs_.at(index) = desc;
         swapchain_plans_.at(index) = plan;
         swapchain_states_.at(index) = ResourceState::present;
+        swapchain_image_states_.at(index) = std::vector<ResourceState>(swapchain_image_count, ResourceState::undefined);
         ++stats_.swapchain_resizes;
     }
 
@@ -3856,10 +3862,6 @@ class VulkanRhiDevice final : public IRhiDevice {
         if (swapchain_frame_reserved_.at(index)) {
             throw std::invalid_argument("vulkan rhi swapchain already has a pending frame");
         }
-        if (swapchain_states_.at(index) != ResourceState::present) {
-            throw std::invalid_argument("vulkan rhi swapchain is not ready for image acquisition");
-        }
-
         const auto acquire_result =
             acquire_next_runtime_swapchain_image(device_, swapchains_.at(index), swapchain_syncs_.at(index), {});
         if (!acquire_result.acquired) {
@@ -4630,6 +4632,7 @@ class VulkanRhiDevice final : public IRhiDevice {
     std::vector<SwapchainDesc> swapchain_descs_;
     std::vector<VulkanSwapchainCreatePlan> swapchain_plans_;
     std::vector<ResourceState> swapchain_states_;
+    std::vector<std::vector<ResourceState>> swapchain_image_states_;
     std::vector<bool> swapchain_frame_reserved_;
     std::vector<SwapchainHandle> swapchain_frame_swapchains_;
     std::vector<std::uint32_t> swapchain_frame_image_indices_;
@@ -4925,15 +4928,19 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (!device_->swapchain_frame_reserved_.at(swapchain_index)) {
             throw std::invalid_argument("vulkan rhi swapchain already has a pending frame");
         }
-        if (device_->swapchain_states_.at(swapchain_index) != ResourceState::present) {
-            throw std::invalid_argument("vulkan rhi swapchain render pass attachment must be in present state");
-        }
         validate_depth_attachment(desc.depth, device_->swapchains_.at(swapchain_index).extent());
 
         const auto sync_plan = make_frame_sync_plan(false);
+        const auto image_index = device_->swapchain_image_index_for_frame(desc.color.swapchain_frame);
+        const auto image_state = device_->swapchain_image_states_.at(swapchain_index).at(image_index);
+        if (image_state != ResourceState::undefined && image_state != ResourceState::present) {
+            throw std::invalid_argument(
+                "vulkan rhi swapchain render pass attachment must be in present or undefined state");
+        }
         VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
-        barrier_desc.image_index = device_->swapchain_image_index_for_frame(desc.color.swapchain_frame);
+        barrier_desc.image_index = image_index;
         barrier_desc.barrier = sync_plan.barriers.at(0);
+        barrier_desc.barrier.before = image_state;
         const auto barrier = record_runtime_swapchain_frame_barrier(
             device_->device_, pool_, device_->swapchains_.at(swapchain_index), barrier_desc);
         if (!barrier.recorded) {
@@ -4954,6 +4961,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             observe_texture(desc.depth.texture);
         }
         device_->swapchain_states_.at(swapchain_index) = ResourceState::render_target;
+        device_->swapchain_image_states_.at(swapchain_index).at(image_index) = ResourceState::render_target;
         recorded_work_ = true;
         ++device_->stats_.resource_transitions;
         ++device_->stats_.render_passes_begun;
@@ -4982,8 +4990,9 @@ class VulkanRhiCommandList final : public IRhiCommandList {
 
         const auto swapchain_index = active_swapchain_.value - 1U;
         const auto sync_plan = make_frame_sync_plan(false);
+        const auto image_index = device_->swapchain_image_index_for_frame(active_swapchain_frame_);
         VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
-        barrier_desc.image_index = device_->swapchain_image_index_for_frame(active_swapchain_frame_);
+        barrier_desc.image_index = image_index;
         barrier_desc.barrier = sync_plan.barriers.at(1);
         const auto barrier = record_runtime_swapchain_frame_barrier(
             device_->device_, pool_, device_->swapchains_.at(swapchain_index), barrier_desc);
@@ -4992,6 +5001,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         }
 
         device_->swapchain_states_.at(swapchain_index) = ResourceState::present;
+        device_->swapchain_image_states_.at(swapchain_index).at(image_index) = ResourceState::present;
         presentable_swapchain_frames_.push_back(active_swapchain_frame_);
         active_render_pass_ = RenderPassDesc{};
         active_swapchain_ = SwapchainHandle{};
@@ -6191,7 +6201,7 @@ std::vector<VulkanRuntimeTexture> VulkanRhiDevice::create_transient_texture_alia
         .s_type = vulkan_structure_type_image_create_info,
         .next = nullptr,
         .flags = vulkan_image_create_alias_bit,
-        .image_type = vulkan_image_type_2d,
+        .image_type = plan.image_type_3d ? vulkan_image_type_3d : vulkan_image_type_2d,
         .format = native_vulkan_format(plan.format),
         .extent =
             NativeVulkanExtent3D{.width = plan.extent.width, .height = plan.extent.height, .depth = plan.extent.depth},
@@ -6266,7 +6276,7 @@ std::vector<VulkanRuntimeTexture> VulkanRhiDevice::create_transient_texture_alia
                 .next = nullptr,
                 .flags = 0,
                 .image = images[i],
-                .view_type = vulkan_image_view_type_2d,
+                .view_type = plan.image_view_type_3d ? vulkan_image_view_type_3d : vulkan_image_view_type_2d,
                 .format = native_vulkan_format(plan.format),
                 .components =
                     NativeVulkanComponentMapping{
@@ -7010,6 +7020,16 @@ struct VulkanRuntimeFrameSync::Impl {
             destroyed = true;
         }
         if (device_owner != nullptr && device_owner->device != nullptr) {
+            if ((image_available_semaphore != 0 || render_finished_semaphore != 0) &&
+                device_owner->queue_wait_idle != nullptr) {
+                if (device_owner->graphics_queue != nullptr) {
+                    (void)device_owner->queue_wait_idle(device_owner->graphics_queue);
+                }
+                if (device_owner->present_queue != nullptr &&
+                    device_owner->present_queue != device_owner->graphics_queue) {
+                    (void)device_owner->queue_wait_idle(device_owner->present_queue);
+                }
+            }
             if (device_owner->destroy_fence != nullptr && in_flight_fence != 0) {
                 device_owner->destroy_fence(device_owner->device, in_flight_fence, nullptr);
             }
@@ -7594,6 +7614,10 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
         plan.diagnostic = "Vulkan runtime texture render target format is unsupported";
         return plan;
     }
+    if (desc.texture.extent.depth > 1 && has_flag(desc.texture.usage, TextureUsage::render_target)) {
+        plan.diagnostic = "Vulkan runtime 3D render target textures are not implemented";
+        return plan;
+    }
     if (has_flag(desc.texture.usage, TextureUsage::shader_resource) &&
         !sampled_texture_format_supported(desc.texture.format)) {
         plan.diagnostic = "Vulkan runtime texture sampled format is unsupported";
@@ -7620,6 +7644,8 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
 
     plan.extent = desc.texture.extent;
     plan.format = desc.texture.format;
+    plan.image_type_3d = desc.texture.extent.depth > 1;
+    plan.image_view_type_3d = desc.texture.extent.depth > 1;
     plan.usage.transfer_source = has_flag(desc.texture.usage, TextureUsage::copy_source);
     plan.usage.transfer_destination = has_flag(desc.texture.usage, TextureUsage::copy_destination);
     plan.usage.sampled = has_flag(desc.texture.usage, TextureUsage::shader_resource);
@@ -11244,7 +11270,7 @@ VulkanRuntimeTextureCreateResult create_runtime_texture(VulkanRuntimeDevice& dev
         .s_type = vulkan_structure_type_image_create_info,
         .next = nullptr,
         .flags = 0,
-        .image_type = vulkan_image_type_2d,
+        .image_type = result.plan.image_type_3d ? vulkan_image_type_3d : vulkan_image_type_2d,
         .format = native_vulkan_format(result.plan.format),
         .extent = NativeVulkanExtent3D{.width = result.plan.extent.width,
                                        .height = result.plan.extent.height,
@@ -11316,7 +11342,7 @@ VulkanRuntimeTextureCreateResult create_runtime_texture(VulkanRuntimeDevice& dev
             .next = nullptr,
             .flags = 0,
             .image = image,
-            .view_type = vulkan_image_view_type_2d,
+            .view_type = result.plan.image_view_type_3d ? vulkan_image_view_type_3d : vulkan_image_view_type_2d,
             .format = native_vulkan_format(result.plan.format),
             .components =
                 NativeVulkanComponentMapping{
@@ -12738,6 +12764,10 @@ VulkanRuntimeSwapchainPresentResult present_runtime_swapchain_image(VulkanRuntim
         result.diagnostic = "Vulkan queue present command is unavailable";
         return result;
     }
+    if (desc.wait_for_present_queue_idle && device.impl_->queue_wait_idle == nullptr) {
+        result.diagnostic = "Vulkan queue wait idle command is unavailable";
+        return result;
+    }
 
     const NativeVulkanSemaphore wait_semaphore = sync.impl_->render_finished_semaphore;
     const NativeVulkanSwapchain swapchain_handle = swapchain.impl_->swapchain;
@@ -12755,6 +12785,15 @@ VulkanRuntimeSwapchainPresentResult present_runtime_swapchain_image(VulkanRuntim
 
     const auto present_result = device.impl_->queue_present(device.impl_->present_queue, &present_info);
     if (present_result == vulkan_success || present_result == vulkan_suboptimal) {
+        if (desc.wait_for_present_queue_idle) {
+            const auto wait_result = device.impl_->queue_wait_idle(device.impl_->present_queue);
+            if (wait_result != vulkan_success) {
+                result.diagnostic =
+                    vulkan_result_diagnostic("Vulkan vkQueueWaitIdle after present failed", wait_result);
+                return result;
+            }
+            result.present_queue_idle_waited = true;
+        }
         result.presented = true;
         result.suboptimal = present_result == vulkan_suboptimal;
         result.resize_required = result.suboptimal;

@@ -355,6 +355,8 @@ struct VulkanRuntimeTextureCreatePlan {
     bool supported{false};
     Extent3D extent;
     Format format{Format::unknown};
+    bool image_type_3d{false};
+    bool image_view_type_3d{false};
     VulkanTextureUsagePlan usage;
     VulkanBufferMemoryPlan memory;
     std::string diagnostic;
@@ -1542,12 +1544,14 @@ struct VulkanRuntimeSwapchainAcquireResult {
 struct VulkanRuntimeSwapchainPresentDesc {
     std::uint32_t image_index{0};
     bool wait_render_finished_semaphore{true};
+    bool wait_for_present_queue_idle{true};
 };
 
 struct VulkanRuntimeSwapchainPresentResult {
     bool presented{false};
     bool suboptimal{false};
     bool resize_required{false};
+    bool present_queue_idle_waited{false};
     std::string diagnostic;
 };
 

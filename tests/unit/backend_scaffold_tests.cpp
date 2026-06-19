@@ -2513,6 +2513,8 @@ MK_TEST("vulkan runtime texture create plan maps first party usage into image ow
     MK_REQUIRE(color_target.extent.width == 320);
     MK_REQUIRE(color_target.extent.height == 180);
     MK_REQUIRE(color_target.extent.depth == 1);
+    MK_REQUIRE(!color_target.image_type_3d);
+    MK_REQUIRE(!color_target.image_view_type_3d);
     MK_REQUIRE(color_target.format == mirakana::rhi::Format::bgra8_unorm);
     MK_REQUIRE(color_target.usage.color_attachment);
     MK_REQUIRE(color_target.usage.sampled);
@@ -2562,6 +2564,21 @@ MK_TEST("vulkan runtime texture create plan maps first party usage into image ow
         }});
     MK_REQUIRE(!color_format_depth_usage.supported);
     MK_REQUIRE(color_format_depth_usage.diagnostic == "Vulkan runtime depth texture format is unsupported");
+
+    const auto volume_sampled = mirakana::rhi::vulkan::build_runtime_texture_create_plan(
+        mirakana::rhi::vulkan::VulkanRuntimeTextureDesc{mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 4},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::shader_resource | mirakana::rhi::TextureUsage::copy_destination,
+        }});
+    MK_REQUIRE(volume_sampled.supported);
+    MK_REQUIRE(volume_sampled.image_type_3d);
+    MK_REQUIRE(volume_sampled.image_view_type_3d);
+    MK_REQUIRE(volume_sampled.usage.sampled);
+    MK_REQUIRE(volume_sampled.usage.transfer_destination);
+    MK_REQUIRE(!volume_sampled.usage.color_attachment);
+    MK_REQUIRE(!volume_sampled.usage.depth_stencil_attachment);
+    MK_REQUIRE(volume_sampled.diagnostic == "Vulkan runtime texture create plan ready");
 }
 
 MK_TEST("vulkan runtime texture owner rejects invalid descriptions before native commands") {

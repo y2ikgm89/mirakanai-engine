@@ -495,10 +495,10 @@ if ($null -eq $broadOptimizationClaim -or
     -not [string]$broadOptimizationClaim.requiredEvidence.Contains("zero escaped paths") -or
     -not [string]$broadOptimizationClaim.requiredEvidence.Contains("before/after traces") -or
     -not [string]$broadOptimizationClaim.notes.Contains("tools/validate-environment-optimization-artifacts.ps1") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_missing_artifacts=14") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_workload_rows=7") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_backend_rows=1") -or
-    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_profiler_artifacts=7") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_missing_artifacts=7") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_workload_rows=14") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_backend_rows=2") -or
+    -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_profiler_artifacts=14") -or
     -not [string]$broadOptimizationClaim.notes.Contains("environment_optimization_measurement_over_budget=0") -or
     -not [string]$broadOptimizationClaim.notes.Contains("environment_broad_optimization_ready=0")) {
     Write-Error "engine manifest environment_broad_optimization_ready must require the MK_renderer optimization measurement contract plus the fail-closed retained artifact validator without ready promotion"

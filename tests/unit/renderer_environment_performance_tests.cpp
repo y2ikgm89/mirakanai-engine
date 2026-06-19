@@ -98,12 +98,14 @@ constexpr EnvironmentOptimizationWorkload kRequiredWorkloads[] = {
     };
 }
 
-[[nodiscard]] mirakana::EnvironmentOptimizationMeasurementRow make_ready_row(EnvironmentOptimizationWorkload workload,
-                                                                             std::uint32_t source_index) {
+[[nodiscard]] mirakana::EnvironmentOptimizationMeasurementRow
+make_ready_row(EnvironmentOptimizationWorkload workload, std::uint32_t source_index,
+               mirakana::rhi::BackendKind backend = mirakana::rhi::BackendKind::d3d12) {
+    const auto metric_offset = ((source_index - 1U) % 7U) + 1U;
     return mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = workload_id(workload),
         .workload = workload,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = backend,
         .status = EnvironmentOptimizationRowStatus::ready,
         .host_os = "Windows 11 24H2",
         .cpu_name = "host-cpu",
@@ -117,8 +119,8 @@ constexpr EnvironmentOptimizationWorkload kRequiredWorkloads[] = {
         .resolution = "1920x1080",
         .warmup_frames = 30U,
         .sample_frames = 120U,
-        .before = before_metrics(source_index),
-        .after = after_metrics(source_index),
+        .before = before_metrics(metric_offset),
+        .after = after_metrics(metric_offset),
         .budget = regression_budget(),
         .before_after_ready = true,
         .host_tool_versions_ready = true,
@@ -131,6 +133,27 @@ constexpr EnvironmentOptimizationWorkload kRequiredWorkloads[] = {
         .native_handle_access = false,
         .inferred_from_other_backend = false,
         .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentOptimizationMeasurementRequest make_cross_backend_request() {
+    std::vector<mirakana::EnvironmentOptimizationMeasurementRow> rows;
+    std::uint32_t source_index{1U};
+    for (const auto backend :
+         {mirakana::rhi::BackendKind::d3d12, mirakana::rhi::BackendKind::vulkan, mirakana::rhi::BackendKind::metal}) {
+        for (const auto workload : kRequiredWorkloads) {
+            rows.push_back(make_ready_row(workload, source_index++, backend));
+        }
+    }
+
+    return mirakana::EnvironmentOptimizationMeasurementRequest{
+        .rows = std::move(rows),
+        .expected_package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
+        .expected_quality_tier = "high",
+        .environment_backend_parity_ready = true,
+        .required_workload_count = 7U,
+        .row_budget = 32U,
+        .seed = 20260619U,
     };
 }
 
@@ -378,17 +401,40 @@ MK_TEST("environment optimization measurement records d3d12 asset library cold l
     MK_REQUIRE(plan.replay_hash != 0U);
 }
 
-MK_TEST("environment optimization measurement is broad ready only with every workload and backend parity") {
+MK_TEST("environment optimization measurement keeps d3d12 only rows host gated even with backend parity") {
     const auto plan = mirakana::plan_environment_optimization_measurement(make_request(true));
 
-    MK_REQUIRE(plan.status == EnvironmentOptimizationMeasurementStatus::ready);
-    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.status == EnvironmentOptimizationMeasurementStatus::host_evidence_required);
+    MK_REQUIRE(!plan.succeeded());
     MK_REQUIRE(plan.diagnostics.empty());
     MK_REQUIRE(plan.row_count == 7U);
     MK_REQUIRE(plan.required_workload_count == 7U);
     MK_REQUIRE(plan.measured_workload_count == 7U);
     MK_REQUIRE(plan.before_after_pair_count == 7U);
     MK_REQUIRE(plan.regression_budget_row_count == 7U);
+    MK_REQUIRE(plan.over_budget_row_count == 0U);
+    MK_REQUIRE(plan.d3d12_preset_pack_flythrough_measured);
+    MK_REQUIRE(plan.d3d12_storm_precipitation_measured);
+    MK_REQUIRE(plan.d3d12_dense_volumetric_fog_measured);
+    MK_REQUIRE(plan.d3d12_volumetric_cloud_sunset_measured);
+    MK_REQUIRE(plan.d3d12_snowfield_material_weathering_measured);
+    MK_REQUIRE(plan.d3d12_weather_simulation_stress_measured);
+    MK_REQUIRE(plan.d3d12_asset_library_cold_load_measured);
+    MK_REQUIRE(!plan.environment_broad_optimization_ready);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("environment optimization measurement is broad ready only with every workload on every required backend") {
+    const auto plan = mirakana::plan_environment_optimization_measurement(make_cross_backend_request());
+
+    MK_REQUIRE(plan.status == EnvironmentOptimizationMeasurementStatus::ready);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.row_count == 21U);
+    MK_REQUIRE(plan.required_workload_count == 7U);
+    MK_REQUIRE(plan.measured_workload_count == 21U);
+    MK_REQUIRE(plan.before_after_pair_count == 21U);
+    MK_REQUIRE(plan.regression_budget_row_count == 21U);
     MK_REQUIRE(plan.over_budget_row_count == 0U);
     MK_REQUIRE(plan.d3d12_preset_pack_flythrough_measured);
     MK_REQUIRE(plan.d3d12_storm_precipitation_measured);
