@@ -8079,7 +8079,7 @@
           "shader-toolchain",
           "environment-platform-linux-vulkan-host-gate"
         ],
-        "notes": "Linux Vulkan platform readiness is a distinct host gate from Windows strict Vulkan. The environment-platform-linux-vulkan-host-gate recipe records the required Linux host/package evidence and keeps environment_platform_linux_vulkan_ready=0, environment_platform_requires_linux_vulkan_host_evidence=1, environment_all_platform_unconditional_ready=0, and environment_platform_windows_vulkan_inferred=0 until a first-party Linux runtime host, Linux package script, installed validator, strict package smoke, and readback counters exist."
+        "notes": "Linux Vulkan platform readiness is a distinct host gate from Windows strict Vulkan. The validate.yml linux-vulkan hosted evidence lane captures Ubuntu Vulkan diagnostic package output, vulkaninfo --summary, vulkaninfo --json, spirv-val availability, and tools/validate-linux-vulkan-runtime-host.ps1 output without passing -RequireReady. The environment-platform-linux-vulkan-host-gate recipe records the required Linux host/package evidence and keeps environment_platform_linux_vulkan_ready=0, environment_platform_requires_linux_vulkan_host_evidence=1, environment_all_platform_unconditional_ready=0, and environment_platform_windows_vulkan_inferred=0 until a first-party Linux runtime host, Linux package script, installed validator, strict package smoke, and readback counters exist."
       },
       {
         "id": "metal-apple",
