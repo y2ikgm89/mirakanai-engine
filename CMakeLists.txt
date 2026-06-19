@@ -1391,6 +1391,15 @@ if(BUILD_TESTING)
         endif()
     endif()
 
+    if(UNIX AND NOT APPLE AND TARGET MK_runtime_host_linux)
+        add_executable(MK_runtime_host_linux_public_api_compile
+            tests/unit/runtime_host_linux_public_api_compile.cpp
+        )
+        target_link_libraries(MK_runtime_host_linux_public_api_compile PRIVATE MK_runtime_host_linux)
+        MK_apply_common_target_options(MK_runtime_host_linux_public_api_compile)
+        add_test(NAME MK_runtime_host_linux_public_api_compile COMMAND MK_runtime_host_linux_public_api_compile)
+    endif()
+
     get_property(MK_CURRENT_DIRECTORY_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
     foreach(MK_CURRENT_DIRECTORY_TARGET IN LISTS MK_CURRENT_DIRECTORY_TARGETS)
         if(MK_CURRENT_DIRECTORY_TARGET MATCHES "^MK_.*(_tests|_probe|_public_api_compile)$")
@@ -1428,6 +1437,7 @@ MK_set_export_name(MK_renderer renderer)
 MK_set_export_name(MK_rhi rhi)
 MK_set_export_name(MK_runtime runtime)
 MK_set_export_name(MK_runtime_host runtime_host)
+MK_set_export_name(MK_runtime_host_linux runtime_host_linux)
 MK_set_export_name(MK_runtime_host_win32 runtime_host_win32)
 MK_set_export_name(MK_runtime_host_win32_presentation runtime_host_win32_presentation)
 MK_set_export_name(MK_runtime_rhi runtime_rhi)
@@ -1482,7 +1492,7 @@ set(MK_RUNTIME_TARGETS
 )
 
 foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_wasapi mirakana_platform_win32
-        MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
+        MK_runtime_host_linux MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
         mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
@@ -1656,6 +1666,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
     foreach(MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET IN ITEMS
         MK_runtime_host_tests
+        MK_runtime_host_linux_public_api_compile
         MK_runtime_host_win32_public_api_compile
         MK_runtime_host_win32_tests
         MK_win32_platform_tests

@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-19 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, retain Windows D3D12 typeperf optimization artifacts, retain strict Vulkan timestamp/validation optimization artifacts, add the macOS-only Apple `xcrun xctrace` Metal optimization artifact producer/upload lane, retain the PR #692 Apple-host Metal artifact output, add a hosted `validate.yml` Linux Vulkan host-evidence lane that captures `vulkaninfo --summary`, `vulkaninfo --json`, `spirv-val`, and `tools/validate-linux-vulkan-runtime-host.ps1` output without promoting Linux readiness, and add the Linux XCB Vulkan surface foundation needed before the Linux runtime host/package lane can be implemented. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Tasks 14-17 complete the three-backend optimization matrix and promote only `environment_broad_optimization_ready`; Task 18 records hosted Linux Vulkan evidence while keeping the Linux Vulkan platform row host-gated; Task 19 adds `SurfaceHandle::context`, `SurfacePlatform::xcb`, `VK_KHR_xcb_surface` planning, and private `vkCreateXcbSurfaceKHR` probing while keeping Linux readiness unpromoted. Current evidence has 11 ready rows, 5 host-gated rows, 0 unsupported rows, 21 retained optimization workload/backend rows, and 0 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-20 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, retain Windows D3D12 typeperf optimization artifacts, retain strict Vulkan timestamp/validation optimization artifacts, add the macOS-only Apple `xcrun xctrace` Metal optimization artifact producer/upload lane, retain the PR #692 Apple-host Metal artifact output, add a hosted `validate.yml` Linux Vulkan host-evidence lane that captures `vulkaninfo --summary`, `vulkaninfo --json`, `spirv-val`, and `tools/validate-linux-vulkan-runtime-host.ps1` output without promoting Linux readiness, add the Linux XCB Vulkan surface foundation, and add the first-party Linux XCB runtime host foundation. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Tasks 14-17 complete the three-backend optimization matrix and promote only `environment_broad_optimization_ready`; Task 18 records hosted Linux Vulkan evidence while keeping the Linux Vulkan platform row host-gated; Task 19 adds `SurfaceHandle::context`, `SurfacePlatform::xcb`, `VK_KHR_xcb_surface` planning, and private `vkCreateXcbSurfaceKHR` probing while keeping Linux readiness unpromoted; Task 20 adds `MK_runtime_host_linux`, `LinuxXcbWindow`, `LinuxDesktopEventPump`, and `LinuxDesktopGameHost` with private dynamic XCB loading and `NullRenderer` fallback while still keeping Linux Vulkan presentation/package readiness unpromoted. Current evidence has 11 ready rows, 5 host-gated rows, 0 unsupported rows, 21 retained optimization workload/backend rows, and 0 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -1337,6 +1337,40 @@ Task 12 evidence (2026-06-19):
 
 **Task 19 evidence (2026-06-20):** The focused backend scaffold test now proves Linux extension planning includes `VK_KHR_xcb_surface` and that Linux surface support probing fails closed when XCB connection/window evidence is incomplete. This is only RHI foundation for the next Linux runtime-host/package slice; it does not create a Linux host, package script, installed validator, strict package smoke, or Linux platform readiness.
 
+## Task 20: Add Linux XCB Runtime Host Foundation Without Promotion
+
+**Goal:** Add the first-party Linux desktop/runtime host foundation needed before Linux Vulkan presentation and Linux package validation can be built, while preserving the host-gated Linux readiness row.
+
+**Context:** Official XCB documentation defines the connection/window/event-polling model through `xcb_connect`, `xcb_create_window`, `xcb_poll_for_event`, and caller-owned event memory. Context7 `/kitware/cmake` confirms target-based include/link/install patterns for conditional targets. The engine keeps XCB private to `MK_runtime_host_linux`, exposes only first-party `IWindow`, `IDesktopEventPump`, `DesktopGameRunner`, and readiness value rows, and avoids new build-time XCB/pkg-config dependencies by dynamically loading the host system `libxcb.so.1`.
+
+**Constraints:**
+- Do not add SDL3, GLFW, Qt, or any window middleware.
+- Do not expose public XCB connection/window, Vulkan surface, Vulkan instance/device, swapchain, or native handles.
+- Do not implement Linux Vulkan presentation, package script, installed validator, strict package smoke, or Linux ready promotion in this task.
+- Keep `environment_platform_linux_vulkan_ready`, `environment_platform_readiness_ready`, `environment_all_platform_unconditional_ready`, `environment_commercial_ready`, and broad `environment_ready` at `0`.
+
+**Files:**
+- Modify: `CMakeLists.txt`
+- Modify: `engine/runtime_host/CMakeLists.txt`
+- Add: `engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp`
+- Add: `engine/runtime_host/src/linux_desktop_host_contract.cpp`
+- Add: `engine/runtime_host/linux/CMakeLists.txt`
+- Add: `engine/runtime_host/linux/src/linux_desktop_game_host.cpp`
+- Add: `tests/unit/runtime_host_linux_public_api_compile.cpp`
+- Modify: `tests/unit/runtime_host_tests.cpp`
+- Modify: `tools/validate-linux-vulkan-runtime-host.ps1`
+- Modify: docs, plan registry, manifest fragments, and composed manifest.
+
+**Steps:**
+- [x] Add cross-platform value-only Linux desktop host request/readiness contract and status labels.
+- [x] Add Linux-only `MK_runtime_host_linux` target and Linux public API compile test.
+- [x] Implement private dynamic XCB loading, XCB window creation/destruction, non-blocking event polling, resize/move/apply placement, and lifecycle close propagation.
+- [x] Add `LinuxDesktopGameHost` over `DesktopGameRunner`, virtual inputs/lifecycle, and `NullRenderer` fallback only.
+- [x] Update the Linux host validator to look for `engine/runtime_host/linux` and the public Linux runtime host header while still requiring Linux package script and installed validator before ready.
+- [x] Keep all Linux/platform/commercial aggregate rows host-gated or unclaimed.
+
+**Task 20 evidence (2026-06-20):** `MK_runtime_host_tests` now proves the Linux host contract stays value-only, rejects invalid requests, reports non-Linux host gating, and exposes no native handles. `tools/validate-linux-vulkan-runtime-host.ps1` still reports `environment_platform_linux_vulkan_ready=0` on Windows and will only advance the first-party host counter on Linux when the new `engine/runtime_host/linux` target/header exist; package script, installed validator, strict Linux package smoke, and readback counters remain missing blockers.
+
 ## Execution Order
 
 Use this PR order:
@@ -1360,8 +1394,9 @@ Use this PR order:
 17. Task 17 retained Apple-host Metal xctrace artifacts and broad optimization dependency-row promotion.
 18. Task 18 hosted Linux Vulkan evidence lane without Linux readiness promotion.
 19. Task 19 Linux XCB Vulkan surface foundation without Linux readiness promotion.
+20. Task 20 Linux XCB runtime host foundation without Linux readiness promotion.
 
-Do not merge Task 19 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
+Do not merge Task 20 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
 
 ## Validation Evidence
 
@@ -1451,6 +1486,10 @@ Record validation here as each PR lands.
 | 2026-06-20 | Task 19 Linux XCB Vulkan surface focused CTest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_backend_scaffold_tests` | pass | `100% tests passed, 0 tests failed out of 1`; tests cover Linux extension planning and missing XCB context/window fail-closed diagnostics |
 | 2026-06-20 | Task 19 readiness counters | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | pass | commercial aggregate remains fail-closed with `environment_commercial_ready_rows=11`, `environment_host_gated_rows=5`, `environment_platform_linux_vulkan_ready=0`, `environment_all_platform_unconditional_ready=0`, and `environment_broad_optimization_ready=1` |
 | 2026-06-20 | Task 19 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple/Metal host checks remain host-gated or diagnostic-only on Windows |
+| 2026-06-20 | Task 20 Linux runtime host TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests` | expected fail | missing `mirakana/runtime_host/linux/linux_desktop_game_host.hpp` before adding the Linux desktop host contract |
+| 2026-06-20 | Task 20 Linux runtime host focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests` | pass | built `MK_runtime_host_tests` after adding the Linux host value contract and `MK_runtime_host_linux` source tree |
+| 2026-06-20 | Task 20 Linux runtime host focused CTest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_tests` | pass | `100% tests passed, 0 tests failed out of 1`; tests cover invalid Linux host requests, non-Linux host gating, fallback reporting, and zero native-handle access |
+| 2026-06-20 | Task 20 Linux host validator | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | pass | Windows report remains host-gated with `environment_platform_linux_vulkan_ready=0` and `first_party_linux_runtime_host_ready=0`; the script now validates `engine/runtime_host/linux`, the public Linux runtime host header, and `MK_runtime_host_linux` CMake presence for the Linux-only first-party host row |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |

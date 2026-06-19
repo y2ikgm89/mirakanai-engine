@@ -1,5 +1,6 @@
 add_library(MK_runtime_host
     src/desktop_runner.cpp
+    src/linux_desktop_host_contract.cpp
     src/shader_bytecode.cpp
 )
 
@@ -20,4 +21,8 @@ MK_apply_common_target_options(MK_runtime_host)
 
 if(WIN32 AND MK_DESKTOP_RUNTIME_ENABLED)
     add_subdirectory(win32)
+endif()
+
+if(UNIX AND NOT APPLE AND MK_DESKTOP_RUNTIME_ENABLED)
+    add_subdirectory(linux)
 endif()

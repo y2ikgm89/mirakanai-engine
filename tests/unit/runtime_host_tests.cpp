@@ -14,6 +14,7 @@
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime_host/desktop_runner.hpp"
+#include "mirakana/runtime_host/linux/linux_desktop_game_host.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
 
 #include <cmath>
@@ -434,7 +435,7 @@ MK_TEST("desktop game runner resizes an rhi swapchain renderer to the window ext
         .format = mirakana::rhi::Format::rgba8_unorm,
         .buffer_count = 2,
         .vsync = true,
-        .surface = mirakana::rhi::SurfaceHandle{1},
+        .surface = mirakana::rhi::SurfaceHandle{.value = 1},
     });
     const auto pipeline = create_test_pipeline(device);
     mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
@@ -605,6 +606,33 @@ MK_TEST("desktop shader bytecode loader reports filesystem read failures") {
     MK_REQUIRE(mirakana::desktop_shader_bytecode_load_status_name(loaded.status) == std::string_view{"read_failed"});
     MK_REQUIRE(loaded.diagnostic.find("runtime_shell.vs.dxil") != std::string::npos);
     MK_REQUIRE(loaded.diagnostic.find("read denied") != std::string::npos);
+}
+
+MK_TEST("linux desktop host contract stays value-only and host gated off linux") {
+    auto invalid = mirakana::evaluate_linux_desktop_host_request(mirakana::LinuxDesktopHostRequest{
+        .title = "",
+        .extent = mirakana::WindowExtent{.width = 1280, .height = 720},
+    });
+    MK_REQUIRE(invalid.status == mirakana::LinuxDesktopHostStatus::invalid_request);
+    MK_REQUIRE(mirakana::linux_desktop_host_status_name(invalid.status) == std::string_view{"invalid_request"});
+    MK_REQUIRE(!invalid.ready());
+    MK_REQUIRE(!invalid.native_handle_access);
+
+    const auto report = mirakana::evaluate_linux_desktop_host_request(mirakana::LinuxDesktopHostRequest{
+        .title = "Linux Host",
+        .extent = mirakana::WindowExtent{.width = 1280, .height = 720},
+        .allow_null_fallback = true,
+        .require_vulkan_surface = true,
+    });
+    MK_REQUIRE(!report.native_handle_access);
+    MK_REQUIRE(report.null_renderer_fallback_available);
+#if defined(__linux__)
+    MK_REQUIRE(report.linux_host);
+#else
+    MK_REQUIRE(!report.linux_host);
+    MK_REQUIRE(report.status == mirakana::LinuxDesktopHostStatus::host_gated);
+    MK_REQUIRE(report.diagnostic.find("Linux host") != std::string::npos);
+#endif
 }
 
 int main() {

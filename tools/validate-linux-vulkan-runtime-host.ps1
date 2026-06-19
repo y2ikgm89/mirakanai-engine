@@ -151,10 +151,16 @@ if ($hostMatches -and $null -ne $vulkanInfoCommand) {
 
 $linuxPackageScript = Join-Path $root "tools/package-linux-runtime.ps1"
 $linuxInstalledValidator = Join-Path $root "tools/validate-installed-linux-runtime.ps1"
-$linuxHostRoot = Join-Path $root "platform/linux"
+$linuxHostRoot = Join-Path $root "engine/runtime_host/linux"
+$linuxHostHeader = Join-Path $root "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp"
+$linuxHostCMake = Join-Path $linuxHostRoot "CMakeLists.txt"
 
 $linuxIcdRuntimeReady = $hostMatches -and $vulkanInfoReady
-$firstPartyLinuxRuntimeHostReady = $hostMatches -and (Test-Path -LiteralPath $linuxHostRoot -PathType Container)
+$firstPartyLinuxRuntimeHostReady = $hostMatches -and (
+    (Test-Path -LiteralPath $linuxHostRoot -PathType Container) -and
+    (Test-Path -LiteralPath $linuxHostHeader -PathType Leaf) -and
+    (Test-Path -LiteralPath $linuxHostCMake -PathType Leaf)
+)
 $linuxPackageScriptReady = $hostMatches -and (Test-Path -LiteralPath $linuxPackageScript -PathType Leaf)
 $linuxInstalledValidatorReady = $hostMatches -and (Test-Path -LiteralPath $linuxInstalledValidator -PathType Leaf)
 
