@@ -96,7 +96,7 @@ constexpr std::uint32_t xcb_event_mask_structure_notify = 1U << 17U;
 class LinuxVulkanPresentationRuntimeError final : public std::runtime_error {
   public:
     LinuxVulkanPresentationRuntimeError(LinuxDesktopVulkanPresentationStatus status, std::string message)
-        : std::runtime_error(std::move(message)), status_(status) {}
+        : std::runtime_error(message), status_(status) {}
 
     [[nodiscard]] LinuxDesktopVulkanPresentationStatus status() const noexcept {
         return status_;
@@ -610,6 +610,7 @@ probe_linux_desktop_vulkan_presentation(const LinuxDesktopVulkanPresentationProb
             .linux_host = false,
 #endif
         });
+        report.status = LinuxDesktopVulkanPresentationStatus::host_gated;
         report.native_handle_access = false;
         report.environment_platform_windows_vulkan_inferred = false;
         report.diagnostic = "Linux Vulkan presentation runtime smoke was not requested";
