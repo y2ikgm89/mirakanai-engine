@@ -23,6 +23,7 @@ if ([string]::IsNullOrWhiteSpace($GameTarget)) {
 
 $null = Assert-VcpkgExecutable -Purpose "the Linux runtime package"
 Set-MirakanaiVcpkgEnvironment | Out-Null
+$vcpkgTriplet = Get-VcpkgDefaultTriplet
 $tools = Assert-CppBuildTools
 if (-not $tools.CPack) {
     Write-Error "CPack is required but was not found. Install official CMake 3.30+."
@@ -33,7 +34,8 @@ $configureArgs = @(
     "desktop-runtime-release",
     "-DMK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET=$GameTarget",
     "-DMK_REQUIRE_DESKTOP_RUNTIME_DXIL=OFF",
-    "-DMK_REQUIRE_DESKTOP_RUNTIME_SPIRV=$(if ($RequireVulkanShaders.IsPresent) { 'ON' } else { 'OFF' })"
+    "-DMK_REQUIRE_DESKTOP_RUNTIME_SPIRV=$(if ($RequireVulkanShaders.IsPresent) { 'ON' } else { 'OFF' })",
+    "-DVCPKG_TARGET_TRIPLET=$vcpkgTriplet"
 )
 Invoke-CheckedCommand $tools.CMake @configureArgs
 
