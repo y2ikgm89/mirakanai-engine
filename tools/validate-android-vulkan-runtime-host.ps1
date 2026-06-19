@@ -408,7 +408,7 @@ function Invoke-AndroidPackageSmokeIfRequired {
     }
 
     $smokeScript = Join-Path $PSScriptRoot "smoke-android-package.ps1"
-    $smoke = Invoke-ToolCapture -FilePath "pwsh" -Arguments @(
+    $smokeArguments = @(
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
@@ -422,6 +422,9 @@ function Invoke-AndroidPackageSmokeIfRequired {
     }
     $smoke = Invoke-ToolCapture -FilePath "pwsh" -Arguments $smokeArguments -TimeoutSeconds 600
     $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
+    if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
+        Write-Output $smokeText.TrimEnd()
+    }
     return [pscustomobject]@{
         PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android-smoke: ok")
         VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_readback_ready=1")
