@@ -40,14 +40,105 @@ foreach ($recipeId in $expectedHighestCommercialRecipeIds) {
         Write-Error "engine manifest validationRecipes missing Environment Highest Commercial Readiness v1 recipe: $recipeId"
     }
 }
-$expectedRemainingHighestCommercialRecipeSkeletonIds = @(
-    "environment-highest-commercial-readiness-closeout"
-)
-foreach ($recipeId in $expectedRemainingHighestCommercialRecipeSkeletonIds) {
-    $recipe = $environmentCommercialValidationRecipesByName[$recipeId]
-    if ($null -ne $recipe -and -not ([string]$recipe.command).Contains("validation_recipe_skeleton=1")) {
-        Write-Error "engine manifest validationRecipes '$recipeId' must remain a dry-run-only skeleton until its owning task replaces it"
+$environmentHighestCommercialRecipe = $environmentCommercialValidationRecipesByName["environment-highest-commercial-readiness-closeout"]
+if ($null -eq $environmentHighestCommercialRecipe) {
+    Write-Error "engine manifest validationRecipes missing environment-highest-commercial-readiness-closeout"
+} else {
+    $environmentHighestCommercialRecipeText = [string]::Join(" ", @([string]$environmentHighestCommercialRecipe.command, [string]$environmentHighestCommercialRecipe.purpose))
+    foreach ($needle in @(
+            "tools/validate-environment-highest-commercial-readiness.ps1",
+            "-RequireReady",
+            "environment_highest_commercial_ready=1",
+            "environment_commercial_ready=1",
+            "environment_commercial_required_rows=16",
+            "environment_commercial_ready_rows=16",
+            "environment_host_gated_rows=0",
+            "environment_dependency_gated_rows=0",
+            "environment_blocked_rows=0",
+            "environment_unsupported_rows=0",
+            "environment_missing_rows=0",
+            "environment_native_handle_access=0",
+            "environment_commercial_diagnostics=0",
+            "environment_strict_vulkan_aggregate_ready=1",
+            "environment_metal_aggregate_ready=1",
+            "environment_platform_readiness_ready=1",
+            "environment_all_platform_unconditional_ready=1",
+            "environment_broad_optimization_ready=1",
+            "environment_optimization_measurement_workload_rows=21",
+            "environment_optimization_measurement_backend_rows=3",
+            "environment_optimization_measurement_before_after_pairs=21",
+            "environment_optimization_measurement_profiler_artifacts=21",
+            "environment_optimization_measurement_trace_event_json=21",
+            "environment_optimization_measurement_missing_artifacts=0",
+            "environment_optimization_measurement_over_budget=0",
+            "environment_asset_pipeline_openexr_ktx_basis_full_ready=1",
+            "runtime_source_parsing=0",
+            "environment_aaa_preset_asset_library_ready=1",
+            "environment_physical_weather_simulation_ready=1",
+            "environment_weather_simulation_backend_parity_ready=1",
+            "environment_artist_workflow_production_ready=1",
+            "workflow_visible_shell_execution_ready=1",
+            "workflow_operator_review_ready=1",
+            "environment_ready=0",
+            "environment_ready_unchanged=1")) {
+        if (-not $environmentHighestCommercialRecipeText.Contains($needle)) {
+            Write-Error "engine manifest validationRecipes 'environment-highest-commercial-readiness-closeout' missing highest commercial closeout needle: $needle"
+        }
     }
+    if ($environmentHighestCommercialRecipeText.Contains("validation_recipe_skeleton=1")) {
+        Write-Error "engine manifest validationRecipes 'environment-highest-commercial-readiness-closeout' must not remain a dry-run skeleton after Task 12"
+    }
+}
+
+function Assert-ReadyCounterHasSupportingCounters {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$ReadyCounter,
+        [Parameter(Mandatory = $true)][string[]]$SupportingCounters,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if (-not $Text.Contains($ReadyCounter)) {
+        return
+    }
+    foreach ($supportingCounter in @($SupportingCounters)) {
+        if (-not $Text.Contains($supportingCounter)) {
+            Write-Error "$Label contains $ReadyCounter without required supporting counter: $supportingCounter"
+        }
+    }
+}
+
+if ($null -ne $environmentHighestCommercialRecipe) {
+    Assert-ReadyCounterHasSupportingCounters -Text $environmentHighestCommercialRecipeText -ReadyCounter "environment_commercial_ready=1" -SupportingCounters @(
+        "environment_all_platform_unconditional_ready=1",
+        "environment_broad_optimization_ready=1",
+        "environment_physical_weather_simulation_ready=1",
+        "environment_artist_workflow_production_ready=1",
+        "environment_asset_pipeline_openexr_ktx_basis_full_ready=1",
+        "environment_native_handle_access=0",
+        "environment_commercial_diagnostics=0") -Label "environment-highest-commercial-readiness-closeout recipe"
+    Assert-ReadyCounterHasSupportingCounters -Text $environmentHighestCommercialRecipeText -ReadyCounter "environment_all_platform_unconditional_ready=1" -SupportingCounters @(
+        "environment_platform_windows_d3d12_ready=1",
+        "environment_platform_windows_vulkan_ready=1",
+        "environment_platform_linux_vulkan_ready=1",
+        "environment_platform_macos_metal_ready=1",
+        "environment_platform_ios_metal_ready=1",
+        "environment_platform_android_vulkan_ready=1") -Label "environment-highest-commercial-readiness-closeout recipe"
+    Assert-ReadyCounterHasSupportingCounters -Text $environmentHighestCommercialRecipeText -ReadyCounter "environment_broad_optimization_ready=1" -SupportingCounters @(
+        "environment_optimization_measurement_workload_rows=21",
+        "environment_optimization_measurement_backend_rows=3",
+        "environment_optimization_measurement_before_after_pairs=21",
+        "environment_optimization_measurement_profiler_artifacts=21",
+        "environment_optimization_measurement_trace_event_json=21",
+        "environment_optimization_measurement_missing_artifacts=0",
+        "environment_optimization_measurement_over_budget=0") -Label "environment-highest-commercial-readiness-closeout recipe"
+    Assert-ReadyCounterHasSupportingCounters -Text $environmentHighestCommercialRecipeText -ReadyCounter "environment_physical_weather_simulation_ready=1" -SupportingCounters @(
+        "environment_weather_simulation_backend_parity_ready=1") -Label "environment-highest-commercial-readiness-closeout recipe"
+    Assert-ReadyCounterHasSupportingCounters -Text $environmentHighestCommercialRecipeText -ReadyCounter "environment_artist_workflow_production_ready=1" -SupportingCounters @(
+        "workflow_visible_shell_execution_ready=1",
+        "workflow_operator_review_ready=1") -Label "environment-highest-commercial-readiness-closeout recipe"
+    Assert-ReadyCounterHasSupportingCounters -Text $environmentHighestCommercialRecipeText -ReadyCounter "environment_asset_pipeline_openexr_ktx_basis_full_ready=1" -SupportingCounters @(
+        "runtime_source_parsing=0") -Label "environment-highest-commercial-readiness-closeout recipe"
 }
 $expectedEnvironmentPlatformHostRecipes = @(
     @{
@@ -190,7 +281,10 @@ if ($null -eq $environmentAaaPresetAssetLibraryRecipe) {
 }
 
 $expectedEnvironmentCommercialClaimIds = @(
+    "environment_highest_commercial_ready",
     "environment_commercial_ready",
+    "environment_strict_vulkan_aggregate_ready",
+    "environment_metal_aggregate_ready",
     "environment_vulkan_strict_aggregate_ready",
     "environment_metal_host_aggregate_ready",
     "environment_backend_parity_ready",
@@ -200,15 +294,22 @@ $expectedEnvironmentCommercialClaimIds = @(
     "environment_platform_macos_metal_ready",
     "environment_platform_ios_metal_ready",
     "environment_platform_android_vulkan_ready",
+    "environment_platform_readiness_ready",
+    "environment_all_platform_unconditional_ready",
     "environment_broad_optimization_ready",
     "environment_asset_pipeline_openexr_ktx_basis_ready",
+    "environment_asset_pipeline_openexr_ktx_basis_full_ready",
     "environment_aaa_preset_library_ready",
+    "environment_aaa_preset_asset_library_ready",
     "environment_physical_weather_simulation_ready",
     "environment_artist_workflow_ready",
     "environment_artist_workflow_production_ready"
 )
 $expectedEnvironmentCommercialClaimStates = @{
+    environment_highest_commercial_ready = "unsupported"
     environment_commercial_ready = "unsupported"
+    environment_strict_vulkan_aggregate_ready = "host-gated"
+    environment_metal_aggregate_ready = "host-gated"
     environment_vulkan_strict_aggregate_ready = "ready"
     environment_metal_host_aggregate_ready = "ready"
     environment_backend_parity_ready = "ready"
@@ -218,9 +319,13 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_platform_macos_metal_ready = "ready"
     environment_platform_ios_metal_ready = "host-gated"
     environment_platform_android_vulkan_ready = "host-gated"
+    environment_platform_readiness_ready = "host-gated"
+    environment_all_platform_unconditional_ready = "host-gated"
     environment_broad_optimization_ready = "unsupported"
     environment_asset_pipeline_openexr_ktx_basis_ready = "ready"
+    environment_asset_pipeline_openexr_ktx_basis_full_ready = "ready"
     environment_aaa_preset_library_ready = "ready"
+    environment_aaa_preset_asset_library_ready = "ready"
     environment_physical_weather_simulation_ready = "ready"
     environment_artist_workflow_ready = "ready"
     environment_artist_workflow_production_ready = "ready"
@@ -1188,7 +1293,7 @@ foreach ($needle in @("environmentCommercialClaimMatrix", "packageCounter equal 
     }
 }
 $environmentCommercialAggregateGateGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentCommercialAggregateCloseoutGatePhase12
-foreach ($needle in @("EnvironmentCommercialReadinessStatus", "EnvironmentCommercialReadinessRequirementKind", "EnvironmentCommercialReadinessRequirementStatus", "EnvironmentCommercialReadinessRequirementInputRow", "EnvironmentCommercialReadinessDesc", "EnvironmentCommercialReadinessRequirementRow", "EnvironmentCommercialReadinessPlan", "environment_commercial_readiness_status_label", "environment_commercial_readiness_requirement_id", "environment_commercial_readiness_requirement_status_label", "plan_environment_commercial_readiness", "EnvironmentCommercialReadinessV2RowStatus", "EnvironmentCommercialReadinessV2Row", "EnvironmentCommercialReadinessV2Result", "evaluate_environment_commercial_readiness_v2", "MK_environment_commercial_readiness_v2_tests", "16 required rows", "dependency_gated_rows", "environment_highest_commercial_ready=0", "no D3D12-to-Vulkan-or-Metal inference", "no macOS-to-iOS Metal inference", "duplicate required row ids become diagnostics", "license/solver/visible-shell dependency gates", "diagnostics=false", "native_handle_access=false", "desktop-runtime-sample-game-environment-commercial-readiness", "--require-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "--require-environment-commercial-vulkan-evidence", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "environment_commercial_required_rows=14", "environment_commercial_ready_rows=4", "environment_commercial_host_gated_rows=7", "environment_commercial_ready_rows=3", "environment_commercial_ready_rows=2", "environment_commercial_host_gated_rows=5", "environment_commercial_blocked_rows=6", "environment_commercial_blocked_rows=7", "environment_commercial_missing_rows=0", "environment_commercial_package_visible_rows=14", "environment_commercial_validation_guarded_rows=14", "environment_commercial_legal_notice_current_rows=14", "environment_commercial_optional_dependency_legal_records_current=1", "environment_commercial_adjacent_broad_non_claims_declared=1", "environment_commercial_native_handle_access=0", "environment_commercial_broad_environment_ready_claimed=0", "environment_commercial_vulkan_evidence_requested=1", "environment_commercial_strict_vulkan_aggregate_ready=1", "environment_commercial_windows_vulkan_ready=1", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "strict Vulkan aggregate", "Metal host aggregate", "physical weather simulation", "broad environment_ready")) {
+foreach ($needle in @("EnvironmentCommercialReadinessStatus", "EnvironmentCommercialReadinessRequirementKind", "EnvironmentCommercialReadinessRequirementStatus", "EnvironmentCommercialReadinessRequirementInputRow", "EnvironmentCommercialReadinessDesc", "EnvironmentCommercialReadinessRequirementRow", "EnvironmentCommercialReadinessPlan", "environment_commercial_readiness_status_label", "environment_commercial_readiness_requirement_id", "environment_commercial_readiness_requirement_status_label", "plan_environment_commercial_readiness", "EnvironmentCommercialReadinessV2RowStatus", "EnvironmentCommercialReadinessV2Row", "EnvironmentCommercialReadinessV2Result", "evaluate_environment_commercial_readiness_v2", "MK_environment_commercial_readiness_v2_tests", "16 required rows", "dependency_gated_rows", "environment_highest_commercial_ready=0", "no D3D12-to-Vulkan-or-Metal inference", "no macOS-to-iOS Metal inference", "duplicate required row ids become diagnostics", "license/solver/visible-shell dependency gates", "diagnostics=false", "native_handle_access=false", "desktop-runtime-sample-game-environment-commercial-readiness", "--require-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "--require-environment-commercial-vulkan-evidence", "renderer-metal-environment-aggregate-apple-host-evidence", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "environment_commercial_required_rows=14", "environment_commercial_ready_rows=4", "environment_commercial_host_gated_rows=7", "environment_commercial_ready_rows=3", "environment_commercial_ready_rows=2", "environment_commercial_host_gated_rows=5", "environment_commercial_blocked_rows=6", "environment_commercial_blocked_rows=7", "environment_commercial_missing_rows=0", "environment_commercial_package_visible_rows=14", "environment_commercial_validation_guarded_rows=14", "environment_commercial_legal_notice_current_rows=14", "environment_commercial_optional_dependency_legal_records_current=1", "environment_commercial_adjacent_broad_non_claims_declared=1", "environment_commercial_native_handle_access=0", "environment_commercial_broad_environment_ready_claimed=0", "environment_commercial_vulkan_evidence_requested=1", "environment_commercial_strict_vulkan_aggregate_ready=1", "environment_commercial_windows_vulkan_ready=1", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "environment-highest-commercial-readiness-closeout", "tools/validate-environment-highest-commercial-readiness.ps1", "environment_highest_commercial_ready=1", "environment_commercial_required_rows=16", "environment_commercial_ready_rows=16", "environment_host_gated_rows=0", "environment_dependency_gated_rows=0", "environment_unsupported_rows=0", "environment_all_platform_unconditional_ready=1", "environment_optimization_measurement_workload_rows=21", "environment_weather_simulation_backend_parity_ready=1", "workflow_visible_shell_execution_ready=1", "runtime_source_parsing=0", "environment_ready_unchanged=1", "strict Vulkan aggregate", "Metal host aggregate", "physical weather simulation", "broad environment_ready")) {
     if (-not $environmentCommercialAggregateGateGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentCommercialAggregateCloseoutGatePhase12 missing: $needle"
     }
@@ -1204,7 +1309,8 @@ foreach ($sourceSurface in @(
         @{ Path = "engine/environment/CMakeLists.txt"; Needles = @("src/commercial_readiness_v2.cpp") },
         @{ Path = "games/sample_desktop_runtime_game/main.cpp"; Needles = @("--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence", "environment_commercial_readiness_status", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested", "require_environment_commercial_readiness", "require_environment_commercial_vulkan_evidence") },
         @{ Path = "tools/validation-recipe-core.ps1"; Needles = @("Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "--require-environment-commercial-readiness", "--require-environment-commercial-vulkan-evidence") },
-        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "vulkaninfo_ready=1", "android_vulkan_readback_ready=1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "tools/validate-environment-backend-parity-v2.ps1", "45 backend-local ready rows", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "tools/validate-environment-weather-physics.ps1", "environment_physical_weather_simulation_ready=1", "environment-artist-workflow-production-closeout", "tools/validate-environment-artist-workflow-production.ps1", "environment_artist_workflow_production_ready=1", "environment_ready_promotion_blocked_until_all_rows_ready=1") },
+        @{ Path = "tools/run-validation-recipe-plans.ps1"; Needles = @("desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "commercial-environment-closeout", "Get-SampleDesktopRuntimeGameEnvironmentCommercialReadinessSmokeArgs", "Get-SampleDesktopRuntimeGameEnvironmentCommercialVulkanEvidenceSmokeArgs", "environment-highest-commercial-readiness-closeout", "tools/validate-environment-highest-commercial-readiness.ps1", "environment_highest_commercial_ready=1", "environment_commercial_required_rows=16", "environment_all_platform_unconditional_ready=1", "environment_optimization_measurement_workload_rows=21", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "vulkaninfo_ready=1", "android_vulkan_readback_ready=1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "tools/validate-environment-backend-parity-v2.ps1", "45 backend-local ready rows", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "environment-aaa-preset-asset-library-production", "environment-physical-weather-simulation-closeout", "tools/validate-environment-weather-physics.ps1", "environment_physical_weather_simulation_ready=1", "environment-artist-workflow-production-closeout", "tools/validate-environment-artist-workflow-production.ps1", "environment_artist_workflow_production_ready=1", "environment_ready_unchanged=1") },
+        @{ Path = "tools/validate-environment-highest-commercial-readiness.ps1"; Needles = @("MK_environment_commercial_readiness_v2_tests", "tools/validate-environment-optimization-artifacts.ps1", "environment_highest_commercial_ready", "environment_commercial_required_rows", "environment_strict_vulkan_aggregate_ready", "environment_metal_aggregate_ready", "environment_platform_readiness_ready", "environment_all_platform_unconditional_ready", "environment_broad_optimization_ready", "environment_optimization_measurement_workload_rows", "environment_asset_pipeline_openexr_ktx_basis_full_ready", "environment_aaa_preset_asset_library_ready", "environment_physical_weather_simulation_ready", "environment_weather_simulation_backend_parity_ready", "environment_artist_workflow_production_ready", "workflow_visible_shell_execution_ready", "runtime_source_parsing=0", "environment_ready_unchanged=1") },
         @{ Path = "tools/validate-environment-asset-pipeline-full.ps1"; Needles = @("MK_environment_texture_pipeline_v2_tests", "tools/build-asset-importers.ps1", "environment_asset_pipeline_openexr_ktx_basis_full_ready=1", "environment_asset_pipeline_required_rows=14", "environment_asset_pipeline_openexr_rows=5", "environment_asset_pipeline_ktx2_basis_rows=4", "environment_asset_pipeline_backend_target_rows=4", "environment_asset_pipeline_runtime_rows=1", "environment_asset_pipeline_dependency_gated_rows=0", "environment_asset_pipeline_runtime_source_parsing=0", "environment_asset_pipeline_runtime_optional_codec_execution=0", "environment_asset_pipeline_native_handle_access=0", "environment_asset_pipeline_gpu_command_executed=0", "environment_asset_pipeline_cmake_configure_dependency_install=0", "environment_ready=0", "environment_commercial_ready=0") },
         @{ Path = "engine/tools/include/mirakana/tools/environment_texture_pipeline_v2.hpp"; Needles = @("EnvironmentTexturePipelineV2EvidenceKind", "EnvironmentTexturePipelineV2EvidenceRow", "EnvironmentTexturePipelineV2Desc", "EnvironmentTexturePipelineV2Result", "evaluate_environment_texture_pipeline_v2_full", "runtime_source_parsing", "runtime_optional_codec_execution", "native_handle_access", "gpu_command_executed") },
         @{ Path = "engine/tools/asset/environment_texture_pipeline_v2.cpp"; Needles = @("openexr_scanline_rgba16f", "openexr_tiled_rgba16f", "openexr_multipart", "openexr_metadata_preservation", "openexr_deep_image_rejected", "ktx2_basis_etc1s_transcode", "ktx2_basis_uastc_transcode", "ktx2_mip_level_validation", "ktx2_color_space_metadata", "d3d12_bc7_target", "vulkan_bc7_target", "metal_astc_target", "android_vulkan_astc_target", "runtime_cooked_only_ingest", "full_ready") },
@@ -1237,7 +1343,7 @@ foreach ($sourceSurface in @(
         @{ Path = "tests/unit/environment_tests.cpp"; Needles = @("production preset asset library promotes only with objective aaa rows", "selected seven preset library cannot promote production asset library", "production preset asset library fails closed on missing provenance and budget overage", "environment_aaa_preset_asset_library_ready") },
         @{ Path = "CMakeLists.txt"; Needles = @("MK_env_backend_parity_v2_tests", "tests/unit/renderer_environment_backend_parity_v2_tests.cpp") },
         @{ Path = "engine/renderer/CMakeLists.txt"; Needles = @("src/environment_backend_parity_v2.cpp") },
-        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6", "environment-highest-commercial-readiness-closeout", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "tools/validate-environment-asset-pipeline-full.ps1", "environment_asset_pipeline_openexr_ktx_basis_full_ready=1", "environment_asset_pipeline_required_rows=14", "runtime_source_parsing=0", "environment-aaa-preset-asset-library-production", "tools/validate-environment-aaa-preset-asset-library.ps1", "environment_aaa_preset_asset_library_ready=1", "environment_aaa_preset_asset_library_asset_rows=156", "environment-physical-weather-simulation-closeout", "tools/validate-environment-weather-physics.ps1", "environment_physical_weather_simulation_ready=1", "environment_weather_simulation_backend_parity_ready=1", "environment-artist-workflow-production-closeout", "tools/validate-environment-artist-workflow-production.ps1", "environment_artist_workflow_production_ready=1", "workflow_import_openexr_ready=1", "environment_ready_promotion_blocked_until_all_rows_ready=1") }
+        @{ Path = "games/sample_desktop_runtime_game/game.agent.json"; Needles = @("environment-commercial-readiness-blocker-gate", "environment-commercial-vulkan-evidence-bridge", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "environment_commercial_blocked_rows=6", "environment-highest-commercial-readiness-closeout", "tools/validate-environment-highest-commercial-readiness.ps1", "environment_highest_commercial_ready=1", "environment_commercial_required_rows=16", "environment_all_platform_unconditional_ready=1", "environment_optimization_measurement_workload_rows=21", "environment-platform-linux-vulkan-package", "environment-platform-android-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-ios-metal-package", "environment-backend-parity-v2-closeout", "environment-broad-optimization-cross-backend-measurement", "environment-asset-pipeline-openexr-ktx-basis-full", "tools/validate-environment-asset-pipeline-full.ps1", "environment_asset_pipeline_openexr_ktx_basis_full_ready=1", "environment_asset_pipeline_required_rows=14", "runtime_source_parsing=0", "environment-aaa-preset-asset-library-production", "tools/validate-environment-aaa-preset-asset-library.ps1", "environment_aaa_preset_asset_library_ready=1", "environment_aaa_preset_asset_library_asset_rows=156", "environment-physical-weather-simulation-closeout", "tools/validate-environment-weather-physics.ps1", "environment_physical_weather_simulation_ready=1", "environment_weather_simulation_backend_parity_ready=1", "environment-artist-workflow-production-closeout", "tools/validate-environment-artist-workflow-production.ps1", "environment_artist_workflow_production_ready=1", "workflow_import_openexr_ready=1", "environment_ready_unchanged=1") }
     )) {
     $sourceSurfaceText = Get-JsonContractSurfaceText $sourceSurface.Path
     foreach ($needle in @($sourceSurface.Needles)) {

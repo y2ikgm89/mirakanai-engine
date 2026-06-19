@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-11 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, and replace the production artist workflow skeleton with a 14-row package-visible closeout validator. Task 11 promotes `environment_artist_workflow_production_ready=1` only; commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, final aggregate readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-12 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, and replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`. Task 12 adds the final fail-closed gate but does not promote commercial readiness yet: current evidence still has 8 ready rows, 7 host-gated rows, 1 unsupported row, and 21 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, broad measured optimization readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -961,7 +961,7 @@ Task 9 implementation evidence (2026-06-19):
 - `tools/validate-environment-asset-pipeline-full.ps1` builds and runs `MK_environment_texture_pipeline_v2_tests`, runs `tools/build-asset-importers.ps1`, and emits `environment_asset_pipeline_openexr_ktx_basis_full_ready=1`, `environment_asset_pipeline_required_rows=14`, `environment_asset_pipeline_ready_rows=14`, `environment_asset_pipeline_dependency_gated_rows=0`, `environment_asset_pipeline_runtime_source_parsing=0`, `environment_asset_pipeline_runtime_optional_codec_execution=0`, `environment_asset_pipeline_cmake_configure_dependency_install=0`, `environment_ready=0`, and `environment_commercial_ready=0`.
 - Each Task 9 ready row must carry a concrete source artifact id, cooked artifact id, validated package counter id, replay hash evidence, and the OpenEXR deep-image rejection diagnostic. The validator fails before `tools/build-asset-importers.ps1` when `vcpkg_installed/x64-windows/share/{spng,OpenEXR,ktx}` is missing and reports `Missing asset-importers vcpkg packages`; `tools/bootstrap-deps.ps1` is the only supported dependency bootstrap entrypoint.
 - Local execute evidence currently stops at that bootstrap precondition: `tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-asset-pipeline-openexr-ktx-basis-full` builds and runs `MK_environment_texture_pipeline_v2_tests` successfully, then fails with `Missing asset-importers vcpkg packages: spng, OpenEXR, ktx`. Direct `vcpkg install` and CMake configure-time dependency install remain unsupported.
-- The Task 9 recipe replaces the skeleton for `environment-asset-pipeline-openexr-ktx-basis-full`; after Task 10, remaining dry-run-only highest-commercial skeletons are the final aggregate and production artist workflow.
+- The Task 9 recipe replaces the skeleton for `environment-asset-pipeline-openexr-ktx-basis-full`; Tasks 10-12 now replace the physical-weather, production artist workflow, and final aggregate skeletons as well. Remaining highest-commercial work is evidence, not skeleton plumbing: Linux Vulkan, Android Vulkan, iOS Metal, all-platform readiness, and 21 retained optimization artifacts still need exact proof before commercial readiness can be promoted.
 
 Task 9 promotes only `environment_asset_pipeline_openexr_ktx_basis_full_ready=1`. It does not promote physical weather simulation, production artist workflow, all-platform readiness, broad optimization readiness, commercial readiness, final aggregate readiness, or broad `environment_ready`.
 
@@ -1115,7 +1115,7 @@ Task 11 evidence (2026-06-19):
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
 
-- [ ] **Step 1: Require all dependency rows**
+- [x] **Step 1: Require all dependency rows**
 
 The closeout recipe must fail closed unless it reads:
 
@@ -1136,7 +1136,7 @@ environment_host_gated_rows=0
 environment_blocked_rows=0
 ```
 
-- [ ] **Step 2: Add static guard against broad false positives**
+- [x] **Step 2: Add static guard against broad false positives**
 
 `tools/check-json-contracts-035-environment-commercial-readiness.ps1` must fail if:
 
@@ -1173,6 +1173,14 @@ environment_ready is unchanged by this plan
 ```
 
 This plan does not promote broad `environment_ready=1`. Any future broad engine readiness promotion requires a separately selected plan or architecture decision, updated static guards, and explicit non-environment subsystem evidence.
+
+Task 12 evidence (2026-06-19):
+
+- Replaced the final `environment-highest-commercial-readiness-closeout` skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`.
+- The validator builds/runs `MK_environment_commercial_readiness_v2_tests`, reads the 16 clean-break commercial v2 rows from `engine/agent/manifest.json.aiOperableProductionLoop.environmentCommercialClaimMatrix`, consumes `tools/validate-environment-optimization-artifacts.ps1` for retained optimization artifact counters, and requires zero host-gated/dependency-gated/blocked/unsupported/missing/native-handle/diagnostic rows before emitting `environment_highest_commercial_ready=1` or `environment_commercial_ready=1`.
+- Static guards now require `environment_commercial_ready=1` to be paired with `environment_all_platform_unconditional_ready=1`, all six exact platform rows, 21 optimization measurement rows, physical-weather backend parity, visible-shell workflow execution, `runtime_source_parsing=0`, and `environment_ready_unchanged=1`.
+- Current local fail-closed evidence is: `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=8`, `environment_host_gated_rows=7`, `environment_unsupported_rows=1`, `environment_optimization_measurement_missing_artifacts=21`, and `environment_broad_optimization_ready=0`.
+- This closes the final aggregate gate implementation, not the final commercial ready claim. Required remaining evidence is Linux Vulkan, Android Vulkan, iOS Metal, strict Vulkan v2 aggregate, Metal v2 aggregate, all-platform readiness, and 21 retained optimization profiler/trace/budget artifacts.
 
 ## Execution Order
 
@@ -1246,6 +1254,10 @@ Record validation here as each PR lands.
 | 2026-06-18 | Task 3 validation recipe skeletons GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
 | 2026-06-18 | Task 3 validation recipe skeletons dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-highest-commercial-readiness-closeout` | pass | prints `environment-highest-commercial-readiness-closeout`, `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, and `environment_ready_promotion_blocked_until_all_rows_ready=1`; no package, GPU, or host command executed |
 | 2026-06-18 | Task 3 validation recipe skeletons JSON contract | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
+| 2026-06-19 | Task 12 final aggregate validator fail-closed | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1` | pass | builds/runs `MK_environment_commercial_readiness_v2_tests`; emits `environment_highest_commercial_ready=0`, `environment_commercial_ready=0`, `environment_commercial_ready_rows=8`, `environment_host_gated_rows=7`, `environment_unsupported_rows=1`, `environment_optimization_measurement_missing_artifacts=21`, and `environment_ready_unchanged=1` |
+| 2026-06-19 | Task 12 final aggregate recipe dry-run | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-highest-commercial-readiness-closeout` | pass | routes through `tools/validate-environment-highest-commercial-readiness.ps1 -RequireReady` with 16 exact dependency rows, all six platform rows, 21 optimization measurement rows, visible-shell workflow evidence, `runtime_source_parsing=0`, and `environment_ready_unchanged=1` |
+| 2026-06-19 | Task 12 validation recipe runner | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | pass | `validation-recipe-runner-check: ok` |
+| 2026-06-19 | Task 12 JSON contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | pass | `agent-manifest-compose: ok`; `json-contract-check: ok` |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |

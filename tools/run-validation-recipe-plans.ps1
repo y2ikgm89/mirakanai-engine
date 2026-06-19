@@ -511,7 +511,56 @@ function Get-ValidationRecipeCommandPlan {
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary', 'vulkan-strict', 'metal-apple', 'android-gameactivity', 'commercial-environment-closeout') -RequiredAcknowledgements @('d3d12-windows-primary', 'vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentCommercial)
     }
     elseif ($RecipeName -eq 'environment-highest-commercial-readiness-closeout') {
-        return Get-EnvironmentHighestCommercialSkeletonPlan -Recipe $RecipeName -HostGate 'commercial-environment-highest-closeout' -ReadyCounter 'environment_highest_commercial_ready' -AdditionalCounters @('environment_commercial_ready=0', 'environment_ready_promotion_blocked_until_all_rows_ready=1')
+        $expectedCounters = @(
+            'validation_recipe=environment-highest-commercial-readiness-closeout',
+            'environment_highest_commercial_status=ready',
+            'environment_highest_commercial_ready=1',
+            'environment_commercial_ready=1',
+            'environment_commercial_required_rows=16',
+            'environment_commercial_ready_rows=16',
+            'environment_host_gated_rows=0',
+            'environment_dependency_gated_rows=0',
+            'environment_blocked_rows=0',
+            'environment_unsupported_rows=0',
+            'environment_missing_rows=0',
+            'environment_native_handle_access=0',
+            'environment_commercial_diagnostics=0',
+            'environment_strict_vulkan_aggregate_ready=1',
+            'environment_metal_aggregate_ready=1',
+            'environment_backend_parity_ready=1',
+            'environment_platform_windows_d3d12_ready=1',
+            'environment_platform_windows_vulkan_ready=1',
+            'environment_platform_linux_vulkan_ready=1',
+            'environment_platform_macos_metal_ready=1',
+            'environment_platform_ios_metal_ready=1',
+            'environment_platform_android_vulkan_ready=1',
+            'environment_platform_readiness_ready=1',
+            'environment_all_platform_unconditional_ready=1',
+            'environment_broad_optimization_ready=1',
+            'environment_optimization_measurement_workload_rows=21',
+            'environment_optimization_measurement_backend_rows=3',
+            'environment_optimization_measurement_before_after_pairs=21',
+            'environment_optimization_measurement_profiler_artifacts=21',
+            'environment_optimization_measurement_trace_event_json=21',
+            'environment_optimization_measurement_missing_artifacts=0',
+            'environment_optimization_measurement_over_budget=0',
+            'environment_asset_pipeline_openexr_ktx_basis_full_ready=1',
+            'runtime_source_parsing=0',
+            'environment_aaa_preset_asset_library_ready=1',
+            'environment_physical_weather_simulation_ready=1',
+            'environment_weather_simulation_backend_parity_ready=1',
+            'environment_artist_workflow_production_ready=1',
+            'workflow_visible_shell_execution_ready=1',
+            'workflow_operator_review_ready=1',
+            'environment_ready=0',
+            'environment_ready_unchanged=1'
+        )
+        $scriptArguments = @('-RequireReady', '-ExpectedEvidenceCounters') + $expectedCounters
+        $pwEntry = Get-PwshScriptCommandPlan `
+            -ScriptPath 'tools/validate-environment-highest-commercial-readiness.ps1' `
+            -ScriptArguments $scriptArguments
+        $diagEnvironmentHighestCommercial = New-RunnerDiagnostic -Severity 'info' -Code 'final-aggregate-fail-closed' -Message 'Environment highest commercial readiness closeout validates the clean-break commercial v2 aggregate. It builds and runs MK_environment_commercial_readiness_v2_tests, reads the manifest commercial claim matrix for the 16 exact v2 dependency rows, requires every row to be ready, requires zero host-gated, dependency-gated, blocked, unsupported, missing, native-handle, and diagnostic rows, emits environment_highest_commercial_ready=1 and environment_commercial_ready=1 only when those conditions are met, and keeps broad environment_ready unchanged at 0.' -ValidationRecipe $RecipeName -HostGate 'commercial-environment-highest-closeout'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('commercial-environment-highest-closeout') -RequiredAcknowledgements @('commercial-environment-highest-closeout') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12', 'Vulkan') -Diagnostics @($diagEnvironmentHighestCommercial)
     }
     elseif ($RecipeName -eq 'environment-platform-linux-vulkan-package') {
         return Get-EnvironmentPlatformVulkanHostPlan `

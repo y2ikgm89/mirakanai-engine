@@ -462,6 +462,58 @@ function Assert-EnvironmentArtistWorkflowProductionCloseoutDryRun {
     return $result
 }
 
+function Assert-EnvironmentHighestCommercialReadinessCloseoutDryRun {
+    $result = Assert-DryRunRecipe -Recipe "environment-highest-commercial-readiness-closeout" -ExpectedArgv @("-File", "tools/validate-environment-highest-commercial-readiness.ps1", "-RequireReady")
+    foreach ($needle in @(
+            "environment_highest_commercial_status=ready",
+            "environment_highest_commercial_ready=1",
+            "environment_commercial_ready=1",
+            "environment_commercial_required_rows=16",
+            "environment_commercial_ready_rows=16",
+            "environment_host_gated_rows=0",
+            "environment_dependency_gated_rows=0",
+            "environment_blocked_rows=0",
+            "environment_unsupported_rows=0",
+            "environment_missing_rows=0",
+            "environment_native_handle_access=0",
+            "environment_commercial_diagnostics=0",
+            "environment_strict_vulkan_aggregate_ready=1",
+            "environment_metal_aggregate_ready=1",
+            "environment_backend_parity_ready=1",
+            "environment_platform_windows_d3d12_ready=1",
+            "environment_platform_windows_vulkan_ready=1",
+            "environment_platform_linux_vulkan_ready=1",
+            "environment_platform_macos_metal_ready=1",
+            "environment_platform_ios_metal_ready=1",
+            "environment_platform_android_vulkan_ready=1",
+            "environment_platform_readiness_ready=1",
+            "environment_all_platform_unconditional_ready=1",
+            "environment_broad_optimization_ready=1",
+            "environment_optimization_measurement_workload_rows=21",
+            "environment_optimization_measurement_backend_rows=3",
+            "environment_optimization_measurement_before_after_pairs=21",
+            "environment_optimization_measurement_profiler_artifacts=21",
+            "environment_optimization_measurement_trace_event_json=21",
+            "environment_optimization_measurement_missing_artifacts=0",
+            "environment_optimization_measurement_over_budget=0",
+            "environment_asset_pipeline_openexr_ktx_basis_full_ready=1",
+            "runtime_source_parsing=0",
+            "environment_aaa_preset_asset_library_ready=1",
+            "environment_physical_weather_simulation_ready=1",
+            "environment_weather_simulation_backend_parity_ready=1",
+            "environment_artist_workflow_production_ready=1",
+            "workflow_visible_shell_execution_ready=1",
+            "workflow_operator_review_ready=1",
+            "environment_ready=0",
+            "environment_ready_unchanged=1")) {
+        Assert-ArgvContainsText -Result $result -Expected $needle -Label "dry-run environment highest commercial readiness closeout row"
+    }
+    foreach ($needle in @("validation_recipe_skeleton=1", "ready_claim=0", "environment_ready_promotion_blocked_until_all_rows_ready=1")) {
+        Assert-ArgvDoesNotContainText -Result $result -Unexpected $needle -Label "dry-run environment highest commercial readiness closeout row"
+    }
+    return $result
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -625,10 +677,7 @@ $sampleEnvironmentWeatherSimulationVulkanSolverDryRun = Assert-DryRunRecipe -Rec
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-weather-simulation-vulkan-solver-package", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentWeatherSimulationVulkanSolverDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package"
 }
-$highestCommercialReadinessDryRun = Assert-HighestCommercialSkeletonDryRun -Recipe "environment-highest-commercial-readiness-closeout" -HostGate "commercial-environment-highest-closeout" -ReadyCounter "environment_highest_commercial_ready"
-foreach ($needle in @("environment_commercial_ready=0", "environment_ready_promotion_blocked_until_all_rows_ready=1")) {
-    Assert-ArgvContainsText -Result $highestCommercialReadinessDryRun -Expected $needle -Label "dry-run skeleton row for environment-highest-commercial-readiness-closeout"
-}
+$highestCommercialReadinessDryRun = Assert-EnvironmentHighestCommercialReadinessCloseoutDryRun
 Assert-EnvironmentPlatformVulkanHostGateDryRun `
     -Recipe "environment-platform-linux-vulkan-package" `
     -ScriptSuffix "tools/validate-linux-vulkan-runtime-host.ps1" `
