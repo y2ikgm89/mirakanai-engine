@@ -5731,15 +5731,16 @@
           "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution",
           "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution",
           "desktop-runtime-sample-game-vulkan-physical-sky-package",
-          "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution"
+          "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
+          "environment-platform-linux-vulkan-host-gate"
         ],
         "packageCounter": "environment_platform_linux_vulkan_ready",
         "dependsOn": [
           "environment_vulkan_strict_aggregate_ready"
         ],
-        "requiredEvidence": "Linux Vulkan readiness requires a first-party Linux desktop/runtime host plus a Linux package validation recipe, Vulkan SDK tools, Linux Vulkan ICD/runtime/driver evidence such as vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val validation, strict Linux runtime package smoke, and readback counters.",
+        "requiredEvidence": "Linux Vulkan readiness requires environment-platform-linux-vulkan-host-gate plus a first-party Linux desktop/runtime host, a Linux package validation recipe, Vulkan SDK tools, Linux Vulkan ICD/runtime/driver evidence such as vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val validation, strict Linux runtime package smoke, and readback counters.",
         "forbiddenInference": "Windows Vulkan evidence or Linux compile-only evidence.",
-        "notes": "Linux Vulkan readiness is host-gated separately from the Windows strict Vulkan route. The current desktop runtime package lane and tools/package-desktop-runtime.ps1 are Win32/x64-windows evidence only and are forbidden as Linux Vulkan platform proof until a first-party Linux desktop/runtime host and Linux package recipe exist."
+        "notes": "Linux Vulkan readiness is host-gated separately from the Windows strict Vulkan route. The environment-platform-linux-vulkan-host-gate recipe now records the required Linux host/package evidence contract while keeping environment_platform_linux_vulkan_ready=0. The current desktop runtime package lane and tools/package-desktop-runtime.ps1 are Win32/x64-windows evidence only and are forbidden as Linux Vulkan platform proof until a first-party Linux desktop/runtime host and Linux package recipe exist."
       },
       {
         "id": "environment_platform_macos_metal_ready",
@@ -6104,13 +6105,16 @@
           "Vulkan SDK tools",
           "Vulkan validation layers",
           "tools/package-linux-runtime.ps1",
-          "tools/validate-installed-linux-runtime.ps1"
+          "tools/validate-installed-linux-runtime.ps1",
+          "environment-platform-linux-vulkan-host-gate",
+          "vulkan-strict-linux"
         ],
         "validationRecipeIds": [
           "environment-platform-linux-vulkan-package",
           "shader-toolchain",
           "desktop-runtime-sample-game-environment-vulkan-strict-aggregate",
-          "desktop-runtime-sample-game-environment-platform-readiness"
+          "desktop-runtime-sample-game-environment-platform-readiness",
+          "environment-platform-linux-vulkan-host-gate"
         ],
         "featureSet": [
           "profile_v2",
@@ -6122,7 +6126,7 @@
           "ibl",
           "quality_budget"
         ],
-        "packageSmoke": "Future Linux desktop/runtime host package smoke with strict Vulkan renderer execution plus --require-environment-platform-readiness; current Win32 desktop runtime package smoke is forbidden as Linux evidence",
+        "packageSmoke": "environment-platform-linux-vulkan-host-gate first records the Linux host/package blockers. Future Linux desktop/runtime host package smoke must run strict Vulkan renderer execution plus --require-environment-platform-readiness; current Win32 desktop runtime package smoke is forbidden as Linux evidence",
         "packageCounters": [
           "host=linux",
           "vulkaninfo_ready=1",
@@ -6138,12 +6142,13 @@
           "environment_platform_requires_linux_vulkan_host_evidence=1",
           "environment_platform_requires_linux_vulkan_host_evidence=0",
           "environment_platform_readiness_host_gated_rows=5",
-          "environment_all_platform_unconditional_ready=0"
+          "environment_all_platform_unconditional_ready=0",
+          "environment_platform_windows_vulkan_inferred=0"
         ],
         "hostGate": "linux-vulkan-runtime-host",
-        "blockerReason": "Requires a first-party Linux desktop/runtime host, Linux package recipe, Linux Vulkan SDK, Linux Vulkan ICD/runtime/driver, validation layers, SPIR-V validation, strict package smoke, and readback counters; Windows Vulkan and Win32 package evidence are forbidden.",
+        "blockerReason": "Requires environment-platform-linux-vulkan-host-gate and environment-platform-linux-vulkan-package to pass on a Linux host with a first-party Linux desktop/runtime host, Linux package recipe, Linux Vulkan SDK, Linux Vulkan ICD/runtime/driver, validation layers, SPIR-V validation, strict package smoke, and readback counters; Windows Vulkan and Win32 package evidence are forbidden.",
         "forbiddenInference": "Windows Vulkan evidence, desktop D3D12 evidence, Android Vulkan evidence, or Linux compile-only evidence.",
-        "notes": "Task 4 routes Linux Vulkan through tools/validate-linux-vulkan-runtime-host.ps1 and the environment-platform-linux-vulkan-package recipe. Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
+        "notes": "Task 4 routes Linux Vulkan through tools/validate-linux-vulkan-runtime-host.ps1 and the environment-platform-linux-vulkan-package recipe while retaining environment-platform-linux-vulkan-host-gate / vulkan-strict-linux as the prerequisite contract. Linux Vulkan remains separate from Windows Vulkan even when both use the same Vulkan API concepts. The existing sample_desktop_runtime_game and tools/package-desktop-runtime.ps1 lane is Win32/x64-windows and must not emit environment_platform_linux_vulkan_ready."
       },
       {
         "id": "environment_platform_macos_metal",
@@ -8059,6 +8064,24 @@
         "notes": "Vulkan package/visible claims require explicit strict smoke commands and local runtime/toolchain readiness. The environment aggregate row requires the reviewed desktop-runtime-sample-game-environment-vulkan-strict-aggregate recipe plus validation-layer, SPIR-V validation, dynamic-rendering, synchronization2, and package toolchain evidence, and cannot be inferred from D3D12, Metal, or separate selected feature lanes. The commercial Vulkan bridge may feed only the commercial strict Vulkan and Windows Vulkan blocker rows and must not generalize Windows proof to other hosts."
       },
       {
+        "id": "vulkan-strict-linux",
+        "status": "host-gated",
+        "hosts": [
+          "linux with Vulkan runtime",
+          "Linux Vulkan ICD/runtime/driver evidence through vulkaninfo",
+          "VK_LAYER_KHRONOS_validation",
+          "DXC SPIR-V CodeGen",
+          "spirv-val",
+          "first-party Linux desktop/runtime host",
+          "Linux desktop runtime package smoke"
+        ],
+        "validationRecipes": [
+          "shader-toolchain",
+          "environment-platform-linux-vulkan-host-gate"
+        ],
+        "notes": "Linux Vulkan platform readiness is a distinct host gate from Windows strict Vulkan. The environment-platform-linux-vulkan-host-gate recipe records the required Linux host/package evidence and keeps environment_platform_linux_vulkan_ready=0, environment_platform_requires_linux_vulkan_host_evidence=1, environment_all_platform_unconditional_ready=0, and environment_platform_windows_vulkan_inferred=0 until a first-party Linux runtime host, Linux package script, installed validator, strict package smoke, and readback counters exist."
+      },
+      {
         "id": "metal-apple",
         "status": "host-gated",
         "hosts": [
@@ -8107,7 +8130,8 @@
         ],
         "validationRecipes": [
           "desktop-runtime-sample-game-environment-commercial-readiness",
-          "desktop-runtime-sample-game-environment-commercial-vulkan-evidence"
+          "desktop-runtime-sample-game-environment-commercial-vulkan-evidence",
+          "environment-platform-linux-vulkan-host-gate"
         ],
         "notes": "Commercial environment readiness is intentionally blocked until the aggregate gate reports every selected dependency ready, package-visible, legally current, validation-guarded, and free of adjacent broad non-claim violations. The strict Vulkan bridge reduces only the selected strict Vulkan and Windows Vulkan blocker rows when its own strict Vulkan package smoke succeeds."
       },

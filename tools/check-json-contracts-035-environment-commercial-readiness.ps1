@@ -471,6 +471,19 @@ if ($null -eq $windowsVulkanPlatformClaim -or
     -not [string]$windowsVulkanPlatformClaim.notes.Contains("environment_platform_readiness_ready=0")) {
     Write-Error "engine manifest environment_platform_windows_vulkan_ready must be ready only through the Windows strict Vulkan platform evidence bridge without all-platform promotion"
 }
+$linuxVulkanPlatformClaim = $environmentCommercialClaimsById["environment_platform_linux_vulkan_ready"]
+if ($null -eq $linuxVulkanPlatformClaim -or
+    [string]$linuxVulkanPlatformClaim.state -ne "host-gated" -or
+    @($linuxVulkanPlatformClaim.validationRecipeIds) -notcontains "environment-platform-linux-vulkan-host-gate" -or
+    -not [string]$linuxVulkanPlatformClaim.requiredEvidence.Contains("environment-platform-linux-vulkan-host-gate") -or
+    -not [string]$linuxVulkanPlatformClaim.requiredEvidence.Contains("first-party Linux desktop/runtime host") -or
+    -not [string]$linuxVulkanPlatformClaim.requiredEvidence.Contains("Linux Vulkan ICD/runtime/driver") -or
+    -not [string]$linuxVulkanPlatformClaim.requiredEvidence.Contains("VK_LAYER_KHRONOS_validation") -or
+    -not [string]$linuxVulkanPlatformClaim.requiredEvidence.Contains("spirv-val") -or
+    -not [string]$linuxVulkanPlatformClaim.notes.Contains("environment_platform_linux_vulkan_ready=0") -or
+    -not [string]$linuxVulkanPlatformClaim.notes.Contains("Win32/x64-windows")) {
+    Write-Error "engine manifest environment_platform_linux_vulkan_ready must remain host-gated through the dedicated Linux Vulkan host-gate recipe without accepting Windows Vulkan or Win32 package evidence"
+}
 $broadOptimizationClaim = $environmentCommercialClaimsById["environment_broad_optimization_ready"]
 if ($null -eq $broadOptimizationClaim -or
     @($broadOptimizationClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-optimization-measurement" -or
@@ -834,7 +847,7 @@ $expectedEnvironmentPlatformReadinessRows = @(
         id = "environment_platform_linux_vulkan"
         claimId = "environment_platform_linux_vulkan_ready"
         state = "host-gated"
-        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "tools/validate-linux-vulkan-runtime-host.ps1", "environment-platform-linux-vulkan-package", "linux-vulkan-runtime-host", "vulkaninfo_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "dxc_spirv_codegen_ready=1", "spirv_val_ready=1", "linux_icd_runtime_ready=1", "first_party_linux_runtime_host_ready=1", "linux_package_script_ready=1", "linux_installed_validator_ready=1", "environment_platform_linux_vulkan_ready=0", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0")
+        needles = @("Linux Vulkan", "Windows Vulkan evidence", "Vulkan SDK", "validation layers", "first-party Linux desktop/runtime host", "Win32/x64-windows", "environment-platform-linux-vulkan-host-gate", "tools/validate-linux-vulkan-runtime-host.ps1", "environment-platform-linux-vulkan-package", "linux-vulkan-runtime-host", "vulkan-strict-linux", "vulkaninfo_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "dxc_spirv_codegen_ready=1", "spirv_val_ready=1", "linux_icd_runtime_ready=1", "first_party_linux_runtime_host_ready=1", "linux_package_script_ready=1", "linux_installed_validator_ready=1", "environment_platform_linux_vulkan_ready=0", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0", "environment_platform_windows_vulkan_inferred=0")
     },
     @{
         id = "environment_platform_macos_metal"
@@ -1396,7 +1409,7 @@ foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", 
     }
 }
 $environmentPlatformReadinessGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8
-foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_vulkan_evidence_requested=1", "environment_platform_windows_vulkan_ready=1", "environment_all_platform_unconditional_ready=0")) {
+foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence", "environment-platform-linux-vulkan-host-gate", "tools/validate-linux-vulkan-runtime-host.ps1", "vulkan-strict-linux", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_vulkan_evidence_requested=1", "environment_platform_windows_vulkan_ready=1", "environment_platform_linux_vulkan_ready=0", "environment_platform_requires_linux_vulkan_host_evidence=1", "environment_platform_windows_vulkan_inferred=0", "environment_all_platform_unconditional_ready=0")) {
     if (-not $environmentPlatformReadinessGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8 missing: $needle"
     }

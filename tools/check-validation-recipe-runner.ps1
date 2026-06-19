@@ -661,6 +661,10 @@ $sampleEnvironmentPlatformWindowsVulkanDryRun = Assert-DryRunRecipe -Recipe "des
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-environment-vulkan-strict-aggregate", "--require-environment-platform-windows-vulkan-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentPlatformWindowsVulkanDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence"
 }
+$environmentPlatformLinuxVulkanHostDryRun = Assert-DryRunRecipe -Recipe "environment-platform-linux-vulkan-host-gate" -ExpectedArgv @("-File", "tools/validate-linux-vulkan-runtime-host.ps1", "-RequireReady")
+foreach ($needle in @("tools/validate-linux-vulkan-runtime-host.ps1", "-RequireReady")) {
+    Assert-ArgvContainsText -Result $environmentPlatformLinuxVulkanHostDryRun -Expected $needle -Label "dry-run argv for environment-platform-linux-vulkan-host-gate"
+}
 $sampleEnvironmentOptimizationMeasurementDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-optimization-measurement" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-optimization-measurement", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentOptimizationMeasurementDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-optimization-measurement"
@@ -826,6 +830,11 @@ if ($missingEnvironmentPlatformReadinessGate.status -ne "rejected" -or @($missin
 $missingEnvironmentPlatformWindowsVulkanGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence") -ExpectedExitCode 2
 if ($missingEnvironmentPlatformWindowsVulkanGate.status -ne "rejected" -or @($missingEnvironmentPlatformWindowsVulkanGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "environment platform Windows Vulkan evidence recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingEnvironmentPlatformLinuxVulkanHostGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "environment-platform-linux-vulkan-host-gate") -ExpectedExitCode 2
+if ($missingEnvironmentPlatformLinuxVulkanHostGate.status -ne "rejected" -or @($missingEnvironmentPlatformLinuxVulkanHostGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "environment platform Linux Vulkan host-gate recipe must require vulkan-strict-linux acknowledgement before execute"
 }
 
 $missingEnvironmentOptimizationMeasurementGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-environment-optimization-measurement") -ExpectedExitCode 2

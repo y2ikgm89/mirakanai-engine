@@ -1,6 +1,7 @@
 #requires -Version 7.0
 #requires -PSEdition Core
 
+[CmdletBinding()]
 param(
     [switch]$RequireReady,
     [string[]]$ExpectedEvidenceCounters = @()
@@ -176,6 +177,8 @@ foreach ($counter in @($ExpectedEvidenceCounters)) {
 $actualCounters = @(
     "validation_recipe=environment-platform-linux-vulkan-package",
     "host_gate=linux-vulkan-runtime-host",
+    "host_gate_recipe=environment-platform-linux-vulkan-host-gate",
+    "host_gate_acknowledgement=vulkan-strict-linux",
     "host=$hostOs",
     "host_matches=$(ConvertTo-CounterBit $hostMatches)",
     "vulkaninfo_ready=$(ConvertTo-CounterBit $vulkanInfoReady)",
@@ -190,10 +193,20 @@ $actualCounters = @(
     "environment_platform_requires_linux_vulkan_host_evidence=$(if ($linuxVulkanReady) { '0' } else { '1' })",
     "environment_all_platform_unconditional_ready=0",
     "windows_vulkan_inferred=0",
+    "environment_platform_windows_vulkan_inferred=0",
     "android_vulkan_inferred=0",
     "native_handle_access=0"
 )
 Write-Output ([string]::Join(" ", $actualCounters))
+
+Write-Output "environment-platform-linux-vulkan-host-gate: host=$hostOs"
+Write-Output "environment-platform-linux-vulkan-host-gate: host_gate=vulkan-strict-linux"
+Write-Output "environment-platform-linux-vulkan-host-gate: status=$(if ($linuxVulkanReady) { 'preflight_ready' } else { 'host-gated' })"
+Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_linux_vulkan_ready=$(ConvertTo-CounterBit $linuxVulkanReady)"
+Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_requires_linux_vulkan_host_evidence=$(if ($linuxVulkanReady) { '0' } else { '1' })"
+Write-Output "environment-platform-linux-vulkan-host-gate: environment_all_platform_unconditional_ready=0"
+Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_windows_vulkan_inferred=0"
+Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_native_handle_access=0"
 
 if ($RequireReady -and -not $linuxVulkanReady) {
     Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, and installed validator evidence."
