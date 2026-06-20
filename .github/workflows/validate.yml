@@ -670,6 +670,7 @@ jobs:
           $output = "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt"
           . ./tools/common.ps1
           $null = Set-MirakanaiVcpkgEnvironment
+          $validateCommand = @'
           $expected = @(
             "validation_recipe=environment-platform-linux-vulkan-package",
             "host=linux",
@@ -688,7 +689,9 @@ jobs:
             "environment_platform_requires_linux_vulkan_host_evidence=0",
             "environment_all_platform_unconditional_ready=0"
           )
-          xvfb-run -a pwsh -NoProfile -ExecutionPolicy Bypass -File ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -ExpectedEvidenceCounters $expected *>&1 |
+          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -ExpectedEvidenceCounters $expected
+          '@
+          xvfb-run -a pwsh -NoProfile -ExecutionPolicy Bypass -Command $validateCommand *>&1 |
             Tee-Object -FilePath $output
 
       - name: Save Linux Vulkan vcpkg tool checkout cache
