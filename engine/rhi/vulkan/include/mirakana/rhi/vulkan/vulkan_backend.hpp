@@ -355,6 +355,8 @@ struct VulkanRuntimeTextureCreatePlan {
     bool supported{false};
     Extent3D extent;
     Format format{Format::unknown};
+    bool image_type_3d{false};
+    bool image_view_type_3d{false};
     VulkanTextureUsagePlan usage;
     VulkanBufferMemoryPlan memory;
     std::string diagnostic;
@@ -612,6 +614,20 @@ struct VulkanEnvironmentIblRendererUploadResult {
     std::string diagnostic;
 };
 
+struct VulkanRuntimeValidationLogSnapshot {
+    bool capture_enabled{false};
+    bool debug_utils_messenger_created{false};
+    std::uint32_t validation_message_count{0};
+    std::uint32_t warning_message_count{0};
+    std::uint32_t error_message_count{0};
+    std::string diagnostic;
+
+    [[nodiscard]] bool clean() const noexcept {
+        return capture_enabled && debug_utils_messenger_created && validation_message_count == 0U &&
+               warning_message_count == 0U && error_message_count == 0U;
+    }
+};
+
 class VulkanRuntimeDevice {
   public:
     VulkanRuntimeDevice() noexcept;
@@ -629,6 +645,7 @@ class VulkanRuntimeDevice {
     [[nodiscard]] bool has_present_queue() const noexcept;
     [[nodiscard]] const VulkanLogicalDeviceCreatePlan& logical_device_plan() const noexcept;
     [[nodiscard]] const VulkanCommandResolutionPlan& command_plan() const noexcept;
+    [[nodiscard]] VulkanRuntimeValidationLogSnapshot validation_log_snapshot() const noexcept;
     /// Blocks until the opaque device fence handle (`uint64_t`) is signaled, or the timeout elapses.
     [[nodiscard]] bool wait_for_fence_signaled(std::uint64_t fence, std::uint64_t timeout_ns) noexcept;
     void reset() noexcept;
@@ -1542,12 +1559,14 @@ struct VulkanRuntimeSwapchainAcquireResult {
 struct VulkanRuntimeSwapchainPresentDesc {
     std::uint32_t image_index{0};
     bool wait_render_finished_semaphore{true};
+    bool wait_for_present_queue_idle{true};
 };
 
 struct VulkanRuntimeSwapchainPresentResult {
     bool presented{false};
     bool suboptimal{false};
     bool resize_required{false};
+    bool present_queue_idle_waited{false};
     std::string diagnostic;
 };
 

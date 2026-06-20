@@ -254,7 +254,6 @@ $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environme
 $requiresEnvironmentReadyAggregate = (@($SmokeArgs) -contains "--require-environment-ready-aggregate") -or
     $requiresEnvironmentBackendParity -or
     $requiresEnvironmentD3d12PlatformReadiness -or
-    $requiresEnvironmentOptimizationMeasurement -or
     $requiresEnvironmentArtistWorkflowPackage -or
     $requiresEnvironmentCommercialFullReadiness
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
@@ -272,6 +271,14 @@ $requiresJobExecutionPlacementPolicy = @($SmokeArgs) -contains "--require-job-ex
 $requiresWindowsCpuSetWorkerPlacement = @($SmokeArgs) -contains "--require-windows-cpu-set-worker-placement"
 $requiresWindowsCpuSetSmtWorkerPlacement = @($SmokeArgs) -contains "--require-windows-cpu-set-smt-worker-placement"
 $requiresSimdDispatchPolicy = @($SmokeArgs) -contains "--require-simd-dispatch-policy"
+if ($requiresEnvironmentOptimizationMeasurement) {
+    if ((@($SmokeArgs) -contains "--require-vulkan-renderer") -or $requiresEnvironmentVulkanStrictAggregate -or
+        $requiresVulkanDebugProfilingEvidence) {
+        $requiresEnvironmentVulkanStrictAggregate = $true
+    } else {
+        $requiresEnvironmentReadyAggregate = $true
+    }
+}
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -6056,6 +6063,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         }
     }
     if ($requiresEnvironmentOptimizationMeasurement) {
+        $environmentOptimizationMeasurementBackend = if ((@($SmokeArgs) -contains "--require-vulkan-renderer") -or
+            $requiresEnvironmentVulkanStrictAggregate -or $requiresVulkanDebugProfilingEvidence) {
+            "vulkan_strict"
+        } else {
+            "d3d12"
+        }
         Assert-InstalledDesktopRuntimeStatusFields `
             -SmokeOutput $smokeOutput `
             -EscapedGameTarget $escapedGameTarget `
@@ -6067,7 +6080,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_optimization_measurement_required_workloads" = "7"
                 "environment_optimization_measurement_measured_workloads" = "7"
                 "environment_optimization_measurement_before_after_pairs" = "7"
-                "environment_optimization_measurement_backend" = "d3d12"
+                "environment_optimization_measurement_backend" = $environmentOptimizationMeasurementBackend
                 "environment_optimization_measurement_profile" = "preset_pack_flythrough"
                 "environment_optimization_measurement_profiles" = "preset_pack_flythrough,storm_precipitation,dense_volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress,asset_library_cold_load"
                 "environment_optimization_preset_pack_flythrough_ready" = "1"

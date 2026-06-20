@@ -47,6 +47,9 @@ using PlatformId = mirakana::runtime_rhi::EnvironmentPlatformEvidenceV2PlatformI
         .first_party_linux_runtime_host_ready = true,
         .linux_package_script_ready = true,
         .linux_installed_validator_ready = true,
+        .linux_package_smoke_ready = true,
+        .linux_vulkan_readback_ready = true,
+        .linux_vulkan_validation_log_clean = true,
         .environment_platform_ready_counter = true,
         .requires_host_evidence = false,
     };
@@ -65,7 +68,8 @@ using PlatformId = mirakana::runtime_rhi::EnvironmentPlatformEvidenceV2PlatformI
         .android_ndk_ready = true,
         .android_device_or_emulator_ready = true,
         .android_vulkan_profile_ready = true,
-        .android_validation_layer_packaged = true,
+        .android_gpu_debuggable_ready = true,
+        .android_gpu_debug_layer_settings_ready = true,
         .android_package_smoke_ready = true,
         .android_vulkan_readback_ready = true,
         .environment_platform_ready_counter = true,
@@ -140,6 +144,9 @@ MK_TEST("linux_vulkan_ready_requires_exact_linux_host_gate_and_tool_rows") {
     auto row = ready_linux_vulkan_row();
     row.validation_layer_ready = false;
     row.host_gate_id = "vulkan-strict";
+    row.linux_package_smoke_ready = false;
+    row.linux_vulkan_readback_ready = false;
+    row.linux_vulkan_validation_log_clean = false;
 
     const auto blocked =
         mirakana::runtime_rhi::evaluate_environment_platform_evidence_v2(std::vector<PlatformRow>{row});
@@ -158,9 +165,10 @@ MK_TEST("linux_vulkan_ready_requires_exact_linux_host_gate_and_tool_rows") {
     MK_REQUIRE(!ready.diagnostics);
 }
 
-MK_TEST("android_vulkan_ready_requires_android_device_validation_layer_package_and_readback") {
+MK_TEST("android_vulkan_ready_requires_android_device_gpu_debug_layer_settings_and_readback") {
     auto row = ready_android_vulkan_row();
-    row.android_validation_layer_packaged = false;
+    row.android_gpu_debuggable_ready = false;
+    row.android_gpu_debug_layer_settings_ready = false;
     row.android_vulkan_readback_ready = false;
 
     const auto blocked =

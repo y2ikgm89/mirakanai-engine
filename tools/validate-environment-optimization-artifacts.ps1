@@ -59,6 +59,16 @@ function Get-LeafName {
     return [System.IO.Path]::GetFileName($Path.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar))
 }
 
+function Get-ParentPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $parent = [System.IO.Path]::GetDirectoryName($Path)
+    if ($null -eq $parent) {
+        return ""
+    }
+    return $parent
+}
+
 function Test-SafeEnvironmentOptimizationArtifactPath {
     param(
         [Parameter(Mandatory = $true)][string]$RelativePath,
@@ -109,7 +119,7 @@ function Get-RequiredDecimalProperty {
     param(
         [Parameter(Mandatory = $true)][object]$JsonObject,
         [Parameter(Mandatory = $true)][string]$Name,
-        [Parameter(Mandatory = $true)][System.Collections.Generic.List[string]]$Diagnostics
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Diagnostics
     )
 
     $value = Get-JsonPropertyValue -JsonObject $JsonObject -Name $Name
@@ -144,8 +154,8 @@ function Get-EvidenceFilesForPair {
 
     $files = Get-ChildItem -LiteralPath $artifactRootFull -Recurse -File -Filter "evidence.json" |
         Where-Object {
-            $workloadDirectory = Split-Path -LiteralPath $_.FullName -Parent
-            $backendDirectory = Split-Path -LiteralPath $workloadDirectory -Parent
+            $workloadDirectory = Get-ParentPath -Path $_.FullName
+            $backendDirectory = Get-ParentPath -Path $workloadDirectory
             (Get-LeafName -Path $workloadDirectory) -eq $Workload -and
                 (Get-LeafName -Path $backendDirectory) -eq $Backend
         }
@@ -183,9 +193,9 @@ foreach ($backend in $requiredBackends) {
         }
 
         $evidenceFile = $evidenceFiles[0]
-        $workloadDirectory = Split-Path -LiteralPath $evidenceFile.FullName -Parent
-        $backendDirectory = Split-Path -LiteralPath $workloadDirectory -Parent
-        $taskDirectory = Split-Path -LiteralPath $backendDirectory -Parent
+        $workloadDirectory = Get-ParentPath -Path $evidenceFile.FullName
+        $backendDirectory = Get-ParentPath -Path $workloadDirectory
+        $taskDirectory = Get-ParentPath -Path $backendDirectory
         $taskId = Get-LeafName -Path $taskDirectory
         $expectedPathPrefix = "$artifactRootRelative/$taskId/$backend/$workload/"
 

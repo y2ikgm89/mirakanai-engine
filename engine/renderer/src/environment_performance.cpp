@@ -24,8 +24,18 @@ constexpr std::array kRequiredWorkloads{
     EnvironmentOptimizationWorkload::asset_library_cold_load,
 };
 
+constexpr std::array kRequiredBackends{rhi::BackendKind::d3d12, rhi::BackendKind::vulkan, rhi::BackendKind::metal};
+
 [[nodiscard]] std::uint8_t workload_sort_key(EnvironmentOptimizationWorkload workload) noexcept {
     return static_cast<std::uint8_t>(workload);
+}
+
+[[nodiscard]] std::uint8_t backend_sort_key(rhi::BackendKind backend) noexcept {
+    return static_cast<std::uint8_t>(backend);
+}
+
+[[nodiscard]] bool is_required_backend(rhi::BackendKind backend) noexcept {
+    return std::ranges::find(kRequiredBackends, backend) != kRequiredBackends.end();
 }
 
 [[nodiscard]] std::string_view canonical_workload_id(EnvironmentOptimizationWorkload workload) noexcept {
@@ -86,7 +96,7 @@ constexpr std::array kRequiredWorkloads{
 }
 
 [[nodiscard]] bool ready_row(const EnvironmentOptimizationMeasurementRow& row) noexcept {
-    return row.status == EnvironmentOptimizationRowStatus::ready && row.backend == rhi::BackendKind::d3d12 &&
+    return row.status == EnvironmentOptimizationRowStatus::ready && is_required_backend(row.backend) &&
            row.before_after_ready && row.host_tool_versions_ready && row.profiler_artifact_ready &&
            row.repository_counters_ready && row.timestamp_query_evidence_ready && row.regression_budget_ready &&
            row.diagnostic_count == 0U && !row.broad_optimization_claimed && !row.native_handle_access &&
@@ -113,6 +123,9 @@ void sort_rows(std::vector<EnvironmentOptimizationMeasurementRow>& rows) {
     std::ranges::sort(rows, [](const auto& lhs, const auto& rhs) {
         if (lhs.workload != rhs.workload) {
             return workload_sort_key(lhs.workload) < workload_sort_key(rhs.workload);
+        }
+        if (lhs.backend != rhs.backend) {
+            return backend_sort_key(lhs.backend) < backend_sort_key(rhs.backend);
         }
         if (lhs.workload_id != rhs.workload_id) {
             return lhs.workload_id < rhs.workload_id;
@@ -147,16 +160,17 @@ void validate_budget(EnvironmentOptimizationMeasurementPlan& plan,
 
 void validate_duplicate_rows(EnvironmentOptimizationMeasurementPlan& plan,
                              const EnvironmentOptimizationMeasurementRequest& request) {
-    std::vector<EnvironmentOptimizationWorkload> seen;
+    std::vector<std::pair<EnvironmentOptimizationWorkload, rhi::BackendKind>> seen;
     seen.reserve(request.rows.size());
     for (const auto& row : request.rows) {
-        if (std::ranges::find(seen, row.workload) != seen.end()) {
-            add_diagnostic(plan, EnvironmentOptimizationDiagnosticCode::duplicate_workload_row, row.workload,
-                           row.workload_id, "environment optimization measurement allows one row per workload",
-                           row.source_index);
+        const auto key = std::pair{row.workload, row.backend};
+        if (std::ranges::find(seen, key) != seen.end()) {
+            add_diagnostic(
+                plan, EnvironmentOptimizationDiagnosticCode::duplicate_workload_row, row.workload, row.workload_id,
+                "environment optimization measurement allows one row per workload and backend", row.source_index);
             continue;
         }
-        seen.push_back(row.workload);
+        seen.push_back(key);
     }
 }
 
@@ -205,9 +219,10 @@ void validate_row_identity(EnvironmentOptimizationMeasurementPlan& plan,
         add_diagnostic(plan, EnvironmentOptimizationDiagnosticCode::invalid_workload_id, row.workload, row.workload_id,
                        "environment optimization evidence cannot be transferred between workloads", row.source_index);
     }
-    if (row.backend != rhi::BackendKind::d3d12) {
+    if (!is_required_backend(row.backend)) {
         add_diagnostic(plan, EnvironmentOptimizationDiagnosticCode::invalid_backend, row.workload, row.workload_id,
-                       "phase 9 slice 1 accepts selected D3D12 primary measurement rows only", row.source_index);
+                       "environment optimization measurement requires D3D12, strict Vulkan, or Apple-host Metal rows",
+                       row.source_index);
     }
 }
 
@@ -346,9 +361,14 @@ void summarize(EnvironmentOptimizationMeasurementPlan& plan) {
         plan, EnvironmentOptimizationWorkload::weather_simulation_stress, rhi::BackendKind::d3d12);
     plan.d3d12_asset_library_cold_load_measured = has_ready_backend_workload(
         plan, EnvironmentOptimizationWorkload::asset_library_cold_load, rhi::BackendKind::d3d12);
-    const auto every_required_workload_ready = std::ranges::all_of(
-        kRequiredWorkloads, [&plan](const auto workload) { return has_ready_workload(plan, workload); });
-    plan.environment_broad_optimization_ready = every_required_workload_ready && plan.environment_backend_parity_ready;
+    const auto every_required_backend_workload_ready =
+        std::ranges::all_of(kRequiredBackends, [&plan](const auto backend) {
+            return std::ranges::all_of(kRequiredWorkloads, [&plan, backend](const auto workload) {
+                return has_ready_backend_workload(plan, workload, backend);
+            });
+        });
+    plan.environment_broad_optimization_ready =
+        every_required_backend_workload_ready && plan.environment_backend_parity_ready;
 }
 
 void hash_mix(std::uint64_t& hash, std::uint64_t value) noexcept {
