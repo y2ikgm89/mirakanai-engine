@@ -10,7 +10,8 @@ param(
     [int]$EmulatorPort = 5586,
     [int]$BootTimeoutSeconds = 180,
     [switch]$ConfigureGpuDebugLayers,
-    [string]$GpuDebugLayerPackage = ""
+    [string]$GpuDebugLayerPackage = "",
+    [string]$GpuDebugLayerApk = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -331,6 +332,45 @@ function Set-AndroidGpuDebugLayerSettings {
     return $true
 }
 
+function Install-AndroidGpuDebugLayerApkIfRequested {
+    param(
+        [AllowNull()][string]$Adb,
+        [string]$Serial = "",
+        [string]$ApkPath = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ApkPath)) {
+        return [pscustomobject]@{
+            InstallRequested = $false
+            InstallReady = $false
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($Adb) -or [string]::IsNullOrWhiteSpace($Serial)) {
+        return [pscustomobject]@{
+            InstallRequested = $true
+            InstallReady = $false
+        }
+    }
+
+    $candidate = $ApkPath
+    if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+        $candidate = Join-Path $root $candidate
+    }
+    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        return [pscustomobject]@{
+            InstallRequested = $true
+            InstallReady = $false
+        }
+    }
+
+    $resolvedApk = (Resolve-Path -LiteralPath $candidate).Path
+    $install = Invoke-ToolCapture -FilePath $Adb -Arguments (Get-AdbDeviceArguments -Serial $Serial -Arguments @("install", "-r", $resolvedApk)) -TimeoutSeconds 120
+    return [pscustomobject]@{
+        InstallRequested = $true
+        InstallReady = $install.ExitCode -eq 0
+    }
+}
+
 function Test-AndroidGpuDebugLayerSettings {
     param(
         [AllowNull()][string]$Adb,
@@ -408,7 +448,7 @@ function Invoke-AndroidPackageSmokeIfRequired {
     }
 
     $smokeScript = Join-Path $PSScriptRoot "smoke-android-package.ps1"
-    $smoke = Invoke-ToolCapture -FilePath "pwsh" -Arguments @(
+    $smokeArguments = @(
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
@@ -422,6 +462,9 @@ function Invoke-AndroidPackageSmokeIfRequired {
     }
     $smoke = Invoke-ToolCapture -FilePath "pwsh" -Arguments $smokeArguments -TimeoutSeconds 600
     $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
+    if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
+        Write-Output $smokeText.TrimEnd()
+    }
     return [pscustomobject]@{
         PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android-smoke: ok")
         VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_readback_ready=1")
@@ -444,6 +487,7 @@ try {
     $script:EmulatorPort = $EmulatorPort
     $script:BootTimeoutSeconds = $BootTimeoutSeconds
     $resolvedDeviceSerial = Resolve-AndroidDeviceSerial -Adb $adb -RequestedSerial $DeviceSerial -AllowStartEmulator:$StartEmulator.IsPresent
+    $gpuDebugLayerInstall = Install-AndroidGpuDebugLayerApkIfRequested -Adb $adb -Serial $resolvedDeviceSerial -ApkPath $GpuDebugLayerApk
 
     if ($ConfigureGpuDebugLayers -and -not [string]::IsNullOrWhiteSpace($resolvedDeviceSerial)) {
         $layerPackage = Get-AndroidGpuDebugLayerPackage -Adb $adb -Serial $resolvedDeviceSerial -RequestedPackage $GpuDebugLayerPackage
@@ -458,6 +502,8 @@ try {
     $androidVulkanProfileReady = Test-AndroidManifestVulkanProfileReady
     $androidGpuDebuggableReady = Test-AndroidGpuDebuggableReady
     $gpuDebugLayerSettings = Test-AndroidGpuDebugLayerSettings -Adb $adb -PackageName $packageName -Serial $resolvedDeviceSerial
+    $androidGpuDebugLayerInstallRequested = [bool]$gpuDebugLayerInstall.InstallRequested
+    $androidGpuDebugLayerInstallReady = [bool]$gpuDebugLayerInstall.InstallReady
     $androidGpuDebugLayerSettingsReady = [bool]$gpuDebugLayerSettings.SettingsReady
     $androidGpuDebugLayerAppInstalled = [bool]$gpuDebugLayerSettings.LayerAppInstalled
 
@@ -490,6 +536,8 @@ $actualCounters = @(
     "android_gpu_debuggable_ready=$(ConvertTo-CounterBit $androidGpuDebuggableReady)",
     "android_gpu_debug_layer_settings_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerSettingsReady)",
     "android_gpu_debug_layer_app_installed=$(ConvertTo-CounterBit $androidGpuDebugLayerAppInstalled)",
+    "android_gpu_debug_layer_install_requested=$(ConvertTo-CounterBit $androidGpuDebugLayerInstallRequested)",
+    "android_gpu_debug_layer_install_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerInstallReady)",
     "VK_LAYER_KHRONOS_validation_ready=$(ConvertTo-CounterBit $validationLayerReady)",
     "android_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
     "android_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
@@ -513,5 +561,5 @@ if ($missingExpectedCounters.Count -gt 0) {
 }
 
 if ($RequireReady -and -not $androidVulkanReady) {
-    Write-Error "environment-platform-android-vulkan-package requires Android SDK, NDK, adb device/emulator, Vulkan manifest feature declarations, Android debug build instrumentation, AGI GPU debug layer settings, installed AGI layer APK, VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, package smoke, and Android Vulkan readback evidence."
+    Write-Error "environment-platform-android-vulkan-package requires Android SDK, NDK, adb device/emulator, Vulkan manifest feature declarations, Android debug build instrumentation, AGI GPU debug layer settings, installed AGI layer APK or a valid -GpuDebugLayerApk install, VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, package smoke, and Android Vulkan readback evidence."
 }
