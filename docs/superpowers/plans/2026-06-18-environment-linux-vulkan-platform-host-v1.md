@@ -28,6 +28,8 @@ No blog, sample, Stack Overflow, or unlicensed code may be copied into the imple
 - `sample_desktop_runtime_game`, `sample_desktop_runtime_shell`, `tools/package-desktop-runtime.ps1`, `tools/validate-desktop-game-runtime.ps1`, and `tools/validate-installed-desktop-runtime.ps1` are Win32/x64-windows lanes.
 - `MK_add_desktop_runtime_game` accepts only `HOST_BACKEND win32` and rejects non-Windows hosts.
 - `DesktopGameRunner`, `HeadlessWindow`, `VirtualLifecycle`, `IFileSystem`, `NullRenderer`, and `shader_bytecode` are reusable cross-platform foundations.
+- The Vulkan RHI has the Linux XCB surface foundation needed by the future Linux presentation path: `SurfaceHandle::context`, `SurfacePlatform::xcb`, Linux `VK_KHR_surface` + `VK_KHR_xcb_surface` instance-extension planning, and a private `vkCreateXcbSurfaceKHR` surface-support probe. This is a prerequisite only; it does not create Linux packaging, installed validation, strict package smoke, or Linux readiness.
+- `MK_runtime_host_linux` now adds the first-party Linux XCB runtime host foundation: `LinuxDesktopHostRequest`, `LinuxDesktopHostReadinessReport`, `LinuxXcbWindow`, `LinuxDesktopEventPump`, and `LinuxDesktopGameHost` behind private dynamic `libxcb.so.1` loading, no public XCB/Vulkan handles, and `NullRenderer` fallback. This is still not Linux Vulkan presentation, package tooling, installed validation, strict package smoke, or Linux readiness.
 - `environment_platform_windows_vulkan_ready=1` is a Windows Vulkan row only.
 - `environment_platform_linux_vulkan_ready=0`, `environment_platform_requires_linux_vulkan_host_evidence=1`, and `environment_all_platform_unconditional_ready=0` must remain true until this plan's ready gate is fully implemented and validated.
 
@@ -47,8 +49,10 @@ No blog, sample, Stack Overflow, or unlicensed code may be copied into the imple
 - [x] Add `vulkan-strict-linux` as a separate manifest host gate.
 - [x] Wire `environment_platform_linux_vulkan_ready` and `environmentPlatformReadinessRows.environment_platform_linux_vulkan` to the new host-gate recipe while keeping state `host-gated`.
 - [x] Add static runner coverage for dry-run and missing host-gate acknowledgement.
-- [ ] Implement `engine/runtime_host/linux` with first-party Linux host/event-pump/window boundaries.
-- [ ] Add Linux-only CMake targets such as `MK_runtime_host_linux` and `MK_runtime_host_linux_presentation` without weakening `MK_runtime_host_win32`.
+- [x] Add the Linux XCB Vulkan surface foundation in the RHI without exposing native XCB, Vulkan instance/device/surface, or swapchain handles.
+- [x] Implement `engine/runtime_host/linux` with first-party Linux host/event-pump/window boundaries.
+- [x] Add the Linux-only `MK_runtime_host_linux` CMake target without weakening `MK_runtime_host_win32`.
+- [ ] Add future Linux Vulkan presentation target such as `MK_runtime_host_linux_presentation` without exposing native handles.
 - [ ] Add a Linux desktop/runtime package script and installed package validator, rather than extending the Win32 package script.
 - [ ] Add Linux Vulkan package smoke that proves Vulkan SDK tools, Linux ICD/runtime/driver, `VK_LAYER_KHRONOS_validation`, DXC SPIR-V CodeGen, `spirv-val`, strict package execution, synchronization/readback counters, zero diagnostics, and zero native-handle access.
 - [ ] Promote `environment_platform_linux_vulkan_ready=1` only after the Linux package smoke emits package-visible counters and static guards reject Windows/compile-only inference.
@@ -66,7 +70,7 @@ No blog, sample, Stack Overflow, or unlicensed code may be copied into the imple
 | Check | Result | Notes |
 | --- | --- | --- |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Passed | Rebuilt `engine/agent/manifest.json` from fragments. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | Passed | Report-only mode emitted `host=windows`, `status=host-gated`, `environment_platform_linux_vulkan_ready=0`, `environment_platform_requires_linux_vulkan_host_evidence=1`, `environment_all_platform_unconditional_ready=0`, `environment_platform_windows_vulkan_inferred=0`, and blockers for non-Linux host, missing first-party Linux runtime host, missing Linux package script, and missing installed Linux validator. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | Passed | Report-only mode emitted `host=windows`, `status=host-gated`, `environment_platform_linux_vulkan_ready=0`, `environment_platform_requires_linux_vulkan_host_evidence=1`, `environment_all_platform_unconditional_ready=0`, `environment_platform_windows_vulkan_inferred=0`, and non-Linux host-gated Linux tool/package/installed-validator counters. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe environment-platform-linux-vulkan-host-gate` | Passed | Returned `tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady` with host gate `vulkan-strict-linux`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe environment-platform-linux-vulkan-host-gate` | Rejected as expected | Failed closed with `missing-host-gate-acknowledgement` until `vulkan-strict-linux` is acknowledged. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady` | Failed as expected on Windows | Reported exact blockers and refused ready evidence. |
@@ -78,3 +82,9 @@ No blog, sample, Stack Overflow, or unlicensed code may be copied into the imple
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed | Full format check stayed green. |
 | `git diff --check` | Passed | No whitespace errors. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | Passed | 19 static checks plus diagnostic-only mobile/apple host gates passed; no C++ runtime build was required for this contract-only slice. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests` | Passed | Linux host extension planning and XCB surface-handle validation compile through the RHI backend scaffold tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_backend_scaffold_tests` | Passed | `MK_backend_scaffold_tests` validates `VK_KHR_xcb_surface` planning and fail-closed XCB context/window diagnostics without promoting Linux readiness. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed with `validate: ok` and `100% tests passed, 0 tests failed out of 131`; Apple/Metal host checks remain host-gated or diagnostic-only on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests` | Passed | Common Linux desktop host contract compiled on Windows and kept non-Linux host-gated behavior value-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_tests` | Passed | `MK_runtime_host_tests` covered invalid Linux host requests, non-Linux host gating, fallback reporting, and zero native-handle access. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | Passed | Validator now checks `engine/runtime_host/linux`, `linux_desktop_game_host.hpp`, and `MK_runtime_host_linux` CMake presence for the first-party host row on Linux; Windows remains host-gated and does not promote readiness. |

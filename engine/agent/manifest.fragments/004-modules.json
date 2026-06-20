@@ -425,9 +425,22 @@
       ],
       "publicHeaders": [
         "engine/runtime_host/include/mirakana/runtime_host/desktop_runner.hpp",
+        "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp",
         "engine/runtime_host/include/mirakana/runtime_host/shader_bytecode.hpp"
       ],
-      "purpose": "Editor-independent desktop game host contract. Currently provides DesktopGameRunner, DesktopRunConfig, DesktopRunResult, DesktopHostServices, and IDesktopEventPump so games can keep implementing mirakana::GameApp while a host drives IWindow lifecycle, VirtualInput, VirtualPointerInput, VirtualGamepadInput, VirtualLifecycle, optional renderer resize including swapchain-backed RhiFrameRenderer resize through IRenderer, optional DiagnosticsRecorder/IProfileClock frame instrumentation, backend-neutral renderer counter capture from IRenderer::stats(), and app update/stop status without exposing SDL, OS, RHI, or graphics API handles to game code. It also provides load_desktop_shader_bytecode_pair for host-independent packaged shader bytecode loading through IFileSystem with owned byte vectors, entry points, stable statuses, and diagnostics."
+      "purpose": "Editor-independent desktop game host contract. Currently provides DesktopGameRunner, DesktopRunConfig, DesktopRunResult, DesktopHostServices, and IDesktopEventPump so games can keep implementing mirakana::GameApp while a host drives IWindow lifecycle, VirtualInput, VirtualPointerInput, VirtualGamepadInput, VirtualLifecycle, optional renderer resize including swapchain-backed RhiFrameRenderer resize through IRenderer, optional DiagnosticsRecorder/IProfileClock frame instrumentation, backend-neutral renderer counter capture from IRenderer::stats(), and app update/stop status without exposing SDL, OS, RHI, or graphics API handles to game code. It also provides load_desktop_shader_bytecode_pair for host-independent packaged shader bytecode loading through IFileSystem with owned byte vectors, entry points, stable statuses, and diagnostics. LinuxDesktopHostRequest, LinuxDesktopHostReadinessReport, and Linux desktop host status labels define the value-only Linux host readiness contract used by the Linux runtime host target while keeping native XCB/Vulkan handles private."
+    },
+    {
+      "name": "MK_runtime_host_linux",
+      "path": "engine/runtime_host/linux",
+      "status": "linux-xcb-desktop-game-runtime-foundation",
+      "dependencies": [
+        "MK_runtime_host"
+      ],
+      "publicHeaders": [
+        "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp"
+      ],
+      "purpose": "Linux XCB desktop game runtime host foundation for the first-party desktop platform track. Provides LinuxXcbWindow, LinuxDesktopEventPump, LinuxDesktopGameHost, and probe_linux_desktop_host over private dynamic libxcb.so.1 loading, first-party IWindow/IDesktopEventPump/DesktopGameRunner boundaries, virtual input/pointer/gamepad/lifecycle state, and NullRenderer fallback without exposing XCB connection/window, Vulkan surface, native OS handles, RHI backend handles, or third-party window middleware. Linux Vulkan presentation, package scripts, installed Linux package validation, strict package smoke, and Linux platform readiness remain host-gated follow-up work."
     },
     {
       "name": "MK_runtime_host_win32",

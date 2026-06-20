@@ -562,6 +562,66 @@ jobs:
             out/build/ci-linux-clang/Testing/**/*.log
           if-no-files-found: warn
 
+  linux-vulkan:
+    name: Linux Vulkan Host Evidence
+    needs: changes
+    if: needs.changes.outputs.linux == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Linux Vulkan diagnostic packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends --no-install-suggests \
+            mesa-vulkan-drivers \
+            spirv-tools \
+            vulkan-tools \
+            vulkan-validationlayers
+          mkdir -p artifacts/environment/platform/linux-vulkan-host
+          command -v vulkaninfo
+          command -v spirv-val
+
+      - name: Capture Vulkan host summaries
+        shell: bash
+        run: |
+          mkdir -p artifacts/environment/platform/linux-vulkan-host
+          vulkaninfo --summary > artifacts/environment/platform/linux-vulkan-host/vulkaninfo-summary.txt 2>&1 || true
+          (
+            cd artifacts/environment/platform/linux-vulkan-host
+            vulkaninfo --json > vulkaninfo-json-stdout.txt 2>&1
+          ) || true
+          find artifacts/environment/platform/linux-vulkan-host -maxdepth 1 -type f -name 'VP_VULKANINFO_*.json' -print
+
+      - name: Validate Linux Vulkan host evidence gate
+        shell: pwsh
+        run: |
+          $output = "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt"
+          ./tools/validate-linux-vulkan-runtime-host.ps1 *>&1 | Tee-Object -FilePath $output
+
+      - name: Upload Linux Vulkan host evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-vulkan-host-evidence
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/environment/platform/linux-vulkan-host/**
+          if-no-files-found: warn
+
   linux-coverage:
     name: Linux Coverage
     needs: changes
@@ -891,11 +951,22 @@ jobs:
         run: |
           ccache --zero-stats
 
-      - name: Environment Metal aggregate host evidence recipe
+      - name: Environment Metal aggregate host evidence recipe and optimization artifacts
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
-          ./tools/validate-environment-metal-host-aggregate.ps1 -Jobs $jobs
+          ./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs $jobs -RequireReady
+
+      - name: Upload Metal optimization artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: metal-host-optimization-artifacts
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**
+          if-no-files-found: warn
 
       - name: Configure
         run: cmake --preset ci-macos-appleclang
@@ -1000,6 +1071,7 @@ jobs:
       - agent-static
       - windows
       - linux
+      - linux-vulkan
       - windows-cpp23
       - linux-coverage
       - linux-sanitizers

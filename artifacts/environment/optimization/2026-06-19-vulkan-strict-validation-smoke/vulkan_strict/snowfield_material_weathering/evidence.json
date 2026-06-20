@@ -6,7 +6,7 @@
   "profiler_tool_family": "Khronos Vulkan SDK validation and timestamp query evidence",
   "profiler_artifact_path": "artifacts/environment/optimization/2026-06-19-vulkan-strict-validation-smoke/vulkan_strict/snowfield_material_weathering/vulkan-timestamp-validation.csv",
   "trace_event_json_path": "artifacts/environment/optimization/2026-06-19-vulkan-strict-validation-smoke/vulkan_strict/snowfield_material_weathering/trace-events.json",
-  "artifact_hash_sha256": "517deb7f5c9c65870910be34f61f3419e0ee5474d5c3826ea1d590f0155012b4",
+  "artifact_hash_sha256": "d80d91c6cc2a87f022de625540204b67ed19efce87dcfd3b9fe0793e4d2b1608",
   "smoke_log_source": "C:/Users/y2ikg/AppData/Local/Temp/GameEngine-codex/environment-optimization/vulkan-strict-direct-smoke/vulkan-strict-direct-smoke.log",
   "debug_profiling_log_source": "C:/Users/y2ikg/AppData/Local/Temp/GameEngine-codex/environment-optimization/vulkan-strict-direct-smoke/vulkan-strict-direct-smoke.log",
   "typeperf_counter_source": "Vulkan timestamp query, VK_LAYER_KHRONOS_validation, SPIR-V Tools validation, repository package counters",

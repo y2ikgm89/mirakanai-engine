@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -163,6 +164,7 @@ inline constexpr std::uint32_t vulkan_structure_type_physical_device_vulkan_1_3_
 inline constexpr std::uint32_t vulkan_structure_type_image_create_info = 14;
 inline constexpr std::uint32_t vulkan_structure_type_swapchain_create_info = 1000001000;
 inline constexpr std::uint32_t vulkan_structure_type_present_info = 1000001001;
+inline constexpr std::uint32_t vulkan_structure_type_xcb_surface_create_info = 1000005000;
 inline constexpr std::uint32_t vulkan_structure_type_win32_surface_create_info = 1000009000;
 inline constexpr std::size_t vulkan_physical_device_feature_bool_count = 55;
 inline constexpr std::size_t vulkan_max_physical_device_name_size = 256;
@@ -425,6 +427,14 @@ struct NativeVulkanWin32SurfaceCreateInfo {
     std::uint32_t flags;
     void* instance;
     void* window;
+};
+
+struct NativeVulkanXcbSurfaceCreateInfo {
+    std::uint32_t s_type;
+    const void* next;
+    std::uint32_t flags;
+    void* connection;
+    std::uint32_t window;
 };
 
 struct NativeVulkanSurfaceCapabilities {
@@ -1114,6 +1124,9 @@ using VulkanGetPhysicalDeviceFormatProperties = void(MK_VULKAN_CALL*)(NativeVulk
 using VulkanCreateWin32Surface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
                                                                const NativeVulkanWin32SurfaceCreateInfo*, const void*,
                                                                NativeVulkanSurface*);
+using VulkanCreateXcbSurface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
+                                                             const NativeVulkanXcbSurfaceCreateInfo*, const void*,
+                                                             NativeVulkanSurface*);
 using VulkanDestroySurface = void(MK_VULKAN_CALL*)(NativeVulkanInstance, NativeVulkanSurface, const void*);
 using VulkanGetPhysicalDeviceSurfaceSupport = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanPhysicalDevice, std::uint32_t,
                                                                             NativeVulkanSurface, std::uint32_t*);
@@ -2888,6 +2901,13 @@ template <typename AvailableExtensions, typename AvailableLayers>
 } // namespace
 
 inline constexpr std::uint32_t vulkan_structure_type_debug_utils_object_name_info_ext = 1000128000U;
+inline constexpr std::uint32_t vulkan_structure_type_debug_utils_messenger_create_info_ext = 1000128004U;
+
+inline constexpr std::uint32_t vulkan_debug_utils_message_severity_warning_bit_ext = 0x00000100U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_severity_error_bit_ext = 0x00001000U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_general_bit_ext = 0x00000001U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_validation_bit_ext = 0x00000002U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_performance_bit_ext = 0x00000004U;
 
 inline constexpr std::int32_t vulkan_object_type_device = 3;
 inline constexpr std::int32_t vulkan_object_type_queue = 4;
@@ -2912,8 +2932,75 @@ struct alignas(8) NativeVulkanDebugUtilsObjectNameInfoExt {
     const char* object_name;
 };
 
+using NativeVulkanDebugUtilsMessenger = std::uint64_t;
+using VulkanDebugUtilsMessengerCallback = std::uint32_t(MK_VULKAN_CALL*)(std::uint32_t, std::uint32_t, const void*,
+                                                                         void*);
+
+struct NativeVulkanDebugUtilsMessengerCreateInfoExt {
+    std::uint32_t s_type;
+    const void* p_next;
+    std::uint32_t flags;
+    std::uint32_t message_severity;
+    std::uint32_t message_type;
+    VulkanDebugUtilsMessengerCallback callback;
+    void* user_data;
+};
+
 using VulkanSetDebugUtilsObjectName = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice,
                                                                     const NativeVulkanDebugUtilsObjectNameInfoExt*);
+using VulkanCreateDebugUtilsMessenger =
+    VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance, const NativeVulkanDebugUtilsMessengerCreateInfoExt*,
+                                  const void*, NativeVulkanDebugUtilsMessenger*);
+using VulkanDestroyDebugUtilsMessenger = void(MK_VULKAN_CALL*)(NativeVulkanInstance, NativeVulkanDebugUtilsMessenger,
+                                                               const void*);
+
+struct VulkanRuntimeValidationLogState {
+    std::atomic<std::uint32_t> validation_message_count{0};
+    std::atomic<std::uint32_t> warning_message_count{0};
+    std::atomic<std::uint32_t> error_message_count{0};
+};
+
+static std::uint32_t MK_VULKAN_CALL record_runtime_validation_message(std::uint32_t message_severity,
+                                                                      std::uint32_t message_type,
+                                                                      const void* callback_data,
+                                                                      void* user_data) noexcept {
+    static_cast<void>(callback_data);
+    auto* const state = static_cast<VulkanRuntimeValidationLogState*>(user_data);
+    if (state == nullptr) {
+        return 0U;
+    }
+
+    if ((message_type &
+         (vulkan_debug_utils_message_type_general_bit_ext | vulkan_debug_utils_message_type_validation_bit_ext |
+          vulkan_debug_utils_message_type_performance_bit_ext)) == 0U) {
+        return 0U;
+    }
+
+    state->validation_message_count.fetch_add(1U, std::memory_order_relaxed);
+    if ((message_severity & vulkan_debug_utils_message_severity_warning_bit_ext) != 0U) {
+        state->warning_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    if ((message_severity & vulkan_debug_utils_message_severity_error_bit_ext) != 0U) {
+        state->error_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    return 0U;
+}
+
+[[nodiscard]] static NativeVulkanDebugUtilsMessengerCreateInfoExt
+make_runtime_validation_log_messenger_create_info(VulkanRuntimeValidationLogState& state) noexcept {
+    return NativeVulkanDebugUtilsMessengerCreateInfoExt{
+        .s_type = vulkan_structure_type_debug_utils_messenger_create_info_ext,
+        .p_next = nullptr,
+        .flags = 0,
+        .message_severity =
+            vulkan_debug_utils_message_severity_warning_bit_ext | vulkan_debug_utils_message_severity_error_bit_ext,
+        .message_type = vulkan_debug_utils_message_type_general_bit_ext |
+                        vulkan_debug_utils_message_type_validation_bit_ext |
+                        vulkan_debug_utils_message_type_performance_bit_ext,
+        .callback = record_runtime_validation_message,
+        .user_data = &state,
+    };
+}
 
 struct VulkanRuntimeInstance::Impl {
 #if defined(_WIN32)
@@ -2998,6 +3085,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanGetPhysicalDeviceMemoryProperties get_physical_device_memory_properties{nullptr};
     VulkanGetPhysicalDeviceFormatProperties get_physical_device_format_properties{nullptr};
     VulkanCreateWin32Surface create_win32_surface{nullptr};
+    VulkanCreateXcbSurface create_xcb_surface{nullptr};
     VulkanDestroySurface destroy_surface{nullptr};
     VulkanGetPhysicalDeviceSurfaceCapabilities get_surface_capabilities{nullptr};
     VulkanGetPhysicalDeviceSurfaceFormats get_surface_formats{nullptr};
@@ -3074,6 +3162,9 @@ struct VulkanRuntimeDevice::Impl {
     VulkanLogicalDeviceCreatePlan logical_device_plan;
     VulkanCommandResolutionPlan command_plan;
     VulkanSetDebugUtilsObjectName set_debug_utils_object_name{nullptr};
+    VulkanDestroyDebugUtilsMessenger destroy_debug_utils_messenger{nullptr};
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger{0};
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
     std::uint64_t debug_utils_name_serial{0};
     bool destroyed{false};
 
@@ -3112,6 +3203,13 @@ struct VulkanRuntimeDevice::Impl {
         physical_device = nullptr;
         graphics_queue = nullptr;
         present_queue = nullptr;
+
+        if (instance != nullptr && debug_utils_messenger != 0 && destroy_debug_utils_messenger != nullptr) {
+            destroy_debug_utils_messenger(instance, debug_utils_messenger, nullptr);
+        }
+        debug_utils_messenger = 0;
+        destroy_debug_utils_messenger = nullptr;
+        validation_log.reset();
 
         if (instance != nullptr && destroy_instance != nullptr) {
             destroy_instance(instance, nullptr);
@@ -3206,6 +3304,26 @@ const VulkanCommandResolutionPlan& VulkanRuntimeDevice::command_plan() const noe
         return empty_plan;
     }
     return impl_->command_plan;
+}
+
+VulkanRuntimeValidationLogSnapshot VulkanRuntimeDevice::validation_log_snapshot() const noexcept {
+    VulkanRuntimeValidationLogSnapshot snapshot;
+    if (impl_ == nullptr) {
+        snapshot.diagnostic = "Vulkan validation log capture is unavailable";
+        return snapshot;
+    }
+
+    snapshot.capture_enabled = impl_->validation_log != nullptr;
+    snapshot.debug_utils_messenger_created = impl_->debug_utils_messenger != 0;
+    if (impl_->validation_log != nullptr) {
+        snapshot.validation_message_count =
+            impl_->validation_log->validation_message_count.load(std::memory_order_relaxed);
+        snapshot.warning_message_count = impl_->validation_log->warning_message_count.load(std::memory_order_relaxed);
+        snapshot.error_message_count = impl_->validation_log->error_message_count.load(std::memory_order_relaxed);
+    }
+    snapshot.diagnostic = snapshot.clean() ? "Vulkan validation log capture is clean"
+                                           : "Vulkan validation log capture is dirty or unavailable";
+    return snapshot;
 }
 
 bool VulkanRuntimeDevice::wait_for_fence_signaled(std::uint64_t fence, std::uint64_t timeout_ns) noexcept {
@@ -8675,6 +8793,7 @@ std::vector<std::string> vulkan_surface_instance_extensions(RhiHostPlatform host
     case RhiHostPlatform::android:
         return {"VK_KHR_surface", "VK_KHR_android_surface"};
     case RhiHostPlatform::linux:
+        return {"VK_KHR_surface", "VK_KHR_xcb_surface"};
     case RhiHostPlatform::macos:
     case RhiHostPlatform::ios:
     case RhiHostPlatform::unknown:
@@ -8698,8 +8817,22 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
         result.diagnostic = "Vulkan surface support probing is unsupported on this host";
         return result;
     }
+    if (host == RhiHostPlatform::linux) {
+        if (surface.platform != SurfacePlatform::xcb || surface.context == 0) {
+            result.diagnostic = "Vulkan XCB surface support probing requires connection and window handles";
+            return result;
+        }
+#if !defined(__linux__)
+        result.diagnostic = "Vulkan XCB surface support probing requires a Linux host";
+        return result;
+#endif
+    }
 
 #if defined(_WIN32)
+    if (host != RhiHostPlatform::windows) {
+        result.diagnostic = "Vulkan surface support probing is unsupported on this host";
+        return result;
+    }
     auto* const window = reinterpret_cast<HWND>(surface.value);
     if (window == nullptr || IsWindow(window) == 0) {
         result.diagnostic = "Vulkan Win32 HWND is invalid";
@@ -8828,6 +8961,137 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
         destroy_instance(instance, nullptr);
     }
     FreeLibrary(library);
+
+    result.probed = true;
+    result.diagnostic = "Vulkan surface support probe ready";
+    return result;
+#elif defined(__linux__)
+    if (surface.value > std::numeric_limits<std::uint32_t>::max()) {
+        result.diagnostic = "Vulkan XCB window token exceeds xcb_window_t range";
+        return result;
+    }
+
+    const auto surface_instance_desc = make_surface_instance_desc(instance_desc, host);
+    result.snapshots = probe_runtime_physical_device_snapshots(loader_desc, surface_instance_desc);
+    if (!result.snapshots.enumerated) {
+        result.diagnostic = result.snapshots.diagnostic;
+        return result;
+    }
+
+    const auto runtime_library = resolve_runtime_library_name(loader_desc, host);
+    void* library = dlopen(runtime_library.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (library == nullptr) {
+        result.diagnostic = "Vulkan runtime library could not be loaded";
+        return result;
+    }
+
+    const auto get_instance_proc_addr = reinterpret_cast<VulkanGetInstanceProcAddr>(
+        dlsym(library, std::string{loader_desc.get_instance_proc_addr_symbol}.c_str()));
+    const auto commands = resolve_runtime_global_commands(get_instance_proc_addr);
+    if (commands.create_instance == nullptr) {
+        dlclose(library);
+        result.diagnostic = "Vulkan vkCreateInstance command is unavailable";
+        return result;
+    }
+
+    const auto extension_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_layers);
+    const auto application_info = make_native_application_info(surface_instance_desc);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
+    NativeVulkanInstance instance = nullptr;
+    const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
+    if (create_result != vulkan_success || instance == nullptr) {
+        dlclose(library);
+        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateInstance failed", create_result);
+        return result;
+    }
+
+    const auto create_xcb_surface =
+        reinterpret_cast<VulkanCreateXcbSurface>(get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR"));
+    const auto destroy_surface =
+        reinterpret_cast<VulkanDestroySurface>(get_instance_proc_addr(instance, "vkDestroySurfaceKHR"));
+    const auto get_surface_support = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceSupport>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
+    const auto enumerate_physical_devices = reinterpret_cast<VulkanEnumeratePhysicalDevices>(
+        get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices"));
+    const auto get_queue_family_properties = reinterpret_cast<VulkanGetPhysicalDeviceQueueFamilyProperties>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
+    const auto enumerate_device_extension_properties = reinterpret_cast<VulkanEnumerateDeviceExtensionProperties>(
+        get_instance_proc_addr(instance, "vkEnumerateDeviceExtensionProperties"));
+    const auto get_physical_device_features2 = reinterpret_cast<VulkanGetPhysicalDeviceFeatures2>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceFeatures2"));
+    const auto get_physical_device_properties2 = reinterpret_cast<VulkanGetPhysicalDeviceProperties2>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceProperties2"));
+    const auto destroy_instance =
+        reinterpret_cast<VulkanDestroyInstance>(get_instance_proc_addr(instance, "vkDestroyInstance"));
+    if (create_xcb_surface == nullptr || destroy_surface == nullptr || get_surface_support == nullptr ||
+        enumerate_physical_devices == nullptr || get_queue_family_properties == nullptr ||
+        enumerate_device_extension_properties == nullptr || get_physical_device_features2 == nullptr ||
+        get_physical_device_properties2 == nullptr) {
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic = "Vulkan surface support commands are unavailable";
+        return result;
+    }
+
+    NativeVulkanSurface native_surface = 0;
+    const auto surface_create_info = NativeVulkanXcbSurfaceCreateInfo{
+        .s_type = vulkan_structure_type_xcb_surface_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .connection = reinterpret_cast<void*>(surface.context),
+        .window = static_cast<std::uint32_t>(surface.value),
+    };
+    const auto surface_create_result = create_xcb_surface(instance, &surface_create_info, nullptr, &native_surface);
+    if (surface_create_result != vulkan_success || native_surface == 0) {
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateXcbSurfaceKHR failed", surface_create_result);
+        return result;
+    }
+    result.surface_created = true;
+
+    std::uint32_t physical_device_count = result.snapshots.count_probe.physical_device_count;
+    std::vector<NativeVulkanPhysicalDevice> physical_devices(physical_device_count);
+    const auto enumerate_result = enumerate_physical_devices(instance, &physical_device_count, physical_devices.data());
+    if (!is_successful_enumeration_result(enumerate_result)) {
+        destroy_surface(instance, native_surface, nullptr);
+        result.surface_destroyed = true;
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic =
+            vulkan_result_diagnostic("Vulkan physical device handle enumeration failed", enumerate_result);
+        return result;
+    }
+    physical_devices.resize(physical_device_count);
+    refresh_surface_probe_queue_family_snapshots(result.snapshots, physical_devices, get_physical_device_properties2,
+                                                 get_queue_family_properties, enumerate_device_extension_properties,
+                                                 get_physical_device_features2);
+
+    const auto device_count = std::min(result.snapshots.devices.size(), physical_devices.size());
+    for (std::size_t device_index = 0; device_index < device_count; ++device_index) {
+        for (auto& queue_family : result.snapshots.devices[device_index].queue_families) {
+            std::uint32_t supported = 0;
+            const auto support_result =
+                get_surface_support(physical_devices[device_index], queue_family.index, native_surface, &supported);
+            queue_family.supports_present = support_result == vulkan_success && supported != 0U;
+        }
+    }
+
+    destroy_surface(instance, native_surface, nullptr);
+    result.surface_destroyed = true;
+    if (destroy_instance != nullptr) {
+        destroy_instance(instance, nullptr);
+    }
+    dlclose(library);
 
     result.probed = true;
     result.diagnostic = "Vulkan surface support probe ready";
@@ -9143,6 +9407,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto cmd_dispatch = reinterpret_cast<VulkanCmdDispatch>(get_device_proc_addr(device, "vkCmdDispatch"));
     const auto set_debug_utils_object_name =
         reinterpret_cast<VulkanSetDebugUtilsObjectName>(get_device_proc_addr(device, "vkSetDebugUtilsObjectNameEXT"));
+    const auto create_debug_utils_messenger = reinterpret_cast<VulkanCreateDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    const auto destroy_debug_utils_messenger = reinterpret_cast<VulkanDestroyDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
     std::vector<VulkanCommandAvailability> device_availability;
     const auto device_requests = vulkan_device_command_requests(result.logical_device_plan);
@@ -9206,6 +9474,41 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         FreeLibrary(library);
         result.diagnostic = "Vulkan logical device queues are unavailable";
         return result;
+    }
+
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger = 0;
+    const auto validation_capture_requested =
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled &&
+        extension_is_enabled(
+            result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions,
+            "VK_EXT_debug_utils");
+    if (validation_capture_requested) {
+        if (create_debug_utils_messenger == nullptr || destroy_debug_utils_messenger == nullptr) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            FreeLibrary(library);
+            result.diagnostic = "Vulkan debug-utils messenger commands are unavailable";
+            return result;
+        }
+        validation_log = std::make_shared<VulkanRuntimeValidationLogState>();
+        auto debug_create_info = make_runtime_validation_log_messenger_create_info(*validation_log);
+        const auto debug_create_result =
+            create_debug_utils_messenger(instance, &debug_create_info, nullptr, &debug_utils_messenger);
+        if (debug_create_result != vulkan_success || debug_utils_messenger == 0) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            FreeLibrary(library);
+            result.diagnostic =
+                vulkan_result_diagnostic("Vulkan vkCreateDebugUtilsMessengerEXT failed", debug_create_result);
+            return result;
+        }
     }
 
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
@@ -9290,6 +9593,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_pipeline = destroy_pipeline;
     impl->cmd_dispatch = cmd_dispatch;
     impl->set_debug_utils_object_name = set_debug_utils_object_name;
+    impl->destroy_debug_utils_messenger = debug_utils_messenger != 0 ? destroy_debug_utils_messenger : nullptr;
+    impl->debug_utils_messenger = debug_utils_messenger;
+    impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
     impl->host = host;
@@ -9332,12 +9638,16 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
 
     const auto destroy_instance =
         reinterpret_cast<VulkanDestroyInstance>(get_instance_proc_addr(instance, "vkDestroyInstance"));
-    const auto create_win32_surface =
-        reinterpret_cast<VulkanCreateWin32Surface>(get_instance_proc_addr(instance, "vkCreateWin32SurfaceKHR"));
+    const auto create_xcb_surface =
+        reinterpret_cast<VulkanCreateXcbSurface>(get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR"));
     const auto destroy_surface =
         reinterpret_cast<VulkanDestroySurface>(get_instance_proc_addr(instance, "vkDestroySurfaceKHR"));
     const auto get_surface_capabilities = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceCapabilities>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
+    const auto get_surface_formats = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceFormats>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
+    const auto get_surface_present_modes = reinterpret_cast<VulkanGetPhysicalDeviceSurfacePresentModes>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
     const auto get_physical_device_memory_properties = reinterpret_cast<VulkanGetPhysicalDeviceMemoryProperties>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceMemoryProperties"));
     const auto get_physical_device_format_properties = reinterpret_cast<VulkanGetPhysicalDeviceFormatProperties>(
@@ -9354,6 +9664,14 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         }
         dlclose(library);
         result.diagnostic = "Vulkan logical device instance commands are unavailable";
+        return result;
+    }
+    if (surface.value != 0 &&
+        (create_xcb_surface == nullptr || destroy_surface == nullptr || get_surface_capabilities == nullptr ||
+         get_surface_formats == nullptr || get_surface_present_modes == nullptr)) {
+        destroy_instance(instance, nullptr);
+        dlclose(library);
+        result.diagnostic = "Vulkan surface query instance commands are unavailable";
         return result;
     }
 
@@ -9519,6 +9837,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto cmd_dispatch = reinterpret_cast<VulkanCmdDispatch>(get_device_proc_addr(device, "vkCmdDispatch"));
     const auto set_debug_utils_object_name =
         reinterpret_cast<VulkanSetDebugUtilsObjectName>(get_device_proc_addr(device, "vkSetDebugUtilsObjectNameEXT"));
+    const auto create_debug_utils_messenger = reinterpret_cast<VulkanCreateDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    const auto destroy_debug_utils_messenger = reinterpret_cast<VulkanDestroyDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
     std::vector<VulkanCommandAvailability> device_availability;
     const auto device_requests = vulkan_device_command_requests(result.logical_device_plan);
@@ -9583,6 +9905,41 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         return result;
     }
 
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger = 0;
+    const auto validation_capture_requested =
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled &&
+        extension_is_enabled(
+            result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions,
+            "VK_EXT_debug_utils");
+    if (validation_capture_requested) {
+        if (create_debug_utils_messenger == nullptr || destroy_debug_utils_messenger == nullptr) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            dlclose(library);
+            result.diagnostic = "Vulkan debug-utils messenger commands are unavailable";
+            return result;
+        }
+        validation_log = std::make_shared<VulkanRuntimeValidationLogState>();
+        auto debug_create_info = make_runtime_validation_log_messenger_create_info(*validation_log);
+        const auto debug_create_result =
+            create_debug_utils_messenger(instance, &debug_create_info, nullptr, &debug_utils_messenger);
+        if (debug_create_result != vulkan_success || debug_utils_messenger == 0) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            dlclose(library);
+            result.diagnostic =
+                vulkan_result_diagnostic("Vulkan vkCreateDebugUtilsMessengerEXT failed", debug_create_result);
+            return result;
+        }
+    }
+
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
     impl->library = library;
     impl->instance = instance;
@@ -9593,9 +9950,11 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_instance = destroy_instance;
     impl->get_physical_device_memory_properties = get_physical_device_memory_properties;
     impl->get_physical_device_format_properties = get_physical_device_format_properties;
-    impl->create_win32_surface = create_win32_surface;
+    impl->create_xcb_surface = create_xcb_surface;
     impl->destroy_surface = destroy_surface;
     impl->get_surface_capabilities = get_surface_capabilities;
+    impl->get_surface_formats = get_surface_formats;
+    impl->get_surface_present_modes = get_surface_present_modes;
     impl->destroy_device = destroy_device;
     impl->device_wait_idle = device_wait_idle;
     impl->create_command_pool = create_command_pool;
@@ -9663,6 +10022,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_pipeline = destroy_pipeline;
     impl->cmd_dispatch = cmd_dispatch;
     impl->set_debug_utils_object_name = set_debug_utils_object_name;
+    impl->destroy_debug_utils_messenger = debug_utils_messenger != 0 ? destroy_debug_utils_messenger : nullptr;
+    impl->debug_utils_messenger = debug_utils_messenger;
+    impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
     impl->host = host;
@@ -12344,14 +12706,28 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         result.diagnostic = "Vulkan swapchain color format is unsupported";
         return result;
     }
-    if (device.impl_->host != RhiHostPlatform::windows) {
+    const bool win32_surface = device.impl_->host == RhiHostPlatform::windows;
+    const bool xcb_surface = device.impl_->host == RhiHostPlatform::linux;
+    if (!win32_surface && !xcb_surface) {
         result.diagnostic = "Vulkan runtime swapchain ownership is unsupported on this host";
         return result;
     }
-    if (device.impl_->create_win32_surface == nullptr || device.impl_->destroy_surface == nullptr ||
-        device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
-        device.impl_->get_surface_present_modes == nullptr) {
+    if (win32_surface &&
+        (device.impl_->create_win32_surface == nullptr || device.impl_->destroy_surface == nullptr ||
+         device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
+         device.impl_->get_surface_present_modes == nullptr)) {
         result.diagnostic = "Vulkan Win32 surface commands are unavailable";
+        return result;
+    }
+    if (xcb_surface &&
+        (device.impl_->create_xcb_surface == nullptr || device.impl_->destroy_surface == nullptr ||
+         device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
+         device.impl_->get_surface_present_modes == nullptr)) {
+        result.diagnostic = "Vulkan XCB surface commands are unavailable";
+        return result;
+    }
+    if (xcb_surface && (desc.surface.platform != SurfacePlatform::xcb || desc.surface.context == 0)) {
+        result.diagnostic = "Vulkan XCB swapchain requires connection and window handles";
         return result;
     }
     if (device.impl_->create_swapchain == nullptr || device.impl_->destroy_swapchain == nullptr ||
@@ -12361,19 +12737,48 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         return result;
     }
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__linux__)
     NativeVulkanSurface surface = 0;
-    const auto surface_create_info = NativeVulkanWin32SurfaceCreateInfo{
-        .s_type = vulkan_structure_type_win32_surface_create_info,
-        .next = nullptr,
-        .flags = 0,
-        .instance = GetModuleHandleW(nullptr),
-        .window = reinterpret_cast<HWND>(desc.surface.value),
-    };
-    const auto surface_result =
-        device.impl_->create_win32_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+    VulkanResult surface_result = -1;
+    if (win32_surface) {
+#if defined(_WIN32)
+        const auto surface_create_info = NativeVulkanWin32SurfaceCreateInfo{
+            .s_type = vulkan_structure_type_win32_surface_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .instance = GetModuleHandleW(nullptr),
+            .window = reinterpret_cast<HWND>(desc.surface.value),
+        };
+        surface_result =
+            device.impl_->create_win32_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+#else
+        result.diagnostic = "Vulkan Win32 swapchain requires a Windows host";
+        return result;
+#endif
+    } else if (xcb_surface) {
+#if defined(__linux__)
+        if (desc.surface.value > std::numeric_limits<std::uint32_t>::max()) {
+            result.diagnostic = "Vulkan XCB window token exceeds xcb_window_t range";
+            return result;
+        }
+        const auto surface_create_info = NativeVulkanXcbSurfaceCreateInfo{
+            .s_type = vulkan_structure_type_xcb_surface_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .connection = reinterpret_cast<void*>(desc.surface.context),
+            .window = static_cast<std::uint32_t>(desc.surface.value),
+        };
+        surface_result =
+            device.impl_->create_xcb_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+#else
+        result.diagnostic = "Vulkan XCB swapchain requires a Linux host";
+        return result;
+#endif
+    }
     if (surface_result != vulkan_success || surface == 0) {
-        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateWin32SurfaceKHR failed", surface_result);
+        result.diagnostic = vulkan_result_diagnostic(win32_surface ? "Vulkan vkCreateWin32SurfaceKHR failed"
+                                                                   : "Vulkan vkCreateXcbSurfaceKHR failed",
+                                                     surface_result);
         return result;
     }
 
@@ -13468,7 +13873,7 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         const auto argument_range_end =
             desc.indirect_argument_buffer_offset +
-            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            (static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U)) +
             indexed_indirect_draw_command_size_bytes;
         if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
             result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";
@@ -13832,7 +14237,7 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         const auto argument_range_end =
             desc.indirect_argument_buffer_offset +
-            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            (static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U)) +
             indexed_indirect_draw_command_size_bytes;
         if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
             result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";
