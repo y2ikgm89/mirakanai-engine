@@ -30,9 +30,26 @@ int main() {
     manual.null_renderer_fallback_available = true;
     manual.vulkan_xcb_surface_candidate = true;
 
+    const auto presentation =
+        mirakana::evaluate_linux_desktop_vulkan_presentation_request(mirakana::LinuxDesktopVulkanPresentationRequest{
+            .linux_host = true,
+            .xcb_window_ready = true,
+            .vulkan_loader_ready = true,
+            .vulkan_xcb_surface_created = true,
+            .surface_support_probed = true,
+            .swapchain_created = true,
+            .frame_acquired = true,
+            .frame_presented = true,
+            .readback_nonzero = true,
+            .validation_log_clean = true,
+        });
+
     return request_report.linux_host && !request_report.native_handle_access && !probe.native_handle_access &&
                    !mirakana::linux_desktop_host_status_name(probe.status).empty() && manual.ready() &&
-                   mirakana::linux_desktop_host_status_name(manual.status) == std::string_view{"ready"}
+                   mirakana::linux_desktop_host_status_name(manual.status) == std::string_view{"ready"} &&
+                   presentation.ready() && !presentation.environment_platform_windows_vulkan_inferred &&
+                   mirakana::linux_desktop_vulkan_presentation_status_name(presentation.status) ==
+                       std::string_view{"ready"}
                ? 0
                : 1;
 }

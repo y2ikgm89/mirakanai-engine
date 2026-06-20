@@ -20,6 +20,7 @@ add_subdirectory("${MK_ANDROID_MIRAKANAI_ROOT}" "${CMAKE_BINARY_DIR}/mirakanai")
 
 add_library(mirakanai_android SHARED
     android_audio_output.cpp
+    android_vulkan_readback_smoke.cpp
     android_vulkan_surface_bridge.cpp
     game_activity_bridge.cpp
 )

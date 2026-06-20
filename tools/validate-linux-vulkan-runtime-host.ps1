@@ -134,6 +134,45 @@ function Get-ShaderToolchainEvidence {
     }
 }
 
+function Invoke-LinuxPackageSmokeIfRequired {
+    param(
+        [bool]$ShouldRun,
+        [bool]$PrerequisitesReady,
+        [Parameter(Mandatory = $true)][string]$PackageScript
+    )
+
+    if (-not $ShouldRun -or -not $PrerequisitesReady) {
+        return [pscustomobject]@{
+            PackageSmokeReady = $false
+            VulkanReadbackReady = $false
+            ValidationLogClean = $false
+        }
+    }
+
+    $smoke = Invoke-ToolCapture `
+        -FilePath "pwsh" `
+        -Arguments @(
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            $PackageScript,
+            "-GameTarget",
+            "sample_desktop_runtime_game",
+            "-RequireVulkanShaders"
+        ) `
+        -TimeoutSeconds 900
+    $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
+    if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
+        Write-Output $smokeText.TrimEnd()
+    }
+    return [pscustomobject]@{
+        PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_package_smoke_ready=1")
+        VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_readback_ready=1")
+        ValidationLogClean = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_validation_log_clean=1")
+    }
+}
+
 $hostOs = Get-HostOsCounterValue
 $hostMatches = $hostOs -eq "linux"
 $shaderEvidence = Get-ShaderToolchainEvidence
@@ -163,6 +202,19 @@ $firstPartyLinuxRuntimeHostReady = $hostMatches -and (
 )
 $linuxPackageScriptReady = $hostMatches -and (Test-Path -LiteralPath $linuxPackageScript -PathType Leaf)
 $linuxInstalledValidatorReady = $hostMatches -and (Test-Path -LiteralPath $linuxInstalledValidator -PathType Leaf)
+$preSmokeReady = $hostMatches -and
+    $vulkanInfoReady -and
+    $validationLayerReady -and
+    $shaderEvidence.DxcSpirvCodegenReady -and
+    $shaderEvidence.SpirvValReady -and
+    $linuxIcdRuntimeReady -and
+    $firstPartyLinuxRuntimeHostReady -and
+    $linuxPackageScriptReady -and
+    $linuxInstalledValidatorReady
+$smokeEvidence = Invoke-LinuxPackageSmokeIfRequired `
+    -ShouldRun:$RequireReady.IsPresent `
+    -PrerequisitesReady:$preSmokeReady `
+    -PackageScript $linuxPackageScript
 
 $linuxVulkanReady = $hostMatches -and
     $vulkanInfoReady -and
@@ -172,7 +224,10 @@ $linuxVulkanReady = $hostMatches -and
     $linuxIcdRuntimeReady -and
     $firstPartyLinuxRuntimeHostReady -and
     $linuxPackageScriptReady -and
-    $linuxInstalledValidatorReady
+    $linuxInstalledValidatorReady -and
+    $smokeEvidence.PackageSmokeReady -and
+    $smokeEvidence.VulkanReadbackReady -and
+    $smokeEvidence.ValidationLogClean
 
 foreach ($counter in @($ExpectedEvidenceCounters)) {
     if (-not [string]::IsNullOrWhiteSpace($counter)) {
@@ -195,6 +250,9 @@ $actualCounters = @(
     "first_party_linux_runtime_host_ready=$(ConvertTo-CounterBit $firstPartyLinuxRuntimeHostReady)",
     "linux_package_script_ready=$(ConvertTo-CounterBit $linuxPackageScriptReady)",
     "linux_installed_validator_ready=$(ConvertTo-CounterBit $linuxInstalledValidatorReady)",
+    "linux_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
+    "linux_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
+    "linux_vulkan_validation_log_clean=$(ConvertTo-CounterBit $smokeEvidence.ValidationLogClean)",
     "environment_platform_linux_vulkan_ready=$(ConvertTo-CounterBit $linuxVulkanReady)",
     "environment_platform_requires_linux_vulkan_host_evidence=$(if ($linuxVulkanReady) { '0' } else { '1' })",
     "environment_all_platform_unconditional_ready=0",
@@ -203,7 +261,15 @@ $actualCounters = @(
     "android_vulkan_inferred=0",
     "native_handle_access=0"
 )
-Write-Output ([string]::Join(" ", $actualCounters))
+$actualCounterLine = [string]::Join(" ", $actualCounters)
+Write-Output $actualCounterLine
+
+$missingExpectedCounters = @($ExpectedEvidenceCounters | Where-Object {
+    -not [string]::IsNullOrWhiteSpace($_) -and -not $actualCounterLine.Contains([string]$_)
+})
+if ($missingExpectedCounters.Count -gt 0) {
+    Write-Error "environment-platform-linux-vulkan-package is missing expected actual counters: $($missingExpectedCounters -join ', ')"
+}
 
 Write-Output "environment-platform-linux-vulkan-host-gate: host=$hostOs"
 Write-Output "environment-platform-linux-vulkan-host-gate: host_gate=vulkan-strict-linux"
@@ -215,5 +281,5 @@ Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_
 Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_native_handle_access=0"
 
 if ($RequireReady -and -not $linuxVulkanReady) {
-    Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, and installed validator evidence."
+    Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, installed validator, strict package smoke, Vulkan readback, and clean validation log evidence."
 }
