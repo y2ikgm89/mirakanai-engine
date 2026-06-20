@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -2900,6 +2901,13 @@ template <typename AvailableExtensions, typename AvailableLayers>
 } // namespace
 
 inline constexpr std::uint32_t vulkan_structure_type_debug_utils_object_name_info_ext = 1000128000U;
+inline constexpr std::uint32_t vulkan_structure_type_debug_utils_messenger_create_info_ext = 1000128004U;
+
+inline constexpr std::uint32_t vulkan_debug_utils_message_severity_warning_bit_ext = 0x00000100U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_severity_error_bit_ext = 0x00001000U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_general_bit_ext = 0x00000001U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_validation_bit_ext = 0x00000002U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_performance_bit_ext = 0x00000004U;
 
 inline constexpr std::int32_t vulkan_object_type_device = 3;
 inline constexpr std::int32_t vulkan_object_type_queue = 4;
@@ -2924,8 +2932,75 @@ struct alignas(8) NativeVulkanDebugUtilsObjectNameInfoExt {
     const char* object_name;
 };
 
+using NativeVulkanDebugUtilsMessenger = std::uint64_t;
+using VulkanDebugUtilsMessengerCallback = std::uint32_t(MK_VULKAN_CALL*)(std::uint32_t, std::uint32_t, const void*,
+                                                                         void*);
+
+struct NativeVulkanDebugUtilsMessengerCreateInfoExt {
+    std::uint32_t s_type;
+    const void* p_next;
+    std::uint32_t flags;
+    std::uint32_t message_severity;
+    std::uint32_t message_type;
+    VulkanDebugUtilsMessengerCallback callback;
+    void* user_data;
+};
+
 using VulkanSetDebugUtilsObjectName = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice,
                                                                     const NativeVulkanDebugUtilsObjectNameInfoExt*);
+using VulkanCreateDebugUtilsMessenger =
+    VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance, const NativeVulkanDebugUtilsMessengerCreateInfoExt*,
+                                  const void*, NativeVulkanDebugUtilsMessenger*);
+using VulkanDestroyDebugUtilsMessenger = void(MK_VULKAN_CALL*)(NativeVulkanInstance, NativeVulkanDebugUtilsMessenger,
+                                                               const void*);
+
+struct VulkanRuntimeValidationLogState {
+    std::atomic<std::uint32_t> validation_message_count{0};
+    std::atomic<std::uint32_t> warning_message_count{0};
+    std::atomic<std::uint32_t> error_message_count{0};
+};
+
+static std::uint32_t MK_VULKAN_CALL record_runtime_validation_message(std::uint32_t message_severity,
+                                                                      std::uint32_t message_type,
+                                                                      const void* callback_data,
+                                                                      void* user_data) noexcept {
+    static_cast<void>(callback_data);
+    auto* const state = static_cast<VulkanRuntimeValidationLogState*>(user_data);
+    if (state == nullptr) {
+        return 0U;
+    }
+
+    if ((message_type &
+         (vulkan_debug_utils_message_type_general_bit_ext | vulkan_debug_utils_message_type_validation_bit_ext |
+          vulkan_debug_utils_message_type_performance_bit_ext)) == 0U) {
+        return 0U;
+    }
+
+    state->validation_message_count.fetch_add(1U, std::memory_order_relaxed);
+    if ((message_severity & vulkan_debug_utils_message_severity_warning_bit_ext) != 0U) {
+        state->warning_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    if ((message_severity & vulkan_debug_utils_message_severity_error_bit_ext) != 0U) {
+        state->error_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    return 0U;
+}
+
+[[nodiscard]] static NativeVulkanDebugUtilsMessengerCreateInfoExt
+make_runtime_validation_log_messenger_create_info(VulkanRuntimeValidationLogState& state) noexcept {
+    return NativeVulkanDebugUtilsMessengerCreateInfoExt{
+        .s_type = vulkan_structure_type_debug_utils_messenger_create_info_ext,
+        .p_next = nullptr,
+        .flags = 0,
+        .message_severity =
+            vulkan_debug_utils_message_severity_warning_bit_ext | vulkan_debug_utils_message_severity_error_bit_ext,
+        .message_type = vulkan_debug_utils_message_type_general_bit_ext |
+                        vulkan_debug_utils_message_type_validation_bit_ext |
+                        vulkan_debug_utils_message_type_performance_bit_ext,
+        .callback = record_runtime_validation_message,
+        .user_data = &state,
+    };
+}
 
 struct VulkanRuntimeInstance::Impl {
 #if defined(_WIN32)
@@ -3087,6 +3162,9 @@ struct VulkanRuntimeDevice::Impl {
     VulkanLogicalDeviceCreatePlan logical_device_plan;
     VulkanCommandResolutionPlan command_plan;
     VulkanSetDebugUtilsObjectName set_debug_utils_object_name{nullptr};
+    VulkanDestroyDebugUtilsMessenger destroy_debug_utils_messenger{nullptr};
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger{0};
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
     std::uint64_t debug_utils_name_serial{0};
     bool destroyed{false};
 
@@ -3125,6 +3203,13 @@ struct VulkanRuntimeDevice::Impl {
         physical_device = nullptr;
         graphics_queue = nullptr;
         present_queue = nullptr;
+
+        if (instance != nullptr && debug_utils_messenger != 0 && destroy_debug_utils_messenger != nullptr) {
+            destroy_debug_utils_messenger(instance, debug_utils_messenger, nullptr);
+        }
+        debug_utils_messenger = 0;
+        destroy_debug_utils_messenger = nullptr;
+        validation_log.reset();
 
         if (instance != nullptr && destroy_instance != nullptr) {
             destroy_instance(instance, nullptr);
@@ -3219,6 +3304,26 @@ const VulkanCommandResolutionPlan& VulkanRuntimeDevice::command_plan() const noe
         return empty_plan;
     }
     return impl_->command_plan;
+}
+
+VulkanRuntimeValidationLogSnapshot VulkanRuntimeDevice::validation_log_snapshot() const noexcept {
+    VulkanRuntimeValidationLogSnapshot snapshot;
+    if (impl_ == nullptr) {
+        snapshot.diagnostic = "Vulkan validation log capture is unavailable";
+        return snapshot;
+    }
+
+    snapshot.capture_enabled = impl_->validation_log != nullptr;
+    snapshot.debug_utils_messenger_created = impl_->debug_utils_messenger != 0;
+    if (impl_->validation_log != nullptr) {
+        snapshot.validation_message_count =
+            impl_->validation_log->validation_message_count.load(std::memory_order_relaxed);
+        snapshot.warning_message_count = impl_->validation_log->warning_message_count.load(std::memory_order_relaxed);
+        snapshot.error_message_count = impl_->validation_log->error_message_count.load(std::memory_order_relaxed);
+    }
+    snapshot.diagnostic = snapshot.clean() ? "Vulkan validation log capture is clean"
+                                           : "Vulkan validation log capture is dirty or unavailable";
+    return snapshot;
 }
 
 bool VulkanRuntimeDevice::wait_for_fence_signaled(std::uint64_t fence, std::uint64_t timeout_ns) noexcept {
@@ -9302,6 +9407,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto cmd_dispatch = reinterpret_cast<VulkanCmdDispatch>(get_device_proc_addr(device, "vkCmdDispatch"));
     const auto set_debug_utils_object_name =
         reinterpret_cast<VulkanSetDebugUtilsObjectName>(get_device_proc_addr(device, "vkSetDebugUtilsObjectNameEXT"));
+    const auto create_debug_utils_messenger = reinterpret_cast<VulkanCreateDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    const auto destroy_debug_utils_messenger = reinterpret_cast<VulkanDestroyDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
     std::vector<VulkanCommandAvailability> device_availability;
     const auto device_requests = vulkan_device_command_requests(result.logical_device_plan);
@@ -9365,6 +9474,41 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         FreeLibrary(library);
         result.diagnostic = "Vulkan logical device queues are unavailable";
         return result;
+    }
+
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger = 0;
+    const auto validation_capture_requested =
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled &&
+        extension_is_enabled(
+            result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions,
+            "VK_EXT_debug_utils");
+    if (validation_capture_requested) {
+        if (create_debug_utils_messenger == nullptr || destroy_debug_utils_messenger == nullptr) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            FreeLibrary(library);
+            result.diagnostic = "Vulkan debug-utils messenger commands are unavailable";
+            return result;
+        }
+        validation_log = std::make_shared<VulkanRuntimeValidationLogState>();
+        auto debug_create_info = make_runtime_validation_log_messenger_create_info(*validation_log);
+        const auto debug_create_result =
+            create_debug_utils_messenger(instance, &debug_create_info, nullptr, &debug_utils_messenger);
+        if (debug_create_result != vulkan_success || debug_utils_messenger == 0) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            FreeLibrary(library);
+            result.diagnostic =
+                vulkan_result_diagnostic("Vulkan vkCreateDebugUtilsMessengerEXT failed", debug_create_result);
+            return result;
+        }
     }
 
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
@@ -9449,6 +9593,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_pipeline = destroy_pipeline;
     impl->cmd_dispatch = cmd_dispatch;
     impl->set_debug_utils_object_name = set_debug_utils_object_name;
+    impl->destroy_debug_utils_messenger = debug_utils_messenger != 0 ? destroy_debug_utils_messenger : nullptr;
+    impl->debug_utils_messenger = debug_utils_messenger;
+    impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
     impl->host = host;
@@ -9690,6 +9837,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto cmd_dispatch = reinterpret_cast<VulkanCmdDispatch>(get_device_proc_addr(device, "vkCmdDispatch"));
     const auto set_debug_utils_object_name =
         reinterpret_cast<VulkanSetDebugUtilsObjectName>(get_device_proc_addr(device, "vkSetDebugUtilsObjectNameEXT"));
+    const auto create_debug_utils_messenger = reinterpret_cast<VulkanCreateDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    const auto destroy_debug_utils_messenger = reinterpret_cast<VulkanDestroyDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
     std::vector<VulkanCommandAvailability> device_availability;
     const auto device_requests = vulkan_device_command_requests(result.logical_device_plan);
@@ -9752,6 +9903,41 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         dlclose(library);
         result.diagnostic = "Vulkan logical device queues are unavailable";
         return result;
+    }
+
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger = 0;
+    const auto validation_capture_requested =
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled &&
+        extension_is_enabled(
+            result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions,
+            "VK_EXT_debug_utils");
+    if (validation_capture_requested) {
+        if (create_debug_utils_messenger == nullptr || destroy_debug_utils_messenger == nullptr) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            dlclose(library);
+            result.diagnostic = "Vulkan debug-utils messenger commands are unavailable";
+            return result;
+        }
+        validation_log = std::make_shared<VulkanRuntimeValidationLogState>();
+        auto debug_create_info = make_runtime_validation_log_messenger_create_info(*validation_log);
+        const auto debug_create_result =
+            create_debug_utils_messenger(instance, &debug_create_info, nullptr, &debug_utils_messenger);
+        if (debug_create_result != vulkan_success || debug_utils_messenger == 0) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            dlclose(library);
+            result.diagnostic =
+                vulkan_result_diagnostic("Vulkan vkCreateDebugUtilsMessengerEXT failed", debug_create_result);
+            return result;
+        }
     }
 
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
@@ -9836,6 +10022,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_pipeline = destroy_pipeline;
     impl->cmd_dispatch = cmd_dispatch;
     impl->set_debug_utils_object_name = set_debug_utils_object_name;
+    impl->destroy_debug_utils_messenger = debug_utils_messenger != 0 ? destroy_debug_utils_messenger : nullptr;
+    impl->debug_utils_messenger = debug_utils_messenger;
+    impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
     impl->host = host;
@@ -13684,7 +13873,7 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         const auto argument_range_end =
             desc.indirect_argument_buffer_offset +
-            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            (static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U)) +
             indexed_indirect_draw_command_size_bytes;
         if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
             result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";
@@ -14048,7 +14237,7 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         const auto argument_range_end =
             desc.indirect_argument_buffer_offset +
-            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            (static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U)) +
             indexed_indirect_draw_command_size_bytes;
         if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
             result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";

@@ -313,6 +313,7 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
         rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
         instance_desc.application_name = "GameEngineLinuxVulkanPackageSmoke";
         instance_desc.api_version = rhi::vulkan::make_vulkan_api_version(1, 3);
+        instance_desc.required_extensions = {"VK_EXT_debug_utils"};
         instance_desc.enable_validation = true;
 
         const auto surface_probe = rhi::vulkan::probe_runtime_surface_support(loader_desc, instance_desc, surface);
@@ -458,12 +459,12 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
             rhi::vulkan::VulkanRuntimeSwapchainPresentDesc{.image_index = acquire_result.image_index,
                                                            .wait_render_finished_semaphore = true});
         request.frame_presented = present_result.presented;
-        request.validation_log_clean = false;
+        const auto validation_log = device_result.device.validation_log_snapshot();
+        request.validation_log_clean = validation_log.clean();
 
         auto report = evaluate_linux_desktop_vulkan_presentation_request(request);
         if (report.linux_package_smoke_ready && request.readback_nonzero && !request.validation_log_clean) {
-            report.diagnostic =
-                "Linux Vulkan swapchain/readback smoke completed; validation log capture remains fail-closed";
+            report.diagnostic = validation_log.diagnostic;
         } else if (!present_result.diagnostic.empty() && !present_result.presented) {
             report.diagnostic = present_result.diagnostic;
         } else if (!read_result.diagnostic.empty() && !request.readback_nonzero) {

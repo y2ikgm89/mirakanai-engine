@@ -739,6 +739,8 @@ Assert-EnvironmentPlatformVulkanHostGateDryRun `
         "android_gpu_debuggable_ready=1",
         "android_gpu_debug_layer_settings_ready=1",
         "android_gpu_debug_layer_app_installed=1",
+        "android_gpu_debug_layer_install_requested=1",
+        "android_gpu_debug_layer_install_ready=1",
         "VK_LAYER_KHRONOS_validation_ready=1",
         "android_package_smoke_ready=1",
         "android_vulkan_readback_ready=1",
