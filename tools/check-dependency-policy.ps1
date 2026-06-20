@@ -226,7 +226,12 @@ if ($vcpkgPresets.Count -eq 0) {
 foreach ($preset in $vcpkgPresets) {
     Assert-CacheVariableEquals $preset "VCPKG_MANIFEST_INSTALL" "OFF"
     Assert-CacheVariableEquals $preset "VCPKG_INSTALLED_DIR" '${sourceDir}/vcpkg_installed'
-    Assert-CacheVariableEquals $preset "VCPKG_TARGET_TRIPLET" "x64-windows"
+    $expectedTriplet = if ([string]$preset.name -eq "desktop-runtime-linux-release") {
+        "x64-linux"
+    } else {
+        "x64-windows"
+    }
+    Assert-CacheVariableEquals $preset "VCPKG_TARGET_TRIPLET" $expectedTriplet
     if (Test-JsonProperty -Object $preset.cacheVariables -Property "VCPKG_MANIFEST_FEATURES") {
         Write-Error "CMake preset '$($preset.name)' must not declare VCPKG_MANIFEST_FEATURES when VCPKG_MANIFEST_INSTALL is OFF; feature selection belongs in bootstrap-deps."
     }
