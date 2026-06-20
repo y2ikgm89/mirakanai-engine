@@ -506,9 +506,11 @@ try {
     $androidGpuDebugLayerInstallReady = [bool]$gpuDebugLayerInstall.InstallReady
     $androidGpuDebugLayerSettingsReady = [bool]$gpuDebugLayerSettings.SettingsReady
     $androidGpuDebugLayerAppInstalled = [bool]$gpuDebugLayerSettings.LayerAppInstalled
+    $androidGpuDebugLayerReady = $androidGpuDebugLayerSettingsReady -and $androidGpuDebugLayerAppInstalled -and
+        $androidGpuDebugLayerInstallReady
 
     $preSmokeReady = $androidSdkReady -and $androidNdkReady -and $adbDeviceReady -and $androidVulkanProfileReady -and
-        $androidGpuDebuggableReady -and $androidGpuDebugLayerSettingsReady -and $androidGpuDebugLayerAppInstalled
+        $androidGpuDebuggableReady -and $androidGpuDebugLayerReady
     $smokeEvidence = Invoke-AndroidPackageSmokeIfRequired -ShouldRun:$RequireReady.IsPresent -PrerequisitesReady:$preSmokeReady -Serial $resolvedDeviceSerial
 } finally {
     if ($startedEmulator -and -not [string]::IsNullOrWhiteSpace($startedEmulatorSerial) -and -not [string]::IsNullOrWhiteSpace($adb)) {
@@ -538,6 +540,7 @@ $actualCounters = @(
     "android_gpu_debug_layer_app_installed=$(ConvertTo-CounterBit $androidGpuDebugLayerAppInstalled)",
     "android_gpu_debug_layer_install_requested=$(ConvertTo-CounterBit $androidGpuDebugLayerInstallRequested)",
     "android_gpu_debug_layer_install_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerInstallReady)",
+    "android_gpu_debug_layer_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerReady)",
     "VK_LAYER_KHRONOS_validation_ready=$(ConvertTo-CounterBit $validationLayerReady)",
     "android_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
     "android_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
