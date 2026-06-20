@@ -738,7 +738,7 @@ Assert-ContainsAll $linuxVulkanJob @(
     "vulkaninfo --json",
     "Validate Linux Vulkan host evidence gate",
     "xvfb-run -a pwsh",
-    "./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -ExpectedEvidenceCounters `$expected",
+    "./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters `$expected",
     "validation_recipe=environment-platform-linux-vulkan-package",
     "linux_package_smoke_ready=1",
     "linux_vulkan_readback_ready=1",

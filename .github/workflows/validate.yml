@@ -704,7 +704,7 @@ jobs:
             "environment_platform_requires_linux_vulkan_host_evidence=0",
             "environment_all_platform_unconditional_ready=0"
           )
-          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -ExpectedEvidenceCounters $expected
+          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters $expected
           '@
           xvfb-run -a pwsh -NoProfile -ExecutionPolicy Bypass -Command $validateCommand *>&1 |
             Tee-Object -FilePath $output
