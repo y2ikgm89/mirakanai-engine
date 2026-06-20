@@ -641,15 +641,30 @@ jobs:
 
       - name: Install Linux Vulkan diagnostic packages
         run: |
+          . /etc/os-release
+          case "${VERSION_CODENAME:-}" in
+            noble|jammy)
+              lunarg_codename="${VERSION_CODENAME}"
+              ;;
+            *)
+              echo "Unsupported Ubuntu codename for LunarG Vulkan SDK packages: ${VERSION_CODENAME:-unknown}" >&2
+              exit 1
+              ;;
+          esac
+          sudo apt-get update
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc >/dev/null
+          sudo wget -qO "/etc/apt/sources.list.d/lunarg-vulkan-${lunarg_codename}.list" "http://packages.lunarg.com/vulkan/lunarg-vulkan-${lunarg_codename}.list"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends --no-install-suggests \
-            xvfb \
-            xauth \
+            libxcb-cursor-dev \
+            libxcb-xinerama0 \
+            libxcb-xinput0 \
             mesa-vulkan-drivers \
-            spirv-tools \
-            vulkan-tools \
-            vulkan-validationlayers
+            vulkan-sdk \
+            xauth \
+            xvfb
           mkdir -p artifacts/environment/platform/linux-vulkan-host
+          command -v dxc
           command -v vulkaninfo
           command -v spirv-val
 
