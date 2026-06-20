@@ -606,6 +606,8 @@ function Get-ValidationRecipeCommandPlan {
                 'android_gpu_debuggable_ready=1',
                 'android_gpu_debug_layer_settings_ready=1',
                 'android_gpu_debug_layer_app_installed=1',
+                'android_gpu_debug_layer_install_requested=1',
+                'android_gpu_debug_layer_install_ready=1',
                 'VK_LAYER_KHRONOS_validation_ready=1',
                 'android_package_smoke_ready=1',
                 'android_vulkan_readback_ready=1',
@@ -615,7 +617,7 @@ function Get-ValidationRecipeCommandPlan {
                 'environment_platform_requires_android_vulkan_host_evidence=0',
                 'environment_all_platform_unconditional_ready=0'
             ) `
-            -Message 'Android Vulkan platform validation requires Android SDK, NDK, adb device or emulator evidence, manifest Vulkan version/level feature declarations, Android debug-build instrumentation, official AGI GPU debug layer settings, installed AGI layer APK, same-launch VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, Android package smoke, Android Vulkan readback evidence, and no desktop Vulkan or Linux Vulkan inference.'
+            -Message 'Android Vulkan platform validation requires Android SDK, NDK, adb device or emulator evidence, manifest Vulkan version/level feature declarations, Android debug-build instrumentation, official AGI GPU debug layer settings, installed AGI layer APK or host-supplied AGI APK install evidence, same-launch VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, Android package smoke, Android Vulkan readback evidence, and no desktop Vulkan or Linux Vulkan inference.'
     }
     elseif ($RecipeName -eq 'environment-platform-ios-metal-package') {
         return Get-EnvironmentPlatformVulkanHostPlan `
