@@ -534,6 +534,19 @@ MK_TEST("vulkan instance create plan requires validation layer when validation i
     MK_REQUIRE(rejected.diagnostic == "missing required Vulkan instance layer: VK_LAYER_KHRONOS_validation");
 }
 
+MK_TEST("vulkan runtime validation log snapshot is fail closed before debug utils capture exists") {
+    mirakana::rhi::vulkan::VulkanRuntimeDevice device;
+
+    const auto snapshot = device.validation_log_snapshot();
+
+    MK_REQUIRE(!snapshot.capture_enabled);
+    MK_REQUIRE(!snapshot.debug_utils_messenger_created);
+    MK_REQUIRE(!snapshot.clean());
+    MK_REQUIRE(snapshot.validation_message_count == 0U);
+    MK_REQUIRE(snapshot.warning_message_count == 0U);
+    MK_REQUIRE(snapshot.error_message_count == 0U);
+}
+
 MK_TEST("vulkan instance create plan rejects old api empty app names and missing required extensions") {
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc old_api;
     old_api.application_name = "GameEngineEditor";

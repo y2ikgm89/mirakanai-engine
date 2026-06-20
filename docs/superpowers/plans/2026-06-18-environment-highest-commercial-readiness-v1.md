@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-highest-commercial-readiness-v1`
 
-**Status:** Active. Tasks 1-22 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, retain Windows D3D12 typeperf optimization artifacts, retain strict Vulkan timestamp/validation optimization artifacts, add the macOS-only Apple `xcrun xctrace` Metal optimization artifact producer/upload lane, retain the PR #692 Apple-host Metal artifact output, add a hosted `validate.yml` Linux Vulkan host-evidence lane that captures `vulkaninfo --summary`, `vulkaninfo --json`, `spirv-val`, and `tools/validate-linux-vulkan-runtime-host.ps1` output without promoting Linux readiness, add the Linux XCB Vulkan surface foundation, add the first-party Linux XCB runtime host foundation, tighten Android Vulkan to official AGI GPU debug layer plus offscreen readback smoke evidence, and add the Linux package/installed validator foundation with package smoke/readback/clean-log counters. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Tasks 14-17 complete the three-backend optimization matrix and promote only `environment_broad_optimization_ready`; Task 18 records hosted Linux Vulkan evidence while keeping the Linux Vulkan platform row host-gated; Task 19 adds `SurfaceHandle::context`, `SurfacePlatform::xcb`, `VK_KHR_xcb_surface` planning, and private `vkCreateXcbSurfaceKHR` probing while keeping Linux readiness unpromoted; Task 20 adds `MK_runtime_host_linux`, `LinuxXcbWindow`, `LinuxDesktopEventPump`, and `LinuxDesktopGameHost` with private dynamic XCB loading and `NullRenderer` fallback while still keeping Linux Vulkan presentation/package readiness unpromoted; Task 21 keeps Android Vulkan host-gated until approved package/device smoke emits GPU debug layer, validation enumeration, clean logcat, and readback counters; Task 22 keeps Linux Vulkan host-gated until approved Linux package smoke emits package, Vulkan readback, and clean validation-log counters. Current evidence has 11 ready rows, 5 host-gated rows, 0 unsupported rows, 21 retained optimization workload/backend rows, and 0 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, and broad `environment_ready` remain unclaimed.
+**Status:** Active. Tasks 1-27 select this highest-level plan as `currentActivePlan`, keep the Context7/source gate ready, add the clean-break commercial v2 gate, replace Linux/Android/iOS platform skeletons with exact host validators, replace backend parity v2 with a 15-feature / 45-row backend-local closeout, add the broad optimization artifact validator, promote the production AAA preset asset-library dependency row, replace the full OpenEXR/KTX2/Basis asset-pipeline skeleton with a fail-closed validator, replace the physical weather simulation skeleton with a fail-closed CPU/D3D12/Vulkan/Metal closeout validator, replace the production artist workflow skeleton with a 14-row package-visible closeout validator, replace the final aggregate skeleton with `tools/validate-environment-highest-commercial-readiness.ps1`, add required `validate.yml ios-metal` evidence for iOS Metal, retain Windows D3D12 typeperf optimization artifacts, retain strict Vulkan timestamp/validation optimization artifacts, add the macOS-only Apple `xcrun xctrace` Metal optimization artifact producer/upload lane, retain the PR #692 Apple-host Metal artifact output, add a hosted `validate.yml` Linux Vulkan host-evidence lane that captures `vulkaninfo --summary`, `vulkaninfo --json`, `spirv-val`, and `tools/validate-linux-vulkan-runtime-host.ps1` output without promoting Linux readiness, add the Linux XCB Vulkan surface foundation, add the first-party Linux XCB runtime host foundation, tighten Android Vulkan to official AGI GPU debug layer plus offscreen readback smoke evidence, add the Linux package/installed validator foundation with package smoke/readback/clean-log counters, add host-aware vcpkg and the Linux runtime package preset, add a Linux-specific `sample_desktop_runtime_game` runtime entrypoint plus package smoke arguments that fail closed until real Linux Vulkan presentation/readback/log evidence exists, add the Linux XCB Vulkan swapchain/readback package probe, add Vulkan debug-utils validation-log capture without promoting Linux readiness, and add Android emulator/device serial orchestration plus optional official AGI GPU debug layer settings and host-supplied APK install probes without promoting Android readiness. Task 13 promotes only the iOS Metal platform row and clean-break Metal aggregate row; Tasks 14-17 complete the three-backend optimization matrix and promote only `environment_broad_optimization_ready`; Task 18 records hosted Linux Vulkan evidence while keeping the Linux Vulkan platform row host-gated; Task 19 adds `SurfaceHandle::context`, `SurfacePlatform::xcb`, `VK_KHR_xcb_surface` planning, and private `vkCreateXcbSurfaceKHR` probing while keeping Linux readiness unpromoted; Task 20 adds `MK_runtime_host_linux`, `LinuxXcbWindow`, `LinuxDesktopEventPump`, and `LinuxDesktopGameHost` with private dynamic XCB loading and `NullRenderer` fallback while still keeping Linux Vulkan presentation/package readiness unpromoted; Task 21 keeps Android Vulkan host-gated until approved package/device smoke emits GPU debug layer, validation enumeration, clean logcat, and readback counters; Tasks 22-26 keep Linux Vulkan host-gated until approved Linux package smoke emits package, Vulkan readback, and clean validation-log counters from the Linux backend entrypoint; Task 27 proves the Android validator can start an official emulator, install a host-supplied AGI layer APK when requested, and apply official GPU debug layer settings only when the AGI layer app is present, while Android readiness still requires package smoke, Vulkan readback, validation-layer enumeration, and clean validation logs. Current evidence has 11 ready rows, 5 host-gated rows, 0 unsupported rows, 21 retained optimization workload/backend rows, and 0 missing optimization artifacts. Commercial readiness, unconditional all-platform readiness, and broad `environment_ready` remain unclaimed.
 
 **Goal:** Promote the environment feature set to a clean-break commercial capability only when strict Vulkan, Apple Metal, backend parity, exact all-platform readiness, measured optimization, AAA preset assets, OpenEXR/KTX2/Basis production asset ingestion, physically based weather simulation, and production artist workflows all have explicit package-visible evidence.
 
@@ -1464,6 +1464,132 @@ Task 12 evidence (2026-06-19):
 
 **Task 23 evidence (2026-06-20):** TDD RED first failed `tools/check-json-contracts.ps1` because `CMakePresets.json` lacked `desktop-runtime-linux-release`. The first GREEN pass added host-aware vcpkg helpers, host-specific bootstrap, a Linux-only CMake preset, and Linux package-script preset routing. Publication requires static/agent-surface checks and full validation before this candidate can merge.
 
+## Task 24: Add Linux Runtime Presentation Package Entry Bridge Without Promotion
+
+**Goal:** Wire `sample_desktop_runtime_game` into the Linux runtime package lane with a Linux-specific entrypoint and package smoke arguments, while preserving fail-closed Linux Vulkan readiness until a Linux host proves XCB surface, swapchain, readback, and clean validation logs.
+
+**Context:** Context7 `/khronosgroup/vulkan-docs` confirms Linux XCB presentation must create an XCB-backed Vulkan surface and query surface support before swapchain use. Context7 `/kitware/cmake` confirms target-based `add_executable` plus `target_link_libraries(... PRIVATE ...)` linkage, so the desktop runtime game registration now selects Win32 or Linux backend targets explicitly instead of relying on Win32-only linkage.
+
+**Constraints:**
+- Do not expose XCB connection/window, Vulkan surface/swapchain, Vulkan device/queue, or native handles through public gameplay or package counters.
+- Do not infer Linux Vulkan readiness from Windows Vulkan, hosted `vulkaninfo`, compile-only Linux CMake, or package script existence.
+- The Linux entrypoint may emit `linux_package_smoke_ready=0`, `linux_vulkan_readback_ready=0`, and `linux_vulkan_validation_log_clean=0` until real Linux presentation evidence exists.
+- Keep `environment_platform_linux_vulkan_ready`, `environment_platform_readiness_ready`, `environment_all_platform_unconditional_ready`, `environment_commercial_ready`, and broad `environment_ready` at `0`.
+
+**Files:**
+- Modify: `games/CMakeLists.txt`
+- Add: `games/sample_desktop_runtime_game/linux_main.cpp`
+- Modify: `engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp`
+- Modify: `engine/runtime_host/src/linux_desktop_host_contract.cpp`
+- Modify: `tests/unit/runtime_host_tests.cpp`
+- Modify: `tests/unit/runtime_host_linux_public_api_compile.cpp`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Modify: docs, plan registry, manifest fragments, and composed manifest.
+
+**Steps:**
+- [x] Add a value-only `LinuxDesktopVulkanPresentationRequest` / `LinuxDesktopVulkanPresentationReport` contract that requires Linux host, XCB window, Vulkan loader, XCB surface, surface-support probe, swapchain acquire/present, nonzero readback, clean validation log, and zero native-handle access before readiness.
+- [x] Extend `MK_add_desktop_runtime_game` to accept `HOST_BACKEND linux` and link only `MK_runtime_host_linux` for that backend.
+- [x] Switch `sample_desktop_runtime_game` to `linux_main.cpp` plus Linux package smoke flags on Linux, while preserving the existing Win32 source, package args, and target links on Windows.
+- [x] Add static contract coverage for the Linux backend/source selection and the Linux smoke counters.
+- [ ] Add real Linux XCB Vulkan presentation, swapchain/readback execution, and validation-log capture on a Linux host.
+
+**Task 24 evidence (2026-06-20):** TDD RED first failed `MK_runtime_host_tests` because the Linux presentation report API did not exist. A static RED then failed `tools/check-json-contracts.ps1` because `games/CMakeLists.txt` lacked Linux backend/source/package-smoke contract needles. The first GREEN pass adds the value-only presentation report, Linux backend game registration, `sample_desktop_runtime_game/linux_main.cpp`, and static guards. Windows `dev` and `desktop-runtime` focused validation passes, but Linux readiness remains host-gated because the Linux entrypoint intentionally reports the presentation/readback/log counters as not ready until real Linux Vulkan execution exists.
+
+## Task 25: Add Linux XCB Vulkan Swapchain And Readback Probe Without Promotion
+
+**Goal:** Replace the Linux package entrypoint's static fail-closed report with a first-party Linux XCB Vulkan probe that can create a private XCB window, feed `SurfaceHandle::context` / `SurfacePlatform::xcb` into the Vulkan RHI, create a Linux XCB swapchain, acquire/present one frame, and copy a swapchain image into a readback buffer without exposing native handles or promoting Linux readiness before clean validation-log capture exists.
+
+**Context:** Context7 `/khronosgroup/vulkan-docs` confirms `VK_KHR_surface`, `VK_KHR_xcb_surface` / `vkCreateXcbSurfaceKHR`, `vkGetPhysicalDeviceSurfaceSupportKHR`, `VK_KHR_swapchain`, `vkAcquireNextImageKHR`, and `vkQueuePresentKHR` as the required surface/swapchain sequence. X.Org/libxcb official docs remain the fallback source for `xcb_connect`, `xcb_create_window`, `xcb_map_window`, and `xcb_flush`.
+
+**Constraints:**
+- Do not expose XCB connection/window or Vulkan handles through public gameplay/package APIs.
+- Do not infer Linux readiness from Windows Vulkan or compile-only evidence.
+- Do not set `linux_vulkan_validation_log_clean=1`, `environment_platform_linux_vulkan_ready=1`, strict Vulkan commercial v2, platform readiness, all-platform readiness, commercial readiness, or broad `environment_ready` until validation-log capture is implemented and approved Linux host package smoke passes.
+- Keep Windows desktop runtime and Win32 Vulkan behavior unchanged.
+
+**Files:**
+- Modify: `engine/rhi/vulkan/src/vulkan_backend.cpp`
+- Modify: `engine/runtime_host/CMakeLists.txt`
+- Modify: `engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp`
+- Modify: `engine/runtime_host/src/linux_desktop_host_contract.cpp`
+- Modify: `games/sample_desktop_runtime_game/linux_main.cpp`
+- Modify: `tests/unit/runtime_host_tests.cpp`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Modify: docs, plan registry, manifest fragments, and composed manifest.
+
+**Steps:**
+- [x] Add a RED runtime-host test for `LinuxDesktopVulkanPresentationProbeDesc` / `probe_linux_desktop_vulkan_presentation` and verify the missing API failure.
+- [x] Add the fail-closed public probe contract with `execute_runtime_smoke=false` coverage.
+- [x] Extend `create_runtime_swapchain` so Linux `SurfacePlatform::xcb` uses private `vkCreateXcbSurfaceKHR` and the existing swapchain owner path.
+- [x] Add a Linux-only private XCB presentation probe that calls `probe_runtime_surface_support`, `create_runtime_device`, `create_runtime_swapchain`, `acquire_next_runtime_swapchain_image`, dynamic rendering clear, swapchain readback, and `present_runtime_swapchain_image`.
+- [x] Route `games/sample_desktop_runtime_game/linux_main.cpp` through `probe_linux_desktop_vulkan_presentation`.
+- [x] Update static contracts to require the new probe and Linux XCB swapchain owner needles.
+- [x] Add explicit validation-log capture through a Vulkan debug-utils messenger or equivalent first-party log sink, then allow `linux_vulkan_validation_log_clean=1` only when the sink records zero validation diagnostics.
+- [ ] Run Linux hosted package smoke with `tools/package-linux-runtime.ps1 -RequireVulkanShaders` on a Linux Vulkan host and promote Linux readiness only when package, readback, and clean-log counters pass together.
+
+**Task 25 evidence (2026-06-20):** TDD RED first failed `MK_runtime_host_tests` because `probe_linux_desktop_vulkan_presentation` and `LinuxDesktopVulkanPresentationProbeDesc` did not exist. A static RED then failed `tools/check-json-contracts.ps1` because `linux_main.cpp` still matched the Task 24 value-only entrypoint. The first GREEN pass adds the public fail-closed probe, Linux-only private XCB window/surface probe, Linux XCB swapchain owner support in `MK_rhi_vulkan`, Linux package entrypoint routing through the probe, and static guards. Windows focused runtime-host and backend-scaffold tests pass; Linux readiness remains host-gated because validation-log capture intentionally remains fail-closed.
+
+## Task 26: Add Vulkan Debug Utils Validation Log Capture Without Promotion
+
+**Goal:** Replace the Task 25 validation-log fail-closed placeholder with a first-party Vulkan `VK_EXT_debug_utils` messenger that records warning/error validation diagnostics for the runtime package smoke and lets the Linux package report `linux_vulkan_validation_log_clean=1` only when the captured log is clean.
+
+**Context:** Context7 `/khronosgroup/vulkan-docs` confirms `VK_EXT_debug_utils`, `vkCreateDebugUtilsMessengerEXT`, `vkDestroyDebugUtilsMessengerEXT`, `VkDebugUtilsMessengerCreateInfoEXT`, message severity/type masks, and the application callback pattern. The runtime device loads the extension commands through `vkGetInstanceProcAddr` and keeps the messenger and counters private to the Vulkan backend.
+
+**Constraints:**
+- Do not expose Vulkan native handles or callback data through public runtime/game APIs.
+- Do not promote Linux readiness from compile-only or Windows Vulkan evidence.
+- Do not set `environment_platform_linux_vulkan_ready=1`, strict Vulkan commercial v2, platform readiness, all-platform readiness, commercial readiness, or broad `environment_ready` until approved Linux host package smoke passes package, readback, and clean validation-log counters together.
+- Keep Windows runtime/Vulkan behavior fail-closed when validation capture is unavailable.
+
+**Files:**
+- Modify: `engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_backend.hpp`
+- Modify: `engine/rhi/vulkan/src/vulkan_backend.cpp`
+- Modify: `engine/runtime_host/src/linux_desktop_host_contract.cpp`
+- Modify: `tests/unit/backend_scaffold_tests.cpp`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Modify: docs, plan registry, manifest fragments, and composed manifest.
+
+**Steps:**
+- [x] Add a RED backend-scaffold test for `VulkanRuntimeDevice::validation_log_snapshot()` on an empty device and verify the missing API failure.
+- [x] Add `VulkanRuntimeValidationLogSnapshot` with fail-closed `clean()` semantics.
+- [x] Create/destroy a private debug-utils messenger when validation and `VK_EXT_debug_utils` are enabled.
+- [x] Count validation, warning, and error callback messages without exposing native handles.
+- [x] Route Linux package smoke through `validation_log_snapshot().clean()` instead of a permanent fail-closed placeholder.
+- [x] Update static contracts to require the debug-utils log-capture path.
+- [ ] Run approved Linux host package smoke and promote Linux readiness only when exact package/readback/clean-log counters pass.
+
+**Task 26 evidence (2026-06-20):** TDD RED first failed `MK_backend_scaffold_tests` because `VulkanRuntimeDevice::validation_log_snapshot` did not exist. The GREEN path adds `VulkanRuntimeValidationLogSnapshot`, private debug-utils messenger creation/destruction, atomic callback counters, Linux package smoke integration through `VK_EXT_debug_utils`, and static guards. Windows focused backend-scaffold and runtime-host tests pass; Linux readiness remains host-gated until an approved Linux host package smoke emits package, readback, and clean validation-log counters together.
+
+## Task 27: Add Android Emulator And AGI GPU Debug Layer Host Orchestration Without Promotion
+
+**Goal:** Make `tools/validate-android-vulkan-runtime-host.ps1` able to target a specific device/emulator, start the official Android Emulator for the selected AVD, and optionally apply the official AGI GPU debug layer settings before package smoke, while keeping Android Vulkan readiness fail-closed until the AGI layer APK and package/readback/log evidence exist.
+
+**Context:** Context7 `/websites/developer_android` records the official Android Emulator launch flow (`emulator -avd`) and the Android GPU debug layer settings contract: `enable_gpu_debug_layers`, `gpu_debug_app`, `gpu_debug_layer_app`, and `gpu_debug_layers=VK_LAYER_KHRONOS_validation`. The validator must also verify `pm path <AGI layer package>` before treating the debug layer app as installed.
+
+**Constraints:**
+- Do not mark `environment_platform_android_vulkan_ready`, strict Vulkan commercial v2, platform readiness, all-platform readiness, commercial readiness, or broad `environment_ready` ready from emulator startup alone.
+- Do not infer Android Vulkan from desktop Vulkan, Windows Vulkan, Linux Vulkan, D3D12, Android SDK/NDK presence, or package-template-only evidence.
+- Keep emulator startup host-owned and cleanup guarded; do not add Android SDKs, emulator images, Gradle caches, AGI APKs, or validation layer packages to the repository.
+- Keep official AGI GPU debug layer configuration optional and fail-closed when the layer app is absent.
+
+**Files:**
+- Modify: `tools/validate-android-vulkan-runtime-host.ps1`
+- Modify: `tools/check-json-contracts-035-environment-commercial-readiness.ps1`
+- Modify: docs, plan registry, manifest fragments, and composed manifest.
+
+**Steps:**
+- [x] Add static contract RED coverage requiring `StartEmulator`, `DeviceSerial`, `AvdName`, and `ConfigureGpuDebugLayers`.
+- [x] Add `-DeviceSerial`, `-StartEmulator`, `-AvdName`, `-EmulatorPort`, `-BootTimeoutSeconds`, `-ConfigureGpuDebugLayers`, `-GpuDebugLayerPackage`, and `-GpuDebugLayerApk` options.
+- [x] Resolve a single online adb device, an explicit serial, or a started official Android Emulator instance.
+- [x] Configure official AGI GPU debug layer settings only after `pm path` proves the layer package exists.
+- [x] Install a host-supplied AGI layer APK through `adb install -r` when `-GpuDebugLayerApk` is provided, while keeping AGI APKs and validation layer packages out of the repository.
+- [x] Pass the selected serial into Android package smoke when `-RequireReady` is used.
+- [x] Build one `smoke-android-package.ps1` argv list, append `-DeviceSerial` when selected, execute it once, and relay package/readback/log output into the validator artifact.
+- [x] Validate fail-closed no-device output and emulator-start output without promoting Android readiness.
+- [ ] Run approved Android package/device smoke with installed AGI validation layer APK, same-launch validation-layer enumeration, clean logcat, and offscreen Vulkan readback before promoting Android readiness.
+
+**Task 27 evidence (2026-06-20):** Static RED first failed `tools/check-json-contracts.ps1` because the Android validator lacked `StartEmulator`. The GREEN path adds explicit serial targeting, official emulator startup for `GameEngine_API36`, guarded emulator cleanup, optional official AGI GPU debug layer setting writes, and serial-aware package smoke routing. A follow-up static RED then required the smoke argv list to be initialized before serial injection; the fix removes the accidental double invocation, appends `-DeviceSerial` to the single package-smoke command, and relays package-smoke output so Android readback/log counters remain auditable. A second follow-up static RED required `-GpuDebugLayerApk`, `adb install -r`, and `android_gpu_debug_layer_install_*` counters; the fix installs only a host-supplied APK path, keeps AGI APKs out of the repository, and still treats AGI app presence/settings/package smoke/readback/log counters as the readiness proof. Local fail-closed validation reports SDK/NDK/profile/debuggable ready but no device as `environment_platform_android_vulkan_ready=0`; emulator validation reports `adb_device_or_emulator_ready=1` but `android_gpu_debug_layer_app_installed=0`, `android_gpu_debug_layer_settings_ready=0`, package/readback/log counters 0, and Android readiness still 0.
+
 ## Execution Order
 
 Use this PR order:
@@ -1491,8 +1617,12 @@ Use this PR order:
 21. Task 21 Android Vulkan GPU debug layer and offscreen readback smoke without Android readiness promotion.
 22. Task 22 Linux package and installed validator foundation without Linux readiness promotion.
 23. Task 23 host-aware vcpkg bootstrap and Linux runtime package preset foundation without Linux readiness promotion.
+24. Task 24 Linux runtime presentation package entry bridge without Linux readiness promotion.
+25. Task 25 Linux XCB Vulkan swapchain/readback probe without Linux readiness promotion.
+26. Task 26 Vulkan debug-utils validation-log capture without Linux readiness promotion.
+27. Task 27 Android emulator and AGI GPU debug layer host orchestration without Android readiness promotion.
 
-Do not merge Task 23 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until Linux Vulkan, Android Vulkan, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
+Do not merge Task 27 until its focused local validation, publication preflight, and task-owned PR checks pass for the task-owned PR head SHA. The final commercial row remains unready until approved Linux host package smoke, Android Vulkan package/device smoke, strict Vulkan aggregate, platform readiness, and all-platform readiness close with exact host evidence.
 
 ## Validation Evidence
 
@@ -1591,6 +1721,22 @@ Record validation here as each PR lands.
 | 2026-06-20 | Task 23 dependency-policy RED/GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | pass | initial full validation exposed the old guard requiring `x64-windows` for every vcpkg preset; the guard now accepts `x64-linux` only for `desktop-runtime-linux-release` while keeping other vcpkg presets on `x64-windows` |
 | 2026-06-20 | Task 23 Linux package fail-closed check | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-linux-runtime.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1` | expected fail / pass | Windows package invocation fails closed with `Linux runtime packaging requires a Linux host`; the host validator emits `environment_platform_linux_vulkan_ready=0`, `environment_platform_requires_linux_vulkan_host_evidence=1`, `linux_package_smoke_ready=0`, `linux_vulkan_readback_ready=0`, and `environment_platform_windows_vulkan_inferred=0` |
 | 2026-06-20 | Task 23 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple/Metal checks remain host-gated or diagnostic-only on Windows, and Linux Vulkan remains host-gated |
+| 2026-06-20 | Task 24 focused runtime host and desktop runtime validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R sample_desktop_runtime_game_smoke`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R MK_runtime_host_tests` | pass | dev and desktop-runtime focused loops build the Linux presentation value contract and preserve the Windows sample smoke; Linux package readiness stays host-gated until a Linux host executes the XCB Vulkan package smoke |
+| 2026-06-20 | Task 24 aggregate and Linux host-gate counters | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-optimization-artifacts.ps1` | pass | commercial aggregate remains fail-closed with `environment_commercial_ready_rows=11`, `environment_host_gated_rows=5`, `environment_commercial_ready=0`; Linux host-gate reports `linux_package_smoke_ready=0`, `linux_vulkan_readback_ready=0`, `linux_vulkan_validation_log_clean=0`, `environment_platform_linux_vulkan_ready=0`, and `environment_platform_windows_vulkan_inferred=0`; retained optimization remains ready with `environment_optimization_measurement_workload_rows=21` |
+| 2026-06-20 | Task 24 full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Apple/Metal checks remain host-gated or diagnostic-only on Windows, Linux Vulkan remains host-gated, and commercial readiness remains `11/16` rows |
+| 2026-06-20 | Task 25 TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests` | expected fail | after configuring `dev`, build fails because `probe_linux_desktop_vulkan_presentation` and `LinuxDesktopVulkanPresentationProbeDesc` are missing |
+| 2026-06-20 | Task 25 focused runtime/RHI build and tests | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_backend_scaffold_tests` | pass | Windows focused tests pass after adding the fail-closed probe and preserving existing Win32 Vulkan swapchain/readback behavior; Linux compile/runtime proof remains hosted |
+| 2026-06-20 | Task 25 static contract RED/GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | expected fail / pass | static guard first fails on the old Linux entrypoint needle, then passes after requiring the new package probe and Linux XCB swapchain owner needles |
+| 2026-06-20 | Task 26 TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests` | expected fail | build fails because `VulkanRuntimeDevice::validation_log_snapshot` is missing |
+| 2026-06-20 | Task 26 focused runtime/RHI tests | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_backend_scaffold_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_tests` | pass | Windows focused tests pass after adding Vulkan debug-utils validation-log capture and preserving fail-closed host behavior; Linux package readiness remains hosted |
+| 2026-06-20 | Task 26 aggregate and full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-linux-vulkan-runtime-host.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | commercial aggregate remains fail-closed at `environment_commercial_ready_rows=11`, `environment_host_gated_rows=5`, and `environment_platform_linux_vulkan_ready=0`; Linux host gate remains host-gated on Windows; full validation reports `validate: ok` and `100% tests passed, 0 tests failed out of 131` |
+| 2026-06-20 | Task 27 static contract RED/GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | expected fail / pass | static guard first fails on the missing `StartEmulator` needle, then passes after requiring Android emulator/device serial and GPU debug-layer configuration needles |
+| 2026-06-20 | Task 27 Android host-gate fail-closed validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1 -StartEmulator -AvdName GameEngine_API36`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1 -StartEmulator -AvdName GameEngine_API36 -ConfigureGpuDebugLayers` | pass | default run reports no adb device/emulator and Android readiness 0; emulator runs report `adb_device_or_emulator_ready=1` but keep `android_gpu_debug_layer_app_installed=0`, `android_gpu_debug_layer_settings_ready=0`, package/readback/log counters 0, and `environment_platform_android_vulkan_ready=0` |
+| 2026-06-20 | Task 27 aggregate counters | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-environment-highest-commercial-readiness.ps1` | pass | commercial aggregate remains fail-closed at `environment_commercial_ready_rows=11`, `environment_host_gated_rows=5`, `environment_platform_android_vulkan_ready=0`, and `environment_platform_linux_vulkan_ready=0`; no commercial, all-platform, or broad `environment_ready` claim is promoted |
+| 2026-06-20 | Task 27 package-smoke argv RED/GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | expected fail / pass | static guard first fails on missing `$smokeArguments = @(`, then passes after `tools/validate-android-vulkan-runtime-host.ps1` builds one package-smoke argv list, appends `-DeviceSerial`, executes it once, and relays smoke output |
+| 2026-06-20 | Task 27 package-smoke fail-closed validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1 -StartEmulator -AvdName GameEngine_API36 -ConfigureGpuDebugLayers`; `git diff --check` | pass | default run remains no-device fail-closed; emulator run reports `adb_device_or_emulator_ready=1` but leaves AGI layer, package smoke, readback, validation enumeration, clean-log, and Android readiness at 0; whitespace guard passes |
+| 2026-06-20 | Task 27 host-supplied AGI APK install RED/GREEN | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1 -GpuDebugLayerApk artifacts\host-only\missing-agi-layer.apk` | expected fail / pass | static guard first fails on missing `GpuDebugLayerApk`, then passes after the Android validator accepts only a host-supplied APK path, uses `adb install -r` when a device is selected, emits `android_gpu_debug_layer_install_requested` / `android_gpu_debug_layer_install_ready`, and keeps Android readiness 0 when the APK/device evidence is absent |
+| 2026-06-20 | Task 27 package-smoke full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | pass | `validate: ok`; `100% tests passed, 0 tests failed out of 131`; Android Vulkan and commercial aggregate remain host-gated |
 | 2026-06-18 | Task 5 Metal platform TDD RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | expected fail | missing Metal/iOS fields in `EnvironmentPlatformEvidenceV2Row` |
 | 2026-06-18 | Task 5 Metal platform focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_env_platform_v2_tests` | pass | built `MK_env_platform_v2_tests` |
 | 2026-06-18 | Task 5 Metal platform focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_environment_platform_evidence_v2_tests` | pass | `100% tests passed, 0 tests failed out of 1` |
