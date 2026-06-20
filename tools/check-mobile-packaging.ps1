@@ -333,6 +333,8 @@ foreach ($file in @(
     "platform/android/app/src/main/cpp/android_audio_output.cpp",
     "platform/android/app/src/main/cpp/android_audio_output.hpp",
     "platform/android/app/src/main/cpp/game_activity_bridge.cpp",
+    "platform/android/app/src/main/cpp/android_vulkan_readback_smoke.cpp",
+    "platform/android/app/src/main/cpp/android_vulkan_readback_smoke.hpp",
     "platform/android/app/src/main/cpp/android_vulkan_surface_bridge.cpp",
     "platform/android/app/src/main/java/dev/mirakanai/android/MirakanaiActivity.java",
     "platform/android/app/src/main/assets/.gitkeep",

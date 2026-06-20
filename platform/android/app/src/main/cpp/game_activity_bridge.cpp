@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
 #include "android_audio_output.hpp"
+#include "android_vulkan_readback_smoke.hpp"
 
 #include "mirakana/platform/mobile.hpp"
 
@@ -102,6 +103,8 @@ extern "C" void android_main(android_app* app) {
 
     __android_log_print(ANDROID_LOG_INFO, "Mirakanai", "Starting %s from %s", MK_ANDROID_GAME_NAME,
                         MK_ANDROID_GAME_MANIFEST);
+    const auto vulkan_readback = mirakana_android::run_android_vulkan_readback_smoke();
+    mirakana_android::log_android_vulkan_readback_smoke_result(vulkan_readback);
 
     while (!state.lifecycle.state().terminating && app->destroyRequested == 0) {
         int events = 0;
