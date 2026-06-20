@@ -179,6 +179,7 @@ AndroidVulkanReadbackSmokeResult run_android_vulkan_readback_smoke_impl() {
         .queueCount = 1,
         .pQueuePriorities = &queue_priority,
     };
+    const VkPhysicalDeviceFeatures device_features{};
     const VkDeviceCreateInfo device_info{
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = nullptr,
@@ -189,7 +190,7 @@ AndroidVulkanReadbackSmokeResult run_android_vulkan_readback_smoke_impl() {
         .ppEnabledLayerNames = nullptr,
         .enabledExtensionCount = 0,
         .ppEnabledExtensionNames = nullptr,
-        .pEnabledFeatures = nullptr,
+        .pEnabledFeatures = &device_features,
     };
     if (const auto result = vkCreateDevice(physical_device, &device_info, nullptr, &context.device);
         result != VK_SUCCESS) {

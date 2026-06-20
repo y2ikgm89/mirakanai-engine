@@ -10,7 +10,11 @@ param(
     [switch]$StartEmulator,
     [string]$AvdName = "Mirakanai_API36",
     [int]$EmulatorPort = 5584,
-    [int]$BootTimeoutSeconds = 180
+    [int]$BootTimeoutSeconds = 180,
+    [ValidateSet("", "arm64-v8a", "x86_64")]
+    [string]$AndroidAbi = "",
+    [string]$ValidationLayerJniLibs = "",
+    [switch]$RequirePackagedValidationLayer
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,6 +26,15 @@ $packageName = "dev.mirakanai.android"
 $activity = "$packageName/.MirakanaiActivity"
 $startedEmulator = $false
 $startedEmulatorSerial = ""
+
+function ConvertTo-CounterBit {
+    param([bool]$Value)
+
+    if ($Value) {
+        return "1"
+    }
+    return "0"
+}
 
 function Invoke-AdbAllowFailure {
     param([Parameter(Mandatory = $true)][string[]]$Arguments)
@@ -90,6 +103,50 @@ function Start-AndroidEmulatorForSmoke {
     return $serial
 }
 
+function Test-ApkContainsPackagedValidationLayer {
+    param(
+        [Parameter(Mandatory = $true)][string]$ApkPath,
+        [Parameter(Mandatory = $true)][string]$AndroidAbi
+    )
+
+    $jar = Find-JavaToolCommand "jar"
+    if (-not $jar) {
+        return $false
+    }
+
+    $entries = @(& $jar "-tf" $ApkPath 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+    return $entries -contains "lib/$AndroidAbi/libVkLayer_khronos_validation.so"
+}
+
+function Get-AndroidDevicePrimaryAbi {
+    param([Parameter(Mandatory = $true)][string]$Serial)
+
+    $abi = @(& $script:adb "-s" $Serial "shell" "getprop" "ro.product.cpu.abi" 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $abi.Count -eq 0) {
+        Write-Error "Android smoke failed to read ro.product.cpu.abi from $Serial."
+    }
+    return ([string]$abi[0]).Trim()
+}
+
+function Resolve-AndroidPackageAbi {
+    param(
+        [Parameter(Mandatory = $true)][string]$Serial,
+        [string]$RequestedAbi = ""
+    )
+
+    $primaryAbi = Get-AndroidDevicePrimaryAbi -Serial $Serial
+    if ($primaryAbi -ne "arm64-v8a" -and $primaryAbi -ne "x86_64") {
+        Write-Error "Android smoke supports arm64-v8a and x86_64 primary ABIs; device $Serial reported '$primaryAbi'."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RequestedAbi) -and $RequestedAbi -ne $primaryAbi) {
+        Write-Error "AndroidAbi '$RequestedAbi' must match device primary ABI '$primaryAbi' for packaged validation layers."
+    }
+    return $primaryAbi
+}
+
 Set-ProcessEnvironmentFromAnyScope "ANDROID_HOME"
 Set-ProcessEnvironmentFromAnyScope "ANDROID_SDK_ROOT"
 Set-ProcessEnvironmentFromAnyScope "JAVA_HOME"
@@ -100,17 +157,6 @@ if (-not $adb) {
     Write-Error "adb is required for Android device smoke. Install Android SDK Platform Tools."
 }
 $script:adb = $adb
-
-if (-not $SkipBuild) {
-    & (Join-Path $PSScriptRoot "build-mobile-android.ps1") -Game $Game -Configuration $Configuration
-}
-
-$apkName = if ($Configuration -eq "Release") { "app-release.apk" } else { "app-debug.apk" }
-$variant = $Configuration.ToLowerInvariant()
-$apk = Join-Path $root "platform\android\app\build\outputs\apk\$variant\$apkName"
-if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) {
-    Write-Error "Android APK was not found for smoke: $apk"
-}
 
 try {
     Invoke-CheckedCommand $adb "start-server"
@@ -132,6 +178,31 @@ try {
     }
 
     Wait-AndroidBoot $DeviceSerial
+    $resolvedAndroidAbi = Resolve-AndroidPackageAbi -Serial $DeviceSerial -RequestedAbi $AndroidAbi
+
+    if (-not $SkipBuild) {
+        $buildArguments = @{
+            Game = $Game
+            Configuration = $Configuration
+            AndroidAbi = $resolvedAndroidAbi
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ValidationLayerJniLibs)) {
+            $buildArguments.ValidationLayerJniLibs = $ValidationLayerJniLibs
+        }
+        & (Join-Path $PSScriptRoot "build-mobile-android.ps1") @buildArguments
+    }
+
+    $apkName = if ($Configuration -eq "Release") { "app-release.apk" } else { "app-debug.apk" }
+    $variant = $Configuration.ToLowerInvariant()
+    $apk = Join-Path $root "platform\android\app\build\outputs\apk\$variant\$apkName"
+    if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) {
+        Write-Error "Android APK was not found for smoke: $apk"
+    }
+
+    $packagedValidationLayerReady = Test-ApkContainsPackagedValidationLayer -ApkPath $apk -AndroidAbi $resolvedAndroidAbi
+    if ($RequirePackagedValidationLayer -and -not $packagedValidationLayerReady) {
+        Write-Error "Android APK does not contain lib/$resolvedAndroidAbi/libVkLayer_khronos_validation.so."
+    }
 
     [void](Invoke-AdbAllowFailure @("-s", $DeviceSerial, "uninstall", $packageName))
     if ((Invoke-AdbAllowFailure @("-s", $DeviceSerial, "logcat", "-c")) -ne 0) {
@@ -184,7 +255,9 @@ try {
 
     Invoke-CheckedCommand $adb "-s" $DeviceSerial "shell" "am" "force-stop" $packageName
     Write-Host "android-smoke: device=$DeviceSerial"
+    Write-Host "android-smoke: abi=$resolvedAndroidAbi"
     Write-Host "android-smoke: apk=$apk"
+    Write-Host "android_validation_layer_apk_packaged=$(ConvertTo-CounterBit $packagedValidationLayerReady)"
     Write-Host "android_vulkan_readback_ready=1"
     Write-Host "android_vulkan_validation_layer_enumerated=1"
     Write-Host "android_vulkan_validation_log_clean=1"

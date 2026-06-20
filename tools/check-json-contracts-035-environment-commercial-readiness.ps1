@@ -152,7 +152,7 @@ $expectedEnvironmentPlatformHostRecipes = @(
         Recipe = "environment-platform-android-vulkan-package"
         Script = "tools/validate-android-vulkan-runtime-host.ps1"
         Forbidden = "validation_recipe_skeleton=1"
-        Needles = @("host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_vulkan_profile_ready=1", "android_gpu_debuggable_ready=1", "android_gpu_debug_layer_settings_ready=1", "android_gpu_debug_layer_app_installed=1", "android_gpu_debug_layer_install_requested=1", "android_gpu_debug_layer_install_ready=1", "android_gpu_debug_layer_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "android_vulkan_validation_layer_enumerated=1", "android_vulkan_validation_log_clean=1", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
+        Needles = @("host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_vulkan_profile_ready=1", "android_gpu_debuggable_ready=1", "android_validation_layer_jni_libs_ready=1", "android_validation_layer_apk_packaged=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "android_vulkan_validation_layer_enumerated=1", "android_vulkan_validation_log_clean=1", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
     },
     @{
         Recipe = "environment-platform-ios-metal-package"
@@ -414,9 +414,9 @@ $expectedEnvironmentCommercialClaimIds = @(
     "environment_artist_workflow_production_ready"
 )
 $expectedEnvironmentCommercialClaimStates = @{
-    environment_highest_commercial_ready = "unsupported"
-    environment_commercial_ready = "unsupported"
-    environment_strict_vulkan_aggregate_ready = "host-gated"
+    environment_highest_commercial_ready = "ready"
+    environment_commercial_ready = "ready"
+    environment_strict_vulkan_aggregate_ready = "ready"
     environment_metal_aggregate_ready = "ready"
     environment_vulkan_strict_aggregate_ready = "ready"
     environment_metal_host_aggregate_ready = "ready"
@@ -426,9 +426,9 @@ $expectedEnvironmentCommercialClaimStates = @{
     environment_platform_linux_vulkan_ready = "ready"
     environment_platform_macos_metal_ready = "ready"
     environment_platform_ios_metal_ready = "ready"
-    environment_platform_android_vulkan_ready = "host-gated"
-    environment_platform_readiness_ready = "host-gated"
-    environment_all_platform_unconditional_ready = "host-gated"
+    environment_platform_android_vulkan_ready = "ready"
+    environment_platform_readiness_ready = "ready"
+    environment_all_platform_unconditional_ready = "ready"
     environment_broad_optimization_ready = "ready"
     environment_asset_pipeline_openexr_ktx_basis_ready = "ready"
     environment_asset_pipeline_openexr_ktx_basis_full_ready = "ready"
@@ -986,8 +986,8 @@ $expectedEnvironmentPlatformReadinessRows = @(
     @{
         id = "environment_platform_android_vulkan"
         claimId = "environment_platform_android_vulkan_ready"
-        state = "host-gated"
-        needles = @("Android SDK", "NDK", "Vulkan", "desktop Vulkan", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-android-vulkan-package", "android-vulkan-runtime-host", "host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_vulkan_profile_ready=1", "android_gpu_debuggable_ready=1", "android_gpu_debug_layer_settings_ready=1", "android_gpu_debug_layer_app_installed=1", "android_gpu_debug_layer_install_requested=1", "android_gpu_debug_layer_install_ready=1", "android_gpu_debug_layer_ready=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "android_vulkan_validation_layer_enumerated=1", "android_vulkan_validation_log_clean=1", "environment_platform_android_vulkan_ready=0", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
+        state = "ready"
+        needles = @("Android SDK", "NDK", "Vulkan", "desktop Vulkan", "tools/validate-android-vulkan-runtime-host.ps1", "environment-platform-android-vulkan-package", "android-vulkan-runtime-host", "host_has_android_sdk=1", "host_has_android_ndk=1", "adb_device_or_emulator_ready=1", "android_package_primary_abi", "android_vulkan_profile_ready=1", "android_gpu_debuggable_ready=1", "ValidationLayerJniLibs", "AndroidAbi", "RequirePackagedValidationLayer", "mirakanai.androidAbi", "mirakanai.validationLayerJniLibs", "jniLibs.addStaticSourceDirectory", "android_validation_layer_jni_libs_ready=1", "android_validation_layer_apk_packaged=1", "VK_LAYER_KHRONOS_validation_ready=1", "android_package_smoke_ready=1", "android_vulkan_readback_ready=1", "android_vulkan_validation_layer_enumerated=1", "android_vulkan_validation_log_clean=1", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0")
     },
     @{
         id = "environment_platform_unconditional_all_platform"
@@ -1444,15 +1444,15 @@ if ($null -eq $commercialReadinessClaim -or
     @($commercialReadinessClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-commercial-readiness" -or
     @($commercialReadinessClaim.validationRecipeIds) -notcontains "desktop-runtime-sample-game-environment-commercial-vulkan-evidence" -or
     @($commercialReadinessClaim.validationRecipeIds) -notcontains "renderer-metal-environment-aggregate-apple-host-evidence" -or
-    [string]$commercialReadinessClaim.state -ne "unsupported") {
-    Write-Error "engine manifest environment_commercial_ready must remain unsupported and reference the commercial readiness, commercial Vulkan evidence, and Apple-host Metal aggregate evidence recipes"
+    [string]$commercialReadinessClaim.state -ne "ready") {
+    Write-Error "engine manifest environment_commercial_ready must be ready and reference the commercial readiness, commercial Vulkan evidence, and Apple-host Metal aggregate evidence recipes"
 }
 $commercialReadinessClaimText = ((@($commercialReadinessClaim.validationRecipeIds) + @([string]$commercialReadinessClaim.requiredEvidence, [string]$commercialReadinessClaim.forbiddenInference, [string]$commercialReadinessClaim.notes)) -join " ")
 if (@($commercialReadinessClaim.dependsOn) -notcontains "environment_artist_workflow_production_ready" -or
     @($commercialReadinessClaim.dependsOn) -contains "environment_artist_workflow_ready") {
     Write-Error "engine manifest environment_commercial_ready must depend on environment_artist_workflow_production_ready, not the selected environment_artist_workflow_ready row"
 }
-foreach ($needle in @("Phase 12 slice 1", "--require-environment-commercial-readiness", "environment_commercial_readiness_status=blocked", "environment_commercial_ready=0", "14 required rows", "4 ready rows", "7 host-gated rows", "3 blocked rows", "0 missing rows", "14 package-visible rows", "14 validation-guarded rows", "14 legal-notice-current rows", "optional_dependency_legal_records_current=1", "adjacent_broad_non_claims_declared=1", "native_handle_access=0", "broad_environment_ready_claimed=0", "Phase 12 slice 2", "--require-environment-commercial-vulkan-evidence", "3 ready rows", "5 host-gated rows", "6 blocked rows", "environment_commercial_vulkan_evidence_requested=1", "environment_commercial_strict_vulkan_aggregate_ready=1", "environment_commercial_windows_vulkan_ready=1", "Phase 12 slice 3", "renderer-metal-environment-aggregate-apple-host-evidence", "2 ready rows", "7 blocked rows", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1")) {
+foreach ($needle in @("Overall commercial readiness is ready", "Task 32", "official Android NDK packaged validation-layer path", "environment_commercial_ready", "environment_highest_commercial_ready", "16 exact v2 rows", "all six platform rows", "environment_all_platform_unconditional_ready=1", "21 retained optimization measurement rows", "runtime_source_parsing=0", "zero host-gated/dependency-gated", "zero native-handle access", "zero diagnostics", "broad environment_ready unchanged at 0", "renderer-metal-environment-aggregate-apple-host-evidence")) {
     if (-not $commercialReadinessClaimText.Contains($needle)) {
         Write-Error "engine manifest environment_commercial_ready Phase 12 blocker gate text missing: $needle"
     }
@@ -1504,7 +1504,11 @@ foreach ($sourceSurface in @(
         @{ Path = "tools/bootstrap-deps.ps1"; Needles = @("bootstrap-vcpkg.sh", "Get-VcpkgDefaultTriplet") },
         @{ Path = "tools/package-linux-runtime.ps1"; Needles = @("Get-VcpkgDefaultTriplet", "`$vcpkgTriplet", "-DVCPKG_TARGET_TRIPLET=`$vcpkgTriplet", "desktop-runtime-linux-release", "validate-installed-linux-runtime.ps1") },
         @{ Path = "tools/validate-linux-vulkan-runtime-host.ps1"; Needles = @("Find-VulkanInfoCommand", "--summary", "VK_LAYER_KHRONOS_validation", "dxc_spirv_codegen_ready", "spirv_val_ready", "linux_icd_runtime_ready", "first_party_linux_runtime_host_ready", "linux_package_script_ready", "linux_installed_validator_ready", "linux_package_smoke_ready", "linux_vulkan_readback_ready", "linux_vulkan_validation_log_clean", "environment_platform_linux_vulkan_ready", "windows_vulkan_inferred=0") },
-        @{ Path = "tools/validate-android-vulkan-runtime-host.ps1"; Needles = @("StartEmulator", "DeviceSerial", "AvdName", "ConfigureGpuDebugLayers", "GpuDebugLayerApk", "enable_gpu_debug_layers", "gpu_debug_app", "gpu_debug_layer_app", "gpu_debug_layers", "install", "-r", "pm", "path", "VK_LAYER_KHRONOS_validation", "android.hardware.vulkan.version", "android.hardware.vulkan.level", "android_gpu_debuggable_ready", "android_gpu_debug_layer_settings_ready", "android_gpu_debug_layer_app_installed", "android_gpu_debug_layer_install_requested", "android_gpu_debug_layer_install_ready", "android_gpu_debug_layer_ready", "android_package_smoke_ready", "android_vulkan_readback_ready", "android_vulkan_validation_layer_enumerated", "android_vulkan_validation_log_clean", "environment_platform_android_vulkan_ready", "desktop_vulkan_inferred=0", "`$smokeArguments = @(", "`$smokeArguments += @(`"-DeviceSerial`", `$Serial)", "Write-Output `$smokeText.TrimEnd()") },
+        @{ Path = "tools/validate-android-vulkan-runtime-host.ps1"; Needles = @("StartEmulator", "DeviceSerial", "AvdName", "ConfigureGpuDebugLayers", "GpuDebugLayerApk", "ValidationLayerJniLibs", "AndroidAbi", "RequirePackagedValidationLayer", "ro.product.cpu.abi", "build-mobile-android.ps1", "-SkipBuild", "enable_gpu_debug_layers", "gpu_debug_app", "gpu_debug_layer_app", "gpu_debug_layers", "install", "-r", "pm", "path", "VK_LAYER_KHRONOS_validation", "android.hardware.vulkan.version", "android.hardware.vulkan.level", "android_gpu_debuggable_ready", "android_validation_layer_jni_libs_ready", "android_validation_layer_apk_packaged", "android_package_smoke_ready", "android_vulkan_readback_ready", "android_vulkan_validation_layer_enumerated", "android_vulkan_validation_log_clean", "environment_platform_android_vulkan_ready", "desktop_vulkan_inferred=0", "`$smokeArguments = @(", "`$smokeArguments += @(`"-DeviceSerial`", `$Serial)", "Write-Output `$smokeText.TrimEnd()") },
+        @{ Path = "tools/build-mobile-android.ps1"; Needles = @("ValidationLayerJniLibs", "AndroidAbi", "libVkLayer_khronos_validation.so", "-Pmirakanai.androidAbi=", "-Pmirakanai.validationLayerJniLibs=", "`$AndroidAbi") },
+        @{ Path = "tools/smoke-android-package.ps1"; Needles = @("ValidationLayerJniLibs", "AndroidAbi", "RequirePackagedValidationLayer", "ro.product.cpu.abi", "`$buildArguments = @{", "AndroidAbi = `$resolvedAndroidAbi", "ValidationLayerJniLibs = `$ValidationLayerJniLibs", "android_validation_layer_apk_packaged", "lib/`$AndroidAbi/libVkLayer_khronos_validation.so") },
+        @{ Path = "platform/android/app/src/main/cpp/android_vulkan_readback_smoke.cpp"; Needles = @("VkPhysicalDeviceFeatures device_features{}", ".pEnabledFeatures = &device_features") },
+        @{ Path = "platform/android/app/build.gradle.kts"; Needles = @("mirakanai.androidAbi", "abiFilters.add(mirakanaiAndroidAbi)", "mirakanai.validationLayerJniLibs", "jniLibs?.addStaticSourceDirectory", "Android jniLibs sources are unavailable") },
         @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("environment_commercial_readiness_status", "environment_commercial_ready", "environment_commercial_required_rows", "environment_commercial_broad_environment_ready_claimed", "environment_commercial_vulkan_evidence_requested", "environment_artist_workflow_production_ready", "workflow_import_openexr_ready", "workflow_live_preview_vulkan_ready") },
         @{ Path = "tools/validate-environment-metal-host-aggregate.ps1"; Needles = @("environment_backend_parity_metal_evidence_requested=1", "environment_backend_parity_metal_evidence_ready=1", "environment_backend_parity_metal_host=1", "environment_backend_parity_ready=0", "environment_backend_parity_cross_host_aggregate_ready=0", "environment_backend_parity_d3d12_inferred=0", "environment_backend_parity_vulkan_inferred=0", "environment_commercial_metal_evidence_requested=1", "environment_commercial_metal_host_aggregate_ready=1", "environment_commercial_macos_metal_ready=1", "environment_commercial_ready_rows=2", "environment_commercial_blocked_rows=7") },
         @{ Path = "tools/generate-environment-metal-optimization-artifacts.ps1"; Needles = @("validation_recipe=environment-metal-host-optimization-artifact-producer", "xcrun", "xctrace", "Metal System Trace", "validate-environment-metal-host-aggregate.ps1", "validate-environment-optimization-artifacts.ps1", "metal_apple_host", "raw_xctrace_ci_artifact", "environment_metal_host_optimization_artifacts_written", "environment_broad_optimization_ready=1", "environment_ready=0", "environment_commercial_ready=0") },
@@ -1536,7 +1540,7 @@ foreach ($needle in @("desktop-runtime-sample-game-environment-backend-parity", 
     }
 }
 $environmentPlatformReadinessGuidance = [string]$engineForEnvironmentCommercial.gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8
-foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence", "environment-platform-linux-vulkan-host-gate", "environment-platform-linux-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "vulkan-strict-linux", "validate.yml linux-vulkan", "xvfb-run", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_status=host_evidence_required", "environment_platform_readiness_ready=0", "environment_platform_windows_vulkan_evidence_requested=1", "environment_platform_windows_vulkan_ready=1", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0", "environment_platform_android_vulkan_ready=0", "environment_platform_windows_vulkan_inferred=0", "environment_all_platform_unconditional_ready=0")) {
+foreach ($needle in @("desktop-runtime-sample-game-environment-platform-readiness", "desktop-runtime-sample-game-environment-platform-windows-vulkan-evidence", "environment-platform-linux-vulkan-host-gate", "environment-platform-linux-vulkan-package", "tools/validate-linux-vulkan-runtime-host.ps1", "vulkan-strict-linux", "validate.yml linux-vulkan", "xvfb-run", "environmentPlatformReadinessRows", "Windows D3D12", "Windows Vulkan", "Linux Vulkan", "macOS Metal", "iOS Metal", "Android Vulkan", "environment_platform_readiness_ready=1", "environment_platform_windows_vulkan_evidence_requested=1", "environment_platform_windows_vulkan_ready=1", "environment_platform_linux_vulkan_ready=1", "environment_platform_requires_linux_vulkan_host_evidence=0", "environment_platform_android_vulkan_ready=1", "environment_platform_requires_android_vulkan_host_evidence=0", "AndroidAbi", "mirakanai.androidAbi", "android_package_primary_abi=x86_64", "lib/x86_64/libVkLayer_khronos_validation.so", "environment_platform_windows_vulkan_inferred=0", "environment_all_platform_unconditional_ready=1")) {
     if (-not $environmentPlatformReadinessGuidance.Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentEnvironmentPlatformReadinessPhase8 missing: $needle"
     }
