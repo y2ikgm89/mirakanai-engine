@@ -120,6 +120,10 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            isDebuggable = true
+        }
+
         getByName("release") {
             if (mkAndroidReleaseSigningReady) {
                 signingConfig = signingConfigs.getByName("releaseFromEnvironment")

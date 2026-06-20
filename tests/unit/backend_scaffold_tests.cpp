@@ -534,6 +534,19 @@ MK_TEST("vulkan instance create plan requires validation layer when validation i
     MK_REQUIRE(rejected.diagnostic == "missing required Vulkan instance layer: VK_LAYER_KHRONOS_validation");
 }
 
+MK_TEST("vulkan runtime validation log snapshot is fail closed before debug utils capture exists") {
+    mirakana::rhi::vulkan::VulkanRuntimeDevice device;
+
+    const auto snapshot = device.validation_log_snapshot();
+
+    MK_REQUIRE(!snapshot.capture_enabled);
+    MK_REQUIRE(!snapshot.debug_utils_messenger_created);
+    MK_REQUIRE(!snapshot.clean());
+    MK_REQUIRE(snapshot.validation_message_count == 0U);
+    MK_REQUIRE(snapshot.warning_message_count == 0U);
+    MK_REQUIRE(snapshot.error_message_count == 0U);
+}
+
 MK_TEST("vulkan instance create plan rejects old api empty app names and missing required extensions") {
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc old_api;
     old_api.application_name = "GameEngineEditor";
@@ -1921,6 +1934,8 @@ MK_TEST("vulkan surface support probe plans platform extensions and rejects empt
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::windows);
     const auto android_extensions =
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::android);
+    const auto linux_extensions =
+        mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::linux);
     const auto macos_extensions =
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::macos);
 
@@ -1930,12 +1945,35 @@ MK_TEST("vulkan surface support probe plans platform extensions and rejects empt
     MK_REQUIRE(android_extensions.size() == 2);
     MK_REQUIRE(android_extensions[0] == "VK_KHR_surface");
     MK_REQUIRE(android_extensions[1] == "VK_KHR_android_surface");
+    MK_REQUIRE(linux_extensions.size() == 2);
+    MK_REQUIRE(linux_extensions[0] == "VK_KHR_surface");
+    MK_REQUIRE(linux_extensions[1] == "VK_KHR_xcb_surface");
     MK_REQUIRE(macos_extensions.empty());
+
+    const auto xcb_surface = mirakana::rhi::SurfaceHandle{
+        .value = 0x1002003U,
+        .context = 0x2003004U,
+        .platform = mirakana::rhi::SurfacePlatform::xcb,
+    };
+    MK_REQUIRE(xcb_surface.value == 0x1002003U);
+    MK_REQUIRE(xcb_surface.context == 0x2003004U);
+    MK_REQUIRE(xcb_surface.platform == mirakana::rhi::SurfacePlatform::xcb);
 
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc desc;
     desc.application_name = "GameEngineSurfaceSupportProbe";
     desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
     desc.required_extensions = {};
+
+    const auto missing_xcb_connection = mirakana::rhi::vulkan::probe_runtime_surface_support(
+        mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::RhiHostPlatform::linux}, desc,
+        mirakana::rhi::SurfaceHandle{
+            .value = 0x1002003U,
+            .context = 0U,
+            .platform = mirakana::rhi::SurfacePlatform::xcb,
+        });
+    MK_REQUIRE(!missing_xcb_connection.probed);
+    MK_REQUIRE(missing_xcb_connection.diagnostic ==
+               "Vulkan XCB surface support probing requires connection and window handles");
 
     const auto result = mirakana::rhi::vulkan::probe_runtime_surface_support({}, desc, mirakana::rhi::SurfaceHandle{});
 
