@@ -171,8 +171,18 @@ struct SwapchainFrameHandle {
     std::uint32_t value{0};
 };
 
+enum class SurfacePlatform : std::uint8_t {
+    unknown,
+    win32,
+    xcb,
+    android_native_window,
+    metal_layer,
+};
+
 struct SurfaceHandle {
     std::uintptr_t value{0};
+    std::uintptr_t context{0};
+    SurfacePlatform platform{SurfacePlatform::unknown};
 };
 
 struct ShaderHandle {
