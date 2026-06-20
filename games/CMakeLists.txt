@@ -58,11 +58,14 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         if(NOT MK_DESKTOP_GAME_HOST_BACKEND)
             set(MK_DESKTOP_GAME_HOST_BACKEND "win32")
         endif()
-        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
-            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32" AND NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "linux")
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 or linux for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
         endif()
-        if(NOT WIN32)
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32" AND NOT WIN32)
             message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND win32 is only supported on Windows for ${target_name}")
+        endif()
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "linux" AND NOT (UNIX AND NOT APPLE))
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND linux is only supported on Linux for ${target_name}")
         endif()
         get_filename_component(MK_DESKTOP_GAME_DIRECTORY "${MK_DESKTOP_GAME_GAME_MANIFEST}" DIRECTORY)
         file(REAL_PATH "${MK_DESKTOP_GAME_DIRECTORY}" MK_DESKTOP_GAME_DIRECTORY_REAL BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -195,12 +198,19 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_renderer
                 MK_runtime_host
         )
-        target_link_libraries(${target_name}
-            PRIVATE
-                MK_platform_win32
-                MK_runtime_host_win32
-                MK_runtime_host_win32_presentation
-        )
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
+            target_link_libraries(${target_name}
+                PRIVATE
+                    MK_platform_win32
+                    MK_runtime_host_win32
+                    MK_runtime_host_win32_presentation
+            )
+        elseif(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "linux")
+            target_link_libraries(${target_name}
+                PRIVATE
+                    MK_runtime_host_linux
+            )
+        endif()
 
         MK_apply_common_target_options(${target_name})
         MK_disable_module_scanning_for_non_module_executable(${target_name})
@@ -270,28 +280,30 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endfunction()
 
-    MK_add_desktop_runtime_game(sample_desktop_runtime_shell
-        SOURCES
-            sample_desktop_runtime_shell/main.cpp
-        GAME_MANIFEST
-            games/sample_desktop_runtime_shell/game.agent.json
-        HOST_BACKEND
-            win32
-        SMOKE_ARGS
-            --smoke
-        PACKAGE_SMOKE_ARGS
-            --smoke
-            --require-d3d12-shaders
-            --require-vulkan-shaders
-        REQUIRES_D3D12_SHADERS
-        REQUIRES_VULKAN_SHADERS
-    )
-    set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
-        "shaders/runtime_shell.vs.dxil;shaders/runtime_shell.ps.dxil"
-    )
-    set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
-        "shaders/runtime_shell.vs.spv;shaders/runtime_shell.ps.spv"
-    )
+    if(WIN32)
+        MK_add_desktop_runtime_game(sample_desktop_runtime_shell
+            SOURCES
+                sample_desktop_runtime_shell/main.cpp
+            GAME_MANIFEST
+                games/sample_desktop_runtime_shell/game.agent.json
+            HOST_BACKEND
+                win32
+            SMOKE_ARGS
+                --smoke
+            PACKAGE_SMOKE_ARGS
+                --smoke
+                --require-d3d12-shaders
+                --require-vulkan-shaders
+            REQUIRES_D3D12_SHADERS
+            REQUIRES_VULKAN_SHADERS
+        )
+        set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
+            "shaders/runtime_shell.vs.dxil;shaders/runtime_shell.ps.dxil"
+        )
+        set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
+            "shaders/runtime_shell.vs.spv;shaders/runtime_shell.ps.spv"
+        )
+    endif()
 
     function(MK_configure_desktop_runtime_scene_shader_artifacts)
         cmake_parse_arguments(MK_SCENE_SHADER "" "TARGET;GAME_NAME;ARTIFACT_PREFIX;SCENE_SHADER_SOURCE;POSTPROCESS_SHADER_SOURCE;MORPH_VERTEX_ENTRY;COMPUTE_MORPH_VERTEX_ENTRY;COMPUTE_MORPH_ENTRY;COMPUTE_MORPH_TANGENT_VERTEX_ENTRY;COMPUTE_MORPH_TANGENT_ENTRY;COMPUTE_MORPH_SKINNED_VERTEX_ENTRY;COMPUTE_MORPH_SKINNED_ENTRY;SHADOW_SHADER_SOURCE;SHADOW_RECEIVER_ENTRY;SHADOW_VERTEX_ENTRY;SHADOW_FRAGMENT_ENTRY;UI_OVERLAY_SHADER_SOURCE" "" ${ARGN})
@@ -1494,86 +1506,117 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endif()
 
-    MK_add_desktop_runtime_game(sample_desktop_runtime_game
-        SOURCES
-            sample_desktop_runtime_game/main.cpp
-        GAME_MANIFEST
-            games/sample_desktop_runtime_game/game.agent.json
-        HOST_BACKEND
-            win32
-        SMOKE_ARGS
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SOURCES sample_desktop_runtime_game/main.cpp)
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_HOST_BACKEND win32)
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SMOKE_ARGS
+        --smoke
+        --require-job-scheduling-evidence
+        --require-job-execution-foundation
+        --require-job-execution-topology-policy
+        --require-job-execution-work-stealing
+        --require-job-execution-placement-policy
+        --require-windows-cpu-set-worker-placement
+        --require-windows-cpu-set-smt-worker-placement
+        --require-simd-dispatch-policy
+    )
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_PACKAGE_SMOKE_ARGS
+        --smoke
+        --require-config
+        runtime/sample_desktop_runtime_game.config
+        --require-scene-package
+        runtime/sample_desktop_runtime_game.geindex
+        --require-environment-texture-asset-pipeline-package
+        --require-environment-texture-asset-pipeline-d3d12-upload
+        --require-environment-preset-library-package
+        --require-d3d12-scene-shaders
+        --require-d3d12-renderer
+        --require-scene-gpu-bindings
+        --require-postprocess
+        --require-postprocess-depth-input
+        --require-d3d12-postprocess-evidence
+        --require-directional-shadow
+        --require-directional-shadow-filtering
+        --require-d3d12-shadow-cascade-policy
+        --require-lighting-shadow-policy
+        --require-scene-scale-policy
+        --require-d3d12-instanced-draw-evidence
+        --require-gpu-memory-policy
+        --require-memory-diagnostics
+        --require-d3d12-gpu-memory-evidence
+        --require-debug-profiling-policy
+        --require-d3d12-debug-profiling-evidence
+        --require-job-scheduling-evidence
+        --require-job-execution-foundation
+        --require-job-execution-topology-policy
+        --require-job-execution-work-stealing
+        --require-job-execution-placement-policy
+        --require-windows-cpu-set-worker-placement
+        --require-windows-cpu-set-smt-worker-placement
+        --require-simd-dispatch-policy
+        # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
+        # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence --require-simd-dispatch-policy
+        --require-renderer-quality-gates
+        --require-framegraph-multiqueue-evidence
+        --require-native-ui-overlay
+        --require-native-ui-textured-sprite-atlas
+        --require-d3d12-gpu-skinning-evidence
+        --require-quaternion-animation
+    )
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_FLAGS REQUIRES_D3D12_SHADERS)
+    if(UNIX AND NOT APPLE)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SOURCES sample_desktop_runtime_game/linux_main.cpp)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_HOST_BACKEND linux)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SMOKE_ARGS
             --smoke
-            --require-job-scheduling-evidence
-            --require-job-execution-foundation
-            --require-job-execution-topology-policy
-            --require-job-execution-work-stealing
-            --require-job-execution-placement-policy
-            --require-windows-cpu-set-worker-placement
-            --require-windows-cpu-set-smt-worker-placement
-            --require-simd-dispatch-policy
-        PACKAGE_SMOKE_ARGS
+        )
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
             runtime/sample_desktop_runtime_game.config
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
-            --require-environment-texture-asset-pipeline-package
-            --require-environment-texture-asset-pipeline-d3d12-upload
-            --require-environment-preset-library-package
-            --require-d3d12-scene-shaders
-            --require-d3d12-renderer
-            --require-scene-gpu-bindings
-            --require-postprocess
-            --require-postprocess-depth-input
-            --require-d3d12-postprocess-evidence
-            --require-directional-shadow
-            --require-directional-shadow-filtering
-            --require-d3d12-shadow-cascade-policy
-            --require-lighting-shadow-policy
-            --require-scene-scale-policy
-            --require-d3d12-instanced-draw-evidence
-            --require-gpu-memory-policy
-            --require-memory-diagnostics
-            --require-d3d12-gpu-memory-evidence
-            --require-debug-profiling-policy
-            --require-d3d12-debug-profiling-evidence
-            --require-job-scheduling-evidence
-            --require-job-execution-foundation
-            --require-job-execution-topology-policy
-            --require-job-execution-work-stealing
-            --require-job-execution-placement-policy
-            --require-windows-cpu-set-worker-placement
-            --require-windows-cpu-set-smt-worker-placement
-            --require-simd-dispatch-policy
-            # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
-            # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence --require-simd-dispatch-policy
-            --require-renderer-quality-gates
-            --require-framegraph-multiqueue-evidence
-            --require-native-ui-overlay
-            --require-native-ui-textured-sprite-atlas
-            --require-d3d12-gpu-skinning-evidence
-            --require-quaternion-animation
-        REQUIRES_D3D12_SHADERS
+            --require-linux-vulkan-presentation-smoke
+            --require-linux-vulkan-readback
+            --require-linux-vulkan-validation-log
+        )
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_FLAGS REQUIRES_VULKAN_SHADERS)
+    endif()
+
+    MK_add_desktop_runtime_game(sample_desktop_runtime_game
+        SOURCES
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SOURCES}
+        GAME_MANIFEST
+            games/sample_desktop_runtime_game/game.agent.json
+        HOST_BACKEND
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_HOST_BACKEND}
+        SMOKE_ARGS
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SMOKE_ARGS}
+        PACKAGE_SMOKE_ARGS
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PACKAGE_SMOKE_ARGS}
+        ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_FLAGS}
         PACKAGE_FILES_FROM_MANIFEST
     )
-    target_link_libraries(sample_desktop_runtime_game
-        PRIVATE
-            MK_core
-            MK_animation
-            MK_audio
-            MK_environment
-            MK_runtime
-            MK_runtime_rhi
-            MK_runtime_scene
-            MK_rhi_d3d12
-            MK_rhi_metal
-            MK_rhi_vulkan
-            MK_scene
-            MK_scene_renderer
-            MK_ui
-            MK_ui_renderer
-    )
+    if(WIN32)
+        target_link_libraries(sample_desktop_runtime_game
+            PRIVATE
+                MK_core
+                MK_animation
+                MK_audio
+                MK_environment
+                MK_runtime
+                MK_runtime_rhi
+                MK_runtime_scene
+                MK_rhi_d3d12
+                MK_rhi_metal
+                MK_rhi_vulkan
+                MK_scene
+                MK_scene_renderer
+                MK_ui
+                MK_ui_renderer
+        )
+    endif()
 
+    if(WIN32)
     MK_add_desktop_runtime_game(sample_2d_desktop_runtime_package
         SOURCES
             sample_2d_desktop_runtime_package/main.cpp
@@ -1901,6 +1944,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 endif()
             endif()
         endif()
+    endif()
     endif()
     set_property(TARGET sample_desktop_runtime_game PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
         "shaders/sample_desktop_runtime_game_scene.vs.dxil;shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil;shaders/sample_desktop_runtime_game_scene.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.dxil;shaders/sample_desktop_runtime_game_postprocess.vs.dxil;shaders/sample_desktop_runtime_game_postprocess.ps.dxil;shaders/sample_desktop_runtime_game_environment_fog.ps.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.dxil;shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.dxil;shaders/sample_desktop_runtime_game_environment_ibl_sample.ps.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.vs.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.ps.dxil;shaders/sample_desktop_runtime_game_cloud_layer.vs.dxil;shaders/sample_desktop_runtime_game_cloud_layer.ps.dxil;shaders/sample_desktop_runtime_game_precipitation.vs.dxil;shaders/sample_desktop_runtime_game_precipitation.ps.dxil;shaders/sample_desktop_runtime_game_shadow.vs.dxil;shaders/sample_desktop_runtime_game_shadow.ps.dxil;shaders/sample_desktop_runtime_game_ui_overlay.vs.dxil;shaders/sample_desktop_runtime_game_ui_overlay.ps.dxil"
@@ -2565,7 +2609,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     endif()
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_package
         SOURCES
             sample_generated_desktop_runtime_package/main.cpp
@@ -2585,7 +2629,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_cooked_scene_package
         SOURCES
             sample_generated_desktop_runtime_cooked_scene_package/main.cpp
@@ -2615,7 +2659,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_material_shader_package
         SOURCES
             sample_generated_desktop_runtime_material_shader_package/main.cpp
@@ -2659,7 +2703,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     # Vulkan strict package smoke can use --require-vulkan-scene-shaders with -RequireVulkanShaders.
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_3d_package
         SOURCES
             sample_generated_desktop_runtime_3d_package/main.cpp
