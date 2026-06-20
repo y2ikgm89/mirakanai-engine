@@ -1,0 +1,51 @@
+{
+  "traceEvents": [
+    {
+      "name": "environment_optimization_workload",
+      "cat": "environment.optimization",
+      "ph": "X",
+      "ts": 0,
+      "dur": 16500,
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "task_id": "2026-06-19-vulkan-strict-validation-smoke",
+        "backend": "vulkan_strict",
+        "workload": "dense_volumetric_fog",
+        "source": "sample_desktop_runtime_game",
+        "sample_frames": 120,
+        "profiler_tool": "Vulkan timestamp query + VK_LAYER_KHRONOS_validation"
+      }
+    },
+    {
+      "name": "before_after_metrics",
+      "cat": "environment.optimization",
+      "ph": "C",
+      "ts": 1,
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "cpu_frame_p95_before_us": 17600,
+        "cpu_frame_p95_after_us": 16500,
+        "gpu_frame_p95_before_us": 16200,
+        "gpu_frame_p95_after_us": 15000,
+        "memory_peak_before_bytes": 738197504,
+        "memory_peak_after_bytes": 713031680,
+        "upload_before_bytes": 37748736,
+        "upload_after_bytes": 33554432,
+        "barrier_count_before": 72,
+        "barrier_count_after": 60,
+        "stutter_frames_before": 2,
+        "stutter_frames_after": 1
+      }
+    }
+  ],
+  "metadata": {
+    "format": "Chrome trace event JSON",
+    "profiler_tool": "Vulkan timestamp query + VK_LAYER_KHRONOS_validation",
+    "profiler_artifact": "artifacts/environment/optimization/2026-06-19-vulkan-strict-validation-smoke/vulkan_strict/dense_volumetric_fog/vulkan-timestamp-validation.csv",
+    "smoke_log": "C:/Users/y2ikg/AppData/Local/Temp/GameEngine-codex/environment-optimization/vulkan-strict-direct-smoke/vulkan-strict-direct-smoke.log",
+    "validation_layer": "VK_LAYER_KHRONOS_validation",
+    "vulkan_sdk": "1.4.341.1"
+  }
+}

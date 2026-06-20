@@ -700,6 +700,38 @@ Assert-ContainsAll $linuxJob @(
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml linux job"
 
+$linuxVulkanJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-vulkan" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $linuxVulkanJob @(
+    "name: Linux Vulkan Host Evidence",
+    "needs: changes",
+    "if: needs.changes.outputs.linux == 'true'",
+    "runs-on: ubuntu-latest",
+    "timeout-minutes: 20",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Install Linux Vulkan diagnostic packages",
+    "mesa-vulkan-drivers",
+    "spirv-tools",
+    "vulkan-tools",
+    "vulkan-validationlayers",
+    "command -v vulkaninfo",
+    "command -v spirv-val",
+    "Capture Vulkan host summaries",
+    "vulkaninfo --summary",
+    "vulkaninfo --json",
+    "Validate Linux Vulkan host evidence gate",
+    "./tools/validate-linux-vulkan-runtime-host.ps1",
+    "Upload Linux Vulkan host evidence",
+    'if: ${{ always() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: linux-vulkan-host-evidence",
+    "retention-days: 14",
+    "compression-level: 0",
+    "include-hidden-files: false",
+    "artifacts/environment/platform/linux-vulkan-host/**",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml linux-vulkan job"
+
 $linuxCoverageJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-coverage" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $linuxCoverageJob @(
     "name: Linux Coverage",
@@ -820,9 +852,13 @@ Assert-ContainsAll $macosJob @(
     "brew install ccache",
     "Prepare ccache",
     "ccache --zero-stats",
-    "Environment Metal aggregate host evidence recipe",
+    "Environment Metal aggregate host evidence recipe and optimization artifacts",
     '$jobs = [int](& sysctl -n hw.logicalcpu)',
-    "./tools/validate-environment-metal-host-aggregate.ps1 -Jobs `$jobs",
+    "./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs `$jobs -RequireReady",
+    "Upload Metal optimization artifacts",
+    "name: metal-host-optimization-artifacts",
+    "compression-level: 0",
+    "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**",
     "cmake --preset ci-macos-appleclang",
     'cmake --build --preset ci-macos-appleclang --parallel "$(sysctl -n hw.logicalcpu)"',
     'ctest --preset ci-macos-appleclang --output-on-failure --parallel "$(sysctl -n hw.logicalcpu)"',
@@ -940,6 +976,7 @@ Assert-ContainsAll $prGateJob @(
     "- agent-static",
     "- windows",
     "- linux",
+    "- linux-vulkan",
     "- windows-cpp23",
     "- linux-coverage",
     "- linux-sanitizers",
@@ -1031,6 +1068,7 @@ Assert-CheckoutRetryContract -Text $agentStaticJob -Label ".github/workflows/val
 Assert-CheckoutRetryContract -Text $windowsJob -Label ".github/workflows/validate.yml windows checkout retry"
 Assert-CheckoutRetryContract -Text $windowsCpp23Job -Label ".github/workflows/validate.yml windows-cpp23 checkout retry"
 Assert-CheckoutRetryContract -Text $linuxJob -Label ".github/workflows/validate.yml linux checkout retry"
+Assert-CheckoutRetryContract -Text $linuxVulkanJob -Label ".github/workflows/validate.yml linux-vulkan checkout retry"
 Assert-CheckoutRetryContract -Text $linuxCoverageJob -Label ".github/workflows/validate.yml linux-coverage checkout retry"
 Assert-CheckoutRetryContract -Text $sanitizerJob -Label ".github/workflows/validate.yml linux-sanitizers checkout retry"
 Assert-CheckoutRetryContract -Text $staticAnalysisJob -Label ".github/workflows/validate.yml static-analysis checkout retry"
@@ -1048,6 +1086,7 @@ Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/valida
 Assert-MatchesText $validateWorkflow "^  windows-cpp23:\s*$" ".github/workflows/validate.yml windows-cpp23 job id"
 Assert-MatchesText $validateWorkflow "^  agent-static:\s*$" ".github/workflows/validate.yml agent-static job id"
 Assert-MatchesText $validateWorkflow "^  linux:\s*$" ".github/workflows/validate.yml linux job id"
+Assert-MatchesText $validateWorkflow "^  linux-vulkan:\s*$" ".github/workflows/validate.yml linux-vulkan job id"
 Assert-MatchesText $validateWorkflow "^  linux-coverage:\s*$" ".github/workflows/validate.yml linux-coverage job id"
 Assert-MatchesText $validateWorkflow "^  linux-sanitizers:\s*$" ".github/workflows/validate.yml linux-sanitizers job id"
 Assert-DoesNotContainText $validateWorkflow "command -v ninja-build" ".github/workflows/validate.yml command probes"

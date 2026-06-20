@@ -2107,6 +2107,7 @@ struct EnvironmentPlatformReadinessSmokeEvidence {
 
 struct EnvironmentOptimizationMeasurementSmokeEvidence {
     bool requested{false};
+    mirakana::rhi::BackendKind backend{mirakana::rhi::BackendKind::null};
     mirakana::EnvironmentOptimizationMeasurementPlan plan{};
 };
 
@@ -2325,6 +2326,21 @@ environment_optimization_measurement_status_name(mirakana::EnvironmentOptimizati
         return "invalid_request";
     }
     return "unknown";
+}
+
+[[nodiscard]] std::string_view
+environment_optimization_measurement_backend_label(mirakana::rhi::BackendKind backend) noexcept {
+    switch (backend) {
+    case mirakana::rhi::BackendKind::d3d12:
+        return "d3d12";
+    case mirakana::rhi::BackendKind::vulkan:
+        return "vulkan_strict";
+    case mirakana::rhi::BackendKind::metal:
+        return "metal_apple_host";
+    case mirakana::rhi::BackendKind::null:
+        break;
+    }
+    return "null";
 }
 
 [[nodiscard]] std::string_view
@@ -3904,16 +3920,59 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     return nullptr;
 }
 
+[[nodiscard]] bool
+environment_optimization_measurement_row_ready(const mirakana::EnvironmentOptimizationMeasurementRow& row,
+                                               mirakana::rhi::BackendKind backend) noexcept {
+    return row.backend == backend && row.status == mirakana::EnvironmentOptimizationRowStatus::ready &&
+           row.before_after_ready && row.host_tool_versions_ready && row.profiler_artifact_ready &&
+           row.repository_counters_ready && row.timestamp_query_evidence_ready && row.regression_budget_ready &&
+           row.diagnostic_count == 0U && !row.broad_optimization_claimed && !row.native_handle_access &&
+           !row.inferred_from_other_backend;
+}
+
+[[nodiscard]] bool all_environment_optimization_measurement_rows_ready_for_backend(
+    const mirakana::EnvironmentOptimizationMeasurementPlan& plan, mirakana::rhi::BackendKind backend) noexcept {
+    return plan.rows.size() == 7U && std::ranges::all_of(plan.rows, [backend](const auto& row) {
+               return environment_optimization_measurement_row_ready(row, backend);
+           });
+}
+
 [[nodiscard]] EnvironmentOptimizationMeasurementSmokeEvidence build_environment_optimization_measurement_smoke_evidence(
-    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate) {
+    const DesktopRuntimeGameOptions& options, const EnvironmentReadyAggregateEvidence& environment_ready_aggregate,
+    const EnvironmentVulkanStrictAggregateEvidence& environment_vulkan_strict_aggregate) {
     EnvironmentOptimizationMeasurementSmokeEvidence evidence;
     evidence.requested = options.require_environment_optimization_measurement;
     if (!evidence.requested) {
         return evidence;
     }
 
+    const bool selected_vulkan_backend =
+        options.require_vulkan_renderer || options.require_environment_vulkan_strict_aggregate;
+    const auto selected_backend =
+        selected_vulkan_backend ? mirakana::rhi::BackendKind::vulkan : mirakana::rhi::BackendKind::d3d12;
+    evidence.backend = selected_backend;
+    const auto backend_label = environment_optimization_measurement_backend_label(selected_backend);
     const bool selected_d3d12_ready =
         environment_ready_aggregate.ready && environment_ready_aggregate.d3d12_primary_ready;
+    const bool selected_backend_ready =
+        selected_vulkan_backend ? environment_vulkan_strict_aggregate.ready : selected_d3d12_ready;
+    const std::string_view host_os =
+        selected_vulkan_backend ? "Windows Vulkan strict package host" : "Windows D3D12 package host";
+    const std::string_view gpu_name =
+        selected_vulkan_backend ? "selected-vulkan-adapter" : "selected-d3d12-adapter-or-warp";
+    const std::string_view profiler_tool =
+        selected_vulkan_backend ? "VulkanTimestampQuery+VK_LAYER_KHRONOS_validation+repository-counters-contract"
+                                : "WPR+PIX+D3D12TimestampQuery+repository-counters-contract";
+    const std::string_view profiler_tool_version = selected_vulkan_backend
+                                                       ? "VulkanSDK-1.4.341+SPIR-V-Tools+VK_LAYER_KHRONOS_validation"
+                                                       : "WindowsSDK-10.0.26100+PIX-2603.25";
+    const auto artifact_id = [backend_label](std::string_view workload_slug) {
+        std::string id{"environment-optimization-measurement/"};
+        id.append(workload_slug);
+        id.push_back('-');
+        id.append(backend_label);
+        return id;
+    };
     mirakana::EnvironmentOptimizationMeasurementRequest request{
         .expected_package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .expected_quality_tier = "high",
@@ -3925,15 +3984,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "preset_pack_flythrough",
         .workload = mirakana::EnvironmentOptimizationWorkload::preset_pack_flythrough,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/preset-pack-flythrough-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("preset-pack-flythrough"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -3948,7 +4007,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -3957,15 +4016,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "storm_precipitation",
         .workload = mirakana::EnvironmentOptimizationWorkload::storm_precipitation,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/storm-precipitation-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("storm-precipitation"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -3980,7 +4039,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -3989,15 +4048,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "dense_volumetric_fog",
         .workload = mirakana::EnvironmentOptimizationWorkload::dense_volumetric_fog,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/dense-volumetric-fog-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("dense-volumetric-fog"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -4012,7 +4071,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -4021,15 +4080,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "volumetric_cloud_sunset",
         .workload = mirakana::EnvironmentOptimizationWorkload::volumetric_cloud_sunset,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/volumetric-cloud-sunset-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("volumetric-cloud-sunset"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -4044,7 +4103,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -4053,15 +4112,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "snowfield_material_weathering",
         .workload = mirakana::EnvironmentOptimizationWorkload::snowfield_material_weathering,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/snowfield-material-weathering-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("snowfield-material-weathering"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -4076,7 +4135,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -4085,15 +4144,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "weather_simulation_stress",
         .workload = mirakana::EnvironmentOptimizationWorkload::weather_simulation_stress,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/weather-simulation-stress-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("weather-simulation-stress"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -4108,7 +4167,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -4117,15 +4176,15 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
     request.rows.push_back(mirakana::EnvironmentOptimizationMeasurementRow{
         .workload_id = "asset_library_cold_load",
         .workload = mirakana::EnvironmentOptimizationWorkload::asset_library_cold_load,
-        .backend = mirakana::rhi::BackendKind::d3d12,
+        .backend = selected_backend,
         .status = mirakana::EnvironmentOptimizationRowStatus::ready,
-        .host_os = "Windows D3D12 package host",
+        .host_os = std::string{host_os},
         .cpu_name = "host-cpu-recorded-by-package-lane",
-        .gpu_name = "selected-d3d12-adapter-or-warp",
+        .gpu_name = std::string{gpu_name},
         .gpu_driver_version = "host-driver-recorded-by-package-lane",
-        .profiler_tool = "WPR+PIX+D3D12TimestampQuery+repository-counters-contract",
-        .profiler_tool_version = "WindowsSDK-10.0.26100+PIX-2603.25",
-        .profiler_artifact_id = "environment-optimization-measurement/asset-library-cold-load-d3d12",
+        .profiler_tool = std::string{profiler_tool},
+        .profiler_tool_version = std::string{profiler_tool_version},
+        .profiler_artifact_id = artifact_id("asset-library-cold-load"),
         .package_revision = "sample_desktop_runtime_game:environment-commercial-v1",
         .quality_tier = "high",
         .resolution = "1920x1080",
@@ -4140,7 +4199,7 @@ find_environment_optimization_row(const mirakana::EnvironmentOptimizationMeasure
         .repository_counters_ready = true,
         .timestamp_query_evidence_ready = true,
         .regression_budget_ready = true,
-        .diagnostic_count = selected_d3d12_ready ? 0U : 1U,
+        .diagnostic_count = selected_backend_ready ? 0U : 1U,
         .broad_optimization_claimed = false,
         .native_handle_access = false,
         .inferred_from_other_backend = false,
@@ -5325,6 +5384,17 @@ void enable_environment_platform_windows_vulkan_evidence_requirements(DesktopRun
 
 void enable_environment_optimization_measurement_requirements(DesktopRuntimeGameOptions& options) noexcept {
     options.require_environment_optimization_measurement = true;
+}
+
+void complete_environment_optimization_measurement_requirements(DesktopRuntimeGameOptions& options) noexcept {
+    if (!options.require_environment_optimization_measurement) {
+        return;
+    }
+    if (options.require_vulkan_renderer || options.require_environment_vulkan_strict_aggregate ||
+        options.require_vulkan_debug_profiling_evidence) {
+        enable_environment_vulkan_strict_aggregate_requirements(options);
+        return;
+    }
     enable_environment_ready_aggregate_requirements(options);
 }
 
@@ -6026,6 +6096,8 @@ void print_usage() {
         std::cerr << "unknown argument: " << arg << '\n';
         return false;
     }
+
+    complete_environment_optimization_measurement_requirements(options);
 
     if (options.require_d3d12_renderer && options.require_vulkan_renderer) {
         std::cerr << "--require-d3d12-renderer and --require-vulkan-renderer are mutually exclusive\n";
@@ -8210,8 +8282,8 @@ int main(int argc, char** argv) {
         options, environment_ready_aggregate, environment_vulkan_strict_aggregate);
     const auto environment_platform_readiness = build_environment_platform_readiness_smoke_evidence(
         options, environment_ready_aggregate, environment_vulkan_strict_aggregate);
-    const auto environment_optimization_measurement =
-        build_environment_optimization_measurement_smoke_evidence(options, environment_ready_aggregate);
+    const auto environment_optimization_measurement = build_environment_optimization_measurement_smoke_evidence(
+        options, environment_ready_aggregate, environment_vulkan_strict_aggregate);
     const auto environment_weather_simulation_package = build_environment_weather_simulation_package_evidence(
         options, std::span<const std::uint32_t>{environment_weather_solver_vulkan_spirv});
     const auto environment_artist_workflow_package = build_environment_artist_workflow_package_evidence(
@@ -10149,50 +10221,53 @@ int main(int argc, char** argv) {
                   << " environment_optimization_measurement_required_workloads=" << plan.required_workload_count
                   << " environment_optimization_measurement_measured_workloads=" << plan.measured_workload_count
                   << " environment_optimization_measurement_before_after_pairs=" << plan.before_after_pair_count
-                  << " environment_optimization_measurement_backend=d3d12"
+                  << " environment_optimization_measurement_backend="
+                  << environment_optimization_measurement_backend_label(environment_optimization_measurement.backend)
                   << " environment_optimization_measurement_profile=preset_pack_flythrough"
                   << " environment_optimization_measurement_profiles=preset_pack_flythrough,storm_precipitation,dense_"
                      "volumetric_fog,volumetric_cloud_sunset,snowfield_material_weathering,weather_simulation_stress,"
                      "asset_library_cold_load";
         if (preset_row != nullptr) {
             const auto& row = *preset_row;
-            std::cout << " environment_optimization_preset_pack_flythrough_ready="
-                      << (plan.d3d12_preset_pack_flythrough_measured ? 1 : 0)
-                      << " environment_optimization_measurement_warmup_frames=" << row.warmup_frames
-                      << " environment_optimization_measurement_sample_frames=" << row.sample_frames
-                      << " environment_optimization_measurement_cpu_frame_p95_before_us=" << row.before.cpu_frame_p95_us
-                      << " environment_optimization_measurement_cpu_frame_p95_after_us=" << row.after.cpu_frame_p95_us
-                      << " environment_optimization_measurement_gpu_frame_p95_before_us=" << row.before.gpu_frame_p95_us
-                      << " environment_optimization_measurement_gpu_frame_p95_after_us=" << row.after.gpu_frame_p95_us
-                      << " environment_optimization_measurement_memory_peak_before_bytes="
-                      << row.before.memory_peak_bytes
-                      << " environment_optimization_measurement_memory_peak_after_bytes=" << row.after.memory_peak_bytes
-                      << " environment_optimization_measurement_transient_gpu_before_bytes="
-                      << row.before.transient_gpu_bytes
-                      << " environment_optimization_measurement_transient_gpu_after_bytes="
-                      << row.after.transient_gpu_bytes
-                      << " environment_optimization_measurement_upload_before_bytes=" << row.before.upload_bytes
-                      << " environment_optimization_measurement_upload_after_bytes=" << row.after.upload_bytes
-                      << " environment_optimization_measurement_draw_count_before=" << row.before.draw_count
-                      << " environment_optimization_measurement_draw_count_after=" << row.after.draw_count
-                      << " environment_optimization_measurement_dispatch_count_before=" << row.before.dispatch_count
-                      << " environment_optimization_measurement_dispatch_count_after=" << row.after.dispatch_count
-                      << " environment_optimization_measurement_barrier_count_before=" << row.before.barrier_count
-                      << " environment_optimization_measurement_barrier_count_after=" << row.after.barrier_count
-                      << " environment_optimization_measurement_texture_residency_before_bytes="
-                      << row.before.texture_residency_bytes
-                      << " environment_optimization_measurement_texture_residency_after_bytes="
-                      << row.after.texture_residency_bytes
-                      << " environment_optimization_measurement_package_load_before_us=" << row.before.package_load_us
-                      << " environment_optimization_measurement_package_load_after_us=" << row.after.package_load_us
-                      << " environment_optimization_measurement_stutter_frames_before=" << row.before.stutter_frames
-                      << " environment_optimization_measurement_stutter_frames_after=" << row.after.stutter_frames;
+            std::cout
+                << " environment_optimization_preset_pack_flythrough_ready="
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
+                << " environment_optimization_measurement_warmup_frames=" << row.warmup_frames
+                << " environment_optimization_measurement_sample_frames=" << row.sample_frames
+                << " environment_optimization_measurement_cpu_frame_p95_before_us=" << row.before.cpu_frame_p95_us
+                << " environment_optimization_measurement_cpu_frame_p95_after_us=" << row.after.cpu_frame_p95_us
+                << " environment_optimization_measurement_gpu_frame_p95_before_us=" << row.before.gpu_frame_p95_us
+                << " environment_optimization_measurement_gpu_frame_p95_after_us=" << row.after.gpu_frame_p95_us
+                << " environment_optimization_measurement_memory_peak_before_bytes=" << row.before.memory_peak_bytes
+                << " environment_optimization_measurement_memory_peak_after_bytes=" << row.after.memory_peak_bytes
+                << " environment_optimization_measurement_transient_gpu_before_bytes=" << row.before.transient_gpu_bytes
+                << " environment_optimization_measurement_transient_gpu_after_bytes=" << row.after.transient_gpu_bytes
+                << " environment_optimization_measurement_upload_before_bytes=" << row.before.upload_bytes
+                << " environment_optimization_measurement_upload_after_bytes=" << row.after.upload_bytes
+                << " environment_optimization_measurement_draw_count_before=" << row.before.draw_count
+                << " environment_optimization_measurement_draw_count_after=" << row.after.draw_count
+                << " environment_optimization_measurement_dispatch_count_before=" << row.before.dispatch_count
+                << " environment_optimization_measurement_dispatch_count_after=" << row.after.dispatch_count
+                << " environment_optimization_measurement_barrier_count_before=" << row.before.barrier_count
+                << " environment_optimization_measurement_barrier_count_after=" << row.after.barrier_count
+                << " environment_optimization_measurement_texture_residency_before_bytes="
+                << row.before.texture_residency_bytes
+                << " environment_optimization_measurement_texture_residency_after_bytes="
+                << row.after.texture_residency_bytes
+                << " environment_optimization_measurement_package_load_before_us=" << row.before.package_load_us
+                << " environment_optimization_measurement_package_load_after_us=" << row.after.package_load_us
+                << " environment_optimization_measurement_stutter_frames_before=" << row.before.stutter_frames
+                << " environment_optimization_measurement_stutter_frames_after=" << row.after.stutter_frames;
         }
         if (storm_row != nullptr) {
             const auto& row = *storm_row;
             std::cout
                 << " environment_optimization_storm_precipitation_ready="
-                << (plan.d3d12_storm_precipitation_measured ? 1 : 0)
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
                 << " environment_optimization_storm_precipitation_warmup_frames=" << row.warmup_frames
                 << " environment_optimization_storm_precipitation_sample_frames=" << row.sample_frames
                 << " environment_optimization_storm_precipitation_cpu_frame_p95_before_us="
@@ -10230,7 +10305,9 @@ int main(int argc, char** argv) {
             const auto& row = *dense_fog_row;
             std::cout
                 << " environment_optimization_dense_volumetric_fog_ready="
-                << (plan.d3d12_dense_volumetric_fog_measured ? 1 : 0)
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
                 << " environment_optimization_dense_volumetric_fog_warmup_frames=" << row.warmup_frames
                 << " environment_optimization_dense_volumetric_fog_sample_frames=" << row.sample_frames
                 << " environment_optimization_dense_volumetric_fog_cpu_frame_p95_before_us="
@@ -10271,7 +10348,9 @@ int main(int argc, char** argv) {
             const auto& row = *cloud_sunset_row;
             std::cout
                 << " environment_optimization_volumetric_cloud_sunset_ready="
-                << (plan.d3d12_volumetric_cloud_sunset_measured ? 1 : 0)
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
                 << " environment_optimization_volumetric_cloud_sunset_warmup_frames=" << row.warmup_frames
                 << " environment_optimization_volumetric_cloud_sunset_sample_frames=" << row.sample_frames
                 << " environment_optimization_volumetric_cloud_sunset_cpu_frame_p95_before_us="
@@ -10314,60 +10393,63 @@ int main(int argc, char** argv) {
         }
         if (snowfield_row != nullptr) {
             const auto& row = *snowfield_row;
-            std::cout << " environment_optimization_snowfield_material_weathering_ready="
-                      << (plan.d3d12_snowfield_material_weathering_measured ? 1 : 0)
-                      << " environment_optimization_snowfield_material_weathering_warmup_frames=" << row.warmup_frames
-                      << " environment_optimization_snowfield_material_weathering_sample_frames=" << row.sample_frames
-                      << " environment_optimization_snowfield_material_weathering_cpu_frame_p95_before_us="
-                      << row.before.cpu_frame_p95_us
-                      << " environment_optimization_snowfield_material_weathering_cpu_frame_p95_after_us="
-                      << row.after.cpu_frame_p95_us
-                      << " environment_optimization_snowfield_material_weathering_gpu_frame_p95_before_us="
-                      << row.before.gpu_frame_p95_us
-                      << " environment_optimization_snowfield_material_weathering_gpu_frame_p95_after_us="
-                      << row.after.gpu_frame_p95_us
-                      << " environment_optimization_snowfield_material_weathering_memory_peak_before_bytes="
-                      << row.before.memory_peak_bytes
-                      << " environment_optimization_snowfield_material_weathering_memory_peak_after_bytes="
-                      << row.after.memory_peak_bytes
-                      << " environment_optimization_snowfield_material_weathering_transient_gpu_before_bytes="
-                      << row.before.transient_gpu_bytes
-                      << " environment_optimization_snowfield_material_weathering_transient_gpu_after_bytes="
-                      << row.after.transient_gpu_bytes
-                      << " environment_optimization_snowfield_material_weathering_upload_before_bytes="
-                      << row.before.upload_bytes
-                      << " environment_optimization_snowfield_material_weathering_upload_after_bytes="
-                      << row.after.upload_bytes
-                      << " environment_optimization_snowfield_material_weathering_draw_count_before="
-                      << row.before.draw_count
-                      << " environment_optimization_snowfield_material_weathering_draw_count_after="
-                      << row.after.draw_count
-                      << " environment_optimization_snowfield_material_weathering_dispatch_count_before="
-                      << row.before.dispatch_count
-                      << " environment_optimization_snowfield_material_weathering_dispatch_count_after="
-                      << row.after.dispatch_count
-                      << " environment_optimization_snowfield_material_weathering_barrier_count_before="
-                      << row.before.barrier_count
-                      << " environment_optimization_snowfield_material_weathering_barrier_count_after="
-                      << row.after.barrier_count
-                      << " environment_optimization_snowfield_material_weathering_texture_residency_before_bytes="
-                      << row.before.texture_residency_bytes
-                      << " environment_optimization_snowfield_material_weathering_texture_residency_after_bytes="
-                      << row.after.texture_residency_bytes
-                      << " environment_optimization_snowfield_material_weathering_package_load_before_us="
-                      << row.before.package_load_us
-                      << " environment_optimization_snowfield_material_weathering_package_load_after_us="
-                      << row.after.package_load_us
-                      << " environment_optimization_snowfield_material_weathering_stutter_frames_before="
-                      << row.before.stutter_frames
-                      << " environment_optimization_snowfield_material_weathering_stutter_frames_after="
-                      << row.after.stutter_frames;
+            std::cout
+                << " environment_optimization_snowfield_material_weathering_ready="
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
+                << " environment_optimization_snowfield_material_weathering_warmup_frames=" << row.warmup_frames
+                << " environment_optimization_snowfield_material_weathering_sample_frames=" << row.sample_frames
+                << " environment_optimization_snowfield_material_weathering_cpu_frame_p95_before_us="
+                << row.before.cpu_frame_p95_us
+                << " environment_optimization_snowfield_material_weathering_cpu_frame_p95_after_us="
+                << row.after.cpu_frame_p95_us
+                << " environment_optimization_snowfield_material_weathering_gpu_frame_p95_before_us="
+                << row.before.gpu_frame_p95_us
+                << " environment_optimization_snowfield_material_weathering_gpu_frame_p95_after_us="
+                << row.after.gpu_frame_p95_us
+                << " environment_optimization_snowfield_material_weathering_memory_peak_before_bytes="
+                << row.before.memory_peak_bytes
+                << " environment_optimization_snowfield_material_weathering_memory_peak_after_bytes="
+                << row.after.memory_peak_bytes
+                << " environment_optimization_snowfield_material_weathering_transient_gpu_before_bytes="
+                << row.before.transient_gpu_bytes
+                << " environment_optimization_snowfield_material_weathering_transient_gpu_after_bytes="
+                << row.after.transient_gpu_bytes
+                << " environment_optimization_snowfield_material_weathering_upload_before_bytes="
+                << row.before.upload_bytes
+                << " environment_optimization_snowfield_material_weathering_upload_after_bytes="
+                << row.after.upload_bytes
+                << " environment_optimization_snowfield_material_weathering_draw_count_before=" << row.before.draw_count
+                << " environment_optimization_snowfield_material_weathering_draw_count_after=" << row.after.draw_count
+                << " environment_optimization_snowfield_material_weathering_dispatch_count_before="
+                << row.before.dispatch_count
+                << " environment_optimization_snowfield_material_weathering_dispatch_count_after="
+                << row.after.dispatch_count
+                << " environment_optimization_snowfield_material_weathering_barrier_count_before="
+                << row.before.barrier_count
+                << " environment_optimization_snowfield_material_weathering_barrier_count_after="
+                << row.after.barrier_count
+                << " environment_optimization_snowfield_material_weathering_texture_residency_before_bytes="
+                << row.before.texture_residency_bytes
+                << " environment_optimization_snowfield_material_weathering_texture_residency_after_bytes="
+                << row.after.texture_residency_bytes
+                << " environment_optimization_snowfield_material_weathering_package_load_before_us="
+                << row.before.package_load_us
+                << " environment_optimization_snowfield_material_weathering_package_load_after_us="
+                << row.after.package_load_us
+                << " environment_optimization_snowfield_material_weathering_stutter_frames_before="
+                << row.before.stutter_frames
+                << " environment_optimization_snowfield_material_weathering_stutter_frames_after="
+                << row.after.stutter_frames;
         }
         if (weather_stress_row != nullptr) {
             const auto& row = *weather_stress_row;
             std::cout
                 << " environment_optimization_weather_simulation_stress_ready="
-                << (plan.d3d12_weather_simulation_stress_measured ? 1 : 0)
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
                 << " environment_optimization_weather_simulation_stress_warmup_frames=" << row.warmup_frames
                 << " environment_optimization_weather_simulation_stress_sample_frames=" << row.sample_frames
                 << " environment_optimization_weather_simulation_stress_cpu_frame_p95_before_us="
@@ -10414,7 +10496,9 @@ int main(int argc, char** argv) {
             const auto& row = *asset_cold_load_row;
             std::cout
                 << " environment_optimization_asset_library_cold_load_ready="
-                << (plan.d3d12_asset_library_cold_load_measured ? 1 : 0)
+                << (environment_optimization_measurement_row_ready(row, environment_optimization_measurement.backend)
+                        ? 1
+                        : 0)
                 << " environment_optimization_asset_library_cold_load_warmup_frames=" << row.warmup_frames
                 << " environment_optimization_asset_library_cold_load_sample_frames=" << row.sample_frames
                 << " environment_optimization_asset_library_cold_load_cpu_frame_p95_before_us="
@@ -10884,19 +10968,14 @@ int main(int argc, char** argv) {
             (environment_optimization_measurement.plan.status !=
                  mirakana::EnvironmentOptimizationMeasurementStatus::host_evidence_required ||
              !environment_optimization_measurement.plan.diagnostics.empty() ||
+             !all_environment_optimization_measurement_rows_ready_for_backend(
+                 environment_optimization_measurement.plan, environment_optimization_measurement.backend) ||
              environment_optimization_measurement.plan.row_count != 7U ||
              environment_optimization_measurement.plan.required_workload_count != 7U ||
              environment_optimization_measurement.plan.measured_workload_count != 7U ||
              environment_optimization_measurement.plan.before_after_pair_count != 7U ||
              environment_optimization_measurement.plan.regression_budget_row_count != 7U ||
              environment_optimization_measurement.plan.over_budget_row_count != 0U ||
-             !environment_optimization_measurement.plan.d3d12_preset_pack_flythrough_measured ||
-             !environment_optimization_measurement.plan.d3d12_storm_precipitation_measured ||
-             !environment_optimization_measurement.plan.d3d12_dense_volumetric_fog_measured ||
-             !environment_optimization_measurement.plan.d3d12_volumetric_cloud_sunset_measured ||
-             !environment_optimization_measurement.plan.d3d12_snowfield_material_weathering_measured ||
-             !environment_optimization_measurement.plan.d3d12_weather_simulation_stress_measured ||
-             !environment_optimization_measurement.plan.d3d12_asset_library_cold_load_measured ||
              environment_optimization_measurement.plan.environment_backend_parity_ready ||
              environment_optimization_measurement.plan.environment_broad_optimization_ready ||
              environment_optimization_measurement.plan.exposed_native_handles ||

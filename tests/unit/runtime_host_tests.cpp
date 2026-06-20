@@ -14,6 +14,7 @@
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime_host/desktop_runner.hpp"
+#include "mirakana/runtime_host/linux/linux_desktop_game_host.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
 
 #include <cmath>
@@ -434,7 +435,7 @@ MK_TEST("desktop game runner resizes an rhi swapchain renderer to the window ext
         .format = mirakana::rhi::Format::rgba8_unorm,
         .buffer_count = 2,
         .vsync = true,
-        .surface = mirakana::rhi::SurfaceHandle{1},
+        .surface = mirakana::rhi::SurfaceHandle{.value = 1},
     });
     const auto pipeline = create_test_pipeline(device);
     mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
@@ -605,6 +606,89 @@ MK_TEST("desktop shader bytecode loader reports filesystem read failures") {
     MK_REQUIRE(mirakana::desktop_shader_bytecode_load_status_name(loaded.status) == std::string_view{"read_failed"});
     MK_REQUIRE(loaded.diagnostic.find("runtime_shell.vs.dxil") != std::string::npos);
     MK_REQUIRE(loaded.diagnostic.find("read denied") != std::string::npos);
+}
+
+MK_TEST("linux desktop host contract stays value-only and host gated off linux") {
+    auto invalid = mirakana::evaluate_linux_desktop_host_request(mirakana::LinuxDesktopHostRequest{
+        .title = "",
+        .extent = mirakana::WindowExtent{.width = 1280, .height = 720},
+    });
+    MK_REQUIRE(invalid.status == mirakana::LinuxDesktopHostStatus::invalid_request);
+    MK_REQUIRE(mirakana::linux_desktop_host_status_name(invalid.status) == std::string_view{"invalid_request"});
+    MK_REQUIRE(!invalid.ready());
+    MK_REQUIRE(!invalid.native_handle_access);
+
+    const auto report = mirakana::evaluate_linux_desktop_host_request(mirakana::LinuxDesktopHostRequest{
+        .title = "Linux Host",
+        .extent = mirakana::WindowExtent{.width = 1280, .height = 720},
+        .allow_null_fallback = true,
+        .require_vulkan_surface = true,
+    });
+    MK_REQUIRE(!report.native_handle_access);
+    MK_REQUIRE(report.null_renderer_fallback_available);
+#if defined(__linux__)
+    MK_REQUIRE(report.linux_host);
+#else
+    MK_REQUIRE(!report.linux_host);
+    MK_REQUIRE(report.status == mirakana::LinuxDesktopHostStatus::host_gated);
+    MK_REQUIRE(report.diagnostic.find("Linux host") != std::string::npos);
+#endif
+}
+
+MK_TEST("linux desktop vulkan presentation report requires package smoke readback and clean validation log") {
+    const auto missing =
+        mirakana::evaluate_linux_desktop_vulkan_presentation_request(mirakana::LinuxDesktopVulkanPresentationRequest{});
+    MK_REQUIRE(!missing.ready());
+    MK_REQUIRE(missing.status == mirakana::LinuxDesktopVulkanPresentationStatus::host_gated);
+    MK_REQUIRE(!missing.linux_package_smoke_ready);
+    MK_REQUIRE(!missing.linux_vulkan_readback_ready);
+    MK_REQUIRE(!missing.linux_vulkan_validation_log_clean);
+    MK_REQUIRE(!missing.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!missing.native_handle_access);
+
+    auto ready_request = mirakana::LinuxDesktopVulkanPresentationRequest{
+        .linux_host = true,
+        .xcb_window_ready = true,
+        .vulkan_loader_ready = true,
+        .vulkan_xcb_surface_created = true,
+        .surface_support_probed = true,
+        .swapchain_created = true,
+        .frame_acquired = true,
+        .frame_presented = true,
+        .readback_nonzero = true,
+        .validation_log_clean = true,
+    };
+    const auto ready = mirakana::evaluate_linux_desktop_vulkan_presentation_request(ready_request);
+    MK_REQUIRE(ready.ready());
+    MK_REQUIRE(ready.status == mirakana::LinuxDesktopVulkanPresentationStatus::ready);
+    MK_REQUIRE(ready.linux_package_smoke_ready);
+    MK_REQUIRE(ready.linux_vulkan_readback_ready);
+    MK_REQUIRE(ready.linux_vulkan_validation_log_clean);
+    MK_REQUIRE(ready.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!ready.environment_platform_windows_vulkan_inferred);
+    MK_REQUIRE(!ready.native_handle_access);
+
+    ready_request.native_handle_access = true;
+    const auto leaked = mirakana::evaluate_linux_desktop_vulkan_presentation_request(ready_request);
+    MK_REQUIRE(!leaked.ready());
+    MK_REQUIRE(leaked.status == mirakana::LinuxDesktopVulkanPresentationStatus::native_handle_access);
+    MK_REQUIRE(leaked.native_handle_access);
+    MK_REQUIRE(!leaked.environment_platform_linux_vulkan_ready);
+}
+
+MK_TEST("linux desktop vulkan presentation probe is fail closed before host runtime execution") {
+    const auto report =
+        mirakana::probe_linux_desktop_vulkan_presentation(mirakana::LinuxDesktopVulkanPresentationProbeDesc{
+            .execute_runtime_smoke = false,
+        });
+    MK_REQUIRE(!report.ready());
+    MK_REQUIRE(report.status == mirakana::LinuxDesktopVulkanPresentationStatus::host_gated);
+    MK_REQUIRE(!report.linux_package_smoke_ready);
+    MK_REQUIRE(!report.linux_vulkan_readback_ready);
+    MK_REQUIRE(!report.linux_vulkan_validation_log_clean);
+    MK_REQUIRE(!report.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!report.environment_platform_windows_vulkan_inferred);
+    MK_REQUIRE(!report.native_handle_access);
 }
 
 int main() {
