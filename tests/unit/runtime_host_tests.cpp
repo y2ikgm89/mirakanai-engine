@@ -676,6 +676,21 @@ MK_TEST("linux desktop vulkan presentation report requires package smoke readbac
     MK_REQUIRE(!leaked.environment_platform_linux_vulkan_ready);
 }
 
+MK_TEST("linux desktop vulkan presentation probe is fail closed before host runtime execution") {
+    const auto report =
+        mirakana::probe_linux_desktop_vulkan_presentation(mirakana::LinuxDesktopVulkanPresentationProbeDesc{
+            .execute_runtime_smoke = false,
+        });
+    MK_REQUIRE(!report.ready());
+    MK_REQUIRE(report.status == mirakana::LinuxDesktopVulkanPresentationStatus::host_gated);
+    MK_REQUIRE(!report.linux_package_smoke_ready);
+    MK_REQUIRE(!report.linux_vulkan_readback_ready);
+    MK_REQUIRE(!report.linux_vulkan_validation_log_clean);
+    MK_REQUIRE(!report.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!report.environment_platform_windows_vulkan_inferred);
+    MK_REQUIRE(!report.native_handle_access);
+}
+
 int main() {
     return mirakana::test::run_all();
 }
