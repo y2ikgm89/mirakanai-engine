@@ -17,6 +17,10 @@ target_link_libraries(MK_runtime_host
         MK_renderer
 )
 
+if(UNIX AND NOT APPLE)
+    target_link_libraries(MK_runtime_host PRIVATE MK_rhi_vulkan ${CMAKE_DL_LIBS})
+endif()
+
 MK_apply_common_target_options(MK_runtime_host)
 
 if(WIN32 AND MK_DESKTOP_RUNTIME_ENABLED)

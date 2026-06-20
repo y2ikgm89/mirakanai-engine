@@ -44,6 +44,9 @@ struct EnvironmentPlatformEvidenceV2Row {
     bool first_party_linux_runtime_host_ready{false};
     bool linux_package_script_ready{false};
     bool linux_installed_validator_ready{false};
+    bool linux_package_smoke_ready{false};
+    bool linux_vulkan_readback_ready{false};
+    bool linux_vulkan_validation_log_clean{false};
     bool android_sdk_ready{false};
     bool android_ndk_ready{false};
     bool android_device_or_emulator_ready{false};
@@ -139,7 +142,8 @@ namespace detail {
                       "linux-vulkan-runtime-host") &&
            row.vulkaninfo_ready && row.validation_layer_ready && row.dxc_spirv_codegen_ready && row.spirv_val_ready &&
            row.linux_icd_runtime_ready && row.first_party_linux_runtime_host_ready && row.linux_package_script_ready &&
-           row.linux_installed_validator_ready;
+           row.linux_installed_validator_ready && row.linux_package_smoke_ready && row.linux_vulkan_readback_ready &&
+           row.linux_vulkan_validation_log_clean;
 }
 
 [[nodiscard]] inline bool macos_metal_ready(const EnvironmentPlatformEvidenceV2Row& row) {

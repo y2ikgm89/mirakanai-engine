@@ -721,6 +721,9 @@ Assert-EnvironmentPlatformVulkanHostGateDryRun `
         "first_party_linux_runtime_host_ready=1",
         "linux_package_script_ready=1",
         "linux_installed_validator_ready=1",
+        "linux_package_smoke_ready=1",
+        "linux_vulkan_readback_ready=1",
+        "linux_vulkan_validation_log_clean=1",
         "environment_platform_linux_vulkan_ready=1",
         "environment_platform_requires_linux_vulkan_host_evidence=0") | Out-Null
 Assert-EnvironmentPlatformVulkanHostGateDryRun `
@@ -736,6 +739,8 @@ Assert-EnvironmentPlatformVulkanHostGateDryRun `
         "android_gpu_debuggable_ready=1",
         "android_gpu_debug_layer_settings_ready=1",
         "android_gpu_debug_layer_app_installed=1",
+        "android_gpu_debug_layer_install_requested=1",
+        "android_gpu_debug_layer_install_ready=1",
         "VK_LAYER_KHRONOS_validation_ready=1",
         "android_package_smoke_ready=1",
         "android_vulkan_readback_ready=1",
