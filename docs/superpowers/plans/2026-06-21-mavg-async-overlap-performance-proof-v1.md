@@ -12,9 +12,11 @@
 
 **Plan ID:** `mavg-async-overlap-performance-proof-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Date:** 2026-06-21
+
+**Closeout:** Completed through PR #714 / merge commit `c524a00200e9375250f70a031141f8a2760e6950`. Live execution returns to the production-completion selection gate: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `recommendedNextPlan.id = next-production-gap-selection`, and `unsupportedProductionGaps = []`.
 
 ## Context
 
@@ -117,6 +119,6 @@ Out of scope:
 
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-async-overlap-performance-proof.ps1 -RequireReady`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Commit the validated candidate.
-- [ ] Push branch `codex/mavg-async-overlap-performance-proof`.
-- [ ] Open a draft PR, wait for hosted checks, mark ready with `tools/ready-task-pr.ps1`, and auto-merge only after PR Gate succeeds.
+- [x] Commit the validated candidate.
+- [x] Push branch `codex/mavg-async-overlap-performance-proof`.
+- [x] Open a draft PR, wait for hosted checks, mark ready with `tools/ready-task-pr.ps1`, and auto-merge only after PR Gate succeeds.
