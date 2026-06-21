@@ -503,6 +503,7 @@ $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-network
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requires2dGameplayExecutionLoop = @($SmokeArgs) -contains "--require-2d-gameplay-execution-loop"
 $requires2dSpriteAtlasResidency = @($SmokeArgs) -contains "--require-2d-sprite-atlas-residency"
+$requires2dSpriteThroughput = @($SmokeArgs) -contains "--require-2d-sprite-throughput"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
@@ -4505,6 +4506,45 @@ if ($requires2dSpriteAtlasResidency) {
         -EscapedGameTarget $escapedGameTarget `
         -ExpectedFields $expected2dSpriteAtlasResidencyFields `
         -Context "2D sprite atlas residency"
+}
+if ($requires2dSpriteThroughput) {
+    $expected2dSpriteThroughputFields = @{
+        "2d_sprite_throughput_status" = "ready"
+        "2d_sprite_throughput_ready" = "1"
+        "2d_sprite_throughput_culling_draw_intent_status" = "ready"
+        "2d_sprite_throughput_workload_rows" = "3"
+        "2d_sprite_throughput_dense_arena_512_visible_sprites" = "512"
+        "2d_sprite_throughput_dense_arena_4096_visible_sprites" = "4096"
+        "2d_sprite_throughput_projectile_storm_logical_sprites" = "12000"
+        "2d_sprite_throughput_projectile_storm_visible_sprites" = "768"
+        "2d_sprite_throughput_projectile_storm_culled_sprites" = "11232"
+        "2d_sprite_throughput_draw_rows" = "14"
+        "2d_sprite_throughput_instance_rows" = "5376"
+        "2d_sprite_throughput_upload_bytes" = "319488"
+        "2d_sprite_throughput_atlas_page_rows" = "6"
+        "2d_sprite_throughput_material_lane_rows" = "5"
+        "2d_sprite_throughput_measured_workload_rows" = "1"
+        "2d_sprite_throughput_host_gated_workload_rows" = "2"
+        "2d_sprite_throughput_retained_timing_artifacts" = "1"
+        "2d_sprite_throughput_retained_timing_artifact_hash" = "9817"
+        "2d_sprite_throughput_over_budget_rows" = "0"
+        "2d_sprite_throughput_diagnostics" = "0"
+        "2d_sprite_throughput_culling_draw_intent_rows" = "768"
+        "2d_sprite_throughput_culling_logical_sprite_rows" = "12000"
+        "2d_sprite_throughput_culling_visible_sprite_rows" = "768"
+        "2d_sprite_throughput_culling_culled_sprite_rows" = "11232"
+        "2d_sprite_throughput_invoked_scene_mutation" = "0"
+        "2d_sprite_throughput_requested_renderer_ownership" = "0"
+        "2d_sprite_throughput_requested_native_handle_access" = "0"
+        "2d_sprite_throughput_claimed_broad_optimization" = "0"
+        "2d_sprite_throughput_claimed_cross_backend_parity" = "0"
+        "2d_sprite_throughput_claimed_metal_readiness" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dSpriteThroughputFields `
+        -Context "2D sprite throughput"
 }
 if ($requiresGameplayAuthoringReview) {
     foreach ($field in @(

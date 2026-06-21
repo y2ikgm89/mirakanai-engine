@@ -112,6 +112,7 @@ struct DesktopRuntimeOptions {
     bool require_simulation_orchestration{false};
     bool require_2d_gameplay_execution_loop{false};
     bool require_2d_sprite_atlas_residency{false};
+    bool require_2d_sprite_throughput{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -179,6 +180,11 @@ constexpr std::string_view kLongRunReadinessCounterName{"sample_2d.long_run_fram
 constexpr std::string_view kLongRunReadinessProfileName{"sample_2d.long_run_frame"};
 constexpr std::uint64_t kLongRunReadinessWarmupFrames{0U};
 constexpr std::uint64_t kLongRunReadinessFrameBudgetUs{kPerformanceBaselineFrameBudgetUs};
+constexpr std::string_view kSpriteThroughputTraceArtifactPath{
+    "out/performance/sample_2d_desktop_runtime_package/2d-sprite-throughput.trace.json"};
+constexpr std::string_view kSpriteThroughputProfileArtifactPath{
+    "out/performance/sample_2d_desktop_runtime_package/2d-sprite-throughput.profile.json"};
+constexpr std::uint64_t kSpriteThroughputRetainedArtifactHash{9'817U};
 
 enum class Gameplay2DSystemsStatus : std::uint8_t {
     not_started,
@@ -233,6 +239,41 @@ struct EntityScaleCullingProbeResult {
     std::size_t budget_protected_rows{0U};
     std::size_t diagnostics{0U};
     std::size_t budget_diagnostics{0U};
+    bool ready{false};
+};
+
+struct SpriteThroughputProbeResult {
+    mirakana::SpriteBatchProductionThroughputStatus status{
+        mirakana::SpriteBatchProductionThroughputStatus::invalid_request};
+    mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus culling_draw_intent_status{
+        mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus::invalid_request};
+    std::uint64_t workload_rows{0U};
+    std::uint64_t dense_arena_512_visible_sprites{0U};
+    std::uint64_t dense_arena_4096_visible_sprites{0U};
+    std::uint64_t projectile_storm_logical_sprites{0U};
+    std::uint64_t projectile_storm_visible_sprites{0U};
+    std::uint64_t projectile_storm_culled_sprites{0U};
+    std::uint64_t draw_rows{0U};
+    std::uint64_t instance_rows{0U};
+    std::uint64_t upload_bytes{0U};
+    std::uint64_t atlas_page_rows{0U};
+    std::uint64_t material_lane_rows{0U};
+    std::uint64_t measured_workload_rows{0U};
+    std::uint64_t host_gated_workload_rows{0U};
+    std::uint64_t retained_timing_artifacts{0U};
+    std::uint64_t retained_timing_artifact_hash{0U};
+    std::uint64_t over_budget_rows{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t culling_draw_intent_rows{0U};
+    std::uint64_t culling_logical_sprite_rows{0U};
+    std::uint64_t culling_visible_sprite_rows{0U};
+    std::uint64_t culling_culled_sprite_rows{0U};
+    bool invoked_scene_mutation{false};
+    bool requested_renderer_ownership{false};
+    bool requested_native_handle_access{false};
+    bool claimed_broad_optimization{false};
+    bool claimed_cross_backend_parity{false};
+    bool claimed_metal_readiness{false};
     bool ready{false};
 };
 
@@ -594,6 +635,34 @@ sprite_batch_budget_profile_status_name(mirakana::SpriteBatchBudgetProfileStatus
     case mirakana::SpriteBatchBudgetProfileStatus::diagnostics:
         return "diagnostics";
     case mirakana::SpriteBatchBudgetProfileStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+sprite_batch_production_throughput_status_name(mirakana::SpriteBatchProductionThroughputStatus status) noexcept {
+    switch (status) {
+    case mirakana::SpriteBatchProductionThroughputStatus::ready:
+        return "ready";
+    case mirakana::SpriteBatchProductionThroughputStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::SpriteBatchProductionThroughputStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::SpriteBatchProductionThroughputStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+sprite_draw_intent_status_name(mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus::budget_exceeded:
         return "budget_exceeded";
     }
     return "unknown";
@@ -4264,6 +4333,258 @@ make_source_image_audio_codec_review_row(mirakana::SourceImageAudioCodecReviewFe
         result.priority_update_rows == 1U && result.normal_update_rows == 2U && result.background_update_rows == 1U &&
         result.projected_draw_cost == 7U && result.projected_update_cost == 3U && result.budget_protected_rows == 1U &&
         result.diagnostics == 0U && result.budget_diagnostics == 2U;
+    return result;
+}
+
+[[nodiscard]] std::string padded_sprite_id(std::string_view prefix, std::uint64_t index) {
+    std::ostringstream stream;
+    stream << prefix << std::setw(5) << std::setfill('0') << index;
+    return stream.str();
+}
+
+[[nodiscard]] std::vector<mirakana::SpriteBatchProductionDrawIntentRow>
+make_sprite_throughput_dense_draw_intents(std::uint64_t count, std::uint32_t material_lanes,
+                                          std::span<const mirakana::AssetId> atlas_pages,
+                                          std::uint64_t upload_bytes_per_sprite, std::string_view prefix) {
+    std::vector<mirakana::SpriteBatchProductionDrawIntentRow> rows;
+    rows.reserve(static_cast<std::size_t>(count));
+    for (std::uint64_t index = 0U; index < count; ++index) {
+        rows.push_back(mirakana::SpriteBatchProductionDrawIntentRow{
+            .sprite_id = padded_sprite_id(prefix, index),
+            .stable_order = index,
+            .sorting_layer = 0,
+            .material_lane = static_cast<std::uint32_t>(index % material_lanes),
+            .atlas_page = atlas_pages[static_cast<std::size_t>(index % atlas_pages.size())],
+            .upload_bytes = upload_bytes_per_sprite,
+        });
+    }
+    return rows;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeEntityScaleCullingPlan make_projectile_storm_culling_plan() {
+    using BoundsKind = mirakana::runtime::RuntimeEntityScaleCullingBoundsKind;
+    using DrawIntent = mirakana::runtime::RuntimeEntityScaleCullingDrawIntentKind;
+    using Entity = mirakana::runtime::RuntimeEntityScaleCullingEntityDesc;
+    using LodBand = mirakana::runtime::RuntimeEntityScaleCullingLodBandDesc;
+    using UpdateBucket = mirakana::runtime::RuntimeEntityScaleCullingUpdateBucket;
+
+    constexpr std::uint32_t logical_projectiles = 12'000U;
+    constexpr std::uint32_t visible_projectiles = 768U;
+    const auto empty_3d = mirakana::runtime::RuntimeEntityScaleCullingBounds3D{};
+    std::vector<Entity> entities;
+    entities.reserve(logical_projectiles);
+    for (std::uint32_t index = 0U; index < logical_projectiles; ++index) {
+        const auto visible = index < visible_projectiles;
+        const auto offset = visible ? static_cast<float>(index % 32U) : 10'000.0F + static_cast<float>(index);
+        entities.push_back(Entity{
+            .entity_id = padded_sprite_id("projectile-", index),
+            .bounds_kind = BoundsKind::aabb_2d,
+            .bounds_2d =
+                mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                    .min_x = offset,
+                    .min_y = 0.0F,
+                    .max_x = offset + 0.5F,
+                    .max_y = 0.5F,
+                },
+            .bounds_3d = empty_3d,
+            .layer_mask = 0x1U,
+            .update_bucket = visible ? UpdateBucket::normal : UpdateBucket::background,
+            .enabled = true,
+            .source_index = index,
+            .lod_bands =
+                std::vector<LodBand>{
+                    LodBand{.lod_index = 0U,
+                            .max_view_distance = 128.0F,
+                            .draw_cost = 1U,
+                            .update_cost = 1U,
+                            .update_interval_frames = 1U,
+                            .draw_intent = DrawIntent::sprite_2d},
+                },
+            .budget_protected = false,
+        });
+    }
+
+    return mirakana::runtime::plan_runtime_entity_scale_culling(mirakana::runtime::RuntimeEntityScaleCullingRequest{
+        .entities = std::move(entities),
+        .view =
+            mirakana::runtime::RuntimeEntityScaleCullingViewDesc{
+                .bounds_kind = BoundsKind::aabb_2d,
+                .bounds_2d =
+                    mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                        .min_x = -1.0F,
+                        .min_y = -1.0F,
+                        .max_x = 64.0F,
+                        .max_y = 2.0F,
+                    },
+                .bounds_3d = empty_3d,
+                .layer_mask = 0x1U,
+                .max_visible_entities = 1'000U,
+                .max_projected_draw_cost = 1'000U,
+                .max_projected_update_cost = 1'000U,
+            },
+    });
+}
+
+[[nodiscard]] std::vector<mirakana::SpriteBatchProductionDrawIntentRow> make_projectile_storm_draw_intents(
+    const mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentPlan& culling_intents,
+    mirakana::AssetId atlas_page) {
+    std::vector<mirakana::SpriteBatchProductionDrawIntentRow> rows;
+    rows.reserve(culling_intents.rows.size());
+    for (const auto& row : culling_intents.rows) {
+        rows.push_back(mirakana::SpriteBatchProductionDrawIntentRow{
+            .sprite_id = row.entity_id,
+            .stable_order = row.stable_order,
+            .sorting_layer = 0,
+            .material_lane = 0U,
+            .atlas_page = atlas_page,
+            .upload_bytes = 32U,
+        });
+    }
+    return rows;
+}
+
+[[nodiscard]] SpriteThroughputProbeResult validate_2d_sprite_throughput_package_evidence() {
+    using Kind = mirakana::SpriteBatchProductionWorkloadKind;
+    using Timing = mirakana::SpriteBatchProductionTimingStatus;
+
+    const std::array<mirakana::AssetId, 4> atlas_pages{
+        mirakana::AssetId{1U},
+        mirakana::AssetId{2U},
+        mirakana::AssetId{3U},
+        mirakana::AssetId{4U},
+    };
+    auto dense_512 =
+        make_sprite_throughput_dense_draw_intents(512U, 1U, std::span{atlas_pages}.first(1), 64U, "dense512-");
+    auto dense_4096 = make_sprite_throughput_dense_draw_intents(4'096U, 3U, atlas_pages, 64U, "dense4096-");
+    const auto culling_plan = make_projectile_storm_culling_plan();
+    const auto culling_intents = mirakana::runtime::plan_runtime_entity_scale_culling_sprite_draw_intents(
+        mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentRequest{
+            .culling_plan = &culling_plan,
+            .max_draw_intent_rows = 768U,
+        });
+    auto projectiles = make_projectile_storm_draw_intents(culling_intents, atlas_pages[0]);
+
+    const std::array<mirakana::SpriteBatchProductionWorkloadDesc, 3> workloads{
+        mirakana::SpriteBatchProductionWorkloadDesc{
+            .workload_id = "dense_arena_512",
+            .kind = Kind::dense_arena_512,
+            .draw_intents = dense_512,
+            .logical_sprite_rows = 512U,
+            .culled_sprite_rows = 0U,
+            .budgets = mirakana::SpriteBatchProductionBudgetDesc{.max_visible_sprites = 512U,
+                                                                 .max_draw_rows = 1U,
+                                                                 .max_instance_rows = 512U,
+                                                                 .max_upload_bytes = 32'768U,
+                                                                 .max_atlas_pages = 1U,
+                                                                 .max_material_lanes = 1U,
+                                                                 .max_cpu_frame_time_us = 16'670U},
+            .measurement =
+                mirakana::SpriteBatchProductionMeasurementDesc{
+                    .host_measurement_available = true,
+                    .cpu_frame_time_us = 4'200U,
+                    .retained_trace_artifact_path = std::string{kSpriteThroughputTraceArtifactPath},
+                    .retained_profile_artifact_path = std::string{kSpriteThroughputProfileArtifactPath},
+                    .retained_artifact_hash = kSpriteThroughputRetainedArtifactHash,
+                },
+        },
+        mirakana::SpriteBatchProductionWorkloadDesc{
+            .workload_id = "dense_arena_4096",
+            .kind = Kind::dense_arena_4096,
+            .draw_intents = dense_4096,
+            .logical_sprite_rows = 4'096U,
+            .culled_sprite_rows = 0U,
+            .budgets = mirakana::SpriteBatchProductionBudgetDesc{.max_visible_sprites = 4'096U,
+                                                                 .max_draw_rows = 12U,
+                                                                 .max_instance_rows = 4'096U,
+                                                                 .max_upload_bytes = 262'144U,
+                                                                 .max_atlas_pages = 4U,
+                                                                 .max_material_lanes = 3U,
+                                                                 .max_cpu_frame_time_us = 16'670U},
+            .measurement = mirakana::SpriteBatchProductionMeasurementDesc{.host_measurement_available = false},
+        },
+        mirakana::SpriteBatchProductionWorkloadDesc{
+            .workload_id = "projectile_storm_12000",
+            .kind = Kind::projectile_storm_12000,
+            .draw_intents = projectiles,
+            .logical_sprite_rows = culling_intents.logical_sprite_rows,
+            .culled_sprite_rows = culling_intents.culled_sprite_rows,
+            .budgets = mirakana::SpriteBatchProductionBudgetDesc{.max_visible_sprites = 768U,
+                                                                 .max_draw_rows = 1U,
+                                                                 .max_instance_rows = 768U,
+                                                                 .max_upload_bytes = 24'576U,
+                                                                 .max_atlas_pages = 1U,
+                                                                 .max_material_lanes = 1U,
+                                                                 .max_cpu_frame_time_us = 16'670U},
+            .measurement = mirakana::SpriteBatchProductionMeasurementDesc{.host_measurement_available = false},
+        },
+    };
+
+    const auto plan = mirakana::plan_sprite_batch_production_throughput(
+        mirakana::SpriteBatchProductionThroughputDesc{.workloads = workloads});
+
+    SpriteThroughputProbeResult result;
+    result.status = plan.status;
+    result.culling_draw_intent_status = culling_intents.status;
+    result.workload_rows = plan.rows.size();
+    result.draw_rows = plan.total_draw_rows;
+    result.instance_rows = plan.total_instance_rows;
+    result.upload_bytes = plan.total_upload_bytes;
+    result.measured_workload_rows = plan.measured_workload_rows;
+    result.host_gated_workload_rows = plan.host_gated_workload_rows;
+    result.diagnostics = plan.diagnostics.size();
+    result.claimed_broad_optimization = plan.claimed_broad_optimization;
+    result.claimed_cross_backend_parity = plan.claimed_cross_backend_parity;
+    result.claimed_metal_readiness = plan.claimed_metal_readiness;
+    result.culling_draw_intent_rows = culling_intents.rows.size();
+    result.culling_logical_sprite_rows = culling_intents.logical_sprite_rows;
+    result.culling_visible_sprite_rows = culling_intents.visible_sprite_rows;
+    result.culling_culled_sprite_rows = culling_intents.culled_sprite_rows;
+    result.invoked_scene_mutation = culling_intents.invoked_scene_mutation;
+    result.requested_renderer_ownership = culling_intents.requested_renderer_ownership;
+    result.requested_native_handle_access = culling_intents.requested_native_handle_access;
+
+    for (const auto& row : plan.rows) {
+        result.atlas_page_rows += row.atlas_page_count;
+        result.material_lane_rows += row.material_lane_count;
+        if (row.over_budget) {
+            ++result.over_budget_rows;
+        }
+        if (row.timing_status == Timing::measured && !row.retained_trace_artifact_path.empty() &&
+            !row.retained_profile_artifact_path.empty() && row.retained_artifact_hash != 0U) {
+            ++result.retained_timing_artifacts;
+            result.retained_timing_artifact_hash += row.retained_artifact_hash;
+        }
+        switch (row.kind) {
+        case Kind::dense_arena_512:
+            result.dense_arena_512_visible_sprites = row.visible_sprite_rows;
+            break;
+        case Kind::dense_arena_4096:
+            result.dense_arena_4096_visible_sprites = row.visible_sprite_rows;
+            break;
+        case Kind::projectile_storm_12000:
+            result.projectile_storm_logical_sprites = row.logical_sprite_rows;
+            result.projectile_storm_visible_sprites = row.visible_sprite_rows;
+            result.projectile_storm_culled_sprites = row.culled_sprite_rows;
+            break;
+        case Kind::custom:
+            break;
+        }
+    }
+
+    result.ready =
+        plan.succeeded() && culling_plan.succeeded() && culling_intents.succeeded() && result.workload_rows == 3U &&
+        result.dense_arena_512_visible_sprites == 512U && result.dense_arena_4096_visible_sprites == 4'096U &&
+        result.projectile_storm_logical_sprites == 12'000U && result.projectile_storm_visible_sprites == 768U &&
+        result.projectile_storm_culled_sprites == 11'232U && result.draw_rows == 14U &&
+        result.instance_rows == 5'376U && result.upload_bytes == 319'488U && result.atlas_page_rows == 6U &&
+        result.material_lane_rows == 5U && result.measured_workload_rows == 1U &&
+        result.host_gated_workload_rows == 2U && result.retained_timing_artifacts == 1U &&
+        result.retained_timing_artifact_hash == kSpriteThroughputRetainedArtifactHash &&
+        result.over_budget_rows == 0U && result.diagnostics == 0U && result.culling_draw_intent_rows == 768U &&
+        result.culling_logical_sprite_rows == 12'000U && result.culling_visible_sprite_rows == 768U &&
+        result.culling_culled_sprite_rows == 11'232U && !result.invoked_scene_mutation &&
+        !result.requested_renderer_ownership && !result.requested_native_handle_access &&
+        !result.claimed_broad_optimization && !result.claimed_cross_backend_parity && !result.claimed_metal_readiness;
     return result;
 }
 
@@ -9377,6 +9698,7 @@ void print_usage() {
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
+                 "[--require-2d-sprite-throughput] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
@@ -9513,6 +9835,10 @@ void print_usage() {
         }
         if (arg == "--require-2d-sprite-atlas-residency") {
             options.require_2d_sprite_atlas_residency = true;
+            continue;
+        }
+        if (arg == "--require-2d-sprite-throughput") {
+            options.require_2d_sprite_throughput = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -10247,6 +10573,9 @@ int main(int argc, char** argv) {
         options.require_2d_sprite_atlas_residency && runtime_package.has_value()
             ? validate_2d_sprite_atlas_residency_package_evidence(*runtime_package)
             : SpriteAtlasResidencyProbeResult{};
+    const auto sprite_throughput_probe = options.require_2d_sprite_throughput
+                                             ? validate_2d_sprite_throughput_package_evidence()
+                                             : SpriteThroughputProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -10995,7 +11324,48 @@ int main(int argc, char** argv) {
         << " 2d_sprite_atlas_residency_requested_public_native_handle="
         << (sprite_atlas_residency_probe.requested_public_native_handle ? 1 : 0)
         << " 2d_sprite_atlas_residency_invoked_renderer_upload="
-        << (sprite_atlas_residency_probe.invoked_renderer_upload ? 1 : 0)
+        << (sprite_atlas_residency_probe.invoked_renderer_upload ? 1 : 0) << " 2d_sprite_throughput_status="
+        << sprite_batch_production_throughput_status_name(sprite_throughput_probe.status)
+        << " 2d_sprite_throughput_ready=" << (sprite_throughput_probe.ready ? 1 : 0)
+        << " 2d_sprite_throughput_culling_draw_intent_status="
+        << sprite_draw_intent_status_name(sprite_throughput_probe.culling_draw_intent_status)
+        << " 2d_sprite_throughput_workload_rows=" << sprite_throughput_probe.workload_rows
+        << " 2d_sprite_throughput_dense_arena_512_visible_sprites="
+        << sprite_throughput_probe.dense_arena_512_visible_sprites
+        << " 2d_sprite_throughput_dense_arena_4096_visible_sprites="
+        << sprite_throughput_probe.dense_arena_4096_visible_sprites
+        << " 2d_sprite_throughput_projectile_storm_logical_sprites="
+        << sprite_throughput_probe.projectile_storm_logical_sprites
+        << " 2d_sprite_throughput_projectile_storm_visible_sprites="
+        << sprite_throughput_probe.projectile_storm_visible_sprites
+        << " 2d_sprite_throughput_projectile_storm_culled_sprites="
+        << sprite_throughput_probe.projectile_storm_culled_sprites
+        << " 2d_sprite_throughput_draw_rows=" << sprite_throughput_probe.draw_rows
+        << " 2d_sprite_throughput_instance_rows=" << sprite_throughput_probe.instance_rows
+        << " 2d_sprite_throughput_upload_bytes=" << sprite_throughput_probe.upload_bytes
+        << " 2d_sprite_throughput_atlas_page_rows=" << sprite_throughput_probe.atlas_page_rows
+        << " 2d_sprite_throughput_material_lane_rows=" << sprite_throughput_probe.material_lane_rows
+        << " 2d_sprite_throughput_measured_workload_rows=" << sprite_throughput_probe.measured_workload_rows
+        << " 2d_sprite_throughput_host_gated_workload_rows=" << sprite_throughput_probe.host_gated_workload_rows
+        << " 2d_sprite_throughput_retained_timing_artifacts=" << sprite_throughput_probe.retained_timing_artifacts
+        << " 2d_sprite_throughput_retained_timing_artifact_hash="
+        << sprite_throughput_probe.retained_timing_artifact_hash
+        << " 2d_sprite_throughput_over_budget_rows=" << sprite_throughput_probe.over_budget_rows
+        << " 2d_sprite_throughput_diagnostics=" << sprite_throughput_probe.diagnostics
+        << " 2d_sprite_throughput_culling_draw_intent_rows=" << sprite_throughput_probe.culling_draw_intent_rows
+        << " 2d_sprite_throughput_culling_logical_sprite_rows=" << sprite_throughput_probe.culling_logical_sprite_rows
+        << " 2d_sprite_throughput_culling_visible_sprite_rows=" << sprite_throughput_probe.culling_visible_sprite_rows
+        << " 2d_sprite_throughput_culling_culled_sprite_rows=" << sprite_throughput_probe.culling_culled_sprite_rows
+        << " 2d_sprite_throughput_invoked_scene_mutation=" << (sprite_throughput_probe.invoked_scene_mutation ? 1 : 0)
+        << " 2d_sprite_throughput_requested_renderer_ownership="
+        << (sprite_throughput_probe.requested_renderer_ownership ? 1 : 0)
+        << " 2d_sprite_throughput_requested_native_handle_access="
+        << (sprite_throughput_probe.requested_native_handle_access ? 1 : 0)
+        << " 2d_sprite_throughput_claimed_broad_optimization="
+        << (sprite_throughput_probe.claimed_broad_optimization ? 1 : 0)
+        << " 2d_sprite_throughput_claimed_cross_backend_parity="
+        << (sprite_throughput_probe.claimed_cross_backend_parity ? 1 : 0)
+        << " 2d_sprite_throughput_claimed_metal_readiness=" << (sprite_throughput_probe.claimed_metal_readiness ? 1 : 0)
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -12199,6 +12569,41 @@ int main(int argc, char** argv) {
                   << " 2d_sprite_atlas_residency_invoked_renderer_upload="
                   << (sprite_atlas_residency_probe.invoked_renderer_upload ? 1 : 0) << '\n';
         return 44;
+    }
+
+    if (options.require_2d_sprite_throughput && !sprite_throughput_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_sprite_throughput_unavailable"
+                  << " 2d_sprite_throughput_status="
+                  << sprite_batch_production_throughput_status_name(sprite_throughput_probe.status)
+                  << " 2d_sprite_throughput_culling_draw_intent_status="
+                  << sprite_draw_intent_status_name(sprite_throughput_probe.culling_draw_intent_status)
+                  << " 2d_sprite_throughput_workload_rows=" << sprite_throughput_probe.workload_rows
+                  << " 2d_sprite_throughput_draw_rows=" << sprite_throughput_probe.draw_rows
+                  << " 2d_sprite_throughput_instance_rows=" << sprite_throughput_probe.instance_rows
+                  << " 2d_sprite_throughput_upload_bytes=" << sprite_throughput_probe.upload_bytes
+                  << " 2d_sprite_throughput_diagnostics=" << sprite_throughput_probe.diagnostics
+                  << " 2d_sprite_throughput_over_budget_rows=" << sprite_throughput_probe.over_budget_rows
+                  << " 2d_sprite_throughput_culling_draw_intent_rows="
+                  << sprite_throughput_probe.culling_draw_intent_rows
+                  << " 2d_sprite_throughput_culling_logical_sprite_rows="
+                  << sprite_throughput_probe.culling_logical_sprite_rows
+                  << " 2d_sprite_throughput_culling_visible_sprite_rows="
+                  << sprite_throughput_probe.culling_visible_sprite_rows
+                  << " 2d_sprite_throughput_culling_culled_sprite_rows="
+                  << sprite_throughput_probe.culling_culled_sprite_rows
+                  << " 2d_sprite_throughput_invoked_scene_mutation="
+                  << (sprite_throughput_probe.invoked_scene_mutation ? 1 : 0)
+                  << " 2d_sprite_throughput_requested_renderer_ownership="
+                  << (sprite_throughput_probe.requested_renderer_ownership ? 1 : 0)
+                  << " 2d_sprite_throughput_requested_native_handle_access="
+                  << (sprite_throughput_probe.requested_native_handle_access ? 1 : 0)
+                  << " 2d_sprite_throughput_claimed_broad_optimization="
+                  << (sprite_throughput_probe.claimed_broad_optimization ? 1 : 0)
+                  << " 2d_sprite_throughput_claimed_cross_backend_parity="
+                  << (sprite_throughput_probe.claimed_cross_backend_parity ? 1 : 0)
+                  << " 2d_sprite_throughput_claimed_metal_readiness="
+                  << (sprite_throughput_probe.claimed_metal_readiness ? 1 : 0) << '\n';
+        return 45;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {
