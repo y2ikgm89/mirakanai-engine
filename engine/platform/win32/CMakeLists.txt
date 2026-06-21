@@ -2,6 +2,7 @@ add_library(mirakana_platform_win32
     src/win32_clipboard.cpp
     src/win32_cpu_sets.cpp
     src/win32_cursor.cpp
+    src/win32_directstorage_byte_range_io.cpp
     src/win32_event_pump.cpp
     src/win32_file_dialog.cpp
     src/win32_input.cpp
@@ -27,6 +28,12 @@ target_link_libraries(mirakana_platform_win32
         shell32
         user32
 )
+
+if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+    find_package(dstorage CONFIG REQUIRED)
+    target_compile_definitions(mirakana_platform_win32 PRIVATE MK_ENABLE_WIN32_DIRECTSTORAGE)
+    target_link_libraries(mirakana_platform_win32 PRIVATE Microsoft::DirectStorage)
+endif()
 
 mirakana_apply_common_target_options(mirakana_platform_win32)
 

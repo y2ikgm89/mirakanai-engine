@@ -1638,6 +1638,15 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_ui
                 MK_ui_renderer
         )
+        if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+            add_custom_command(TARGET sample_desktop_runtime_game POST_BUILD
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:sample_desktop_runtime_game>
+                    $<TARGET_FILE_DIR:sample_desktop_runtime_game>
+                COMMAND_EXPAND_LISTS
+                VERBATIM
+            )
+        endif()
     endif()
 
     if(WIN32)

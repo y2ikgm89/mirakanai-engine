@@ -157,6 +157,32 @@
       }
     },
     {
+      "name": "directstorage-win32",
+      "displayName": "Win32 DirectStorage adapter build",
+      "binaryDir": "${sourceDir}/out/build/directstorage-win32",
+      "inherits": "normalized-configure-environment",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_DESKTOP_RUNTIME": "ON",
+        "MK_ENABLE_DESKTOP_EDITOR": "OFF",
+        "MK_ENABLE_WIN32_DIRECTSTORAGE": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
       "name": "network-enet",
       "displayName": "ENet network transport adapter build",
       "binaryDir": "${sourceDir}/out/build/network-enet",
@@ -420,6 +446,12 @@
       "configuration": "Debug"
     },
     {
+      "name": "directstorage-win32",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "directstorage-win32",
+      "configuration": "Debug"
+    },
+    {
       "name": "cpp23-desktop-editor-eval",
       "inherits": "normalized-build-environment",
       "configurePreset": "cpp23-desktop-editor-eval",
@@ -534,6 +566,14 @@
     {
       "name": "network-enet",
       "configurePreset": "network-enet",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "directstorage-win32",
+      "configurePreset": "directstorage-win32",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
