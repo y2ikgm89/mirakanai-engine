@@ -446,6 +446,169 @@ struct RuntimeInputRebindingPresentationModel {
     [[nodiscard]] bool ready() const noexcept;
 };
 
+enum class RuntimeInputDeviceKind : std::uint8_t {
+    unknown = 0,
+    keyboard_mouse,
+    gamepad,
+    touch,
+};
+
+enum class RuntimeInputStickResponseCurve : std::uint8_t {
+    linear = 0,
+    squared,
+    cubic,
+};
+
+enum class RuntimeInputDeviceProductionUxDiagnosticCode : std::uint8_t {
+    invalid_context,
+    invalid_action,
+    missing_base_binding,
+    duplicate_gesture_binding,
+    invalid_player_id,
+    invalid_device_id,
+    invalid_profile_id,
+    invalid_glyph_asset,
+    invalid_keyboard_layout_label,
+    duplicate_device_assignment,
+    duplicate_per_device_profile,
+    duplicate_glyph_asset,
+    duplicate_keyboard_layout_label,
+    deadzone_clamped,
+    native_handle_requested,
+    ui_rendering_requested,
+    input_middleware_requested,
+    glyph_rendering_requested,
+    ui_widget_requested,
+};
+
+struct RuntimeInputDeviceProductionUxDiagnostic {
+    RuntimeInputDeviceProductionUxDiagnosticCode code{RuntimeInputDeviceProductionUxDiagnosticCode::invalid_context};
+    std::string path;
+    std::string message;
+};
+
+struct RuntimeInputGestureBindingDesc {
+    std::string context;
+    std::string action;
+    TouchGestureKind gesture{TouchGestureKind::unknown};
+    TouchGesturePhase phase{TouchGesturePhase::unknown};
+};
+
+struct RuntimeInputGestureBindingRow {
+    std::string id;
+    std::string context;
+    std::string action;
+    TouchGestureKind gesture{TouchGestureKind::unknown};
+    TouchGesturePhase phase{TouchGesturePhase::unknown};
+    std::size_t matching_event_rows{0};
+    bool mapped_to_action{false};
+    bool ready{false};
+    std::string diagnostic;
+};
+
+struct RuntimeInputDeviceAssignmentDesc {
+    std::string player_id;
+    std::string device_id;
+    RuntimeInputDeviceKind device_kind{RuntimeInputDeviceKind::unknown};
+    std::string profile_id;
+};
+
+struct RuntimeInputDeviceAssignmentRow {
+    std::string id;
+    std::string player_id;
+    std::string device_id;
+    RuntimeInputDeviceKind device_kind{RuntimeInputDeviceKind::unknown};
+    std::string profile_id;
+    bool ready{false};
+    std::string diagnostic;
+};
+
+struct RuntimeInputPerDeviceProfileDesc {
+    std::string profile_id;
+    std::string device_id;
+    RuntimeInputDeviceKind device_kind{RuntimeInputDeviceKind::unknown};
+    float left_stick_radial_deadzone{0.0F};
+    float right_stick_radial_deadzone{0.0F};
+    RuntimeInputStickResponseCurve response_curve{RuntimeInputStickResponseCurve::linear};
+};
+
+struct RuntimeInputPerDeviceProfileRow {
+    std::string id;
+    std::string profile_id;
+    std::string device_id;
+    RuntimeInputDeviceKind device_kind{RuntimeInputDeviceKind::unknown};
+    float left_stick_radial_deadzone{0.0F};
+    float right_stick_radial_deadzone{0.0F};
+    RuntimeInputStickResponseCurve response_curve{RuntimeInputStickResponseCurve::linear};
+    bool clamped_deadzone{false};
+    bool ready{false};
+    std::string diagnostic;
+};
+
+struct RuntimeInputGlyphAssetDesc {
+    std::string glyph_lookup_key;
+    std::string platform;
+    std::string asset_id;
+    bool request_render_glyph{false};
+    bool request_create_ui_widget{false};
+};
+
+struct RuntimeInputGlyphAssetLookupRow {
+    std::string id;
+    std::string glyph_lookup_key;
+    std::string platform;
+    std::string asset_id;
+    bool renders_glyph{false};
+    bool creates_ui_widget{false};
+    bool ready{false};
+    std::string diagnostic;
+};
+
+struct RuntimeInputKeyboardLayoutLabelDesc {
+    std::string layout_id;
+    Key physical_key{Key::unknown};
+    Key logical_key{Key::unknown};
+    std::string display_label;
+};
+
+struct RuntimeInputKeyboardLayoutLabelRow {
+    std::string id;
+    std::string layout_id;
+    Key physical_key{Key::unknown};
+    Key logical_key{Key::unknown};
+    std::string display_label;
+    bool ready{false};
+    std::string diagnostic;
+};
+
+struct RuntimeInputDeviceProductionUxRequest {
+    RuntimeInputActionMap base_actions;
+    std::vector<RuntimeInputGestureBindingDesc> gesture_bindings;
+    std::vector<TouchGestureEvent> gesture_events;
+    std::vector<RuntimeInputDeviceAssignmentDesc> device_assignments;
+    std::vector<RuntimeInputPerDeviceProfileDesc> per_device_profiles;
+    std::vector<RuntimeInputGlyphAssetDesc> glyph_assets;
+    std::vector<RuntimeInputKeyboardLayoutLabelDesc> keyboard_layout_labels;
+    bool request_native_handle_access{false};
+    bool request_ui_rendering{false};
+    bool request_input_middleware{false};
+};
+
+struct RuntimeInputDeviceProductionUxPlan {
+    std::vector<RuntimeInputGestureBindingRow> gesture_binding_rows;
+    std::vector<RuntimeInputDeviceAssignmentRow> device_assignment_rows;
+    std::vector<RuntimeInputPerDeviceProfileRow> per_device_profile_rows;
+    std::vector<RuntimeInputGlyphAssetLookupRow> glyph_asset_lookup_rows;
+    std::vector<RuntimeInputKeyboardLayoutLabelRow> keyboard_layout_label_rows;
+    std::vector<RuntimeInputDeviceProductionUxDiagnostic> diagnostics;
+    std::size_t gesture_action_rows{0};
+    std::size_t native_handle_access_rows{0};
+    std::size_t ui_rendering_rows{0};
+    std::size_t input_middleware_rows{0};
+
+    [[nodiscard]] bool ready() const noexcept;
+};
+
 enum class RuntimeSessionProfileDocumentKind : std::uint8_t {
     save_data,
     settings,
@@ -691,6 +854,8 @@ present_runtime_input_axis_source(const RuntimeInputAxisSource& source);
 [[nodiscard]] RuntimeInputRebindingPresentationModel
 make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
                                           const RuntimeInputRebindingProfile& profile);
+[[nodiscard]] RuntimeInputDeviceProductionUxPlan
+plan_runtime_input_device_production_ux(const RuntimeInputDeviceProductionUxRequest& request);
 [[nodiscard]] RuntimeSessionProfilePathPlan
 plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request);
 [[nodiscard]] RuntimeSessionProfileDocumentLoadResult

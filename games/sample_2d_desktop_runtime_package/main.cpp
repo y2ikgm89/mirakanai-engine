@@ -114,6 +114,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_sprite_atlas_residency{false};
     bool require_2d_sprite_throughput{false};
     bool require_2d_physics_runtime_extension{false};
+    bool require_2d_input_device_production_ux{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -301,6 +302,24 @@ struct Physics2DRuntimeExtensionProbeResult {
     std::uint64_t native_handle_exposure{0U};
     std::uint64_t middleware_dispatches{0U};
     bool dynamic_vs_dynamic_ccd_claimed{false};
+    bool ready{false};
+};
+
+struct InputDeviceProductionUxProbeResult {
+    std::uint64_t gesture_binding_rows{0U};
+    std::uint64_t gesture_event_rows{0U};
+    std::uint64_t gesture_action_rows{0U};
+    std::uint64_t device_assignment_rows{0U};
+    std::uint64_t per_device_profile_rows{0U};
+    std::uint64_t per_device_profile_clamped_deadzone_rows{0U};
+    std::uint64_t glyph_asset_lookup_rows{0U};
+    std::uint64_t keyboard_layout_label_rows{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t native_handle_access_rows{0U};
+    std::uint64_t ui_rendering_rows{0U};
+    std::uint64_t input_middleware_rows{0U};
+    std::uint64_t glyph_rendering_rows{0U};
+    std::uint64_t ui_widget_rows{0U};
     bool ready{false};
 };
 
@@ -1324,6 +1343,11 @@ sprite_atlas_residency_status_name(mirakana::runtime::RuntimeSpriteAtlasResidenc
 
 [[nodiscard]] const char*
 physics2d_runtime_extension_status_name(const Physics2DRuntimeExtensionProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] const char*
+input_device_production_ux_status_name(const InputDeviceProductionUxProbeResult& result) noexcept {
     return result.ready ? "ready" : "diagnostics";
 }
 
@@ -4889,6 +4913,155 @@ make_sprite_throughput_dense_draw_intents(std::uint64_t count, std::uint32_t mat
                   probe.native_handle_exposure == 0U && probe.middleware_dispatches == 0U &&
                   !probe.dynamic_vs_dynamic_ccd_claimed;
     return probe;
+}
+
+[[nodiscard]] std::uint64_t
+count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDeviceProductionUxPlan& plan,
+                                  mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode code) {
+    return static_cast<std::uint64_t>(std::ranges::count_if(
+        plan.diagnostics, [code](const auto& diagnostic) noexcept { return diagnostic.code == code; }));
+}
+
+[[nodiscard]] InputDeviceProductionUxProbeResult validate_2d_input_device_production_ux_package_evidence() {
+    mirakana::runtime::RuntimeInputActionMap base;
+    base.bind_key_in_context("gameplay", "confirm", mirakana::Key::space);
+    base.bind_key_in_context("gameplay", "cancel", mirakana::Key::escape);
+    base.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+    base.bind_gamepad_button_in_context("gameplay", "dash", mirakana::GamepadId{1}, mirakana::GamepadButton::south);
+
+    mirakana::runtime::RuntimeInputDeviceProductionUxRequest request;
+    request.base_actions = base;
+    request.gesture_bindings = {
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "cancel",
+                                                          .gesture = mirakana::TouchGestureKind::double_tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::long_press,
+                                                          .phase = mirakana::TouchGesturePhase::began},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pan,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "dash",
+                                                          .gesture = mirakana::TouchGestureKind::swipe,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pinch,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::rotate,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+    };
+    request.gesture_events = {
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::double_tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::long_press,
+                                    .phase = mirakana::TouchGesturePhase::began,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pan,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1,
+                                    .delta = mirakana::Vec2{.x = 6.0F, .y = 0.0F}},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::swipe,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1,
+                                    .velocity = mirakana::Vec2{.x = 720.0F, .y = 0.0F}},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pinch,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .secondary_pointer_id = mirakana::PointerId{2},
+                                    .touch_count = 2,
+                                    .scale = 1.25F},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::rotate,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .secondary_pointer_id = mirakana::PointerId{2},
+                                    .touch_count = 2,
+                                    .rotation_radians = 0.4F},
+    };
+    request.device_assignments = {
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{
+            .player_id = "player_one",
+            .device_id = "keyboard_mouse:0",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::keyboard_mouse,
+            .profile_id = "player_one_keyboard"},
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{.player_id = "player_two",
+                                                            .device_id = "gamepad:1",
+                                                            .device_kind =
+                                                                mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+                                                            .profile_id = "player_two_gamepad"},
+    };
+    request.per_device_profiles = {
+        mirakana::runtime::RuntimeInputPerDeviceProfileDesc{
+            .profile_id = "player_two_gamepad",
+            .device_id = "gamepad:1",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+            .left_stick_radial_deadzone = 0.35F,
+            .right_stick_radial_deadzone = 0.20F,
+            .response_curve = mirakana::runtime::RuntimeInputStickResponseCurve::squared},
+    };
+    request.glyph_assets = {
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "gamepad.1.button.south", .platform = "xbox", .asset_id = "ui/input/xbox_button_south"},
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "keyboard.key.space", .platform = "keyboard", .asset_id = "ui/input/key_space"},
+    };
+    request.keyboard_layout_labels = {
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "en-US",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "jp-JIS",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_device_production_ux(request);
+    InputDeviceProductionUxProbeResult result;
+    result.gesture_binding_rows = plan.gesture_binding_rows.size();
+    result.gesture_event_rows = request.gesture_events.size();
+    result.gesture_action_rows = plan.gesture_action_rows;
+    result.device_assignment_rows = plan.device_assignment_rows.size();
+    result.per_device_profile_rows = plan.per_device_profile_rows.size();
+    result.per_device_profile_clamped_deadzone_rows = static_cast<std::uint64_t>(std::ranges::count_if(
+        plan.per_device_profile_rows, [](const auto& row) noexcept { return row.clamped_deadzone; }));
+    result.glyph_asset_lookup_rows = plan.glyph_asset_lookup_rows.size();
+    result.keyboard_layout_label_rows = plan.keyboard_layout_label_rows.size();
+    result.diagnostics = plan.diagnostics.size();
+    result.native_handle_access_rows = plan.native_handle_access_rows;
+    result.ui_rendering_rows = plan.ui_rendering_rows;
+    result.input_middleware_rows = plan.input_middleware_rows;
+    result.glyph_rendering_rows = count_input_device_ux_diagnostics(
+        plan, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::glyph_rendering_requested);
+    result.ui_widget_rows = count_input_device_ux_diagnostics(
+        plan, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::ui_widget_requested);
+    result.ready = plan.ready() && result.gesture_binding_rows == 7U && result.gesture_event_rows == 7U &&
+                   result.gesture_action_rows == 7U && result.device_assignment_rows == 2U &&
+                   result.per_device_profile_rows == 1U && result.per_device_profile_clamped_deadzone_rows == 0U &&
+                   result.glyph_asset_lookup_rows == 2U && result.keyboard_layout_label_rows == 2U &&
+                   result.diagnostics == 0U && result.native_handle_access_rows == 0U &&
+                   result.ui_rendering_rows == 0U && result.input_middleware_rows == 0U &&
+                   result.glyph_rendering_rows == 0U && result.ui_widget_rows == 0U;
+    return result;
 }
 
 [[nodiscard]] std::size_t
@@ -10002,6 +10175,7 @@ void print_usage() {
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
+                 "[--require-2d-input-device-production-ux] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
@@ -10146,6 +10320,10 @@ void print_usage() {
         }
         if (arg == "--require-2d-physics-runtime-extension") {
             options.require_2d_physics_runtime_extension = true;
+            continue;
+        }
+        if (arg == "--require-2d-input-device-production-ux") {
+            options.require_2d_input_device_production_ux = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -10886,6 +11064,9 @@ int main(int argc, char** argv) {
     const auto physics_runtime_extension_probe = options.require_2d_physics_runtime_extension
                                                      ? validate_2d_physics_runtime_extension_package_evidence()
                                                      : Physics2DRuntimeExtensionProbeResult{};
+    const auto input_device_production_ux_probe = options.require_2d_input_device_production_ux
+                                                      ? validate_2d_input_device_production_ux_package_evidence()
+                                                      : InputDeviceProductionUxProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -11706,6 +11887,32 @@ int main(int argc, char** argv) {
         << physics_runtime_extension_probe.middleware_dispatches
         << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
         << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0)
+        << " 2d_input_device_production_ux_status="
+        << input_device_production_ux_status_name(input_device_production_ux_probe)
+        << " 2d_input_device_production_ux_ready=" << (input_device_production_ux_probe.ready ? 1 : 0)
+        << " 2d_input_device_production_ux_gesture_binding_rows="
+        << input_device_production_ux_probe.gesture_binding_rows
+        << " 2d_input_device_production_ux_gesture_event_rows=" << input_device_production_ux_probe.gesture_event_rows
+        << " 2d_input_device_production_ux_gesture_action_rows=" << input_device_production_ux_probe.gesture_action_rows
+        << " 2d_input_device_production_ux_device_assignment_rows="
+        << input_device_production_ux_probe.device_assignment_rows
+        << " 2d_input_device_production_ux_per_device_profile_rows="
+        << input_device_production_ux_probe.per_device_profile_rows
+        << " 2d_input_device_production_ux_clamped_deadzone_rows="
+        << input_device_production_ux_probe.per_device_profile_clamped_deadzone_rows
+        << " 2d_input_device_production_ux_glyph_asset_lookup_rows="
+        << input_device_production_ux_probe.glyph_asset_lookup_rows
+        << " 2d_input_device_production_ux_keyboard_layout_label_rows="
+        << input_device_production_ux_probe.keyboard_layout_label_rows
+        << " 2d_input_device_production_ux_diagnostics=" << input_device_production_ux_probe.diagnostics
+        << " 2d_input_device_production_ux_native_handle_access_rows="
+        << input_device_production_ux_probe.native_handle_access_rows
+        << " 2d_input_device_production_ux_ui_rendering_rows=" << input_device_production_ux_probe.ui_rendering_rows
+        << " 2d_input_device_production_ux_input_middleware_rows="
+        << input_device_production_ux_probe.input_middleware_rows
+        << " 2d_input_device_production_ux_glyph_rendering_rows="
+        << input_device_production_ux_probe.glyph_rendering_rows
+        << " 2d_input_device_production_ux_ui_widget_rows=" << input_device_production_ux_probe.ui_widget_rows
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -12973,6 +13180,40 @@ int main(int argc, char** argv) {
                   << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
                   << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0) << '\n';
         return 46;
+    }
+
+    if (options.require_2d_input_device_production_ux && !input_device_production_ux_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_input_device_production_ux_unavailable"
+                  << " 2d_input_device_production_ux_status="
+                  << input_device_production_ux_status_name(input_device_production_ux_probe)
+                  << " 2d_input_device_production_ux_gesture_binding_rows="
+                  << input_device_production_ux_probe.gesture_binding_rows
+                  << " 2d_input_device_production_ux_gesture_event_rows="
+                  << input_device_production_ux_probe.gesture_event_rows
+                  << " 2d_input_device_production_ux_gesture_action_rows="
+                  << input_device_production_ux_probe.gesture_action_rows
+                  << " 2d_input_device_production_ux_device_assignment_rows="
+                  << input_device_production_ux_probe.device_assignment_rows
+                  << " 2d_input_device_production_ux_per_device_profile_rows="
+                  << input_device_production_ux_probe.per_device_profile_rows
+                  << " 2d_input_device_production_ux_clamped_deadzone_rows="
+                  << input_device_production_ux_probe.per_device_profile_clamped_deadzone_rows
+                  << " 2d_input_device_production_ux_glyph_asset_lookup_rows="
+                  << input_device_production_ux_probe.glyph_asset_lookup_rows
+                  << " 2d_input_device_production_ux_keyboard_layout_label_rows="
+                  << input_device_production_ux_probe.keyboard_layout_label_rows
+                  << " 2d_input_device_production_ux_diagnostics=" << input_device_production_ux_probe.diagnostics
+                  << " 2d_input_device_production_ux_native_handle_access_rows="
+                  << input_device_production_ux_probe.native_handle_access_rows
+                  << " 2d_input_device_production_ux_ui_rendering_rows="
+                  << input_device_production_ux_probe.ui_rendering_rows
+                  << " 2d_input_device_production_ux_input_middleware_rows="
+                  << input_device_production_ux_probe.input_middleware_rows
+                  << " 2d_input_device_production_ux_glyph_rendering_rows="
+                  << input_device_production_ux_probe.glyph_rendering_rows
+                  << " 2d_input_device_production_ux_ui_widget_rows=" << input_device_production_ux_probe.ui_widget_rows
+                  << '\n';
+        return 47;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {
