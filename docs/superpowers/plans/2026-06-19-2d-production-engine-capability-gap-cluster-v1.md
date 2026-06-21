@@ -464,6 +464,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Ready only when:** gesture/action rows, glyph lookup rows, keyboard layout rows, device assignment rows, and per-device profile rows are deterministic and package-visible, with UI rendering and native handles still unclaimed.
 
+**Local evidence:**
+
+- RED/GREEN tests added `MK_runtime_tests` coverage for tap, double-tap, long-press, pan, swipe, pinch, rotate gesture-to-action rows, duplicate rejection, device assignment rows, per-device profile rows with deadzone clamping diagnostics, symbolic glyph lookup rows, keyboard physical/logical/display label rows, invalid glyph/keyboard diagnostics, and explicit non-claims for native handles, UI rendering, input middleware, glyph rendering, and UI widgets.
+- Runtime/package surface adds `RuntimeInputDeviceProductionUxPlan`, `RuntimeInputGestureBindingRow`, `RuntimeInputDeviceAssignmentRow`, `RuntimeInputPerDeviceProfileRow`, `RuntimeInputGlyphAssetLookupRow`, `RuntimeInputKeyboardLayoutLabelRow`, and `plan_runtime_input_device_production_ux`, plus `sample_2d_desktop_runtime_package --require-2d-input-device-production-ux`, installed validator expectations, CMake smoke args, game manifest recipe rows, and static AI integration needles.
+- Focused validation on 2026-06-22 passed `tools/cmake.ps1 --build --preset dev --target MK_runtime_tests`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_runtime_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_runtime_tests$|^MK_editor_core_tests$"`, `tools/check-text-format.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` with `--require-2d-input-device-production-ux`. The package-visible counters prove `2d_input_device_production_ux_status=ready`, ready `1`, 7 gesture binding rows, 7 gesture event rows, 7 gesture action rows, 2 device assignments, 1 per-device profile, 2 glyph asset lookup rows, 2 keyboard layout label rows, zero diagnostics, zero clamped deadzones in the ready lane, and zero native-handle/UI/middleware/glyph-render/widget counters.
+- Slice-close local gates passed after fast-forwarding to latest `origin/main`: composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `check-public-api-boundaries`, focused clang-tidy for runtime/test/package files, focused build/CTest, package validation, and full `tools/validate.ps1` on 2026-06-22 with CTest 143/143 passing. Pending publication gates: publication preflight, candidate commit, push, PR, hosted checks, merge, and local main synchronization.
+
 ### Phase 6: `2d-production-workload-matrix-v1`
 
 **Target modules:**

@@ -455,6 +455,12 @@ has_rebinding_diagnostic(const std::vector<mirakana::runtime::RuntimeInputRebind
     return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
+[[nodiscard]] bool has_input_device_ux_diagnostic(
+    const std::vector<mirakana::runtime::RuntimeInputDeviceProductionUxDiagnostic>& diagnostics,
+    mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode code) noexcept {
+    return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
 [[nodiscard]] const mirakana::runtime::RuntimeInputRebindingPresentationRow*
 find_rebinding_presentation_row(const std::vector<mirakana::runtime::RuntimeInputRebindingPresentationRow>& rows,
                                 const std::string& id) noexcept {
@@ -3883,6 +3889,210 @@ MK_TEST("runtime input rebinding presentation reports invalid profiles") {
     MK_REQUIRE(!row->ready);
     MK_REQUIRE(row->overridden);
     MK_REQUIRE(row->profile_tokens.size() == 1);
+}
+
+MK_TEST("runtime input device production ux plans gesture device glyph and keyboard rows") {
+    mirakana::runtime::RuntimeInputActionMap base;
+    base.bind_key_in_context("gameplay", "confirm", mirakana::Key::space);
+    base.bind_key_in_context("gameplay", "cancel", mirakana::Key::escape);
+    base.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+    base.bind_gamepad_button_in_context("gameplay", "dash", mirakana::GamepadId{1}, mirakana::GamepadButton::south);
+
+    mirakana::runtime::RuntimeInputDeviceProductionUxRequest request;
+    request.base_actions = base;
+    request.gesture_bindings = {
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "cancel",
+                                                          .gesture = mirakana::TouchGestureKind::double_tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::long_press,
+                                                          .phase = mirakana::TouchGesturePhase::began},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pan,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "dash",
+                                                          .gesture = mirakana::TouchGestureKind::swipe,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pinch,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::rotate,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+    };
+    request.gesture_events = {
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::double_tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::long_press,
+                                    .phase = mirakana::TouchGesturePhase::began,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pan,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1,
+                                    .delta = mirakana::Vec2{.x = 6.0F, .y = 0.0F}},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::swipe,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1,
+                                    .velocity = mirakana::Vec2{.x = 720.0F, .y = 0.0F}},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pinch,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .secondary_pointer_id = mirakana::PointerId{2},
+                                    .touch_count = 2,
+                                    .scale = 1.25F},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::rotate,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .secondary_pointer_id = mirakana::PointerId{2},
+                                    .touch_count = 2,
+                                    .rotation_radians = 0.4F},
+    };
+    request.device_assignments = {
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{
+            .player_id = "player_one",
+            .device_id = "keyboard_mouse:0",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::keyboard_mouse,
+            .profile_id = "player_one_keyboard"},
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{.player_id = "player_two",
+                                                            .device_id = "gamepad:1",
+                                                            .device_kind =
+                                                                mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+                                                            .profile_id = "player_two_gamepad"},
+    };
+    request.per_device_profiles = {
+        mirakana::runtime::RuntimeInputPerDeviceProfileDesc{
+            .profile_id = "player_two_gamepad",
+            .device_id = "gamepad:1",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+            .left_stick_radial_deadzone = 0.35F,
+            .right_stick_radial_deadzone = 0.20F,
+            .response_curve = mirakana::runtime::RuntimeInputStickResponseCurve::squared},
+    };
+    request.glyph_assets = {
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "gamepad.1.button.south", .platform = "xbox", .asset_id = "ui/input/xbox_button_south"},
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "keyboard.key.space", .platform = "keyboard", .asset_id = "ui/input/key_space"},
+    };
+    request.keyboard_layout_labels = {
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "en-US",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "jp-JIS",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_device_production_ux(request);
+
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.gesture_binding_rows.size() == 7U);
+    MK_REQUIRE(plan.gesture_action_rows == 7U);
+    MK_REQUIRE(plan.device_assignment_rows.size() == 2U);
+    MK_REQUIRE(plan.per_device_profile_rows.size() == 1U);
+    MK_REQUIRE(plan.glyph_asset_lookup_rows.size() == 2U);
+    MK_REQUIRE(plan.keyboard_layout_label_rows.size() == 2U);
+    MK_REQUIRE(plan.gesture_binding_rows[0].gesture == mirakana::TouchGestureKind::tap);
+    MK_REQUIRE(plan.gesture_binding_rows[0].action == "confirm");
+    MK_REQUIRE(plan.gesture_binding_rows[0].mapped_to_action);
+    MK_REQUIRE(plan.per_device_profile_rows[0].response_curve ==
+               mirakana::runtime::RuntimeInputStickResponseCurve::squared);
+    MK_REQUIRE(nearly_equal(plan.per_device_profile_rows[0].left_stick_radial_deadzone, 0.35F));
+    MK_REQUIRE(plan.glyph_asset_lookup_rows[0].glyph_lookup_key == "gamepad.1.button.south");
+    MK_REQUIRE(plan.glyph_asset_lookup_rows[0].asset_id == "ui/input/xbox_button_south");
+    MK_REQUIRE(!plan.glyph_asset_lookup_rows[0].renders_glyph);
+    MK_REQUIRE(!plan.glyph_asset_lookup_rows[0].creates_ui_widget);
+    MK_REQUIRE(plan.keyboard_layout_label_rows[0].physical_key == mirakana::Key::space);
+    MK_REQUIRE(plan.keyboard_layout_label_rows[0].logical_key == mirakana::Key::space);
+    MK_REQUIRE(plan.keyboard_layout_label_rows[0].display_label == "Space");
+    MK_REQUIRE(plan.native_handle_access_rows == 0U);
+    MK_REQUIRE(plan.ui_rendering_rows == 0U);
+    MK_REQUIRE(plan.input_middleware_rows == 0U);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("runtime input device production ux clamps profiles and rejects unsafe surfaces") {
+    mirakana::runtime::RuntimeInputActionMap base;
+    base.bind_gamepad_axis_in_context("gameplay", "move_x", mirakana::GamepadId{1}, mirakana::GamepadAxis::left_x);
+
+    mirakana::runtime::RuntimeInputDeviceProductionUxRequest request;
+    request.base_actions = base;
+    request.per_device_profiles = {
+        mirakana::runtime::RuntimeInputPerDeviceProfileDesc{
+            .profile_id = "player_one_gamepad",
+            .device_id = "gamepad:1",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+            .left_stick_radial_deadzone = -0.25F,
+            .right_stick_radial_deadzone = 1.5F,
+            .response_curve = mirakana::runtime::RuntimeInputStickResponseCurve::cubic},
+    };
+    request.request_native_handle_access = true;
+    request.request_ui_rendering = true;
+    request.request_input_middleware = true;
+
+    const auto plan = mirakana::runtime::plan_runtime_input_device_production_ux(request);
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.per_device_profile_rows.size() == 1U);
+    MK_REQUIRE(plan.per_device_profile_rows[0].profile_id == "player_one_gamepad");
+    MK_REQUIRE(nearly_equal(plan.per_device_profile_rows[0].left_stick_radial_deadzone, 0.0F));
+    MK_REQUIRE(nearly_equal(plan.per_device_profile_rows[0].right_stick_radial_deadzone, 1.0F));
+    MK_REQUIRE(plan.per_device_profile_rows[0].clamped_deadzone);
+    MK_REQUIRE(plan.native_handle_access_rows == 1U);
+    MK_REQUIRE(plan.ui_rendering_rows == 1U);
+    MK_REQUIRE(plan.input_middleware_rows == 1U);
+    MK_REQUIRE(has_input_device_ux_diagnostic(
+        plan.diagnostics, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::deadzone_clamped));
+    MK_REQUIRE(has_input_device_ux_diagnostic(
+        plan.diagnostics, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::native_handle_requested));
+    MK_REQUIRE(has_input_device_ux_diagnostic(
+        plan.diagnostics, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::ui_rendering_requested));
+    MK_REQUIRE(has_input_device_ux_diagnostic(
+        plan.diagnostics, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::input_middleware_requested));
+}
+
+MK_TEST("runtime input device production ux reports exact invalid glyph and keyboard label diagnostics") {
+    mirakana::runtime::RuntimeInputDeviceProductionUxRequest request;
+    request.glyph_assets = {
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = {}, .platform = "keyboard", .asset_id = "ui/input/key_space"},
+    };
+    request.keyboard_layout_labels = {
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "en-US",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = {}},
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_device_production_ux(request);
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(has_input_device_ux_diagnostic(
+        plan.diagnostics, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::invalid_glyph_asset));
+    MK_REQUIRE(has_input_device_ux_diagnostic(
+        plan.diagnostics,
+        mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::invalid_keyboard_layout_label));
 }
 
 MK_TEST("runtime input rebinding profiles serialize and deserialize canonically") {

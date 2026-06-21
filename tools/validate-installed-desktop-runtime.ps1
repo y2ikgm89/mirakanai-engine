@@ -505,6 +505,7 @@ $requires2dGameplayExecutionLoop = @($SmokeArgs) -contains "--require-2d-gamepla
 $requires2dSpriteAtlasResidency = @($SmokeArgs) -contains "--require-2d-sprite-atlas-residency"
 $requires2dSpriteThroughput = @($SmokeArgs) -contains "--require-2d-sprite-throughput"
 $requires2dPhysicsRuntimeExtension = @($SmokeArgs) -contains "--require-2d-physics-runtime-extension"
+$requires2dInputDeviceProductionUx = @($SmokeArgs) -contains "--require-2d-input-device-production-ux"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
@@ -4578,6 +4579,31 @@ if ($requires2dPhysicsRuntimeExtension) {
         -EscapedGameTarget $escapedGameTarget `
         -ExpectedFields $expected2dPhysicsRuntimeExtensionFields `
         -Context "2D physics runtime extension"
+}
+if ($requires2dInputDeviceProductionUx) {
+    $expected2dInputDeviceProductionUxFields = @{
+        "2d_input_device_production_ux_status" = "ready"
+        "2d_input_device_production_ux_ready" = "1"
+        "2d_input_device_production_ux_gesture_binding_rows" = "7"
+        "2d_input_device_production_ux_gesture_event_rows" = "7"
+        "2d_input_device_production_ux_gesture_action_rows" = "7"
+        "2d_input_device_production_ux_device_assignment_rows" = "2"
+        "2d_input_device_production_ux_per_device_profile_rows" = "1"
+        "2d_input_device_production_ux_clamped_deadzone_rows" = "0"
+        "2d_input_device_production_ux_glyph_asset_lookup_rows" = "2"
+        "2d_input_device_production_ux_keyboard_layout_label_rows" = "2"
+        "2d_input_device_production_ux_diagnostics" = "0"
+        "2d_input_device_production_ux_native_handle_access_rows" = "0"
+        "2d_input_device_production_ux_ui_rendering_rows" = "0"
+        "2d_input_device_production_ux_input_middleware_rows" = "0"
+        "2d_input_device_production_ux_glyph_rendering_rows" = "0"
+        "2d_input_device_production_ux_ui_widget_rows" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dInputDeviceProductionUxFields `
+        -Context "2D input device production UX"
 }
 if ($requiresGameplayAuthoringReview) {
     foreach ($field in @(
