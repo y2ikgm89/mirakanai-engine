@@ -502,9 +502,11 @@ $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-s
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requires2dGameplayExecutionLoop = @($SmokeArgs) -contains "--require-2d-gameplay-execution-loop"
+$requires2dSpriteAtlasResidency = @($SmokeArgs) -contains "--require-2d-sprite-atlas-residency"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
+$requiresRuntimeUiStandardWidgets = @($SmokeArgs) -contains "--require-runtime-ui-standard-widgets"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
 $requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runtime-ui-renderer-atlas-handoff"
@@ -4485,6 +4487,25 @@ if ($requires2dGameplayExecutionLoop) {
         Write-Error "Installed desktop runtime smoke status line did not prove positive 2D gameplay execution loop replay hash."
     }
 }
+if ($requires2dSpriteAtlasResidency) {
+    $expected2dSpriteAtlasResidencyFields = @{
+        "2d_sprite_atlas_residency_status" = "ready"
+        "2d_sprite_atlas_residency_ready" = "1"
+        "2d_sprite_atlas_residency_page_rows" = "1"
+        "2d_sprite_atlas_residency_upload_handoff_rows" = "1"
+        "2d_sprite_atlas_residency_resident_bytes" = "4"
+        "2d_sprite_atlas_residency_diagnostics" = "0"
+        "2d_sprite_atlas_residency_invoked_runtime_source_decode" = "0"
+        "2d_sprite_atlas_residency_requested_renderer_residency_ownership" = "0"
+        "2d_sprite_atlas_residency_requested_public_native_handle" = "0"
+        "2d_sprite_atlas_residency_invoked_renderer_upload" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dSpriteAtlasResidencyFields `
+        -Context "2D sprite atlas residency"
+}
 if ($requiresGameplayAuthoringReview) {
     foreach ($field in @(
             "gameplay_authoring_review_status",
@@ -4680,6 +4701,58 @@ if ($requiresRuntimeUiWorkbench) {
         $expectedValue = $expectedRuntimeUiWorkbenchFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove runtime UI workbench field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresRuntimeUiStandardWidgets) {
+    foreach ($field in @(
+            "runtime_ui_standard_widgets_ready",
+            "runtime_ui_standard_widgets_provenance_ready",
+            "runtime_ui_standard_widgets_official_documentation_rows",
+            "runtime_ui_standard_widgets_first_party_design_rows",
+            "runtime_ui_standard_widgets_meter_rows",
+            "runtime_ui_standard_widgets_menu_screens",
+            "runtime_ui_standard_widgets_menu_actions",
+            "runtime_ui_standard_widgets_document_elements",
+            "runtime_ui_meter_health_normalized",
+            "runtime_ui_meter_mana_normalized",
+            "runtime_ui_meter_stamina_normalized",
+            "runtime_ui_standard_widgets_health_accessibility_ready",
+            "runtime_ui_standard_widgets_mana_localization_ready",
+            "runtime_ui_standard_widgets_stamina_warning_style_ready",
+            "runtime_ui_standard_widgets_external_engine_code",
+            "runtime_ui_standard_widgets_external_engine_assets",
+            "runtime_ui_standard_widgets_ui_middleware",
+            "runtime_ui_standard_widgets_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI standard widgets field: $field"
+        }
+    }
+    $expectedRuntimeUiStandardWidgetFields = @{
+        "runtime_ui_standard_widgets_ready" = "1"
+        "runtime_ui_standard_widgets_provenance_ready" = "1"
+        "runtime_ui_standard_widgets_official_documentation_rows" = "3"
+        "runtime_ui_standard_widgets_first_party_design_rows" = "1"
+        "runtime_ui_standard_widgets_meter_rows" = "3"
+        "runtime_ui_standard_widgets_menu_screens" = "2"
+        "runtime_ui_standard_widgets_menu_actions" = "4"
+        "runtime_ui_standard_widgets_document_elements" = "19"
+        "runtime_ui_meter_health_normalized" = "0.750"
+        "runtime_ui_meter_mana_normalized" = "0.400"
+        "runtime_ui_meter_stamina_normalized" = "0.100"
+        "runtime_ui_standard_widgets_health_accessibility_ready" = "1"
+        "runtime_ui_standard_widgets_mana_localization_ready" = "1"
+        "runtime_ui_standard_widgets_stamina_warning_style_ready" = "1"
+        "runtime_ui_standard_widgets_external_engine_code" = "0"
+        "runtime_ui_standard_widgets_external_engine_assets" = "0"
+        "runtime_ui_standard_widgets_ui_middleware" = "0"
+        "runtime_ui_standard_widgets_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiStandardWidgetFields.Keys) {
+        $expectedValue = $expectedRuntimeUiStandardWidgetFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI standard widgets field $field=$expectedValue."
         }
     }
 }

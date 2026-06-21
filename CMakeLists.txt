@@ -307,6 +307,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_2d_gameplay_execution_loop_tests)
     add_test(NAME MK_runtime_2d_gameplay_execution_loop_tests COMMAND MK_runtime_2d_gameplay_execution_loop_tests)
 
+    add_executable(MK_runtime_sprite_atlas_residency_tests
+        tests/unit/runtime_sprite_atlas_residency_tests.cpp
+    )
+    target_link_libraries(MK_runtime_sprite_atlas_residency_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_sprite_atlas_residency_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_sprite_atlas_residency_tests)
+    add_test(NAME MK_runtime_sprite_atlas_residency_tests COMMAND MK_runtime_sprite_atlas_residency_tests)
+
     add_executable(MK_runtime_sprite_collision_hitbox_tests
         tests/unit/runtime_sprite_collision_hitbox_tests.cpp
     )
@@ -1199,6 +1207,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_runtime_ui_workbench_tests PRIVATE tests)
     MK_apply_common_target_options(MK_runtime_ui_workbench_tests)
     add_test(NAME MK_runtime_ui_workbench_tests COMMAND MK_runtime_ui_workbench_tests)
+
+    add_executable(MK_runtime_ui_standard_widgets_tests
+        tests/unit/runtime_ui_standard_widgets_tests.cpp
+    )
+    target_link_libraries(MK_runtime_ui_standard_widgets_tests PRIVATE MK_ui)
+    target_include_directories(MK_runtime_ui_standard_widgets_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_ui_standard_widgets_tests)
+    add_test(NAME MK_runtime_ui_standard_widgets_tests COMMAND MK_runtime_ui_standard_widgets_tests)
 
     add_executable(MK_runtime_ui_production_stack_tests
         tests/unit/runtime_ui_production_stack_tests.cpp

@@ -63,6 +63,7 @@ enum class SemanticRole : std::uint8_t {
     image,
     checkbox,
     slider,
+    meter,
     dialog,
 };
 
