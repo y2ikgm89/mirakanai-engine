@@ -74,7 +74,6 @@ foreach ($requiredNeedle in @(
         Write-Error "release package artifact validation must reject SDL3 runtime DLL artifacts: $requiredNeedle"
     }
 }
-
 $editorCmakeContent = Get-Content -LiteralPath (Join-Path $root "editor/CMakeLists.txt") -Raw
 foreach ($forbiddenNeedle in @(
         "find_package(SDL3",
@@ -1457,6 +1456,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer Metal Apple selection: $needle"
         }
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-backend-parity-apple-evidence-closeout-v1") { foreach ($needle in @("Renderer Backend Parity Apple Evidence Closeout v1", "renderer-backend-parity-v1", "renderer-metal-apple-host-evidence", "Apple/Metal host evidence", "Windows/Vulkan proof must not promote Metal readiness", "native handles remain hidden", "unsupportedProductionGaps = []")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer backend parity Apple evidence closeout selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-postprocess-tone-mapping-evidence-v1") {
     foreach ($needle in @(
     "Renderer Postprocess Tone Mapping Evidence v1",
