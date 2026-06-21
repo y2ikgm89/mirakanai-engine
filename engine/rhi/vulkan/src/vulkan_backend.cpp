@@ -2756,13 +2756,20 @@ has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBi
     return modes.front();
 }
 
-[[nodiscard]] std::uint32_t choose_swapchain_image_count(const VulkanSwapchainCreateDesc& desc,
-                                                         const VulkanSurfaceCapabilities& capabilities) noexcept {
-    auto count = std::max(desc.requested_image_count, capabilities.min_image_count);
-    if (capabilities.max_image_count > 0) {
-        count = std::min(count, capabilities.max_image_count);
+[[nodiscard]] std::uint32_t choose_swapchain_image_count(std::uint32_t requested_image_count,
+                                                         std::uint32_t min_image_count,
+                                                         std::uint32_t max_image_count) noexcept {
+    auto count = std::max(requested_image_count, min_image_count);
+    if (max_image_count > 0) {
+        count = std::min(count, max_image_count);
     }
     return count;
+}
+
+[[nodiscard]] std::uint32_t choose_swapchain_image_count(const VulkanSwapchainCreateDesc& desc,
+                                                         const VulkanSurfaceCapabilities& capabilities) noexcept {
+    return choose_swapchain_image_count(desc.requested_image_count, capabilities.min_image_count,
+                                        capabilities.max_image_count);
 }
 
 [[nodiscard]] bool command_is_available(const std::vector<VulkanCommandAvailability>& available_commands,
@@ -12863,6 +12870,13 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         result.diagnostic = "Vulkan swapchain create plan extent does not match the runtime surface extent";
         return result;
     }
+    if (capabilities.max_image_count > 0 && capabilities.max_image_count < capabilities.min_image_count) {
+        device.impl_->destroy_surface(device.impl_->instance, surface, nullptr);
+        result.diagnostic = "Vulkan runtime surface image-count capabilities are inconsistent";
+        return result;
+    }
+    const auto effective_image_count =
+        choose_swapchain_image_count(desc.plan.image_count, capabilities.min_image_count, capabilities.max_image_count);
 
     std::uint32_t format_count = 0;
     auto formats_result =
@@ -12944,7 +12958,7 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         .next = nullptr,
         .flags = 0,
         .surface = surface,
-        .min_image_count = desc.plan.image_count,
+        .min_image_count = effective_image_count,
         .image_format = native_vulkan_format(desc.plan.format),
         .image_color_space = vulkan_color_space_srgb_nonlinear,
         .image_extent = NativeVulkanExtent2D{.width = desc.plan.extent.width, .height = desc.plan.extent.height},
