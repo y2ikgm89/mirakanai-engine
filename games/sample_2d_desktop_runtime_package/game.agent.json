@@ -2044,6 +2044,11 @@
       "installed-2d-sandbox-package-budget-smoke",
       "installed-2d-performance-baseline-smoke",
       "installed-2d-long-run-readiness-smoke",
+      "installed-2d-sprite-throughput-smoke",
+      "installed-2d-tilemap-runtime-ux-smoke",
+      "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+      "installed-2d-input-device-production-ux-smoke",
+      "host-2d-long-run-readiness-soak",
       "installed-native-2d-sprite-smoke",
       "desktop-game-runtime"
     ],
@@ -2110,6 +2115,105 @@
         "unit": "bytes",
         "evidenceRequired": true,
         "notes": "Selected long-run readiness smoke must report zero memory growth with positive high-water evidence; this is not allocator enforcement or broad memory optimization."
+      },
+      {
+        "id": "dense-arena-visible-sprites",
+        "category": "draw",
+        "metric": "2d_sprite_throughput_dense_arena_4096_visible_sprites",
+        "limit": 4096,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected dense arena workload is capped at the package-visible 4096 visible sprite row and does not claim backend renderer quality."
+      },
+      {
+        "id": "projectile-storm-logical-sprites",
+        "category": "draw",
+        "metric": "2d_sprite_throughput_projectile_storm_logical_sprites",
+        "limit": 12000,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected projectile storm workload records logical sprite pressure before culling; it is not a broad bullet-hell optimization claim."
+      },
+      {
+        "id": "sprite-throughput-upload-bytes",
+        "category": "upload",
+        "metric": "2d_sprite_throughput_upload_bytes",
+        "limit": 319488,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Selected sprite throughput smoke bounds package-visible upload bytes without taking renderer/RHI residency ownership."
+      },
+      {
+        "id": "sandbox-tile-visible-cells",
+        "category": "draw",
+        "metric": "tile_chunk_renderer_visible_cells",
+        "limit": 3,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox tilemap workload uses the existing package tile chunk renderer proof."
+      },
+      {
+        "id": "sandbox-tile-draw-rows",
+        "category": "draw",
+        "metric": "tile_chunk_renderer_draw_rows",
+        "limit": 2,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox tilemap workload keeps draw rows deterministic and renderer-neutral."
+      },
+      {
+        "id": "sandbox-streaming-load-rows",
+        "category": "streaming",
+        "metric": "sandbox_package_budget_streaming_load_rows",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox package budget smoke records safe-point streaming intent without broad background streaming."
+      },
+      {
+        "id": "ui-overlay-renderer-sprites",
+        "category": "draw",
+        "metric": "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
+        "limit": 2,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload uses cooked UI atlas renderer handoff rows only."
+      },
+      {
+        "id": "ui-overlay-atlas-budget-rows",
+        "category": "memory",
+        "metric": "runtime_ui_renderer_atlas_handoff_atlas_budget_rows",
+        "limit": 2,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload records atlas budget rows without live glyph atlas generation or renderer upload ownership."
+      },
+      {
+        "id": "hot-reload-reviewed-replacement-rows",
+        "category": "streaming",
+        "metric": "hot_reload_package_external_evidence_rows",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Hot reload productization stays host-gated in this workload matrix until external recook-to-resident replacement evidence is imported."
+      },
+      {
+        "id": "hot-reload-unsafe-execution-claims",
+        "category": "streaming",
+        "metric": "hot_reload_package_unsafe_execution_claims",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "The workload matrix rejects package-script execution, arbitrary shell, and in-process hot reload claims."
+      },
+      {
+        "id": "long-run-sample-frames",
+        "category": "frame",
+        "metric": "long_run_readiness_frames",
+        "limit": 3,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected short long-run readiness is fixed at the deterministic package smoke sample count; the 108000-frame soak remains opt-in host evidence."
       }
     ],
     "evidenceRows": [
@@ -2178,6 +2282,189 @@
         "validationRecipeId": "installed-2d-performance-baseline-smoke",
         "status": "host-gated",
         "artifactPath": "out/performance/sample_2d_desktop_runtime_package/installed-2d-performance-baseline.trace.json"
+      },
+      {
+        "id": "sprite-throughput-workload-smoke",
+        "budgetRowIds": [
+          "dense-arena-visible-sprites",
+          "projectile-storm-logical-sprites",
+          "sprite-throughput-upload-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible 2d_sprite_throughput_* counters from installed 2D sprite throughput smoke, including dense arena, projectile storm, upload bytes, retained timing artifact hash, clean diagnostics, and zero broad optimization/backend/Metal claim counters.",
+        "validationRecipeId": "installed-2d-sprite-throughput-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "sandbox-tilemap-workload-smoke",
+        "budgetRowIds": [
+          "sandbox-tile-visible-cells",
+          "sandbox-tile-draw-rows",
+          "sandbox-streaming-load-rows"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible sandbox_package_budget_*, tilemap_*, and tile_chunk_renderer_* counters from selected sandbox/tilemap package smoke with clean diagnostics and zero renderer/RHI ownership side effects.",
+        "validationRecipeId": "installed-2d-sandbox-package-budget-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "ui-overlay-workload-smoke",
+        "budgetRowIds": [
+          "ui-overlay-renderer-sprites",
+          "ui-overlay-atlas-budget-rows"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible runtime_ui_renderer_atlas_handoff_* counters from cooked UI atlas handoff smoke with zero native handle, source decode, live glyph generation, and renderer upload side effects.",
+        "validationRecipeId": "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "hot-reload-package-playtest-evidence",
+        "budgetRowIds": [
+          "hot-reload-reviewed-replacement-rows",
+          "hot-reload-unsafe-execution-claims"
+        ],
+        "evidenceKind": "manual-host-evidence",
+        "source": "External operator playtest evidence under games/sample_2d_desktop_runtime_package/reports/playtest/latest may later attach reviewed recook-to-resident replacement rows. This matrix keeps the row host-gated and non-executing.",
+        "validationRecipeId": "installed-2d-package-smoke",
+        "status": "host-gated"
+      },
+      {
+        "id": "long-run-selected-smoke",
+        "budgetRowIds": [
+          "long-run-sample-frames",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible long_run_readiness_* counters from selected deterministic short long-run smoke, including three frames, zero over-budget frames, positive memory high-water, zero memory growth, and zero native/SIMD/GPU async/CUDA/HIP/SYCL side effects.",
+        "validationRecipeId": "installed-2d-long-run-readiness-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "long-run-host-soak-evidence",
+        "budgetRowIds": [
+          "long-run-sample-frames",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceKind": "manual-host-evidence",
+        "source": "Optional host-2d-long-run-readiness-soak evidence for a 108000-frame package soak. It is not part of default validation and must not promote broad long-running or broad optimization readiness.",
+        "validationRecipeId": "host-2d-long-run-readiness-soak",
+        "status": "host-gated"
+      }
+    ],
+    "workloadRows": [
+      {
+        "id": "2d-dense-arena",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-sprite-throughput-smoke"
+        ],
+        "budgetRowIds": [
+          "dense-arena-visible-sprites",
+          "projectile-storm-logical-sprites",
+          "sprite-throughput-upload-bytes"
+        ],
+        "evidenceRowIds": [
+          "sprite-throughput-workload-smoke"
+        ],
+        "artifactPolicy": "package-counter-retained-hash",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-sandbox-tilemap",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-sandbox-package-budget-smoke",
+          "installed-2d-tilemap-runtime-ux-smoke"
+        ],
+        "budgetRowIds": [
+          "sandbox-tile-visible-cells",
+          "sandbox-tile-draw-rows",
+          "sandbox-streaming-load-rows"
+        ],
+        "evidenceRowIds": [
+          "sandbox-tilemap-workload-smoke"
+        ],
+        "artifactPolicy": "package-counter-only",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-ui-overlay",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
+        ],
+        "budgetRowIds": [
+          "ui-overlay-renderer-sprites",
+          "ui-overlay-atlas-budget-rows"
+        ],
+        "evidenceRowIds": [
+          "ui-overlay-workload-smoke"
+        ],
+        "artifactPolicy": "package-counter-only",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-hot-reload-package",
+        "status": "host-gated",
+        "validationRecipeIds": [
+          "installed-2d-package-smoke"
+        ],
+        "budgetRowIds": [
+          "hot-reload-reviewed-replacement-rows",
+          "hot-reload-unsafe-execution-claims"
+        ],
+        "evidenceRowIds": [
+          "hot-reload-package-playtest-evidence"
+        ],
+        "artifactPolicy": "external-playtest-evidence",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-long-run-selected",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-long-run-readiness-smoke",
+          "host-2d-long-run-readiness-soak"
+        ],
+        "budgetRowIds": [
+          "long-run-sample-frames",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceRowIds": [
+          "long-run-selected-smoke",
+          "long-run-host-soak-evidence"
+        ],
+        "artifactPolicy": "package-counter-with-optional-host-soak",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
       }
     ],
     "unsupportedClaims": [

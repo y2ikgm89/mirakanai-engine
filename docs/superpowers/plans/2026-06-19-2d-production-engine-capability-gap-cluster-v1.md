@@ -509,6 +509,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Ready only when:** the validator passes in `-RequireReady`, all required workload rows exist, all ready timing rows have retained artifacts, no over-budget row exists, and broad optimization remains unclaimed unless specifically proven.
 
+- Local Phase 6 implementation adds [2D Production Workload Matrix v1](../../specs/2026-06-19-2d-production-workload-matrix-v1.md), `tools/validate-2d-production-workloads.ps1`, and `sample_2d_desktop_runtime_package` `performanceBudgets.workloadRows` for `2d-dense-arena`, `2d-sandbox-tilemap`, `2d-ui-overlay`, `2d-hot-reload-package`, and `2d-long-run-selected`.
+- Initial focused package validation passed `tools/validate-2d-production-workloads.ps1` and `tools/validate-2d-production-workloads.ps1 -RequireReady` with selected package-visible counters for sprite throughput, sandbox/tilemap, runtime UI atlas handoff, performance baseline, long-run readiness, and 2D input-device production UX. Representative counters include `2d_sprite_throughput_workload_rows=3`, `2d_sprite_throughput_dense_arena_4096_visible_sprites=4096`, `2d_sprite_throughput_projectile_storm_logical_sprites=12000`, `2d_sprite_throughput_upload_bytes=319488`, `runtime_ui_renderer_atlas_handoff_atlas_budget_rows=2`, positive `long_run_readiness_memory_high_water_bytes`, and clean broad-optimization/backend/Metal/native-handle non-claim counters.
+- Local slice-close gates passed on 2026-06-22, including composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `tools/validate-2d-production-workloads.ps1 -RequireReady`, and full `tools/validate.ps1` with CTest 143/143 passing. Remaining publication gates are publication preflight, candidate commit, push, PR, hosted checks, merge, and local main synchronization.
+
 ### Phase 7: `2d-package-playtest-productization-v1`
 
 **Target modules:**
