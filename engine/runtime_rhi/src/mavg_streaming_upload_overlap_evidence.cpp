@@ -48,6 +48,8 @@ void add_diagnostic(RuntimeMavgStreamingUploadOverlapEvidenceResult& result,
 RuntimeMavgStreamingUploadOverlapEvidenceResult
 plan_runtime_mavg_streaming_upload_overlap_evidence(const RuntimeMavgStreamingUploadOverlapEvidenceDesc& desc) {
     RuntimeMavgStreamingUploadOverlapEvidenceResult result;
+    result.graph_asset = desc.graph_asset;
+    result.timeline_id = desc.background_load_window.timeline_id;
     const bool missing_required_input =
         desc.closeout == nullptr || desc.safe_point_adoption == nullptr || desc.gpu_upload == nullptr;
 
