@@ -146,10 +146,59 @@ struct RuntimeEntityScaleCullingPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class RuntimeEntityScaleCullingSpriteDrawIntentStatus : std::uint8_t {
+    ready = 0,
+    invalid_request,
+    budget_exceeded,
+};
+
+enum class RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode : std::uint8_t {
+    missing_culling_plan = 0,
+    culling_plan_not_ready,
+    draw_intent_budget_exceeded,
+};
+
+struct RuntimeEntityScaleCullingSpriteDrawIntentRequest {
+    const RuntimeEntityScaleCullingPlan* culling_plan{nullptr};
+    std::size_t max_draw_intent_rows{0U};
+};
+
+struct RuntimeEntityScaleCullingSpriteDrawIntentDiagnostic {
+    RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode code{
+        RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode::missing_culling_plan};
+};
+
+struct RuntimeEntityScaleCullingSpriteDrawIntentRow {
+    std::string entity_id;
+    std::uint32_t source_index{0U};
+    std::uint32_t lod_index{0U};
+    std::uint32_t projected_draw_cost{0U};
+    std::uint64_t stable_order{0U};
+    bool budget_protected{false};
+};
+
+struct RuntimeEntityScaleCullingSpriteDrawIntentPlan {
+    RuntimeEntityScaleCullingSpriteDrawIntentStatus status{
+        RuntimeEntityScaleCullingSpriteDrawIntentStatus::invalid_request};
+    std::vector<RuntimeEntityScaleCullingSpriteDrawIntentDiagnostic> diagnostics;
+    std::vector<RuntimeEntityScaleCullingSpriteDrawIntentRow> rows;
+    std::size_t logical_sprite_rows{0U};
+    std::size_t visible_sprite_rows{0U};
+    std::size_t culled_sprite_rows{0U};
+    std::size_t non_sprite_visible_rows{0U};
+    bool invoked_scene_mutation{false};
+    bool requested_renderer_ownership{false};
+    bool requested_native_handle_access{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 /// Plans deterministic, value-only entity visibility/update bucket rows for generated gameplay systems.
 /// This helper does not mutate scene nodes or components, own renderer/RHI resources, perform GPU/occlusion culling,
 /// upload buffers, launch background workers, read packages, or touch native handles.
 [[nodiscard]] RuntimeEntityScaleCullingPlan
 plan_runtime_entity_scale_culling(const RuntimeEntityScaleCullingRequest& request);
+[[nodiscard]] RuntimeEntityScaleCullingSpriteDrawIntentPlan
+plan_runtime_entity_scale_culling_sprite_draw_intents(const RuntimeEntityScaleCullingSpriteDrawIntentRequest& request);
 
 } // namespace mirakana::runtime

@@ -371,6 +371,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_physics_native_adapter_tests)
     add_test(NAME MK_physics_native_adapter_tests COMMAND MK_physics_native_adapter_tests)
 
+    add_executable(MK_physics2d_runtime_extension_tests
+        tests/unit/physics2d_runtime_extension_tests.cpp
+    )
+    target_link_libraries(MK_physics2d_runtime_extension_tests PRIVATE MK_physics)
+    target_include_directories(MK_physics2d_runtime_extension_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_physics2d_runtime_extension_tests)
+    add_test(NAME MK_physics2d_runtime_extension_tests COMMAND MK_physics2d_runtime_extension_tests)
+
     add_executable(MK_physics_navigation_production_breadth_tests
         tests/unit/physics_navigation_production_breadth_tests.cpp
     )
@@ -983,6 +991,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_renderer_tests PRIVATE tests)
     MK_apply_common_target_options(MK_renderer_tests)
     add_test(NAME MK_renderer_tests COMMAND MK_renderer_tests)
+
+    add_executable(MK_renderer_2d_sprite_throughput_tests
+        tests/unit/renderer_sprite_batch_tests.cpp
+    )
+    target_link_libraries(MK_renderer_2d_sprite_throughput_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_2d_sprite_throughput_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_2d_sprite_throughput_tests)
+    add_test(NAME MK_renderer_2d_sprite_throughput_tests COMMAND MK_renderer_2d_sprite_throughput_tests)
 
     add_executable(MK_mavg_lod_selection_tests
         tests/unit/mavg_lod_selection_tests.cpp
