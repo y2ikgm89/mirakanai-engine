@@ -2169,8 +2169,7 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "--require-audio-gameplay-mixer" $docSurface.Label
     Assert-ContainsText $docSurface.Text "audio_gameplay_mixer_ready" $docSurface.Label
 }
-Assert-ContainsText $manifestRaw "currentInputContextPlanning" "engine/agent/manifest.json"
-Assert-ContainsText $manifestRaw "RuntimeInputContextStackPlan" "engine/agent/manifest.json"
+@("currentInputContextPlanning", "RuntimeInputContextStackPlan", "RuntimeInputDeviceProductionUxPlan", "plan_runtime_input_device_production_ux", "RuntimeInputGestureBindingRow", "RuntimeInputDeviceAssignmentRow", "RuntimeInputPerDeviceProfileRow", "RuntimeInputGlyphAssetLookupRow", "RuntimeInputKeyboardLayoutLabelRow") | ForEach-Object { Assert-ContainsText $manifestRaw $_ "engine/agent/manifest.json" }
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"
