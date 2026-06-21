@@ -272,6 +272,15 @@ try {
     Assert-ContainsText $sample2dDesktopMain "--require-2d-sprite-atlas-residency" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "plan_runtime_sprite_atlas_residency" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "2d_sprite_atlas_residency_status" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "--require-2d-sprite-throughput" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "plan_sprite_batch_production_throughput" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "plan_runtime_entity_scale_culling_sprite_draw_intents" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_sprite_throughput_status" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_sprite_throughput_claimed_cross_backend_parity" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "--require-2d-physics-runtime-extension" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "simulate_physics2d_step" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_physics_runtime_extension_status" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed" "sample_2d_desktop_runtime_package main.cpp"
     $sample2dDesktopManifest = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json" | ConvertFrom-Json
     if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-effects-particles-smoke") {
         Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-effects-particles-smoke"
@@ -281,6 +290,12 @@ try {
     }
     if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-atlas-residency-smoke") {
         Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-atlas-residency-smoke"
+    }
+    if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-throughput-smoke") {
+        Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-throughput-smoke"
+    }
+    if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-physics-runtime-extension-smoke") {
+        Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-physics-runtime-extension-smoke"
     }
     Assert-PerformanceBudgets `
         $sample2dDesktopManifest `
@@ -294,11 +309,17 @@ try {
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-effects-particles" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-2d-gameplay-execution-loop" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-2d-sprite-atlas-residency" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
+    Assert-ContainsText $repositoryGamesCmake "--require-2d-sprite-throughput" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
+    Assert-ContainsText $repositoryGamesCmake "--require-2d-physics-runtime-extension" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
     foreach ($needle in @("load_runtime_asset_package", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "postprocess_policy_status=", "material_graph_authoring_targets=", "material_graph_compile_requests=", "--require-material-graph-authoring")) {
         Assert-ContainsText $materialShaderMain $needle "Desktop material/shader scaffold main.cpp"
     }
     $validateInstalledRuntimeScript = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
+    Assert-ContainsText $validateInstalledRuntimeScript "2d_sprite_throughput_status" "Installed desktop runtime validation"
+    Assert-ContainsText $validateInstalledRuntimeScript "2d_sprite_throughput_claimed_cross_backend_parity" "Installed desktop runtime validation"
+    Assert-ContainsText $validateInstalledRuntimeScript "2d_physics_runtime_extension_status" "Installed desktop runtime validation"
+    Assert-ContainsText $validateInstalledRuntimeScript "2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed" "Installed desktop runtime validation"
     Assert-ContainsText $validateInstalledRuntimeScript '$expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }' "Installed desktop runtime validation"
 } finally {
     Remove-ScaffoldCheckRoot $materialShaderScaffoldRoot
