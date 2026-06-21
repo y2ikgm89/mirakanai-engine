@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-mesh-shader-capability-gate-v1`
 
-**Status:** Active.
+**Status:** Implemented; PR publication in progress.
 
 **Date:** 2026-06-21
 

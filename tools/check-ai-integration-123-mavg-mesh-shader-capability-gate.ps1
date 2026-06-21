@@ -162,7 +162,7 @@ foreach ($surface in @(
     }
 }
 
-$recommendedPlanText = $manifest.aiOperableProductionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8
+$productionLoopText = $manifest.aiOperableProductionLoop | ConvertTo-Json -Depth 8
 foreach ($needle in @(
         "mavg-mesh-shader-capability-gate-v1",
         "RuntimeMavgMeshShaderCapabilityGateResult",
@@ -175,7 +175,7 @@ foreach ($needle in @(
         "mesh shader execution remains 0",
         "broad MAVG backend readiness"
     )) {
-    Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json recommendedNextPlan mesh shader capability gate evidence"
+    Assert-ContainsText $productionLoopText $needle "engine/agent/manifest.json aiOperableProductionLoop mesh shader capability gate evidence"
 }
 
 $runtimeRhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime_rhi" })

@@ -16,7 +16,7 @@ $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $mavgOverlapPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-11-mavg-streaming-upload-overlap-evidence-v1.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
-$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
+$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
     @{ Text = $aiLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" }
 } else {
     @{ Text = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $mavgOverlapPlanText) -join " "; Label = "production loop completed context" }
@@ -110,7 +110,8 @@ foreach ($surface in @(
 
 $recommendedPlanText = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -in @(
         "environment-commercial-excellence-v1",
-        "environment-highest-commercial-readiness-v1"
+        "environment-highest-commercial-readiness-v1",
+        "2d-production-engine-capability-gap-cluster-v1"
     )) {
     (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $mavgOverlapPlanText) -join " "
 } else {

@@ -94,7 +94,7 @@ foreach ($needle in @(
     Assert-ContainsText $mavgD3d12CountBufferPlanText $needle "docs/superpowers/plans/2026-06-08-mavg-d3d12-count-buffer-indirect-execution-v1.md sibling transition"
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
     foreach ($needle in @(
             "mavg-vulkan-count-buffer-indirect-execution-v1",
             "docs/superpowers/plans/2026-06-10-mavg-vulkan-count-buffer-indirect-execution-v1.md",
@@ -127,7 +127,7 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi Vulkan count-buffer execution evidence"
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
     foreach ($needle in @("MAVG Vulkan Count-Buffer Indirect Execution v1", "PR #552", "mavg-vulkan-count-buffer-indirect-execution-v1", "vkCmdDrawIndexedIndirectCount", "mavg-d3d12-count-buffer-indirect-execution-v1", "PR #547", "unsupportedProductionGaps = []")) {
         Assert-ContainsText ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "engine/agent/manifest.json recommendedNextPlan.latestCloseoutEvidence MAVG Vulkan count-buffer closeout evidence"
     }

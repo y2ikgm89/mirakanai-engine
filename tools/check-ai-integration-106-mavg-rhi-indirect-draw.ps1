@@ -109,7 +109,7 @@ foreach ($surface in @(
     }
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
     $aiLoopRhiIndirectEvidenceText = (([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext), $aiLoopFragmentText) -join " "
     foreach ($needle in @(
             "mavg-rhi-indirect-draw-v1",
