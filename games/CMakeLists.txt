@@ -1323,12 +1323,18 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             "${CMAKE_CURRENT_BINARY_DIR}/dxc-spirv-probe.spv"
         )
         file(WRITE "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE}"
-            "struct VSOut { float4 position : SV_Position; };\n"
-            "VSOut vs_main(uint id : SV_VertexID) { VSOut o; o.position = float4(0.0, 0.0, 0.0, 1.0); return o; }\n"
+            "float4 vs_main(uint vertex_id : SV_VertexID) : SV_Position {\n"
+            "    float2 positions[3] = {\n"
+            "        float2(-0.5, -0.5),\n"
+            "        float2( 0.5, -0.5),\n"
+            "        float2( 0.0,  0.5)\n"
+            "    };\n"
+            "    return float4(positions[vertex_id], 0.0, 1.0);\n"
+            "}\n"
         )
         execute_process(
             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
-                -nologo -E vs_main -T vs_6_0 -spirv -fspv-target-env=vulkan1.3
+                -nologo -spirv -fspv-target-env=vulkan1.3 -T vs_6_7 -E vs_main
                 -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT}"
                 "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE}"
             RESULT_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_RESULT
