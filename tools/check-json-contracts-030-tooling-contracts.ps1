@@ -1576,44 +1576,8 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe native editor shell selection: $needle"
         }
     }
-} else {
-    foreach ($needle in @(
-    "Frame Graph Transient Texture Alias Planning v1",
-    "FrameGraphTransientTextureAliasPlan",
-    "plan_frame_graph_transient_texture_aliases",
-    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
-    "shadow_color",
-    "6 pass callbacks/15 barrier steps",
-    "Frame Graph Viewport Surface Color State Executor v1",
-    "RhiViewportSurface",
-    "viewport_color",
-    "Frame Graph Texture Aliasing Barrier Command v1",
-    "record_frame_graph_texture_aliasing_barriers",
-    "Frame Graph Automatic Aliasing Barrier Insertion v1",
-    "Package Streaming Frame Graph Texture Binding Handoff v1",
-    "make_runtime_package_streaming_frame_graph_texture_bindings",
-    "Package Static Mesh Upload Binding Transaction v1",
-    "upload_runtime_package_streaming_mesh_gpu_bindings",
-    "Frame Graph Render Pass Envelope v1",
-    "render_passes_recorded",
-    "Frame Graph RHI Queue Dependency Plan v1",
-    "plan_frame_graph_rhi_queue_waits",
-    "IRhiDevice::wait_for_queue",
-    "Frame Graph RHI Multi-Queue Executor v1",
-    "execute_frame_graph_rhi_multi_queue_schedule",
-    "Frame Graph RHI Multi-Queue Texture Barrier Execution v1",
-    "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded",
-    "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
-    "upload-staging-v1",
-    "native async upload execution",
-    "package skinned/morph streaming",
-    "staging-pool production adoption"
-    )) {
-        if (-not $recommendedText.Contains($needle)) {
-            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
-        }
-    }
-}
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-win32-directstorage-sdk-adapter-v1") { $mavgWin32DirectStorageRecommendedText = $productionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8; foreach ($needle in @("MAVG Win32 DirectStorage SDK Adapter v1", "MAVG DirectStorage Page IO Execution v1", "Microsoft DirectStorage SDK 1.3.0", "vcpkg port dstorage 1.3.0", "find_package(dstorage CONFIG REQUIRED)", "Microsoft::DirectStorage", "dstorage.h", "DStorageGetFactory", "IDStorageFactory", "IDStorageQueue", "IDStorageStatusArray", "IDStorageQueue::EnqueueRequest", "IDStorageQueue::EnqueueStatus", "IDStorageQueue::Submit", "IDStorageStatusArray::GetHResult", "MK_platform_win32", "IByteRangeIoExecutor", "ByteRangeIoBackendKind::direct_storage", "first-party Win32 DirectStorage SDK adapter", "public native handles", "GPU destinations", "GDeflate", "DirectStorage 1.4 preview APIs", "async-overlap/performance proof", "mesh shaders", "Metal readiness", "Nanite", "broad optimization", "unsupportedProductionGaps = []")) { if (-not $mavgWin32DirectStorageRecommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe MAVG Win32 DirectStorage SDK adapter selection: $needle" } }
+} else { foreach ($needle in @("Frame Graph Transient Texture Alias Planning v1", "FrameGraphTransientTextureAliasPlan", "plan_frame_graph_transient_texture_aliases", "Frame Graph Shadow Scratch Color Target-State Ownership v1", "shadow_color", "6 pass callbacks/15 barrier steps", "Frame Graph Viewport Surface Color State Executor v1", "RhiViewportSurface", "viewport_color", "Frame Graph Texture Aliasing Barrier Command v1", "record_frame_graph_texture_aliasing_barriers", "Frame Graph Automatic Aliasing Barrier Insertion v1", "Package Streaming Frame Graph Texture Binding Handoff v1", "make_runtime_package_streaming_frame_graph_texture_bindings", "Package Static Mesh Upload Binding Transaction v1", "upload_runtime_package_streaming_mesh_gpu_bindings", "Frame Graph Render Pass Envelope v1", "render_passes_recorded", "Frame Graph RHI Queue Dependency Plan v1", "plan_frame_graph_rhi_queue_waits", "IRhiDevice::wait_for_queue", "Frame Graph RHI Multi-Queue Executor v1", "execute_frame_graph_rhi_multi_queue_schedule", "Frame Graph RHI Multi-Queue Texture Barrier Execution v1", "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded", "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1", "upload-staging-v1", "native async upload execution", "package skinned/morph streaming", "staging-pool production adoption")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle" } } }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
 if ($rendererRhiGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must leave unsupportedProductionGaps after 1.0 scope closeout"
