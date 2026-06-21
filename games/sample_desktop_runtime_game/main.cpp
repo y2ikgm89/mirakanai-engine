@@ -28,6 +28,7 @@
 #include "mirakana/runtime_host/shader_bytecode.hpp"
 #include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
 #include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
+#include "mirakana/runtime_rhi/mavg_async_overlap_performance_proof.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/ui/ui.hpp"
@@ -134,6 +135,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_commercial_readiness{false};
     bool require_environment_commercial_vulkan_evidence{false};
     bool require_mavg_win32_directstorage_sdk_adapter{false};
+    bool require_mavg_async_overlap_performance_proof{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -271,6 +273,26 @@ struct MavgWin32DirectStorageSdkAdapterEvidence {
     bool async_overlap_performance_proof{false};
 };
 
+struct MavgAsyncOverlapPerformanceProofEvidence {
+    bool requested{false};
+    bool ready{false};
+    std::size_t sample_count{0};
+    std::size_t overlapped_sample_count{0};
+    std::uint64_t serial_p95_tick_count{0};
+    std::uint64_t overlapped_p95_tick_count{0};
+    std::uint64_t overlap_tick_count{0};
+    std::uint32_t speedup_basis_points{0};
+    bool claimed_speedup{false};
+    bool proved_async_overlap_performance{false};
+    bool native_handles_exposed{false};
+    bool gpu_directstorage_destinations{false};
+    bool gdeflate{false};
+    bool mesh_shader_execution{false};
+    bool metal_readiness{false};
+    bool nanite_equivalence{false};
+    bool broad_optimization{false};
+};
+
 [[nodiscard]] std::string bytes_to_string(std::span<const std::byte> bytes) {
     std::string result;
     result.reserve(bytes.size());
@@ -333,6 +355,84 @@ struct MavgWin32DirectStorageSdkAdapterEvidence {
 
     std::error_code remove_error;
     std::filesystem::remove(payload_path, remove_error);
+    return evidence;
+}
+
+[[nodiscard]] mirakana::runtime_rhi::RuntimeMavgAsyncOverlapPerformanceSample
+make_mavg_async_overlap_performance_sample(std::uint64_t total_ticks, std::uint64_t overlap_ticks) {
+    return mirakana::runtime_rhi::RuntimeMavgAsyncOverlapPerformanceSample{
+        .workload_id = "sample_desktop_runtime_game.mavg.async_overlap",
+        .measurement_artifact_id = "trace://sample_desktop_runtime_game/mavg_async_overlap_reference",
+        .completed_row_count = 2,
+        .background_load_ticks = 80,
+        .gpu_upload_ticks = 70,
+        .total_ticks = total_ticks,
+        .overlap_ticks = overlap_ticks,
+    };
+}
+
+[[nodiscard]] MavgAsyncOverlapPerformanceProofEvidence evaluate_mavg_async_overlap_performance_proof(bool requested) {
+    MavgAsyncOverlapPerformanceProofEvidence evidence{.requested = requested};
+    if (!requested) {
+        return evidence;
+    }
+
+    const auto graph_asset = mirakana::asset_id_from_key_v2(
+        mirakana::AssetKeyV2{.value = "sample-desktop-runtime/mavg/async-overlap-proof"});
+    mirakana::runtime_rhi::RuntimeMavgStreamingUploadOverlapEvidenceResult overlap;
+    overlap.graph_asset = graph_asset;
+    overlap.timeline_id = 42;
+    overlap.background_loaded_row_count = 2;
+    overlap.adopted_page_count = 2;
+    overlap.uploaded_page_count = 2;
+    overlap.uploaded_cluster_count = 2;
+    overlap.uploaded_bytes = 4096;
+    overlap.background_load_tick_count = 80;
+    overlap.gpu_upload_tick_count = 70;
+    overlap.overlap_tick_count = 30;
+    overlap.recorded_temporal_overlap_evidence = true;
+    overlap.executed_background_worker = true;
+    overlap.invoked_gpu_upload = true;
+
+    const std::array serial_samples{
+        make_mavg_async_overlap_performance_sample(100, 0), make_mavg_async_overlap_performance_sample(110, 0),
+        make_mavg_async_overlap_performance_sample(120, 0), make_mavg_async_overlap_performance_sample(130, 0),
+        make_mavg_async_overlap_performance_sample(140, 0),
+    };
+    const std::array overlapped_samples{
+        make_mavg_async_overlap_performance_sample(70, 30),  make_mavg_async_overlap_performance_sample(80, 32),
+        make_mavg_async_overlap_performance_sample(90, 30),  make_mavg_async_overlap_performance_sample(100, 34),
+        make_mavg_async_overlap_performance_sample(105, 36),
+    };
+
+    const auto result = mirakana::runtime_rhi::prove_runtime_mavg_async_overlap_performance(
+        mirakana::runtime_rhi::RuntimeMavgAsyncOverlapPerformanceProofDesc{
+            .graph_asset = graph_asset,
+            .overlap_evidence = &overlap,
+            .workload_id = "sample_desktop_runtime_game.mavg.async_overlap",
+            .measurement_artifact_id = "trace://sample_desktop_runtime_game/mavg_async_overlap_reference",
+            .serial_samples = serial_samples,
+            .overlapped_samples = overlapped_samples,
+            .minimum_sample_count = 5,
+            .minimum_speedup_basis_points = 1000,
+        });
+
+    evidence.ready = result.succeeded();
+    evidence.sample_count = result.sample_count;
+    evidence.overlapped_sample_count = result.overlapped_sample_count;
+    evidence.serial_p95_tick_count = result.serial_p95_tick_count;
+    evidence.overlapped_p95_tick_count = result.overlapped_p95_tick_count;
+    evidence.overlap_tick_count = result.overlap_tick_count;
+    evidence.speedup_basis_points = result.speedup_basis_points;
+    evidence.claimed_speedup = result.claimed_speedup;
+    evidence.proved_async_overlap_performance = result.proved_async_overlap_performance;
+    evidence.native_handles_exposed = result.touched_native_handles;
+    evidence.gpu_directstorage_destinations = result.used_gpu_directstorage_destination;
+    evidence.gdeflate = result.used_gdeflate;
+    evidence.mesh_shader_execution = result.executed_mesh_shader;
+    evidence.metal_readiness = result.claimed_metal_readiness;
+    evidence.nanite_equivalence = result.claimed_nanite_equivalence;
+    evidence.broad_optimization = result.claimed_broad_optimization;
     return evidence;
 }
 
@@ -5574,6 +5674,7 @@ void print_usage() {
                  "[--require-environment-commercial-readiness] "
                  "[--require-environment-commercial-vulkan-evidence] "
                  "[--require-mavg-win32-directstorage-sdk-adapter] "
+                 "[--require-mavg-async-overlap-performance-proof] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -5998,6 +6099,10 @@ void print_usage() {
         }
         if (arg == "--require-mavg-win32-directstorage-sdk-adapter") {
             options.require_mavg_win32_directstorage_sdk_adapter = true;
+            continue;
+        }
+        if (arg == "--require-mavg-async-overlap-performance-proof") {
+            options.require_mavg_async_overlap_performance_proof = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -8379,6 +8484,8 @@ int main(int argc, char** argv) {
         environment_weather_simulation_package, environment_artist_workflow_package);
     const auto mavg_win32_directstorage_sdk_adapter =
         evaluate_mavg_win32_directstorage_sdk_adapter(options.require_mavg_win32_directstorage_sdk_adapter);
+    const auto mavg_async_overlap_performance_proof =
+        evaluate_mavg_async_overlap_performance_proof(options.require_mavg_async_overlap_performance_proof);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -10956,6 +11063,42 @@ int main(int argc, char** argv) {
                   << " mavg_win32_directstorage_sdk_adapter_async_overlap_performance_proof="
                   << (mavg_win32_directstorage_sdk_adapter.async_overlap_performance_proof ? 1 : 0);
     }
+    if (mavg_async_overlap_performance_proof.requested) {
+        std::cout << " mavg_async_overlap_performance_proof_status="
+                  << (mavg_async_overlap_performance_proof.ready ? "ready" : "blocked")
+                  << " mavg_async_overlap_performance_proof_ready="
+                  << (mavg_async_overlap_performance_proof.ready ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_samples="
+                  << mavg_async_overlap_performance_proof.sample_count
+                  << " mavg_async_overlap_performance_proof_overlapped_samples="
+                  << mavg_async_overlap_performance_proof.overlapped_sample_count
+                  << " mavg_async_overlap_performance_proof_serial_p95_ticks="
+                  << mavg_async_overlap_performance_proof.serial_p95_tick_count
+                  << " mavg_async_overlap_performance_proof_overlapped_p95_ticks="
+                  << mavg_async_overlap_performance_proof.overlapped_p95_tick_count
+                  << " mavg_async_overlap_performance_proof_overlap_ticks="
+                  << mavg_async_overlap_performance_proof.overlap_tick_count
+                  << " mavg_async_overlap_performance_proof_speedup_basis_points="
+                  << mavg_async_overlap_performance_proof.speedup_basis_points
+                  << " mavg_async_overlap_performance_proof_claimed_speedup="
+                  << (mavg_async_overlap_performance_proof.claimed_speedup ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_proved_async_overlap_performance="
+                  << (mavg_async_overlap_performance_proof.proved_async_overlap_performance ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_native_handles_exposed="
+                  << (mavg_async_overlap_performance_proof.native_handles_exposed ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_gpu_directstorage_destinations="
+                  << (mavg_async_overlap_performance_proof.gpu_directstorage_destinations ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_gdeflate="
+                  << (mavg_async_overlap_performance_proof.gdeflate ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_mesh_shader_execution="
+                  << (mavg_async_overlap_performance_proof.mesh_shader_execution ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_metal_readiness="
+                  << (mavg_async_overlap_performance_proof.metal_readiness ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_nanite_equivalence="
+                  << (mavg_async_overlap_performance_proof.nanite_equivalence ? 1 : 0)
+                  << " mavg_async_overlap_performance_proof_broad_optimization="
+                  << (mavg_async_overlap_performance_proof.broad_optimization ? 1 : 0);
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -11013,6 +11156,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_mavg_win32_directstorage_sdk_adapter && !mavg_win32_directstorage_sdk_adapter.ready) {
+            return 3;
+        }
+        if (options.require_mavg_async_overlap_performance_proof && !mavg_async_overlap_performance_proof.ready) {
             return 3;
         }
         if (options.require_scene_gpu_bindings &&
