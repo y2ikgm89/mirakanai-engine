@@ -7017,12 +7017,12 @@ job_execution_work_stealing_diagnostic_count(const JobExecutionWorkStealingEvide
     const auto& scheduling = run.scheduling_evidence.scheduling_summary;
     const auto& scratch = run.scheduling_evidence.scratch_summary;
     return evidence.requested && evidence.pool_status == mirakana::JobExecutionPoolStatus::ready &&
-            run.status == mirakana::JobExecutionRunStatus::ready && run.worker_threads_started == 2U &&
-            scheduling.total_submitted_jobs == 2U && run.tasks_executed == 2U && run.tasks_failed == 0U &&
-            evidence.task_side_effects == 2U && !evidence.task_start_wait_timed_out &&
-            run.scheduling_evidence.execution_order.size() == 2U && run.scheduling_evidence.queue_rows.size() == 2U &&
-            run.work_stealing_applied &&
-           run.steal_attempt_count >= run.steal_success_count && run.steal_success_count > 0U &&
+           run.status == mirakana::JobExecutionRunStatus::ready && run.worker_threads_started == 2U &&
+           scheduling.total_submitted_jobs == 2U && run.tasks_executed == 2U && run.tasks_failed == 0U &&
+           evidence.task_side_effects == 2U && !evidence.task_start_wait_timed_out &&
+           run.scheduling_evidence.execution_order.size() == 2U && run.scheduling_evidence.queue_rows.size() == 2U &&
+           run.work_stealing_applied && run.steal_attempt_count >= run.steal_success_count &&
+           run.steal_success_count > 0U &&
            scheduling.total_steal_attempt_count >= scheduling.total_steal_success_count &&
            scheduling.total_steal_success_count > 0U && scheduling.total_deterministic_merge_count == 2U &&
            scheduling.total_nondeterministic_merge_count == 0U && scheduling.total_blocked_dependency_count == 0U &&
