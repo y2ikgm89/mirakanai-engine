@@ -1,7 +1,8 @@
 # Renderer Backend Parity Apple Evidence Closeout v1 Implementation Plan
 
 **Plan ID:** `renderer-backend-parity-apple-evidence-closeout-v1`
-**Status:** Active.
+**Status:** Completed.
+**Closeout:** Completed through PR #710 / merge commit `e74841d47489db8948cdda05b10fb231dd1606c7`; `currentActivePlan` returned to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
