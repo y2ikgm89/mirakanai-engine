@@ -6,6 +6,7 @@ $vulkanMeshShaderLodHeaderText = Get-AgentSurfaceText "engine/rhi/vulkan/include
 $vulkanMeshShaderLodSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_mavg_mesh_shader_lod.cpp"
 $vulkanBackendHeaderText = Get-AgentSurfaceText "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_backend.hpp"
 $vulkanBackendSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
+$backendScaffoldTestsText = Get-AgentSurfaceText "tests/unit/backend_scaffold_tests.cpp"
 $vulkanMeshShaderLodTestsText = Get-AgentSurfaceText "tests/unit/vulkan_mavg_mesh_shader_lod_tests.cpp"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-21-mavg-advanced-backend-evidence-closeout-v1.md"
@@ -30,6 +31,10 @@ foreach ($needle in @(
         "vulkan_structure_type_physical_device_mesh_shader_features_ext",
         "vulkan_structure_type_physical_device_mesh_shader_properties_ext",
         "query_mesh_shader_feature_support",
+        "make_native_mesh_shader_features",
+        "chain_native_device_features",
+        "vkCmdDrawMeshTasksEXT",
+        "vkCmdDrawMeshTasksIndirectEXT",
         "supports_mesh_shader_extension",
         "mesh_shader_feature_queried",
         "max_mesh_output_vertices",
@@ -40,6 +45,11 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "supports_mesh_shader_extension",
+        "require_mesh_shader",
+        "require_task_shader",
+        "enable_mesh_shader_queries",
+        "mesh_shader_enabled",
+        "task_shader_enabled",
         "mesh_shader_feature_queried",
         "max_task_work_group_count_x",
         "max_task_work_group_count_y",
@@ -52,7 +62,19 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "vulkan logical device create plan enables mesh and task shader features only when requested",
+        "require_mesh_shader",
+        "require_task_shader",
+        "vkCmdDrawMeshTasksEXT",
+        "vkCmdDrawMeshTasksIndirectEXT"
+    )) {
+    Assert-ContainsText $backendScaffoldTestsText $needle "Vulkan logical-device mesh shader feature-enable scaffold tests"
+}
+
+foreach ($needle in @(
         "vulkan_mesh_shader_feature_enable_path_missing",
+        "vulkan_mesh_shader_draw_command_unavailable",
+        "create_runtime_device",
         "indirect_range_valid",
         "fallback_indexed_draw_promoted_readiness",
         "mavg_mesh_shader_lod_vulkan_ready"
@@ -84,6 +106,8 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "Vulkan Mesh Shader LOD Execution",
+        "feature-enable slice evidence",
+        "make_native_mesh_shader_features",
         "mesh_shader_enabled",
         "task_shader_enabled",
         "drawIndirectCount",

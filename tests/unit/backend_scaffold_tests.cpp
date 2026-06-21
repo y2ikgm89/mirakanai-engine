@@ -679,6 +679,48 @@ MK_TEST("vulkan logical device create plan supports offscreen graphics queues wi
     MK_REQUIRE(plan.synchronization2_enabled);
 }
 
+MK_TEST("vulkan logical device create plan enables mesh and task shader features only when requested") {
+    mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
+    device.name = "Mesh Shader";
+    device.type = mirakana::rhi::vulkan::VulkanPhysicalDeviceType::discrete_gpu;
+    device.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    device.supports_dynamic_rendering = true;
+    device.supports_synchronization2 = true;
+    device.supports_mesh_shader_extension = true;
+    device.mesh_shader_supported = true;
+    device.task_shader_supported = true;
+    device.queue_families.push_back(mirakana::rhi::vulkan::VulkanQueueFamilyCandidate{
+        .index = 9,
+        .queue_count = 1,
+        .capabilities = mirakana::rhi::vulkan::VulkanQueueCapability::graphics |
+                        mirakana::rhi::vulkan::VulkanQueueCapability::compute,
+        .supports_present = false,
+    });
+
+    mirakana::rhi::vulkan::VulkanLogicalDeviceCreateDesc desc;
+    desc.required_extensions.clear();
+    desc.require_present_queue = false;
+    desc.require_mesh_shader = true;
+    desc.require_task_shader = true;
+
+    const auto selection = mirakana::rhi::vulkan::select_physical_device(desc, {device});
+    const auto plan =
+        mirakana::rhi::vulkan::build_logical_device_create_plan(desc, device, selection, {"VK_EXT_mesh_shader"});
+
+    MK_REQUIRE(selection.suitable);
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.mesh_shader_enabled);
+    MK_REQUIRE(plan.task_shader_enabled);
+    MK_REQUIRE(std::ranges::contains(plan.enabled_extensions, std::string{"VK_EXT_mesh_shader"}));
+
+    const auto requests = mirakana::rhi::vulkan::vulkan_device_command_requests(plan);
+    MK_REQUIRE(std::ranges::any_of(
+        requests, [](const auto& request) { return request.name == "vkCmdDrawMeshTasksEXT" && request.required; }));
+    MK_REQUIRE(std::ranges::any_of(requests, [](const auto& request) {
+        return request.name == "vkCmdDrawMeshTasksIndirectEXT" && request.required;
+    }));
+}
+
 MK_TEST("vulkan logical device create plan rejects unsuitable selections missing extensions and features") {
     mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
     device.name = "Candidate";

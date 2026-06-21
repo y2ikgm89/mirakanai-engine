@@ -225,12 +225,17 @@ Claim boundary: Task 3 adds a D3D12-local execution proof API and backend-neutra
 - Create: `tests/shaders/vulkan_mavg_mesh_shader_lod.task.hlsl`
 - Create: `tests/shaders/vulkan_mavg_mesh_shader_lod.mesh.hlsl`
 - Create: `tests/shaders/vulkan_mavg_mesh_shader_lod.frag.hlsl`
+- Modify: `engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_backend.hpp`
+- Modify: `engine/rhi/vulkan/src/vulkan_backend.cpp`
 - Modify: `engine/rhi/vulkan/CMakeLists.txt`
 - Modify: root `CMakeLists.txt`
 - Modify: `engine/agent/manifest.fragments/004-modules.json`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Test: `tests/unit/backend_scaffold_tests.cpp`
 - Test: `tests/unit/vulkan_mavg_mesh_shader_lod_tests.cpp`
 - Static guard: `tools/check-ai-integration-116-mavg-vulkan-mesh-shader-lod.ps1`
+
+**2026-06-22 feature-enable slice evidence:** `VulkanPhysicalDeviceCandidate` now carries `supports_mesh_shader_extension`, `mesh_shader_supported`, `task_shader_supported`, and `mesh_shader_queries_supported`; `VulkanLogicalDeviceCreateDesc` adds `require_mesh_shader`, `require_task_shader`, and `enable_mesh_shader_queries`; `VulkanLogicalDeviceCreatePlan` adds `mesh_shader_enabled`, `task_shader_enabled`, and `mesh_shader_queries_enabled`. `build_logical_device_create_plan` now fail-closes when `VK_EXT_mesh_shader` is unavailable or requested mesh/task/query features are unsupported, appends `VK_EXT_mesh_shader` only when required, and `vkCreateDevice` uses `make_native_mesh_shader_features` plus `chain_native_device_features` so `VkPhysicalDeviceMeshShaderFeaturesEXT` is part of `VkDeviceCreateInfo.pNext` without dropping the Vulkan 1.3 dynamic-rendering/synchronization2 feature chain. `vulkan_device_command_requests` requires `vkCmdDrawMeshTasksEXT` and `vkCmdDrawMeshTasksIndirectEXT` only when mesh shaders are enabled. `probe_vulkan_mavg_mesh_shader_lod_capability()` now derives `mesh_shader_enabled`, `task_shader_enabled`, and direct/indirect mesh draw command availability from the logical-device plan/runtime device instead of treating support bits as enablement. Focused evidence: `MK_backend_scaffold_tests` and `MK_mavg_vulkan_mesh_shader_lod_tests` pass locally. This slice still does not implement mesh shader pipeline creation, `vkCmdDrawMeshTasksEXT` readback proof, indirect/count execution, Metal readiness, Nanite claims, broad MAVG backend readiness, or broad optimization.
 
 - [ ] Add backend-private API `probe_vulkan_mavg_mesh_shader_lod_capability()` and `execute_vulkan_mavg_mesh_shader_lod(...)`; do not expose native Vulkan handles through public RHI or gameplay APIs.
 - [ ] Capability probe must record `loader_available`, `instance_created`, `physical_device_selected`, `device_extension_supported`, `feature_query_executed`, `mesh_shader_supported`, `task_shader_supported`, `mesh_shader_queries_supported`, `mesh_shader_enabled`, `task_shader_enabled`, `draw_indirect_count_supported`, `draw_indirect_count_enabled`, `draw_mesh_tasks_direct_command_available`, `draw_mesh_tasks_indirect_command_available`, `draw_mesh_tasks_indirect_count_command_available`, `max_task_work_group_count_x`, `max_task_work_group_count_y`, `max_task_work_group_count_z`, `max_task_work_group_total_count`, `max_mesh_work_group_count_x`, `max_mesh_work_group_count_y`, `max_mesh_work_group_count_z`, `max_mesh_work_group_total_count`, `max_mesh_output_vertices`, `max_mesh_output_primitives`, adapter/vendor/device ids, and diagnostic text.
