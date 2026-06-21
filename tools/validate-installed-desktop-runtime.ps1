@@ -494,6 +494,7 @@ $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-cu
 $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
+$requires2dGameplayExecutionLoop = @($SmokeArgs) -contains "--require-2d-gameplay-execution-loop"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
@@ -4453,6 +4454,28 @@ if ($requiresSimulationOrchestration) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove addressable content field $field=$expectedValue."
         }
+    }
+}
+if ($requires2dGameplayExecutionLoop) {
+    $expected2dGameplayExecutionLoopFields = @{
+        "2d_gameplay_execution_loop_status" = "ready"
+        "2d_gameplay_execution_loop_ready" = "1"
+        "2d_gameplay_execution_loop_steps" = "1"
+        "2d_gameplay_execution_loop_scheduler_steps" = "1"
+        "2d_gameplay_execution_loop_scheduler_system_rows" = "3"
+        "2d_gameplay_execution_loop_scheduler_command_rows" = "1"
+        "2d_gameplay_execution_loop_world_entity_rows" = "2"
+        "2d_gameplay_execution_loop_interaction_rows" = "1"
+        "2d_gameplay_execution_loop_diagnostics" = "0"
+        "2d_gameplay_execution_loop_side_effects" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dGameplayExecutionLoopFields `
+        -Context "2D gameplay execution loop"
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b2d_gameplay_execution_loop_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive 2D gameplay execution loop replay hash."
     }
 }
 if ($requiresGameplayAuthoringReview) {

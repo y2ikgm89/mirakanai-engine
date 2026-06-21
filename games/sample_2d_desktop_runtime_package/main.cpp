@@ -21,6 +21,7 @@
 #include "mirakana/runtime/addressable_content_streaming.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
+#include "mirakana/runtime/gameplay_execution_loop_2d.hpp"
 #include "mirakana/runtime/gameplay_interaction.hpp"
 #include "mirakana/runtime/gameplay_runtime_scheduler.hpp"
 #include "mirakana/runtime/genre_rpg_systems.hpp"
@@ -105,6 +106,7 @@ struct DesktopRuntimeOptions {
     bool require_scripting_sandbox_policy{false};
     bool require_networking_foundation_policy{false};
     bool require_simulation_orchestration{false};
+    bool require_2d_gameplay_execution_loop{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -349,6 +351,21 @@ struct GameplayRuntimeSchedulerProbeResult {
     bool budget_limited{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
+    bool ready{false};
+};
+
+struct GameplayExecutionLoop2DProbeResult {
+    mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus status{
+        mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus::invalid_request};
+    std::size_t steps{0U};
+    std::size_t scheduler_steps{0U};
+    std::size_t scheduler_system_rows{0U};
+    std::size_t scheduler_command_rows{0U};
+    std::size_t world_entity_rows{0U};
+    std::size_t interaction_rows{0U};
+    std::uint64_t replay_hash{0U};
+    std::size_t diagnostics{0U};
+    std::size_t side_effects{0U};
     bool ready{false};
 };
 
@@ -1146,6 +1163,19 @@ gameplay_runtime_scheduler_status_name(mirakana::runtime::RuntimeGameplaySchedul
     case mirakana::runtime::RuntimeGameplaySchedulerStatus::paused:
         return "paused";
     case mirakana::runtime::RuntimeGameplaySchedulerStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+gameplay_execution_loop_2d_status_name(mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus::no_steps:
+        return "no_steps";
+    case mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus::invalid_request:
         return "invalid_request";
     }
     return "unknown";
@@ -4811,6 +4841,123 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
                    result.command_rows == 2U && result.consumed_time_us == 33'332U &&
                    result.remaining_time_us == 16'666U && result.diagnostics == 0U && result.replay_hash != 0U;
     return result;
+}
+
+[[nodiscard]] GameplayExecutionLoop2DProbeResult validate_2d_gameplay_execution_loop_package_evidence() {
+    using Command = mirakana::runtime::RuntimeGameplaySchedulerInputCommandDesc;
+    using Entity = mirakana::runtime::RuntimeWorldEntityRow;
+    using EntityId = mirakana::runtime::RuntimeWorldEntityId;
+    using Event = mirakana::runtime::RuntimeGameplayInteractionEvent;
+    using EventKind = mirakana::runtime::RuntimeGameplayInteractionKind;
+    using ExecutionDesc = mirakana::runtime::RuntimeGameplayExecutionLoop2DDesc;
+    using FrameInput = mirakana::runtime::RuntimeGameplayExecutionLoop2DFrameInput;
+    using Region = mirakana::runtime::RuntimeWorldRegionRow;
+    using RegionId = mirakana::runtime::RuntimeWorldRegionId;
+    using Status = mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus;
+    using System = mirakana::runtime::RuntimeGameplaySchedulerSystemDesc;
+    using World = mirakana::runtime::RuntimeWorldEntityLifecycleRequest;
+
+    const auto result = mirakana::runtime::execute_runtime_gameplay_loop_2d_step(
+        ExecutionDesc{
+            .loop_id = "sample2d.gameplay_execution_loop",
+            .fixed_delta_us = 16'666U,
+            .max_steps_per_frame = 1U,
+            .max_command_rows_per_frame = 4U,
+            .systems =
+                {
+                    System{.system_id = "input_actions", .order = 10, .enabled = true, .budget_us = 100U, .source_index = 1U},
+                    System{.system_id = "world_entities", .order = 20, .enabled = true, .budget_us = 250U, .source_index = 2U},
+                    System{.system_id = "gameplay_interactions", .order = 30, .enabled = true, .budget_us = 300U, .source_index = 3U},
+                },
+            .world =
+                World{
+                    .world_id = "sample2d.world",
+                    .regions =
+                        {
+                            Region{
+                                .region_id = RegionId{.value = "arena"},
+                                .source_index = 1U,
+                            },
+                        },
+                    .entities =
+                        {
+                            Entity{
+                                .entity_id = EntityId{.value = "player"},
+                                .region_id = RegionId{.value = "arena"},
+                                .archetype_id = "hero",
+                                .active = true,
+                                .generation = 1U,
+                                .source_index = 1U,
+                            },
+                            Entity{
+                                .entity_id = EntityId{.value = "enemy"},
+                                .region_id = RegionId{.value = "arena"},
+                                .archetype_id = "slime",
+                                .active = true,
+                                .generation = 1U,
+                                .source_index = 2U,
+                            },
+                        },
+                },
+            .interaction_state =
+                mirakana::runtime::RuntimeGameplayInteractionState{
+                    .session_state = mirakana::runtime::RuntimeGameplaySessionState::running,
+                    .entities =
+                        {
+                            mirakana::runtime::RuntimeGameplayEntityState{
+                                .id = "player",
+                                .health = 10,
+                                .max_health = 10,
+                                .active = true,
+                            },
+                            mirakana::runtime::RuntimeGameplayEntityState{
+                                .id = "enemy",
+                                .health = 3,
+                                .max_health = 3,
+                                .active = true,
+                            },
+                        },
+                },
+        },
+        FrameInput{
+            .frame_index = 3U,
+            .next_tick = 42U,
+            .accumulated_time_us = 16'666U,
+            .observed_delta_us = 16'666U,
+            .input_commands =
+                {
+                    Command{.command_id = "cmd.move.right", .target_tick = 42U, .payload_hash = 1001U, .source_index = 1U},
+                },
+            .interaction_events =
+                {
+                    Event{
+                        .id = "hit.enemy",
+                        .kind = EventKind::damage,
+                        .source_entity_id = "player",
+                        .target_entity_id = "enemy",
+                        .amount = 1,
+                    },
+                },
+        });
+
+    GameplayExecutionLoop2DProbeResult probe;
+    probe.status = result.status;
+    probe.steps = result.step_count;
+    probe.scheduler_steps = result.scheduler.steps.size();
+    for (const auto& step : result.scheduler.steps) {
+        probe.scheduler_system_rows += step.system_rows.size();
+        probe.scheduler_command_rows += step.command_rows.size();
+    }
+    probe.world_entity_rows = result.world.entity_rows.size();
+    probe.interaction_rows = result.interactions.rows.size();
+    probe.replay_hash = result.replay_hash;
+    probe.diagnostics = result.diagnostics.size();
+    probe.side_effects = result.side_effects.size();
+    probe.ready = result.status == Status::ready && result.succeeded() && probe.steps == 1U &&
+                  probe.scheduler_steps == 1U && probe.scheduler_system_rows == 3U &&
+                  probe.scheduler_command_rows == 1U && probe.world_entity_rows == 2U && probe.interaction_rows == 1U &&
+                  probe.replay_hash != 0U && probe.diagnostics == 0U && probe.side_effects == 0U;
+    return probe;
 }
 
 [[nodiscard]] mirakana::runtime::RuntimeWorldEntityId make_rpg_entity(std::string value) {
@@ -8914,6 +9061,7 @@ void print_usage() {
                  "[--require-sandbox-world-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
+                 "[--require-2d-gameplay-execution-loop] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
@@ -9041,6 +9189,10 @@ void print_usage() {
         }
         if (arg == "--require-simulation-orchestration") {
             options.require_simulation_orchestration = true;
+            continue;
+        }
+        if (arg == "--require-2d-gameplay-execution-loop") {
+            options.require_2d_gameplay_execution_loop = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -9764,6 +9916,9 @@ int main(int argc, char** argv) {
     const auto gameplay_runtime_scheduler_probe = options.require_simulation_orchestration
                                                       ? validate_gameplay_runtime_scheduler_package_evidence()
                                                       : GameplayRuntimeSchedulerProbeResult{};
+    const auto gameplay_execution_loop_2d_probe = options.require_2d_gameplay_execution_loop
+                                                      ? validate_2d_gameplay_execution_loop_package_evidence()
+                                                      : GameplayExecutionLoop2DProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -10480,6 +10635,20 @@ int main(int argc, char** argv) {
         << " gameplay_runtime_scheduler_budget_limited=" << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
         << " gameplay_runtime_scheduler_replay_hash=" << gameplay_runtime_scheduler_probe.replay_hash
         << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
+        << " 2d_gameplay_execution_loop_status="
+        << gameplay_execution_loop_2d_status_name(gameplay_execution_loop_2d_probe.status)
+        << " 2d_gameplay_execution_loop_ready=" << (gameplay_execution_loop_2d_probe.ready ? 1 : 0)
+        << " 2d_gameplay_execution_loop_steps=" << gameplay_execution_loop_2d_probe.steps
+        << " 2d_gameplay_execution_loop_scheduler_steps=" << gameplay_execution_loop_2d_probe.scheduler_steps
+        << " 2d_gameplay_execution_loop_scheduler_system_rows="
+        << gameplay_execution_loop_2d_probe.scheduler_system_rows
+        << " 2d_gameplay_execution_loop_scheduler_command_rows="
+        << gameplay_execution_loop_2d_probe.scheduler_command_rows
+        << " 2d_gameplay_execution_loop_world_entity_rows=" << gameplay_execution_loop_2d_probe.world_entity_rows
+        << " 2d_gameplay_execution_loop_interaction_rows=" << gameplay_execution_loop_2d_probe.interaction_rows
+        << " 2d_gameplay_execution_loop_replay_hash=" << gameplay_execution_loop_2d_probe.replay_hash
+        << " 2d_gameplay_execution_loop_diagnostics=" << gameplay_execution_loop_2d_probe.diagnostics
+        << " 2d_gameplay_execution_loop_side_effects=" << gameplay_execution_loop_2d_probe.side_effects
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -11616,6 +11785,26 @@ int main(int argc, char** argv) {
                   << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
                   << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics << '\n';
         return 18;
+    }
+
+    if (options.require_2d_gameplay_execution_loop && !gameplay_execution_loop_2d_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_gameplay_execution_loop_unavailable"
+                  << " 2d_gameplay_execution_loop_status="
+                  << gameplay_execution_loop_2d_status_name(gameplay_execution_loop_2d_probe.status)
+                  << " 2d_gameplay_execution_loop_steps=" << gameplay_execution_loop_2d_probe.steps
+                  << " 2d_gameplay_execution_loop_scheduler_steps=" << gameplay_execution_loop_2d_probe.scheduler_steps
+                  << " 2d_gameplay_execution_loop_scheduler_system_rows="
+                  << gameplay_execution_loop_2d_probe.scheduler_system_rows
+                  << " 2d_gameplay_execution_loop_scheduler_command_rows="
+                  << gameplay_execution_loop_2d_probe.scheduler_command_rows
+                  << " 2d_gameplay_execution_loop_world_entity_rows="
+                  << gameplay_execution_loop_2d_probe.world_entity_rows
+                  << " 2d_gameplay_execution_loop_interaction_rows="
+                  << gameplay_execution_loop_2d_probe.interaction_rows
+                  << " 2d_gameplay_execution_loop_diagnostics=" << gameplay_execution_loop_2d_probe.diagnostics
+                  << " 2d_gameplay_execution_loop_side_effects=" << gameplay_execution_loop_2d_probe.side_effects
+                  << '\n';
+        return 43;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {

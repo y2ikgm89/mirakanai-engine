@@ -74,7 +74,6 @@ foreach ($requiredNeedle in @(
         Write-Error "release package artifact validation must reject SDL3 runtime DLL artifacts: $requiredNeedle"
     }
 }
-
 $editorCmakeContent = Get-Content -LiteralPath (Join-Path $root "editor/CMakeLists.txt") -Raw
 foreach ($forbiddenNeedle in @(
         "find_package(SDL3",
@@ -1394,6 +1393,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan production milestone"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "2d-production-engine-capability-gap-cluster-v1") { foreach ($needle in @("2D Production Engine Capability Gap Cluster v1", "RuntimeGameplayExecutionLoop2D", "execute_runtime_gameplay_loop_2d_step", "--require-2d-gameplay-execution-loop", "2d_gameplay_execution_loop_status=ready", "positive replay hash", "legal clean-room constraints", "official docs category-only", "unsupportedProductionGaps = []", "broad 2D production readiness")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe 2D production engine capability selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "generated-game-studio-v1") {
     foreach ($needle in @(
         "Generated Game Studio v1",
