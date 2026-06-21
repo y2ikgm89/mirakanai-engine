@@ -130,6 +130,9 @@ int main(int argc, char** argv) {
               << " environment_platform_windows_vulkan_inferred=0"
               << " VK_LAYER_KHRONOS_validation_ready=" << bit(presentation.linux_vulkan_validation_log_clean)
               << " native_handle_access=0\n";
+    if (!presentation.ready() && !presentation.diagnostic.empty()) {
+        std::cerr << "sample_desktop_runtime_game diagnostic: " << presentation.diagnostic << '\n';
+    }
 
     if (!config_ready || !scene_package_ready) {
         return 1;

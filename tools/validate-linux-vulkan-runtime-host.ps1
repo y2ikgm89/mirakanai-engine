@@ -194,13 +194,13 @@ function Invoke-LinuxPackageSmokeIfRequired {
         ) `
         -TimeoutSeconds $TimeoutSeconds
     if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
-        Write-Output (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
+        Write-Host (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
     }
     $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
     if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
-        Write-Output $smokeText.TrimEnd()
+        Write-Host $smokeText.TrimEnd()
     }
-    Write-Output "linux_package_smoke_exit_code=$($smoke.ExitCode)"
+    Write-Host "linux_package_smoke_exit_code=$($smoke.ExitCode)"
     return [pscustomobject]@{
         PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_package_smoke_ready=1")
         VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_readback_ready=1")
