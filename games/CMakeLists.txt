@@ -1630,6 +1630,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_runtime
                 MK_runtime_rhi
                 MK_runtime_scene
+                MK_runtime_scene_rhi
                 MK_rhi_d3d12
                 MK_rhi_metal
                 MK_rhi_vulkan

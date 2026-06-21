@@ -110,7 +110,7 @@ These rows stay false until their exact tasks pass:
 - `mavg_mesh_shader_lod_d3d12_ready=0`
 - `mavg_mesh_shader_lod_vulkan_ready=0`
 - `mavg_metal_mesh_lod_ready=0`
-- `mavg_package_visible_backend_readiness_ready=0`
+- `mavg_package_visible_backend_readiness_ready=1` only for the selected Task 2 package-visible closeout row after `tools/validate-mavg-backend-readiness.ps1 -RequireReady`; this is not a broad backend readiness claim.
 - `mavg_autonomous_streaming_scheduler_ready=0`
 - `mavg_async_overlap_measured_performance_ready=0`
 - `mavg_deformation_integration_ready=0`
@@ -159,16 +159,20 @@ Focused validation evidence on 2026-06-22: RED failed on invalid calendar source
 - Create: `tools/validate-mavg-backend-readiness.ps1`
 - Test: `tests/unit/runtime_scene_rhi_mavg_backend_readiness_closeout_tests.cpp`
 
-- [ ] Add failing tests that require all selected package-visible rows before `mavg_package_visible_backend_readiness_ready=true`: graph cook/package row, runtime LOD selection row, resident page row, safe-point adoption row, streamed GPU upload row, streamed backend draw row, D3D12 compute-generated indirect consumption row, Vulkan compute-generated indirect consumption row, package smoke counter row, and zero native-handle diagnostics.
-- [ ] Reject Metal inference. Metal rows can be carried as `host_gated`, but they cannot satisfy D3D12/Vulkan rows and cannot promote broad backend readiness.
-- [ ] Reject value-only or planner-only rows where execution evidence is required.
-- [ ] Add `tools/validate-mavg-backend-readiness.ps1 -RequireReady`, which builds the test target and checks package counter text for `mavg_package_visible_backend_readiness_ready=1`.
-- [ ] Run:
+- [x] Add failing tests that require all selected package-visible rows before `mavg_package_visible_backend_readiness_ready=true`: graph cook/package row, runtime LOD selection row, resident page row, safe-point adoption row, streamed GPU upload row, streamed backend draw row, D3D12 compute-generated indirect consumption row, Vulkan compute-generated indirect consumption row, package smoke counter row, and zero native-handle diagnostics.
+- [x] Reject Metal inference. Metal rows can be carried as `host_gated`, but they cannot satisfy D3D12/Vulkan rows and cannot promote broad backend readiness.
+- [x] Reject value-only or planner-only rows where execution evidence is required.
+- [x] Add `tools/validate-mavg-backend-readiness.ps1 -RequireReady`, which builds the test target and checks package counter text for `mavg_package_visible_backend_readiness_ready=1`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-backend-readiness.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-backend-readiness.ps1 -RequireReady
 ```
+
+Focused validation evidence on 2026-06-22: RED failed first on the missing `mavg_backend_readiness_closeout.hpp` contract, then GREEN passed `MK_runtime_scene_rhi_mavg_backend_readiness_closeout_tests` plus retained `MK_runtime_scene_rhi_mavg_streamed_backend_draw_tests`. `tools/validate-mavg-backend-readiness.ps1 -RequireReady` built `sample_desktop_runtime_game`, executed `--require-mavg-backend-readiness`, and emitted `mavg_package_visible_backend_readiness_ready=1`, nine required rows, ready rows `9`, diagnostics `0`, native handles `0`, Metal inference `0`, and broad backend readiness `0`.
+
+Public contract evidence: `MavgBackendReadinessCloseoutDesc`, `MavgBackendReadinessCloseoutResult`, and `evaluate_mavg_backend_readiness_closeout` expose the selected package-visible row while preserving fail-closed diagnostics for missing rows, duplicate rows, non-ready package smoke, value-only execution gaps, native handle access, and Metal inference.
 
 ## Task 3: D3D12 Mesh Shader LOD Execution
 
