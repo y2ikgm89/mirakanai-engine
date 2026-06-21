@@ -306,7 +306,7 @@ Frame Graph render-pass envelope evidence is also package-visible through `Rende
 
 Frame Graph v1 is closed for the Engine 1.0 Windows-default ready surface by `Frame Graph v1 1 0 Scope Closeout v1`. The closed surface includes selected renderer/runtime upload execution, package-visible render-pass and multi-queue evidence, D3D12/Vulkan transient alias allocation evidence, and fail-closed production ownership boundary planning. Broad production render graph scheduling, broad/background package streaming, Metal memory alias allocation, async overlap/performance, actual content preservation, public native handles, and broad renderer quality remain future or host-gated non-goals.
 
-## Current Active Work
+## Historical Capability Evidence
 
 This section is historical capability evidence. The current active plan and recommended next plan are authoritative only in `engine/agent/manifest.json` and the plan registry. The SDL3 removal milestone and `Reviewed Importers Codecs And Shader Generation v1` are closed in the current branch; at that historical checkpoint the composed manifest selected `recommendedNextPlan.id = native-win32-editor-shell-v1`.
 
