@@ -315,8 +315,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Static/public checks: `git diff --check`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, and `tools/check-agents.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-06-22; static checks were ok and CTest reported `100% tests passed, 0 tests failed out of 135`.
 - IP provenance: `external_code_copied=0`, `external_assets_copied=0`, `third_party_api_surface_copied=0`, `third_party_ui_layout_copied=0`, `third_party_trademark_public_api=0`, `license_records_updated=not_applicable`, `official_docs_used_for_category_mapping_only=1`.
-- Publication: `tools/check-publication-preflight.ps1`, candidate commit `c6430a0d`, branch push, and draft PR #721 are complete.
-- Pending slice-close gates: PR #721 hosted CI, ready/merge, and local main synchronization.
+- Publication: `tools/check-publication-preflight.ps1`, branch push, PR #721, and publication closeout PR #724 are complete.
+- Slice close: PR #721 merged to `origin/main` at merge commit `3b4fe82e`; PR #724 merged publication evidence closeout at merge commit `23e56be8`; Phase 3 branch `codex/2d-dense-sprite-throughput` has merged that baseline.
 
 ### Phase 3: `2d-dense-sprite-throughput-v1`
 
@@ -364,6 +364,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Ready only when:** required workload rows exist, the selected package stays within declared budgets, diagnostics are zero, retained timing artifacts exist for any claimed measured row, and backend-specific rows do not infer cross-backend parity.
 
+**Evidence as of 2026-06-22:**
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` followed by `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_2d_sprite_throughput_tests MK_runtime_entity_scale_culling_tests` failed as expected before production code because `SpriteBatchProduction*` and runtime sprite draw-intent contracts did not exist.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_2d_sprite_throughput_tests MK_runtime_entity_scale_culling_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_2d_sprite_throughput_tests|MK_runtime_entity_scale_culling_tests"` passed after adding `SpriteBatchProductionThroughput*`, `plan_sprite_batch_production_throughput`, `RuntimeEntityScaleCullingSpriteDrawIntent*`, and `plan_runtime_entity_scale_culling_sprite_draw_intents`.
+- Package validator: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-sprite-throughput.ps1 -RequireReady` passed, including `desktop-runtime-release` package build, installed SDK validation, installed `sample_2d_desktop_runtime_package --require-2d-sprite-throughput` smoke, and CPack. The installed smoke proved `2d_sprite_throughput_status=ready`, `2d_sprite_throughput_ready=1`, 3 workload rows, dense 512/4096 visible sprite rows, 12000 logical projectile rows, 768 visible projectile rows, 11232 culled projectile rows, 14 draw rows, 5376 instance rows, 319488 upload bytes, 6 atlas-page rows, 5 material-lane rows, 1 measured workload row, 2 host-gated workload rows, 1 retained timing artifact, retained hash 9817, `diagnostics=0`, `over_budget_rows=0`, clean culling rows, and zero scene mutation, renderer ownership, native handle access, broad optimization, cross-backend parity, and Metal readiness counters.
+- Manifest/static sync completed locally: `games/sample_2d_desktop_runtime_package/game.agent.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composed `engine/agent/manifest.json`, `tools/validate-installed-desktop-runtime.ps1`, `tools/check-ai-integration-080-scaffold-smokes.ps1`, and `tools/check-ai-integration-020-engine-manifest.ps1` carry `installed-2d-sprite-throughput-smoke`, `--require-2d-sprite-throughput`, and selected counter needles.
+- Slice-close local gates: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, and full `tools/validate.ps1` passed on 2026-06-22 with CTest 139/139 passing.
+- Publication: PR #725 head `ba7dbc55` passed hosted PR Gate, Windows MSVC, Linux CMake/Coverage/ASan/Vulkan, static shards, iOS simulator, iOS Metal, macOS Metal CMake, and CodeQL, then merged to `origin/main` at merge commit `ee5c8ebf`. PR #728 closed the Phase 3 publication evidence on `origin/main` at merge commit `bcc027d5`; latest `origin/main` was merged into the Phase 4 branch before Phase 4 publication.
+
 ### Phase 4: `2d-physics-runtime-extension-v1`
 
 **Target modules:**
@@ -405,6 +414,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 **Ready only when:** exact shape sweep/TOI rows, deterministic contact rows, joint rows, trigger rows, package counters, and zero native/middleware handle exposure are all validated.
+
+**Phase 4 evidence (2026-06-22):**
+
+- RED/GREEN tests added `MK_physics2d_runtime_extension_tests` for circle-vs-circle, circle-vs-AABB, AABB-vs-AABB exact sweeps, no-hit rows, initial-overlap rows, row-budget rejection, simulation-after-motion trigger enter/exit rows with rollback on trigger-row budget rejection, kinematic contact resolution with secondary slide blocker iteration, distance/hinge/prismatic/spring joint rows, trigger enter/exit data rows, and zero native/middleware dispatch counters.
+- Package-visible evidence added `sample_2d_desktop_runtime_package --require-2d-physics-runtime-extension`, `installed-2d-physics-runtime-extension-smoke`, installed validator expectations, CMake smoke args, game manifest rows, and static AI integration needles. The selected package smoke proves `2d_physics_runtime_extension_status=ready`, `simulate_status=simulated`, 2 simulation runs, 5 TOI rows, 3 exact sweep shape-pair rows, 4 hit rows, 1 no-hit row, 1 initial-overlap row, 1 kinematic contact row, 4 joint rows across distance/hinge/prismatic/spring, 2 trigger event rows, clean diagnostics, `native_handle_exposure=0`, `middleware_dispatches=0`, and `dynamic_vs_dynamic_ccd_claimed=0`.
+- Focused package validation: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { .\tools\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--max-frames','3','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-2d-physics-runtime-extension') }"` passed; CPack produced `Mirakanai-0.1.0-Windows-AMD64.zip` and installed desktop runtime validation reported `installed-desktop-runtime-validation: ok`.
+- Slice-close local gates: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, focused `tools/check-tidy.ps1 -Files engine/physics/src/physics2d.cpp,tests/unit/physics2d_runtime_extension_tests.cpp`, focused `tools/check-tidy.ps1 -Preset desktop-runtime-release -Configuration Release -Files games/sample_2d_desktop_runtime_package/main.cpp`, focused build/CTest, package smoke, and full `tools/validate.ps1` passed on 2026-06-22 with CTest 141/141 passing after merging latest `origin/main` and rerunning the strengthened physics extension tests. Pending publication gates: branch push, PR, hosted CI/PR Gate, merge, and local main synchronization.
 
 ### Phase 5: `2d-input-device-production-ux-v1`
 
