@@ -176,6 +176,8 @@ Public contract evidence: `MavgBackendReadinessCloseoutDesc`, `MavgBackendReadin
 
 ## Task 3: D3D12 Mesh Shader LOD Execution
 
+**Task label:** MAVG Advanced Backend Evidence Closeout v1 Task 3
+
 **Files:**
 - Create: `engine/renderer/include/mirakana/renderer/mavg_mesh_shader_lod.hpp`
 - Create: `engine/renderer/src/mavg_mesh_shader_lod.cpp`
@@ -185,20 +187,24 @@ Public contract evidence: `MavgBackendReadinessCloseoutDesc`, `MavgBackendReadin
 - Test: `tests/unit/mavg_mesh_shader_lod_tests.cpp`
 - Test: `tests/unit/d3d12_mavg_mesh_shader_lod_tests.cpp`
 
-- [ ] Add a backend-neutral `MavgMeshShaderLodPlan` that converts selected MAVG clusters into meshlet task rows with deterministic fallback to conventional indexed draws.
-- [ ] Add D3D12 capability detection that requires mesh shader support and records `d3d12_mesh_shader_supported`, shader model, adapter name, and driver-visible diagnostic text.
-- [ ] Query `D3D12_FEATURE_D3D12_OPTIONS7` through `ID3D12Device::CheckFeatureSupport`, store `MeshShaderTier`, and reject `D3D12_MESH_SHADER_TIER_NOT_SUPPORTED` before pipeline creation.
-- [ ] Implement a host-gated D3D12 execution path that dispatches amplification/mesh shader work for a first-party package scene and captures deterministic readback color/hash evidence.
-- [ ] Prove the mesh-shader row uses mesh/amplification shader bind points and has no IA input layout or index-buffer dependency in the mesh execution row. Keep `DispatchMesh` direct execution and any `ExecuteIndirect` mesh dispatch as separate subclaims.
-- [ ] If pipeline statistics are available on the host SDK/device path, record amplification/mesh invocation and primitive counters as supplemental evidence only. If they are unavailable, keep the statistics row `host_gated` without blocking readback/hash execution evidence.
-- [ ] Keep `mavg_mesh_shader_lod_d3d12_ready=false` when the host lacks DirectX 12 Ultimate mesh shader support; missing hardware is a host-gated blocker, not a test pass.
-- [ ] Add tests for unsupported hardware, fallback preservation, wrong meshlet group size, mismatched material roots, and no index-buffer IA usage in the mesh-shader row.
-- [ ] Run:
+- [x] Add a backend-neutral `MavgMeshShaderLodPlan` that converts selected MAVG clusters into meshlet task rows with deterministic fallback to conventional indexed draws.
+- [x] Add D3D12 capability detection that requires mesh shader support and records `d3d12_mesh_shader_supported`, shader model rows, adapter name, and diagnostic text.
+- [x] Query `D3D12_FEATURE_D3D12_OPTIONS7` through `ID3D12Device::CheckFeatureSupport`, store `MeshShaderTier`, and reject `D3D12_MESH_SHADER_TIER_NOT_SUPPORTED` before pipeline creation.
+- [x] Implement a host-gated D3D12 execution path that dispatches amplification/mesh shader work for a first-party D3D12 meshlet workload and captures deterministic readback color/hash evidence; package-scene promotion remains outside Task 3.
+- [x] Prove the mesh-shader row uses mesh/amplification shader bind points and has no IA input layout or index-buffer dependency in the mesh execution row. Keep `DispatchMesh` direct execution and any `ExecuteIndirect` mesh dispatch as separate subclaims.
+- [x] Keep pipeline statistics supplemental: Task 3 records them as `pipeline_statistics_host_gated` / unavailable without blocking readback/hash execution evidence.
+- [x] Keep `mavg_mesh_shader_lod_d3d12_ready=false` when the host lacks DirectX 12 Ultimate mesh shader support; missing hardware is a host-gated blocker, not a test pass.
+- [x] Add tests for unsupported hardware, fallback preservation, wrong meshlet group size, mismatched material roots, invalid task rows, diagnostic text, and no index-buffer IA usage in the mesh-shader row.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_mesh_shader_lod_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R "MK_mavg_mesh_shader_lod_tests|MK_d3d12_mavg_mesh_shader_lod_tests" --output-on-failure
 ```
+
+Focused validation evidence on 2026-06-22: RED failed first on the missing `mavg_mesh_shader_lod.hpp` and `d3d12_mavg_mesh_shader_lod.hpp` contracts, then GREEN passed `MK_mavg_mesh_shader_lod_tests` and `MK_d3d12_mavg_mesh_shader_lod_tests`. `D3d12MavgMeshShaderLodDispatchResult` records the D3D12 execution proof: it probes `D3D12_FEATURE_D3D12_OPTIONS7` / `MeshShaderTier`, compiles AS/MS/PS DXIL targets `as_6_5`, `ms_6_5`, and `ps_6_0` through `dxcompiler.dll` when available, creates a mesh pipeline-state stream without an IA input layout, calls direct `DispatchMesh`, copies a 64x64 render target to readback, and sets `mavg_mesh_shader_lod_d3d12_ready` only when readback evidence succeeds. Unsupported hardware, missing DXC, failed compile/PSO/readback, and invalid task rows remain fail-closed or host-gated with diagnostic text.
+
+Claim boundary: Task 3 adds a D3D12-local execution proof API and backend-neutral meshlet task planner only. It does not add package-visible `mavg_mesh_shader_lod_ready=1`, Vulkan execution, Metal readiness, Nanite compatibility/equivalence/superiority, deformation, ray tracing, autonomous streaming scheduling, or broad CPU/GPU/memory optimization.
 
 ## Task 4: Vulkan Mesh Shader LOD Execution
 
