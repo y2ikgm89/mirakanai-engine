@@ -16,6 +16,7 @@ option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where sup
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
 option(MK_ENABLE_ASSET_IMPORTERS "Build optional libspng/fastgltf/miniaudio source asset importer adapters" OFF)
+option(MK_ENABLE_WIN32_DIRECTSTORAGE "Build optional Windows DirectStorage SDK byte-range IO adapter" OFF)
 option(MK_ENABLE_PHYSICS_JOLT "Build optional Jolt Physics native middleware adapter" OFF)
 option(MK_ENABLE_NETWORK_ENET "Build optional ENet loopback network transport adapter" OFF)
 option(MK_REQUIRE_DESKTOP_RUNTIME_DXIL "Require sample_desktop_runtime_shell DXIL artifacts when packaging the desktop runtime shell" OFF)
@@ -799,6 +800,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_rhi_mavg_streaming_upload_overlap_evidence_tests)
     add_test(NAME MK_runtime_rhi_mavg_streaming_upload_overlap_evidence_tests COMMAND MK_runtime_rhi_mavg_streaming_upload_overlap_evidence_tests)
 
+    add_executable(MK_runtime_rhi_mavg_async_overlap_performance_proof_tests
+        tests/unit/runtime_rhi_mavg_async_overlap_performance_proof_tests.cpp
+    )
+    target_link_libraries(MK_runtime_rhi_mavg_async_overlap_performance_proof_tests PRIVATE MK_runtime_rhi)
+    target_include_directories(MK_runtime_rhi_mavg_async_overlap_performance_proof_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_rhi_mavg_async_overlap_performance_proof_tests)
+    add_test(NAME MK_runtime_rhi_mavg_async_overlap_performance_proof_tests COMMAND MK_runtime_rhi_mavg_async_overlap_performance_proof_tests)
+
     add_executable(MK_env_platform_v2_tests
         tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp
     )
@@ -1364,6 +1373,23 @@ if(BUILD_TESTING)
         MK_apply_common_target_options(MK_win32_platform_tests)
         add_test(NAME MK_win32_platform_tests COMMAND MK_win32_platform_tests)
 
+        add_executable(MK_win32_directstorage_byte_range_io_tests
+            tests/unit/win32_directstorage_byte_range_io_tests.cpp
+        )
+        target_link_libraries(MK_win32_directstorage_byte_range_io_tests PRIVATE MK_platform_win32)
+        target_include_directories(MK_win32_directstorage_byte_range_io_tests PRIVATE tests)
+        if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+            target_compile_definitions(MK_win32_directstorage_byte_range_io_tests
+                PRIVATE MK_ENABLE_WIN32_DIRECTSTORAGE_TESTS)
+            add_custom_command(TARGET MK_win32_directstorage_byte_range_io_tests POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:MK_win32_directstorage_byte_range_io_tests>
+                    $<TARGET_FILE_DIR:MK_win32_directstorage_byte_range_io_tests>
+                COMMAND_EXPAND_LISTS)
+        endif()
+        MK_apply_common_target_options(MK_win32_directstorage_byte_range_io_tests)
+        add_test(NAME MK_win32_directstorage_byte_range_io_tests COMMAND MK_win32_directstorage_byte_range_io_tests)
+
         add_executable(MK_wasapi_audio_tests
             tests/unit/wasapi_audio_tests.cpp
         )
@@ -1397,6 +1423,15 @@ if(BUILD_TESTING)
             MK_apply_common_target_options(MK_runtime_host_win32_public_api_compile)
             add_test(NAME MK_runtime_host_win32_public_api_compile COMMAND MK_runtime_host_win32_public_api_compile)
         endif()
+    endif()
+
+    if(UNIX AND NOT APPLE AND TARGET MK_runtime_host_linux)
+        add_executable(MK_runtime_host_linux_public_api_compile
+            tests/unit/runtime_host_linux_public_api_compile.cpp
+        )
+        target_link_libraries(MK_runtime_host_linux_public_api_compile PRIVATE MK_runtime_host_linux)
+        MK_apply_common_target_options(MK_runtime_host_linux_public_api_compile)
+        add_test(NAME MK_runtime_host_linux_public_api_compile COMMAND MK_runtime_host_linux_public_api_compile)
     endif()
 
     get_property(MK_CURRENT_DIRECTORY_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
@@ -1436,6 +1471,7 @@ MK_set_export_name(MK_renderer renderer)
 MK_set_export_name(MK_rhi rhi)
 MK_set_export_name(MK_runtime runtime)
 MK_set_export_name(MK_runtime_host runtime_host)
+MK_set_export_name(MK_runtime_host_linux runtime_host_linux)
 MK_set_export_name(MK_runtime_host_win32 runtime_host_win32)
 MK_set_export_name(MK_runtime_host_win32_presentation runtime_host_win32_presentation)
 MK_set_export_name(MK_runtime_rhi runtime_rhi)
@@ -1490,7 +1526,7 @@ set(MK_RUNTIME_TARGETS
 )
 
 foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_wasapi mirakana_platform_win32
-        MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
+        MK_runtime_host_linux MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
         mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
@@ -1664,6 +1700,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
     foreach(MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET IN ITEMS
         MK_runtime_host_tests
+        MK_runtime_host_linux_public_api_compile
         MK_runtime_host_win32_public_api_compile
         MK_runtime_host_win32_tests
         MK_win32_platform_tests
@@ -1699,6 +1736,11 @@ install(EXPORT MirakanaiTargets
 set(MK_PACKAGE_HAS_ASSET_IMPORTERS OFF)
 if(MK_ENABLE_ASSET_IMPORTERS)
     set(MK_PACKAGE_HAS_ASSET_IMPORTERS ON)
+endif()
+
+set(MK_PACKAGE_HAS_WIN32_DIRECTSTORAGE OFF)
+if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+    set(MK_PACKAGE_HAS_WIN32_DIRECTSTORAGE ON)
 endif()
 
 set(MK_PACKAGE_HAS_PHYSICS_JOLT OFF)

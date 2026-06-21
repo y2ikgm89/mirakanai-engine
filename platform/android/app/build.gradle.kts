@@ -21,11 +21,19 @@ java {
 }
 
 val mirakanaiGameName = providers.gradleProperty("mirakanai.game").orElse("sample_headless").get()
+val mirakanaiAndroidAbi = providers.gradleProperty("mirakanai.androidAbi").orElse("arm64-v8a").get()
 val mirakanaiRoot = file("../../..").canonicalFile
 val mirakanaiGameRoot = mirakanaiRoot.resolve("games/$mirakanaiGameName")
 val mirakanaiGameManifest = mirakanaiGameRoot.resolve("game.agent.json")
 val mirakanaiGameAssets = mirakanaiGameRoot.resolve("assets")
 val generatedGameAssets = layout.buildDirectory.dir("generated/mirakanai/assets")
+val mirakanaiValidationLayerJniLibs = providers.gradleProperty("mirakanai.validationLayerJniLibs").orNull
+    ?.takeIf { it.isNotBlank() }
+    ?.let { file(it).canonicalFile }
+
+require(mirakanaiAndroidAbi in setOf("arm64-v8a", "x86_64")) {
+    "mirakanai.androidAbi must be arm64-v8a or x86_64"
+}
 
 fun environmentValue(name: String): String? =
     providers.environmentVariable(name).orNull?.takeIf { it.isNotBlank() }
@@ -104,7 +112,7 @@ android {
         }
 
         ndk {
-            abiFilters.add("arm64-v8a")
+            abiFilters.add(mirakanaiAndroidAbi)
         }
     }
 
@@ -120,6 +128,10 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            isDebuggable = true
+        }
+
         getByName("release") {
             if (mkAndroidReleaseSigningReady) {
                 signingConfig = signingConfigs.getByName("releaseFromEnvironment")
@@ -162,5 +174,9 @@ androidComponents {
             "Android assets source directories are unavailable for ${variant.name}"
         }
         assets.addGeneratedSourceDirectory(prepareGameAssets) { it.outputDirectory }
+        mirakanaiValidationLayerJniLibs?.let {
+            variant.sources.jniLibs?.addStaticSourceDirectory(it.invariantSeparatorsPath)
+                ?: error("Android jniLibs sources are unavailable for ${variant.name}")
+        }
     }
 }

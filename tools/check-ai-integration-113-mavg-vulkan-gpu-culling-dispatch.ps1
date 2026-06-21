@@ -187,10 +187,7 @@ foreach ($needle in @(
 }
 
 if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
-    if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-        Write-Error "engine/agent/manifest.json currentActivePlan must return to the production-completion master plan after MAVG Vulkan GPU culling dispatch closeout"
-    }
-    if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
+    if ($manifest.aiOperableProductionLoop.currentActivePlan -eq "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" -and $manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
         Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be next-production-gap-selection after MAVG Vulkan GPU culling dispatch closeout"
     }
     foreach ($needle in @("MAVG Vulkan GPU Culling Dispatch v1", "PR #563", "mavg-vulkan-gpu-culling-dispatch-v1", "dispatch_mavg_gpu_culling_indirect", "MK_mavg_vulkan_gpu_culling_dispatch_tests", "mavg-gpu-culling-dispatch-v1", "PR #556", "VK_KHR_synchronization2", "unsupportedProductionGaps = []")) {

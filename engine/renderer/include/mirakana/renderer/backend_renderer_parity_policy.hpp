@@ -64,6 +64,22 @@ struct BackendRendererParityProofRow {
     std::uint32_t source_index{0U};
 };
 
+struct BackendRendererParityAppleMetalEnvironmentEvidenceDesc {
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool shader_library_ready{false};
+    bool render_pipeline_ready{false};
+    bool compute_pipeline_ready{false};
+    bool render_pass_ready{false};
+    bool resource_evidence_ready{false};
+    bool synchronization_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool render_readback_nonzero{false};
+    bool compute_readback_nonzero{false};
+    bool native_handle_access{false};
+    std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
+};
+
 struct BackendRendererParityPolicyRequest {
     std::vector<rhi::BackendKind> required_backends;
     std::vector<BackendRendererParityFeatureKind> required_features;
@@ -101,6 +117,9 @@ struct BackendRendererParityPolicyPlan {
 
 [[nodiscard]] bool
 backend_renderer_parity_proof_matches_selected_backend(const BackendRendererParityProofDesc& desc) noexcept;
+
+[[nodiscard]] std::vector<BackendRendererParityProofRow> make_backend_renderer_parity_apple_metal_environment_proofs(
+    const BackendRendererParityAppleMetalEnvironmentEvidenceDesc& desc);
 
 [[nodiscard]] BackendRendererParityPolicyPlan
 plan_backend_renderer_parity_policy(const BackendRendererParityPolicyRequest& request);

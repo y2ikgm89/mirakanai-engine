@@ -562,6 +562,172 @@ jobs:
             out/build/ci-linux-clang/Testing/**/*.log
           if-no-files-found: warn
 
+  linux-vulkan:
+    name: Linux Vulkan Host Evidence
+    needs: changes
+    if: needs.changes.outputs.linux == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Restore Linux Vulkan vcpkg tool checkout cache
+        id: restore-linux-vulkan-vcpkg-tool
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ runner.os }}-linux-vulkan-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-vulkan-vcpkg-tool-
+            ${{ runner.os }}-vcpkg-tool-
+
+      - name: Clone Linux Vulkan vcpkg tool checkout
+        shell: pwsh
+        run: |
+          if (Test-Path external/vcpkg/.git) {
+            Write-Information "external/vcpkg restored from cache" -InformationAction Continue
+          } else {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+
+      - name: Update Linux Vulkan vcpkg tool baseline
+        shell: pwsh
+        run: |
+          $manifest = Get-Content vcpkg.json -Raw | ConvertFrom-Json
+          $targetBaseline = $manifest.'builtin-baseline'
+          if (!(Test-Path external/vcpkg/.git)) {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+          try {
+            $currentBaseline = git -C external/vcpkg rev-parse HEAD
+            $resolvedTarget = git -C external/vcpkg rev-parse $targetBaseline
+          } catch {
+            $currentBaseline = [string]::Empty
+            $resolvedTarget = [string]::Empty
+          }
+          if ([string]::IsNullOrWhiteSpace($resolvedTarget) -or $currentBaseline -ne $resolvedTarget) {
+            git -C external/vcpkg fetch --depth 1 origin $targetBaseline
+            git -C external/vcpkg checkout --force $targetBaseline
+          }
+
+      - name: Bootstrap Linux Vulkan vcpkg executable
+        shell: pwsh
+        run: |
+          . ./tools/common.ps1
+          $null = Set-MirakanaiVcpkgEnvironment
+          $vcpkgExe = Get-VcpkgExecutablePath
+          if (!(Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
+            bash external/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          }
+          & $vcpkgExe version
+
+      - name: Install Linux Vulkan diagnostic packages
+        run: |
+          . /etc/os-release
+          case "${VERSION_CODENAME:-}" in
+            noble|jammy)
+              lunarg_codename="${VERSION_CODENAME}"
+              ;;
+            *)
+              echo "Unsupported Ubuntu codename for LunarG Vulkan SDK packages: ${VERSION_CODENAME:-unknown}" >&2
+              exit 1
+              ;;
+          esac
+          sudo apt-get update
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc >/dev/null
+          sudo wget -qO "/etc/apt/sources.list.d/lunarg-vulkan-${lunarg_codename}.list" "http://packages.lunarg.com/vulkan/lunarg-vulkan-${lunarg_codename}.list"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends --no-install-suggests \
+            libxcb-cursor-dev \
+            libxcb-xinerama0 \
+            libxcb-xinput0 \
+            mesa-vulkan-drivers \
+            vulkan-sdk \
+            xauth \
+            xvfb
+          mkdir -p artifacts/environment/platform/linux-vulkan-host
+          command -v dxc
+          command -v vulkaninfo
+          command -v spirv-val
+
+      - name: Capture Vulkan host summaries
+        shell: bash
+        run: |
+          mkdir -p artifacts/environment/platform/linux-vulkan-host
+          vulkaninfo --summary > artifacts/environment/platform/linux-vulkan-host/vulkaninfo-summary.txt 2>&1 || true
+          (
+            cd artifacts/environment/platform/linux-vulkan-host
+            vulkaninfo --json > vulkaninfo-json-stdout.txt 2>&1
+          ) || true
+          find artifacts/environment/platform/linux-vulkan-host -maxdepth 1 -type f -name 'VP_VULKANINFO_*.json' -print
+
+      - name: Validate Linux Vulkan host evidence gate
+        shell: pwsh
+        run: |
+          $output = "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt"
+          . ./tools/common.ps1
+          $null = Set-MirakanaiVcpkgEnvironment
+          $validateCommand = @'
+          $expected = @(
+            "validation_recipe=environment-platform-linux-vulkan-package",
+            "host=linux",
+            "vulkaninfo_ready=1",
+            "VK_LAYER_KHRONOS_validation_ready=1",
+            "dxc_spirv_codegen_ready=1",
+            "spirv_val_ready=1",
+            "linux_icd_runtime_ready=1",
+            "first_party_linux_runtime_host_ready=1",
+            "linux_package_script_ready=1",
+            "linux_installed_validator_ready=1",
+            "linux_package_smoke_ready=1",
+            "linux_vulkan_readback_ready=1",
+            "linux_vulkan_validation_log_clean=1",
+            "environment_platform_linux_vulkan_ready=1",
+            "environment_platform_requires_linux_vulkan_host_evidence=0",
+            "environment_all_platform_unconditional_ready=0"
+          )
+          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters $expected
+          '@
+          xvfb-run -a pwsh -NoProfile -ExecutionPolicy Bypass -Command $validateCommand *>&1 |
+            Tee-Object -FilePath $output
+
+      - name: Save Linux Vulkan vcpkg tool checkout cache
+        if: ${{ success() && !cancelled() && steps.restore-linux-vulkan-vcpkg-tool.outcome == 'success' && steps.restore-linux-vulkan-vcpkg-tool.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ steps.restore-linux-vulkan-vcpkg-tool.outputs.cache-primary-key }}
+
+      - name: Upload Linux Vulkan host evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-vulkan-host-evidence
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/environment/platform/linux-vulkan-host/**
+          if-no-files-found: warn
+
   linux-coverage:
     name: Linux Coverage
     needs: changes
@@ -891,11 +1057,22 @@ jobs:
         run: |
           ccache --zero-stats
 
-      - name: Environment Metal aggregate host evidence recipe
+      - name: Environment Metal aggregate host evidence recipe and optimization artifacts
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
-          ./tools/validate-environment-metal-host-aggregate.ps1 -Jobs $jobs
+          ./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs $jobs -RequireReady
+
+      - name: Upload Metal optimization artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: metal-host-optimization-artifacts
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**
+          if-no-files-found: warn
 
       - name: Configure
         run: cmake --preset ci-macos-appleclang
@@ -1000,6 +1177,7 @@ jobs:
       - agent-static
       - windows
       - linux
+      - linux-vulkan
       - windows-cpp23
       - linux-coverage
       - linux-sanitizers

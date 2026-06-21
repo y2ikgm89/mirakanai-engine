@@ -190,7 +190,19 @@ function Get-VcpkgRoot {
 }
 
 function Get-VcpkgExecutablePath {
-    return Join-Path (Get-VcpkgRoot) "vcpkg.exe"
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        return Join-Path (Get-VcpkgRoot) "vcpkg.exe"
+    }
+
+    return Join-Path (Get-VcpkgRoot) "vcpkg"
+}
+
+function Get-VcpkgBootstrapScriptPath {
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        return Join-Path (Get-VcpkgRoot) "bootstrap-vcpkg.bat"
+    }
+
+    return Join-Path (Get-VcpkgRoot) "bootstrap-vcpkg.sh"
 }
 
 function Assert-VcpkgExecutable {

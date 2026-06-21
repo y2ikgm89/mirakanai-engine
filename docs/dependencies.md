@@ -28,7 +28,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12/DirectWrite editor shell, not a vcpkg feature and not a UI middleware dependency path.
+The optional desktop runtime, asset importer, Win32 DirectStorage adapter, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12/DirectWrite editor shell, not a vcpkg feature and not a UI middleware dependency path.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -38,7 +38,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 
 The repository PowerShell wrappers configure vcpkg through official process environment variables before optional dependency steps. `VCPKG_DOWNLOADS` points at `out/vcpkg/downloads`, `VCPKG_DEFAULT_BINARY_CACHE` points at `out/vcpkg/binary-cache`, and `VCPKG_BINARY_SOURCES` is set to a file provider over that binary cache. This keeps optional dependency downloads and binary packages out of user-global locations and avoids relying on sandbox-inherited cache state.
 
-`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. The `asset-importers` feature owns the optional PNG, glTF, OpenEXR, KTX2/Basis, and common-audio package set. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
+`bootstrap-deps` is the only wrapper that runs `vcpkg install`. By default or with `-All`, it installs the `desktop-runtime`, `asset-importers`, `physics-jolt`, `network-enet`, and `directstorage-win32` manifest features into the repository root `vcpkg_installed` tree; `-Feature <name>` installs an explicit subset. The `asset-importers` feature owns the optional PNG, glTF, OpenEXR, KTX2/Basis, and common-audio package set. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
 
 GitHub Actions restores the gitignored `external/vcpkg` tool checkout before calling `bootstrap-deps`, then checks out the `vcpkg.json` `builtin-baseline` commit. Local hosts must still provide or restore `external/vcpkg` before running optional vcpkg-backed lanes.
 
@@ -59,7 +59,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtim
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1
 ```
 
-`desktop-game-runtime` uses the `desktop-runtime` preset and the dependency-free `desktop-runtime` vcpkg feature so it does not require Dear ImGui or external desktop packages. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects legacy desktop runtime DLLs in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game`, committed generated desktop runtime package samples, and generated desktop runtime templates are Win32-backed through `Win32DesktopGameHost` / `Win32DesktopPresentation`. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host.
+`desktop-game-runtime` uses the `desktop-runtime` preset and the dependency-free `desktop-runtime` vcpkg feature so it does not require Dear ImGui or external desktop packages. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects legacy desktop runtime DLLs in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game`, committed generated desktop runtime package samples, and generated desktop runtime templates are Win32-backed through `Win32DesktopGameHost` / `Win32DesktopPresentation`. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host. `tools/package-linux-runtime.ps1` is a separate Linux-only host gate that uses the `desktop-runtime-linux-release` Ninja preset, `VCPKG_TARGET_TRIPLET=x64-linux`, host-aware `tools/bootstrap-deps.ps1` vcpkg resolution, `out/build/desktop-runtime-linux-release`, `out/install/linux-runtime-release`, and `tools/validate-installed-linux-runtime.ps1`; it is prerequisite package-smoke infrastructure only and must not be treated as Linux Vulkan readiness until Linux presentation/readback/clean validation-log counters pass on a Linux host.
 
 ## Windows Host Diagnostics Tooling
 
@@ -81,6 +81,12 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 ### Editor native module boundary (not a vcpkg dependency)
 
 Optional **same-build** loading of an editor game module driver uses the Windows (or platform) dynamic loader against a **caller-selected path** for a module built with the same MIRAIKANAI Engine sources. That surface is **not** introduced through `vcpkg.json` and does **not** create a third-party package record. **Stable binary ABI** guarantees for out-of-tree vendor DLLs are **explicitly out of scope for Engine 1.0**; see `docs/legal-and-licensing.md` (Editor game module driver and third-party DLL ABI).
+
+`directstorage-win32` in `vcpkg.json` declares:
+
+- `dstorage` / Microsoft DirectStorage SDK 1.3.0 for the optional Windows-only first-party MAVG byte-range IO adapter
+
+This feature is installed only by `tools/bootstrap-deps.ps1 -Feature directstorage-win32` or `tools/bootstrap-deps.ps1 -All`. The adapter must keep `dstorage.h`, `IDStorageFactory`, `IDStorageQueue`, `IDStorageStatusArray`, `DStorageGetFactory`, DirectStorage DLL/import-library linkage, and Microsoft DirectStorage SDK license files behind the private adapter boundary in `MK_platform_win32`. Public runtime/gameplay APIs must continue to expose only first-party `IByteRangeIoExecutor`, `ByteRangeIoBackendKind::direct_storage`, and value diagnostics; DirectStorage SDK types, `IDStorage*`, `IUnknown*`, D3D12/DXGI resources, `HANDLE`, `void*`, or native queue/status/file objects must not leak into public gameplay/runtime APIs. This is a Windows-only dependency lane and does not claim GPU destinations, GDeflate, DirectStorage 1.4 preview APIs, async-overlap performance proof, mesh shaders, Metal readiness, Nanite equivalence, or broad MAVG backend readiness.
 
 `asset-importers` in `vcpkg.json` declares reviewed dependencies for optional production source importer adapters:
 
@@ -181,6 +187,7 @@ Validated local package versions:
 | OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
 | EGL Registry | 2025-05-27 | Optional `MK_tools` build output through KTX Software |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
+| Microsoft DirectStorage SDK / dstorage | 1.3.0 | Optional Windows-only `MK_platform_win32` MAVG byte-range IO adapter |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
 | ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
 | Android Gradle Plugin | 9.1.0 | Toolchain-gated Android package template |
@@ -192,12 +199,16 @@ Validated local package versions:
 | vcpkg-cmake | 2024-04-23 | vcpkg CMake helper |
 | vcpkg-cmake-config | 2024-05-23 | vcpkg CMake config helper |
 
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, OpenEXR/KTX/Basis dependency/legal records remain present, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `asset-importers`, `directstorage-win32`, `physics-jolt`, and `network-enet` features keep their dependency shapes, OpenEXR/KTX/Basis/DirectStorage dependency/legal records remain present, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
 
 ## Official References
 
 - vcpkg manifest mode: https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode
 - vcpkg CMake integration: https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration
+- Microsoft DirectStorage SDK & API: https://devblogs.microsoft.com/directx/directstorage-api-downloads/
+- Microsoft DirectStorage API reference: https://learn.microsoft.com/en-us/windows/win32/dstorage/
+- Microsoft.Direct3D.DirectStorage 1.3.0: https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage/1.3.0
+- DirectStorage developer guidance: https://github.com/microsoft/DirectStorage/blob/main/Docs/DeveloperGuidance.md
 - Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
 - DirectWrite: https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal
 - Text Rendering with Direct2D and DirectWrite: https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-and-directwrite
@@ -250,6 +261,7 @@ Validated local package versions:
 - Zstandard is BSD-3-Clause OR GPL-2.0-only and is pulled through KTX Software.
 - Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.
 - miniaudio is public domain or MIT No Attribution.
+- Microsoft DirectStorage SDK 1.3.0 is distributed through the `dstorage` vcpkg port from the official `Microsoft.Direct3D.DirectStorage` NuGet package. Package headers are MIT licensed through `LICENSE-CODE.txt`; redistributed binaries are governed by `LICENSE.txt` (`LicenseRef-Microsoft-DirectStorage-SDK`). Keep both license files with redistributed package outputs and keep SDK objects private to the Win32 adapter.
 - The `desktop-editor` developer/editor shell lane is first-party and dependency-free; any future UI, font, text, or platform adapter dependency must be added through `license-audit`, `vcpkg.json`, this document, and `THIRD_PARTY_NOTICES.md` before use.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
 - ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.

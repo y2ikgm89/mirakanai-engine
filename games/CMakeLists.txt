@@ -58,11 +58,14 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         if(NOT MK_DESKTOP_GAME_HOST_BACKEND)
             set(MK_DESKTOP_GAME_HOST_BACKEND "win32")
         endif()
-        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
-            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32" AND NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "linux")
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 or linux for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
         endif()
-        if(NOT WIN32)
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32" AND NOT WIN32)
             message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND win32 is only supported on Windows for ${target_name}")
+        endif()
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "linux" AND NOT (UNIX AND NOT APPLE))
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND linux is only supported on Linux for ${target_name}")
         endif()
         get_filename_component(MK_DESKTOP_GAME_DIRECTORY "${MK_DESKTOP_GAME_GAME_MANIFEST}" DIRECTORY)
         file(REAL_PATH "${MK_DESKTOP_GAME_DIRECTORY}" MK_DESKTOP_GAME_DIRECTORY_REAL BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -195,12 +198,19 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_renderer
                 MK_runtime_host
         )
-        target_link_libraries(${target_name}
-            PRIVATE
-                MK_platform_win32
-                MK_runtime_host_win32
-                MK_runtime_host_win32_presentation
-        )
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
+            target_link_libraries(${target_name}
+                PRIVATE
+                    MK_platform_win32
+                    MK_runtime_host_win32
+                    MK_runtime_host_win32_presentation
+            )
+        elseif(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "linux")
+            target_link_libraries(${target_name}
+                PRIVATE
+                    MK_runtime_host_linux
+            )
+        endif()
 
         MK_apply_common_target_options(${target_name})
         MK_disable_module_scanning_for_non_module_executable(${target_name})
@@ -270,28 +280,30 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endfunction()
 
-    MK_add_desktop_runtime_game(sample_desktop_runtime_shell
-        SOURCES
-            sample_desktop_runtime_shell/main.cpp
-        GAME_MANIFEST
-            games/sample_desktop_runtime_shell/game.agent.json
-        HOST_BACKEND
-            win32
-        SMOKE_ARGS
-            --smoke
-        PACKAGE_SMOKE_ARGS
-            --smoke
-            --require-d3d12-shaders
-            --require-vulkan-shaders
-        REQUIRES_D3D12_SHADERS
-        REQUIRES_VULKAN_SHADERS
-    )
-    set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
-        "shaders/runtime_shell.vs.dxil;shaders/runtime_shell.ps.dxil"
-    )
-    set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
-        "shaders/runtime_shell.vs.spv;shaders/runtime_shell.ps.spv"
-    )
+    if(WIN32)
+        MK_add_desktop_runtime_game(sample_desktop_runtime_shell
+            SOURCES
+                sample_desktop_runtime_shell/main.cpp
+            GAME_MANIFEST
+                games/sample_desktop_runtime_shell/game.agent.json
+            HOST_BACKEND
+                win32
+            SMOKE_ARGS
+                --smoke
+            PACKAGE_SMOKE_ARGS
+                --smoke
+                --require-d3d12-shaders
+                --require-vulkan-shaders
+            REQUIRES_D3D12_SHADERS
+            REQUIRES_VULKAN_SHADERS
+        )
+        set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
+            "shaders/runtime_shell.vs.dxil;shaders/runtime_shell.ps.dxil"
+        )
+        set_property(TARGET sample_desktop_runtime_shell PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
+            "shaders/runtime_shell.vs.spv;shaders/runtime_shell.ps.spv"
+        )
+    endif()
 
     function(MK_configure_desktop_runtime_scene_shader_artifacts)
         cmake_parse_arguments(MK_SCENE_SHADER "" "TARGET;GAME_NAME;ARTIFACT_PREFIX;SCENE_SHADER_SOURCE;POSTPROCESS_SHADER_SOURCE;MORPH_VERTEX_ENTRY;COMPUTE_MORPH_VERTEX_ENTRY;COMPUTE_MORPH_ENTRY;COMPUTE_MORPH_TANGENT_VERTEX_ENTRY;COMPUTE_MORPH_TANGENT_ENTRY;COMPUTE_MORPH_SKINNED_VERTEX_ENTRY;COMPUTE_MORPH_SKINNED_ENTRY;SHADOW_SHADER_SOURCE;SHADOW_RECEIVER_ENTRY;SHADOW_VERTEX_ENTRY;SHADOW_FRAGMENT_ENTRY;UI_OVERLAY_SHADER_SOURCE" "" ${ARGN})
@@ -1253,107 +1265,131 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endfunction()
 
-    if(WIN32)
-        set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE "")
-        if(DEFINED ENV{MK_SHADER_TOOLCHAIN_ROOT})
-            set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/dxc.exe")
-            if(EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED}")
+    unset(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE CACHE)
+    unset(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
+    if(DEFINED ENV{MK_SHADER_TOOLCHAIN_ROOT})
+        foreach(MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED IN ITEMS
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/dxc"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/dxc.exe"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/bin/dxc"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/bin/dxc.exe"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/Bin/dxc"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/Bin/dxc.exe"
+        )
+            if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE AND EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED}")
                 set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED}")
             endif()
-            if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-                set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/Bin/dxc.exe")
-                if(EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED}")
-                    set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_CONFIGURED}")
-                endif()
-            endif()
-        endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE AND DEFINED ENV{VULKAN_SDK})
-            set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_SDK "$ENV{VULKAN_SDK}/Bin/dxc.exe")
-            if(EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_SDK}")
+        endforeach()
+    endif()
+    if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE AND DEFINED ENV{VULKAN_SDK})
+        foreach(MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_SDK IN ITEMS
+            "$ENV{VULKAN_SDK}/bin/dxc"
+            "$ENV{VULKAN_SDK}/bin/dxc.exe"
+            "$ENV{VULKAN_SDK}/Bin/dxc"
+            "$ENV{VULKAN_SDK}/Bin/dxc.exe"
+        )
+            if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE AND EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_SDK}")
                 set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_SDK}")
             endif()
+        endforeach()
+    endif()
+    if(WIN32 AND NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
+        file(GLOB MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES
+            "C:/VulkanSDK/*/Bin/dxc.exe"
+        )
+        if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES)
+            list(SORT MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+            list(GET MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES 0 MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
         endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-            file(GLOB MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES
-                "C:/VulkanSDK/*/Bin/dxc.exe"
-            )
-            if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES)
-                list(SORT MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
-                list(GET MK_SAMPLE_DESKTOP_RUNTIME_DXC_VULKAN_CANDIDATES 0 MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-            endif()
+    endif()
+    if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
+        find_program(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE NAMES dxc dxc.exe)
+    endif()
+    if(WIN32 AND NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
+        file(GLOB MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES
+            "C:/Program Files (x86)/Windows Kits/10/bin/*/x64/dxc.exe"
+        )
+        if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES)
+            list(SORT MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+            list(GET MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES 0 MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
         endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-            find_program(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE NAMES dxc)
-        endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-            file(GLOB MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES
-                "C:/Program Files (x86)/Windows Kits/10/bin/*/x64/dxc.exe"
-            )
-            if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES)
-                list(SORT MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
-                list(GET MK_SAMPLE_DESKTOP_RUNTIME_DXC_CANDIDATES 0 MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-            endif()
-        endif()
+    endif()
 
-        set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV OFF)
-        if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
-            set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE
-                "${CMAKE_CURRENT_BINARY_DIR}/dxc-spirv-probe.hlsl"
-            )
-            set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT
-                "${CMAKE_CURRENT_BINARY_DIR}/dxc-spirv-probe.spv"
-            )
-            file(WRITE "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE}"
-                "struct VSOut { float4 position : SV_Position; };\n"
-                "VSOut vs_main(uint id : SV_VertexID) { VSOut o; o.position = float4(0.0, 0.0, 0.0, 1.0); return o; }\n"
-            )
-            execute_process(
-                COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
-                    -nologo -E vs_main -T vs_6_0 -spirv -fspv-target-env=vulkan1.3
-                    -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE}"
-                RESULT_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_RESULT
-                OUTPUT_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_STDOUT
-                ERROR_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_STDERR
-            )
-            if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_RESULT EQUAL 0 AND
-               EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT}")
-                set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV ON)
-            endif()
+    set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV OFF)
+    if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE
+            "${CMAKE_CURRENT_BINARY_DIR}/dxc-spirv-probe.hlsl"
+        )
+        set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT
+            "${CMAKE_CURRENT_BINARY_DIR}/dxc-spirv-probe.spv"
+        )
+        file(WRITE "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE}"
+            "float4 vs_main(uint vertex_id : SV_VertexID) : SV_Position {\n"
+            "    float2 positions[3] = {\n"
+            "        float2(-0.5, -0.5),\n"
+            "        float2( 0.5, -0.5),\n"
+            "        float2( 0.0,  0.5)\n"
+            "    };\n"
+            "    return float4(positions[vertex_id], 0.0, 1.0);\n"
+            "}\n"
+        )
+        execute_process(
+            COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
+                -nologo -spirv -fspv-target-env=vulkan1.3 -T vs_6_7 -E vs_main
+                -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT}"
+                "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_SOURCE}"
+            RESULT_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_RESULT
+            OUTPUT_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_STDOUT
+            ERROR_VARIABLE MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_STDERR
+        )
+        if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_RESULT EQUAL 0 AND
+           EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_SPIRV_PROBE_OUTPUT}")
+            set(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV ON)
         endif()
+    endif()
 
-        set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE "")
-        if(DEFINED ENV{MK_SHADER_TOOLCHAIN_ROOT})
-            set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/spirv-val.exe")
-            if(EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED}")
+    unset(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE CACHE)
+    unset(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
+    if(DEFINED ENV{MK_SHADER_TOOLCHAIN_ROOT})
+        foreach(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED IN ITEMS
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/spirv-val"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/spirv-val.exe"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/bin/spirv-val"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/bin/spirv-val.exe"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/Bin/spirv-val"
+            "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/Bin/spirv-val.exe"
+        )
+            if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE AND EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED}")
                 set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED}")
             endif()
-            if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
-                set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED "$ENV{MK_SHADER_TOOLCHAIN_ROOT}/Bin/spirv-val.exe")
-                if(EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED}")
-                    set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_CONFIGURED}")
-                endif()
-            endif()
-        endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE AND DEFINED ENV{VULKAN_SDK})
-            set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_SDK "$ENV{VULKAN_SDK}/Bin/spirv-val.exe")
-            if(EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_SDK}")
+        endforeach()
+    endif()
+    if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE AND DEFINED ENV{VULKAN_SDK})
+        foreach(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_SDK IN ITEMS
+            "$ENV{VULKAN_SDK}/bin/spirv-val"
+            "$ENV{VULKAN_SDK}/bin/spirv-val.exe"
+            "$ENV{VULKAN_SDK}/Bin/spirv-val"
+            "$ENV{VULKAN_SDK}/Bin/spirv-val.exe"
+        )
+            if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE AND EXISTS "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_SDK}")
                 set(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_SDK}")
             endif()
+        endforeach()
+    endif()
+    if(WIN32 AND NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
+        file(GLOB MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES
+            "C:/VulkanSDK/*/Bin/spirv-val.exe"
+        )
+        if(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES)
+            list(SORT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+            list(GET MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES 0 MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
         endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
-            file(GLOB MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES
-                "C:/VulkanSDK/*/Bin/spirv-val.exe"
-            )
-            if(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES)
-                list(SORT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
-                list(GET MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_VULKAN_CANDIDATES 0 MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
-            endif()
-        endif()
-        if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
-            find_program(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE NAMES spirv-val)
-        endif()
+    endif()
+    if(NOT MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
+        find_program(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE NAMES spirv-val spirv-val.exe)
+    endif()
 
+    if(WIN32)
         set(MK_SAMPLE_DESKTOP_RUNTIME_REQUIRES_DXIL ${MK_REQUIRE_DESKTOP_RUNTIME_DXIL})
         set(MK_SAMPLE_DESKTOP_RUNTIME_REQUIRES_SPIRV ${MK_REQUIRE_DESKTOP_RUNTIME_SPIRV})
         if(MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET STREQUAL "sample_desktop_runtime_shell")
@@ -1494,86 +1530,126 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endif()
 
-    MK_add_desktop_runtime_game(sample_desktop_runtime_game
-        SOURCES
-            sample_desktop_runtime_game/main.cpp
-        GAME_MANIFEST
-            games/sample_desktop_runtime_game/game.agent.json
-        HOST_BACKEND
-            win32
-        SMOKE_ARGS
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SOURCES sample_desktop_runtime_game/main.cpp)
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_HOST_BACKEND win32)
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SMOKE_ARGS
+        --smoke
+        --require-job-scheduling-evidence
+        --require-job-execution-foundation
+        --require-job-execution-topology-policy
+        --require-job-execution-work-stealing
+        --require-job-execution-placement-policy
+        --require-windows-cpu-set-worker-placement
+        --require-windows-cpu-set-smt-worker-placement
+        --require-simd-dispatch-policy
+    )
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_PACKAGE_SMOKE_ARGS
+        --smoke
+        --require-config
+        runtime/sample_desktop_runtime_game.config
+        --require-scene-package
+        runtime/sample_desktop_runtime_game.geindex
+        --require-environment-texture-asset-pipeline-package
+        --require-environment-texture-asset-pipeline-d3d12-upload
+        --require-environment-preset-library-package
+        --require-d3d12-scene-shaders
+        --require-d3d12-renderer
+        --require-scene-gpu-bindings
+        --require-postprocess
+        --require-postprocess-depth-input
+        --require-d3d12-postprocess-evidence
+        --require-directional-shadow
+        --require-directional-shadow-filtering
+        --require-d3d12-shadow-cascade-policy
+        --require-lighting-shadow-policy
+        --require-scene-scale-policy
+        --require-d3d12-instanced-draw-evidence
+        --require-gpu-memory-policy
+        --require-memory-diagnostics
+        --require-d3d12-gpu-memory-evidence
+        --require-debug-profiling-policy
+        --require-d3d12-debug-profiling-evidence
+        --require-job-scheduling-evidence
+        --require-job-execution-foundation
+        --require-job-execution-topology-policy
+        --require-job-execution-work-stealing
+        --require-job-execution-placement-policy
+        --require-windows-cpu-set-worker-placement
+        --require-windows-cpu-set-smt-worker-placement
+        --require-simd-dispatch-policy
+        # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
+        # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence --require-simd-dispatch-policy
+        --require-renderer-quality-gates
+        --require-framegraph-multiqueue-evidence
+        --require-native-ui-overlay
+        --require-native-ui-textured-sprite-atlas
+        --require-d3d12-gpu-skinning-evidence
+        --require-quaternion-animation
+    )
+    set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_FLAGS REQUIRES_D3D12_SHADERS)
+    if(UNIX AND NOT APPLE)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SOURCES sample_desktop_runtime_game/linux_main.cpp)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_HOST_BACKEND linux)
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SMOKE_ARGS
             --smoke
-            --require-job-scheduling-evidence
-            --require-job-execution-foundation
-            --require-job-execution-topology-policy
-            --require-job-execution-work-stealing
-            --require-job-execution-placement-policy
-            --require-windows-cpu-set-worker-placement
-            --require-windows-cpu-set-smt-worker-placement
-            --require-simd-dispatch-policy
-        PACKAGE_SMOKE_ARGS
+        )
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
             runtime/sample_desktop_runtime_game.config
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
-            --require-environment-texture-asset-pipeline-package
-            --require-environment-texture-asset-pipeline-d3d12-upload
-            --require-environment-preset-library-package
-            --require-d3d12-scene-shaders
-            --require-d3d12-renderer
-            --require-scene-gpu-bindings
-            --require-postprocess
-            --require-postprocess-depth-input
-            --require-d3d12-postprocess-evidence
-            --require-directional-shadow
-            --require-directional-shadow-filtering
-            --require-d3d12-shadow-cascade-policy
-            --require-lighting-shadow-policy
-            --require-scene-scale-policy
-            --require-d3d12-instanced-draw-evidence
-            --require-gpu-memory-policy
-            --require-memory-diagnostics
-            --require-d3d12-gpu-memory-evidence
-            --require-debug-profiling-policy
-            --require-d3d12-debug-profiling-evidence
-            --require-job-scheduling-evidence
-            --require-job-execution-foundation
-            --require-job-execution-topology-policy
-            --require-job-execution-work-stealing
-            --require-job-execution-placement-policy
-            --require-windows-cpu-set-worker-placement
-            --require-windows-cpu-set-smt-worker-placement
-            --require-simd-dispatch-policy
-            # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
-            # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence --require-simd-dispatch-policy
-            --require-renderer-quality-gates
-            --require-framegraph-multiqueue-evidence
-            --require-native-ui-overlay
-            --require-native-ui-textured-sprite-atlas
-            --require-d3d12-gpu-skinning-evidence
-            --require-quaternion-animation
-        REQUIRES_D3D12_SHADERS
+            --require-linux-vulkan-presentation-smoke
+            --require-linux-vulkan-readback
+            --require-linux-vulkan-validation-log
+        )
+        set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_FLAGS REQUIRES_VULKAN_SHADERS)
+    endif()
+
+    MK_add_desktop_runtime_game(sample_desktop_runtime_game
+        SOURCES
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SOURCES}
+        GAME_MANIFEST
+            games/sample_desktop_runtime_game/game.agent.json
+        HOST_BACKEND
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_HOST_BACKEND}
+        SMOKE_ARGS
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SMOKE_ARGS}
+        PACKAGE_SMOKE_ARGS
+            ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PACKAGE_SMOKE_ARGS}
+        ${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_FLAGS}
         PACKAGE_FILES_FROM_MANIFEST
     )
-    target_link_libraries(sample_desktop_runtime_game
-        PRIVATE
-            MK_core
-            MK_animation
-            MK_audio
-            MK_environment
-            MK_runtime
-            MK_runtime_rhi
-            MK_runtime_scene
-            MK_rhi_d3d12
-            MK_rhi_metal
-            MK_rhi_vulkan
-            MK_scene
-            MK_scene_renderer
-            MK_ui
-            MK_ui_renderer
-    )
+    if(WIN32)
+        target_link_libraries(sample_desktop_runtime_game
+            PRIVATE
+                MK_core
+                MK_animation
+                MK_audio
+                MK_environment
+                MK_runtime
+                MK_runtime_rhi
+                MK_runtime_scene
+                MK_rhi_d3d12
+                MK_rhi_metal
+                MK_rhi_vulkan
+                MK_scene
+                MK_scene_renderer
+                MK_ui
+                MK_ui_renderer
+        )
+        if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+            add_custom_command(TARGET sample_desktop_runtime_game POST_BUILD
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:sample_desktop_runtime_game>
+                    $<TARGET_FILE_DIR:sample_desktop_runtime_game>
+                COMMAND_EXPAND_LISTS
+                VERBATIM
+            )
+        endif()
+    endif()
 
+    if(WIN32)
     MK_add_desktop_runtime_game(sample_2d_desktop_runtime_package
         SOURCES
             sample_2d_desktop_runtime_package/main.cpp
@@ -1904,6 +1980,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             endif()
         endif()
     endif()
+    endif()
     set_property(TARGET sample_desktop_runtime_game PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
         "shaders/sample_desktop_runtime_game_scene.vs.dxil;shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil;shaders/sample_desktop_runtime_game_scene.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.dxil;shaders/sample_desktop_runtime_game_postprocess.vs.dxil;shaders/sample_desktop_runtime_game_postprocess.ps.dxil;shaders/sample_desktop_runtime_game_environment_fog.ps.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.dxil;shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.dxil;shaders/sample_desktop_runtime_game_environment_ibl_sample.ps.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.vs.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.ps.dxil;shaders/sample_desktop_runtime_game_cloud_layer.vs.dxil;shaders/sample_desktop_runtime_game_cloud_layer.ps.dxil;shaders/sample_desktop_runtime_game_precipitation.vs.dxil;shaders/sample_desktop_runtime_game_precipitation.ps.dxil;shaders/sample_desktop_runtime_game_shadow.vs.dxil;shaders/sample_desktop_runtime_game_shadow.ps.dxil;shaders/sample_desktop_runtime_game_ui_overlay.vs.dxil;shaders/sample_desktop_runtime_game_ui_overlay.ps.dxil"
     )
@@ -1911,7 +1988,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         "shaders/sample_desktop_runtime_game_scene.vs.spv;shaders/sample_desktop_runtime_game_scene_skinned.vs.spv;shaders/sample_desktop_runtime_game_scene.ps.spv;shaders/sample_desktop_runtime_game_scene_mapping.cs.spv;shaders/sample_desktop_runtime_game_shadow_receiver.ps.spv;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.spv;shaders/sample_desktop_runtime_game_postprocess.vs.spv;shaders/sample_desktop_runtime_game_postprocess.ps.spv;shaders/sample_desktop_runtime_game_environment_fog.vs.spv;shaders/sample_desktop_runtime_game_environment_fog.ps.spv;shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.spv;shaders/sample_desktop_runtime_game_environment_weather_solver.cs.spv;shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.spv;shaders/sample_desktop_runtime_game_environment_ibl_sample.ps.spv;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.vs.spv;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.ps.spv;shaders/sample_desktop_runtime_game_cloud_layer.vs.spv;shaders/sample_desktop_runtime_game_cloud_layer.ps.spv;shaders/sample_desktop_runtime_game_precipitation.vs.spv;shaders/sample_desktop_runtime_game_precipitation.ps.spv;shaders/sample_desktop_runtime_game_shadow.vs.spv;shaders/sample_desktop_runtime_game_shadow.ps.spv;shaders/sample_desktop_runtime_game_ui_overlay.vs.spv;shaders/sample_desktop_runtime_game_ui_overlay.ps.spv"
     )
 
-    if(WIN32)
+    if(WIN32 OR (UNIX AND NOT APPLE))
         set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_REQUIRES_DXIL OFF)
         set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_REQUIRES_SPIRV OFF)
         if(MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET STREQUAL "sample_desktop_runtime_game")
@@ -2503,31 +2580,33 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 endif()
             endif()
             if(MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET STREQUAL "sample_desktop_runtime_game")
-                add_dependencies(sample_desktop_runtime_game sample_desktop_runtime_game_shaders)
-                install(FILES
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SKINNED_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_SKINNED_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_VOLUMETRIC_FOG_COMPUTE_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_IBL_SAMPLE_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_IBL_SAMPLE_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_VOLUMETRIC_CLOUD_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_VOLUMETRIC_CLOUD_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_CLOUD_LAYER_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_FRAGMENT_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
-                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_FRAGMENT_SHADER_OUTPUT}"
-                    DESTINATION "${CMAKE_INSTALL_BINDIR}/shaders"
-                )
+                if(MK_SAMPLE_DESKTOP_RUNTIME_GAME_REQUIRES_DXIL)
+                    add_dependencies(sample_desktop_runtime_game sample_desktop_runtime_game_shaders)
+                    install(FILES
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SKINNED_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_SKINNED_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_VOLUMETRIC_FOG_COMPUTE_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_IBL_SAMPLE_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_IBL_SAMPLE_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_VOLUMETRIC_CLOUD_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_VOLUMETRIC_CLOUD_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_CLOUD_LAYER_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_FRAGMENT_SHADER_OUTPUT}"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}/shaders"
+                    )
+                endif()
                 if(MK_SAMPLE_DESKTOP_RUNTIME_GAME_REQUIRES_SPIRV)
                     if(TARGET sample_desktop_runtime_game_vulkan_shader_validation)
                         add_dependencies(sample_desktop_runtime_game sample_desktop_runtime_game_vulkan_shader_validation)
@@ -2567,7 +2646,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     endif()
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_package
         SOURCES
             sample_generated_desktop_runtime_package/main.cpp
@@ -2587,7 +2666,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_cooked_scene_package
         SOURCES
             sample_generated_desktop_runtime_cooked_scene_package/main.cpp
@@ -2617,7 +2696,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_material_shader_package
         SOURCES
             sample_generated_desktop_runtime_material_shader_package/main.cpp
@@ -2661,7 +2740,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     # Vulkan strict package smoke can use --require-vulkan-scene-shaders with -RequireVulkanShaders.
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND WIN32)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_3d_package
         SOURCES
             sample_generated_desktop_runtime_3d_package/main.cpp

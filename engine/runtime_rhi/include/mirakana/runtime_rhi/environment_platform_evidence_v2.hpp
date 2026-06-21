@@ -44,13 +44,21 @@ struct EnvironmentPlatformEvidenceV2Row {
     bool first_party_linux_runtime_host_ready{false};
     bool linux_package_script_ready{false};
     bool linux_installed_validator_ready{false};
+    bool linux_package_smoke_ready{false};
+    bool linux_vulkan_readback_ready{false};
+    bool linux_vulkan_validation_log_clean{false};
     bool android_sdk_ready{false};
     bool android_ndk_ready{false};
     bool android_device_or_emulator_ready{false};
     bool android_vulkan_profile_ready{false};
-    bool android_validation_layer_packaged{false};
+    bool android_gpu_debuggable_ready{false};
+    bool android_gpu_debug_layer_settings_ready{false};
+    bool android_gpu_debug_layer_app_installed{false};
+    bool android_gpu_debug_layer_install_ready{false};
     bool android_package_smoke_ready{false};
     bool android_vulkan_readback_ready{false};
+    bool android_vulkan_validation_layer_enumerated{false};
+    bool android_vulkan_validation_log_clean{false};
     bool xcodebuild_ready{false};
     bool xcrun_metal_ready{false};
     bool metal_feature_set_table_checked{false};
@@ -138,7 +146,8 @@ namespace detail {
                       "linux-vulkan-runtime-host") &&
            row.vulkaninfo_ready && row.validation_layer_ready && row.dxc_spirv_codegen_ready && row.spirv_val_ready &&
            row.linux_icd_runtime_ready && row.first_party_linux_runtime_host_ready && row.linux_package_script_ready &&
-           row.linux_installed_validator_ready;
+           row.linux_installed_validator_ready && row.linux_package_smoke_ready && row.linux_vulkan_readback_ready &&
+           row.linux_vulkan_validation_log_clean;
 }
 
 [[nodiscard]] inline bool macos_metal_ready(const EnvironmentPlatformEvidenceV2Row& row) {
@@ -163,8 +172,10 @@ namespace detail {
                       "android-vulkan-runtime-host") &&
            row.validation_layer_ready && row.android_sdk_ready && row.android_ndk_ready &&
            row.android_device_or_emulator_ready && row.android_vulkan_profile_ready &&
-           row.android_validation_layer_packaged && row.android_package_smoke_ready &&
-           row.android_vulkan_readback_ready;
+           row.android_gpu_debuggable_ready && row.android_gpu_debug_layer_settings_ready &&
+           row.android_gpu_debug_layer_app_installed && row.android_gpu_debug_layer_install_ready &&
+           row.android_package_smoke_ready && row.android_vulkan_readback_ready &&
+           row.android_vulkan_validation_layer_enumerated && row.android_vulkan_validation_log_clean;
 }
 
 [[nodiscard]] inline bool exact_ready_for_platform(const EnvironmentPlatformEvidenceV2Row& row) {

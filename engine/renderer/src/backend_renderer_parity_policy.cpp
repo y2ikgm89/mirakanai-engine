@@ -14,6 +14,32 @@
 namespace mirakana {
 namespace {
 
+constexpr std::string_view kAppleMetalEnvironmentHostValidationRecipeId{"renderer-metal-apple-host-evidence"};
+
+struct AppleMetalEnvironmentProofMapping {
+    BackendRendererParityFeatureKind feature{BackendRendererParityFeatureKind::synchronization};
+    std::string_view proof_id;
+    std::string_view package_counter_id;
+};
+
+constexpr AppleMetalEnvironmentProofMapping kAppleMetalEnvironmentProofMappings[] = {
+    {
+        .feature = BackendRendererParityFeatureKind::synchronization,
+        .proof_id = "apple_metal_environment.synchronization",
+        .package_counter_id = "metal_environment_synchronization_evidence_ready",
+    },
+    {
+        .feature = BackendRendererParityFeatureKind::shader_validation,
+        .proof_id = "apple_metal_environment.shader_validation",
+        .package_counter_id = "metal_environment_metallib_valid",
+    },
+    {
+        .feature = BackendRendererParityFeatureKind::package_evidence,
+        .proof_id = "apple_metal_environment.package_evidence",
+        .package_counter_id = "metal_environment_ready_rows",
+    },
+};
+
 [[nodiscard]] bool is_supported_backend(const rhi::BackendKind backend) noexcept {
     return backend == rhi::BackendKind::d3d12 || backend == rhi::BackendKind::vulkan ||
            backend == rhi::BackendKind::metal;
@@ -56,6 +82,33 @@ namespace {
     return !value.empty() && std::ranges::all_of(value, is_id_char);
 }
 
+[[nodiscard]] bool
+apple_metal_environment_evidence_complete(const BackendRendererParityAppleMetalEnvironmentEvidenceDesc& desc) noexcept {
+    return desc.runtime_ready && desc.command_queue_ready && desc.shader_library_ready && desc.render_pipeline_ready &&
+           desc.compute_pipeline_ready && desc.render_pass_ready && desc.resource_evidence_ready &&
+           desc.synchronization_evidence_ready && desc.package_evidence_ready && desc.render_readback_nonzero &&
+           desc.compute_readback_nonzero &&
+           desc.host_validation_recipe_id == kAppleMetalEnvironmentHostValidationRecipeId;
+}
+
+[[nodiscard]] BackendRendererParityProofRow
+make_apple_metal_environment_proof_row(const AppleMetalEnvironmentProofMapping& mapping, const bool ready,
+                                       const std::uint32_t source_index) {
+    return BackendRendererParityProofRow{
+        .proof_id = std::string{mapping.proof_id},
+        .feature = mapping.feature,
+        .selected_backend = rhi::BackendKind::metal,
+        .proof_backend = rhi::BackendKind::metal,
+        .reviewed = true,
+        .host_validated = ready,
+        .host_gate_required = !ready,
+        .host_validation_recipe_id = std::string{kAppleMetalEnvironmentHostValidationRecipeId},
+        .request_native_handle_access = false,
+        .package_counter_id = ready ? std::string{mapping.package_counter_id} : std::string{},
+        .source_index = source_index,
+    };
+}
+
 [[nodiscard]] bool has_native_token(const std::string_view value) noexcept {
     constexpr std::string_view kNativeTokens[] = {
         "ID3D", "D3D12", "Vk", "vk", "MTL", "metal::", "ComPtr",
@@ -68,7 +121,7 @@ namespace {
     constexpr std::string_view kReviewedMetalHostValidationRecipes[] = {
         "shader-toolchain",
         "mobile-packaging",
-        "renderer-metal-apple-host-evidence",
+        kAppleMetalEnvironmentHostValidationRecipeId,
         "ios-simulator-smoke",
     };
     return std::ranges::any_of(kReviewedMetalHostValidationRecipes,
@@ -401,6 +454,22 @@ bool BackendRendererParityPolicyPlan::succeeded() const noexcept {
 
 bool backend_renderer_parity_proof_matches_selected_backend(const BackendRendererParityProofDesc& desc) noexcept {
     return desc.selected_backend != rhi::BackendKind::null && desc.selected_backend == desc.proof_backend;
+}
+
+std::vector<BackendRendererParityProofRow> make_backend_renderer_parity_apple_metal_environment_proofs(
+    const BackendRendererParityAppleMetalEnvironmentEvidenceDesc& desc) {
+    if (desc.native_handle_access) {
+        return {};
+    }
+
+    const auto ready = apple_metal_environment_evidence_complete(desc);
+    std::vector<BackendRendererParityProofRow> proofs;
+    proofs.reserve(std::size(kAppleMetalEnvironmentProofMappings));
+    std::uint32_t source_index{1U};
+    for (const auto& mapping : kAppleMetalEnvironmentProofMappings) {
+        proofs.push_back(make_apple_metal_environment_proof_row(mapping, ready, source_index++));
+    }
+    return proofs;
 }
 
 BackendRendererParityPolicyPlan plan_backend_renderer_parity_policy(const BackendRendererParityPolicyRequest& request) {

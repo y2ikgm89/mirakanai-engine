@@ -72,6 +72,8 @@ struct RuntimeMavgStreamingUploadOverlapEvidenceDesc {
 
 struct RuntimeMavgStreamingUploadOverlapEvidenceResult {
     std::vector<RuntimeMavgStreamingUploadOverlapEvidenceDiagnostic> diagnostics;
+    AssetId graph_asset;
+    std::uint64_t timeline_id{0};
     std::size_t background_loaded_row_count{0};
     std::size_t adopted_page_count{0};
     std::size_t uploaded_page_count{0};

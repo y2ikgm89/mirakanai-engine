@@ -1,0 +1,26 @@
+== User Templates ==
+Activity Monitor
+Allocations
+Animation Hitches
+App Launch
+Audio System Trace
+CPU Counters
+CPU Profiler
+Core ML
+Data Persistence
+File Activity
+Game Memory
+Game Performance
+Leaks
+Logging
+Metal System Trace
+Network
+Processor Trace
+RealityKit Trace
+SceneKit
+Swift Concurrency
+SwiftUI
+System Trace
+Tailspin
+Time Profiler
+Zombies

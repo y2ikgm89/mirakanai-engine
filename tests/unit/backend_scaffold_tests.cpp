@@ -534,6 +534,19 @@ MK_TEST("vulkan instance create plan requires validation layer when validation i
     MK_REQUIRE(rejected.diagnostic == "missing required Vulkan instance layer: VK_LAYER_KHRONOS_validation");
 }
 
+MK_TEST("vulkan runtime validation log snapshot is fail closed before debug utils capture exists") {
+    mirakana::rhi::vulkan::VulkanRuntimeDevice device;
+
+    const auto snapshot = device.validation_log_snapshot();
+
+    MK_REQUIRE(!snapshot.capture_enabled);
+    MK_REQUIRE(!snapshot.debug_utils_messenger_created);
+    MK_REQUIRE(!snapshot.clean());
+    MK_REQUIRE(snapshot.validation_message_count == 0U);
+    MK_REQUIRE(snapshot.warning_message_count == 0U);
+    MK_REQUIRE(snapshot.error_message_count == 0U);
+}
+
 MK_TEST("vulkan instance create plan rejects old api empty app names and missing required extensions") {
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc old_api;
     old_api.application_name = "GameEngineEditor";
@@ -1350,6 +1363,7 @@ MK_TEST("vulkan runtime dynamic rendering clear can feed swapchain readback when
     mirakana::rhi::vulkan::VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
     barrier_desc.image_index = acquire_result.image_index;
     barrier_desc.barrier = sync_plan.barriers[0];
+    barrier_desc.barrier.before = mirakana::rhi::ResourceState::undefined;
     const auto render_barrier = mirakana::rhi::vulkan::record_runtime_swapchain_frame_barrier(
         device_result.device, pool_result.pool, swapchain_result.swapchain, barrier_desc);
     MK_REQUIRE(render_barrier.recorded);
@@ -1921,6 +1935,8 @@ MK_TEST("vulkan surface support probe plans platform extensions and rejects empt
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::windows);
     const auto android_extensions =
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::android);
+    const auto linux_extensions =
+        mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::linux);
     const auto macos_extensions =
         mirakana::rhi::vulkan::vulkan_surface_instance_extensions(mirakana::rhi::RhiHostPlatform::macos);
 
@@ -1930,12 +1946,35 @@ MK_TEST("vulkan surface support probe plans platform extensions and rejects empt
     MK_REQUIRE(android_extensions.size() == 2);
     MK_REQUIRE(android_extensions[0] == "VK_KHR_surface");
     MK_REQUIRE(android_extensions[1] == "VK_KHR_android_surface");
+    MK_REQUIRE(linux_extensions.size() == 2);
+    MK_REQUIRE(linux_extensions[0] == "VK_KHR_surface");
+    MK_REQUIRE(linux_extensions[1] == "VK_KHR_xcb_surface");
     MK_REQUIRE(macos_extensions.empty());
+
+    const auto xcb_surface = mirakana::rhi::SurfaceHandle{
+        .value = 0x1002003U,
+        .context = 0x2003004U,
+        .platform = mirakana::rhi::SurfacePlatform::xcb,
+    };
+    MK_REQUIRE(xcb_surface.value == 0x1002003U);
+    MK_REQUIRE(xcb_surface.context == 0x2003004U);
+    MK_REQUIRE(xcb_surface.platform == mirakana::rhi::SurfacePlatform::xcb);
 
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc desc;
     desc.application_name = "GameEngineSurfaceSupportProbe";
     desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
     desc.required_extensions = {};
+
+    const auto missing_xcb_connection = mirakana::rhi::vulkan::probe_runtime_surface_support(
+        mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::RhiHostPlatform::linux}, desc,
+        mirakana::rhi::SurfaceHandle{
+            .value = 0x1002003U,
+            .context = 0U,
+            .platform = mirakana::rhi::SurfacePlatform::xcb,
+        });
+    MK_REQUIRE(!missing_xcb_connection.probed);
+    MK_REQUIRE(missing_xcb_connection.diagnostic ==
+               "Vulkan XCB surface support probing requires connection and window handles");
 
     const auto result = mirakana::rhi::vulkan::probe_runtime_surface_support({}, desc, mirakana::rhi::SurfaceHandle{});
 
@@ -1988,6 +2027,29 @@ MK_TEST("vulkan swapchain create plan selects extent format image count present 
     MK_REQUIRE(resize.resize_required);
     MK_REQUIRE(resize.extent.width == 1280);
     MK_REQUIRE(resize.extent.height == 720);
+}
+
+MK_TEST("vulkan swapchain create plan honors unbounded surface image minimum") {
+    mirakana::rhi::vulkan::VulkanSwapchainSupport support;
+    support.capabilities.min_image_count = 3;
+    support.capabilities.max_image_count = 0;
+    support.capabilities.min_image_extent = mirakana::rhi::Extent2D{.width = 640, .height = 360};
+    support.capabilities.max_image_extent = mirakana::rhi::Extent2D{.width = 3840, .height = 2160};
+    support.formats = {
+        mirakana::rhi::vulkan::VulkanSurfaceFormatCandidate{.format = mirakana::rhi::Format::bgra8_unorm}};
+    support.present_modes = {mirakana::rhi::vulkan::VulkanPresentMode::fifo};
+
+    mirakana::rhi::vulkan::VulkanSwapchainCreateDesc desc;
+    desc.requested_extent = mirakana::rhi::Extent2D{.width = 1280, .height = 720};
+    desc.preferred_format = mirakana::rhi::Format::bgra8_unorm;
+    desc.requested_image_count = 2;
+
+    const auto plan = mirakana::rhi::vulkan::build_swapchain_create_plan(desc, support);
+
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.image_count == 3);
+    MK_REQUIRE(plan.image_view_count == 3);
+    MK_REQUIRE(plan.present_mode == mirakana::rhi::vulkan::VulkanPresentMode::fifo);
 }
 
 MK_TEST("vulkan swapchain create plan rejects missing surface formats present modes and extents") {
@@ -2513,6 +2575,8 @@ MK_TEST("vulkan runtime texture create plan maps first party usage into image ow
     MK_REQUIRE(color_target.extent.width == 320);
     MK_REQUIRE(color_target.extent.height == 180);
     MK_REQUIRE(color_target.extent.depth == 1);
+    MK_REQUIRE(!color_target.image_type_3d);
+    MK_REQUIRE(!color_target.image_view_type_3d);
     MK_REQUIRE(color_target.format == mirakana::rhi::Format::bgra8_unorm);
     MK_REQUIRE(color_target.usage.color_attachment);
     MK_REQUIRE(color_target.usage.sampled);
@@ -2562,6 +2626,21 @@ MK_TEST("vulkan runtime texture create plan maps first party usage into image ow
         }});
     MK_REQUIRE(!color_format_depth_usage.supported);
     MK_REQUIRE(color_format_depth_usage.diagnostic == "Vulkan runtime depth texture format is unsupported");
+
+    const auto volume_sampled = mirakana::rhi::vulkan::build_runtime_texture_create_plan(
+        mirakana::rhi::vulkan::VulkanRuntimeTextureDesc{mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 4},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::shader_resource | mirakana::rhi::TextureUsage::copy_destination,
+        }});
+    MK_REQUIRE(volume_sampled.supported);
+    MK_REQUIRE(volume_sampled.image_type_3d);
+    MK_REQUIRE(volume_sampled.image_view_type_3d);
+    MK_REQUIRE(volume_sampled.usage.sampled);
+    MK_REQUIRE(volume_sampled.usage.transfer_destination);
+    MK_REQUIRE(!volume_sampled.usage.color_attachment);
+    MK_REQUIRE(!volume_sampled.usage.depth_stencil_attachment);
+    MK_REQUIRE(volume_sampled.diagnostic == "Vulkan runtime texture create plan ready");
 }
 
 MK_TEST("vulkan runtime texture owner rejects invalid descriptions before native commands") {

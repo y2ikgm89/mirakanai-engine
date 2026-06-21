@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -163,6 +164,7 @@ inline constexpr std::uint32_t vulkan_structure_type_physical_device_vulkan_1_3_
 inline constexpr std::uint32_t vulkan_structure_type_image_create_info = 14;
 inline constexpr std::uint32_t vulkan_structure_type_swapchain_create_info = 1000001000;
 inline constexpr std::uint32_t vulkan_structure_type_present_info = 1000001001;
+inline constexpr std::uint32_t vulkan_structure_type_xcb_surface_create_info = 1000005000;
 inline constexpr std::uint32_t vulkan_structure_type_win32_surface_create_info = 1000009000;
 inline constexpr std::size_t vulkan_physical_device_feature_bool_count = 55;
 inline constexpr std::size_t vulkan_max_physical_device_name_size = 256;
@@ -234,6 +236,7 @@ inline constexpr std::uint32_t vulkan_buffer_usage_index_buffer_bit = 0x00000040
 inline constexpr std::uint32_t vulkan_buffer_usage_vertex_buffer_bit = 0x00000080U;
 inline constexpr std::uint32_t vulkan_buffer_usage_indirect_buffer_bit = 0x00000100U;
 inline constexpr std::uint32_t vulkan_image_view_type_2d = 1;
+inline constexpr std::uint32_t vulkan_image_view_type_3d = 2;
 inline constexpr std::uint32_t vulkan_image_view_type_cube = 3;
 inline constexpr std::uint32_t vulkan_component_swizzle_identity = 0;
 inline constexpr std::uint32_t vulkan_image_aspect_color_bit = 0x00000001U;
@@ -243,6 +246,7 @@ inline constexpr std::uint32_t vulkan_memory_property_device_local_bit = 0x00000
 inline constexpr std::uint32_t vulkan_memory_property_host_visible_bit = 0x00000002U;
 inline constexpr std::uint32_t vulkan_memory_property_host_coherent_bit = 0x00000004U;
 inline constexpr std::uint32_t vulkan_image_type_2d = 1;
+inline constexpr std::uint32_t vulkan_image_type_3d = 2;
 inline constexpr std::uint32_t vulkan_image_tiling_optimal = 0;
 inline constexpr std::uint32_t vulkan_sharing_mode_exclusive = 0;
 inline constexpr std::uint32_t vulkan_sharing_mode_concurrent = 1;
@@ -423,6 +427,14 @@ struct NativeVulkanWin32SurfaceCreateInfo {
     std::uint32_t flags;
     void* instance;
     void* window;
+};
+
+struct NativeVulkanXcbSurfaceCreateInfo {
+    std::uint32_t s_type;
+    const void* next;
+    std::uint32_t flags;
+    void* connection;
+    std::uint32_t window;
 };
 
 struct NativeVulkanSurfaceCapabilities {
@@ -1112,6 +1124,9 @@ using VulkanGetPhysicalDeviceFormatProperties = void(MK_VULKAN_CALL*)(NativeVulk
 using VulkanCreateWin32Surface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
                                                                const NativeVulkanWin32SurfaceCreateInfo*, const void*,
                                                                NativeVulkanSurface*);
+using VulkanCreateXcbSurface = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance,
+                                                             const NativeVulkanXcbSurfaceCreateInfo*, const void*,
+                                                             NativeVulkanSurface*);
 using VulkanDestroySurface = void(MK_VULKAN_CALL*)(NativeVulkanInstance, NativeVulkanSurface, const void*);
 using VulkanGetPhysicalDeviceSurfaceSupport = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanPhysicalDevice, std::uint32_t,
                                                                             NativeVulkanSurface, std::uint32_t*);
@@ -2741,13 +2756,20 @@ has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBi
     return modes.front();
 }
 
-[[nodiscard]] std::uint32_t choose_swapchain_image_count(const VulkanSwapchainCreateDesc& desc,
-                                                         const VulkanSurfaceCapabilities& capabilities) noexcept {
-    auto count = std::max(desc.requested_image_count, capabilities.min_image_count);
-    if (capabilities.max_image_count > 0) {
-        count = std::min(count, capabilities.max_image_count);
+[[nodiscard]] std::uint32_t choose_swapchain_image_count(std::uint32_t requested_image_count,
+                                                         std::uint32_t min_image_count,
+                                                         std::uint32_t max_image_count) noexcept {
+    auto count = std::max(requested_image_count, min_image_count);
+    if (max_image_count > 0) {
+        count = std::min(count, max_image_count);
     }
     return count;
+}
+
+[[nodiscard]] std::uint32_t choose_swapchain_image_count(const VulkanSwapchainCreateDesc& desc,
+                                                         const VulkanSurfaceCapabilities& capabilities) noexcept {
+    return choose_swapchain_image_count(desc.requested_image_count, capabilities.min_image_count,
+                                        capabilities.max_image_count);
 }
 
 [[nodiscard]] bool command_is_available(const std::vector<VulkanCommandAvailability>& available_commands,
@@ -2886,6 +2908,13 @@ template <typename AvailableExtensions, typename AvailableLayers>
 } // namespace
 
 inline constexpr std::uint32_t vulkan_structure_type_debug_utils_object_name_info_ext = 1000128000U;
+inline constexpr std::uint32_t vulkan_structure_type_debug_utils_messenger_create_info_ext = 1000128004U;
+
+inline constexpr std::uint32_t vulkan_debug_utils_message_severity_warning_bit_ext = 0x00000100U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_severity_error_bit_ext = 0x00001000U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_general_bit_ext = 0x00000001U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_validation_bit_ext = 0x00000002U;
+inline constexpr std::uint32_t vulkan_debug_utils_message_type_performance_bit_ext = 0x00000004U;
 
 inline constexpr std::int32_t vulkan_object_type_device = 3;
 inline constexpr std::int32_t vulkan_object_type_queue = 4;
@@ -2910,8 +2939,114 @@ struct alignas(8) NativeVulkanDebugUtilsObjectNameInfoExt {
     const char* object_name;
 };
 
+using NativeVulkanDebugUtilsMessenger = std::uint64_t;
+using VulkanDebugUtilsMessengerCallback = std::uint32_t(MK_VULKAN_CALL*)(std::uint32_t, std::uint32_t, const void*,
+                                                                         void*);
+
+struct NativeVulkanDebugUtilsMessengerCreateInfoExt {
+    std::uint32_t s_type;
+    const void* p_next;
+    std::uint32_t flags;
+    std::uint32_t message_severity;
+    std::uint32_t message_type;
+    VulkanDebugUtilsMessengerCallback callback;
+    void* user_data;
+};
+
+struct NativeVulkanDebugUtilsMessengerCallbackDataExt {
+    std::uint32_t s_type;
+    const void* p_next;
+    std::uint32_t flags;
+    const char* p_message_id_name;
+    std::int32_t message_id_number;
+    const char* p_message;
+};
+
 using VulkanSetDebugUtilsObjectName = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice,
                                                                     const NativeVulkanDebugUtilsObjectNameInfoExt*);
+using VulkanCreateDebugUtilsMessenger =
+    VulkanResult(MK_VULKAN_CALL*)(NativeVulkanInstance, const NativeVulkanDebugUtilsMessengerCreateInfoExt*,
+                                  const void*, NativeVulkanDebugUtilsMessenger*);
+using VulkanDestroyDebugUtilsMessenger = void(MK_VULKAN_CALL*)(NativeVulkanInstance, NativeVulkanDebugUtilsMessenger,
+                                                               const void*);
+
+struct VulkanRuntimeValidationLogState {
+    std::atomic<std::uint32_t> validation_message_count{0};
+    std::atomic<std::uint32_t> warning_message_count{0};
+    std::atomic<std::uint32_t> error_message_count{0};
+    std::atomic<bool> first_message_recorded{false};
+    std::atomic<std::uint32_t> first_message_severity{0};
+    std::atomic<std::uint32_t> first_message_type{0};
+    std::array<char, 128> first_message_id{};
+    std::array<char, 768> first_message{};
+};
+
+void copy_debug_utils_text(std::span<char> destination, const char* source) noexcept {
+    if (destination.empty()) {
+        return;
+    }
+    destination[0] = '\0';
+    if (source == nullptr || source[0] == '\0') {
+        return;
+    }
+
+    const auto max_chars = destination.size() - 1U;
+    const auto source_chars = std::strlen(source);
+    const auto chars_to_copy = std::min(max_chars, source_chars);
+    std::memcpy(destination.data(), source, chars_to_copy);
+    destination[chars_to_copy] = '\0';
+}
+
+static std::uint32_t MK_VULKAN_CALL record_runtime_validation_message(std::uint32_t message_severity,
+                                                                      std::uint32_t message_type,
+                                                                      const void* callback_data,
+                                                                      void* user_data) noexcept {
+    auto* const state = static_cast<VulkanRuntimeValidationLogState*>(user_data);
+    if (state == nullptr) {
+        return 0U;
+    }
+
+    if ((message_type &
+         (vulkan_debug_utils_message_type_general_bit_ext | vulkan_debug_utils_message_type_validation_bit_ext |
+          vulkan_debug_utils_message_type_performance_bit_ext)) == 0U) {
+        return 0U;
+    }
+
+    state->validation_message_count.fetch_add(1U, std::memory_order_relaxed);
+    if ((message_severity & vulkan_debug_utils_message_severity_warning_bit_ext) != 0U) {
+        state->warning_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    if ((message_severity & vulkan_debug_utils_message_severity_error_bit_ext) != 0U) {
+        state->error_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    if (!state->first_message_recorded.exchange(true, std::memory_order_acq_rel)) {
+        state->first_message_severity.store(message_severity, std::memory_order_relaxed);
+        state->first_message_type.store(message_type, std::memory_order_relaxed);
+        const auto* const message_data =
+            static_cast<const NativeVulkanDebugUtilsMessengerCallbackDataExt*>(callback_data);
+        if (message_data != nullptr) {
+            copy_debug_utils_text(state->first_message_id, message_data->p_message_id_name);
+            copy_debug_utils_text(state->first_message, message_data->p_message);
+        }
+    }
+    return 0U;
+}
+
+[[nodiscard]] static NativeVulkanDebugUtilsMessengerCreateInfoExt
+make_runtime_validation_log_messenger_create_info(VulkanRuntimeValidationLogState& state) noexcept {
+    return NativeVulkanDebugUtilsMessengerCreateInfoExt{
+        .s_type = vulkan_structure_type_debug_utils_messenger_create_info_ext,
+        .p_next = nullptr,
+        .flags = 0,
+        .message_severity =
+            vulkan_debug_utils_message_severity_warning_bit_ext | vulkan_debug_utils_message_severity_error_bit_ext,
+        .message_type = vulkan_debug_utils_message_type_general_bit_ext |
+                        vulkan_debug_utils_message_type_validation_bit_ext |
+                        vulkan_debug_utils_message_type_performance_bit_ext,
+        .callback = record_runtime_validation_message,
+        .user_data = &state,
+    };
+}
 
 struct VulkanRuntimeInstance::Impl {
 #if defined(_WIN32)
@@ -2996,6 +3131,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanGetPhysicalDeviceMemoryProperties get_physical_device_memory_properties{nullptr};
     VulkanGetPhysicalDeviceFormatProperties get_physical_device_format_properties{nullptr};
     VulkanCreateWin32Surface create_win32_surface{nullptr};
+    VulkanCreateXcbSurface create_xcb_surface{nullptr};
     VulkanDestroySurface destroy_surface{nullptr};
     VulkanGetPhysicalDeviceSurfaceCapabilities get_surface_capabilities{nullptr};
     VulkanGetPhysicalDeviceSurfaceFormats get_surface_formats{nullptr};
@@ -3072,6 +3208,9 @@ struct VulkanRuntimeDevice::Impl {
     VulkanLogicalDeviceCreatePlan logical_device_plan;
     VulkanCommandResolutionPlan command_plan;
     VulkanSetDebugUtilsObjectName set_debug_utils_object_name{nullptr};
+    VulkanDestroyDebugUtilsMessenger destroy_debug_utils_messenger{nullptr};
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger{0};
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
     std::uint64_t debug_utils_name_serial{0};
     bool destroyed{false};
 
@@ -3110,6 +3249,13 @@ struct VulkanRuntimeDevice::Impl {
         physical_device = nullptr;
         graphics_queue = nullptr;
         present_queue = nullptr;
+
+        if (instance != nullptr && debug_utils_messenger != 0 && destroy_debug_utils_messenger != nullptr) {
+            destroy_debug_utils_messenger(instance, debug_utils_messenger, nullptr);
+        }
+        debug_utils_messenger = 0;
+        destroy_debug_utils_messenger = nullptr;
+        validation_log.reset();
 
         if (instance != nullptr && destroy_instance != nullptr) {
             destroy_instance(instance, nullptr);
@@ -3204,6 +3350,50 @@ const VulkanCommandResolutionPlan& VulkanRuntimeDevice::command_plan() const noe
         return empty_plan;
     }
     return impl_->command_plan;
+}
+
+VulkanRuntimeValidationLogSnapshot VulkanRuntimeDevice::validation_log_snapshot() const noexcept {
+    VulkanRuntimeValidationLogSnapshot snapshot;
+    if (impl_ == nullptr) {
+        snapshot.diagnostic = "Vulkan validation log capture is unavailable";
+        return snapshot;
+    }
+
+    snapshot.capture_enabled = impl_->validation_log != nullptr;
+    snapshot.debug_utils_messenger_created = impl_->debug_utils_messenger != 0;
+    if (impl_->validation_log != nullptr) {
+        snapshot.validation_message_count =
+            impl_->validation_log->validation_message_count.load(std::memory_order_relaxed);
+        snapshot.warning_message_count = impl_->validation_log->warning_message_count.load(std::memory_order_relaxed);
+        snapshot.error_message_count = impl_->validation_log->error_message_count.load(std::memory_order_relaxed);
+    }
+    if (snapshot.clean()) {
+        snapshot.diagnostic = "Vulkan validation log capture is clean";
+    } else {
+        snapshot.diagnostic = "Vulkan validation log capture is dirty or unavailable capture_enabled=" +
+                              std::to_string(snapshot.capture_enabled ? 1 : 0) + " debug_utils_messenger_created=" +
+                              std::to_string(snapshot.debug_utils_messenger_created ? 1 : 0) +
+                              " validation_message_count=" + std::to_string(snapshot.validation_message_count) +
+                              " warning_message_count=" + std::to_string(snapshot.warning_message_count) +
+                              " error_message_count=" + std::to_string(snapshot.error_message_count);
+        if (impl_->validation_log != nullptr &&
+            impl_->validation_log->first_message_recorded.load(std::memory_order_acquire)) {
+            const auto first_message_id = std::string{impl_->validation_log->first_message_id.data()};
+            const auto first_message = std::string{impl_->validation_log->first_message.data()};
+            snapshot.diagnostic +=
+                " first_message_severity=" +
+                std::to_string(impl_->validation_log->first_message_severity.load(std::memory_order_relaxed)) +
+                " first_message_type=" +
+                std::to_string(impl_->validation_log->first_message_type.load(std::memory_order_relaxed));
+            if (!first_message_id.empty()) {
+                snapshot.diagnostic += " first_message_id=" + first_message_id;
+            }
+            if (!first_message.empty()) {
+                snapshot.diagnostic += " first_message=" + first_message;
+            }
+        }
+    }
+    return snapshot;
 }
 
 bool VulkanRuntimeDevice::wait_for_fence_signaled(std::uint64_t fence, std::uint64_t timeout_ns) noexcept {
@@ -3797,11 +3987,13 @@ class VulkanRhiDevice final : public IRhiDevice {
             throw std::invalid_argument("vulkan rhi swapchain frame synchronization failed: " + sync_result.diagnostic);
         }
 
+        const auto swapchain_image_count = swapchain_result.swapchain.image_count();
         swapchains_.push_back(std::move(swapchain_result.swapchain));
         swapchain_syncs_.push_back(std::move(sync_result.sync));
         swapchain_descs_.push_back(desc);
         swapchain_plans_.push_back(plan);
         swapchain_states_.push_back(ResourceState::present);
+        swapchain_image_states_.push_back(std::vector<ResourceState>(swapchain_image_count, ResourceState::undefined));
         swapchain_frame_reserved_.push_back(false);
         ++stats_.swapchains_created;
         return SwapchainHandle{static_cast<std::uint32_t>(swapchains_.size())};
@@ -3839,11 +4031,13 @@ class VulkanRhiDevice final : public IRhiDevice {
             throw std::invalid_argument("vulkan rhi swapchain frame synchronization failed: " + sync_result.diagnostic);
         }
 
+        const auto swapchain_image_count = swapchain_result.swapchain.image_count();
         swapchains_.at(index) = std::move(swapchain_result.swapchain);
         swapchain_syncs_.at(index) = std::move(sync_result.sync);
         swapchain_descs_.at(index) = desc;
         swapchain_plans_.at(index) = plan;
         swapchain_states_.at(index) = ResourceState::present;
+        swapchain_image_states_.at(index) = std::vector<ResourceState>(swapchain_image_count, ResourceState::undefined);
         ++stats_.swapchain_resizes;
     }
 
@@ -3856,10 +4050,6 @@ class VulkanRhiDevice final : public IRhiDevice {
         if (swapchain_frame_reserved_.at(index)) {
             throw std::invalid_argument("vulkan rhi swapchain already has a pending frame");
         }
-        if (swapchain_states_.at(index) != ResourceState::present) {
-            throw std::invalid_argument("vulkan rhi swapchain is not ready for image acquisition");
-        }
-
         const auto acquire_result =
             acquire_next_runtime_swapchain_image(device_, swapchains_.at(index), swapchain_syncs_.at(index), {});
         if (!acquire_result.acquired) {
@@ -4630,6 +4820,7 @@ class VulkanRhiDevice final : public IRhiDevice {
     std::vector<SwapchainDesc> swapchain_descs_;
     std::vector<VulkanSwapchainCreatePlan> swapchain_plans_;
     std::vector<ResourceState> swapchain_states_;
+    std::vector<std::vector<ResourceState>> swapchain_image_states_;
     std::vector<bool> swapchain_frame_reserved_;
     std::vector<SwapchainHandle> swapchain_frame_swapchains_;
     std::vector<std::uint32_t> swapchain_frame_image_indices_;
@@ -4925,15 +5116,19 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (!device_->swapchain_frame_reserved_.at(swapchain_index)) {
             throw std::invalid_argument("vulkan rhi swapchain already has a pending frame");
         }
-        if (device_->swapchain_states_.at(swapchain_index) != ResourceState::present) {
-            throw std::invalid_argument("vulkan rhi swapchain render pass attachment must be in present state");
-        }
         validate_depth_attachment(desc.depth, device_->swapchains_.at(swapchain_index).extent());
 
         const auto sync_plan = make_frame_sync_plan(false);
+        const auto image_index = device_->swapchain_image_index_for_frame(desc.color.swapchain_frame);
+        const auto image_state = device_->swapchain_image_states_.at(swapchain_index).at(image_index);
+        if (image_state != ResourceState::undefined && image_state != ResourceState::present) {
+            throw std::invalid_argument(
+                "vulkan rhi swapchain render pass attachment must be in present or undefined state");
+        }
         VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
-        barrier_desc.image_index = device_->swapchain_image_index_for_frame(desc.color.swapchain_frame);
+        barrier_desc.image_index = image_index;
         barrier_desc.barrier = sync_plan.barriers.at(0);
+        barrier_desc.barrier.before = image_state;
         const auto barrier = record_runtime_swapchain_frame_barrier(
             device_->device_, pool_, device_->swapchains_.at(swapchain_index), barrier_desc);
         if (!barrier.recorded) {
@@ -4954,6 +5149,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             observe_texture(desc.depth.texture);
         }
         device_->swapchain_states_.at(swapchain_index) = ResourceState::render_target;
+        device_->swapchain_image_states_.at(swapchain_index).at(image_index) = ResourceState::render_target;
         recorded_work_ = true;
         ++device_->stats_.resource_transitions;
         ++device_->stats_.render_passes_begun;
@@ -4982,8 +5178,9 @@ class VulkanRhiCommandList final : public IRhiCommandList {
 
         const auto swapchain_index = active_swapchain_.value - 1U;
         const auto sync_plan = make_frame_sync_plan(false);
+        const auto image_index = device_->swapchain_image_index_for_frame(active_swapchain_frame_);
         VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
-        barrier_desc.image_index = device_->swapchain_image_index_for_frame(active_swapchain_frame_);
+        barrier_desc.image_index = image_index;
         barrier_desc.barrier = sync_plan.barriers.at(1);
         const auto barrier = record_runtime_swapchain_frame_barrier(
             device_->device_, pool_, device_->swapchains_.at(swapchain_index), barrier_desc);
@@ -4992,6 +5189,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         }
 
         device_->swapchain_states_.at(swapchain_index) = ResourceState::present;
+        device_->swapchain_image_states_.at(swapchain_index).at(image_index) = ResourceState::present;
         presentable_swapchain_frames_.push_back(active_swapchain_frame_);
         active_render_pass_ = RenderPassDesc{};
         active_swapchain_ = SwapchainHandle{};
@@ -6191,7 +6389,7 @@ std::vector<VulkanRuntimeTexture> VulkanRhiDevice::create_transient_texture_alia
         .s_type = vulkan_structure_type_image_create_info,
         .next = nullptr,
         .flags = vulkan_image_create_alias_bit,
-        .image_type = vulkan_image_type_2d,
+        .image_type = plan.image_type_3d ? vulkan_image_type_3d : vulkan_image_type_2d,
         .format = native_vulkan_format(plan.format),
         .extent =
             NativeVulkanExtent3D{.width = plan.extent.width, .height = plan.extent.height, .depth = plan.extent.depth},
@@ -6266,7 +6464,7 @@ std::vector<VulkanRuntimeTexture> VulkanRhiDevice::create_transient_texture_alia
                 .next = nullptr,
                 .flags = 0,
                 .image = images[i],
-                .view_type = vulkan_image_view_type_2d,
+                .view_type = plan.image_view_type_3d ? vulkan_image_view_type_3d : vulkan_image_view_type_2d,
                 .format = native_vulkan_format(plan.format),
                 .components =
                     NativeVulkanComponentMapping{
@@ -7010,6 +7208,16 @@ struct VulkanRuntimeFrameSync::Impl {
             destroyed = true;
         }
         if (device_owner != nullptr && device_owner->device != nullptr) {
+            if ((image_available_semaphore != 0 || render_finished_semaphore != 0) &&
+                device_owner->queue_wait_idle != nullptr) {
+                if (device_owner->graphics_queue != nullptr) {
+                    (void)device_owner->queue_wait_idle(device_owner->graphics_queue);
+                }
+                if (device_owner->present_queue != nullptr &&
+                    device_owner->present_queue != device_owner->graphics_queue) {
+                    (void)device_owner->queue_wait_idle(device_owner->present_queue);
+                }
+            }
             if (device_owner->destroy_fence != nullptr && in_flight_fence != 0) {
                 device_owner->destroy_fence(device_owner->device, in_flight_fence, nullptr);
             }
@@ -7594,6 +7802,10 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
         plan.diagnostic = "Vulkan runtime texture render target format is unsupported";
         return plan;
     }
+    if (desc.texture.extent.depth > 1 && has_flag(desc.texture.usage, TextureUsage::render_target)) {
+        plan.diagnostic = "Vulkan runtime 3D render target textures are not implemented";
+        return plan;
+    }
     if (has_flag(desc.texture.usage, TextureUsage::shader_resource) &&
         !sampled_texture_format_supported(desc.texture.format)) {
         plan.diagnostic = "Vulkan runtime texture sampled format is unsupported";
@@ -7620,6 +7832,8 @@ VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRun
 
     plan.extent = desc.texture.extent;
     plan.format = desc.texture.format;
+    plan.image_type_3d = desc.texture.extent.depth > 1;
+    plan.image_view_type_3d = desc.texture.extent.depth > 1;
     plan.usage.transfer_source = has_flag(desc.texture.usage, TextureUsage::copy_source);
     plan.usage.transfer_destination = has_flag(desc.texture.usage, TextureUsage::copy_destination);
     plan.usage.sampled = has_flag(desc.texture.usage, TextureUsage::shader_resource);
@@ -8649,6 +8863,7 @@ std::vector<std::string> vulkan_surface_instance_extensions(RhiHostPlatform host
     case RhiHostPlatform::android:
         return {"VK_KHR_surface", "VK_KHR_android_surface"};
     case RhiHostPlatform::linux:
+        return {"VK_KHR_surface", "VK_KHR_xcb_surface"};
     case RhiHostPlatform::macos:
     case RhiHostPlatform::ios:
     case RhiHostPlatform::unknown:
@@ -8672,8 +8887,22 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
         result.diagnostic = "Vulkan surface support probing is unsupported on this host";
         return result;
     }
+    if (host == RhiHostPlatform::linux) {
+        if (surface.platform != SurfacePlatform::xcb || surface.context == 0) {
+            result.diagnostic = "Vulkan XCB surface support probing requires connection and window handles";
+            return result;
+        }
+#if !defined(__linux__)
+        result.diagnostic = "Vulkan XCB surface support probing requires a Linux host";
+        return result;
+#endif
+    }
 
 #if defined(_WIN32)
+    if (host != RhiHostPlatform::windows) {
+        result.diagnostic = "Vulkan surface support probing is unsupported on this host";
+        return result;
+    }
     auto* const window = reinterpret_cast<HWND>(surface.value);
     if (window == nullptr || IsWindow(window) == 0) {
         result.diagnostic = "Vulkan Win32 HWND is invalid";
@@ -8802,6 +9031,137 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
         destroy_instance(instance, nullptr);
     }
     FreeLibrary(library);
+
+    result.probed = true;
+    result.diagnostic = "Vulkan surface support probe ready";
+    return result;
+#elif defined(__linux__)
+    if (surface.value > std::numeric_limits<std::uint32_t>::max()) {
+        result.diagnostic = "Vulkan XCB window token exceeds xcb_window_t range";
+        return result;
+    }
+
+    const auto surface_instance_desc = make_surface_instance_desc(instance_desc, host);
+    result.snapshots = probe_runtime_physical_device_snapshots(loader_desc, surface_instance_desc);
+    if (!result.snapshots.enumerated) {
+        result.diagnostic = result.snapshots.diagnostic;
+        return result;
+    }
+
+    const auto runtime_library = resolve_runtime_library_name(loader_desc, host);
+    void* library = dlopen(runtime_library.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (library == nullptr) {
+        result.diagnostic = "Vulkan runtime library could not be loaded";
+        return result;
+    }
+
+    const auto get_instance_proc_addr = reinterpret_cast<VulkanGetInstanceProcAddr>(
+        dlsym(library, std::string{loader_desc.get_instance_proc_addr_symbol}.c_str()));
+    const auto commands = resolve_runtime_global_commands(get_instance_proc_addr);
+    if (commands.create_instance == nullptr) {
+        dlclose(library);
+        result.diagnostic = "Vulkan vkCreateInstance command is unavailable";
+        return result;
+    }
+
+    const auto extension_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_layers);
+    const auto application_info = make_native_application_info(surface_instance_desc);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
+    NativeVulkanInstance instance = nullptr;
+    const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
+    if (create_result != vulkan_success || instance == nullptr) {
+        dlclose(library);
+        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateInstance failed", create_result);
+        return result;
+    }
+
+    const auto create_xcb_surface =
+        reinterpret_cast<VulkanCreateXcbSurface>(get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR"));
+    const auto destroy_surface =
+        reinterpret_cast<VulkanDestroySurface>(get_instance_proc_addr(instance, "vkDestroySurfaceKHR"));
+    const auto get_surface_support = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceSupport>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
+    const auto enumerate_physical_devices = reinterpret_cast<VulkanEnumeratePhysicalDevices>(
+        get_instance_proc_addr(instance, "vkEnumeratePhysicalDevices"));
+    const auto get_queue_family_properties = reinterpret_cast<VulkanGetPhysicalDeviceQueueFamilyProperties>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
+    const auto enumerate_device_extension_properties = reinterpret_cast<VulkanEnumerateDeviceExtensionProperties>(
+        get_instance_proc_addr(instance, "vkEnumerateDeviceExtensionProperties"));
+    const auto get_physical_device_features2 = reinterpret_cast<VulkanGetPhysicalDeviceFeatures2>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceFeatures2"));
+    const auto get_physical_device_properties2 = reinterpret_cast<VulkanGetPhysicalDeviceProperties2>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceProperties2"));
+    const auto destroy_instance =
+        reinterpret_cast<VulkanDestroyInstance>(get_instance_proc_addr(instance, "vkDestroyInstance"));
+    if (create_xcb_surface == nullptr || destroy_surface == nullptr || get_surface_support == nullptr ||
+        enumerate_physical_devices == nullptr || get_queue_family_properties == nullptr ||
+        enumerate_device_extension_properties == nullptr || get_physical_device_features2 == nullptr ||
+        get_physical_device_properties2 == nullptr) {
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic = "Vulkan surface support commands are unavailable";
+        return result;
+    }
+
+    NativeVulkanSurface native_surface = 0;
+    const auto surface_create_info = NativeVulkanXcbSurfaceCreateInfo{
+        .s_type = vulkan_structure_type_xcb_surface_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .connection = reinterpret_cast<void*>(surface.context),
+        .window = static_cast<std::uint32_t>(surface.value),
+    };
+    const auto surface_create_result = create_xcb_surface(instance, &surface_create_info, nullptr, &native_surface);
+    if (surface_create_result != vulkan_success || native_surface == 0) {
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateXcbSurfaceKHR failed", surface_create_result);
+        return result;
+    }
+    result.surface_created = true;
+
+    std::uint32_t physical_device_count = result.snapshots.count_probe.physical_device_count;
+    std::vector<NativeVulkanPhysicalDevice> physical_devices(physical_device_count);
+    const auto enumerate_result = enumerate_physical_devices(instance, &physical_device_count, physical_devices.data());
+    if (!is_successful_enumeration_result(enumerate_result)) {
+        destroy_surface(instance, native_surface, nullptr);
+        result.surface_destroyed = true;
+        if (destroy_instance != nullptr) {
+            destroy_instance(instance, nullptr);
+        }
+        dlclose(library);
+        result.diagnostic =
+            vulkan_result_diagnostic("Vulkan physical device handle enumeration failed", enumerate_result);
+        return result;
+    }
+    physical_devices.resize(physical_device_count);
+    refresh_surface_probe_queue_family_snapshots(result.snapshots, physical_devices, get_physical_device_properties2,
+                                                 get_queue_family_properties, enumerate_device_extension_properties,
+                                                 get_physical_device_features2);
+
+    const auto device_count = std::min(result.snapshots.devices.size(), physical_devices.size());
+    for (std::size_t device_index = 0; device_index < device_count; ++device_index) {
+        for (auto& queue_family : result.snapshots.devices[device_index].queue_families) {
+            std::uint32_t supported = 0;
+            const auto support_result =
+                get_surface_support(physical_devices[device_index], queue_family.index, native_surface, &supported);
+            queue_family.supports_present = support_result == vulkan_success && supported != 0U;
+        }
+    }
+
+    destroy_surface(instance, native_surface, nullptr);
+    result.surface_destroyed = true;
+    if (destroy_instance != nullptr) {
+        destroy_instance(instance, nullptr);
+    }
+    dlclose(library);
 
     result.probed = true;
     result.diagnostic = "Vulkan surface support probe ready";
@@ -9117,6 +9477,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto cmd_dispatch = reinterpret_cast<VulkanCmdDispatch>(get_device_proc_addr(device, "vkCmdDispatch"));
     const auto set_debug_utils_object_name =
         reinterpret_cast<VulkanSetDebugUtilsObjectName>(get_device_proc_addr(device, "vkSetDebugUtilsObjectNameEXT"));
+    const auto create_debug_utils_messenger = reinterpret_cast<VulkanCreateDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    const auto destroy_debug_utils_messenger = reinterpret_cast<VulkanDestroyDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
     std::vector<VulkanCommandAvailability> device_availability;
     const auto device_requests = vulkan_device_command_requests(result.logical_device_plan);
@@ -9180,6 +9544,41 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         FreeLibrary(library);
         result.diagnostic = "Vulkan logical device queues are unavailable";
         return result;
+    }
+
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger = 0;
+    const auto validation_capture_requested =
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled &&
+        extension_is_enabled(
+            result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions,
+            "VK_EXT_debug_utils");
+    if (validation_capture_requested) {
+        if (create_debug_utils_messenger == nullptr || destroy_debug_utils_messenger == nullptr) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            FreeLibrary(library);
+            result.diagnostic = "Vulkan debug-utils messenger commands are unavailable";
+            return result;
+        }
+        validation_log = std::make_shared<VulkanRuntimeValidationLogState>();
+        auto debug_create_info = make_runtime_validation_log_messenger_create_info(*validation_log);
+        const auto debug_create_result =
+            create_debug_utils_messenger(instance, &debug_create_info, nullptr, &debug_utils_messenger);
+        if (debug_create_result != vulkan_success || debug_utils_messenger == 0) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            FreeLibrary(library);
+            result.diagnostic =
+                vulkan_result_diagnostic("Vulkan vkCreateDebugUtilsMessengerEXT failed", debug_create_result);
+            return result;
+        }
     }
 
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
@@ -9264,6 +9663,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_pipeline = destroy_pipeline;
     impl->cmd_dispatch = cmd_dispatch;
     impl->set_debug_utils_object_name = set_debug_utils_object_name;
+    impl->destroy_debug_utils_messenger = debug_utils_messenger != 0 ? destroy_debug_utils_messenger : nullptr;
+    impl->debug_utils_messenger = debug_utils_messenger;
+    impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
     impl->host = host;
@@ -9306,12 +9708,16 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
 
     const auto destroy_instance =
         reinterpret_cast<VulkanDestroyInstance>(get_instance_proc_addr(instance, "vkDestroyInstance"));
-    const auto create_win32_surface =
-        reinterpret_cast<VulkanCreateWin32Surface>(get_instance_proc_addr(instance, "vkCreateWin32SurfaceKHR"));
+    const auto create_xcb_surface =
+        reinterpret_cast<VulkanCreateXcbSurface>(get_instance_proc_addr(instance, "vkCreateXcbSurfaceKHR"));
     const auto destroy_surface =
         reinterpret_cast<VulkanDestroySurface>(get_instance_proc_addr(instance, "vkDestroySurfaceKHR"));
     const auto get_surface_capabilities = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceCapabilities>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
+    const auto get_surface_formats = reinterpret_cast<VulkanGetPhysicalDeviceSurfaceFormats>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
+    const auto get_surface_present_modes = reinterpret_cast<VulkanGetPhysicalDeviceSurfacePresentModes>(
+        get_instance_proc_addr(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
     const auto get_physical_device_memory_properties = reinterpret_cast<VulkanGetPhysicalDeviceMemoryProperties>(
         get_instance_proc_addr(instance, "vkGetPhysicalDeviceMemoryProperties"));
     const auto get_physical_device_format_properties = reinterpret_cast<VulkanGetPhysicalDeviceFormatProperties>(
@@ -9328,6 +9734,14 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         }
         dlclose(library);
         result.diagnostic = "Vulkan logical device instance commands are unavailable";
+        return result;
+    }
+    if (surface.value != 0 &&
+        (create_xcb_surface == nullptr || destroy_surface == nullptr || get_surface_capabilities == nullptr ||
+         get_surface_formats == nullptr || get_surface_present_modes == nullptr)) {
+        destroy_instance(instance, nullptr);
+        dlclose(library);
+        result.diagnostic = "Vulkan surface query instance commands are unavailable";
         return result;
     }
 
@@ -9493,6 +9907,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto cmd_dispatch = reinterpret_cast<VulkanCmdDispatch>(get_device_proc_addr(device, "vkCmdDispatch"));
     const auto set_debug_utils_object_name =
         reinterpret_cast<VulkanSetDebugUtilsObjectName>(get_device_proc_addr(device, "vkSetDebugUtilsObjectNameEXT"));
+    const auto create_debug_utils_messenger = reinterpret_cast<VulkanCreateDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkCreateDebugUtilsMessengerEXT"));
+    const auto destroy_debug_utils_messenger = reinterpret_cast<VulkanDestroyDebugUtilsMessenger>(
+        get_instance_proc_addr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
     std::vector<VulkanCommandAvailability> device_availability;
     const auto device_requests = vulkan_device_command_requests(result.logical_device_plan);
@@ -9557,6 +9975,41 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         return result;
     }
 
+    std::shared_ptr<VulkanRuntimeValidationLogState> validation_log;
+    NativeVulkanDebugUtilsMessenger debug_utils_messenger = 0;
+    const auto validation_capture_requested =
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.validation_enabled &&
+        extension_is_enabled(
+            result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions,
+            "VK_EXT_debug_utils");
+    if (validation_capture_requested) {
+        if (create_debug_utils_messenger == nullptr || destroy_debug_utils_messenger == nullptr) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            dlclose(library);
+            result.diagnostic = "Vulkan debug-utils messenger commands are unavailable";
+            return result;
+        }
+        validation_log = std::make_shared<VulkanRuntimeValidationLogState>();
+        auto debug_create_info = make_runtime_validation_log_messenger_create_info(*validation_log);
+        const auto debug_create_result =
+            create_debug_utils_messenger(instance, &debug_create_info, nullptr, &debug_utils_messenger);
+        if (debug_create_result != vulkan_success || debug_utils_messenger == 0) {
+            if (device_wait_idle != nullptr) {
+                static_cast<void>(device_wait_idle(device));
+            }
+            destroy_device(device, nullptr);
+            destroy_instance(instance, nullptr);
+            dlclose(library);
+            result.diagnostic =
+                vulkan_result_diagnostic("Vulkan vkCreateDebugUtilsMessengerEXT failed", debug_create_result);
+            return result;
+        }
+    }
+
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
     impl->library = library;
     impl->instance = instance;
@@ -9567,9 +10020,11 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_instance = destroy_instance;
     impl->get_physical_device_memory_properties = get_physical_device_memory_properties;
     impl->get_physical_device_format_properties = get_physical_device_format_properties;
-    impl->create_win32_surface = create_win32_surface;
+    impl->create_xcb_surface = create_xcb_surface;
     impl->destroy_surface = destroy_surface;
     impl->get_surface_capabilities = get_surface_capabilities;
+    impl->get_surface_formats = get_surface_formats;
+    impl->get_surface_present_modes = get_surface_present_modes;
     impl->destroy_device = destroy_device;
     impl->device_wait_idle = device_wait_idle;
     impl->create_command_pool = create_command_pool;
@@ -9637,6 +10092,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->destroy_pipeline = destroy_pipeline;
     impl->cmd_dispatch = cmd_dispatch;
     impl->set_debug_utils_object_name = set_debug_utils_object_name;
+    impl->destroy_debug_utils_messenger = debug_utils_messenger != 0 ? destroy_debug_utils_messenger : nullptr;
+    impl->debug_utils_messenger = debug_utils_messenger;
+    impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
     impl->host = host;
@@ -11244,7 +11702,7 @@ VulkanRuntimeTextureCreateResult create_runtime_texture(VulkanRuntimeDevice& dev
         .s_type = vulkan_structure_type_image_create_info,
         .next = nullptr,
         .flags = 0,
-        .image_type = vulkan_image_type_2d,
+        .image_type = result.plan.image_type_3d ? vulkan_image_type_3d : vulkan_image_type_2d,
         .format = native_vulkan_format(result.plan.format),
         .extent = NativeVulkanExtent3D{.width = result.plan.extent.width,
                                        .height = result.plan.extent.height,
@@ -11316,7 +11774,7 @@ VulkanRuntimeTextureCreateResult create_runtime_texture(VulkanRuntimeDevice& dev
             .next = nullptr,
             .flags = 0,
             .image = image,
-            .view_type = vulkan_image_view_type_2d,
+            .view_type = result.plan.image_view_type_3d ? vulkan_image_view_type_3d : vulkan_image_view_type_2d,
             .format = native_vulkan_format(result.plan.format),
             .components =
                 NativeVulkanComponentMapping{
@@ -12318,14 +12776,28 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         result.diagnostic = "Vulkan swapchain color format is unsupported";
         return result;
     }
-    if (device.impl_->host != RhiHostPlatform::windows) {
+    const bool win32_surface = device.impl_->host == RhiHostPlatform::windows;
+    const bool xcb_surface = device.impl_->host == RhiHostPlatform::linux;
+    if (!win32_surface && !xcb_surface) {
         result.diagnostic = "Vulkan runtime swapchain ownership is unsupported on this host";
         return result;
     }
-    if (device.impl_->create_win32_surface == nullptr || device.impl_->destroy_surface == nullptr ||
-        device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
-        device.impl_->get_surface_present_modes == nullptr) {
+    if (win32_surface &&
+        (device.impl_->create_win32_surface == nullptr || device.impl_->destroy_surface == nullptr ||
+         device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
+         device.impl_->get_surface_present_modes == nullptr)) {
         result.diagnostic = "Vulkan Win32 surface commands are unavailable";
+        return result;
+    }
+    if (xcb_surface &&
+        (device.impl_->create_xcb_surface == nullptr || device.impl_->destroy_surface == nullptr ||
+         device.impl_->get_surface_capabilities == nullptr || device.impl_->get_surface_formats == nullptr ||
+         device.impl_->get_surface_present_modes == nullptr)) {
+        result.diagnostic = "Vulkan XCB surface commands are unavailable";
+        return result;
+    }
+    if (xcb_surface && (desc.surface.platform != SurfacePlatform::xcb || desc.surface.context == 0)) {
+        result.diagnostic = "Vulkan XCB swapchain requires connection and window handles";
         return result;
     }
     if (device.impl_->create_swapchain == nullptr || device.impl_->destroy_swapchain == nullptr ||
@@ -12335,19 +12807,48 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         return result;
     }
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__linux__)
     NativeVulkanSurface surface = 0;
-    const auto surface_create_info = NativeVulkanWin32SurfaceCreateInfo{
-        .s_type = vulkan_structure_type_win32_surface_create_info,
-        .next = nullptr,
-        .flags = 0,
-        .instance = GetModuleHandleW(nullptr),
-        .window = reinterpret_cast<HWND>(desc.surface.value),
-    };
-    const auto surface_result =
-        device.impl_->create_win32_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+    VulkanResult surface_result = -1;
+    if (win32_surface) {
+#if defined(_WIN32)
+        const auto surface_create_info = NativeVulkanWin32SurfaceCreateInfo{
+            .s_type = vulkan_structure_type_win32_surface_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .instance = GetModuleHandleW(nullptr),
+            .window = reinterpret_cast<HWND>(desc.surface.value),
+        };
+        surface_result =
+            device.impl_->create_win32_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+#else
+        result.diagnostic = "Vulkan Win32 swapchain requires a Windows host";
+        return result;
+#endif
+    } else if (xcb_surface) {
+#if defined(__linux__)
+        if (desc.surface.value > std::numeric_limits<std::uint32_t>::max()) {
+            result.diagnostic = "Vulkan XCB window token exceeds xcb_window_t range";
+            return result;
+        }
+        const auto surface_create_info = NativeVulkanXcbSurfaceCreateInfo{
+            .s_type = vulkan_structure_type_xcb_surface_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .connection = reinterpret_cast<void*>(desc.surface.context),
+            .window = static_cast<std::uint32_t>(desc.surface.value),
+        };
+        surface_result =
+            device.impl_->create_xcb_surface(device.impl_->instance, &surface_create_info, nullptr, &surface);
+#else
+        result.diagnostic = "Vulkan XCB swapchain requires a Linux host";
+        return result;
+#endif
+    }
     if (surface_result != vulkan_success || surface == 0) {
-        result.diagnostic = vulkan_result_diagnostic("Vulkan vkCreateWin32SurfaceKHR failed", surface_result);
+        result.diagnostic = vulkan_result_diagnostic(win32_surface ? "Vulkan vkCreateWin32SurfaceKHR failed"
+                                                                   : "Vulkan vkCreateXcbSurfaceKHR failed",
+                                                     surface_result);
         return result;
     }
 
@@ -12369,6 +12870,13 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         result.diagnostic = "Vulkan swapchain create plan extent does not match the runtime surface extent";
         return result;
     }
+    if (capabilities.max_image_count > 0 && capabilities.max_image_count < capabilities.min_image_count) {
+        device.impl_->destroy_surface(device.impl_->instance, surface, nullptr);
+        result.diagnostic = "Vulkan runtime surface image-count capabilities are inconsistent";
+        return result;
+    }
+    const auto effective_image_count =
+        choose_swapchain_image_count(desc.plan.image_count, capabilities.min_image_count, capabilities.max_image_count);
 
     std::uint32_t format_count = 0;
     auto formats_result =
@@ -12450,7 +12958,7 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         .next = nullptr,
         .flags = 0,
         .surface = surface,
-        .min_image_count = desc.plan.image_count,
+        .min_image_count = effective_image_count,
         .image_format = native_vulkan_format(desc.plan.format),
         .image_color_space = vulkan_color_space_srgb_nonlinear,
         .image_extent = NativeVulkanExtent2D{.width = desc.plan.extent.width, .height = desc.plan.extent.height},
@@ -12738,6 +13246,10 @@ VulkanRuntimeSwapchainPresentResult present_runtime_swapchain_image(VulkanRuntim
         result.diagnostic = "Vulkan queue present command is unavailable";
         return result;
     }
+    if (desc.wait_for_present_queue_idle && device.impl_->queue_wait_idle == nullptr) {
+        result.diagnostic = "Vulkan queue wait idle command is unavailable";
+        return result;
+    }
 
     const NativeVulkanSemaphore wait_semaphore = sync.impl_->render_finished_semaphore;
     const NativeVulkanSwapchain swapchain_handle = swapchain.impl_->swapchain;
@@ -12755,6 +13267,15 @@ VulkanRuntimeSwapchainPresentResult present_runtime_swapchain_image(VulkanRuntim
 
     const auto present_result = device.impl_->queue_present(device.impl_->present_queue, &present_info);
     if (present_result == vulkan_success || present_result == vulkan_suboptimal) {
+        if (desc.wait_for_present_queue_idle) {
+            const auto wait_result = device.impl_->queue_wait_idle(device.impl_->present_queue);
+            if (wait_result != vulkan_success) {
+                result.diagnostic =
+                    vulkan_result_diagnostic("Vulkan vkQueueWaitIdle after present failed", wait_result);
+                return result;
+            }
+            result.present_queue_idle_waited = true;
+        }
         result.presented = true;
         result.suboptimal = present_result == vulkan_suboptimal;
         result.resize_required = result.suboptimal;
@@ -13429,7 +13950,7 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         const auto argument_range_end =
             desc.indirect_argument_buffer_offset +
-            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            (static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U)) +
             indexed_indirect_draw_command_size_bytes;
         if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
             result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";
@@ -13793,7 +14314,7 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         }
         const auto argument_range_end =
             desc.indirect_argument_buffer_offset +
-            static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U) +
+            (static_cast<std::uint64_t>(desc.indirect_command_stride_bytes) * (desc.indirect_draw_count - 1U)) +
             indexed_indirect_draw_command_size_bytes;
         if (argument_range_end > desc.indirect_argument_buffer->byte_size()) {
             result.diagnostic = "Vulkan indexed indirect draw argument range is outside the argument buffer";

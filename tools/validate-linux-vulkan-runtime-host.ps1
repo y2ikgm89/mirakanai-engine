@@ -4,7 +4,9 @@
 [CmdletBinding()]
 param(
     [switch]$RequireReady,
-    [string[]]$ExpectedEvidenceCounters = @()
+    [string[]]$ExpectedEvidenceCounters = @(),
+    [ValidateRange(60, 3600)]
+    [int]$PackageSmokeTimeoutSeconds = 2400
 )
 
 $ErrorActionPreference = "Stop"
@@ -101,23 +103,39 @@ function Invoke-ToolCapture {
     $process.StartInfo = $startInfo
     try {
         $null = $process.Start()
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
         $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+        $timedOut = -not $completed
         if (-not $completed) {
             try {
                 $process.Kill($true)
+                $process.WaitForExit()
             } catch {
                 Write-Verbose "failed to kill timed-out process '$FilePath': $_"
             }
+        } else {
+            $process.WaitForExit()
+        }
+
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($timedOut) {
+            $timeoutDiagnostic = "timeout after $TimeoutSeconds seconds"
+            if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+                $timeoutDiagnostic = [string]::Join("`n", @($timeoutDiagnostic, $stderr.TrimEnd()))
+            }
             return [pscustomobject]@{
                 ExitCode = -1
-                Output = ""
-                Error = "timeout"
+                Output = $stdout
+                Error = $timeoutDiagnostic
             }
         }
+
         return [pscustomobject]@{
             ExitCode = $process.ExitCode
-            Output = $process.StandardOutput.ReadToEnd()
-            Error = $process.StandardError.ReadToEnd()
+            Output = $stdout
+            Error = $stderr
         }
     } finally {
         $process.Dispose()
@@ -131,6 +149,65 @@ function Get-ShaderToolchainEvidence {
     return [pscustomobject]@{
         DxcSpirvCodegenReady = $result.ExitCode -eq 0 -and $text.Contains("shader-toolchain: dxc_spirv_codegen=ready")
         SpirvValReady = $result.ExitCode -eq 0 -and $text.Contains("shader-toolchain: spirv-val=found")
+    }
+}
+
+function Invoke-LinuxPackageSmokeIfRequired {
+    param(
+        [bool]$ShouldRun,
+        [bool]$PrerequisitesReady,
+        [Parameter(Mandatory = $true)][string]$PackageScript,
+        [int]$TimeoutSeconds = 900
+    )
+
+    if (-not $ShouldRun -or -not $PrerequisitesReady) {
+        return [pscustomobject]@{
+            PackageSmokeReady = $false
+            VulkanReadbackReady = $false
+            ValidationLogClean = $false
+            ExitCode = -2
+            TimedOut = $false
+            TimeoutSeconds = $TimeoutSeconds
+        }
+    }
+
+    $packageDiagnosticLog = Join-Path $root "artifacts/environment/platform/linux-vulkan-host/package-linux-runtime-progress.txt"
+    $packageDiagnosticDirectory = Split-Path -Parent $packageDiagnosticLog
+    New-Item -ItemType Directory -Force -Path $packageDiagnosticDirectory | Out-Null
+    if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
+        Remove-Item -LiteralPath $packageDiagnosticLog -Force
+    }
+
+    $smoke = Invoke-ToolCapture `
+        -FilePath "pwsh" `
+        -Arguments @(
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            $PackageScript,
+            "-GameTarget",
+            "sample_desktop_runtime_game",
+            "-RequireVulkanShaders",
+            "-DiagnosticLogPath",
+            $packageDiagnosticLog
+        ) `
+        -TimeoutSeconds $TimeoutSeconds
+    if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
+        Write-Host (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
+    }
+    $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
+    if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
+        Write-Host $smokeText.TrimEnd()
+    }
+    Write-Host "linux_package_smoke_exit_code=$($smoke.ExitCode)"
+    return [pscustomobject]@{
+        PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_package_smoke_ready=1")
+        VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_readback_ready=1")
+        ValidationLogClean = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_validation_log_clean=1")
+        ExitCode = $smoke.ExitCode
+        TimedOut = $smoke.ExitCode -eq -1 -and $smokeText.Contains("timeout after $TimeoutSeconds seconds")
+        TimeoutSeconds = $TimeoutSeconds
     }
 }
 
@@ -151,12 +228,32 @@ if ($hostMatches -and $null -ne $vulkanInfoCommand) {
 
 $linuxPackageScript = Join-Path $root "tools/package-linux-runtime.ps1"
 $linuxInstalledValidator = Join-Path $root "tools/validate-installed-linux-runtime.ps1"
-$linuxHostRoot = Join-Path $root "platform/linux"
+$linuxHostRoot = Join-Path $root "engine/runtime_host/linux"
+$linuxHostHeader = Join-Path $root "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp"
+$linuxHostCMake = Join-Path $linuxHostRoot "CMakeLists.txt"
 
 $linuxIcdRuntimeReady = $hostMatches -and $vulkanInfoReady
-$firstPartyLinuxRuntimeHostReady = $hostMatches -and (Test-Path -LiteralPath $linuxHostRoot -PathType Container)
+$firstPartyLinuxRuntimeHostReady = $hostMatches -and (
+    (Test-Path -LiteralPath $linuxHostRoot -PathType Container) -and
+    (Test-Path -LiteralPath $linuxHostHeader -PathType Leaf) -and
+    (Test-Path -LiteralPath $linuxHostCMake -PathType Leaf)
+)
 $linuxPackageScriptReady = $hostMatches -and (Test-Path -LiteralPath $linuxPackageScript -PathType Leaf)
 $linuxInstalledValidatorReady = $hostMatches -and (Test-Path -LiteralPath $linuxInstalledValidator -PathType Leaf)
+$preSmokeReady = $hostMatches -and
+    $vulkanInfoReady -and
+    $validationLayerReady -and
+    $shaderEvidence.DxcSpirvCodegenReady -and
+    $shaderEvidence.SpirvValReady -and
+    $linuxIcdRuntimeReady -and
+    $firstPartyLinuxRuntimeHostReady -and
+    $linuxPackageScriptReady -and
+    $linuxInstalledValidatorReady
+$smokeEvidence = Invoke-LinuxPackageSmokeIfRequired `
+    -ShouldRun:$RequireReady.IsPresent `
+    -PrerequisitesReady:$preSmokeReady `
+    -PackageScript $linuxPackageScript `
+    -TimeoutSeconds $PackageSmokeTimeoutSeconds
 
 $linuxVulkanReady = $hostMatches -and
     $vulkanInfoReady -and
@@ -166,7 +263,10 @@ $linuxVulkanReady = $hostMatches -and
     $linuxIcdRuntimeReady -and
     $firstPartyLinuxRuntimeHostReady -and
     $linuxPackageScriptReady -and
-    $linuxInstalledValidatorReady
+    $linuxInstalledValidatorReady -and
+    $smokeEvidence.PackageSmokeReady -and
+    $smokeEvidence.VulkanReadbackReady -and
+    $smokeEvidence.ValidationLogClean
 
 foreach ($counter in @($ExpectedEvidenceCounters)) {
     if (-not [string]::IsNullOrWhiteSpace($counter)) {
@@ -189,6 +289,12 @@ $actualCounters = @(
     "first_party_linux_runtime_host_ready=$(ConvertTo-CounterBit $firstPartyLinuxRuntimeHostReady)",
     "linux_package_script_ready=$(ConvertTo-CounterBit $linuxPackageScriptReady)",
     "linux_installed_validator_ready=$(ConvertTo-CounterBit $linuxInstalledValidatorReady)",
+    "linux_package_smoke_exit_code=$($smokeEvidence.ExitCode)",
+    "linux_package_smoke_timed_out=$(ConvertTo-CounterBit $smokeEvidence.TimedOut)",
+    "linux_package_smoke_timeout_seconds=$($smokeEvidence.TimeoutSeconds)",
+    "linux_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
+    "linux_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
+    "linux_vulkan_validation_log_clean=$(ConvertTo-CounterBit $smokeEvidence.ValidationLogClean)",
     "environment_platform_linux_vulkan_ready=$(ConvertTo-CounterBit $linuxVulkanReady)",
     "environment_platform_requires_linux_vulkan_host_evidence=$(if ($linuxVulkanReady) { '0' } else { '1' })",
     "environment_all_platform_unconditional_ready=0",
@@ -197,7 +303,15 @@ $actualCounters = @(
     "android_vulkan_inferred=0",
     "native_handle_access=0"
 )
-Write-Output ([string]::Join(" ", $actualCounters))
+$actualCounterLine = [string]::Join(" ", $actualCounters)
+Write-Output $actualCounterLine
+
+$missingExpectedCounters = @($ExpectedEvidenceCounters | Where-Object {
+    -not [string]::IsNullOrWhiteSpace($_) -and -not $actualCounterLine.Contains([string]$_)
+})
+if ($missingExpectedCounters.Count -gt 0) {
+    Write-Error "environment-platform-linux-vulkan-package is missing expected actual counters: $($missingExpectedCounters -join ', ')"
+}
 
 Write-Output "environment-platform-linux-vulkan-host-gate: host=$hostOs"
 Write-Output "environment-platform-linux-vulkan-host-gate: host_gate=vulkan-strict-linux"
@@ -209,5 +323,5 @@ Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_
 Write-Output "environment-platform-linux-vulkan-host-gate: environment_platform_native_handle_access=0"
 
 if ($RequireReady -and -not $linuxVulkanReady) {
-    Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, and installed validator evidence."
+    Write-Error "environment-platform-linux-vulkan-package requires a Linux Vulkan host with vulkaninfo, VK_LAYER_KHRONOS_validation, DXC SPIR-V CodeGen, spirv-val, Linux ICD/runtime, first-party Linux runtime host, Linux package script, installed validator, strict package smoke, Vulkan readback, and clean validation log evidence."
 }

@@ -81,6 +81,9 @@ router says the current task needs detailed API names, detailed validation lanes
   `plan_backend_renderer_parity_policy` must fail closed with `missing_host_validation_recipe` when Metal evidence omits the recipe id and
   `unreviewed_host_validation_recipe` when an arbitrary valid id is supplied, include the recipe id in replay hashes, keep `metal-apple`
   host-gated until Apple-host proof exists, and keep D3D12/Vulkan evidence backend-local.
+  `BackendRendererParityAppleMetalEnvironmentEvidenceDesc` and `make_backend_renderer_parity_apple_metal_environment_proofs` may map
+  selected Apple-host `renderer-metal-apple-host-evidence` counters only into backend-local `synchronization`, `shader_validation`, and
+  `package_evidence` proof rows; `memory_residency` and `profiling_capture` require separate proof rows.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and

@@ -38,7 +38,6 @@ $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-w
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
 }
-
 $claudeContent = Get-Content -LiteralPath $claude -Raw
 if ($claudeContent -notmatch "@AGENTS\.md") {
     Write-Error "CLAUDE.md must import AGENTS.md"
@@ -558,6 +557,13 @@ foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows 
 }
 $planRegistryContent = Get-Content -LiteralPath $planRegistryPath -Raw
 Assert-ContainsText $planRegistryContent "Active milestone" "docs/superpowers/plans/README.md"
+foreach ($mavgAsyncOverlapNeedle in @(
+        "MAVG Async Overlap Performance Proof v1",
+        "selected measured-sample async-overlap performance proof",
+        "mavg_async_overlap_performance_proof_ready=1"
+    )) {
+    Assert-ContainsText $planRegistryContent $mavgAsyncOverlapNeedle "docs/superpowers/plans/README.md"
+}
 foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "capability/gap-cluster/milestone", "Plan width is wider than PR width", "phase behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "Git history", "Historical/static-check retained literals")) {
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
@@ -1781,6 +1787,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer Metal Apple selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-backend-parity-apple-evidence-closeout-v1") { foreach ($needle in @("Renderer Backend Parity Apple Evidence Closeout v1", "renderer-backend-parity-v1", "renderer-metal-apple-host-evidence", "Apple/Metal host evidence", "Windows/Vulkan proof must not promote Metal readiness", "native handles remain hidden", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer backend parity Apple evidence closeout selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-postprocess-tone-mapping-evidence-v1") {
     foreach ($needle in @(
         "Renderer Postprocess Tone Mapping Evidence v1",
@@ -2027,35 +2034,10 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-research-legal-benchmark-baseline-v1") { foreach ($needle in @("MAVG Phase 0", "research/specification", "official-source checks", "clean-room/legal guardrails", "benchmark methodology", "stale-doc cleanup", "MAVG not implemented", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG Phase 0 selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-rendering-readiness-v1") { foreach ($needle in @("Environment Rendering Readiness v1", "Environment System v1", "official docs/Context7", "snow package readiness", "physical-sky package/Vulkan proof", "cloud/precipitation renderer execution", "volumetric-cloud execution/package readiness", "height/volumetric-fog package proof", "environment lighting/IBL package proof", "later renderer upload/runtime-capture proof", "D3D12", "strict Vulkan", "Metal host-gated", "broad optimization", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment rendering readiness selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-production-excellence-v1") { foreach ($needle in @("Environment Production Excellence v1", "EnvironmentProfile.v2", "local environment volumes", "runtime cubemap capture", "renderer IBL upload", "material wetness", "snow accumulation", "weather audio playback", "strict Vulkan", "Apple-host Metal", "quality budgets", "exact environment_ready", "official docs/Context7", "Dear ImGui", "SDL3", "public native handles", "no inferred Vulkan/Metal readiness", "no broad optimization", "no broad environment_ready", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment production excellence selection" } } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-highest-commercial-readiness-v1") { foreach ($needle in @("Environment Highest Commercial Readiness v1", "official docs/Context7", "Source gate ready", "environment_highest_readiness_context7_verified_rows=9", "environment_highest_readiness_context7_partial_rows=2", "environment_highest_readiness_official_fallback_rows=2", "environment_highest_readiness_authoritative_doc_ready_rows=11", "environment_highest_readiness_source_gate_status=ready", "environment_highest_readiness_code_edit_allowed=1", "official_fallback.apple_metal_framework_api=ready", "official_fallback.khronos_gltf_spec=ready", "strict Vulkan", "Apple Metal", "backend parity v2", "all-platform readiness", "broad measured optimization", "AAA preset asset library", "full OpenEXR/KTX2/Basis asset pipeline", "physical weather simulation", "production artist workflow", "commercial aggregate", "broad environment_ready", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment highest commercial readiness selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-async-overlap-performance-proof-v1") { $mavgAsyncOverlapRecommendedText = $productionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8; foreach ($needle in @("MAVG Async Overlap Performance Proof v1", "mavg-async-overlap-performance-proof-v1", "RuntimeMavgStreamingUploadOverlapEvidenceResult", "RuntimeMavgAsyncOverlapPerformanceProofResult", "selected measured-sample async-overlap performance proof", "p95 serial/overlapped ticks", "speedup basis points", "mavg_async_overlap_performance_proof_ready=1", "10 samples", "five overlapped samples", "serial p95 140", "overlapped p95 105", "speedup 2500 basis points", "native handles", "GPU DirectStorage destinations", "GDeflate", "mesh shader execution", "Metal readiness", "Nanite equivalence", "broad optimization", "DirectStorage 1.4 preview", "broad MAVG backend readiness", "autonomous streaming-service performance", "unsupportedProductionGaps = []")) { Assert-ContainsText $mavgAsyncOverlapRecommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG async-overlap performance proof selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "2d-production-engine-capability-gap-cluster-v1") { foreach ($needle in @("2D Production Engine Capability Gap Cluster v1", "RuntimeGameplayExecutionLoop2D", "execute_runtime_gameplay_loop_2d_step", "--require-2d-gameplay-execution-loop", "2d_gameplay_execution_loop_status=ready", "positive replay hash", "legal clean-room constraints", "official docs category-only", "unsupportedProductionGaps = []", "broad 2D production readiness")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan 2D production engine capability selection" }
-} else { foreach ($needle in @(
-    "Frame Graph Transient Texture Alias Planning v1",
-    "FrameGraphTransientTextureAliasPlan",
-    "plan_frame_graph_transient_texture_aliases",
-    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
-    "shadow_color",
-    "6 pass callbacks/15 barrier steps",
-    "Frame Graph Viewport Surface Color State Executor v1",
-    "RhiViewportSurface",
-    "viewport_color",
-    "Frame Graph Texture Aliasing Barrier Command v1",
-    "record_frame_graph_texture_aliasing_barriers",
-    "Frame Graph Automatic Aliasing Barrier Insertion v1",
-    "Package Streaming Frame Graph Texture Binding Handoff v1",
-    "make_runtime_package_streaming_frame_graph_texture_bindings",
-    "Package Static Mesh Upload Binding Transaction v1",
-    "upload_runtime_package_streaming_mesh_gpu_bindings",
-    "Frame Graph Render Pass Envelope v1",
-    "render_passes_recorded",
-    "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
-    "upload-staging-v1",
-    "native async upload execution",
-    "package skinned/morph streaming",
-    "staging-pool production adoption"
-    )) {
-        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap"
-    }
-}
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-win32-directstorage-sdk-adapter-v1") { $mavgWin32DirectStorageRecommendedText = $productionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8; foreach ($needle in @("MAVG Win32 DirectStorage SDK Adapter v1", "MAVG DirectStorage Page IO Execution v1", "Microsoft DirectStorage SDK 1.3.0", "vcpkg port dstorage 1.3.0", "find_package(dstorage CONFIG REQUIRED)", "Microsoft::DirectStorage", "dstorage.h", "DStorageGetFactory", "IDStorageFactory", "IDStorageQueue", "IDStorageStatusArray", "IDStorageQueue::EnqueueRequest", "IDStorageQueue::EnqueueStatus", "IDStorageQueue::Submit", "IDStorageStatusArray::GetHResult", "MK_platform_win32", "IByteRangeIoExecutor", "ByteRangeIoBackendKind::direct_storage", "first-party Win32 DirectStorage SDK adapter", "public native handles", "GPU destinations", "GDeflate", "DirectStorage 1.4 preview APIs", "async-overlap/performance proof", "mesh shaders", "Metal readiness", "Nanite", "broad optimization", "unsupportedProductionGaps = []")) { Assert-ContainsText $mavgWin32DirectStorageRecommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG Win32 DirectStorage SDK adapter selection" }
+} else { foreach ($needle in @("Frame Graph Transient Texture Alias Planning v1", "FrameGraphTransientTextureAliasPlan", "plan_frame_graph_transient_texture_aliases", "Frame Graph Shadow Scratch Color Target-State Ownership v1", "shadow_color", "6 pass callbacks/15 barrier steps", "Frame Graph Viewport Surface Color State Executor v1", "RhiViewportSurface", "viewport_color", "Frame Graph Texture Aliasing Barrier Command v1", "record_frame_graph_texture_aliasing_barriers", "Frame Graph Automatic Aliasing Barrier Insertion v1", "Package Streaming Frame Graph Texture Binding Handoff v1", "make_runtime_package_streaming_frame_graph_texture_bindings", "Package Static Mesh Upload Binding Transaction v1", "upload_runtime_package_streaming_mesh_gpu_bindings", "Frame Graph Render Pass Envelope v1", "render_passes_recorded", "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1", "upload-staging-v1", "native async upload execution", "package skinned/morph streaming", "staging-pool production adoption")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap" } }
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText $productionCompletionMasterPlanRelativePath
 $physicsJointsPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
@@ -2152,7 +2134,8 @@ Assert-ContainsText $newGameHelpersText "Get-ClangFormatCommand" "tools/new-game
 Assert-ContainsText $newGameTemplatesText "function New-DesktopRuntime3DMainCpp" "tools/new-game-templates.ps1"
 Assert-ContainsText $newGameTemplatesText "function New-DesktopRuntime3DPackageFiles" "tools/new-game-templates.ps1"
 Assert-ContainsText $newGameToolText '$mainCpp = Format-CppSourceText -Text $mainCpp' "tools/new-game.ps1"
-$newGameToolText = "$newGameToolText`n$newGameTemplatesText"
+$newGameToolText = "$newGameToolText
+$newGameTemplatesText"
 $d3d12RhiTestsText = Get-AgentSurfaceText "tests/unit/d3d12_rhi_tests.cpp"
 $testFrameworkText = Get-AgentSurfaceText "tests/test_framework.hpp"
 $renderingSkillText = Get-AgentSurfaceText ".agents/skills/rendering-change/SKILL.md"

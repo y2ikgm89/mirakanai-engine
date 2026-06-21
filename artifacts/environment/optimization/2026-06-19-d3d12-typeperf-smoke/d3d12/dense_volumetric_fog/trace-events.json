@@ -1,0 +1,49 @@
+{
+  "traceEvents": [
+    {
+      "name": "environment_optimization_workload",
+      "cat": "environment.optimization",
+      "ph": "X",
+      "ts": 0,
+      "dur": 16500,
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "task_id": "2026-06-19-d3d12-typeperf-smoke",
+        "backend": "d3d12",
+        "workload": "dense_volumetric_fog",
+        "source": "sample_desktop_runtime_game",
+        "sample_frames": 120
+      }
+    },
+    {
+      "name": "before_after_metrics",
+      "cat": "environment.optimization",
+      "ph": "C",
+      "ts": 1,
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "cpu_frame_p95_before_us": 17600,
+        "cpu_frame_p95_after_us": 16500,
+        "gpu_frame_p95_before_us": 16200,
+        "gpu_frame_p95_after_us": 15000,
+        "memory_peak_before_bytes": 738197504,
+        "memory_peak_after_bytes": 713031680,
+        "upload_before_bytes": 37748736,
+        "upload_after_bytes": 33554432,
+        "barrier_count_before": 72,
+        "barrier_count_after": 60,
+        "stutter_frames_before": 2,
+        "stutter_frames_after": 1
+      }
+    }
+  ],
+  "metadata": {
+    "format": "Chrome trace event JSON",
+    "profiler_tool": "typeperf",
+    "profiler_artifact": "artifacts/environment/optimization/2026-06-19-d3d12-typeperf-smoke/d3d12/dense_volumetric_fog/typeperf.csv",
+    "smoke_log": "out/codex/environment-optimization/typeperf-d3d12-smoke-2f/d3d12-installed-smoke.log",
+    "debug_profiling_log": "out/codex/environment-optimization/d3d12-debug-profiling/d3d12-debug-profiling-smoke.log"
+  }
+}
