@@ -26,6 +26,32 @@ $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragme
 $gameCodeGuidanceFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 
+function Assert-NoRuntimeUiExternalPublicToken {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    foreach ($token in @(
+            "uGUI",
+            "UMG",
+            "Slate",
+            "Widget Blueprint",
+            "Control",
+            "CanvasLayer",
+            "UIDocument",
+            "VisualElement",
+            "UXML",
+            "USS",
+            "Blueprint"
+        )) {
+        $pattern = "(?<![A-Za-z0-9_])$([Regex]::Escape($token))(?![A-Za-z0-9_])"
+        if ($Text -cmatch $pattern) {
+            Write-Error "$Label contained forbidden external runtime UI public token: $token"
+        }
+    }
+}
+
 foreach ($needle in @(
         "RuntimeUiSourceReferenceKind",
         "RuntimeUiStandardWidgetProvenanceDesc",
@@ -87,6 +113,19 @@ foreach ($needle in @(
 Assert-ContainsText $runtimeUiPublicHeaderText "meter" "engine/ui/include/mirakana/ui/ui.hpp"
 Assert-ContainsText $runtimeUiCMakeText "src/runtime_ui_standard_widgets.cpp" "engine/ui/CMakeLists.txt"
 Assert-ContainsText $rootCMakeText "MK_runtime_ui_standard_widgets_tests" "CMakeLists.txt"
+
+foreach ($publicTokenSurface in @(
+        @{ Label = "engine/ui/include/mirakana/ui/runtime_ui_standard_widgets.hpp"; Text = $runtimeUiStandardWidgetsHeaderText },
+        @{ Label = "games/sample_2d_desktop_runtime_package/main.cpp"; Text = $sample2dMainText },
+        @{ Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp"; Text = $sample3dMainText },
+        @{ Label = "games/sample_2d_desktop_runtime_package/game.agent.json"; Text = $sample2dManifestText },
+        @{ Label = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"; Text = $sample3dManifestText },
+        @{ Label = "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"; Text = $runtimeBackendReadinessFragmentText },
+        @{ Label = "engine/agent/manifest.fragments/014-gameCodeGuidance.json"; Text = $gameCodeGuidanceFragmentText },
+        @{ Label = "engine/agent/manifest.json"; Text = $manifestText }
+    )) {
+    Assert-NoRuntimeUiExternalPublicToken -Text $publicTokenSurface.Text -Label $publicTokenSurface.Label
+}
 
 foreach ($needle in @(
         "accept official docs and first party design only",

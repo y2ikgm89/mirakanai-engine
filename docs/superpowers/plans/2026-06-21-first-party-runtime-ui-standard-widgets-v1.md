@@ -23,6 +23,20 @@ This plan is an engineering compliance plan, not legal advice. The implementatio
 
 The implementation must fail validation if any copied expression or unreviewed external material is introduced.
 
+## Legal And IP Risk Model
+
+The legal engineering position is:
+
+- HUD meters, HP/MP bars, labels, buttons, menus, focus order, retained UI documents, layout containers, styling tokens, localization metadata, accessibility labels, and renderer handoff are general UI/game-engine functions. They can be implemented independently when the project supplies its own code, data model, naming, tests, and visual expression.
+- Copyright risk is controlled by excluding copied expression. The U.S. Copyright Office states that copyright protects expression and not ideas, procedures, methods, systems, processes, concepts, principles, or discoveries. This plan treats functional UI categories as reference-only ideas and forbids copying examples, documentation text, source code, asset files, screenshots, themes, or distinctive layouts.
+- Unity risk is controlled by using Unity documentation only as official category research. Unity Editor rights and source-code terms are license-bound; no Unity Editor, Unity source, UXML, USS, C# sample, package asset, icon, font, or UI name is allowed in the implementation.
+- Unreal Engine risk is controlled by using Epic documentation only as official category research. Unreal Engine Licensed Technology and Epic Licensed Content are governed by Epic agreements; no Unreal source, Blueprint graph, Slate declarative syntax, UMG designer structure, Marketplace/Learn/Quixel content, starter content, icon, font, or UI name is allowed in the implementation.
+- Godot risk is controlled by not incorporating Godot source or assets. Godot is MIT licensed and may be used with notice obligations if copied or distributed, but this plan does not copy or distribute Godot code, binaries, default themes, sample scenes, docs examples, or assets, so no Godot notice is introduced by this feature.
+- Trademark and trade-dress risk is controlled by not presenting this feature as Unity-, Unreal-, or Godot-compatible; not using their names in public API identifiers, product-facing feature names, sample output, or marketing claims; and not copying their editor/runtime visual appearance.
+- Patent risk is not cleared by this plan. The feature intentionally stays in ordinary value-model HUD/menu composition and avoids claims of equivalence to proprietary systems. Any later patent-sensitive feature such as visual scripting compatibility, proprietary UI builder import, or engine-specific file/API compatibility requires a separate legal review gate before implementation.
+
+The practical verdict is: implementing first-party HUD meters and menus is acceptable under this plan's controls; copying or emulating another engine's protected code, assets, samples, distinctive visual expression, public UI-system naming, or compatibility surface is not acceptable and must fail the task.
+
 ## Research Verdicts
 
 Official documentation confirms the comparison target:
@@ -31,6 +45,18 @@ Official documentation confirms the comparison target:
 - Unreal Engine has UMG, Slate, HUD, widget blueprints, progress bars, menus, and widget interaction. This plan does not copy Unreal C++/Blueprint API shapes, Slate declarative syntax, UMG designer structures, samples, starter content, names, or visual style.
 - Godot has `Control`-based UI nodes, containers, labels, buttons, progress bars, anchors, HUD examples, and MIT-licensed source. This plan does not copy Godot source, scene trees, documentation examples, default theme assets, names, or visual style.
 - The repository policy already requires first-party `MK_ui` / `MK_editor_ui` surfaces, audited adapters for low-level text/font/accessibility/image/platform work, and notice updates for any external dependency or asset.
+- The Context7 refresh on 2026-06-22 selected official Unity, Unreal Engine, and Godot documentation sources and found the same common functional categories: runtime UI systems, widget/control trees, HUDs, menus, layout/styling, buttons/labels, progress or meter controls, interaction/focus, and renderer/display handoff. These categories inform feature coverage only; they do not authorize code, asset, API, sample, theme, or visual-expression reuse.
+- The legal-source refresh on 2026-06-22 checked official Unity, Epic, Godot, and U.S. Copyright Office pages. The implementation remains first-party because no external engine licensed technology, licensed content, source, binary, or asset is copied or distributed, and Godot MIT notice obligations are not triggered unless Godot software or substantial copied portions enter the distribution.
+
+## Non-Copy Design Differentiators
+
+This feature must remain visibly and structurally project-owned:
+
+- Namespace and API: use `mirakana::ui`, `RuntimeUi*`, `UiDocument`, `SemanticRole`, and value-plan types. Do not introduce `uGUI`, `UMG`, `Slate`, `Widget Blueprint`, `Control`, `CanvasLayer`, `UIDocument`, `VisualElement`, `UXML`, `USS`, `Blueprint`, `Node`, or `Theme` as public feature terms.
+- Data model: use plain C++ value descriptors and planning results. Do not create engine-compatibility loaders, external scene/widget blueprint importers, serialized Unity/Godot/Unreal schema readers, or wrappers around their object models.
+- Rendering contract: emit first-party retained `UiDocument` elements and existing renderer-submission evidence. Do not copy external renderer paths, widget lifecycles, sample tree structures, or declarative syntax.
+- Visual expression: tests and samples may use project-owned tokens such as `hud.meter.health.fill`, `hud.meter.mana.fill`, and `hud.meter.warning.fill`. Do not copy default color palettes, fonts, icons, progress-bar geometry, editor window layouts, sample screenshots, or starter UI themes from external engines.
+- Documentation usage: external official docs may appear only as source-reference URLs and category-research rows. Do not quote long passages, paste examples, or derive fixture strings from docs or tutorials.
 
 ## Source Rules For Implementers
 
@@ -268,6 +294,11 @@ struct RuntimeUiStandardHudPlan {
   - Wire the new source into `engine/ui/CMakeLists.txt`.
   - Add `MK_runtime_ui_standard_widgets_tests` in root `CMakeLists.txt` and link it with `MK_ui`.
 
+- [x] Add a copy-avoidance static guard.
+  - Extend the targeted static contract chapter for this feature so the implementation must keep these positive proof needles: `RuntimeUiStandardWidgetProvenanceDesc`, `review_runtime_ui_standard_widget_provenance`, `runtime_ui_standard_widgets_external_engine_code=0`, `runtime_ui_standard_widgets_external_engine_assets=0`, and `runtime_ui_standard_widgets_ui_middleware=0`.
+  - Keep external-engine UI tokens only in the private deny-list helper, tests that prove fail-closed behavior, and documentation that explains the prohibition. Do not allow them in public API type names, sample feature IDs, package counters, manifest capability IDs, or generated game guidance as supported terms.
+  - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` after the static guard update. Expected: PASS.
+
 - [x] Add meter planning tests.
   - Test `plans_health_mana_stamina_meters` with three rows:
     - `health`: `value=75.0F`, `maximum=100.0F`, expected `normalized_value=0.75F`, `warning=false`, `depleted=false`.
@@ -370,6 +401,8 @@ The implementation is complete only when all items are true:
 - `MK_runtime_ui_standard_widgets_tests` passes.
 - Both sample package smoke lanes emit `runtime_ui_standard_widgets_ready=1`.
 - `runtime_ui_standard_widgets_external_engine_code=0`, `runtime_ui_standard_widgets_external_engine_assets=0`, and `runtime_ui_standard_widgets_ui_middleware=0` are emitted by both smoke lanes.
+- Provenance review reports `runtime_ui_standard_widgets_official_documentation_rows=3`, `runtime_ui_standard_widgets_first_party_design_rows=1`, `runtime_ui_standard_widgets_diagnostics=0`, and no third-party rows.
+- Static checks prove external engine UI tokens are fail-closed review terms only, not supported public API or compatibility terms.
 - `tools/check-dependency-policy.ps1` passes with no UI dependency changes.
 - `THIRD_PARTY_NOTICES.md` remains unchanged or contains a reviewed notice for any explicitly approved external material.
 - `docs/ui.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, and manifest fragments describe the same supported and unsupported boundaries.
@@ -382,10 +415,14 @@ The implementation is complete only when all items are true:
 - Unity Manual: [Comparison of UI systems in Unity](https://docs.unity3d.com/6000.0/Documentation/Manual/UI-system-compare.html)
 - Unity Legal: [Unity Terms of Service](https://unity.com/legal/terms-of-service)
 - Unity Legal: [Unity Editor Software Terms](https://unity.com/legal/editor-terms-of-service/software)
+- Unity Legal: [Unity Editor Source Code Terms](https://unity.com/legal/editor-source-code-terms)
 - Unreal Engine Documentation: [Building Your UI in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/building-your-ui-in-unreal-engine)
 - Unreal Engine Documentation: [Slate UI Framework](https://dev.epicgames.com/documentation/en-us/unreal-engine/slate-user-interface-programming-framework-for-unreal-engine)
 - Unreal Engine Legal: [Unreal Engine EULA](https://www.unrealengine.com/eula/unreal)
+- Epic Legal: [Epic Content License Agreement](https://www.unrealengine.com/eula/content)
 - Godot Documentation: [User interface nodes](https://docs.godotengine.org/en/stable/tutorials/ui/index.html)
 - Godot Documentation: [ProgressBar](https://docs.godotengine.org/en/stable/classes/class_progressbar.html)
 - Godot Legal: [Godot license](https://godotengine.org/license/)
 - Godot Documentation: [Complying with licenses](https://docs.godotengine.org/en/stable/about/complying_with_licenses.html)
+- U.S. Copyright Office: [Copyright in General FAQ](https://www.copyright.gov/help/faq/faq-general.html)
+- U.S. Copyright Office: [What is Copyright?](https://www.copyright.gov/what-is-copyright/)
