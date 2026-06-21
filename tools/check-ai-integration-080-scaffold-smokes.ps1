@@ -266,9 +266,15 @@ try {
     Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_ready" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_submitted" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_budget_diagnostics" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "--require-2d-gameplay-execution-loop" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "execute_runtime_gameplay_loop_2d_step" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_gameplay_execution_loop_status" "sample_2d_desktop_runtime_package main.cpp"
     $sample2dDesktopManifest = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json" | ConvertFrom-Json
     if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-effects-particles-smoke") {
         Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-effects-particles-smoke"
+    }
+    if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-gameplay-execution-loop-smoke") {
+        Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-gameplay-execution-loop-smoke"
     }
     Assert-PerformanceBudgets `
         $sample2dDesktopManifest `
@@ -280,6 +286,7 @@ try {
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-9slice-tiled" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-effects-particles" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
+    Assert-ContainsText $repositoryGamesCmake "--require-2d-gameplay-execution-loop" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
     foreach ($needle in @("load_runtime_asset_package", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "postprocess_policy_status=", "material_graph_authoring_targets=", "material_graph_compile_requests=", "--require-material-graph-authoring")) {
         Assert-ContainsText $materialShaderMain $needle "Desktop material/shader scaffold main.cpp"

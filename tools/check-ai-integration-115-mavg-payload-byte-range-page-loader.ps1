@@ -48,7 +48,7 @@ $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-27-mirakana-adaptive-virtual-geometry-master-plan-v1.md"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
-$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
+$mavgProductionLoopFragmentSurface = if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
     @{ Text = $aiLoopFragmentText; Label = "production loop fragment" }
 } else {
     @{
@@ -711,7 +711,7 @@ foreach ($surface in @(
     }
 }
 
-if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1")) {
+if ([string]$manifest.aiOperableProductionLoop.recommendedNextPlan.id -notin @("environment-commercial-excellence-v1", "environment-highest-commercial-readiness-v1", "2d-production-engine-capability-gap-cluster-v1")) {
     if ($manifest.aiOperableProductionLoop.currentActivePlan -eq "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" -and $manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
         Write-Error "engine/agent/manifest.json recommendedNextPlan.id must remain next-production-gap-selection after MAVG payload byte-range page loader closeout"
     }
