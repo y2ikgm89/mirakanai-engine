@@ -83,6 +83,28 @@ This plan is acceptable as the current highest-rigor implementation plan for the
 
 The remaining uncertainty is not unmodeled ambiguity; it is evidence still to be collected. Each unresolved item must stay represented by a concrete false, host-gated, or blocked row until its named task passes.
 
+## 2026-06-22 Official Source Revalidation Addendum
+
+The current plan was rechecked against official sources and Context7 on 2026-06-22. The planning constraints remain valid with these explicit interpretations:
+
+- D3D12 mesh shader execution must query `D3D12_FEATURE_DATA_D3D12_OPTIONS7::MeshShaderTier`; `D3D12_MESH_SHADER_TIER_NOT_SUPPORTED` is a host-gated blocker and `D3D12_MESH_SHADER_TIER_1` is the minimum positive support row.
+- D3D12 mesh execution must use mesh/amplification shader bind points or mesh dispatch/indirect-dispatch paths. A conventional IA/indexed draw fallback is allowed only as a fallback evidence row.
+- Vulkan mesh execution must require `VK_EXT_mesh_shader`, `VkPhysicalDeviceMeshShaderFeaturesEXT`, `VkPhysicalDeviceMeshShaderPropertiesEXT`, and explicit `vkCmdDrawMeshTasksEXT` execution. `vkCmdDrawMeshTasksIndirectEXT` and `vkCmdDrawMeshTasksIndirectCountEXT` remain separate subclaims with indirect-buffer range, alignment, draw-count, and synchronization evidence.
+- Metal mesh and ray-tracing rows must be Apple-host rows backed by current Apple feature-family tables and Xcode/Metal tooling. Mesh shading, indirect mesh draws, render-pipeline ray tracing, and acceleration-structure features must be recorded as separate capability rows because Apple feature availability and compatibility differ by family and feature.
+- DirectStorage remains an IO backend. It can prove low-overhead small-read routing only for the selected executor path; it cannot promote autonomous scheduling, GPU upload overlap, GPU destinations, GDeflate, or performance readiness by itself.
+- Nanite planning is clean-room comparison only. Epic public documentation supports taxonomy axes such as virtualized geometry, internal compressed format, fine-grained streaming, automatic LOD, fallback mesh behavior, and ray-tracing fallback behavior; it does not authorize `compatible`, `equivalent`, or `superior` product claims.
+- Async-overlap and broad optimization rows require internal counters plus reviewed profiler artifacts. PIX Timing Captures, Nsight Graphics GPU Trace, RGP, Intel GPA or supported alternatives, and Apple Metal tools each apply only to their named host/vendor/backend rows and must preserve tool version, capture mode, overhead, and missing-data diagnostics.
+
+## 2026-06-22 Plan Precision Verdict
+
+This document is a high-rigor gap-cluster and milestone plan, not a blanket readiness claim and not a promise that unfinished tasks can be implemented without task-local tightening. The quality bar is:
+
+- Tasks 1 through 5 have reached implementation-slice precision: public types, row ids, validation commands, negative tests, non-claims, docs, manifest rows, and static guards are named.
+- Tasks 6 through 11 are intentionally still milestone-level until selected. Before any code edit in those tasks, the implementer must add the same task-local precision used for Task 5: exact public/backend-private API names, validator output fields, schema fields, focused CTest target, negative tests, host-gated rows, and publication validation commands.
+- A future task is not ready for implementation if it only says "measure", "integrate", "optimize", "support", or "compare" without naming the exact data contract, backend feature query, artifact schema, ready field, and false/host-gated diagnostics.
+- The plan can be called highest-rigor for scope control and official-source gating today. It can be called highest-rigor for direct implementation only for the already tightened slices and for future slices after their task-local precision block is added.
+- If an official source changes, a tool reaches end-of-life, or a host/backend row cannot be reproduced, the row remains false or host-gated and the plan must be amended before implementation continues.
+
 ## Official-Recommended Implementation Rules
 
 These rules convert official documentation into non-negotiable plan behavior:
@@ -278,17 +300,27 @@ Final readback-slice validation evidence on 2026-06-22: DXC from Vulkan SDK 1.4.
 - Modify: `engine/runtime_rhi/CMakeLists.txt`
 - Test: `tests/unit/runtime_rhi_mavg_autonomous_streaming_scheduler_tests.cpp`
 
-- [ ] Define `RuntimeMavgAutonomousStreamingSchedulerState`, `RuntimeMavgAutonomousStreamingSchedulerDesc`, and `tick_runtime_mavg_autonomous_streaming_scheduler`.
-- [ ] The scheduler must own candidate selection from view state, residency, page heat, budget pressure, IO availability, and safe-point policy. The caller still owns state storage and tick cadence.
-- [ ] The scheduler must handle filesystem byte-range IO and the existing caller-owned DirectStorage executor as separate backend rows; it must not introduce global worker threads, global mounts, native handle exposure, or implicit package catalog mutation.
-- [ ] Add tests for deterministic prioritization, duplicate coalescing, camera movement, memory pressure eviction, safe-point atomicity, cancelled package rows, failed IO rows, DirectStorage executor failure, and bounded per-frame work.
-- [ ] `mavg_autonomous_streaming_scheduler_ready=true` only when the scheduler can select, dispatch, adopt, and evict pages over multiple frames without caller-precomputed page requests.
-- [ ] Run:
+- [x] Define `RuntimeMavgAutonomousStreamingSchedulerState`, `RuntimeMavgAutonomousStreamingSchedulerDesc`, and `tick_runtime_mavg_autonomous_streaming_scheduler`.
+- [x] The scheduler must own candidate selection from view state, residency, page heat, budget pressure, IO availability, and safe-point policy. The caller still owns state storage and tick cadence.
+- [x] The scheduler must handle filesystem byte-range IO and the existing caller-owned DirectStorage executor as separate backend rows; it must not introduce global worker threads, global mounts, native handle exposure, or implicit package catalog mutation.
+- [x] Add tests for deterministic prioritization, duplicate coalescing, camera movement, memory pressure eviction, safe-point atomicity, cancelled package rows, failed IO rows, DirectStorage executor failure, and bounded per-frame work.
+- [x] `mavg_autonomous_streaming_scheduler_ready=true` only when the scheduler can select, dispatch, adopt, and evict pages over multiple frames without caller-precomputed page requests.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests --output-on-failure
 ```
+
+**2026-06-22 scheduler slice evidence:** `mavg-autonomous-streaming-scheduler-v1` adds `RuntimeMavgAutonomousStreamingSchedulerState`, `RuntimeMavgAutonomousStreamingSchedulerDesc`, `RuntimeMavgAutonomousStreamingSchedulerResult`, `RuntimeMavgAutonomousStreamingIoBackendKind`, `RuntimeMavgAutonomousStreamingSafePointPolicy`, and `tick_runtime_mavg_autonomous_streaming_scheduler`. The tick composes `select_mavg_lod_clusters`, `plan_runtime_mavg_page_streaming_requests`, `load_runtime_mavg_payload_pages_from_filesystem`, `load_runtime_mavg_payload_pages_from_direct_storage`, `tick_runtime_mavg_page_streaming_background_service`, `plan_runtime_mavg_gpu_memory_pressure_residency`, and `execute_runtime_mavg_cluster_streaming_safe_point_adoption`. Focused tests prove selecting without caller-precomputed page requests, camera-movement-driven page request changes, page-heat priority, filesystem payload IO, caller-owned DirectStorage byte-range IO, duplicate pending coalescing, bounded dispatch/adoption, GPU-memory-pressure eviction planning, safe-point catalog refresh, cancelled page rows before IO, DirectStorage failure fail-closed behavior, and invalid mount-id safe-point atomicity. The focused ready row is `mavg_autonomous_streaming_scheduler_ready=1` for this scheduler only; native handles, renderer/RHI handle access, backend execution, async-overlap/performance proof, Metal readiness, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, and broad optimization remain unclaimed.
+
+Focused validation evidence on 2026-06-22:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-autonomous-streaming-scheduler.ps1 -RequireReady
+```
+
+Final scheduler-slice validation evidence on 2026-06-22: `tools/validate-mavg-autonomous-streaming-scheduler.ps1 -RequireReady` passed after the camera-movement/page-heat coverage was added and emitted `mavg_autonomous_streaming_scheduler_ready=1`, `mavg_autonomous_streaming_scheduler_native_handles_exposed=0`, `mavg_autonomous_streaming_scheduler_renderer_rhi_handles_touched=0`, `mavg_autonomous_streaming_scheduler_async_overlap_performance_proof=0`, and `mavg_autonomous_streaming_scheduler_broad_backend_readiness=0`. `tools/check-format.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, and `git diff --check` passed. Full `tools/validate.ps1` passed with 143/143 CTest tests. Windows-host diagnostics still report Metal/Apple evidence as host-gated, so this scheduler slice does not promote Metal readiness.
 
 ## Task 6: Measured Async-Overlap Performance Proof
 

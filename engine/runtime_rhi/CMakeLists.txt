@@ -1,6 +1,7 @@
 add_library(mirakana_runtime_rhi
     src/mavg_cluster_streaming_safe_point_adoption.cpp
     src/mavg_cluster_streaming_residency_closeout.cpp
+    src/mavg_autonomous_streaming_scheduler.cpp
     src/mavg_conventional_upload.cpp
     src/mavg_gpu_memory_residency.cpp
     src/mavg_mesh_shader_capability_gate.cpp
