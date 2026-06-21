@@ -29,6 +29,7 @@
 #include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
 #include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 #include "mirakana/runtime_rhi/mavg_async_overlap_performance_proof.hpp"
+#include "mirakana/runtime_rhi/mavg_mesh_shader_capability_gate.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/runtime_scene_rhi/mavg_backend_readiness_closeout.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
@@ -138,6 +139,7 @@ struct DesktopRuntimeGameOptions {
     bool require_mavg_win32_directstorage_sdk_adapter{false};
     bool require_mavg_async_overlap_performance_proof{false};
     bool require_mavg_backend_readiness{false};
+    bool require_mavg_mesh_shader_capability_gate{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -304,6 +306,28 @@ struct MavgBackendReadinessEvidence {
     std::size_t metal_host_gated_row_count{0};
     bool native_handles_exposed{false};
     bool metal_inference_used{false};
+    bool broad_backend_readiness{false};
+};
+
+struct MavgMeshShaderCapabilityGateEvidence {
+    bool requested{false};
+    bool ready{false};
+    std::size_t backend_rows{0};
+    std::size_t ready_backends{0};
+    std::size_t feature_query_rows{0};
+    std::size_t pipeline_statistics_rows{0};
+    bool d3d12_ready{false};
+    bool vulkan_ready{false};
+    bool fallback_ready{false};
+    bool fallback_to_conventional_indexed_draws{false};
+    bool mesh_shader_lod_ready{false};
+    bool mesh_shader_lod_d3d12_ready{false};
+    bool mesh_shader_lod_vulkan_ready{false};
+    bool native_handles_exposed{false};
+    bool mesh_shader_execution{false};
+    bool backend_execution{false};
+    bool metal_readiness{false};
+    bool nanite_equivalence{false};
     bool broad_backend_readiness{false};
 };
 
@@ -532,6 +556,67 @@ make_mavg_async_overlap_performance_sample(std::uint64_t total_ticks, std::uint6
     evidence.native_handles_exposed = result.native_handles_exposed;
     evidence.metal_inference_used = result.metal_inference_used;
     evidence.broad_backend_readiness = result.mavg_broad_backend_readiness_ready;
+    return evidence;
+}
+
+[[nodiscard]] mirakana::runtime_rhi::RuntimeMavgMeshShaderCapabilityBackendRow
+make_mavg_mesh_shader_capability_row(mirakana::rhi::BackendKind backend) {
+    using QueryKind = mirakana::runtime_rhi::RuntimeMavgMeshShaderCapabilityQueryKind;
+    return mirakana::runtime_rhi::RuntimeMavgMeshShaderCapabilityBackendRow{
+        .backend = backend,
+        .query_kind = backend == mirakana::rhi::BackendKind::d3d12
+                          ? QueryKind::d3d12_options7_mesh_shader_tier
+                          : QueryKind::vulkan_ext_mesh_shader_features_properties,
+        .feature_query_executed = true,
+        .mesh_shader_supported = true,
+        .task_or_amplification_shader_supported = true,
+        .pipeline_statistics_supported = true,
+        .max_mesh_workgroup_invocations = 128,
+        .max_mesh_output_vertices = 256,
+        .max_mesh_output_primitives = 128,
+        .max_task_payload_bytes = 16U * 1024U,
+        .max_shared_memory_bytes = 28U * 1024U,
+    };
+}
+
+[[nodiscard]] MavgMeshShaderCapabilityGateEvidence evaluate_mavg_mesh_shader_capability_gate(bool requested) {
+    MavgMeshShaderCapabilityGateEvidence evidence{.requested = requested};
+    if (!requested) {
+        return evidence;
+    }
+
+    const std::array rows{
+        make_mavg_mesh_shader_capability_row(mirakana::rhi::BackendKind::d3d12),
+        make_mavg_mesh_shader_capability_row(mirakana::rhi::BackendKind::vulkan),
+    };
+    const auto result = mirakana::runtime_rhi::evaluate_runtime_mavg_mesh_shader_capability_gate(
+        mirakana::runtime_rhi::RuntimeMavgMeshShaderCapabilityGateDesc{
+            .graph_asset = mirakana::asset_id_from_key_v2(
+                mirakana::AssetKeyV2{.value = "sample-desktop-runtime/mavg/mesh-shader-capability-gate"}),
+            .backend_rows = rows,
+            .require_d3d12_row = true,
+            .require_vulkan_row = true,
+            .compute_indirect_fallback_ready = true,
+        });
+
+    evidence.ready = result.succeeded();
+    evidence.backend_rows = result.backend_row_count;
+    evidence.ready_backends = result.ready_backend_count;
+    evidence.feature_query_rows = result.feature_query_row_count;
+    evidence.pipeline_statistics_rows = result.pipeline_statistics_row_count;
+    evidence.d3d12_ready = result.d3d12_capability_ready;
+    evidence.vulkan_ready = result.vulkan_capability_ready;
+    evidence.fallback_ready = result.compute_indirect_fallback_ready;
+    evidence.fallback_to_conventional_indexed_draws = result.fallback_to_conventional_indexed_draws;
+    evidence.mesh_shader_lod_ready = result.mavg_mesh_shader_lod_ready;
+    evidence.mesh_shader_lod_d3d12_ready = result.mavg_mesh_shader_lod_d3d12_ready;
+    evidence.mesh_shader_lod_vulkan_ready = result.mavg_mesh_shader_lod_vulkan_ready;
+    evidence.native_handles_exposed = result.exposed_native_handles;
+    evidence.mesh_shader_execution = result.executed_mesh_shader;
+    evidence.backend_execution = result.executed_backend;
+    evidence.metal_readiness = result.claimed_metal_readiness;
+    evidence.nanite_equivalence = result.claimed_nanite_equivalence;
+    evidence.broad_backend_readiness = result.claimed_broad_backend_readiness;
     return evidence;
 }
 
@@ -5775,6 +5860,7 @@ void print_usage() {
                  "[--require-mavg-win32-directstorage-sdk-adapter] "
                  "[--require-mavg-async-overlap-performance-proof] "
                  "[--require-mavg-backend-readiness] "
+                 "[--require-mavg-mesh-shader-capability-gate] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -6207,6 +6293,10 @@ void print_usage() {
         }
         if (arg == "--require-mavg-backend-readiness") {
             options.require_mavg_backend_readiness = true;
+            continue;
+        }
+        if (arg == "--require-mavg-mesh-shader-capability-gate") {
+            options.require_mavg_mesh_shader_capability_gate = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -8591,6 +8681,8 @@ int main(int argc, char** argv) {
     const auto mavg_async_overlap_performance_proof =
         evaluate_mavg_async_overlap_performance_proof(options.require_mavg_async_overlap_performance_proof);
     const auto mavg_backend_readiness = evaluate_mavg_backend_readiness(options.require_mavg_backend_readiness);
+    const auto mavg_mesh_shader_capability_gate =
+        evaluate_mavg_mesh_shader_capability_gate(options.require_mavg_mesh_shader_capability_gate);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -11221,6 +11313,43 @@ int main(int argc, char** argv) {
                   << " mavg_package_visible_backend_readiness_broad_backend_readiness="
                   << (mavg_backend_readiness.broad_backend_readiness ? 1 : 0);
     }
+    if (mavg_mesh_shader_capability_gate.requested) {
+        std::cout << " mavg_mesh_shader_capability_gate_status="
+                  << (mavg_mesh_shader_capability_gate.ready ? "ready" : "blocked")
+                  << " mavg_mesh_shader_capability_gate_ready=" << (mavg_mesh_shader_capability_gate.ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_backend_rows=" << mavg_mesh_shader_capability_gate.backend_rows
+                  << " mavg_mesh_shader_capability_gate_ready_backends="
+                  << mavg_mesh_shader_capability_gate.ready_backends << " mavg_mesh_shader_capability_gate_d3d12_ready="
+                  << (mavg_mesh_shader_capability_gate.d3d12_ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_vulkan_ready="
+                  << (mavg_mesh_shader_capability_gate.vulkan_ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_feature_query_rows="
+                  << mavg_mesh_shader_capability_gate.feature_query_rows
+                  << " mavg_mesh_shader_capability_gate_pipeline_statistics_rows="
+                  << mavg_mesh_shader_capability_gate.pipeline_statistics_rows
+                  << " mavg_mesh_shader_capability_gate_fallback_ready="
+                  << (mavg_mesh_shader_capability_gate.fallback_ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_fallback_to_conventional_indexed_draws="
+                  << (mavg_mesh_shader_capability_gate.fallback_to_conventional_indexed_draws ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_lod_ready="
+                  << (mavg_mesh_shader_capability_gate.mesh_shader_lod_ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_lod_d3d12_ready="
+                  << (mavg_mesh_shader_capability_gate.mesh_shader_lod_d3d12_ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_lod_vulkan_ready="
+                  << (mavg_mesh_shader_capability_gate.mesh_shader_lod_vulkan_ready ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_native_handles_exposed="
+                  << (mavg_mesh_shader_capability_gate.native_handles_exposed ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_mesh_shader_execution="
+                  << (mavg_mesh_shader_capability_gate.mesh_shader_execution ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_backend_execution="
+                  << (mavg_mesh_shader_capability_gate.backend_execution ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_metal_readiness="
+                  << (mavg_mesh_shader_capability_gate.metal_readiness ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_nanite_equivalence="
+                  << (mavg_mesh_shader_capability_gate.nanite_equivalence ? 1 : 0)
+                  << " mavg_mesh_shader_capability_gate_broad_backend_readiness="
+                  << (mavg_mesh_shader_capability_gate.broad_backend_readiness ? 1 : 0);
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -11284,6 +11413,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_mavg_backend_readiness && !mavg_backend_readiness.ready) {
+            return 3;
+        }
+        if (options.require_mavg_mesh_shader_capability_gate && !mavg_mesh_shader_capability_gate.ready) {
             return 3;
         }
         if (options.require_scene_gpu_bindings &&
