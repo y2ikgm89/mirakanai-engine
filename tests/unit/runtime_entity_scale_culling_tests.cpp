@@ -509,6 +509,163 @@ MK_TEST("runtime entity scale culling rejects invalid lod bands and draw update 
     MK_REQUIRE(diagnostic_count(budget_plan, Code::update_budget_exceeded) == 1U);
 }
 
+MK_TEST("runtime entity scale culling projects visible 2d sprite draw intent rows without renderer ownership") {
+    using BoundsKind = mirakana::runtime::RuntimeEntityScaleCullingBoundsKind;
+    using DrawIntent = mirakana::runtime::RuntimeEntityScaleCullingDrawIntentKind;
+    using IntentStatus = mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus;
+    using Status = mirakana::runtime::RuntimeEntityScaleCullingPlanStatus;
+    using UpdateBucket = mirakana::runtime::RuntimeEntityScaleCullingUpdateBucket;
+
+    const auto empty_3d = mirakana::runtime::RuntimeEntityScaleCullingBounds3D{};
+    const auto bounds = mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+        .min_x = 0.0F,
+        .min_y = 0.0F,
+        .max_x = 1.0F,
+        .max_y = 1.0F,
+    };
+    auto hero = make_entity("hero", BoundsKind::aabb_2d, bounds, empty_3d, 0x1U, UpdateBucket::priority, true, 2U);
+    hero.budget_protected = true;
+    hero.lod_bands = {
+        mirakana::runtime::RuntimeEntityScaleCullingLodBandDesc{
+            .lod_index = 0U,
+            .max_view_distance = 8.0F,
+            .draw_cost = 2U,
+            .update_cost = 1U,
+            .update_interval_frames = 1U,
+            .draw_intent = DrawIntent::sprite_2d,
+        },
+    };
+    auto mesh = make_entity("mesh", BoundsKind::aabb_3d, {},
+                            mirakana::runtime::RuntimeEntityScaleCullingBounds3D{
+                                .min_x = 0.0F,
+                                .min_y = 0.0F,
+                                .min_z = 0.0F,
+                                .max_x = 1.0F,
+                                .max_y = 1.0F,
+                                .max_z = 1.0F,
+                            },
+                            0x1U, UpdateBucket::normal, true, 3U);
+    mesh.lod_bands = {
+        mirakana::runtime::RuntimeEntityScaleCullingLodBandDesc{
+            .lod_index = 0U,
+            .max_view_distance = 8.0F,
+            .draw_cost = 1U,
+            .update_cost = 1U,
+            .update_interval_frames = 1U,
+            .draw_intent = DrawIntent::mesh_3d,
+        },
+    };
+    const auto plan =
+        mirakana::runtime::plan_runtime_entity_scale_culling(mirakana::runtime::RuntimeEntityScaleCullingRequest{
+            .entities = {mesh, hero},
+            .view =
+                mirakana::runtime::RuntimeEntityScaleCullingViewDesc{
+                    .bounds_kind = BoundsKind::aabb_2d,
+                    .bounds_2d =
+                        mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                            .min_x = -2.0F,
+                            .min_y = -2.0F,
+                            .max_x = 2.0F,
+                            .max_y = 2.0F,
+                        },
+                    .bounds_3d = empty_3d,
+                    .layer_mask = 0x1U,
+                    .max_visible_entities = 8U,
+                },
+        });
+    MK_REQUIRE(plan.status == Status::planned);
+
+    const auto intents = mirakana::runtime::plan_runtime_entity_scale_culling_sprite_draw_intents(
+        mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentRequest{
+            .culling_plan = &plan,
+            .max_draw_intent_rows = 4U,
+        });
+
+    MK_REQUIRE(intents.status == IntentStatus::ready);
+    MK_REQUIRE(intents.succeeded());
+    MK_REQUIRE(intents.logical_sprite_rows == 2U);
+    MK_REQUIRE(intents.visible_sprite_rows == 1U);
+    MK_REQUIRE(intents.culled_sprite_rows == 0U);
+    MK_REQUIRE(intents.non_sprite_visible_rows == 1U);
+    MK_REQUIRE(intents.rows.size() == 1U);
+    MK_REQUIRE(intents.rows[0].entity_id == "hero");
+    MK_REQUIRE(intents.rows[0].source_index == 2U);
+    MK_REQUIRE(intents.rows[0].lod_index == 0U);
+    MK_REQUIRE(intents.rows[0].projected_draw_cost == 2U);
+    MK_REQUIRE(intents.rows[0].stable_order == 2U);
+    MK_REQUIRE(intents.rows[0].budget_protected);
+    MK_REQUIRE(!intents.invoked_scene_mutation);
+    MK_REQUIRE(!intents.requested_renderer_ownership);
+    MK_REQUIRE(!intents.requested_native_handle_access);
+}
+
+MK_TEST("runtime entity scale culling sprite draw intents fail closed on invalid plans and budgets") {
+    using BoundsKind = mirakana::runtime::RuntimeEntityScaleCullingBoundsKind;
+    using Code = mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode;
+    using DrawIntent = mirakana::runtime::RuntimeEntityScaleCullingDrawIntentKind;
+    using IntentStatus = mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentStatus;
+    using UpdateBucket = mirakana::runtime::RuntimeEntityScaleCullingUpdateBucket;
+
+    const auto invalid = mirakana::runtime::plan_runtime_entity_scale_culling_sprite_draw_intents(
+        mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentRequest{});
+    MK_REQUIRE(invalid.status == IntentStatus::invalid_request);
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(invalid.diagnostics.size() == 1U);
+    MK_REQUIRE(invalid.diagnostics[0].code == Code::missing_culling_plan);
+
+    const auto empty_3d = mirakana::runtime::RuntimeEntityScaleCullingBounds3D{};
+    const auto bounds = mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+        .min_x = 0.0F,
+        .min_y = 0.0F,
+        .max_x = 1.0F,
+        .max_y = 1.0F,
+    };
+    auto first = make_entity("first", BoundsKind::aabb_2d, bounds, empty_3d, 0x1U, UpdateBucket::normal, true, 1U);
+    first.lod_bands = {
+        mirakana::runtime::RuntimeEntityScaleCullingLodBandDesc{
+            .lod_index = 0U,
+            .max_view_distance = 8.0F,
+            .draw_cost = 1U,
+            .update_cost = 1U,
+            .update_interval_frames = 1U,
+            .draw_intent = DrawIntent::sprite_2d,
+        },
+    };
+    auto second = make_entity("second", BoundsKind::aabb_2d, bounds, empty_3d, 0x1U, UpdateBucket::normal, true, 2U);
+    second.lod_bands = first.lod_bands;
+    const auto plan =
+        mirakana::runtime::plan_runtime_entity_scale_culling(mirakana::runtime::RuntimeEntityScaleCullingRequest{
+            .entities = {first, second},
+            .view =
+                mirakana::runtime::RuntimeEntityScaleCullingViewDesc{
+                    .bounds_kind = BoundsKind::aabb_2d,
+                    .bounds_2d =
+                        mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                            .min_x = -2.0F,
+                            .min_y = -2.0F,
+                            .max_x = 2.0F,
+                            .max_y = 2.0F,
+                        },
+                    .bounds_3d = empty_3d,
+                    .layer_mask = 0x1U,
+                    .max_visible_entities = 8U,
+                },
+        });
+
+    const auto budget = mirakana::runtime::plan_runtime_entity_scale_culling_sprite_draw_intents(
+        mirakana::runtime::RuntimeEntityScaleCullingSpriteDrawIntentRequest{
+            .culling_plan = &plan,
+            .max_draw_intent_rows = 1U,
+        });
+
+    MK_REQUIRE(budget.status == IntentStatus::budget_exceeded);
+    MK_REQUIRE(!budget.succeeded());
+    MK_REQUIRE(budget.rows.empty());
+    MK_REQUIRE(budget.visible_sprite_rows == 2U);
+    MK_REQUIRE(budget.diagnostics.size() == 1U);
+    MK_REQUIRE(budget.diagnostics[0].code == Code::draw_intent_budget_exceeded);
+}
+
 int main() {
     return mirakana::test::run_all();
 }

@@ -350,6 +350,10 @@ bool RuntimeEntityScaleCullingPlan::succeeded() const noexcept {
            status == RuntimeEntityScaleCullingPlanStatus::no_entities;
 }
 
+bool RuntimeEntityScaleCullingSpriteDrawIntentPlan::succeeded() const noexcept {
+    return status == RuntimeEntityScaleCullingSpriteDrawIntentStatus::ready && diagnostics.empty();
+}
+
 RuntimeEntityScaleCullingPlan plan_runtime_entity_scale_culling(const RuntimeEntityScaleCullingRequest& request) {
     RuntimeEntityScaleCullingPlan plan;
 
@@ -386,6 +390,59 @@ RuntimeEntityScaleCullingPlan plan_runtime_entity_scale_culling(const RuntimeEnt
 
     plan.status = plan.rows.empty() ? RuntimeEntityScaleCullingPlanStatus::no_entities
                                     : RuntimeEntityScaleCullingPlanStatus::planned;
+    return plan;
+}
+
+RuntimeEntityScaleCullingSpriteDrawIntentPlan
+plan_runtime_entity_scale_culling_sprite_draw_intents(const RuntimeEntityScaleCullingSpriteDrawIntentRequest& request) {
+    RuntimeEntityScaleCullingSpriteDrawIntentPlan plan;
+    if (request.culling_plan == nullptr) {
+        plan.status = RuntimeEntityScaleCullingSpriteDrawIntentStatus::invalid_request;
+        plan.diagnostics.push_back(RuntimeEntityScaleCullingSpriteDrawIntentDiagnostic{
+            .code = RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode::missing_culling_plan,
+        });
+        return plan;
+    }
+    if (!request.culling_plan->succeeded()) {
+        plan.status = RuntimeEntityScaleCullingSpriteDrawIntentStatus::invalid_request;
+        plan.diagnostics.push_back(RuntimeEntityScaleCullingSpriteDrawIntentDiagnostic{
+            .code = RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode::culling_plan_not_ready,
+        });
+        return plan;
+    }
+
+    plan.logical_sprite_rows = request.culling_plan->rows.size();
+    for (const auto& row : request.culling_plan->rows) {
+        if (!row.visible) {
+            ++plan.culled_sprite_rows;
+            continue;
+        }
+        if (row.draw_intent != RuntimeEntityScaleCullingDrawIntentKind::sprite_2d) {
+            ++plan.non_sprite_visible_rows;
+            continue;
+        }
+
+        ++plan.visible_sprite_rows;
+        plan.rows.push_back(RuntimeEntityScaleCullingSpriteDrawIntentRow{
+            .entity_id = row.entity_id,
+            .source_index = row.source_index,
+            .lod_index = row.lod_index,
+            .projected_draw_cost = row.projected_draw_cost,
+            .stable_order = row.source_index,
+            .budget_protected = row.budget_protected,
+        });
+    }
+
+    if (request.max_draw_intent_rows > 0U && plan.rows.size() > request.max_draw_intent_rows) {
+        plan.rows.clear();
+        plan.status = RuntimeEntityScaleCullingSpriteDrawIntentStatus::budget_exceeded;
+        plan.diagnostics.push_back(RuntimeEntityScaleCullingSpriteDrawIntentDiagnostic{
+            .code = RuntimeEntityScaleCullingSpriteDrawIntentDiagnosticCode::draw_intent_budget_exceeded,
+        });
+        return plan;
+    }
+
+    plan.status = RuntimeEntityScaleCullingSpriteDrawIntentStatus::ready;
     return plan;
 }
 

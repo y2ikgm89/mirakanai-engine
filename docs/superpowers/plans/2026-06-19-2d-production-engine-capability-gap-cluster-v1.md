@@ -315,8 +315,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Static/public checks: `git diff --check`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, and `tools/check-agents.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-06-22; static checks were ok and CTest reported `100% tests passed, 0 tests failed out of 135`.
 - IP provenance: `external_code_copied=0`, `external_assets_copied=0`, `third_party_api_surface_copied=0`, `third_party_ui_layout_copied=0`, `third_party_trademark_public_api=0`, `license_records_updated=not_applicable`, `official_docs_used_for_category_mapping_only=1`.
-- Publication: `tools/check-publication-preflight.ps1`, candidate commit `c6430a0d`, branch push, and draft PR #721 are complete.
-- Pending slice-close gates: PR #721 hosted CI, ready/merge, and local main synchronization.
+- Publication: `tools/check-publication-preflight.ps1`, branch push, PR #721, and publication closeout PR #724 are complete.
+- Slice close: PR #721 merged to `origin/main` at merge commit `3b4fe82e`; PR #724 merged publication evidence closeout at merge commit `23e56be8`; Phase 3 branch `codex/2d-dense-sprite-throughput` has merged that baseline.
 
 ### Phase 3: `2d-dense-sprite-throughput-v1`
 
@@ -363,6 +363,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 **Ready only when:** required workload rows exist, the selected package stays within declared budgets, diagnostics are zero, retained timing artifacts exist for any claimed measured row, and backend-specific rows do not infer cross-backend parity.
+
+**Evidence as of 2026-06-22:**
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` followed by `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_2d_sprite_throughput_tests MK_runtime_entity_scale_culling_tests` failed as expected before production code because `SpriteBatchProduction*` and runtime sprite draw-intent contracts did not exist.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_2d_sprite_throughput_tests MK_runtime_entity_scale_culling_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_2d_sprite_throughput_tests|MK_runtime_entity_scale_culling_tests"` passed after adding `SpriteBatchProductionThroughput*`, `plan_sprite_batch_production_throughput`, `RuntimeEntityScaleCullingSpriteDrawIntent*`, and `plan_runtime_entity_scale_culling_sprite_draw_intents`.
+- Package validator: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-sprite-throughput.ps1 -RequireReady` passed, including `desktop-runtime-release` package build, installed SDK validation, installed `sample_2d_desktop_runtime_package --require-2d-sprite-throughput` smoke, and CPack. The installed smoke proved `2d_sprite_throughput_status=ready`, `2d_sprite_throughput_ready=1`, 3 workload rows, dense 512/4096 visible sprite rows, 12000 logical projectile rows, 768 visible projectile rows, 11232 culled projectile rows, 14 draw rows, 5376 instance rows, 319488 upload bytes, 6 atlas-page rows, 5 material-lane rows, 1 measured workload row, 2 host-gated workload rows, 1 retained timing artifact, retained hash 9817, `diagnostics=0`, `over_budget_rows=0`, clean culling rows, and zero scene mutation, renderer ownership, native handle access, broad optimization, cross-backend parity, and Metal readiness counters.
+- Manifest/static sync completed locally: `games/sample_2d_desktop_runtime_package/game.agent.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composed `engine/agent/manifest.json`, `tools/validate-installed-desktop-runtime.ps1`, `tools/check-ai-integration-080-scaffold-smokes.ps1`, and `tools/check-ai-integration-020-engine-manifest.ps1` carry `installed-2d-sprite-throughput-smoke`, `--require-2d-sprite-throughput`, and selected counter needles.
+- Slice-close local gates: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, and full `tools/validate.ps1` passed on 2026-06-22 with CTest 139/139 passing. Pending publication gates: PR #725 ready conversion, hosted CI/PR Gate, merge, and local main synchronization.
 
 ### Phase 4: `2d-physics-runtime-extension-v1`
 
