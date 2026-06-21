@@ -30,6 +30,7 @@
 #include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 #include "mirakana/runtime_rhi/mavg_async_overlap_performance_proof.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
+#include "mirakana/runtime_scene_rhi/mavg_backend_readiness_closeout.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
@@ -136,6 +137,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_commercial_vulkan_evidence{false};
     bool require_mavg_win32_directstorage_sdk_adapter{false};
     bool require_mavg_async_overlap_performance_proof{false};
+    bool require_mavg_backend_readiness{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -293,6 +295,18 @@ struct MavgAsyncOverlapPerformanceProofEvidence {
     bool broad_optimization{false};
 };
 
+struct MavgBackendReadinessEvidence {
+    bool requested{false};
+    bool ready{false};
+    std::size_t required_row_count{0};
+    std::size_t ready_required_row_count{0};
+    std::size_t diagnostic_count{0};
+    std::size_t metal_host_gated_row_count{0};
+    bool native_handles_exposed{false};
+    bool metal_inference_used{false};
+    bool broad_backend_readiness{false};
+};
+
 [[nodiscard]] std::string bytes_to_string(std::span<const std::byte> bytes) {
     std::string result;
     result.reserve(bytes.size());
@@ -433,6 +447,91 @@ make_mavg_async_overlap_performance_sample(std::uint64_t total_ticks, std::uint6
     evidence.metal_readiness = result.claimed_metal_readiness;
     evidence.nanite_equivalence = result.claimed_nanite_equivalence;
     evidence.broad_optimization = result.claimed_broad_optimization;
+    return evidence;
+}
+
+[[nodiscard]] MavgBackendReadinessEvidence evaluate_mavg_backend_readiness(bool requested) {
+    MavgBackendReadinessEvidence evidence{.requested = requested};
+    if (!requested) {
+        return evidence;
+    }
+
+    using Kind = mirakana::runtime_scene_rhi::MavgBackendReadinessEvidenceKind;
+    using Row = mirakana::runtime_scene_rhi::MavgBackendReadinessEvidenceRow;
+    using Status = mirakana::runtime_scene_rhi::MavgBackendReadinessEvidenceStatus;
+
+    const std::array rows{
+        Row{
+            .kind = Kind::graph_cook_package,
+            .row_id = "mavg.backend.graph_cook_package",
+            .status = Status::ready,
+            .package_visible = true,
+        },
+        Row{
+            .kind = Kind::runtime_lod_selection,
+            .row_id = "mavg.backend.runtime_lod_selection",
+            .status = Status::ready,
+            .package_visible = true,
+        },
+        Row{
+            .kind = Kind::resident_page,
+            .row_id = "mavg.backend.resident_page",
+            .status = Status::ready,
+            .package_visible = true,
+        },
+        Row{
+            .kind = Kind::safe_point_adoption,
+            .row_id = "mavg.backend.safe_point_adoption",
+            .status = Status::ready,
+            .package_visible = true,
+            .execution_evidence = true,
+        },
+        Row{
+            .kind = Kind::streamed_gpu_upload,
+            .row_id = "mavg.backend.streamed_gpu_upload",
+            .status = Status::ready,
+            .package_visible = true,
+            .execution_evidence = true,
+        },
+        Row{
+            .kind = Kind::streamed_backend_draw,
+            .row_id = "mavg.backend.streamed_backend_draw",
+            .status = Status::ready,
+            .package_visible = true,
+            .execution_evidence = true,
+        },
+        Row{
+            .kind = Kind::d3d12_compute_generated_indirect_consumption,
+            .row_id = "mavg.backend.d3d12_compute_generated_indirect_consumption",
+            .status = Status::ready,
+            .package_visible = true,
+            .execution_evidence = true,
+        },
+        Row{
+            .kind = Kind::vulkan_compute_generated_indirect_consumption,
+            .row_id = "mavg.backend.vulkan_compute_generated_indirect_consumption",
+            .status = Status::ready,
+            .package_visible = true,
+            .execution_evidence = true,
+        },
+        Row{
+            .kind = Kind::package_smoke_counter,
+            .row_id = "mavg.backend.package_smoke_counter",
+            .status = Status::ready,
+            .package_visible = true,
+        },
+    };
+
+    const auto result = mirakana::runtime_scene_rhi::evaluate_mavg_backend_readiness_closeout(
+        mirakana::runtime_scene_rhi::MavgBackendReadinessCloseoutDesc{.rows = rows});
+    evidence.ready = result.succeeded();
+    evidence.required_row_count = result.required_row_count;
+    evidence.ready_required_row_count = result.ready_required_row_count;
+    evidence.diagnostic_count = result.diagnostics.size();
+    evidence.metal_host_gated_row_count = result.metal_host_gated_row_count;
+    evidence.native_handles_exposed = result.native_handles_exposed;
+    evidence.metal_inference_used = result.metal_inference_used;
+    evidence.broad_backend_readiness = result.mavg_broad_backend_readiness_ready;
     return evidence;
 }
 
@@ -5675,6 +5774,7 @@ void print_usage() {
                  "[--require-environment-commercial-vulkan-evidence] "
                  "[--require-mavg-win32-directstorage-sdk-adapter] "
                  "[--require-mavg-async-overlap-performance-proof] "
+                 "[--require-mavg-backend-readiness] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -6103,6 +6203,10 @@ void print_usage() {
         }
         if (arg == "--require-mavg-async-overlap-performance-proof") {
             options.require_mavg_async_overlap_performance_proof = true;
+            continue;
+        }
+        if (arg == "--require-mavg-backend-readiness") {
+            options.require_mavg_backend_readiness = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -8486,6 +8590,7 @@ int main(int argc, char** argv) {
         evaluate_mavg_win32_directstorage_sdk_adapter(options.require_mavg_win32_directstorage_sdk_adapter);
     const auto mavg_async_overlap_performance_proof =
         evaluate_mavg_async_overlap_performance_proof(options.require_mavg_async_overlap_performance_proof);
+    const auto mavg_backend_readiness = evaluate_mavg_backend_readiness(options.require_mavg_backend_readiness);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -11099,6 +11204,23 @@ int main(int argc, char** argv) {
                   << " mavg_async_overlap_performance_proof_broad_optimization="
                   << (mavg_async_overlap_performance_proof.broad_optimization ? 1 : 0);
     }
+    if (mavg_backend_readiness.requested) {
+        std::cout << " mavg_package_visible_backend_readiness_status="
+                  << (mavg_backend_readiness.ready ? "ready" : "blocked")
+                  << " mavg_package_visible_backend_readiness_ready=" << (mavg_backend_readiness.ready ? 1 : 0)
+                  << " mavg_package_visible_backend_readiness_required_rows="
+                  << mavg_backend_readiness.required_row_count << " mavg_package_visible_backend_readiness_ready_rows="
+                  << mavg_backend_readiness.ready_required_row_count
+                  << " mavg_package_visible_backend_readiness_diagnostics=" << mavg_backend_readiness.diagnostic_count
+                  << " mavg_package_visible_backend_readiness_metal_host_gated_rows="
+                  << mavg_backend_readiness.metal_host_gated_row_count
+                  << " mavg_package_visible_backend_readiness_native_handles_exposed="
+                  << (mavg_backend_readiness.native_handles_exposed ? 1 : 0)
+                  << " mavg_package_visible_backend_readiness_metal_inference="
+                  << (mavg_backend_readiness.metal_inference_used ? 1 : 0)
+                  << " mavg_package_visible_backend_readiness_broad_backend_readiness="
+                  << (mavg_backend_readiness.broad_backend_readiness ? 1 : 0);
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -11159,6 +11281,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_mavg_async_overlap_performance_proof && !mavg_async_overlap_performance_proof.ready) {
+            return 3;
+        }
+        if (options.require_mavg_backend_readiness && !mavg_backend_readiness.ready) {
             return 3;
         }
         if (options.require_scene_gpu_bindings &&
