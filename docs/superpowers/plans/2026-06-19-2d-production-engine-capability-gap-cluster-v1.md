@@ -261,7 +261,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Static/public checks: `git diff --check`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-agents.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-toolchain.ps1`, and `tools/check-public-api-boundaries.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-06-21; static checks were ok and CTest reported `100% tests passed, 0 tests failed out of 132`.
 - IP provenance: `external_code_copied=0`, `external_assets_copied=0`, `third_party_api_surface_copied=0`, `third_party_ui_layout_copied=0`, `third_party_trademark_public_api=0`, `license_records_updated=not_applicable`, `official_docs_used_for_category_mapping_only=1`.
-- Pending slice-close gates: publication preflight, candidate commit, push/PR, hosted CI, merge, and local main synchronization.
+- Publication: PR #716 / merge commit `0123baffe8aa436d151fc623fe9a37b3890893a6` completed Phase 1 publication and main synchronization evidence for this branch baseline.
 
 ### Phase 2: `2d-sprite-atlas-runtime-residency-v1`
 
@@ -315,7 +315,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Static/public checks: `git diff --check`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, and `tools/check-agents.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-06-22; static checks were ok and CTest reported `100% tests passed, 0 tests failed out of 135`.
 - IP provenance: `external_code_copied=0`, `external_assets_copied=0`, `third_party_api_surface_copied=0`, `third_party_ui_layout_copied=0`, `third_party_trademark_public_api=0`, `license_records_updated=not_applicable`, `official_docs_used_for_category_mapping_only=1`.
-- Pending slice-close gates: publication preflight, candidate commit, push/PR, hosted CI, merge, and local main synchronization.
+- Publication: `tools/check-publication-preflight.ps1`, candidate commit `c6430a0d`, branch push, and draft PR #721 are complete.
+- Pending slice-close gates: PR #721 hosted CI, ready/merge, and local main synchronization.
 
 ### Phase 3: `2d-dense-sprite-throughput-v1`
 
