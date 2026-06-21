@@ -28,6 +28,7 @@ add_library(mirakana_runtime
     src/scripting_sandbox.cpp
     src/session_services.cpp
     src/simulation_orchestration.cpp
+    src/sprite_atlas_residency.cpp
     src/sprite_collision_hitbox.cpp
     src/sprite_effect_particles.cpp
     src/world_entity_model.cpp
