@@ -414,6 +414,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Ready only when:** exact shape sweep/TOI rows, deterministic contact rows, joint rows, trigger rows, package counters, and zero native/middleware handle exposure are all validated.
 
+**Phase 4 evidence (2026-06-22):**
+
+- RED/GREEN tests added `MK_physics2d_runtime_extension_tests` for circle-vs-circle, circle-vs-AABB, AABB-vs-AABB exact sweeps, no-hit rows, initial-overlap rows, row-budget rejection, kinematic contact resolution, distance/hinge/prismatic/spring joint rows, trigger enter/exit data rows, and zero native/middleware dispatch counters.
+- Package-visible evidence added `sample_2d_desktop_runtime_package --require-2d-physics-runtime-extension`, `installed-2d-physics-runtime-extension-smoke`, installed validator expectations, CMake smoke args, game manifest rows, and static AI integration needles. The selected package smoke proves `2d_physics_runtime_extension_status=ready`, `simulate_status=simulated`, 2 simulation runs, 5 TOI rows, 3 exact sweep shape-pair rows, 4 hit rows, 1 no-hit row, 1 initial-overlap row, 1 kinematic contact row, 4 joint rows across distance/hinge/prismatic/spring, 2 trigger event rows, clean diagnostics, `native_handle_exposure=0`, `middleware_dispatches=0`, and `dynamic_vs_dynamic_ccd_claimed=0`.
+- Focused package validation: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { .\tools\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--max-frames','3','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-2d-physics-runtime-extension') }"` passed; CPack produced `Mirakanai-0.1.0-Windows-AMD64.zip` and installed desktop runtime validation reported `installed-desktop-runtime-validation: ok`.
+- Slice-close local gates: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, focused `tools/check-tidy.ps1 -Files engine/physics/src/physics2d.cpp,tests/unit/physics2d_runtime_extension_tests.cpp`, focused `tools/check-tidy.ps1 -Preset desktop-runtime-release -Configuration Release -Files games/sample_2d_desktop_runtime_package/main.cpp`, focused build/CTest, and full `tools/validate.ps1` passed on 2026-06-22 with CTest 140/140 passing. Pending publication gates: candidate commit, branch push, PR, hosted CI/PR Gate, merge, and local main synchronization.
+
 ### Phase 5: `2d-input-device-production-ux-v1`
 
 **Target modules:**

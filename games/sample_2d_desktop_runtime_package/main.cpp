@@ -113,6 +113,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_gameplay_execution_loop{false};
     bool require_2d_sprite_atlas_residency{false};
     bool require_2d_sprite_throughput{false};
+    bool require_2d_physics_runtime_extension{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -274,6 +275,32 @@ struct SpriteThroughputProbeResult {
     bool claimed_broad_optimization{false};
     bool claimed_cross_backend_parity{false};
     bool claimed_metal_readiness{false};
+    bool ready{false};
+};
+
+struct Physics2DRuntimeExtensionProbeResult {
+    mirakana::Physics2DSimulateStepStatus simulate_status{mirakana::Physics2DSimulateStepStatus::invalid_request};
+    mirakana::Physics2DRuntimeDiagnostic diagnostic{mirakana::Physics2DRuntimeDiagnostic::none};
+    std::uint64_t simulation_runs{0U};
+    std::uint64_t time_of_impact_rows{0U};
+    std::uint64_t exact_sweep_shape_pair_rows{0U};
+    std::uint64_t hit_rows{0U};
+    std::uint64_t no_hit_rows{0U};
+    std::uint64_t initial_overlap_rows{0U};
+    std::uint64_t kinematic_contact_rows{0U};
+    std::uint64_t joint_rows{0U};
+    std::uint64_t distance_joint_rows{0U};
+    std::uint64_t hinge_joint_rows{0U};
+    std::uint64_t prismatic_joint_rows{0U};
+    std::uint64_t spring_joint_rows{0U};
+    std::uint64_t trigger_event_rows{0U};
+    std::uint64_t trigger_enter_rows{0U};
+    std::uint64_t trigger_stay_rows{0U};
+    std::uint64_t trigger_exit_rows{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t native_handle_exposure{0U};
+    std::uint64_t middleware_dispatches{0U};
+    bool dynamic_vs_dynamic_ccd_claimed{false};
     bool ready{false};
 };
 
@@ -1283,6 +1310,21 @@ sprite_atlas_residency_status_name(mirakana::runtime::RuntimeSpriteAtlasResidenc
         return "budget_exceeded";
     }
     return "unknown";
+}
+
+[[nodiscard]] const char* physics2d_simulate_status_name(mirakana::Physics2DSimulateStepStatus status) noexcept {
+    switch (status) {
+    case mirakana::Physics2DSimulateStepStatus::simulated:
+        return "simulated";
+    case mirakana::Physics2DSimulateStepStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+physics2d_runtime_extension_status_name(const Physics2DRuntimeExtensionProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
 }
 
 [[nodiscard]] const char*
@@ -4586,6 +4628,267 @@ make_sprite_throughput_dense_draw_intents(std::uint64_t count, std::uint32_t mat
         !result.requested_renderer_ownership && !result.requested_native_handle_access &&
         !result.claimed_broad_optimization && !result.claimed_cross_backend_parity && !result.claimed_metal_readiness;
     return result;
+}
+
+[[nodiscard]] mirakana::PhysicsBody2DDesc physics2d_runtime_static_box(mirakana::Vec2 position,
+                                                                       mirakana::Vec2 half_extents,
+                                                                       bool trigger = false,
+                                                                       bool collision_enabled = true) {
+    return mirakana::PhysicsBody2DDesc{
+        .position = position,
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = half_extents,
+        .collision_enabled = collision_enabled,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = 1U,
+        .collision_mask = 0xFFFF'FFFFU,
+        .trigger = trigger,
+    };
+}
+
+[[nodiscard]] mirakana::PhysicsBody2DDesc physics2d_runtime_dynamic_box(mirakana::Vec2 position,
+                                                                        mirakana::Vec2 velocity,
+                                                                        mirakana::Vec2 half_extents,
+                                                                        bool collision_enabled = true) {
+    auto desc = physics2d_runtime_static_box(position, half_extents, false, collision_enabled);
+    desc.velocity = velocity;
+    desc.mass = 1.0F;
+    desc.dynamic = true;
+    return desc;
+}
+
+[[nodiscard]] mirakana::PhysicsBody2DDesc physics2d_runtime_static_circle(mirakana::Vec2 position, float radius,
+                                                                          bool trigger = false,
+                                                                          bool collision_enabled = true) {
+    return mirakana::PhysicsBody2DDesc{
+        .position = position,
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = radius, .y = radius},
+        .collision_enabled = collision_enabled,
+        .shape = mirakana::PhysicsShape2DKind::circle,
+        .radius = radius,
+        .collision_layer = 1U,
+        .collision_mask = 0xFFFF'FFFFU,
+        .trigger = trigger,
+    };
+}
+
+[[nodiscard]] mirakana::PhysicsBody2DDesc physics2d_runtime_dynamic_circle(mirakana::Vec2 position,
+                                                                           mirakana::Vec2 velocity, float radius,
+                                                                           bool collision_enabled = true) {
+    auto desc = physics2d_runtime_static_circle(position, radius, false, collision_enabled);
+    desc.velocity = velocity;
+    desc.mass = 1.0F;
+    desc.dynamic = true;
+    return desc;
+}
+
+[[nodiscard]] Physics2DRuntimeExtensionProbeResult validate_2d_physics_runtime_extension_package_evidence() {
+    Physics2DRuntimeExtensionProbeResult probe;
+
+    mirakana::PhysicsWorld2D sweep_world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    const auto circle_target =
+        sweep_world.create_body(physics2d_runtime_static_circle(mirakana::Vec2{.x = 5.0F, .y = 0.0F}, 0.5F));
+    const auto aabb_target = sweep_world.create_body(
+        physics2d_runtime_static_box(mirakana::Vec2{.x = 5.0F, .y = 3.0F}, mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+    const auto second_aabb_target = sweep_world.create_body(
+        physics2d_runtime_static_box(mirakana::Vec2{.x = 5.0F, .y = 6.0F}, mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+    const auto overlap_target = sweep_world.create_body(
+        physics2d_runtime_static_box(mirakana::Vec2{.x = 0.0F, .y = -3.0F}, mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+    const auto circle_vs_circle = sweep_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 0.0F, .y = 0.0F}, mirakana::Vec2{.x = 10.0F, .y = 0.0F}, 0.5F));
+    const auto circle_vs_aabb = sweep_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 0.0F, .y = 3.0F}, mirakana::Vec2{.x = 10.0F, .y = 0.0F}, 0.25F));
+    const auto aabb_vs_aabb = sweep_world.create_body(
+        physics2d_runtime_dynamic_box(mirakana::Vec2{.x = 0.0F, .y = 6.0F}, mirakana::Vec2{.x = 10.0F, .y = 0.0F},
+                                      mirakana::Vec2{.x = 0.25F, .y = 0.25F}));
+    const auto initial_overlap = sweep_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 0.0F, .y = -3.0F}, mirakana::Vec2{.x = 1.0F, .y = 0.0F}, 0.25F));
+    const auto no_hit = sweep_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 0.0F, .y = 9.0F}, mirakana::Vec2{.x = 1.0F, .y = 0.0F}, 0.25F));
+
+    const auto sweep = mirakana::simulate_physics2d_step(sweep_world, mirakana::Physics2DContinuousCollisionRequest{
+                                                                          .delta_seconds = 1.0F,
+                                                                          .skin_width = 0.0F,
+                                                                          .include_triggers = false,
+                                                                          .max_time_of_impact_rows = 8U,
+                                                                          .max_kinematic_contact_rows = 0U,
+                                                                          .max_joint_rows = 0U,
+                                                                          .max_trigger_event_rows = 0U,
+                                                                      });
+
+    mirakana::PhysicsWorld2D constraint_world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    const auto wall = constraint_world.create_body(
+        physics2d_runtime_static_box(mirakana::Vec2{.x = 3.0F, .y = 0.0F}, mirakana::Vec2{.x = 0.5F, .y = 1.0F}));
+    const auto kinematic = constraint_world.create_body(
+        physics2d_runtime_dynamic_box(mirakana::Vec2{.x = 0.0F, .y = 0.0F}, mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                      mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+    const auto first = constraint_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 0.0F, .y = 4.0F}, mirakana::Vec2{.x = 0.0F, .y = 0.0F}, 0.25F, false));
+    const auto second = constraint_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 4.0F, .y = 4.0F}, mirakana::Vec2{.x = 0.0F, .y = 0.0F}, 0.25F, false));
+    const auto trigger = constraint_world.create_body(
+        physics2d_runtime_static_box(mirakana::Vec2{.x = 7.0F, .y = 0.0F}, mirakana::Vec2{.x = 1.0F, .y = 1.0F}, true));
+    const auto trigger_guest = constraint_world.create_body(physics2d_runtime_dynamic_circle(
+        mirakana::Vec2{.x = 7.0F, .y = 0.0F}, mirakana::Vec2{.x = 0.0F, .y = 0.0F}, 0.25F));
+
+    mirakana::Physics2DContinuousCollisionRequest constraint_request;
+    constraint_request.delta_seconds = 1.0F;
+    constraint_request.skin_width = 0.0F;
+    constraint_request.include_triggers = true;
+    constraint_request.max_time_of_impact_rows = 8U;
+    constraint_request.max_kinematic_contact_rows = 4U;
+    constraint_request.max_joint_rows = 8U;
+    constraint_request.max_trigger_event_rows = 4U;
+    constraint_request.kinematic_requests.push_back(mirakana::Physics2DKinematicContactResolutionRequest{
+        .body = kinematic,
+        .attempted_displacement = mirakana::Vec2{.x = 5.0F, .y = 1.0F},
+        .skin_width = 0.0F,
+        .max_iterations = 2U,
+    });
+    constraint_request.joints = std::vector<mirakana::Physics2DJointDesc>{
+        mirakana::Physics2DJointDesc{
+            .kind = mirakana::Physics2DJointKind::distance,
+            .first = first,
+            .second = second,
+            .target_distance = 2.0F,
+        },
+        mirakana::Physics2DJointDesc{
+            .kind = mirakana::Physics2DJointKind::hinge,
+            .first = first,
+            .second = second,
+            .target_distance = 0.0F,
+        },
+        mirakana::Physics2DJointDesc{
+            .kind = mirakana::Physics2DJointKind::prismatic,
+            .first = first,
+            .second = second,
+            .axis = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+            .minimum_translation = 1.0F,
+            .maximum_translation = 3.0F,
+        },
+        mirakana::Physics2DJointDesc{
+            .kind = mirakana::Physics2DJointKind::spring,
+            .first = first,
+            .second = second,
+            .target_distance = 2.0F,
+            .stiffness = 0.5F,
+        },
+    };
+    constraint_request.previous_trigger_overlaps.push_back(
+        mirakana::PhysicsTriggerOverlap2D{.first = trigger, .second = wall});
+
+    const auto constraints = mirakana::simulate_physics2d_step(constraint_world, constraint_request);
+
+    probe.simulation_runs = 2U;
+    probe.simulate_status = sweep.status == mirakana::Physics2DSimulateStepStatus::simulated &&
+                                    constraints.status == mirakana::Physics2DSimulateStepStatus::simulated
+                                ? mirakana::Physics2DSimulateStepStatus::simulated
+                                : mirakana::Physics2DSimulateStepStatus::invalid_request;
+    if (sweep.diagnostic != mirakana::Physics2DRuntimeDiagnostic::none) {
+        probe.diagnostic = sweep.diagnostic;
+        ++probe.diagnostics;
+    }
+    if (constraints.diagnostic != mirakana::Physics2DRuntimeDiagnostic::none) {
+        probe.diagnostic = constraints.diagnostic;
+        ++probe.diagnostics;
+    }
+
+    probe.time_of_impact_rows = sweep.time_of_impact_rows.size();
+    for (const auto& row : sweep.time_of_impact_rows) {
+        if (row.diagnostic != mirakana::Physics2DRuntimeDiagnostic::none) {
+            ++probe.diagnostics;
+        }
+        if (row.hit) {
+            ++probe.hit_rows;
+        } else {
+            ++probe.no_hit_rows;
+        }
+        if (row.initial_overlap) {
+            ++probe.initial_overlap_rows;
+        }
+        if ((row.body == circle_vs_circle && row.hit_body == circle_target) ||
+            (row.body == circle_vs_aabb && row.hit_body == aabb_target) ||
+            (row.body == aabb_vs_aabb && row.hit_body == second_aabb_target)) {
+            ++probe.exact_sweep_shape_pair_rows;
+        }
+        if (row.body == initial_overlap && row.hit_body != overlap_target) {
+            ++probe.diagnostics;
+        }
+        if (row.body == no_hit && row.hit) {
+            ++probe.diagnostics;
+        }
+    }
+
+    probe.kinematic_contact_rows = constraints.kinematic_contact_rows.size();
+    for (const auto& row : constraints.kinematic_contact_rows) {
+        if (row.diagnostic != mirakana::Physics2DRuntimeDiagnostic::none) {
+            ++probe.diagnostics;
+        }
+    }
+    probe.joint_rows = constraints.joint_rows.size();
+    for (const auto& row : constraints.joint_rows) {
+        if (row.diagnostic != mirakana::Physics2DRuntimeDiagnostic::none) {
+            ++probe.diagnostics;
+        }
+        switch (row.kind) {
+        case mirakana::Physics2DJointKind::distance:
+            ++probe.distance_joint_rows;
+            break;
+        case mirakana::Physics2DJointKind::hinge:
+            ++probe.hinge_joint_rows;
+            break;
+        case mirakana::Physics2DJointKind::prismatic:
+            ++probe.prismatic_joint_rows;
+            break;
+        case mirakana::Physics2DJointKind::spring:
+            ++probe.spring_joint_rows;
+            break;
+        }
+    }
+    probe.trigger_event_rows = constraints.trigger_event_rows.size();
+    for (const auto& row : constraints.trigger_event_rows) {
+        if (row.trigger_body != trigger) {
+            ++probe.diagnostics;
+        }
+        if (row.kind == mirakana::Physics2DAreaTriggerEventKind::enter && row.other_body != trigger_guest) {
+            ++probe.diagnostics;
+        }
+        if (row.kind == mirakana::Physics2DAreaTriggerEventKind::exit && row.other_body != wall) {
+            ++probe.diagnostics;
+        }
+        switch (row.kind) {
+        case mirakana::Physics2DAreaTriggerEventKind::enter:
+            ++probe.trigger_enter_rows;
+            break;
+        case mirakana::Physics2DAreaTriggerEventKind::stay:
+            ++probe.trigger_stay_rows;
+            break;
+        case mirakana::Physics2DAreaTriggerEventKind::exit:
+            ++probe.trigger_exit_rows;
+            break;
+        }
+    }
+
+    probe.native_handle_exposure = sweep.native_handle_exposure_count + constraints.native_handle_exposure_count;
+    probe.middleware_dispatches = sweep.middleware_dispatch_count + constraints.middleware_dispatch_count;
+    probe.ready = probe.simulate_status == mirakana::Physics2DSimulateStepStatus::simulated &&
+                  probe.simulation_runs == 2U && probe.time_of_impact_rows == 5U &&
+                  probe.exact_sweep_shape_pair_rows == 3U && probe.hit_rows == 4U && probe.no_hit_rows == 1U &&
+                  probe.initial_overlap_rows == 1U && probe.kinematic_contact_rows == 1U && probe.joint_rows == 4U &&
+                  probe.distance_joint_rows == 1U && probe.hinge_joint_rows == 1U && probe.prismatic_joint_rows == 1U &&
+                  probe.spring_joint_rows == 1U && probe.trigger_event_rows == 2U && probe.trigger_enter_rows == 1U &&
+                  probe.trigger_stay_rows == 0U && probe.trigger_exit_rows == 1U && probe.diagnostics == 0U &&
+                  probe.native_handle_exposure == 0U && probe.middleware_dispatches == 0U &&
+                  !probe.dynamic_vs_dynamic_ccd_claimed;
+    return probe;
 }
 
 [[nodiscard]] std::size_t
@@ -9698,7 +10001,7 @@ void print_usage() {
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
-                 "[--require-2d-sprite-throughput] "
+                 "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
@@ -9839,6 +10142,10 @@ void print_usage() {
         }
         if (arg == "--require-2d-sprite-throughput") {
             options.require_2d_sprite_throughput = true;
+            continue;
+        }
+        if (arg == "--require-2d-physics-runtime-extension") {
+            options.require_2d_physics_runtime_extension = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -10576,6 +10883,9 @@ int main(int argc, char** argv) {
     const auto sprite_throughput_probe = options.require_2d_sprite_throughput
                                              ? validate_2d_sprite_throughput_package_evidence()
                                              : SpriteThroughputProbeResult{};
+    const auto physics_runtime_extension_probe = options.require_2d_physics_runtime_extension
+                                                     ? validate_2d_physics_runtime_extension_package_evidence()
+                                                     : Physics2DRuntimeExtensionProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -11366,6 +11676,36 @@ int main(int argc, char** argv) {
         << " 2d_sprite_throughput_claimed_cross_backend_parity="
         << (sprite_throughput_probe.claimed_cross_backend_parity ? 1 : 0)
         << " 2d_sprite_throughput_claimed_metal_readiness=" << (sprite_throughput_probe.claimed_metal_readiness ? 1 : 0)
+        << " 2d_physics_runtime_extension_status="
+        << physics2d_runtime_extension_status_name(physics_runtime_extension_probe)
+        << " 2d_physics_runtime_extension_ready=" << (physics_runtime_extension_probe.ready ? 1 : 0)
+        << " 2d_physics_runtime_extension_simulate_status="
+        << physics2d_simulate_status_name(physics_runtime_extension_probe.simulate_status)
+        << " 2d_physics_runtime_extension_simulation_runs=" << physics_runtime_extension_probe.simulation_runs
+        << " 2d_physics_runtime_extension_time_of_impact_rows=" << physics_runtime_extension_probe.time_of_impact_rows
+        << " 2d_physics_runtime_extension_exact_sweep_shape_pair_rows="
+        << physics_runtime_extension_probe.exact_sweep_shape_pair_rows
+        << " 2d_physics_runtime_extension_hit_rows=" << physics_runtime_extension_probe.hit_rows
+        << " 2d_physics_runtime_extension_no_hit_rows=" << physics_runtime_extension_probe.no_hit_rows
+        << " 2d_physics_runtime_extension_initial_overlap_rows=" << physics_runtime_extension_probe.initial_overlap_rows
+        << " 2d_physics_runtime_extension_kinematic_contact_rows="
+        << physics_runtime_extension_probe.kinematic_contact_rows
+        << " 2d_physics_runtime_extension_joint_rows=" << physics_runtime_extension_probe.joint_rows
+        << " 2d_physics_runtime_extension_distance_joint_rows=" << physics_runtime_extension_probe.distance_joint_rows
+        << " 2d_physics_runtime_extension_hinge_joint_rows=" << physics_runtime_extension_probe.hinge_joint_rows
+        << " 2d_physics_runtime_extension_prismatic_joint_rows=" << physics_runtime_extension_probe.prismatic_joint_rows
+        << " 2d_physics_runtime_extension_spring_joint_rows=" << physics_runtime_extension_probe.spring_joint_rows
+        << " 2d_physics_runtime_extension_trigger_event_rows=" << physics_runtime_extension_probe.trigger_event_rows
+        << " 2d_physics_runtime_extension_trigger_enter_rows=" << physics_runtime_extension_probe.trigger_enter_rows
+        << " 2d_physics_runtime_extension_trigger_stay_rows=" << physics_runtime_extension_probe.trigger_stay_rows
+        << " 2d_physics_runtime_extension_trigger_exit_rows=" << physics_runtime_extension_probe.trigger_exit_rows
+        << " 2d_physics_runtime_extension_diagnostics=" << physics_runtime_extension_probe.diagnostics
+        << " 2d_physics_runtime_extension_native_handle_exposure="
+        << physics_runtime_extension_probe.native_handle_exposure
+        << " 2d_physics_runtime_extension_middleware_dispatches="
+        << physics_runtime_extension_probe.middleware_dispatches
+        << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
+        << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0)
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -12604,6 +12944,35 @@ int main(int argc, char** argv) {
                   << " 2d_sprite_throughput_claimed_metal_readiness="
                   << (sprite_throughput_probe.claimed_metal_readiness ? 1 : 0) << '\n';
         return 45;
+    }
+
+    if (options.require_2d_physics_runtime_extension && !physics_runtime_extension_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_physics_runtime_extension_unavailable"
+                  << " 2d_physics_runtime_extension_status="
+                  << physics2d_runtime_extension_status_name(physics_runtime_extension_probe)
+                  << " 2d_physics_runtime_extension_simulate_status="
+                  << physics2d_simulate_status_name(physics_runtime_extension_probe.simulate_status)
+                  << " 2d_physics_runtime_extension_time_of_impact_rows="
+                  << physics_runtime_extension_probe.time_of_impact_rows
+                  << " 2d_physics_runtime_extension_exact_sweep_shape_pair_rows="
+                  << physics_runtime_extension_probe.exact_sweep_shape_pair_rows
+                  << " 2d_physics_runtime_extension_hit_rows=" << physics_runtime_extension_probe.hit_rows
+                  << " 2d_physics_runtime_extension_no_hit_rows=" << physics_runtime_extension_probe.no_hit_rows
+                  << " 2d_physics_runtime_extension_initial_overlap_rows="
+                  << physics_runtime_extension_probe.initial_overlap_rows
+                  << " 2d_physics_runtime_extension_kinematic_contact_rows="
+                  << physics_runtime_extension_probe.kinematic_contact_rows
+                  << " 2d_physics_runtime_extension_joint_rows=" << physics_runtime_extension_probe.joint_rows
+                  << " 2d_physics_runtime_extension_trigger_event_rows="
+                  << physics_runtime_extension_probe.trigger_event_rows
+                  << " 2d_physics_runtime_extension_diagnostics=" << physics_runtime_extension_probe.diagnostics
+                  << " 2d_physics_runtime_extension_native_handle_exposure="
+                  << physics_runtime_extension_probe.native_handle_exposure
+                  << " 2d_physics_runtime_extension_middleware_dispatches="
+                  << physics_runtime_extension_probe.middleware_dispatches
+                  << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
+                  << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0) << '\n';
+        return 46;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {
