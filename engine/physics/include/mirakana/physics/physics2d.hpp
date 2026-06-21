@@ -158,6 +158,121 @@ struct PhysicsShapeSweepBatch2DResult {
     std::vector<PhysicsShapeSweepBatch2DRow> rows;
 };
 
+enum class Physics2DSimulateStepStatus : std::uint8_t { simulated, invalid_request };
+
+enum class Physics2DRuntimeDiagnostic : std::uint8_t {
+    none,
+    invalid_request,
+    invalid_delta_seconds,
+    invalid_config,
+    row_budget_exceeded,
+    missing_body,
+    invalid_joint,
+    static_pair,
+    disabled_joint,
+    iteration_limit,
+};
+
+enum class Physics2DJointKind : std::uint8_t { distance, hinge, prismatic, spring };
+
+enum class Physics2DAreaTriggerEventKind : std::uint8_t { enter, stay, exit };
+
+struct Physics2DKinematicContactResolutionRequest {
+    PhysicsBody2DId body;
+    Vec2 attempted_displacement{.x = 0.0F, .y = 0.0F};
+    float skin_width{0.0F};
+    std::uint32_t max_iterations{1U};
+    std::uint32_t collision_mask{0xFFFF'FFFFU};
+    bool include_triggers{false};
+};
+
+struct Physics2DJointDesc {
+    Physics2DJointKind kind{Physics2DJointKind::distance};
+    PhysicsBody2DId first;
+    PhysicsBody2DId second;
+    Vec2 local_anchor_first{.x = 0.0F, .y = 0.0F};
+    Vec2 local_anchor_second{.x = 0.0F, .y = 0.0F};
+    float target_distance{0.0F};
+    Vec2 axis{.x = 1.0F, .y = 0.0F};
+    float minimum_translation{0.0F};
+    float maximum_translation{0.0F};
+    float stiffness{1.0F};
+    bool enabled{true};
+};
+
+struct Physics2DContinuousCollisionRequest {
+    float delta_seconds{0.0F};
+    float skin_width{0.0F};
+    bool include_triggers{false};
+    std::size_t max_time_of_impact_rows{std::numeric_limits<std::size_t>::max()};
+    std::size_t max_kinematic_contact_rows{std::numeric_limits<std::size_t>::max()};
+    std::size_t max_joint_rows{std::numeric_limits<std::size_t>::max()};
+    std::size_t max_trigger_event_rows{std::numeric_limits<std::size_t>::max()};
+    std::vector<Physics2DKinematicContactResolutionRequest> kinematic_requests;
+    std::vector<Physics2DJointDesc> joints;
+    std::vector<PhysicsTriggerOverlap2D> previous_trigger_overlaps;
+};
+
+struct Physics2DTimeOfImpactRow {
+    std::size_t source_index{0};
+    PhysicsBody2DId body;
+    Vec2 previous_position{.x = 0.0F, .y = 0.0F};
+    Vec2 attempted_displacement{.x = 0.0F, .y = 0.0F};
+    Vec2 applied_displacement{.x = 0.0F, .y = 0.0F};
+    Vec2 remaining_displacement{.x = 0.0F, .y = 0.0F};
+    PhysicsBody2DId hit_body;
+    Vec2 normal{.x = 1.0F, .y = 0.0F};
+    float distance{0.0F};
+    float time_of_impact{0.0F};
+    bool initial_overlap{false};
+    bool hit{false};
+    Physics2DRuntimeDiagnostic diagnostic{Physics2DRuntimeDiagnostic::none};
+};
+
+struct Physics2DKinematicContactResolutionRow {
+    std::size_t source_index{0};
+    PhysicsBody2DId body;
+    PhysicsBody2DId hit_body;
+    Vec2 attempted_displacement{.x = 0.0F, .y = 0.0F};
+    Vec2 applied_displacement{.x = 0.0F, .y = 0.0F};
+    Vec2 remaining_displacement{.x = 0.0F, .y = 0.0F};
+    Vec2 normal{.x = 1.0F, .y = 0.0F};
+    bool initial_overlap{false};
+    Physics2DRuntimeDiagnostic diagnostic{Physics2DRuntimeDiagnostic::none};
+};
+
+struct Physics2DJointRow {
+    std::size_t source_index{0};
+    Physics2DJointKind kind{Physics2DJointKind::distance};
+    PhysicsBody2DId first;
+    PhysicsBody2DId second;
+    float previous_distance{0.0F};
+    float target_distance{0.0F};
+    float residual_distance{0.0F};
+    Vec2 first_correction{.x = 0.0F, .y = 0.0F};
+    Vec2 second_correction{.x = 0.0F, .y = 0.0F};
+    bool axis_limit_clamped{false};
+    Physics2DRuntimeDiagnostic diagnostic{Physics2DRuntimeDiagnostic::none};
+};
+
+struct Physics2DAreaTriggerEventRow {
+    std::size_t source_index{0};
+    Physics2DAreaTriggerEventKind kind{Physics2DAreaTriggerEventKind::enter};
+    PhysicsBody2DId trigger_body;
+    PhysicsBody2DId other_body;
+};
+
+struct Physics2DSimulateStepResult {
+    Physics2DSimulateStepStatus status{Physics2DSimulateStepStatus::invalid_request};
+    Physics2DRuntimeDiagnostic diagnostic{Physics2DRuntimeDiagnostic::none};
+    std::vector<Physics2DTimeOfImpactRow> time_of_impact_rows;
+    std::vector<Physics2DKinematicContactResolutionRow> kinematic_contact_rows;
+    std::vector<Physics2DJointRow> joint_rows;
+    std::vector<Physics2DAreaTriggerEventRow> trigger_event_rows;
+    std::size_t native_handle_exposure_count{0};
+    std::size_t middleware_dispatch_count{0};
+};
+
 [[nodiscard]] bool is_valid_physics_body_desc(const PhysicsBody2DDesc& desc) noexcept;
 
 class PhysicsWorld2D {
@@ -165,6 +280,7 @@ class PhysicsWorld2D {
     explicit PhysicsWorld2D(PhysicsWorld2DConfig config = {});
 
     [[nodiscard]] PhysicsBody2DId create_body(const PhysicsBody2DDesc& desc);
+    [[nodiscard]] PhysicsWorld2DConfig config() const noexcept;
     [[nodiscard]] PhysicsBody2D* find_body(PhysicsBody2DId id) noexcept;
     [[nodiscard]] const PhysicsBody2D* find_body(PhysicsBody2DId id) const noexcept;
     [[nodiscard]] const std::vector<PhysicsBody2D>& bodies() const noexcept;
@@ -185,5 +301,8 @@ class PhysicsWorld2D {
     PhysicsWorld2DConfig config_;
     std::vector<PhysicsBody2D> bodies_;
 };
+
+[[nodiscard]] Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
+                                                                  const Physics2DContinuousCollisionRequest& request);
 
 } // namespace mirakana

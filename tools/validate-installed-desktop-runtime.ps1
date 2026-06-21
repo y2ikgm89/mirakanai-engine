@@ -504,6 +504,7 @@ $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation
 $requires2dGameplayExecutionLoop = @($SmokeArgs) -contains "--require-2d-gameplay-execution-loop"
 $requires2dSpriteAtlasResidency = @($SmokeArgs) -contains "--require-2d-sprite-atlas-residency"
 $requires2dSpriteThroughput = @($SmokeArgs) -contains "--require-2d-sprite-throughput"
+$requires2dPhysicsRuntimeExtension = @($SmokeArgs) -contains "--require-2d-physics-runtime-extension"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
@@ -4545,6 +4546,38 @@ if ($requires2dSpriteThroughput) {
         -EscapedGameTarget $escapedGameTarget `
         -ExpectedFields $expected2dSpriteThroughputFields `
         -Context "2D sprite throughput"
+}
+if ($requires2dPhysicsRuntimeExtension) {
+    $expected2dPhysicsRuntimeExtensionFields = @{
+        "2d_physics_runtime_extension_status" = "ready"
+        "2d_physics_runtime_extension_ready" = "1"
+        "2d_physics_runtime_extension_simulate_status" = "simulated"
+        "2d_physics_runtime_extension_simulation_runs" = "2"
+        "2d_physics_runtime_extension_time_of_impact_rows" = "5"
+        "2d_physics_runtime_extension_exact_sweep_shape_pair_rows" = "3"
+        "2d_physics_runtime_extension_hit_rows" = "4"
+        "2d_physics_runtime_extension_no_hit_rows" = "1"
+        "2d_physics_runtime_extension_initial_overlap_rows" = "1"
+        "2d_physics_runtime_extension_kinematic_contact_rows" = "1"
+        "2d_physics_runtime_extension_joint_rows" = "4"
+        "2d_physics_runtime_extension_distance_joint_rows" = "1"
+        "2d_physics_runtime_extension_hinge_joint_rows" = "1"
+        "2d_physics_runtime_extension_prismatic_joint_rows" = "1"
+        "2d_physics_runtime_extension_spring_joint_rows" = "1"
+        "2d_physics_runtime_extension_trigger_event_rows" = "2"
+        "2d_physics_runtime_extension_trigger_enter_rows" = "1"
+        "2d_physics_runtime_extension_trigger_stay_rows" = "0"
+        "2d_physics_runtime_extension_trigger_exit_rows" = "1"
+        "2d_physics_runtime_extension_diagnostics" = "0"
+        "2d_physics_runtime_extension_native_handle_exposure" = "0"
+        "2d_physics_runtime_extension_middleware_dispatches" = "0"
+        "2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dPhysicsRuntimeExtensionFields `
+        -Context "2D physics runtime extension"
 }
 if ($requiresGameplayAuthoringReview) {
     foreach ($field in @(
