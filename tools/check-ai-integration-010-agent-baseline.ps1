@@ -1,6 +1,5 @@
 #requires -Version 7.0
 #requires -PSEdition Core
-
 # Chapter 1 for check-ai-integration.ps1 static contracts.
 # Agent baseline, docs, plans, and tooling needles only. Engine/RHI/runtime surface texts load in check-ai-integration-020-engine-manifest.ps1.
 $agents = Resolve-RequiredAgentPath "AGENTS.md"
@@ -39,7 +38,6 @@ $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-w
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
 }
-
 $claudeContent = Get-Content -LiteralPath $claude -Raw
 if ($claudeContent -notmatch "@AGENTS\.md") {
     Write-Error "CLAUDE.md must import AGENTS.md"
@@ -1782,6 +1780,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer Metal Apple selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-backend-parity-apple-evidence-closeout-v1") { foreach ($needle in @("Renderer Backend Parity Apple Evidence Closeout v1", "renderer-backend-parity-v1", "renderer-metal-apple-host-evidence", "Apple/Metal host evidence", "Windows/Vulkan proof must not promote Metal readiness", "native handles remain hidden", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer backend parity Apple evidence closeout selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-postprocess-tone-mapping-evidence-v1") {
     foreach ($needle in @(
         "Renderer Postprocess Tone Mapping Evidence v1",
