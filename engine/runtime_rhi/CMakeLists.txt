@@ -3,6 +3,7 @@ add_library(mirakana_runtime_rhi
     src/mavg_cluster_streaming_residency_closeout.cpp
     src/mavg_conventional_upload.cpp
     src/mavg_gpu_memory_residency.cpp
+    src/mavg_mesh_shader_capability_gate.cpp
     src/mavg_streamed_cluster_gpu_upload.cpp
     src/mavg_advanced_backend_evidence.cpp
     src/mavg_async_overlap_performance_proof.cpp
