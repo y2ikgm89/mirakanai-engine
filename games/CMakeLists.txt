@@ -1682,6 +1682,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-2d-gameplay-execution-loop
             --require-2d-sprite-atlas-residency
             --require-2d-sprite-throughput
+            --require-2d-physics-runtime-extension
             --require-sandbox-world-runtime
             --require-sandbox-world-persistence
             --require-sandbox-world-streaming
@@ -1721,6 +1722,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-2d-gameplay-execution-loop
             --require-2d-sprite-atlas-residency
             --require-2d-sprite-throughput
+            --require-2d-physics-runtime-extension
             --require-sandbox-world-runtime
             --require-sandbox-world-persistence
             --require-sandbox-world-streaming
