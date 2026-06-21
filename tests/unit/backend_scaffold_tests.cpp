@@ -1363,6 +1363,7 @@ MK_TEST("vulkan runtime dynamic rendering clear can feed swapchain readback when
     mirakana::rhi::vulkan::VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
     barrier_desc.image_index = acquire_result.image_index;
     barrier_desc.barrier = sync_plan.barriers[0];
+    barrier_desc.barrier.before = mirakana::rhi::ResourceState::undefined;
     const auto render_barrier = mirakana::rhi::vulkan::record_runtime_swapchain_frame_barrier(
         device_result.device, pool_result.pool, swapchain_result.swapchain, barrier_desc);
     MK_REQUIRE(render_barrier.recorded);
@@ -2026,6 +2027,29 @@ MK_TEST("vulkan swapchain create plan selects extent format image count present 
     MK_REQUIRE(resize.resize_required);
     MK_REQUIRE(resize.extent.width == 1280);
     MK_REQUIRE(resize.extent.height == 720);
+}
+
+MK_TEST("vulkan swapchain create plan honors unbounded surface image minimum") {
+    mirakana::rhi::vulkan::VulkanSwapchainSupport support;
+    support.capabilities.min_image_count = 3;
+    support.capabilities.max_image_count = 0;
+    support.capabilities.min_image_extent = mirakana::rhi::Extent2D{.width = 640, .height = 360};
+    support.capabilities.max_image_extent = mirakana::rhi::Extent2D{.width = 3840, .height = 2160};
+    support.formats = {
+        mirakana::rhi::vulkan::VulkanSurfaceFormatCandidate{.format = mirakana::rhi::Format::bgra8_unorm}};
+    support.present_modes = {mirakana::rhi::vulkan::VulkanPresentMode::fifo};
+
+    mirakana::rhi::vulkan::VulkanSwapchainCreateDesc desc;
+    desc.requested_extent = mirakana::rhi::Extent2D{.width = 1280, .height = 720};
+    desc.preferred_format = mirakana::rhi::Format::bgra8_unorm;
+    desc.requested_image_count = 2;
+
+    const auto plan = mirakana::rhi::vulkan::build_swapchain_create_plan(desc, support);
+
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.image_count == 3);
+    MK_REQUIRE(plan.image_view_count == 3);
+    MK_REQUIRE(plan.present_mode == mirakana::rhi::vulkan::VulkanPresentMode::fifo);
 }
 
 MK_TEST("vulkan swapchain create plan rejects missing surface formats present modes and extents") {

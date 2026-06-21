@@ -4,7 +4,10 @@
 param(
     [string]$Game = "sample_headless",
     [ValidateSet("Debug", "Release")]
-    [string]$Configuration = "Debug"
+    [string]$Configuration = "Debug",
+    [ValidateSet("arm64-v8a", "x86_64")]
+    [string]$AndroidAbi = "arm64-v8a",
+    [string]$ValidationLayerJniLibs = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +59,23 @@ if ($Configuration -eq "Release") {
     }
 }
 
+$gradleArguments = @(":app:assemble$Configuration", "-Pmirakanai.game=$Game", "-Pmirakanai.androidAbi=$AndroidAbi")
+if (-not [string]::IsNullOrWhiteSpace($ValidationLayerJniLibs)) {
+    $validationLayerRoot = $ValidationLayerJniLibs
+    if (-not [System.IO.Path]::IsPathRooted($validationLayerRoot)) {
+        $validationLayerRoot = Join-Path $root $validationLayerRoot
+    }
+    if (-not (Test-Path -LiteralPath $validationLayerRoot -PathType Container)) {
+        Write-Error "ValidationLayerJniLibs does not point to an existing directory: $ValidationLayerJniLibs"
+    }
+    $validationLayerRoot = (Resolve-Path -LiteralPath $validationLayerRoot).Path
+    $requiredValidationLayer = Join-Path $validationLayerRoot (Join-Path $AndroidAbi "libVkLayer_khronos_validation.so")
+    if (-not (Test-Path -LiteralPath $requiredValidationLayer -PathType Leaf)) {
+        Write-Error "ValidationLayerJniLibs must contain $AndroidAbi/libVkLayer_khronos_validation.so for the Android package ABI."
+    }
+    $gradleArguments += "-Pmirakanai.validationLayerJniLibs=$validationLayerRoot"
+}
+
 & (Join-Path $PSScriptRoot "check-mobile-packaging.ps1") -RequireAndroid
 
 $gradle = Find-CommandOnCombinedPath "gradle"
@@ -66,7 +86,7 @@ if (-not $gradle) {
 $androidRoot = Join-Path $root "platform\android"
 Push-Location $androidRoot
 try {
-    Invoke-CheckedCommand $gradle ":app:assemble$Configuration" "-Pmirakanai.game=$Game"
+    Invoke-CheckedCommand $gradle @gradleArguments
 }
 finally {
     Pop-Location

@@ -2756,13 +2756,20 @@ has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBi
     return modes.front();
 }
 
-[[nodiscard]] std::uint32_t choose_swapchain_image_count(const VulkanSwapchainCreateDesc& desc,
-                                                         const VulkanSurfaceCapabilities& capabilities) noexcept {
-    auto count = std::max(desc.requested_image_count, capabilities.min_image_count);
-    if (capabilities.max_image_count > 0) {
-        count = std::min(count, capabilities.max_image_count);
+[[nodiscard]] std::uint32_t choose_swapchain_image_count(std::uint32_t requested_image_count,
+                                                         std::uint32_t min_image_count,
+                                                         std::uint32_t max_image_count) noexcept {
+    auto count = std::max(requested_image_count, min_image_count);
+    if (max_image_count > 0) {
+        count = std::min(count, max_image_count);
     }
     return count;
+}
+
+[[nodiscard]] std::uint32_t choose_swapchain_image_count(const VulkanSwapchainCreateDesc& desc,
+                                                         const VulkanSurfaceCapabilities& capabilities) noexcept {
+    return choose_swapchain_image_count(desc.requested_image_count, capabilities.min_image_count,
+                                        capabilities.max_image_count);
 }
 
 [[nodiscard]] bool command_is_available(const std::vector<VulkanCommandAvailability>& available_commands,
@@ -2946,6 +2953,15 @@ struct NativeVulkanDebugUtilsMessengerCreateInfoExt {
     void* user_data;
 };
 
+struct NativeVulkanDebugUtilsMessengerCallbackDataExt {
+    std::uint32_t s_type;
+    const void* p_next;
+    std::uint32_t flags;
+    const char* p_message_id_name;
+    std::int32_t message_id_number;
+    const char* p_message;
+};
+
 using VulkanSetDebugUtilsObjectName = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice,
                                                                     const NativeVulkanDebugUtilsObjectNameInfoExt*);
 using VulkanCreateDebugUtilsMessenger =
@@ -2958,13 +2974,33 @@ struct VulkanRuntimeValidationLogState {
     std::atomic<std::uint32_t> validation_message_count{0};
     std::atomic<std::uint32_t> warning_message_count{0};
     std::atomic<std::uint32_t> error_message_count{0};
+    std::atomic<bool> first_message_recorded{false};
+    std::atomic<std::uint32_t> first_message_severity{0};
+    std::atomic<std::uint32_t> first_message_type{0};
+    std::array<char, 128> first_message_id{};
+    std::array<char, 768> first_message{};
 };
+
+void copy_debug_utils_text(std::span<char> destination, const char* source) noexcept {
+    if (destination.empty()) {
+        return;
+    }
+    destination[0] = '\0';
+    if (source == nullptr || source[0] == '\0') {
+        return;
+    }
+
+    const auto max_chars = destination.size() - 1U;
+    const auto source_chars = std::strlen(source);
+    const auto chars_to_copy = std::min(max_chars, source_chars);
+    std::memcpy(destination.data(), source, chars_to_copy);
+    destination[chars_to_copy] = '\0';
+}
 
 static std::uint32_t MK_VULKAN_CALL record_runtime_validation_message(std::uint32_t message_severity,
                                                                       std::uint32_t message_type,
                                                                       const void* callback_data,
                                                                       void* user_data) noexcept {
-    static_cast<void>(callback_data);
     auto* const state = static_cast<VulkanRuntimeValidationLogState*>(user_data);
     if (state == nullptr) {
         return 0U;
@@ -2982,6 +3018,16 @@ static std::uint32_t MK_VULKAN_CALL record_runtime_validation_message(std::uint3
     }
     if ((message_severity & vulkan_debug_utils_message_severity_error_bit_ext) != 0U) {
         state->error_message_count.fetch_add(1U, std::memory_order_relaxed);
+    }
+    if (!state->first_message_recorded.exchange(true, std::memory_order_acq_rel)) {
+        state->first_message_severity.store(message_severity, std::memory_order_relaxed);
+        state->first_message_type.store(message_type, std::memory_order_relaxed);
+        const auto* const message_data =
+            static_cast<const NativeVulkanDebugUtilsMessengerCallbackDataExt*>(callback_data);
+        if (message_data != nullptr) {
+            copy_debug_utils_text(state->first_message_id, message_data->p_message_id_name);
+            copy_debug_utils_text(state->first_message, message_data->p_message);
+        }
     }
     return 0U;
 }
@@ -3321,8 +3367,32 @@ VulkanRuntimeValidationLogSnapshot VulkanRuntimeDevice::validation_log_snapshot(
         snapshot.warning_message_count = impl_->validation_log->warning_message_count.load(std::memory_order_relaxed);
         snapshot.error_message_count = impl_->validation_log->error_message_count.load(std::memory_order_relaxed);
     }
-    snapshot.diagnostic = snapshot.clean() ? "Vulkan validation log capture is clean"
-                                           : "Vulkan validation log capture is dirty or unavailable";
+    if (snapshot.clean()) {
+        snapshot.diagnostic = "Vulkan validation log capture is clean";
+    } else {
+        snapshot.diagnostic = "Vulkan validation log capture is dirty or unavailable capture_enabled=" +
+                              std::to_string(snapshot.capture_enabled ? 1 : 0) + " debug_utils_messenger_created=" +
+                              std::to_string(snapshot.debug_utils_messenger_created ? 1 : 0) +
+                              " validation_message_count=" + std::to_string(snapshot.validation_message_count) +
+                              " warning_message_count=" + std::to_string(snapshot.warning_message_count) +
+                              " error_message_count=" + std::to_string(snapshot.error_message_count);
+        if (impl_->validation_log != nullptr &&
+            impl_->validation_log->first_message_recorded.load(std::memory_order_acquire)) {
+            const auto first_message_id = std::string{impl_->validation_log->first_message_id.data()};
+            const auto first_message = std::string{impl_->validation_log->first_message.data()};
+            snapshot.diagnostic +=
+                " first_message_severity=" +
+                std::to_string(impl_->validation_log->first_message_severity.load(std::memory_order_relaxed)) +
+                " first_message_type=" +
+                std::to_string(impl_->validation_log->first_message_type.load(std::memory_order_relaxed));
+            if (!first_message_id.empty()) {
+                snapshot.diagnostic += " first_message_id=" + first_message_id;
+            }
+            if (!first_message.empty()) {
+                snapshot.diagnostic += " first_message=" + first_message;
+            }
+        }
+    }
     return snapshot;
 }
 
@@ -12800,6 +12870,13 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         result.diagnostic = "Vulkan swapchain create plan extent does not match the runtime surface extent";
         return result;
     }
+    if (capabilities.max_image_count > 0 && capabilities.max_image_count < capabilities.min_image_count) {
+        device.impl_->destroy_surface(device.impl_->instance, surface, nullptr);
+        result.diagnostic = "Vulkan runtime surface image-count capabilities are inconsistent";
+        return result;
+    }
+    const auto effective_image_count =
+        choose_swapchain_image_count(desc.plan.image_count, capabilities.min_image_count, capabilities.max_image_count);
 
     std::uint32_t format_count = 0;
     auto formats_result =
@@ -12881,7 +12958,7 @@ VulkanRuntimeSwapchainCreateResult create_runtime_swapchain(VulkanRuntimeDevice&
         .next = nullptr,
         .flags = 0,
         .surface = surface,
-        .min_image_count = desc.plan.image_count,
+        .min_image_count = effective_image_count,
         .image_format = native_vulkan_format(desc.plan.format),
         .image_color_space = vulkan_color_space_srgb_nonlinear,
         .image_extent = NativeVulkanExtent2D{.width = desc.plan.extent.width, .height = desc.plan.extent.height},

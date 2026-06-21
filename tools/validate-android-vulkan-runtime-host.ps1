@@ -11,7 +11,10 @@ param(
     [int]$BootTimeoutSeconds = 180,
     [switch]$ConfigureGpuDebugLayers,
     [string]$GpuDebugLayerPackage = "",
-    [string]$GpuDebugLayerApk = ""
+    [string]$GpuDebugLayerApk = "",
+    [ValidateSet("", "arm64-v8a", "x86_64")]
+    [string]$AndroidAbi = "",
+    [string]$ValidationLayerJniLibs = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -270,6 +273,39 @@ function Get-AdbDeviceArguments {
     return @("-s", $Serial) + $Arguments
 }
 
+function Get-AndroidDevicePrimaryAbi {
+    param(
+        [AllowNull()][string]$Adb,
+        [string]$Serial = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Adb) -or [string]::IsNullOrWhiteSpace($Serial)) {
+        return ""
+    }
+    $abi = Invoke-ToolCapture -FilePath $Adb -Arguments (Get-AdbDeviceArguments -Serial $Serial -Arguments @("shell", "getprop", "ro.product.cpu.abi")) -TimeoutSeconds 15
+    if ($abi.ExitCode -ne 0) {
+        return ""
+    }
+    return ([string]$abi.Output).Trim()
+}
+
+function Resolve-AndroidPackageAbi {
+    param(
+        [AllowNull()][string]$Adb,
+        [string]$Serial = "",
+        [string]$RequestedAbi = ""
+    )
+
+    $primaryAbi = Get-AndroidDevicePrimaryAbi -Adb $Adb -Serial $Serial
+    if ($primaryAbi -ne "arm64-v8a" -and $primaryAbi -ne "x86_64") {
+        return ""
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RequestedAbi) -and $RequestedAbi -ne $primaryAbi) {
+        return ""
+    }
+    return $primaryAbi
+}
+
 function Get-AndroidGpuDebugLayerPackage {
     param(
         [AllowNull()][string]$Adb,
@@ -371,6 +407,28 @@ function Install-AndroidGpuDebugLayerApkIfRequested {
     }
 }
 
+function Test-AndroidValidationLayerJniLibs {
+    param(
+        [string]$Path = "",
+        [string]$AndroidAbi = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($AndroidAbi)) {
+        return $false
+    }
+
+    $candidate = $Path
+    if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+        $candidate = Join-Path $root $candidate
+    }
+    if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
+        return $false
+    }
+    $resolved = (Resolve-Path -LiteralPath $candidate).Path
+    $requiredLayer = Join-Path $resolved (Join-Path $AndroidAbi "libVkLayer_khronos_validation.so")
+    return Test-Path -LiteralPath $requiredLayer -PathType Leaf
+}
+
 function Test-AndroidGpuDebugLayerSettings {
     param(
         [AllowNull()][string]$Adb,
@@ -435,17 +493,25 @@ function Invoke-AndroidPackageSmokeIfRequired {
     param(
         [bool]$ShouldRun,
         [bool]$PrerequisitesReady,
-        [string]$Serial = ""
+        [string]$Serial = "",
+        [string]$AndroidAbi = "",
+        [string]$ValidationLayerJniLibs = ""
     )
 
     if (-not $ShouldRun -or -not $PrerequisitesReady) {
         return [pscustomobject]@{
             PackageSmokeReady = $false
+            PackagedValidationLayerReady = $false
             VulkanReadbackReady = $false
             ValidationLayerEnumerated = $false
             ValidationLogClean = $false
         }
     }
+
+    & (Join-Path $PSScriptRoot "build-mobile-android.ps1") `
+        -Game "sample_headless" `
+        -AndroidAbi $AndroidAbi `
+        -ValidationLayerJniLibs $ValidationLayerJniLibs
 
     $smokeScript = Join-Path $PSScriptRoot "smoke-android-package.ps1"
     $smokeArguments = @(
@@ -455,7 +521,13 @@ function Invoke-AndroidPackageSmokeIfRequired {
         "-File",
         $smokeScript,
         "-Game",
-        "sample_headless"
+        "sample_headless",
+        "-AndroidAbi",
+        $AndroidAbi,
+        "-SkipBuild",
+        "-RequirePackagedValidationLayer",
+        "-ValidationLayerJniLibs",
+        $ValidationLayerJniLibs
     )
     if (-not [string]::IsNullOrWhiteSpace($Serial)) {
         $smokeArguments += @("-DeviceSerial", $Serial)
@@ -467,6 +539,7 @@ function Invoke-AndroidPackageSmokeIfRequired {
     }
     return [pscustomobject]@{
         PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android-smoke: ok")
+        PackagedValidationLayerReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_validation_layer_apk_packaged=1")
         VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_readback_ready=1")
         ValidationLayerEnumerated = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_validation_layer_enumerated=1")
         ValidationLogClean = $smoke.ExitCode -eq 0 -and $smokeText.Contains("android_vulkan_validation_log_clean=1")
@@ -487,6 +560,7 @@ try {
     $script:EmulatorPort = $EmulatorPort
     $script:BootTimeoutSeconds = $BootTimeoutSeconds
     $resolvedDeviceSerial = Resolve-AndroidDeviceSerial -Adb $adb -RequestedSerial $DeviceSerial -AllowStartEmulator:$StartEmulator.IsPresent
+    $resolvedAndroidAbi = Resolve-AndroidPackageAbi -Adb $adb -Serial $resolvedDeviceSerial -RequestedAbi $AndroidAbi
     $gpuDebugLayerInstall = Install-AndroidGpuDebugLayerApkIfRequested -Adb $adb -Serial $resolvedDeviceSerial -ApkPath $GpuDebugLayerApk
 
     if ($ConfigureGpuDebugLayers -and -not [string]::IsNullOrWhiteSpace($resolvedDeviceSerial)) {
@@ -501,22 +575,27 @@ try {
     $adbDeviceReady = Test-AndroidDeviceReady -Adb $adb -Serial $resolvedDeviceSerial
     $androidVulkanProfileReady = Test-AndroidManifestVulkanProfileReady
     $androidGpuDebuggableReady = Test-AndroidGpuDebuggableReady
+    $androidValidationLayerJniLibsReady = Test-AndroidValidationLayerJniLibs -Path $ValidationLayerJniLibs -AndroidAbi $resolvedAndroidAbi
     $gpuDebugLayerSettings = Test-AndroidGpuDebugLayerSettings -Adb $adb -PackageName $packageName -Serial $resolvedDeviceSerial
     $androidGpuDebugLayerInstallRequested = [bool]$gpuDebugLayerInstall.InstallRequested
     $androidGpuDebugLayerInstallReady = [bool]$gpuDebugLayerInstall.InstallReady
     $androidGpuDebugLayerSettingsReady = [bool]$gpuDebugLayerSettings.SettingsReady
     $androidGpuDebugLayerAppInstalled = [bool]$gpuDebugLayerSettings.LayerAppInstalled
+    $androidGpuDebugLayerReady = $androidGpuDebugLayerSettingsReady -and $androidGpuDebugLayerAppInstalled -and
+        $androidGpuDebugLayerInstallReady
 
-    $preSmokeReady = $androidSdkReady -and $androidNdkReady -and $adbDeviceReady -and $androidVulkanProfileReady -and
-        $androidGpuDebuggableReady -and $androidGpuDebugLayerSettingsReady -and $androidGpuDebugLayerAppInstalled
-    $smokeEvidence = Invoke-AndroidPackageSmokeIfRequired -ShouldRun:$RequireReady.IsPresent -PrerequisitesReady:$preSmokeReady -Serial $resolvedDeviceSerial
+    $preSmokeReady = $androidSdkReady -and $androidNdkReady -and $adbDeviceReady -and
+        (-not [string]::IsNullOrWhiteSpace($resolvedAndroidAbi)) -and $androidVulkanProfileReady -and
+        $androidGpuDebuggableReady -and $androidValidationLayerJniLibsReady
+    $smokeEvidence = Invoke-AndroidPackageSmokeIfRequired -ShouldRun:$RequireReady.IsPresent -PrerequisitesReady:$preSmokeReady -Serial $resolvedDeviceSerial -AndroidAbi $resolvedAndroidAbi -ValidationLayerJniLibs $ValidationLayerJniLibs
 } finally {
     if ($startedEmulator -and -not [string]::IsNullOrWhiteSpace($startedEmulatorSerial) -and -not [string]::IsNullOrWhiteSpace($adb)) {
         [void](Invoke-ToolCapture -FilePath $adb -Arguments @("-s", $startedEmulatorSerial, "emu", "kill") -TimeoutSeconds 15)
     }
 }
 
-$validationLayerReady = $preSmokeReady -and $smokeEvidence.ValidationLayerEnumerated -and $smokeEvidence.ValidationLogClean
+$validationLayerReady = $preSmokeReady -and $smokeEvidence.PackagedValidationLayerReady -and
+    $smokeEvidence.ValidationLayerEnumerated -and $smokeEvidence.ValidationLogClean
 $androidVulkanReady = $preSmokeReady -and $smokeEvidence.PackageSmokeReady -and $smokeEvidence.VulkanReadbackReady -and
     $validationLayerReady
 
@@ -532,12 +611,16 @@ $actualCounters = @(
     "host_has_android_sdk=$(ConvertTo-CounterBit $androidSdkReady)",
     "host_has_android_ndk=$(ConvertTo-CounterBit $androidNdkReady)",
     "adb_device_or_emulator_ready=$(ConvertTo-CounterBit $adbDeviceReady)",
+    "android_package_primary_abi=$resolvedAndroidAbi",
     "android_vulkan_profile_ready=$(ConvertTo-CounterBit $androidVulkanProfileReady)",
     "android_gpu_debuggable_ready=$(ConvertTo-CounterBit $androidGpuDebuggableReady)",
     "android_gpu_debug_layer_settings_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerSettingsReady)",
     "android_gpu_debug_layer_app_installed=$(ConvertTo-CounterBit $androidGpuDebugLayerAppInstalled)",
     "android_gpu_debug_layer_install_requested=$(ConvertTo-CounterBit $androidGpuDebugLayerInstallRequested)",
     "android_gpu_debug_layer_install_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerInstallReady)",
+    "android_gpu_debug_layer_ready=$(ConvertTo-CounterBit $androidGpuDebugLayerReady)",
+    "android_validation_layer_jni_libs_ready=$(ConvertTo-CounterBit $androidValidationLayerJniLibsReady)",
+    "android_validation_layer_apk_packaged=$(ConvertTo-CounterBit $smokeEvidence.PackagedValidationLayerReady)",
     "VK_LAYER_KHRONOS_validation_ready=$(ConvertTo-CounterBit $validationLayerReady)",
     "android_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
     "android_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
@@ -561,5 +644,5 @@ if ($missingExpectedCounters.Count -gt 0) {
 }
 
 if ($RequireReady -and -not $androidVulkanReady) {
-    Write-Error "environment-platform-android-vulkan-package requires Android SDK, NDK, adb device/emulator, Vulkan manifest feature declarations, Android debug build instrumentation, AGI GPU debug layer settings, installed AGI layer APK or a valid -GpuDebugLayerApk install, VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, package smoke, and Android Vulkan readback evidence."
+    Write-Error "environment-platform-android-vulkan-package requires Android SDK, NDK, adb device/emulator, Vulkan manifest feature declarations, Android debug build instrumentation, host-supplied validation layer jniLibs, packaged VK_LAYER_KHRONOS_validation APK evidence, clean validation logcat output, package smoke, and Android Vulkan readback evidence."
 }

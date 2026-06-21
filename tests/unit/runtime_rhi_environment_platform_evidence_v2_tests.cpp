@@ -70,8 +70,12 @@ using PlatformId = mirakana::runtime_rhi::EnvironmentPlatformEvidenceV2PlatformI
         .android_vulkan_profile_ready = true,
         .android_gpu_debuggable_ready = true,
         .android_gpu_debug_layer_settings_ready = true,
+        .android_gpu_debug_layer_app_installed = true,
+        .android_gpu_debug_layer_install_ready = true,
         .android_package_smoke_ready = true,
         .android_vulkan_readback_ready = true,
+        .android_vulkan_validation_layer_enumerated = true,
+        .android_vulkan_validation_log_clean = true,
         .environment_platform_ready_counter = true,
         .requires_host_evidence = false,
     };
@@ -186,6 +190,21 @@ MK_TEST("android_vulkan_ready_requires_android_device_gpu_debug_layer_settings_a
     MK_REQUIRE(!ready.all_platform_unconditional_ready);
     MK_REQUIRE(ready.ready_rows == 1U);
     MK_REQUIRE(!ready.diagnostics);
+}
+
+MK_TEST("android_vulkan_ready_requires_agi_layer_app_install_enumeration_and_clean_validation_log") {
+    auto row = ready_android_vulkan_row();
+    row.android_gpu_debug_layer_app_installed = false;
+    row.android_gpu_debug_layer_install_ready = false;
+    row.android_vulkan_validation_layer_enumerated = false;
+    row.android_vulkan_validation_log_clean = false;
+
+    const auto blocked =
+        mirakana::runtime_rhi::evaluate_environment_platform_evidence_v2(std::vector<PlatformRow>{row});
+
+    MK_REQUIRE(!blocked.android_vulkan_ready);
+    MK_REQUIRE(blocked.blocked_rows == 1U);
+    MK_REQUIRE(blocked.diagnostics);
 }
 
 MK_TEST("macos_metal_ready_requires_apple_host_tool_pipeline_texture_sync_and_readback_rows") {

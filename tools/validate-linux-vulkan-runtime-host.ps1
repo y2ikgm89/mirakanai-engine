@@ -4,7 +4,9 @@
 [CmdletBinding()]
 param(
     [switch]$RequireReady,
-    [string[]]$ExpectedEvidenceCounters = @()
+    [string[]]$ExpectedEvidenceCounters = @(),
+    [ValidateRange(60, 3600)]
+    [int]$PackageSmokeTimeoutSeconds = 2400
 )
 
 $ErrorActionPreference = "Stop"
@@ -101,23 +103,39 @@ function Invoke-ToolCapture {
     $process.StartInfo = $startInfo
     try {
         $null = $process.Start()
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
         $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+        $timedOut = -not $completed
         if (-not $completed) {
             try {
                 $process.Kill($true)
+                $process.WaitForExit()
             } catch {
                 Write-Verbose "failed to kill timed-out process '$FilePath': $_"
             }
+        } else {
+            $process.WaitForExit()
+        }
+
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($timedOut) {
+            $timeoutDiagnostic = "timeout after $TimeoutSeconds seconds"
+            if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+                $timeoutDiagnostic = [string]::Join("`n", @($timeoutDiagnostic, $stderr.TrimEnd()))
+            }
             return [pscustomobject]@{
                 ExitCode = -1
-                Output = ""
-                Error = "timeout"
+                Output = $stdout
+                Error = $timeoutDiagnostic
             }
         }
+
         return [pscustomobject]@{
             ExitCode = $process.ExitCode
-            Output = $process.StandardOutput.ReadToEnd()
-            Error = $process.StandardError.ReadToEnd()
+            Output = $stdout
+            Error = $stderr
         }
     } finally {
         $process.Dispose()
@@ -138,7 +156,8 @@ function Invoke-LinuxPackageSmokeIfRequired {
     param(
         [bool]$ShouldRun,
         [bool]$PrerequisitesReady,
-        [Parameter(Mandatory = $true)][string]$PackageScript
+        [Parameter(Mandatory = $true)][string]$PackageScript,
+        [int]$TimeoutSeconds = 900
     )
 
     if (-not $ShouldRun -or -not $PrerequisitesReady) {
@@ -146,7 +165,17 @@ function Invoke-LinuxPackageSmokeIfRequired {
             PackageSmokeReady = $false
             VulkanReadbackReady = $false
             ValidationLogClean = $false
+            ExitCode = -2
+            TimedOut = $false
+            TimeoutSeconds = $TimeoutSeconds
         }
+    }
+
+    $packageDiagnosticLog = Join-Path $root "artifacts/environment/platform/linux-vulkan-host/package-linux-runtime-progress.txt"
+    $packageDiagnosticDirectory = Split-Path -Parent $packageDiagnosticLog
+    New-Item -ItemType Directory -Force -Path $packageDiagnosticDirectory | Out-Null
+    if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
+        Remove-Item -LiteralPath $packageDiagnosticLog -Force
     }
 
     $smoke = Invoke-ToolCapture `
@@ -159,17 +188,26 @@ function Invoke-LinuxPackageSmokeIfRequired {
             $PackageScript,
             "-GameTarget",
             "sample_desktop_runtime_game",
-            "-RequireVulkanShaders"
+            "-RequireVulkanShaders",
+            "-DiagnosticLogPath",
+            $packageDiagnosticLog
         ) `
-        -TimeoutSeconds 900
+        -TimeoutSeconds $TimeoutSeconds
+    if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
+        Write-Host (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
+    }
     $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
     if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
-        Write-Output $smokeText.TrimEnd()
+        Write-Host $smokeText.TrimEnd()
     }
+    Write-Host "linux_package_smoke_exit_code=$($smoke.ExitCode)"
     return [pscustomobject]@{
         PackageSmokeReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_package_smoke_ready=1")
         VulkanReadbackReady = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_readback_ready=1")
         ValidationLogClean = $smoke.ExitCode -eq 0 -and $smokeText.Contains("linux_vulkan_validation_log_clean=1")
+        ExitCode = $smoke.ExitCode
+        TimedOut = $smoke.ExitCode -eq -1 -and $smokeText.Contains("timeout after $TimeoutSeconds seconds")
+        TimeoutSeconds = $TimeoutSeconds
     }
 }
 
@@ -214,7 +252,8 @@ $preSmokeReady = $hostMatches -and
 $smokeEvidence = Invoke-LinuxPackageSmokeIfRequired `
     -ShouldRun:$RequireReady.IsPresent `
     -PrerequisitesReady:$preSmokeReady `
-    -PackageScript $linuxPackageScript
+    -PackageScript $linuxPackageScript `
+    -TimeoutSeconds $PackageSmokeTimeoutSeconds
 
 $linuxVulkanReady = $hostMatches -and
     $vulkanInfoReady -and
@@ -250,6 +289,9 @@ $actualCounters = @(
     "first_party_linux_runtime_host_ready=$(ConvertTo-CounterBit $firstPartyLinuxRuntimeHostReady)",
     "linux_package_script_ready=$(ConvertTo-CounterBit $linuxPackageScriptReady)",
     "linux_installed_validator_ready=$(ConvertTo-CounterBit $linuxInstalledValidatorReady)",
+    "linux_package_smoke_exit_code=$($smokeEvidence.ExitCode)",
+    "linux_package_smoke_timed_out=$(ConvertTo-CounterBit $smokeEvidence.TimedOut)",
+    "linux_package_smoke_timeout_seconds=$($smokeEvidence.TimeoutSeconds)",
     "linux_package_smoke_ready=$(ConvertTo-CounterBit $smokeEvidence.PackageSmokeReady)",
     "linux_vulkan_readback_ready=$(ConvertTo-CounterBit $smokeEvidence.VulkanReadbackReady)",
     "linux_vulkan_validation_log_clean=$(ConvertTo-CounterBit $smokeEvidence.ValidationLogClean)",
