@@ -47,6 +47,12 @@ The selected proof consumes caller-supplied measurement rows plus `RuntimeMavgSt
 
 Remaining MAVG non-claims after this selected proof lane are GPU DirectStorage destinations, GDeflate/GPU decompression, DirectStorage 1.4 preview paths, autonomous streaming service performance beyond selected samples, mesh shader execution, Metal MAVG readiness, deformation, ray tracing, quality governor/benchmark superiority, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, and broad CPU/GPU/memory optimization.
 
+## 2026-06-22 Package-Visible Backend Readiness Addendum
+
+MAVG Package-Visible Backend Readiness Closeout is implemented as a selected stacked slice through `mavg_backend_readiness_closeout.hpp`, `MavgBackendReadinessCloseoutDesc`, `MavgBackendReadinessCloseoutResult`, `evaluate_mavg_backend_readiness_closeout`, `sample_desktop_runtime_game --require-mavg-backend-readiness`, and `tools/validate-mavg-backend-readiness.ps1 -RequireReady`. It promotes only `mavg_package_visible_backend_readiness_ready=1` after nine exact rows are ready: graph cook/package, runtime LOD selection, resident page, safe-point adoption, streamed GPU upload, streamed backend draw, D3D12 compute-generated indirect consumption, Vulkan compute-generated indirect consumption, and package smoke, with zero diagnostics, zero native handles, zero Metal inference, and zero broad backend readiness.
+
+Remaining MAVG non-claims after this selected package-visible row are GPU DirectStorage destinations, GDeflate/GPU decompression, DirectStorage 1.4 preview paths, autonomous streaming service performance beyond selected samples, mesh shader execution, Metal MAVG readiness, deformation, ray tracing, quality governor/benchmark superiority, Nanite compatibility/equivalence/superiority, broad backend readiness beyond the selected package-visible row, and broad CPU/GPU/memory optimization.
+
 ## 2026-06-21 DirectStorage Adapter Closeout Addendum
 
 This addendum supersedes the 2026-06-11 DirectStorage adapter non-claim. MAVG Win32 DirectStorage SDK Adapter v1 (`mavg-win32-directstorage-sdk-adapter-v1`) is completed as a focused child plan and live execution later advanced through MAVG Async Overlap Performance Proof v1 before returning to `recommendedNextPlan.id = next-production-gap-selection` with `unsupportedProductionGaps = []`.
