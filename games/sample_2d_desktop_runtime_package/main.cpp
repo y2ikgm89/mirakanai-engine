@@ -37,6 +37,7 @@
 #include "mirakana/runtime/scripting_sandbox.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/simulation_orchestration.hpp"
+#include "mirakana/runtime/sprite_atlas_residency.hpp"
 #include "mirakana/runtime/sprite_collision_hitbox.hpp"
 #include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
@@ -107,6 +108,7 @@ struct DesktopRuntimeOptions {
     bool require_networking_foundation_policy{false};
     bool require_simulation_orchestration{false};
     bool require_2d_gameplay_execution_loop{false};
+    bool require_2d_sprite_atlas_residency{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -366,6 +368,20 @@ struct GameplayExecutionLoop2DProbeResult {
     std::uint64_t replay_hash{0U};
     std::size_t diagnostics{0U};
     std::size_t side_effects{0U};
+    bool ready{false};
+};
+
+struct SpriteAtlasResidencyProbeResult {
+    mirakana::runtime::RuntimeSpriteAtlasResidencyStatus status{
+        mirakana::runtime::RuntimeSpriteAtlasResidencyStatus::invalid_request};
+    std::size_t page_rows{0U};
+    std::size_t upload_handoff_rows{0U};
+    std::uint64_t resident_bytes{0U};
+    std::size_t diagnostics{0U};
+    bool invoked_runtime_source_decode{false};
+    bool requested_renderer_residency_ownership{false};
+    bool requested_public_native_handle{false};
+    bool invoked_renderer_upload{false};
     bool ready{false};
 };
 
@@ -1177,6 +1193,21 @@ gameplay_execution_loop_2d_status_name(mirakana::runtime::RuntimeGameplayExecuti
         return "no_steps";
     case mirakana::runtime::RuntimeGameplayExecutionLoop2DStatus::invalid_request:
         return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+sprite_atlas_residency_status_name(mirakana::runtime::RuntimeSpriteAtlasResidencyStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeSpriteAtlasResidencyStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeSpriteAtlasResidencyStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeSpriteAtlasResidencyStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::runtime::RuntimeSpriteAtlasResidencyStatus::budget_exceeded:
+        return "budget_exceeded";
     }
     return "unknown";
 }
@@ -6257,6 +6288,64 @@ count_production_authoring_diagnostics(const mirakana::ProductionAuthoringWorkfl
     return asset_id_from_game_asset_key("sample/2d-desktop-runtime-package/ui-atlas");
 }
 
+[[nodiscard]] SpriteAtlasResidencyProbeResult
+validate_2d_sprite_atlas_residency_package_evidence(const mirakana::runtime::RuntimeAssetPackage& runtime_package) {
+    SpriteAtlasResidencyProbeResult result;
+
+    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    const auto catalog_build = mirakana::runtime::build_runtime_resource_catalog_v2(catalog, runtime_package);
+    if (!catalog_build.succeeded()) {
+        result.diagnostics = catalog_build.diagnostics.size();
+        return result;
+    }
+
+    const auto texture_asset = packaged_sprite_texture_asset_id();
+    const auto texture_resource = mirakana::runtime::find_runtime_resource_v2(catalog, texture_asset);
+    if (!texture_resource.has_value()) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    const auto plan =
+        mirakana::runtime::plan_runtime_sprite_atlas_residency(mirakana::runtime::RuntimeSpriteAtlasResidencyRequest{
+            .atlas_id = "sample2d.sprite_atlas_residency",
+            .package = &runtime_package,
+            .catalog = &catalog,
+            .pages =
+                {
+                    mirakana::runtime::RuntimeSpriteAtlasPageRow{
+                        .page_id = "player-page-0",
+                        .texture_asset = texture_asset,
+                        .texture_resource = *texture_resource,
+                        .texture_uri = "runtime/assets/2d/player.texture.geasset",
+                        .width = 1U,
+                        .height = 1U,
+                        .padding_pixels = 0U,
+                        .u0 = 0.0F,
+                        .v0 = 0.0F,
+                        .u1 = 1.0F,
+                        .v1 = 1.0F,
+                    },
+                },
+            .resident_byte_budget = 4U,
+        });
+
+    result.status = plan.status;
+    result.page_rows = plan.page_rows.size();
+    result.upload_handoff_rows = plan.upload_handoff_rows.size();
+    result.resident_bytes = plan.resident_bytes;
+    result.diagnostics = plan.diagnostics.size();
+    result.invoked_runtime_source_decode = plan.invoked_runtime_source_decode;
+    result.requested_renderer_residency_ownership = plan.requested_renderer_residency_ownership;
+    result.requested_public_native_handle = plan.requested_public_native_handle;
+    result.invoked_renderer_upload = plan.invoked_renderer_upload;
+    result.ready = plan.succeeded() && result.page_rows == 1U && result.upload_handoff_rows == 1U &&
+                   result.resident_bytes == 4U && result.diagnostics == 0U && !result.invoked_runtime_source_decode &&
+                   !result.requested_renderer_residency_ownership && !result.requested_public_native_handle &&
+                   !result.invoked_renderer_upload;
+    return result;
+}
+
 [[nodiscard]] mirakana::CookedTilemapAuthoringDesc make_sample_sandbox_authoring_tilemap_desc() {
     mirakana::CookedTilemapAuthoringDesc desc;
     desc.tilemap_asset = packaged_tilemap_asset_id();
@@ -9061,7 +9150,7 @@ void print_usage() {
                  "[--require-sandbox-world-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
-                 "[--require-2d-gameplay-execution-loop] "
+                 "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
@@ -9193,6 +9282,10 @@ void print_usage() {
         }
         if (arg == "--require-2d-gameplay-execution-loop") {
             options.require_2d_gameplay_execution_loop = true;
+            continue;
+        }
+        if (arg == "--require-2d-sprite-atlas-residency") {
+            options.require_2d_sprite_atlas_residency = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -9919,6 +10012,10 @@ int main(int argc, char** argv) {
     const auto gameplay_execution_loop_2d_probe = options.require_2d_gameplay_execution_loop
                                                       ? validate_2d_gameplay_execution_loop_package_evidence()
                                                       : GameplayExecutionLoop2DProbeResult{};
+    const auto sprite_atlas_residency_probe =
+        options.require_2d_sprite_atlas_residency && runtime_package.has_value()
+            ? validate_2d_sprite_atlas_residency_package_evidence(*runtime_package)
+            : SpriteAtlasResidencyProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -10649,6 +10746,21 @@ int main(int argc, char** argv) {
         << " 2d_gameplay_execution_loop_replay_hash=" << gameplay_execution_loop_2d_probe.replay_hash
         << " 2d_gameplay_execution_loop_diagnostics=" << gameplay_execution_loop_2d_probe.diagnostics
         << " 2d_gameplay_execution_loop_side_effects=" << gameplay_execution_loop_2d_probe.side_effects
+        << " 2d_sprite_atlas_residency_status="
+        << sprite_atlas_residency_status_name(sprite_atlas_residency_probe.status)
+        << " 2d_sprite_atlas_residency_ready=" << (sprite_atlas_residency_probe.ready ? 1 : 0)
+        << " 2d_sprite_atlas_residency_page_rows=" << sprite_atlas_residency_probe.page_rows
+        << " 2d_sprite_atlas_residency_upload_handoff_rows=" << sprite_atlas_residency_probe.upload_handoff_rows
+        << " 2d_sprite_atlas_residency_resident_bytes=" << sprite_atlas_residency_probe.resident_bytes
+        << " 2d_sprite_atlas_residency_diagnostics=" << sprite_atlas_residency_probe.diagnostics
+        << " 2d_sprite_atlas_residency_invoked_runtime_source_decode="
+        << (sprite_atlas_residency_probe.invoked_runtime_source_decode ? 1 : 0)
+        << " 2d_sprite_atlas_residency_requested_renderer_residency_ownership="
+        << (sprite_atlas_residency_probe.requested_renderer_residency_ownership ? 1 : 0)
+        << " 2d_sprite_atlas_residency_requested_public_native_handle="
+        << (sprite_atlas_residency_probe.requested_public_native_handle ? 1 : 0)
+        << " 2d_sprite_atlas_residency_invoked_renderer_upload="
+        << (sprite_atlas_residency_probe.invoked_renderer_upload ? 1 : 0)
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -11805,6 +11917,26 @@ int main(int argc, char** argv) {
                   << " 2d_gameplay_execution_loop_side_effects=" << gameplay_execution_loop_2d_probe.side_effects
                   << '\n';
         return 43;
+    }
+
+    if (options.require_2d_sprite_atlas_residency && !sprite_atlas_residency_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_sprite_atlas_residency_unavailable"
+                  << " 2d_sprite_atlas_residency_status="
+                  << sprite_atlas_residency_status_name(sprite_atlas_residency_probe.status)
+                  << " 2d_sprite_atlas_residency_page_rows=" << sprite_atlas_residency_probe.page_rows
+                  << " 2d_sprite_atlas_residency_upload_handoff_rows="
+                  << sprite_atlas_residency_probe.upload_handoff_rows
+                  << " 2d_sprite_atlas_residency_resident_bytes=" << sprite_atlas_residency_probe.resident_bytes
+                  << " 2d_sprite_atlas_residency_diagnostics=" << sprite_atlas_residency_probe.diagnostics
+                  << " 2d_sprite_atlas_residency_invoked_runtime_source_decode="
+                  << (sprite_atlas_residency_probe.invoked_runtime_source_decode ? 1 : 0)
+                  << " 2d_sprite_atlas_residency_requested_renderer_residency_ownership="
+                  << (sprite_atlas_residency_probe.requested_renderer_residency_ownership ? 1 : 0)
+                  << " 2d_sprite_atlas_residency_requested_public_native_handle="
+                  << (sprite_atlas_residency_probe.requested_public_native_handle ? 1 : 0)
+                  << " 2d_sprite_atlas_residency_invoked_renderer_upload="
+                  << (sprite_atlas_residency_probe.invoked_renderer_upload ? 1 : 0) << '\n';
+        return 44;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {
