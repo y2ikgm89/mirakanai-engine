@@ -1,6 +1,14 @@
 #requires -Version 7.0
 #requires -PSEdition Core
 
+[CmdletBinding()]
+param(
+    [ValidateSet("desktop-runtime", "asset-importers", "physics-jolt", "network-enet", "directstorage-win32")]
+    [string[]]$Feature = @(),
+
+    [switch]$All
+)
+
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "common.ps1")
@@ -32,7 +40,14 @@ if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
 
 Push-Location $root
 try {
-    Invoke-CheckedCommand $vcpkgExe install --x-feature=desktop-runtime --x-feature=asset-importers --x-feature=physics-jolt --x-feature=network-enet --triplet $triplet --disable-metrics
+    $allFeatures = @("desktop-runtime", "asset-importers", "physics-jolt", "network-enet", "directstorage-win32")
+    $selectedFeatures = if ($All -or $Feature.Count -eq 0) { $allFeatures } else { $Feature }
+    $installArgs = @("install")
+    foreach ($selectedFeature in $selectedFeatures) {
+        $installArgs += "--x-feature=$selectedFeature"
+    }
+    $installArgs += @("--triplet", $triplet, "--disable-metrics")
+    Invoke-CheckedCommand $vcpkgExe @installArgs
 } finally {
     Pop-Location
 }

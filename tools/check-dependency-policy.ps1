@@ -91,6 +91,11 @@ if (-not $networkEnet) {
     Write-Error "vcpkg manifest must keep optional network-enet feature"
 }
 
+$directStorageWin32 = $manifest.features.'directstorage-win32'
+if (-not $directStorageWin32) {
+    Write-Error "vcpkg manifest must keep optional directstorage-win32 feature"
+}
+
 $desktopRuntimeDependencyNames = @()
 foreach ($dependency in $desktopRuntime.dependencies) {
     if ($dependency -is [string]) {
@@ -167,6 +172,23 @@ if ($enetDefaultFeatures -ne $false) {
     Write-Error "network-enet enet dependency must set default-features to false"
 }
 
+$directStorageWin32DependencyNames = @()
+foreach ($dependency in $directStorageWin32.dependencies) {
+    if ($dependency -is [string]) {
+        $directStorageWin32DependencyNames += $dependency
+    } else {
+        $directStorageWin32DependencyNames += $dependency.name
+    }
+}
+
+if ($directStorageWin32DependencyNames.Count -ne 1 -or $directStorageWin32DependencyNames[0] -ne "dstorage") {
+    Write-Error "directstorage-win32 feature must declare exactly one dependency: dstorage"
+}
+
+if ($manifest.dependencies -contains "dstorage") {
+    Write-Error "dstorage must remain out of default dependencies; use the directstorage-win32 feature"
+}
+
 if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| SDL3 \|") {
     Write-Error "third-party notices must not list SDL3 after final SDL3 source and dependency removal"
 }
@@ -177,6 +199,10 @@ Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| OpenEXR \|" "third-party notice
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Imath \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| libdeflate \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| OpenJPH \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Microsoft DirectStorage SDK \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "dstorage" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "1\.3\.0" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "Windows-only" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
@@ -186,15 +212,31 @@ Assert-TextContains "docs/dependencies.md" "OpenEXR" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Imath" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "libdeflate" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "OpenJPH" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "directstorage-win32" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Microsoft DirectStorage SDK" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "dstorage" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "1\.3\.0" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Windows-only" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "dstorage\.h" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "private adapter" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "must not leak" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "ENet" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "KTX Software" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "OpenEXR" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "Microsoft DirectStorage SDK" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "dstorage" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "1\.3\.0" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "Windows-only" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "private adapter" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "must not leak" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
 Assert-TextContains "CMakePresets.json" "physics-jolt" "CMake presets"
 Assert-TextContains "CMakePresets.json" "network-enet" "CMake presets"
+Assert-TextContains "CMakePresets.json" "directstorage-win32" "CMake presets"
+Assert-TextContains "CMakePresets.json" "MK_ENABLE_WIN32_DIRECTSTORAGE" "CMake presets"
 Assert-TextContains "tools/validate-physics-jolt.ps1" "physics-jolt" "Jolt validation wrapper"
 Assert-TextContains "tools/validate-physics-jolt.ps1" "validate-installed-sdk.ps1" "Jolt validation wrapper"
 Assert-TextContains "tools/validate-network-enet.ps1" "network-enet" "ENet validation wrapper"
@@ -237,11 +279,13 @@ foreach ($preset in $vcpkgPresets) {
     }
 }
 
-Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=desktop-runtime" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "desktop-runtime" "bootstrap dependencies"
 Assert-TextDoesNotContain "tools/bootstrap-deps.ps1" "--x-feature=desktop-gui" "bootstrap dependencies"
-Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=asset-importers" "bootstrap dependencies"
-Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=physics-jolt" "bootstrap dependencies"
-Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=network-enet" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "asset-importers" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "physics-jolt" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "network-enet" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "directstorage-win32" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" '--x-feature=\$selectedFeature' "bootstrap dependencies"
 Assert-TextContains "engine/tools/CMakeLists.txt" "find_package\(OpenEXR CONFIG REQUIRED\)" "asset-importers configure dependency gate"
 
 Assert-TextContains "engine/agent/manifest.json" "buildAssetImporters" "engine manifest commands"
@@ -252,6 +296,8 @@ Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(SPNG CONF
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(fastgltf CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(OpenEXR CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Ktx CONFIG\)" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_WIN32_DIRECTSTORAGE" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(dstorage CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_PHYSICS_JOLT" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Jolt CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_NETWORK_ENET" "Mirakanai package config"

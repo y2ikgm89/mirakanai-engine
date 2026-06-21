@@ -16,6 +16,7 @@ option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where sup
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
 option(MK_ENABLE_ASSET_IMPORTERS "Build optional libspng/fastgltf/miniaudio source asset importer adapters" OFF)
+option(MK_ENABLE_WIN32_DIRECTSTORAGE "Build optional Windows DirectStorage SDK byte-range IO adapter" OFF)
 option(MK_ENABLE_PHYSICS_JOLT "Build optional Jolt Physics native middleware adapter" OFF)
 option(MK_ENABLE_NETWORK_ENET "Build optional ENet loopback network transport adapter" OFF)
 option(MK_REQUIRE_DESKTOP_RUNTIME_DXIL "Require sample_desktop_runtime_shell DXIL artifacts when packaging the desktop runtime shell" OFF)
@@ -1356,6 +1357,23 @@ if(BUILD_TESTING)
         MK_apply_common_target_options(MK_win32_platform_tests)
         add_test(NAME MK_win32_platform_tests COMMAND MK_win32_platform_tests)
 
+        add_executable(MK_win32_directstorage_byte_range_io_tests
+            tests/unit/win32_directstorage_byte_range_io_tests.cpp
+        )
+        target_link_libraries(MK_win32_directstorage_byte_range_io_tests PRIVATE MK_platform_win32)
+        target_include_directories(MK_win32_directstorage_byte_range_io_tests PRIVATE tests)
+        if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+            target_compile_definitions(MK_win32_directstorage_byte_range_io_tests
+                PRIVATE MK_ENABLE_WIN32_DIRECTSTORAGE_TESTS)
+            add_custom_command(TARGET MK_win32_directstorage_byte_range_io_tests POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:MK_win32_directstorage_byte_range_io_tests>
+                    $<TARGET_FILE_DIR:MK_win32_directstorage_byte_range_io_tests>
+                COMMAND_EXPAND_LISTS)
+        endif()
+        MK_apply_common_target_options(MK_win32_directstorage_byte_range_io_tests)
+        add_test(NAME MK_win32_directstorage_byte_range_io_tests COMMAND MK_win32_directstorage_byte_range_io_tests)
+
         add_executable(MK_wasapi_audio_tests
             tests/unit/wasapi_audio_tests.cpp
         )
@@ -1702,6 +1720,11 @@ install(EXPORT MirakanaiTargets
 set(MK_PACKAGE_HAS_ASSET_IMPORTERS OFF)
 if(MK_ENABLE_ASSET_IMPORTERS)
     set(MK_PACKAGE_HAS_ASSET_IMPORTERS ON)
+endif()
+
+set(MK_PACKAGE_HAS_WIN32_DIRECTSTORAGE OFF)
+if(MK_ENABLE_WIN32_DIRECTSTORAGE)
+    set(MK_PACKAGE_HAS_WIN32_DIRECTSTORAGE ON)
 endif()
 
 set(MK_PACKAGE_HAS_PHYSICS_JOLT OFF)

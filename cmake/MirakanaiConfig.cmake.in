@@ -21,6 +21,11 @@ if(Mirakanai_HAS_ASSET_IMPORTERS)
     find_dependency(Ktx CONFIG)
 endif()
 
+set(Mirakanai_HAS_WIN32_DIRECTSTORAGE @MK_PACKAGE_HAS_WIN32_DIRECTSTORAGE@)
+if(Mirakanai_HAS_WIN32_DIRECTSTORAGE)
+    find_dependency(dstorage CONFIG)
+endif()
+
 set(Mirakanai_HAS_PHYSICS_JOLT @MK_PACKAGE_HAS_PHYSICS_JOLT@)
 if(Mirakanai_HAS_PHYSICS_JOLT)
     find_dependency(Jolt CONFIG)

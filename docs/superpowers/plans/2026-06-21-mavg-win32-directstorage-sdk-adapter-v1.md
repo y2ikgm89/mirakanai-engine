@@ -12,9 +12,15 @@
 
 **Plan ID:** `mavg-win32-directstorage-sdk-adapter-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Date:** 2026-06-21
+
+**Closeout:** The implemented slice returns live execution to the production-completion selection gate:
+`engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to
+`docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` after
+manifest composition. The retained evidence is this completed plan plus the package-visible
+`mavg_win32_directstorage_sdk_adapter_*` counters.
 
 ## Official Source Refresh
 
@@ -68,7 +74,7 @@ This plan selects only the first-party Win32 SDK adapter missing after `mavg-dir
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
 - Modify: `tools/check-json-contracts-040-agent-surfaces.ps1`
 
-- [ ] **Step 1: Select this active child plan**
+- [x] **Step 1: Select this active child plan**
 
 Set:
 
@@ -82,11 +88,11 @@ Set:
 }
 ```
 
-- [ ] **Step 2: Preserve completed MAVG evidence**
+- [x] **Step 2: Preserve completed MAVG evidence**
 
 Keep the completed `mavg-directstorage-page-io-execution-v1`, `mavg-streaming-upload-overlap-evidence-v1`, MAVG GPU upload/backend draw evidence, environment commercial evidence, and renderer backend parity evidence as retained evidence only. Fix stale `Active local implementation slice` rows for completed MAVG overlap evidence to completed retained evidence.
 
-- [ ] **Step 3: Run selection validation**
+- [x] **Step 3: Run selection validation**
 
 Run:
 
@@ -111,7 +117,7 @@ Expected: all commands pass. If an agent-surface guard fails because it still as
 - Modify: `docs/legal-and-licensing.md`
 - Modify: `THIRD_PARTY_NOTICES.md`
 
-- [ ] **Step 1: Add the optional vcpkg feature**
+- [x] **Step 1: Add the optional vcpkg feature**
 
 Add exactly:
 
@@ -126,11 +132,11 @@ Add exactly:
 
 Do not add `dstorage` to default dependencies.
 
-- [ ] **Step 2: Add bootstrap support**
+- [x] **Step 2: Add bootstrap support**
 
 Extend `tools/bootstrap-deps.ps1` so an explicit `-Feature directstorage-win32` or `-All` installs `directstorage-win32`. The wrapper must still be the only repository entrypoint that runs vcpkg.
 
-- [ ] **Step 3: Add dependency policy checks**
+- [x] **Step 3: Add dependency policy checks**
 
 Update `tools/check-dependency-policy.ps1` to require:
 
@@ -139,7 +145,7 @@ Update `tools/check-dependency-policy.ps1` to require:
 - CMake presets keep `VCPKG_MANIFEST_INSTALL=OFF`.
 - Docs and third-party notices mention `Microsoft DirectStorage SDK`, `dstorage`, version `1.3.0`, Windows-only support, private adapter isolation, and non-leakage of `dstorage.h` types into public gameplay/runtime APIs.
 
-- [ ] **Step 4: Verify dependency records**
+- [x] **Step 4: Verify dependency records**
 
 Run:
 
@@ -157,20 +163,20 @@ Expected: both pass without running vcpkg install.
 - Modify: `engine/platform/win32/CMakeLists.txt`
 - Modify: `tests/unit/win32_directstorage_byte_range_io_tests.cpp`
 
-- [ ] **Step 1: Write the failing public-contract test**
+- [x] **Step 1: Write the failing public-contract test**
 
 Create `tests/unit/win32_directstorage_byte_range_io_tests.cpp` with tests that include only the new first-party header plus `mirakana/platform/byte_range_io.hpp`, then assert:
 
 ```cpp
-static_assert(std::derived_from<mirakana::platform::win32::Win32DirectStorageByteRangeExecutor,
+static_assert(std::derived_from<mirakana::win32::Win32DirectStorageByteRangeExecutor,
                                 mirakana::IByteRangeIoExecutor>);
-static_assert(!std::copy_constructible<mirakana::platform::win32::Win32DirectStorageByteRangeExecutor>);
-static_assert(!std::copy_assignable<mirakana::platform::win32::Win32DirectStorageByteRangeExecutor>);
+static_assert(!std::copy_constructible<mirakana::win32::Win32DirectStorageByteRangeExecutor>);
+static_assert(!std::copy_assignable<mirakana::win32::Win32DirectStorageByteRangeExecutor>);
 ```
 
 Also assert `backend_kind() == ByteRangeIoBackendKind::direct_storage` and no public method returns `IDStorage*`, `HANDLE`, `IUnknown*`, `void*`, `D3D12`, `DXGI`, or `dstorage` SDK objects.
 
-- [ ] **Step 2: Run the failing test build**
+- [x] **Step 2: Run the failing test build**
 
 Run:
 
@@ -180,12 +186,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 
 Expected: fail because the target and header do not exist.
 
-- [ ] **Step 3: Add the header**
+- [x] **Step 3: Add the header**
 
 Expose only this first-party shape:
 
 ```cpp
-namespace mirakana::platform::win32 {
+namespace mirakana::win32 {
 
 struct Win32DirectStorageByteRangeExecutorOptions {
     std::uint32_t queue_capacity{128};
@@ -221,7 +227,7 @@ class Win32DirectStorageByteRangeExecutor final : public IByteRangeIoExecutor {
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace mirakana::platform::win32
+} // namespace mirakana::win32
 ```
 
 ## Task 3: DirectStorage SDK Execution
@@ -231,7 +237,7 @@ class Win32DirectStorageByteRangeExecutor final : public IByteRangeIoExecutor {
 - Modify: `engine/platform/win32/CMakeLists.txt`
 - Modify: `tests/unit/win32_directstorage_byte_range_io_tests.cpp`
 
-- [ ] **Step 1: Write execution tests**
+- [x] **Step 1: Write execution tests**
 
 Add tests that create a temporary binary file with two non-overlapping byte ranges, execute `read_ranges`, and verify:
 
@@ -242,15 +248,15 @@ Add tests that create a temporary binary file with two non-overlapping byte rang
 - `diagnostics().submitted` becomes true only after `IDStorageQueue::Submit`.
 - No public native handles are exposed.
 
-- [ ] **Step 2: Implement SDK-backed reads**
+- [x] **Step 2: Implement SDK-backed reads**
 
 Implement with `Microsoft::WRL::ComPtr`, `DStorageGetFactory`, `IDStorageFactory::OpenFile`, `IDStorageFactory::CreateQueue`, `IDStorageFactory::CreateStatusArray`, system-memory `DSTORAGE_REQUEST` destinations, `IDStorageQueue::EnqueueRequest`, `IDStorageQueue::EnqueueStatus`, `IDStorageQueue::Submit`, and `IDStorageStatusArray::GetHResult` polling until `S_OK`, failure `HRESULT`, or timeout.
 
-- [ ] **Step 3: Keep GPU and decompression paths out**
+- [x] **Step 3: Keep GPU and decompression paths out**
 
 The adapter must not use `ID3D12Resource`, `ID3D12Fence`, `DSTORAGE_DESTINATION_BUFFER`, `DSTORAGE_DESTINATION_TEXTURE_REGION`, `DSTORAGE_DESTINATION_MULTIPLE_SUBRESOURCES_RANGE`, GDeflate, Zstd, DirectStorage 1.4 preview-only APIs, or `IDStorageQueue3::EnqueueRequests`.
 
-- [ ] **Step 4: Run focused adapter validation**
+- [x] **Step 4: Run focused adapter validation**
 
 Run:
 
@@ -271,7 +277,7 @@ Expected: pass on a Windows host with `directstorage-win32` bootstrapped; skip w
 - Modify: `docs/roadmap.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 
-- [ ] **Step 1: Add package-visible counters**
+- [x] **Step 1: Add package-visible counters**
 
 Add a selected smoke path such as `--require-mavg-win32-directstorage-sdk-adapter` that emits:
 
@@ -287,11 +293,11 @@ mavg_win32_directstorage_sdk_adapter_gdeflate=0
 mavg_win32_directstorage_sdk_adapter_async_overlap_performance_proof=0
 ```
 
-- [ ] **Step 2: Add validator**
+- [x] **Step 2: Add validator**
 
 `tools/validate-mavg-win32-directstorage-sdk-adapter.ps1 -RequireReady` must fail closed unless host OS is Windows, `directstorage-win32` dependency files are present, the adapter tests pass, the package smoke emits the exact counters above, and the active plan/docs/manifest preserve non-claims.
 
-- [ ] **Step 3: Run closeout validation**
+- [x] **Step 3: Run closeout validation**
 
 Run:
 
@@ -305,6 +311,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 Expected: pass before claiming the adapter ready. If DirectStorage runtime, vcpkg `dstorage`, or Windows host evidence is missing, record a dependency/host blocker and do not mark the adapter ready.
+
+## Validation Evidence
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature directstorage-win32` installed the pinned optional `dstorage` 1.3.0 feature.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` passed after dependency/legal records were updated.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset directstorage-win32` configured the optional SDK lane.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset directstorage-win32 --target MK_win32_directstorage_byte_range_io_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset directstorage-win32 --output-on-failure -R "MK_win32_directstorage_byte_range_io_tests"` passed.
+- `sample_desktop_runtime_game.exe --smoke --max-frames 1 --require-mavg-win32-directstorage-sdk-adapter` emitted `mavg_win32_directstorage_sdk_adapter_ready=1`, SDK version `1.3.0`, two requests, two completed ranges, and zero native handle / GPU destination / GDeflate / async-overlap-performance claims.
 
 ## Done When
 

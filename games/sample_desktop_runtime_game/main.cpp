@@ -17,6 +17,7 @@
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
 #include "mirakana/platform/win32/win32_cpu_sets.hpp"
+#include "mirakana/platform/win32/win32_directstorage_byte_range_io.hpp"
 #include "mirakana/renderer/environment_lighting_policy.hpp"
 #include "mirakana/renderer/environment_parity.hpp"
 #include "mirakana/renderer/environment_performance.hpp"
@@ -52,6 +53,7 @@
 #include <cstring>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <mutex>
@@ -131,6 +133,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_artist_workflow_package{false};
     bool require_environment_commercial_readiness{false};
     bool require_environment_commercial_vulkan_evidence{false};
+    bool require_mavg_win32_directstorage_sdk_adapter{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -256,6 +259,82 @@ constexpr std::string_view kRuntimeNativeUiOverlayVulkanFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_ui_overlay.ps.spv"};
 constexpr std::string_view kHudAtlasProofResourceId{"hud.texture_atlas_proof"};
 constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtime/base_color.texture.geasset"};
+
+struct MavgWin32DirectStorageSdkAdapterEvidence {
+    bool requested{false};
+    bool ready{false};
+    std::uint32_t request_count{0};
+    std::uint32_t completed_ranges{0};
+    bool native_handles_exposed{false};
+    bool gpu_destinations{false};
+    bool gdeflate{false};
+    bool async_overlap_performance_proof{false};
+};
+
+[[nodiscard]] std::string bytes_to_string(std::span<const std::byte> bytes) {
+    std::string result;
+    result.reserve(bytes.size());
+    for (const auto byte : bytes) {
+        result.push_back(static_cast<char>(std::to_integer<unsigned char>(byte)));
+    }
+    return result;
+}
+
+[[nodiscard]] MavgWin32DirectStorageSdkAdapterEvidence evaluate_mavg_win32_directstorage_sdk_adapter(bool requested) {
+    MavgWin32DirectStorageSdkAdapterEvidence evidence{.requested = requested};
+    if (!requested) {
+        return evidence;
+    }
+
+    const std::string payload = "format=GameEngine.MavgClusterPayload.v1\npage0-cluster-bytes\npage1-cluster-bytes\n";
+    const auto payload_path = std::filesystem::temp_directory_path() / "mirakana_mavg_directstorage_sdk_adapter.bin";
+    {
+        std::ofstream output(payload_path, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            return evidence;
+        }
+        output.write(payload.data(), static_cast<std::streamsize>(payload.size()));
+    }
+
+    mirakana::win32::Win32DirectStorageByteRangeExecutor executor(
+        mirakana::win32::Win32DirectStorageByteRangeExecutorOptions{
+            .queue_capacity = 2,
+            .completion_timeout = std::chrono::seconds{10},
+        });
+    if (!executor.available()) {
+        std::error_code remove_error;
+        std::filesystem::remove(payload_path, remove_error);
+        return evidence;
+    }
+
+    const auto path = payload_path.string();
+    const std::vector<mirakana::ByteRangeIoReadRequest> requests{
+        mirakana::ByteRangeIoReadRequest{
+            .path = path,
+            .byte_offset = 0,
+            .byte_size = 40,
+        },
+        mirakana::ByteRangeIoReadRequest{
+            .path = path,
+            .byte_offset = 40,
+            .byte_size = 20,
+        },
+    };
+    const auto rows = executor.read_ranges(requests);
+    const auto& diagnostics = executor.diagnostics();
+    evidence.request_count = diagnostics.request_count;
+    evidence.completed_ranges = static_cast<std::uint32_t>(rows.size());
+    evidence.ready = rows.size() == requests.size() && diagnostics.submitted && diagnostics.request_count == 2U &&
+                     diagnostics.last_hresult == 0 && rows[0].path == path && rows[0].byte_offset == 0U &&
+                     rows[0].byte_size == 40U &&
+                     bytes_to_string(rows[0].bytes) == "format=GameEngine.MavgClusterPayload.v1\n" &&
+                     rows[1].path == path && rows[1].byte_offset == 40U && rows[1].byte_size == 20U &&
+                     bytes_to_string(rows[1].bytes) == "page0-cluster-bytes\n";
+
+    std::error_code remove_error;
+    std::filesystem::remove(payload_path, remove_error);
+    return evidence;
+}
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
@@ -5494,6 +5573,7 @@ void print_usage() {
                  "[--require-environment-artist-workflow-package] "
                  "[--require-environment-commercial-readiness] "
                  "[--require-environment-commercial-vulkan-evidence] "
+                 "[--require-mavg-win32-directstorage-sdk-adapter] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -5914,6 +5994,10 @@ void print_usage() {
         }
         if (arg == "--require-environment-commercial-vulkan-evidence") {
             enable_environment_commercial_vulkan_evidence_requirements(options);
+            continue;
+        }
+        if (arg == "--require-mavg-win32-directstorage-sdk-adapter") {
+            options.require_mavg_win32_directstorage_sdk_adapter = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -8293,6 +8377,8 @@ int main(int argc, char** argv) {
         options, environment_vulkan_strict_aggregate, environment_backend_parity, environment_platform_readiness,
         environment_optimization_measurement, environment_texture_asset_pipeline, environment_preset_library,
         environment_weather_simulation_package, environment_artist_workflow_package);
+    const auto mavg_win32_directstorage_sdk_adapter =
+        evaluate_mavg_win32_directstorage_sdk_adapter(options.require_mavg_win32_directstorage_sdk_adapter);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -10851,6 +10937,25 @@ int main(int argc, char** argv) {
                   << (environment_commercial_readiness.windows_vulkan_ready ? 1 : 0)
                   << " environment_commercial_replay_hash=" << plan.replay_hash;
     }
+    if (mavg_win32_directstorage_sdk_adapter.requested) {
+        std::cout << " mavg_win32_directstorage_sdk_adapter_status="
+                  << (mavg_win32_directstorage_sdk_adapter.ready ? "ready" : "blocked")
+                  << " mavg_win32_directstorage_sdk_adapter_ready="
+                  << (mavg_win32_directstorage_sdk_adapter.ready ? 1 : 0)
+                  << " mavg_win32_directstorage_sdk_adapter_sdk_version=1.3.0"
+                  << " mavg_win32_directstorage_sdk_adapter_requests="
+                  << mavg_win32_directstorage_sdk_adapter.request_count
+                  << " mavg_win32_directstorage_sdk_adapter_completed_ranges="
+                  << mavg_win32_directstorage_sdk_adapter.completed_ranges
+                  << " mavg_win32_directstorage_sdk_adapter_native_handles_exposed="
+                  << (mavg_win32_directstorage_sdk_adapter.native_handles_exposed ? 1 : 0)
+                  << " mavg_win32_directstorage_sdk_adapter_gpu_destinations="
+                  << (mavg_win32_directstorage_sdk_adapter.gpu_destinations ? 1 : 0)
+                  << " mavg_win32_directstorage_sdk_adapter_gdeflate="
+                  << (mavg_win32_directstorage_sdk_adapter.gdeflate ? 1 : 0)
+                  << " mavg_win32_directstorage_sdk_adapter_async_overlap_performance_proof="
+                  << (mavg_win32_directstorage_sdk_adapter.async_overlap_performance_proof ? 1 : 0);
+    }
     std::cout << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -10905,6 +11010,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_quaternion_animation && !game.quaternion_animation_passed(options.max_frames)) {
+            return 3;
+        }
+        if (options.require_mavg_win32_directstorage_sdk_adapter && !mavg_win32_directstorage_sdk_adapter.ready) {
             return 3;
         }
         if (options.require_scene_gpu_bindings &&
