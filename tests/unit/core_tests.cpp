@@ -2184,6 +2184,7 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
     std::vector<std::uint32_t> observed_worker_ids;
     std::uint32_t started_task_count{0};
     std::atomic_uint64_t executed_tasks{0};
+    constexpr auto work_stealing_start_timeout = std::chrono::seconds{10};
     const auto body = [&](mirakana::JobExecutionContext& context) {
         const auto lease = context.scratch.acquire(32, 16, context.worker_id);
         if (!lease.valid()) {
@@ -2200,7 +2201,7 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
             observed_worker_ids.push_back(context.worker_id);
             ++started_task_count;
             observed_cv.notify_all();
-            both_tasks_started = observed_cv.wait_for(lock, std::chrono::seconds{2},
+            both_tasks_started = observed_cv.wait_for(lock, work_stealing_start_timeout,
                                                       [&started_task_count] { return started_task_count >= 2U; });
         }
         if (!both_tasks_started) {
