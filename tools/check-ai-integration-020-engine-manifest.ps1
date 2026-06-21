@@ -109,7 +109,7 @@ Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingP
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
 Assert-ContainsText $masterPlanText "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production master plan renderer-rhi closeout pointer"
-Assert-ContainsText $masterPlanText "recommendedNextPlan.id = mavg-async-overlap-performance-proof-v1" "production master plan MAVG async overlap performance proof pointer"
+Assert-ContainsText $masterPlanText "recommendedNextPlan.id = next-production-gap-selection" "production master plan MAVG async overlap performance proof closeout pointer"; Assert-ContainsText $masterPlanText 'completed through PR #714 / merge commit `c524a002`' "production master plan MAVG async overlap performance proof closeout pointer"
 Assert-ContainsText $masterPlanText "selected measured-sample async-overlap performance proof" "production master plan MAVG async overlap performance proof pointer"
 Assert-ContainsText $masterPlanText "MAVG Win32 DirectStorage SDK Adapter v1" "production master plan MAVG Win32 DirectStorage SDK adapter closeout pointer"
 Assert-ContainsText $masterPlanText "retained completed evidence after adding the first-party Win32 DirectStorage SDK adapter" "production master plan MAVG Win32 DirectStorage SDK adapter closeout pointer"

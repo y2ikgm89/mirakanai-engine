@@ -12,7 +12,9 @@
 
 **Plan ID:** `mavg-async-overlap-performance-proof-v1`
 
-**Status:** Active.
+**Status:** Completed.
+
+**Closeout:** Completed through PR #714 / merge commit `c524a002`. Live execution returned to the production-completion master selection gate with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`.
 
 **Date:** 2026-06-21
 
@@ -117,6 +119,8 @@ Out of scope:
 
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-async-overlap-performance-proof.ps1 -RequireReady`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Commit the validated candidate.
-- [ ] Push branch `codex/mavg-async-overlap-performance-proof`.
-- [ ] Open a draft PR, wait for hosted checks, mark ready with `tools/ready-task-pr.ps1`, and auto-merge only after PR Gate succeeds.
+- [x] Commit the validated candidate.
+- [x] Push branch `codex/mavg-async-overlap-performance-proof`.
+- [x] Open a draft PR, wait for hosted checks, mark ready with `tools/ready-task-pr.ps1`, and auto-merge only after PR Gate succeeds.
+
+**Publication Evidence:** PR #714 merged at `c524a002` from `codex/mavg-async-overlap-performance-proof`.

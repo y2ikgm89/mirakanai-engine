@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-21. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Win32 DirectStorage SDK Adapter v1, selects MAVG Async Overlap Performance Proof v1 as the next child plan, and preserves fail-closed non-claims for GPU DirectStorage destinations, GDeflate/GPU decompression, autonomous background streaming services beyond the selected proof lane, mesh shaders, deformation, ray tracing, benchmark superiority, Metal readiness, Nanite equivalence/superiority, and broad optimization.
+**Latest audit:** 2026-06-21. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Async Overlap Performance Proof v1, returns live execution to the production-completion selection gate, and preserves fail-closed non-claims for GPU DirectStorage destinations, GDeflate/GPU decompression, autonomous background streaming services beyond the selected proof lane, mesh shaders, deformation, ray tracing, benchmark superiority, Metal readiness, Nanite equivalence/superiority, and broad optimization.
 
 ## Master Plan Decision
 
@@ -33,7 +33,7 @@ Use this file as the roadmap and decision contract. Create focused child plans u
 
 ## 2026-06-21 Async Overlap Performance Proof Selection Addendum
 
-MAVG Async Overlap Performance Proof v1 (`mavg-async-overlap-performance-proof-v1`) is now the active child plan. It may promote only a selected measured-sample proof through `RuntimeMavgAsyncOverlapPerformanceProofResult` after existing MAVG overlap evidence produced positive async-overlap performance on one reviewed package lane. The selected lane emits `mavg_async_overlap_performance_proof_ready=1`. It must keep live timing collection out of unit tests, expose no native handles, and avoid broad CPU/GPU/memory optimization claims.
+MAVG Async Overlap Performance Proof v1 (`mavg-async-overlap-performance-proof-v1`) completed through PR #714 / merge commit `c524a002`. It promotes only a selected measured-sample proof through `RuntimeMavgAsyncOverlapPerformanceProofResult` after existing MAVG overlap evidence produced positive async-overlap performance on one reviewed package lane. The selected lane emits `mavg_async_overlap_performance_proof_ready=1`. It keeps live timing collection out of unit tests, exposes no native handles, and avoids broad CPU/GPU/memory optimization claims.
 
 The selected proof consumes caller-supplied measurement rows plus `RuntimeMavgStreamingUploadOverlapEvidenceResult` and computes deterministic p95 serial/overlapped ticks and speedup basis points. The selected package-visible lane records speedup 2500 basis points while keeping broad optimization and backend/platform readiness unclaimed. Future host-attached traces should follow Microsoft Windows Performance Toolkit, Windows Performance Analyzer, and GPUView guidance; this child plan only validates selected evidence rows and package-visible counters.
 
@@ -41,7 +41,7 @@ Remaining MAVG non-claims after this selected proof lane are GPU DirectStorage d
 
 ## 2026-06-21 DirectStorage Adapter Closeout Addendum
 
-This addendum supersedes the 2026-06-11 DirectStorage adapter non-claim. MAVG Win32 DirectStorage SDK Adapter v1 (`mavg-win32-directstorage-sdk-adapter-v1`) is completed as a focused child plan and live execution has advanced to MAVG Async Overlap Performance Proof v1 with `recommendedNextPlan.id = mavg-async-overlap-performance-proof-v1` and `unsupportedProductionGaps = []`.
+This addendum supersedes the 2026-06-11 DirectStorage adapter non-claim. MAVG Win32 DirectStorage SDK Adapter v1 (`mavg-win32-directstorage-sdk-adapter-v1`) and MAVG Async Overlap Performance Proof v1 (`mavg-async-overlap-performance-proof-v1`) are completed focused child plans, and live execution has returned to the production-completion selection gate with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`.
 
 Completed evidence now includes:
 
@@ -50,7 +50,7 @@ Completed evidence now includes:
 - First-party `mirakana::win32::Win32DirectStorageByteRangeExecutor` implementing the existing `IByteRangeIoExecutor` / `ByteRangeIoBackendKind::direct_storage` boundary with DirectStorage system-memory destinations.
 - `MK_win32_directstorage_byte_range_io_tests` plus `sample_desktop_runtime_game --require-mavg-win32-directstorage-sdk-adapter` package counters proving SDK version `1.3.0`, two requests, two completed ranges, zero native handle exposure, zero GPU destinations, zero GDeflate, and zero async-overlap/performance proof.
 
-At the DirectStorage adapter closeout, measured async-overlap/performance proof was still pending; the active MAVG Async Overlap Performance Proof v1 slice now addresses only a selected measured-sample proof lane. Remaining MAVG non-claims are GPU DirectStorage destinations, GDeflate/GPU decompression, DirectStorage 1.4 preview paths, autonomous streaming service performance beyond selected samples, mesh shader execution, Metal MAVG readiness, deformation, ray tracing, quality governor/benchmark superiority, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, and broad CPU/GPU/memory optimization.
+At the DirectStorage adapter closeout, measured async-overlap/performance proof was still pending; MAVG Async Overlap Performance Proof v1 now closes only a selected measured-sample proof lane. Remaining MAVG non-claims are GPU DirectStorage destinations, GDeflate/GPU decompression, DirectStorage 1.4 preview paths, autonomous streaming service performance beyond selected samples, mesh shader execution, Metal MAVG readiness, deformation, ray tracing, quality governor/benchmark superiority, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, and broad CPU/GPU/memory optimization.
 
 ## 2026-06-11 Progress Audit Addendum
 
@@ -58,7 +58,7 @@ This addendum supersedes the 2026-06-05 execution baseline where later MAVG chil
 
 Repository state checked during this audit:
 
-- At the 2026-06-11 audit, `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` had returned to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`; current execution has since advanced to MAVG Async Overlap Performance Proof v1.
+- At the 2026-06-21 closeout, `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` returned to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []` after MAVG Async Overlap Performance Proof v1 completed.
 - Phase 0 completed through `mavg-research-legal-benchmark-baseline-v1`, producing the clean-room/legal, official-source, benchmark methodology, stale-doc, first-party UI/editor, Win32/WASAPI, and performance-foundation baseline.
 - Phase 1 completed through `mavg-asset-graph-v1`, including `GameEngine.MavgClusterGraph.v1`, hierarchy/error/fallback/draw-range validation, deterministic serialization, package dependency rows, static `GameEngine.MavgClusterPayload.v1` vertex/index rows, and `MK_tools` cook/package planning.
 - Phase 2 completed through the runtime LoD milestone, including `mavg_lod_selection.hpp`, `select_mavg_lod_clusters`, selected cluster rows, page requests, resident fallback substitution, budget degradation, temporal hysteresis, and fail-closed diagnostics.
@@ -75,7 +75,7 @@ Audit conclusions:
 
 - Keep this file as the single MAVG master roadmap. Current truth for implemented scope is also reflected in `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/specs/2026-06-05-mavg-architecture-v1.md`, and `engine/agent/manifest.json`.
 - The near-term production-facing claim has advanced from "static clustered geometry with deterministic fallback and package evidence" to "static clustered geometry with deterministic CPU LoD, conventional upload/submission evidence, selected MAVG page-residency planning, filesystem-backed reviewed `.mavgpayload` byte-range reads, caller-owned safe-point adoption, narrow streamed page GPU upload/binding evidence, and selected D3D12/Vulkan GPU-culling/indirect evidence." This is still not a broad virtualized geometry, mesh shader, autonomous streaming, ray tracing, or benchmark-superiority claim.
-- At the 2026-06-11 audit, the implementation candidate was MAVG Streaming Upload Overlap Evidence v1, a narrow Phase 5 runtime-RHI evidence row over caller-owned timing windows for successful closeout/adoption/upload inputs. The later 2026-06-21 addendum closes the first-party Win32 DirectStorage SDK adapter candidate, and the current active child plan targets only selected measured-sample async-overlap performance proof; future candidates should target autonomous streaming services, mesh shader execution, GPU DirectStorage destinations/GDeflate, or another unclaimed package-visible backend/streaming gap only after a fresh child plan and validation scope are written.
+- At the 2026-06-11 audit, the implementation candidate was MAVG Streaming Upload Overlap Evidence v1, a narrow Phase 5 runtime-RHI evidence row over caller-owned timing windows for successful closeout/adoption/upload inputs. The later 2026-06-21 addendum closes the first-party Win32 DirectStorage SDK adapter candidate and the selected measured-sample async-overlap performance proof; future candidates should target autonomous streaming services, mesh shader execution, GPU DirectStorage destinations/GDeflate, or another unclaimed package-visible backend/streaming gap only after a fresh child plan and validation scope are written.
 - Fresh C++ configure/build validation currently requires a valid official Microsoft `external/vcpkg` checkout because `CMakePresets.json` points at `external/vcpkg/scripts/buildsystems/vcpkg.cmake` with `VCPKG_MANIFEST_INSTALL=OFF`. Microsoft vcpkg documentation describes that CMake integration is enabled through the vcpkg toolchain file and that manifest installs can be integrated into configure, but this repository intentionally routes dependency installation through `tools/bootstrap-deps.ps1`; do not move package restore into configure to bypass a missing clone.
 
 ## 2026-06-05 Full Project Audit Addendum
