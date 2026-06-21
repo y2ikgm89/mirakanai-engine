@@ -5,7 +5,8 @@
 param(
     [string]$GameTarget = "sample_desktop_runtime_game",
     [string[]]$SmokeArgs = @(),
-    [switch]$RequireVulkanShaders
+    [switch]$RequireVulkanShaders,
+    [string]$DiagnosticLogPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +14,39 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $root = Get-RepoRoot
+
+function Write-PackageDiagnostic {
+    param([Parameter(Mandatory = $true)][string]$Message)
+
+    Write-Host $Message
+    if (-not [string]::IsNullOrWhiteSpace($DiagnosticLogPath)) {
+        $logPath = $DiagnosticLogPath
+        if (-not [System.IO.Path]::IsPathRooted($logPath)) {
+            $logPath = Join-Path $root $logPath
+        }
+        $logDirectory = Split-Path -Parent $logPath
+        if (-not [string]::IsNullOrWhiteSpace($logDirectory)) {
+            New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
+        }
+        Add-Content -LiteralPath $logPath -Value $Message -Encoding utf8
+    }
+}
+
+function Invoke-PackageStage {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][scriptblock]$ScriptBlock
+    )
+
+    Write-PackageDiagnostic "linux-runtime-package: $Name start"
+    try {
+        & $ScriptBlock
+        Write-PackageDiagnostic "linux-runtime-package: $Name ok"
+    } catch {
+        Write-PackageDiagnostic "linux-runtime-package: $Name failed: $_"
+        throw
+    }
+}
 
 if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
     Write-Error "Linux runtime packaging requires a Linux host."
@@ -38,7 +72,9 @@ $configureArgs = @(
     "-DMK_REQUIRE_DESKTOP_RUNTIME_SPIRV=$(if ($RequireVulkanShaders.IsPresent) { 'ON' } else { 'OFF' })",
     "-DVCPKG_TARGET_TRIPLET=$vcpkgTriplet"
 )
-Invoke-CheckedCommand $tools.CMake @configureArgs
+Invoke-PackageStage "configure" {
+    Invoke-CheckedCommand $tools.CMake @configureArgs
+}
 
 $buildDir = Join-Path $root "out/build/desktop-runtime-linux-release"
 $metadata = Read-DesktopRuntimeGameMetadata -Path (Join-Path $buildDir "desktop-runtime-games.json")
@@ -64,8 +100,12 @@ if ($SmokeArgs.Count -eq 0) {
     Write-Error "Linux runtime package target '$GameTarget' does not declare package smoke args."
 }
 
-Invoke-CheckedCommand $tools.CMake --build --preset $presetName --target MK_desktop_runtime_package_build
-Invoke-CheckedCommand $tools.CTest --preset $presetName --output-on-failure -R "MK_runtime_host_tests|$([regex]::Escape($GameTarget))(_vulkan_shader_artifacts)?_smoke"
+Invoke-PackageStage "build" {
+    Invoke-CheckedCommand $tools.CMake --build --preset $presetName --target MK_desktop_runtime_package_build
+}
+Invoke-PackageStage "ctest" {
+    Invoke-CheckedCommand $tools.CTest --preset $presetName --output-on-failure -R "MK_runtime_host_tests|$([regex]::Escape($GameTarget))(_vulkan_shader_artifacts)?_smoke"
+}
 
 $installPrefix = Join-Path $root "out/install/linux-runtime-release"
 $installRoot = [System.IO.Path]::GetFullPath((Join-Path $root "out/install"))
@@ -81,12 +121,18 @@ if (Test-Path -LiteralPath $installPrefixPath -PathType Container) {
     Remove-Item -LiteralPath $installPrefixPath -Recurse -Force
 }
 
-Invoke-CheckedCommand $tools.CMake --install $buildDir --config Release --prefix $installPrefix
-& (Join-Path $PSScriptRoot "validate-installed-linux-runtime.ps1") `
-    -InstallPrefix $installPrefix `
-    -GameTarget $GameTarget `
-    -SmokeArgs $SmokeArgs `
-    -RequireVulkanShaders:$RequireVulkanShaders.IsPresent
+Invoke-PackageStage "install" {
+    Invoke-CheckedCommand $tools.CMake --install $buildDir --config Release --prefix $installPrefix
+}
+Invoke-PackageStage "validate-installed" {
+    & (Join-Path $PSScriptRoot "validate-installed-linux-runtime.ps1") `
+        -InstallPrefix $installPrefix `
+        -GameTarget $GameTarget `
+        -SmokeArgs $SmokeArgs `
+        -RequireVulkanShaders:$RequireVulkanShaders.IsPresent
+}
 
-Invoke-CheckedCommand $tools.CPack --preset $presetName
+Invoke-PackageStage "cpack" {
+    Invoke-CheckedCommand $tools.CPack --preset $presetName
+}
 Write-Host "linux-runtime-package: ok ($GameTarget)"

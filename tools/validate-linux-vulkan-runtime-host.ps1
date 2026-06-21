@@ -171,6 +171,13 @@ function Invoke-LinuxPackageSmokeIfRequired {
         }
     }
 
+    $packageDiagnosticLog = Join-Path $root "artifacts/environment/platform/linux-vulkan-host/package-linux-runtime-progress.txt"
+    $packageDiagnosticDirectory = Split-Path -Parent $packageDiagnosticLog
+    New-Item -ItemType Directory -Force -Path $packageDiagnosticDirectory | Out-Null
+    if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
+        Remove-Item -LiteralPath $packageDiagnosticLog -Force
+    }
+
     $smoke = Invoke-ToolCapture `
         -FilePath "pwsh" `
         -Arguments @(
@@ -181,9 +188,14 @@ function Invoke-LinuxPackageSmokeIfRequired {
             $PackageScript,
             "-GameTarget",
             "sample_desktop_runtime_game",
-            "-RequireVulkanShaders"
+            "-RequireVulkanShaders",
+            "-DiagnosticLogPath",
+            $packageDiagnosticLog
         ) `
         -TimeoutSeconds $TimeoutSeconds
+    if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
+        Write-Output (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
+    }
     $smokeText = [string]::Join("`n", @($smoke.Output, $smoke.Error))
     if (-not [string]::IsNullOrWhiteSpace($smokeText)) {
         Write-Output $smokeText.TrimEnd()
