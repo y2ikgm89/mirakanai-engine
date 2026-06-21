@@ -402,6 +402,7 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
         rhi::vulkan::VulkanRuntimeSwapchainFrameBarrierDesc barrier_desc;
         barrier_desc.image_index = acquire_result.image_index;
         barrier_desc.barrier = sync_plan.barriers[0];
+        barrier_desc.barrier.before = rhi::ResourceState::undefined;
         const auto render_barrier = rhi::vulkan::record_runtime_swapchain_frame_barrier(
             device_result.device, pool_result.pool, swapchain_result.swapchain, barrier_desc);
 
