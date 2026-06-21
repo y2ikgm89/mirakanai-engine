@@ -48,6 +48,47 @@ function Invoke-PackageStage {
     }
 }
 
+function Invoke-PackageCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [string[]]$Arguments = @()
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FilePath
+    $startInfo.WorkingDirectory = (Get-Location).Path
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    foreach ($argument in @($Arguments)) {
+        $startInfo.ArgumentList.Add($argument) | Out-Null
+    }
+    $startInfo.Environment.Clear()
+    foreach ($entry in Get-NormalizedProcessEnvironment) {
+        $startInfo.Environment[$entry.Key] = $entry.Value
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    $null = $process.Start()
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $stdout = $stdoutTask.GetAwaiter().GetResult()
+    $stderr = $stderrTask.GetAwaiter().GetResult()
+
+    if ($process.ExitCode -ne 0) {
+        Write-PackageDiagnostic "linux-runtime-package: command failed: $FilePath $($Arguments -join ' ')"
+        if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+            Write-PackageDiagnostic "linux-runtime-package: stdout:`n$($stdout.TrimEnd())"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+            Write-PackageDiagnostic "linux-runtime-package: stderr:`n$($stderr.TrimEnd())"
+        }
+        Write-Error "Command failed with exit code $($process.ExitCode): $FilePath $($Arguments -join ' ')"
+    }
+}
+
 if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
     Write-Error "Linux runtime packaging requires a Linux host."
 }
@@ -73,7 +114,7 @@ $configureArgs = @(
     "-DVCPKG_TARGET_TRIPLET=$vcpkgTriplet"
 )
 Invoke-PackageStage "configure" {
-    Invoke-CheckedCommand $tools.CMake @configureArgs
+    Invoke-PackageCommand $tools.CMake $configureArgs
 }
 
 $buildDir = Join-Path $root "out/build/desktop-runtime-linux-release"
@@ -101,10 +142,16 @@ if ($SmokeArgs.Count -eq 0) {
 }
 
 Invoke-PackageStage "build" {
-    Invoke-CheckedCommand $tools.CMake --build --preset $presetName --target MK_desktop_runtime_package_build
+    Invoke-PackageCommand $tools.CMake @("--build", "--preset", $presetName, "--target", "MK_desktop_runtime_package_build")
 }
 Invoke-PackageStage "ctest" {
-    Invoke-CheckedCommand $tools.CTest --preset $presetName --output-on-failure -R "MK_runtime_host_tests|$([regex]::Escape($GameTarget))(_vulkan_shader_artifacts)?_smoke"
+    Invoke-PackageCommand $tools.CTest @(
+        "--preset",
+        $presetName,
+        "--output-on-failure",
+        "-R",
+        "MK_runtime_host_tests|$([regex]::Escape($GameTarget))(_vulkan_shader_artifacts)?_smoke"
+    )
 }
 
 $installPrefix = Join-Path $root "out/install/linux-runtime-release"
@@ -122,7 +169,7 @@ if (Test-Path -LiteralPath $installPrefixPath -PathType Container) {
 }
 
 Invoke-PackageStage "install" {
-    Invoke-CheckedCommand $tools.CMake --install $buildDir --config Release --prefix $installPrefix
+    Invoke-PackageCommand $tools.CMake @("--install", $buildDir, "--config", "Release", "--prefix", $installPrefix)
 }
 Invoke-PackageStage "validate-installed" {
     & (Join-Path $PSScriptRoot "validate-installed-linux-runtime.ps1") `
@@ -133,6 +180,6 @@ Invoke-PackageStage "validate-installed" {
 }
 
 Invoke-PackageStage "cpack" {
-    Invoke-CheckedCommand $tools.CPack --preset $presetName
+    Invoke-PackageCommand $tools.CPack @("--preset", $presetName)
 }
 Write-Host "linux-runtime-package: ok ($GameTarget)"
