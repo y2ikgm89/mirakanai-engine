@@ -88,6 +88,17 @@ These rules convert official documentation into non-negotiable plan behavior:
 - Broad optimization rows are MAVG-scoped only. They cannot promote renderer-wide, environment-wide, or commercial readiness.
 - Nanite rows are comparison-only. The implementation must not copy Unreal Engine internals, consume private Nanite formats, or use Nanite wording as a product claim.
 
+## Plan Precision Gate
+
+Before implementing any task in this plan, tighten that task to the same precision as the active slice:
+
+- List every new public or backend-private type, function, validator output field, and static-check literal before code edits.
+- Name every CTest target and the focused `ctest -R` filter that must pass for the slice.
+- Name every negative test that prevents false readiness promotion.
+- Define the exact ready field that can become true, and the exact `host_gated` or `unsupported` fields that must stay true or false when required hardware, OS, SDK, driver, profiler, or feature bits are missing.
+- Treat backend fallback as a separate evidence row. A fallback row can prove graceful degradation but can never promote a mesh-shader, ray-tracing, Metal, scheduler, async-overlap, broad-optimization, or Nanite-comparison readiness row.
+- Update this plan, manifest fragments, composed manifest, docs, schemas, and static guards in the same PR whenever an implementation discovers a sharper boundary than the original plan text.
+
 ## Known Blockers Are Rows, Not Assumptions
 
 The implementation must not infer or hand-wave these conditions:
@@ -209,17 +220,28 @@ Claim boundary: Task 3 adds a D3D12-local execution proof API and backend-neutra
 ## Task 4: Vulkan Mesh Shader LOD Execution
 
 **Files:**
+- Create: `engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_mesh_shader_lod.hpp`
 - Create: `engine/rhi/vulkan/src/vulkan_mavg_mesh_shader_lod.cpp`
-- Create or modify shaders under: `shaders/vulkan/`
+- Create: `tests/shaders/vulkan_mavg_mesh_shader_lod.task.hlsl`
+- Create: `tests/shaders/vulkan_mavg_mesh_shader_lod.mesh.hlsl`
+- Create: `tests/shaders/vulkan_mavg_mesh_shader_lod.frag.hlsl`
 - Modify: `engine/rhi/vulkan/CMakeLists.txt`
+- Modify: root `CMakeLists.txt`
+- Modify: `engine/agent/manifest.fragments/004-modules.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Test: `tests/unit/vulkan_mavg_mesh_shader_lod_tests.cpp`
+- Static guard: `tools/check-ai-integration-116-mavg-vulkan-mesh-shader-lod.ps1`
 
-- [ ] Query `VK_EXT_mesh_shader`, `VkPhysicalDeviceMeshShaderFeaturesEXT`, and `VkPhysicalDeviceMeshShaderPropertiesEXT`; require `meshShader == VK_TRUE`, record `taskShader`, and store the exact feature/property rows consumed by readiness.
-- [ ] Implement `vkCmdDrawMeshTasksEXT` execution for the selected first-party package scene.
-- [ ] Add an indirect variant only when the indirect buffer was created with `VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT` and the command row satisfies `VkDrawMeshTasksIndirectCommandEXT` stride/alignment constraints.
-- [ ] Add a count-buffer variant only when Vulkan 1.2, `VK_KHR_draw_indirect_count`, or `VK_AMD_draw_indirect_count` is supported and the count-buffer offset/count limits satisfy the extension command requirements; otherwise keep that subrow host-gated.
-- [ ] Apply synchronization2 barriers for compute/page upload to mesh shader consumption and for readback evidence, using task/mesh shader stage masks when those stages consume the data.
-- [ ] Keep conventional Vulkan indexed indirect execution as fallback and verify no MAVG readiness row is promoted by fallback alone.
+- [ ] Add backend-private API `probe_vulkan_mavg_mesh_shader_lod_capability()` and `execute_vulkan_mavg_mesh_shader_lod(...)`; do not expose native Vulkan handles through public RHI or gameplay APIs.
+- [ ] Capability probe must record `loader_available`, `instance_created`, `physical_device_selected`, `device_extension_supported`, `feature_query_executed`, `mesh_shader_supported`, `task_shader_supported`, `mesh_shader_queries_supported`, `mesh_shader_enabled`, `task_shader_enabled`, `draw_indirect_count_supported`, `draw_indirect_count_enabled`, `draw_mesh_tasks_direct_command_available`, `draw_mesh_tasks_indirect_command_available`, `draw_mesh_tasks_indirect_count_command_available`, `max_task_work_group_count_x`, `max_task_work_group_count_y`, `max_task_work_group_count_z`, `max_task_work_group_total_count`, `max_mesh_work_group_count_x`, `max_mesh_work_group_count_y`, `max_mesh_work_group_count_z`, `max_mesh_work_group_total_count`, `max_mesh_output_vertices`, `max_mesh_output_primitives`, adapter/vendor/device ids, and diagnostic text.
+- [ ] Readiness requires `VK_EXT_mesh_shader`, `VkPhysicalDeviceMeshShaderFeaturesEXT::meshShader == VK_TRUE`, a logical-device feature chain that enables `meshShader`, and queried `VkPhysicalDeviceMeshShaderPropertiesEXT` limits that cover the selected first-party meshlet workload. If `taskShader == VK_FALSE` or is not enabled, direct mesh-only execution can be tested, but task-shader LOD amplification remains `host_gated`.
+- [ ] Implement `vkCmdDrawMeshTasksEXT` execution for a selected first-party meshlet package row and require deterministic readback color/hash evidence before `mavg_mesh_shader_lod_vulkan_ready=true`.
+- [ ] Prove the execution row uses `VK_SHADER_STAGE_MESH_BIT_EXT` and, when task amplification is enabled, `VK_SHADER_STAGE_TASK_BIT_EXT`; prove no vertex input layout, no index buffer binding, and no conventional indexed indirect draw promoted the mesh-shader row.
+- [ ] Add `vkCmdDrawMeshTasksIndirectEXT` only when the command buffer uses a buffer created with `VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT`, offset is 4-byte aligned, `stride >= sizeof(VkDrawMeshTasksIndirectCommandEXT)`, `stride` is 4-byte aligned, `offset + stride * (drawCount - 1) + sizeof(VkDrawMeshTasksIndirectCommandEXT) <= buffer_size_bytes`, and draw counts stay within the queried per-axis and total mesh/task workgroup limits.
+- [ ] Add `vkCmdDrawMeshTasksIndirectCountEXT` only when Vulkan 1.2, `VK_KHR_draw_indirect_count`, or `VK_AMD_draw_indirect_count` is supported, the `drawIndirectCount` feature is enabled, and `vkCmdDrawMeshTasksIndirectCountEXT` resolves from `vkGetDeviceProcAddr`; require both parameter and count buffers to have indirect-buffer usage, offsets to be 4-byte aligned, `maxDrawCount` to be bounded by the test workload, and the actual count to be captured in evidence. Otherwise set only `mavg_mesh_shader_lod_vulkan_indirect_count_host_gated=true`.
+- [ ] Apply synchronization2 barriers for compute/page upload to mesh shader consumption and for readback evidence. Use `VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT` and `VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT` when those stages consume data; missing or fallback-only barriers are correctness failures.
+- [ ] Add tests named `vulkan_mavg_mesh_shader_lod_rejects_empty_task_rows`, `vulkan_mavg_mesh_shader_lod_probe_records_mesh_shader_feature_state`, `vulkan_mavg_mesh_shader_lod_host_gates_without_mesh_shader_support`, `vulkan_mavg_mesh_shader_lod_rejects_invalid_workgroup_counts`, `vulkan_mavg_mesh_shader_lod_rejects_indirect_range_overflow`, `vulkan_mavg_mesh_shader_lod_does_not_promote_fallback_indexed_draw`, and `vulkan_mavg_mesh_shader_lod_executes_mesh_shader_when_host_supports_it`.
+- [ ] Test shader binaries are optional host evidence inputs: when the environment does not provide compiled SPIR-V paths, the execution test must assert a concrete skip/host-gated diagnostic rather than silently passing readiness. Shader source stays under `tests/shaders/` to match the repository's existing unit-test shader convention.
 - [ ] Run:
 
 ```powershell

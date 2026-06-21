@@ -557,6 +557,21 @@ struct VulkanRuntimePhysicalDeviceSnapshot {
     bool supports_swapchain_extension{false};
     bool supports_dynamic_rendering{false};
     bool supports_synchronization2{false};
+    bool supports_mesh_shader_extension{false};
+    bool mesh_shader_feature_queried{false};
+    bool mesh_shader_supported{false};
+    bool task_shader_supported{false};
+    bool mesh_shader_queries_supported{false};
+    std::uint32_t max_task_work_group_count_x{0};
+    std::uint32_t max_task_work_group_count_y{0};
+    std::uint32_t max_task_work_group_count_z{0};
+    std::uint32_t max_task_work_group_total_count{0};
+    std::uint32_t max_mesh_work_group_count_x{0};
+    std::uint32_t max_mesh_work_group_count_y{0};
+    std::uint32_t max_mesh_work_group_count_z{0};
+    std::uint32_t max_mesh_work_group_total_count{0};
+    std::uint32_t max_mesh_output_vertices{0};
+    std::uint32_t max_mesh_output_primitives{0};
 };
 
 struct VulkanRuntimePhysicalDeviceSnapshotProbeResult {

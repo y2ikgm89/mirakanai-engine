@@ -161,6 +161,8 @@ inline constexpr std::uint32_t vulkan_structure_type_physical_device_features_2 
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_properties_2 = 1000059001;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_dynamic_rendering_features = 1000044003;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_vulkan_1_3_features = 53;
+inline constexpr std::uint32_t vulkan_structure_type_physical_device_mesh_shader_features_ext = 1000328000;
+inline constexpr std::uint32_t vulkan_structure_type_physical_device_mesh_shader_properties_ext = 1000328001;
 inline constexpr std::uint32_t vulkan_structure_type_image_create_info = 14;
 inline constexpr std::uint32_t vulkan_structure_type_swapchain_create_info = 1000001000;
 inline constexpr std::uint32_t vulkan_structure_type_present_info = 1000001001;
@@ -376,6 +378,49 @@ struct NativeVulkanPhysicalDeviceFeatures2 {
     std::uint32_t s_type;
     void* next;
     NativeVulkanPhysicalDeviceFeatures features;
+};
+
+struct NativeVulkanPhysicalDeviceMeshShaderFeaturesExt {
+    std::uint32_t s_type;
+    void* next;
+    std::uint32_t task_shader;
+    std::uint32_t mesh_shader;
+    std::uint32_t multiview_mesh_shader;
+    std::uint32_t primitive_fragment_shading_rate_mesh_shader;
+    std::uint32_t mesh_shader_queries;
+};
+
+struct NativeVulkanPhysicalDeviceMeshShaderPropertiesExt {
+    std::uint32_t s_type;
+    void* next;
+    std::uint32_t max_task_work_group_total_count;
+    std::uint32_t max_task_work_group_count[3];
+    std::uint32_t max_task_work_group_invocations;
+    std::uint32_t max_task_work_group_size[3];
+    std::uint32_t max_task_payload_size;
+    std::uint32_t max_task_shared_memory_size;
+    std::uint32_t max_task_payload_and_shared_memory_size;
+    std::uint32_t max_mesh_work_group_total_count;
+    std::uint32_t max_mesh_work_group_count[3];
+    std::uint32_t max_mesh_work_group_invocations;
+    std::uint32_t max_mesh_work_group_size[3];
+    std::uint32_t max_mesh_shared_memory_size;
+    std::uint32_t max_mesh_payload_and_shared_memory_size;
+    std::uint32_t max_mesh_output_memory_size;
+    std::uint32_t max_mesh_payload_and_output_memory_size;
+    std::uint32_t max_mesh_output_components;
+    std::uint32_t max_mesh_output_vertices;
+    std::uint32_t max_mesh_output_primitives;
+    std::uint32_t max_mesh_output_layers;
+    std::uint32_t max_mesh_multiview_view_count;
+    std::uint32_t mesh_output_per_vertex_granularity;
+    std::uint32_t mesh_output_per_primitive_granularity;
+    std::uint32_t max_preferred_task_work_group_invocations;
+    std::uint32_t max_preferred_mesh_work_group_invocations;
+    std::uint32_t prefers_local_invocation_vertex_output;
+    std::uint32_t prefers_local_invocation_primitive_output;
+    std::uint32_t prefers_compact_vertex_output;
+    std::uint32_t prefers_compact_primitive_output;
 };
 
 struct NativeVulkanPhysicalDeviceDynamicRenderingFeatures {
@@ -1293,6 +1338,23 @@ struct Vulkan13FeatureSupport {
     bool synchronization2{false};
 };
 
+struct MeshShaderFeatureSupport {
+    bool queried{false};
+    bool mesh_shader{false};
+    bool task_shader{false};
+    bool mesh_shader_queries{false};
+    std::uint32_t max_task_work_group_count_x{0};
+    std::uint32_t max_task_work_group_count_y{0};
+    std::uint32_t max_task_work_group_count_z{0};
+    std::uint32_t max_task_work_group_total_count{0};
+    std::uint32_t max_mesh_work_group_count_x{0};
+    std::uint32_t max_mesh_work_group_count_y{0};
+    std::uint32_t max_mesh_work_group_count_z{0};
+    std::uint32_t max_mesh_work_group_total_count{0};
+    std::uint32_t max_mesh_output_vertices{0};
+    std::uint32_t max_mesh_output_primitives{0};
+};
+
 struct QueueFamilySelection {
     std::uint32_t graphics{invalid_vulkan_queue_family};
     std::uint32_t present{invalid_vulkan_queue_family};
@@ -1588,6 +1650,59 @@ query_vulkan13_feature_support(VulkanGetPhysicalDeviceFeatures2 get_physical_dev
     return support;
 }
 
+[[nodiscard]] MeshShaderFeatureSupport
+query_mesh_shader_feature_support(VulkanGetPhysicalDeviceFeatures2 get_physical_device_features2,
+                                  VulkanGetPhysicalDeviceProperties2 get_physical_device_properties2,
+                                  NativeVulkanPhysicalDevice physical_device, bool mesh_shader_extension_supported) {
+    MeshShaderFeatureSupport support;
+    if (!mesh_shader_extension_supported || get_physical_device_features2 == nullptr ||
+        get_physical_device_properties2 == nullptr || physical_device == nullptr) {
+        return support;
+    }
+
+    NativeVulkanPhysicalDeviceMeshShaderFeaturesExt mesh_features{
+        .s_type = vulkan_structure_type_physical_device_mesh_shader_features_ext,
+        .next = nullptr,
+        .task_shader = 0,
+        .mesh_shader = 0,
+        .multiview_mesh_shader = 0,
+        .primitive_fragment_shading_rate_mesh_shader = 0,
+        .mesh_shader_queries = 0,
+    };
+    NativeVulkanPhysicalDeviceFeatures2 features{
+        .s_type = vulkan_structure_type_physical_device_features_2,
+        .next = &mesh_features,
+        .features = {},
+    };
+
+    get_physical_device_features2(physical_device, &features);
+    support.queried = true;
+    support.mesh_shader = mesh_features.mesh_shader != 0U;
+    support.task_shader = mesh_features.task_shader != 0U;
+    support.mesh_shader_queries = mesh_features.mesh_shader_queries != 0U;
+
+    NativeVulkanPhysicalDeviceMeshShaderPropertiesExt mesh_properties{
+        .s_type = vulkan_structure_type_physical_device_mesh_shader_properties_ext,
+        .next = nullptr,
+    };
+    NativeVulkanPhysicalDeviceProperties2 properties{};
+    properties.s_type = vulkan_structure_type_physical_device_properties_2;
+    properties.next = &mesh_properties;
+    get_physical_device_properties2(physical_device, &properties);
+
+    support.max_task_work_group_count_x = mesh_properties.max_task_work_group_count[0];
+    support.max_task_work_group_count_y = mesh_properties.max_task_work_group_count[1];
+    support.max_task_work_group_count_z = mesh_properties.max_task_work_group_count[2];
+    support.max_task_work_group_total_count = mesh_properties.max_task_work_group_total_count;
+    support.max_mesh_work_group_count_x = mesh_properties.max_mesh_work_group_count[0];
+    support.max_mesh_work_group_count_y = mesh_properties.max_mesh_work_group_count[1];
+    support.max_mesh_work_group_count_z = mesh_properties.max_mesh_work_group_count[2];
+    support.max_mesh_work_group_total_count = mesh_properties.max_mesh_work_group_total_count;
+    support.max_mesh_output_vertices = mesh_properties.max_mesh_output_vertices;
+    support.max_mesh_output_primitives = mesh_properties.max_mesh_output_primitives;
+    return support;
+}
+
 [[nodiscard]] RuntimePhysicalDeviceProperties
 query_physical_device_properties(VulkanGetPhysicalDeviceProperties2 get_physical_device_properties2,
                                  NativeVulkanPhysicalDevice physical_device) {
@@ -1621,6 +1736,11 @@ make_runtime_physical_device_snapshot(std::size_t device_index, NativeVulkanPhys
     const auto vulkan13_features = query_vulkan13_feature_support(get_physical_device_features2, physical_device);
     const auto supports_swapchain_extension =
         extension_is_available_in(device_extensions, std::string_view{"VK_KHR_swapchain"});
+    const auto supports_mesh_shader_extension =
+        extension_is_available_in(device_extensions, std::string_view{"VK_EXT_mesh_shader"});
+    const auto mesh_shader_features =
+        query_mesh_shader_feature_support(get_physical_device_features2, get_physical_device_properties2,
+                                          physical_device, supports_mesh_shader_extension);
 
     return VulkanRuntimePhysicalDeviceSnapshot{
         .device_index = device_index,
@@ -1635,6 +1755,21 @@ make_runtime_physical_device_snapshot(std::size_t device_index, NativeVulkanPhys
         .supports_swapchain_extension = supports_swapchain_extension,
         .supports_dynamic_rendering = vulkan13_features.dynamic_rendering,
         .supports_synchronization2 = vulkan13_features.synchronization2,
+        .supports_mesh_shader_extension = supports_mesh_shader_extension,
+        .mesh_shader_feature_queried = mesh_shader_features.queried,
+        .mesh_shader_supported = mesh_shader_features.mesh_shader,
+        .task_shader_supported = mesh_shader_features.task_shader,
+        .mesh_shader_queries_supported = mesh_shader_features.mesh_shader_queries,
+        .max_task_work_group_count_x = mesh_shader_features.max_task_work_group_count_x,
+        .max_task_work_group_count_y = mesh_shader_features.max_task_work_group_count_y,
+        .max_task_work_group_count_z = mesh_shader_features.max_task_work_group_count_z,
+        .max_task_work_group_total_count = mesh_shader_features.max_task_work_group_total_count,
+        .max_mesh_work_group_count_x = mesh_shader_features.max_mesh_work_group_count_x,
+        .max_mesh_work_group_count_y = mesh_shader_features.max_mesh_work_group_count_y,
+        .max_mesh_work_group_count_z = mesh_shader_features.max_mesh_work_group_count_z,
+        .max_mesh_work_group_total_count = mesh_shader_features.max_mesh_work_group_total_count,
+        .max_mesh_output_vertices = mesh_shader_features.max_mesh_output_vertices,
+        .max_mesh_output_primitives = mesh_shader_features.max_mesh_output_primitives,
     };
 }
 
