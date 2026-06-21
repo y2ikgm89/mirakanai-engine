@@ -504,6 +504,7 @@ $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
+$requiresRuntimeUiStandardWidgets = @($SmokeArgs) -contains "--require-runtime-ui-standard-widgets"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
 $requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runtime-ui-renderer-atlas-handoff"
@@ -4657,6 +4658,58 @@ if ($requiresRuntimeUiWorkbench) {
         $expectedValue = $expectedRuntimeUiWorkbenchFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove runtime UI workbench field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresRuntimeUiStandardWidgets) {
+    foreach ($field in @(
+            "runtime_ui_standard_widgets_ready",
+            "runtime_ui_standard_widgets_provenance_ready",
+            "runtime_ui_standard_widgets_official_documentation_rows",
+            "runtime_ui_standard_widgets_first_party_design_rows",
+            "runtime_ui_standard_widgets_meter_rows",
+            "runtime_ui_standard_widgets_menu_screens",
+            "runtime_ui_standard_widgets_menu_actions",
+            "runtime_ui_standard_widgets_document_elements",
+            "runtime_ui_meter_health_normalized",
+            "runtime_ui_meter_mana_normalized",
+            "runtime_ui_meter_stamina_normalized",
+            "runtime_ui_standard_widgets_health_accessibility_ready",
+            "runtime_ui_standard_widgets_mana_localization_ready",
+            "runtime_ui_standard_widgets_stamina_warning_style_ready",
+            "runtime_ui_standard_widgets_external_engine_code",
+            "runtime_ui_standard_widgets_external_engine_assets",
+            "runtime_ui_standard_widgets_ui_middleware",
+            "runtime_ui_standard_widgets_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI standard widgets field: $field"
+        }
+    }
+    $expectedRuntimeUiStandardWidgetFields = @{
+        "runtime_ui_standard_widgets_ready" = "1"
+        "runtime_ui_standard_widgets_provenance_ready" = "1"
+        "runtime_ui_standard_widgets_official_documentation_rows" = "3"
+        "runtime_ui_standard_widgets_first_party_design_rows" = "1"
+        "runtime_ui_standard_widgets_meter_rows" = "3"
+        "runtime_ui_standard_widgets_menu_screens" = "2"
+        "runtime_ui_standard_widgets_menu_actions" = "4"
+        "runtime_ui_standard_widgets_document_elements" = "19"
+        "runtime_ui_meter_health_normalized" = "0.750"
+        "runtime_ui_meter_mana_normalized" = "0.400"
+        "runtime_ui_meter_stamina_normalized" = "0.100"
+        "runtime_ui_standard_widgets_health_accessibility_ready" = "1"
+        "runtime_ui_standard_widgets_mana_localization_ready" = "1"
+        "runtime_ui_standard_widgets_stamina_warning_style_ready" = "1"
+        "runtime_ui_standard_widgets_external_engine_code" = "0"
+        "runtime_ui_standard_widgets_external_engine_assets" = "0"
+        "runtime_ui_standard_widgets_ui_middleware" = "0"
+        "runtime_ui_standard_widgets_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiStandardWidgetFields.Keys) {
+        $expectedValue = $expectedRuntimeUiStandardWidgetFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI standard widgets field $field=$expectedValue."
         }
     }
 }

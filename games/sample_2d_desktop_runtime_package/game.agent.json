@@ -125,6 +125,7 @@
         "win32-desktop-host",
         "scene-rendering",
         "runtime-ui",
+        "runtime-ui-standard-widgets",
         "runtime-ui-workbench",
         "audio-mix",
         "audio-production",
@@ -152,6 +153,7 @@
         "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
         "installed-2d-runtime-menu-hud-smoke",
+        "installed-2d-runtime-ui-standard-widgets-smoke",
         "installed-2d-audio-gameplay-mixer-smoke",
         "installed-2d-audio-production-smoke",
         "installed-2d-source-image-audio-codec-review-smoke",
@@ -257,6 +259,13 @@
           "evidence": "Runtime menu HUD smoke reports deterministic display, command, dialogue, and input-binding prompt counters.",
           "recipeIds": [
             "installed-2d-runtime-menu-hud-smoke"
+          ]
+        },
+        {
+          "id": "runtime-ui-standard-widgets",
+          "evidence": "Runtime UI standard widgets smoke reports runtime_ui_standard_widgets_ready=1, first-party HP/MP/SP meter rows, pause/settings menu actions, official-documentation provenance rows, first-party design rows, accessibility/localization/style-token counters, and zero external engine code, asset, or UI middleware counters.",
+          "recipeIds": [
+            "installed-2d-runtime-ui-standard-widgets-smoke"
           ]
         },
         {
@@ -2399,6 +2408,10 @@
     {
       "name": "installed-2d-runtime-menu-hud-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-menu-hud"
+    },
+    {
+      "name": "installed-2d-runtime-ui-standard-widgets-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-standard-widgets"
     },
     {
       "name": "installed-2d-audio-gameplay-mixer-smoke",

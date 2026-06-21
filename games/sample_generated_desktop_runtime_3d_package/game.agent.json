@@ -169,6 +169,7 @@
         "rendering-vfx-profiling",
         "animation",
         "package-streaming",
+        "runtime-ui-standard-widgets",
         "audio-production"
       ],
       "packageTargets": [
@@ -180,6 +181,7 @@
         "desktop-runtime-release-target",
         "installed-d3d12-3d-package-smoke",
         "installed-3d-runtime-menu-hud-smoke",
+        "installed-3d-runtime-ui-standard-widgets-smoke",
         "installed-3d-audio-gameplay-mixer-smoke",
         "installed-3d-audio-production-smoke",
         "installed-generated-3d-source-image-audio-codec-review-smoke",
@@ -266,6 +268,13 @@
           "evidence": "Runtime menu HUD smoke reports deterministic display, command, dialogue, and input-binding prompt counters.",
           "recipeIds": [
             "installed-3d-runtime-menu-hud-smoke"
+          ]
+        },
+        {
+          "id": "runtime-ui-standard-widgets",
+          "evidence": "Runtime UI standard widgets smoke reports runtime_ui_standard_widgets_ready=1, first-party HP/MP/SP meter rows, pause/settings menu actions, official-documentation provenance rows, first-party design rows, accessibility/localization/style-token counters, and zero external engine code, asset, or UI middleware counters.",
+          "recipeIds": [
+            "installed-3d-runtime-ui-standard-widgets-smoke"
           ]
         },
         {
@@ -2453,6 +2462,10 @@
     {
       "name": "installed-3d-runtime-menu-hud-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-runtime-menu-hud"
+    },
+    {
+      "name": "installed-3d-runtime-ui-standard-widgets-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-runtime-ui-standard-widgets"
     },
     {
       "name": "installed-3d-audio-gameplay-mixer-smoke",

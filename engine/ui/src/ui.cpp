@@ -53,6 +53,7 @@ namespace {
     case SemanticRole::label:
     case SemanticRole::list:
     case SemanticRole::image:
+    case SemanticRole::meter:
     case SemanticRole::dialog:
         return false;
     }
@@ -1239,6 +1240,8 @@ std::string_view semantic_role_id(SemanticRole role) noexcept {
         return "checkbox";
     case SemanticRole::slider:
         return "slider";
+    case SemanticRole::meter:
+        return "meter";
     case SemanticRole::dialog:
         return "dialog";
     }
