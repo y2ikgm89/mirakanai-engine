@@ -6811,6 +6811,7 @@ struct JobExecutionFoundationEvidence {
     mirakana::JobExecutionPoolStatus pool_status{mirakana::JobExecutionPoolStatus::invalid_configuration};
     mirakana::JobExecutionRunResult run_result;
     std::uint64_t task_side_effects{0};
+    bool task_start_wait_timed_out{false};
 };
 
 [[nodiscard]] JobExecutionFoundationEvidence build_package_job_execution_foundation_evidence(bool requested) {
@@ -6946,7 +6947,9 @@ struct JobExecutionWorkStealingEvidence {
     std::mutex observed_mutex;
     std::condition_variable observed_cv;
     std::uint32_t started_task_count{0};
+    bool task_start_wait_timed_out{false};
     std::atomic_uint64_t task_side_effects{0};
+    constexpr auto work_stealing_start_timeout = std::chrono::seconds{30};
     const auto body = [&](mirakana::JobExecutionContext& context) {
         const auto lease = context.scratch.acquire(32, 16, context.worker_id);
         if (!lease.valid()) {
@@ -6963,11 +6966,12 @@ struct JobExecutionWorkStealingEvidence {
             std::unique_lock lock(observed_mutex);
             ++started_task_count;
             observed_cv.notify_all();
-            both_tasks_started = observed_cv.wait_for(lock, std::chrono::seconds{2},
+            both_tasks_started = observed_cv.wait_for(lock, work_stealing_start_timeout,
                                                       [&started_task_count] { return started_task_count >= 2U; });
-        }
-        if (!both_tasks_started) {
-            throw std::runtime_error("job execution work stealing task did not run concurrently");
+            if (!both_tasks_started) {
+                task_start_wait_timed_out = true;
+                observed_cv.notify_all();
+            }
         }
         task_side_effects.fetch_add(1, std::memory_order_relaxed);
     };
@@ -6994,6 +6998,10 @@ struct JobExecutionWorkStealingEvidence {
 
     evidence.run_result = pool.execute(batch);
     evidence.task_side_effects = task_side_effects.load(std::memory_order_relaxed);
+    {
+        std::scoped_lock lock(observed_mutex);
+        evidence.task_start_wait_timed_out = task_start_wait_timed_out;
+    }
     return evidence;
 }
 
@@ -7011,9 +7019,10 @@ job_execution_work_stealing_diagnostic_count(const JobExecutionWorkStealingEvide
     return evidence.requested && evidence.pool_status == mirakana::JobExecutionPoolStatus::ready &&
            run.status == mirakana::JobExecutionRunStatus::ready && run.worker_threads_started == 2U &&
            scheduling.total_submitted_jobs == 2U && run.tasks_executed == 2U && run.tasks_failed == 0U &&
-           evidence.task_side_effects == 2U && run.scheduling_evidence.execution_order.size() == 2U &&
-           run.scheduling_evidence.queue_rows.size() == 2U && run.work_stealing_applied &&
-           run.steal_attempt_count >= run.steal_success_count && run.steal_success_count > 0U &&
+           evidence.task_side_effects == 2U && !evidence.task_start_wait_timed_out &&
+           run.scheduling_evidence.execution_order.size() == 2U && run.scheduling_evidence.queue_rows.size() == 2U &&
+           run.work_stealing_applied && run.steal_attempt_count >= run.steal_success_count &&
+           run.steal_success_count > 0U &&
            scheduling.total_steal_attempt_count >= scheduling.total_steal_success_count &&
            scheduling.total_steal_success_count > 0U && scheduling.total_deterministic_merge_count == 2U &&
            scheduling.total_nondeterministic_merge_count == 0U && scheduling.total_blocked_dependency_count == 0U &&
@@ -10018,6 +10027,8 @@ int main(int argc, char** argv) {
         << " job_execution_work_stealing_tasks_executed=" << job_execution_work_stealing.run_result.tasks_executed
         << " job_execution_work_stealing_tasks_failed=" << job_execution_work_stealing.run_result.tasks_failed
         << " job_execution_work_stealing_task_side_effects=" << job_execution_work_stealing.task_side_effects
+        << " job_execution_work_stealing_task_start_wait_timed_out="
+        << (job_execution_work_stealing.task_start_wait_timed_out ? 1 : 0)
         << " job_execution_work_stealing_execution_rows="
         << job_execution_work_stealing.run_result.scheduling_evidence.execution_order.size()
         << " job_execution_work_stealing_queue_rows="

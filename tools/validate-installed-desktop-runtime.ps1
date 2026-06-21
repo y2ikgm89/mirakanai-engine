@@ -502,6 +502,7 @@ $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-s
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requires2dGameplayExecutionLoop = @($SmokeArgs) -contains "--require-2d-gameplay-execution-loop"
+$requires2dSpriteAtlasResidency = @($SmokeArgs) -contains "--require-2d-sprite-atlas-residency"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
@@ -4485,6 +4486,25 @@ if ($requires2dGameplayExecutionLoop) {
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b2d_gameplay_execution_loop_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive 2D gameplay execution loop replay hash."
     }
+}
+if ($requires2dSpriteAtlasResidency) {
+    $expected2dSpriteAtlasResidencyFields = @{
+        "2d_sprite_atlas_residency_status" = "ready"
+        "2d_sprite_atlas_residency_ready" = "1"
+        "2d_sprite_atlas_residency_page_rows" = "1"
+        "2d_sprite_atlas_residency_upload_handoff_rows" = "1"
+        "2d_sprite_atlas_residency_resident_bytes" = "4"
+        "2d_sprite_atlas_residency_diagnostics" = "0"
+        "2d_sprite_atlas_residency_invoked_runtime_source_decode" = "0"
+        "2d_sprite_atlas_residency_requested_renderer_residency_ownership" = "0"
+        "2d_sprite_atlas_residency_requested_public_native_handle" = "0"
+        "2d_sprite_atlas_residency_invoked_renderer_upload" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dSpriteAtlasResidencyFields `
+        -Context "2D sprite atlas residency"
 }
 if ($requiresGameplayAuthoringReview) {
     foreach ($field in @(

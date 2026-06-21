@@ -159,6 +159,7 @@
         "installed-2d-source-image-audio-codec-review-smoke",
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-gameplay-execution-loop-smoke",
+        "installed-2d-sprite-atlas-residency-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-sandbox-package-budget-smoke",
@@ -246,6 +247,13 @@
           "evidence": "2D gameplay execution loop smoke reports a ready first-party scheduler/world/interaction composition with deterministic step, row, replay-hash, diagnostic, and zero side-effect counters.",
           "recipeIds": [
             "installed-2d-gameplay-execution-loop-smoke"
+          ]
+        },
+        {
+          "id": "sprite-atlas-runtime-residency",
+          "evidence": "2D sprite atlas residency smoke reports ready cooked-package atlas page residency, one positive page row, one upload-handoff row, four resident bytes, clean diagnostics, no runtime source decode, no renderer/RHI residency ownership, no public native handles, and no renderer upload invocation.",
+          "recipeIds": [
+            "installed-2d-sprite-atlas-residency-smoke"
           ]
         },
         {
@@ -1931,6 +1939,7 @@
     "sceneGameplayBinding": "mirakana::runtime_scene::resolve_runtime_scene_gameplay_bindings plus mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions under --require-gameplay-systems; selected smoke requires gameplay_systems_scene_binding_ready=1, 3 source rows, 3 resolved rows, 3 gameplay systems, 3 component-backed rows, clean diagnostics, 3 scene interaction rows, and gameplay_systems_scene_interaction_final_session_state=won",
     "gameplayRuntimeScheduler": "mirakana::runtime::plan_runtime_gameplay_schedule under --require-simulation-orchestration; selected smoke requires gameplay_runtime_scheduler_status=budget_limited, gameplay_runtime_scheduler_ready=1, gameplay_runtime_scheduler_available_steps=3, gameplay_runtime_scheduler_steps=2, gameplay_runtime_scheduler_system_rows=6, gameplay_runtime_scheduler_command_rows=2, gameplay_runtime_scheduler_budget_limited=1, positive replay hash evidence, and gameplay_runtime_scheduler_diagnostics=0 without running game rules, renderer frame pacing, transport I/O, rollback/lockstep execution, package mutation, or native handles",
     "gameplayExecutionLoop2D": "mirakana::runtime::execute_runtime_gameplay_loop_2d_step under --require-2d-gameplay-execution-loop; selected smoke requires 2d_gameplay_execution_loop_status=ready, 2d_gameplay_execution_loop_ready=1, one fixed step, one scheduler step, three scheduler system rows, one scheduler command row, two world entity rows, one gameplay interaction row, positive replay hash evidence, diagnostics=0, and side_effects=0 without scripting VM execution, scene mutation, renderer/RHI ownership, package IO, native handles, thread creation, rollback/lockstep, or third-party engine API surface",
+    "spriteAtlasRuntimeResidency": "mirakana::runtime::plan_runtime_sprite_atlas_residency under --require-2d-sprite-atlas-residency; selected smoke requires 2d_sprite_atlas_residency_status=ready, 2d_sprite_atlas_residency_ready=1, one cooked package page row, one renderer upload-handoff descriptor row, resident_bytes=4, diagnostics=0, invoked_runtime_source_decode=0, requested_renderer_residency_ownership=0, requested_public_native_handle=0, and invoked_renderer_upload=0 without runtime source image decoding, arbitrary imports, package mutation, renderer/RHI ownership, public native handles, backend readiness inference, or third-party engine API surface",
     "worldEntityModel": "mirakana::runtime::plan_runtime_world_entity_lifecycle under --require-simulation-orchestration; selected smoke requires world_entity_model_status=ready, world_entity_model_ready=1, 3 entity rows, 4 component rows, 3 region ownership rows, 3 lifecycle rows, one persistence bridge row, one streaming bridge row, one duplicate-entity diagnostic probe, invalid_request bridge rejection with five diagnostics, zero rejected bridge rows, one propagated streaming diagnostic, fail-closed evidence, and world_entity_model_diagnostics=0 without scene mutation, lifecycle execution, package IO, streaming execution, renderer/RHI work, threads, or native handles",
     "addressableContentStreaming": "mirakana::runtime::plan_runtime_addressable_content_streaming under --require-simulation-orchestration; selected smoke requires addressable_content_status=ready, addressable_content_ready=1, 5 address rows, 6 dependency rows, 3 load rows, 1 release row, 4 refcount rows, resident byte and budget counters, budget_limited rejection diagnostics, and addressable_content_package_io=0/addressable_content_async_execution=0/addressable_content_committed=0/addressable_content_diagnostics=0 without reading packages, mutating resident state, executing async work, creating renderer/RHI resources, creating threads, or exposing native handles",
     "rpgSystems": "mirakana::runtime::plan_runtime_rpg_systems under --require-gameplay-systems; selected smoke requires rpg_systems_status=ready, rpg_systems_ready=1, rpg_systems_party_members=2, rpg_systems_enemy_members=1, rpg_systems_stat_rows=8, rpg_systems_progression_rows=2, rpg_systems_skill_rows=2, rpg_systems_skill_blocked_rows=1, rpg_systems_equipment_rows=2, rpg_systems_equipment_blocked_rows=1, rpg_systems_combat_turn_rows=6, rpg_systems_combat_rounds=2, rpg_systems_reward_rows=2, rpg_systems_save_validation_rows=2, rpg_systems_save_validation_repairable_rows=1, positive rpg_systems_replay_hash, zero combat/reward/save side-effect counters, and rpg_systems_diagnostics=0 without combat execution, reward application, save IO, package/world mutation, renderer/RHI work, native handles, or story/balance/tuning claims",
@@ -2226,6 +2235,7 @@
         "installed-2d-networking-foundation-policy-smoke",
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-gameplay-execution-loop-smoke",
+        "installed-2d-sprite-atlas-residency-smoke",
         "installed-2d-gameplay-authoring-review-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
@@ -2458,6 +2468,10 @@
     {
       "name": "installed-2d-gameplay-execution-loop-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-gameplay-execution-loop"
+    },
+    {
+      "name": "installed-2d-sprite-atlas-residency-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-sprite-atlas-residency"
     },
     {
       "name": "installed-2d-gameplay-authoring-review-smoke",
