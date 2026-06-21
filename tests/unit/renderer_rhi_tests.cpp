@@ -6992,6 +6992,92 @@ make_backend_parity_request(bool include_metal_host_evidence) {
 
 } // namespace
 
+MK_TEST("backend renderer parity maps selected Apple Metal environment evidence to backend local proof rows") {
+    const auto proofs = mirakana::make_backend_renderer_parity_apple_metal_environment_proofs(
+        mirakana::BackendRendererParityAppleMetalEnvironmentEvidenceDesc{
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .shader_library_ready = true,
+            .render_pipeline_ready = true,
+            .compute_pipeline_ready = true,
+            .render_pass_ready = true,
+            .resource_evidence_ready = true,
+            .synchronization_evidence_ready = true,
+            .package_evidence_ready = true,
+            .render_readback_nonzero = true,
+            .compute_readback_nonzero = true,
+        });
+
+    constexpr mirakana::BackendRendererParityFeatureKind kExpectedFeatures[] = {
+        mirakana::BackendRendererParityFeatureKind::synchronization,
+        mirakana::BackendRendererParityFeatureKind::shader_validation,
+        mirakana::BackendRendererParityFeatureKind::package_evidence,
+    };
+
+    MK_REQUIRE(proofs.size() == 3U);
+    for (std::size_t index = 0U; index < proofs.size(); ++index) {
+        const auto& row = proofs[index];
+        MK_REQUIRE(row.feature == kExpectedFeatures[index]);
+        MK_REQUIRE(row.selected_backend == mirakana::rhi::BackendKind::metal);
+        MK_REQUIRE(row.proof_backend == mirakana::rhi::BackendKind::metal);
+        MK_REQUIRE(row.reviewed);
+        MK_REQUIRE(row.host_validated);
+        MK_REQUIRE(!row.host_gate_required);
+        MK_REQUIRE(row.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+        MK_REQUIRE(!row.request_native_handle_access);
+    }
+}
+
+MK_TEST("backend renderer parity maps incomplete Apple Metal environment evidence to host gated rows") {
+    auto desc = mirakana::BackendRendererParityAppleMetalEnvironmentEvidenceDesc{
+        .runtime_ready = true,
+        .command_queue_ready = true,
+        .shader_library_ready = true,
+        .render_pipeline_ready = true,
+        .compute_pipeline_ready = true,
+        .render_pass_ready = true,
+        .resource_evidence_ready = true,
+        .synchronization_evidence_ready = true,
+        .package_evidence_ready = true,
+        .render_readback_nonzero = true,
+        .compute_readback_nonzero = true,
+    };
+    desc.compute_readback_nonzero = false;
+
+    const auto proofs = mirakana::make_backend_renderer_parity_apple_metal_environment_proofs(desc);
+
+    MK_REQUIRE(proofs.size() == 3U);
+    for (const auto& row : proofs) {
+        MK_REQUIRE(row.selected_backend == mirakana::rhi::BackendKind::metal);
+        MK_REQUIRE(row.proof_backend == mirakana::rhi::BackendKind::metal);
+        MK_REQUIRE(row.reviewed);
+        MK_REQUIRE(!row.host_validated);
+        MK_REQUIRE(row.host_gate_required);
+        MK_REQUIRE(row.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+        MK_REQUIRE(!row.request_native_handle_access);
+    }
+}
+
+MK_TEST("backend renderer parity rejects Apple Metal environment native handle requests") {
+    const auto proofs = mirakana::make_backend_renderer_parity_apple_metal_environment_proofs(
+        mirakana::BackendRendererParityAppleMetalEnvironmentEvidenceDesc{
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .shader_library_ready = true,
+            .render_pipeline_ready = true,
+            .compute_pipeline_ready = true,
+            .render_pass_ready = true,
+            .resource_evidence_ready = true,
+            .synchronization_evidence_ready = true,
+            .package_evidence_ready = true,
+            .render_readback_nonzero = true,
+            .compute_readback_nonzero = true,
+            .native_handle_access = true,
+        });
+
+    MK_REQUIRE(proofs.empty());
+}
+
 MK_TEST("backend renderer parity policy keeps Metal host gated and proves D3D12 Vulkan locally") {
     const auto plan = mirakana::plan_backend_renderer_parity_policy(make_backend_parity_request(false));
 
