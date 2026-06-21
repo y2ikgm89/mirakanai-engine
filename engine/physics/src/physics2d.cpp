@@ -12,6 +12,9 @@
 namespace mirakana {
 namespace {
 
+constexpr auto physics2d_epsilon = 0.000001F;
+constexpr std::uint32_t max_kinematic_contact_iterations = 64U;
+
 [[nodiscard]] bool finite(float value) noexcept {
     return std::isfinite(value);
 }
@@ -448,13 +451,17 @@ struct ExactSweepHit2D {
     return !static_only || !target.dynamic;
 }
 
-[[nodiscard]] std::optional<ExactSweepHit2D> closest_exact_sweep(const std::vector<PhysicsBody2D>& bodies,
-                                                                 const PhysicsBody2D& source, Vec2 origin,
-                                                                 Vec2 displacement, std::uint32_t collision_mask,
-                                                                 bool include_triggers, bool static_only) {
+[[nodiscard]] std::optional<ExactSweepHit2D>
+closest_exact_sweep(const std::vector<PhysicsBody2D>& bodies, const PhysicsBody2D& source, Vec2 origin,
+                    Vec2 displacement, std::uint32_t collision_mask, bool include_triggers, bool static_only,
+                    PhysicsBody2DId ignored_touching_body = null_physics_body_2d,
+                    Vec2 ignored_touching_normal = Vec2{.x = 0.0F, .y = 0.0F}) {
     std::optional<ExactSweepHit2D> closest;
     for (const auto& target : bodies) {
         if (!target_matches_runtime_filter(source, target, collision_mask, include_triggers, static_only)) {
+            continue;
+        }
+        if (target.id == ignored_touching_body && dot(displacement, ignored_touching_normal) >= -physics2d_epsilon) {
             continue;
         }
         const auto hit =
@@ -981,11 +988,11 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
                                            : Physics2DRuntimeDiagnostic::invalid_config);
     }
 
-    const auto time_of_impact_row_count = dynamic_body_count(world);
-    const auto trigger_event_rows = collect_trigger_event_rows(world, request.previous_trigger_overlaps);
+    auto simulated_world = world;
+    const auto time_of_impact_row_count = dynamic_body_count(simulated_world);
     if (time_of_impact_row_count > request.max_time_of_impact_rows ||
         request.kinematic_requests.size() > request.max_kinematic_contact_rows ||
-        request.joints.size() > request.max_joint_rows || trigger_event_rows.size() > request.max_trigger_event_rows) {
+        request.joints.size() > request.max_joint_rows) {
         return invalid_simulate_result(Physics2DRuntimeDiagnostic::row_budget_exceeded);
     }
 
@@ -995,18 +1002,17 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
     result.time_of_impact_rows.reserve(time_of_impact_row_count);
     result.kinematic_contact_rows.reserve(request.kinematic_requests.size());
     result.joint_rows.reserve(request.joints.size());
-    result.trigger_event_rows = trigger_event_rows;
 
     std::vector<PhysicsBody2DId> dynamic_body_ids;
     dynamic_body_ids.reserve(time_of_impact_row_count);
-    for (const auto& body : world.bodies()) {
+    for (const auto& body : simulated_world.bodies()) {
         if (body.dynamic && body.collision_enabled) {
             dynamic_body_ids.push_back(body.id);
         }
     }
 
     for (std::size_t source_index = 0; source_index < dynamic_body_ids.size(); ++source_index) {
-        auto* body = world.find_body(dynamic_body_ids[source_index]);
+        auto* body = simulated_world.find_body(dynamic_body_ids[source_index]);
         if (body == nullptr) {
             continue;
         }
@@ -1034,8 +1040,9 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
             .diagnostic = Physics2DRuntimeDiagnostic::none,
         };
 
-        if (const auto hit = closest_exact_sweep(world.bodies(), *body, previous_position, attempted_displacement,
-                                                 body->collision_mask, request.include_triggers, true);
+        if (const auto hit =
+                closest_exact_sweep(simulated_world.bodies(), *body, previous_position, attempted_displacement,
+                                    body->collision_mask, request.include_triggers, true);
             hit.has_value()) {
             const auto attempted_distance = length(attempted_displacement);
             const auto direction = normalized_or_zero(attempted_displacement);
@@ -1076,18 +1083,20 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
             .diagnostic = Physics2DRuntimeDiagnostic::none,
         };
 
-        auto* body = world.find_body(kinematic_request.body);
+        auto* body = simulated_world.find_body(kinematic_request.body);
         if (body == nullptr || !finite_vec(kinematic_request.attempted_displacement) ||
             !finite(kinematic_request.skin_width) || kinematic_request.skin_width < 0.0F ||
-            kinematic_request.max_iterations == 0U) {
+            kinematic_request.max_iterations == 0U ||
+            kinematic_request.max_iterations > max_kinematic_contact_iterations) {
             row.diagnostic = Physics2DRuntimeDiagnostic::invalid_request;
             result.kinematic_contact_rows.push_back(row);
             continue;
         }
 
-        const auto hit =
-            closest_exact_sweep(world.bodies(), *body, body->position, kinematic_request.attempted_displacement,
-                                kinematic_request.collision_mask, kinematic_request.include_triggers, true);
+        const auto starting_position = body->position;
+        const auto hit = closest_exact_sweep(simulated_world.bodies(), *body, starting_position,
+                                             kinematic_request.attempted_displacement, kinematic_request.collision_mask,
+                                             kinematic_request.include_triggers, true);
         if (hit.has_value()) {
             const auto direction = normalized_or_zero(kinematic_request.attempted_displacement);
             const auto applied_distance =
@@ -1098,8 +1107,53 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
             row.applied_displacement = direction * applied_distance;
             const auto leftover = kinematic_request.attempted_displacement - row.applied_displacement;
             const auto normal_component = std::min(0.0F, dot(leftover, row.normal));
-            row.remaining_displacement = leftover - (row.normal * normal_component);
-            body->position = body->position + row.applied_displacement + row.remaining_displacement;
+            auto slide_remaining = leftover - (row.normal * normal_component);
+            auto current_position = starting_position + row.applied_displacement;
+            auto ignored_touching_body = hit->body;
+            auto ignored_touching_normal = hit->normal;
+
+            if (length(slide_remaining) > physics2d_epsilon) {
+                if (kinematic_request.max_iterations == 1U) {
+                    row.diagnostic = Physics2DRuntimeDiagnostic::iteration_limit;
+                } else {
+                    for (std::uint32_t iteration = 1U;
+                         iteration < kinematic_request.max_iterations && length(slide_remaining) > physics2d_epsilon;
+                         ++iteration) {
+                        body->position = current_position;
+                        const auto slide_hit =
+                            closest_exact_sweep(simulated_world.bodies(), *body, current_position, slide_remaining,
+                                                kinematic_request.collision_mask, kinematic_request.include_triggers,
+                                                true, ignored_touching_body, ignored_touching_normal);
+                        if (!slide_hit.has_value()) {
+                            row.remaining_displacement = row.remaining_displacement + slide_remaining;
+                            current_position = current_position + slide_remaining;
+                            slide_remaining = Vec2{.x = 0.0F, .y = 0.0F};
+                            break;
+                        }
+
+                        const auto slide_direction = normalized_or_zero(slide_remaining);
+                        const auto slide_applied_distance =
+                            slide_hit->initial_overlap
+                                ? 0.0F
+                                : std::max(0.0F, slide_hit->distance - kinematic_request.skin_width);
+                        const auto slide_applied = slide_direction * slide_applied_distance;
+                        row.remaining_displacement = row.remaining_displacement + slide_applied;
+                        current_position = current_position + slide_applied;
+
+                        const auto slide_leftover = slide_remaining - slide_applied;
+                        const auto slide_normal_component = std::min(0.0F, dot(slide_leftover, slide_hit->normal));
+                        slide_remaining = slide_leftover - (slide_hit->normal * slide_normal_component);
+                        ignored_touching_body = slide_hit->body;
+                        ignored_touching_normal = slide_hit->normal;
+
+                        if (iteration + 1U >= kinematic_request.max_iterations &&
+                            length(slide_remaining) > physics2d_epsilon) {
+                            row.diagnostic = Physics2DRuntimeDiagnostic::iteration_limit;
+                        }
+                    }
+                }
+            }
+            body->position = starting_position + row.applied_displacement + row.remaining_displacement;
         } else {
             body->position = body->position + row.applied_displacement;
         }
@@ -1122,8 +1176,8 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
             .diagnostic = Physics2DRuntimeDiagnostic::none,
         };
 
-        auto* first = world.find_body(joint.first);
-        auto* second = world.find_body(joint.second);
+        auto* first = simulated_world.find_body(joint.first);
+        auto* second = simulated_world.find_body(joint.second);
         if (first == nullptr || second == nullptr) {
             row.diagnostic = Physics2DRuntimeDiagnostic::missing_body;
             result.joint_rows.push_back(row);
@@ -1200,6 +1254,13 @@ Physics2DSimulateStepResult simulate_physics2d_step(PhysicsWorld2D& world,
         result.joint_rows.push_back(row);
     }
 
+    auto trigger_event_rows = collect_trigger_event_rows(simulated_world, request.previous_trigger_overlaps);
+    if (trigger_event_rows.size() > request.max_trigger_event_rows) {
+        return invalid_simulate_result(Physics2DRuntimeDiagnostic::row_budget_exceeded);
+    }
+
+    result.trigger_event_rows = std::move(trigger_event_rows);
+    world = std::move(simulated_world);
     return result;
 }
 

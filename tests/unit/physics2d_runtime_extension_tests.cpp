@@ -32,6 +32,12 @@ namespace {
     };
 }
 
+[[nodiscard]] mirakana::PhysicsBody2DDesc trigger_box(mirakana::Vec2 position, mirakana::Vec2 half_extents) {
+    auto desc = static_box(position, half_extents);
+    desc.trigger = true;
+    return desc;
+}
+
 [[nodiscard]] mirakana::PhysicsBody2DDesc dynamic_box(mirakana::Vec2 position, mirakana::Vec2 velocity,
                                                       mirakana::Vec2 half_extents) {
     auto desc = static_box(position, half_extents);
@@ -255,6 +261,120 @@ MK_TEST("2d physics runtime extension reports kinematic joint and trigger rows a
     MK_REQUIRE(result.trigger_event_rows[1].kind == mirakana::Physics2DAreaTriggerEventKind::exit);
     MK_REQUIRE(result.trigger_event_rows[1].trigger_body == trigger);
     MK_REQUIRE(result.trigger_event_rows[1].other_body == wall);
+}
+
+MK_TEST("2d physics runtime extension reports trigger events after simulated body motion") {
+    mirakana::PhysicsWorld2D world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    const auto trigger =
+        world.create_body(trigger_box(mirakana::Vec2{.x = 3.0F, .y = 0.0F}, mirakana::Vec2{.x = 1.0F, .y = 1.0F}));
+    const auto guest = world.create_body(
+        dynamic_circle(mirakana::Vec2{.x = 0.0F, .y = 0.0F}, mirakana::Vec2{.x = 3.0F, .y = 0.0F}, 0.25F));
+    const auto before_guest = *world.find_body(guest);
+
+    const auto rejected = mirakana::simulate_physics2d_step(world, mirakana::Physics2DContinuousCollisionRequest{
+                                                                       .delta_seconds = 1.0F,
+                                                                       .skin_width = 0.0F,
+                                                                       .include_triggers = false,
+                                                                       .max_time_of_impact_rows = 4U,
+                                                                       .max_kinematic_contact_rows = 4U,
+                                                                       .max_joint_rows = 4U,
+                                                                       .max_trigger_event_rows = 0U,
+                                                                   });
+
+    MK_REQUIRE(rejected.status == mirakana::Physics2DSimulateStepStatus::invalid_request);
+    MK_REQUIRE(rejected.diagnostic == mirakana::Physics2DRuntimeDiagnostic::row_budget_exceeded);
+    MK_REQUIRE(world.find_body(guest)->position == before_guest.position);
+
+    const auto accepted = mirakana::simulate_physics2d_step(world, mirakana::Physics2DContinuousCollisionRequest{
+                                                                       .delta_seconds = 1.0F,
+                                                                       .skin_width = 0.0F,
+                                                                       .include_triggers = false,
+                                                                       .max_time_of_impact_rows = 4U,
+                                                                       .max_kinematic_contact_rows = 4U,
+                                                                       .max_joint_rows = 4U,
+                                                                       .max_trigger_event_rows = 2U,
+                                                                   });
+
+    MK_REQUIRE(accepted.status == mirakana::Physics2DSimulateStepStatus::simulated);
+    MK_REQUIRE(accepted.trigger_event_rows.size() == 1U);
+    MK_REQUIRE(accepted.trigger_event_rows[0].kind == mirakana::Physics2DAreaTriggerEventKind::enter);
+    MK_REQUIRE(accepted.trigger_event_rows[0].trigger_body == trigger);
+    MK_REQUIRE(accepted.trigger_event_rows[0].other_body == guest);
+    MK_REQUIRE(nearly_equal(world.find_body(guest)->position.x, 3.0F));
+
+    mirakana::Physics2DContinuousCollisionRequest exit_request;
+    exit_request.delta_seconds = 1.0F;
+    exit_request.max_time_of_impact_rows = 4U;
+    exit_request.max_kinematic_contact_rows = 4U;
+    exit_request.max_joint_rows = 4U;
+    exit_request.max_trigger_event_rows = 2U;
+    exit_request.previous_trigger_overlaps.push_back(
+        mirakana::PhysicsTriggerOverlap2D{.first = trigger, .second = guest});
+
+    world.find_body(guest)->velocity = mirakana::Vec2{.x = 3.0F, .y = 0.0F};
+    const auto exited = mirakana::simulate_physics2d_step(world, exit_request);
+
+    MK_REQUIRE(exited.status == mirakana::Physics2DSimulateStepStatus::simulated);
+    MK_REQUIRE(exited.trigger_event_rows.size() == 1U);
+    MK_REQUIRE(exited.trigger_event_rows[0].kind == mirakana::Physics2DAreaTriggerEventKind::exit);
+    MK_REQUIRE(exited.trigger_event_rows[0].trigger_body == trigger);
+    MK_REQUIRE(exited.trigger_event_rows[0].other_body == guest);
+}
+
+MK_TEST("2d physics runtime extension uses kinematic iterations for secondary slide blockers") {
+    mirakana::PhysicsWorld2D world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    const auto wall =
+        world.create_body(static_box(mirakana::Vec2{.x = 3.0F, .y = 0.0F}, mirakana::Vec2{.x = 0.5F, .y = 4.0F}));
+    const auto ceiling =
+        world.create_body(static_box(mirakana::Vec2{.x = 2.0F, .y = 4.0F}, mirakana::Vec2{.x = 1.0F, .y = 0.5F}));
+    const auto kinematic =
+        world.create_body(dynamic_box(mirakana::Vec2{.x = 0.0F, .y = 0.0F}, mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                      mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+
+    mirakana::Physics2DContinuousCollisionRequest request;
+    request.delta_seconds = 0.0F;
+    request.max_time_of_impact_rows = 4U;
+    request.max_kinematic_contact_rows = 4U;
+    request.max_joint_rows = 4U;
+    request.max_trigger_event_rows = 4U;
+    request.kinematic_requests.push_back(mirakana::Physics2DKinematicContactResolutionRequest{
+        .body = kinematic,
+        .attempted_displacement = mirakana::Vec2{.x = 5.0F, .y = 5.0F},
+        .skin_width = 0.0F,
+        .max_iterations = 2U,
+    });
+
+    const auto result = mirakana::simulate_physics2d_step(world, request);
+
+    MK_REQUIRE(ceiling != mirakana::null_physics_body_2d);
+    MK_REQUIRE(result.status == mirakana::Physics2DSimulateStepStatus::simulated);
+    MK_REQUIRE(result.kinematic_contact_rows.size() == 1U);
+    MK_REQUIRE(result.kinematic_contact_rows[0].hit_body == wall);
+    MK_REQUIRE(result.kinematic_contact_rows[0].diagnostic == mirakana::Physics2DRuntimeDiagnostic::none);
+    MK_REQUIRE(result.kinematic_contact_rows[0].remaining_displacement.y < 2.0F);
+    MK_REQUIRE(nearly_equal(world.find_body(kinematic)->position.x, 2.0F));
+    MK_REQUIRE(nearly_equal(world.find_body(kinematic)->position.y, 3.0F));
+
+    mirakana::PhysicsWorld2D limited_world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    const auto limited_wall = limited_world.create_body(
+        static_box(mirakana::Vec2{.x = 3.0F, .y = 0.0F}, mirakana::Vec2{.x = 0.5F, .y = 4.0F}));
+    const auto limited_kinematic = limited_world.create_body(dynamic_box(mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                                         mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                                         mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+    request.kinematic_requests[0] = mirakana::Physics2DKinematicContactResolutionRequest{
+        .body = limited_kinematic,
+        .attempted_displacement = mirakana::Vec2{.x = 5.0F, .y = 1.0F},
+        .skin_width = 0.0F,
+        .max_iterations = 1U,
+    };
+
+    const auto limited = mirakana::simulate_physics2d_step(limited_world, request);
+
+    MK_REQUIRE(limited.status == mirakana::Physics2DSimulateStepStatus::simulated);
+    MK_REQUIRE(limited.kinematic_contact_rows.size() == 1U);
+    MK_REQUIRE(limited.kinematic_contact_rows[0].hit_body == limited_wall);
+    MK_REQUIRE(limited.kinematic_contact_rows[0].diagnostic == mirakana::Physics2DRuntimeDiagnostic::iteration_limit);
+    MK_REQUIRE(limited.kinematic_contact_rows[0].remaining_displacement.y == 0.0F);
 }
 
 int main() {
