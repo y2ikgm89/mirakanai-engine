@@ -2598,6 +2598,52 @@
         "followUpCapability": "Production UI adapters for text/font/IME/accessibility/image/rendering/platform integration must land behind audited adapter boundaries."
       },
       {
+        "id": "runtime-ui-standard-widgets",
+        "status": "ready",
+        "summary": "First-party runtime UI standard widget recipe for HUD meters, pause/settings menu stacks, standard HUD UiDocument composition, accessibility/localization/style-token metadata, and provenance review that rejects copied external expression, external engine code/assets, external engine public UI system names, marketplace assets, and UI middleware references before package-visible readiness.",
+        "requiredModules": [
+          "MK_core",
+          "MK_ui"
+        ],
+        "allowedTemplates": [
+          "Headless",
+          "DesktopRuntime2DPackage",
+          "DesktopRuntime3DPackage"
+        ],
+        "allowedPackagingTargets": [
+          "source-tree-default",
+          "desktop-game-runtime",
+          "desktop-runtime-release"
+        ],
+        "importerAssumptions": {
+          "sourceFormats": [],
+          "externalImportersRequired": false
+        },
+        "cookedRuntimeAssumptions": "The recipe is value-model and package-visible smoke evidence only. It composes first-party UiDocument rows from caller-provided meter/menu data and provenance rows; it does not load fonts, decode images, upload renderer textures, execute platform UI services, or consume external engine assets.",
+        "rendererBackendAssumptions": {
+          "graphics": "UiDocument/value rows only",
+          "nativeWindow": false,
+          "visibleGpuOutput": false
+        },
+        "validationRecipes": [
+          "default",
+          "desktop-runtime-2d-package-proof",
+          "installed-2d-runtime-ui-standard-widgets-smoke",
+          "installed-3d-runtime-ui-standard-widgets-smoke"
+        ],
+        "unsupportedClaims": [
+          "Unity, Unreal Engine, or Godot source, samples, public UI system names, assets, screenshots, themes, or layout copies",
+          "third-party UI middleware adoption",
+          "production text shaping",
+          "font loading/rasterization",
+          "native IME",
+          "OS accessibility publication",
+          "renderer texture upload execution",
+          "broad platform UI parity"
+        ],
+        "followUpCapability": "Production UI rendering, text/font/IME/accessibility/image/platform adapters, visual designer/editor UX, and broad platform parity remain separate adapter or editor slices."
+      },
+      {
         "id": "2d-playable-source-tree",
         "status": "ready",
         "summary": "Source-tree first-party 2D playable foundation recipe for input actions, orthographic scene camera, sprite renderer intent, HUD/menu renderer submission, gameplay audio cue/bus planning through plan_gameplay_audio_mix, device-independent audio cue rendering, and deterministic NullRenderer validation without native window or GPU handles.",
@@ -8248,6 +8294,15 @@
         "recipeId": "runtime-ui-headless",
         "validationRecipes": [
           "default"
+        ]
+      },
+      {
+        "recipeId": "runtime-ui-standard-widgets",
+        "validationRecipes": [
+          "default",
+          "desktop-runtime-2d-package-proof",
+          "installed-2d-runtime-ui-standard-widgets-smoke",
+          "installed-3d-runtime-ui-standard-widgets-smoke"
         ]
       },
       {

@@ -53,6 +53,7 @@
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/sandbox_world_authoring.hpp"
 #include "mirakana/ui/runtime_ui_production_stack.hpp"
+#include "mirakana/ui/runtime_ui_standard_widgets.hpp"
 #include "mirakana/ui/runtime_ui_workbench.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
@@ -66,9 +67,11 @@
 #include <cstring>
 #include <exception>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <optional>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -112,6 +115,7 @@ struct DesktopRuntimeOptions {
     bool require_production_authoring_workflows{false};
     bool require_runtime_profile_resume{false};
     bool require_runtime_menu_hud{false};
+    bool require_runtime_ui_standard_widgets{false};
     bool require_runtime_ui_workbench{false};
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
@@ -1613,6 +1617,27 @@ struct RuntimeMenuHudProbeResult {
     std::size_t input_binding_prompt_rows{0U};
 };
 
+struct RuntimeUiStandardWidgetsProbeResult {
+    bool ready{false};
+    bool provenance_ready{false};
+    std::size_t official_documentation_rows{0U};
+    std::size_t first_party_design_rows{0U};
+    std::size_t meter_rows{0U};
+    std::size_t menu_screens{0U};
+    std::size_t menu_actions{0U};
+    std::size_t document_elements{0U};
+    float health_normalized{0.0F};
+    float mana_normalized{0.0F};
+    float stamina_normalized{0.0F};
+    bool health_accessibility_ready{false};
+    bool mana_localization_ready{false};
+    bool stamina_warning_style_ready{false};
+    bool external_engine_code{false};
+    bool external_engine_assets{false};
+    bool ui_middleware{false};
+    std::size_t diagnostics{0U};
+};
+
 struct RuntimeUiWorkbenchProbeResult {
     bool ready{false};
     mirakana::ui::RuntimeUiWorkbenchStatus status{mirakana::ui::RuntimeUiWorkbenchStatus::invalid_request};
@@ -2604,6 +2629,207 @@ struct Gameplay2DProceduralGenerationProbeResult {
     result.ready = result.ready && result.display_rows == 6U && result.command_rows == 2U &&
                    result.dialogue_rows == 1U && result.input_binding_prompt_rows == 1U;
     return result;
+}
+
+[[nodiscard]] mirakana::ui::RuntimeUiStandardWidgetProvenanceDesc
+make_runtime_ui_standard_widgets_provenance(std::string_view sample_id) {
+    mirakana::ui::RuntimeUiStandardWidgetProvenanceDesc provenance;
+    provenance.feature_id = std::string{sample_id} + ".first_party_runtime_ui_standard_widgets_v1";
+    provenance.source_references = {
+        mirakana::ui::RuntimeUiSourceReference{
+            .kind = mirakana::ui::RuntimeUiSourceReferenceKind::official_documentation,
+            .name = "unity.runtime-ui.official-category-review",
+            .source_url = "https://docs.unity3d.com/6000.0/Documentation/Manual/UIE-get-started-with-runtime-ui.html",
+            .license_id = "official-doc-reference-only",
+            .contains_copied_expression = false,
+            .distributed_with_runtime = false,
+        },
+        mirakana::ui::RuntimeUiSourceReference{
+            .kind = mirakana::ui::RuntimeUiSourceReferenceKind::official_documentation,
+            .name = "unreal.runtime-ui.official-category-review",
+            .source_url =
+                "https://dev.epicgames.com/documentation/en-us/unreal-engine/building-your-ui-in-unreal-engine",
+            .license_id = "official-doc-reference-only",
+            .contains_copied_expression = false,
+            .distributed_with_runtime = false,
+        },
+        mirakana::ui::RuntimeUiSourceReference{
+            .kind = mirakana::ui::RuntimeUiSourceReferenceKind::official_documentation,
+            .name = "godot.runtime-ui.official-category-review",
+            .source_url = "https://docs.godotengine.org/en/stable/tutorials/ui/index.html",
+            .license_id = "official-doc-reference-only",
+            .contains_copied_expression = false,
+            .distributed_with_runtime = false,
+        },
+        mirakana::ui::RuntimeUiSourceReference{
+            .kind = mirakana::ui::RuntimeUiSourceReferenceKind::first_party_design,
+            .name = std::string{sample_id} + ".runtime-ui-standard-widgets.first-party-design",
+            .source_url = {},
+            .license_id = "LicenseRef-Proprietary",
+            .contains_copied_expression = false,
+            .distributed_with_runtime = true,
+        },
+    };
+    return provenance;
+}
+
+[[nodiscard]] std::vector<mirakana::ui::RuntimeUiMeterDesc> make_runtime_ui_standard_widget_meters() {
+    return {
+        mirakana::ui::RuntimeUiMeterDesc{
+            .id = "health",
+            .kind = mirakana::ui::RuntimeUiMeterKind::health,
+            .label = "HP",
+            .localization_key = "ui.meter.health",
+            .accessibility_label = "Health",
+            .value = 75.0F,
+            .maximum = 100.0F,
+            .warning_threshold = 0.25F,
+            .fill_direction = mirakana::ui::RuntimeUiMeterFillDirection::left_to_right,
+            .track_token = "hud.meter.track",
+            .fill_token = "hud.meter.health.fill",
+            .warning_token = "hud.meter.warning.fill",
+            .visible = true,
+        },
+        mirakana::ui::RuntimeUiMeterDesc{
+            .id = "mana",
+            .kind = mirakana::ui::RuntimeUiMeterKind::mana,
+            .label = "MP",
+            .localization_key = "ui.meter.mana",
+            .accessibility_label = "Mana",
+            .value = 40.0F,
+            .maximum = 100.0F,
+            .warning_threshold = 0.25F,
+            .fill_direction = mirakana::ui::RuntimeUiMeterFillDirection::left_to_right,
+            .track_token = "hud.meter.track",
+            .fill_token = "hud.meter.mana.fill",
+            .warning_token = "hud.meter.warning.fill",
+            .visible = true,
+        },
+        mirakana::ui::RuntimeUiMeterDesc{
+            .id = "stamina",
+            .kind = mirakana::ui::RuntimeUiMeterKind::stamina,
+            .label = "SP",
+            .localization_key = "ui.meter.stamina",
+            .accessibility_label = "Stamina",
+            .value = 10.0F,
+            .maximum = 100.0F,
+            .warning_threshold = 0.25F,
+            .fill_direction = mirakana::ui::RuntimeUiMeterFillDirection::left_to_right,
+            .track_token = "hud.meter.track",
+            .fill_token = "hud.meter.stamina.fill",
+            .warning_token = "hud.meter.warning.fill",
+            .visible = true,
+        },
+    };
+}
+
+[[nodiscard]] mirakana::ui::RuntimeUiMenuStackDesc make_runtime_ui_standard_widget_menu_stack() {
+    mirakana::ui::RuntimeUiMenuStackDesc menu_stack;
+    menu_stack.id = "runtime_standard_widgets_menu";
+    menu_stack.active_screen_id = "pause_menu";
+    menu_stack.screens = {
+        mirakana::ui::RuntimeUiMenuScreenDesc{
+            .id = "pause_menu",
+            .title_localization_key = "ui.pause.title",
+            .accessibility_label = "Pause menu",
+            .actions = {mirakana::ui::RuntimeUiMenuActionDesc{
+                            .id = "resume_game",
+                            .label = "Resume",
+                            .localization_key = "ui.pause.resume",
+                            .intent = mirakana::ui::RuntimeUiMenuActionIntent::resume_game,
+                            .target_screen_id = {},
+                            .enabled = true,
+                        },
+                        mirakana::ui::RuntimeUiMenuActionDesc{
+                            .id = "open_settings",
+                            .label = "Settings",
+                            .localization_key = "ui.pause.settings",
+                            .intent = mirakana::ui::RuntimeUiMenuActionIntent::open_screen,
+                            .target_screen_id = "settings_menu",
+                            .enabled = true,
+                        },
+                        mirakana::ui::RuntimeUiMenuActionDesc{
+                            .id = "restart_session",
+                            .label = "Restart",
+                            .localization_key = "ui.pause.restart",
+                            .intent = mirakana::ui::RuntimeUiMenuActionIntent::restart_session,
+                            .target_screen_id = {},
+                            .enabled = true,
+                        }},
+        },
+        mirakana::ui::RuntimeUiMenuScreenDesc{
+            .id = "settings_menu",
+            .title_localization_key = "ui.settings.title",
+            .accessibility_label = "Settings menu",
+            .actions = {mirakana::ui::RuntimeUiMenuActionDesc{
+                .id = "close_settings",
+                .label = "Back",
+                .localization_key = "ui.settings.back",
+                .intent = mirakana::ui::RuntimeUiMenuActionIntent::close_screen,
+                .target_screen_id = "pause_menu",
+                .enabled = true,
+            }},
+        },
+    };
+    return menu_stack;
+}
+
+[[nodiscard]] RuntimeUiStandardWidgetsProbeResult
+validate_runtime_ui_standard_widgets_package_evidence(std::string_view sample_id) {
+    mirakana::ui::RuntimeUiStandardHudDesc desc;
+    desc.id = std::string{sample_id} + ".standard_hud";
+    desc.viewport = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 1280.0F, .height = 720.0F};
+    desc.meters = make_runtime_ui_standard_widget_meters();
+    desc.menu_stack = make_runtime_ui_standard_widget_menu_stack();
+    desc.provenance = make_runtime_ui_standard_widgets_provenance(sample_id);
+
+    const auto plan = mirakana::ui::plan_runtime_ui_standard_hud(desc);
+    RuntimeUiStandardWidgetsProbeResult result{
+        .ready = false,
+        .provenance_ready = plan.provenance_plan.ready,
+        .official_documentation_rows = plan.provenance_plan.official_documentation_rows,
+        .first_party_design_rows = plan.provenance_plan.first_party_design_rows,
+        .meter_rows = plan.meter_plan.rows.size(),
+        .menu_screens = plan.menu_plan.screen_count,
+        .menu_actions = plan.menu_plan.action_count,
+        .document_elements = plan.document.size(),
+        .health_normalized = !plan.meter_plan.rows.empty() ? plan.meter_plan.rows[0].normalized_value : 0.0F,
+        .mana_normalized = plan.meter_plan.rows.size() > 1U ? plan.meter_plan.rows[1].normalized_value : 0.0F,
+        .stamina_normalized = plan.meter_plan.rows.size() > 2U ? plan.meter_plan.rows[2].normalized_value : 0.0F,
+        .external_engine_code = desc.provenance.uses_external_engine_code,
+        .external_engine_assets = desc.provenance.uses_external_engine_assets,
+        .ui_middleware = desc.provenance.uses_ui_middleware,
+        .diagnostics = plan.diagnostics.size() + plan.provenance_plan.diagnostics.size() +
+                       plan.meter_plan.diagnostics.size() + plan.menu_plan.diagnostics.size(),
+    };
+
+    for (const auto& element : plan.document.traverse()) {
+        if (element.role == mirakana::ui::SemanticRole::meter && element.accessibility_label == "Health") {
+            result.health_accessibility_ready = true;
+        }
+        if (element.role == mirakana::ui::SemanticRole::label && element.text.localization_key == "ui.meter.mana") {
+            result.mana_localization_ready = true;
+        }
+        if (element.id.value.ends_with(".meter.stamina.fill") &&
+            element.style.background_token == "hud.meter.warning.fill") {
+            result.stamina_warning_style_ready = true;
+        }
+    }
+
+    result.ready = plan.ready && result.provenance_ready && result.official_documentation_rows == 3U &&
+                   result.first_party_design_rows == 1U && result.meter_rows == 3U && result.menu_screens == 2U &&
+                   result.menu_actions == 4U && result.document_elements == 19U && result.health_normalized == 0.75F &&
+                   result.mana_normalized == 0.40F && result.stamina_normalized == 0.10F &&
+                   result.health_accessibility_ready && result.mana_localization_ready &&
+                   result.stamina_warning_style_ready && !result.external_engine_code &&
+                   !result.external_engine_assets && !result.ui_middleware && result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] std::string format_fixed3(float value) {
+    std::ostringstream output;
+    output << std::fixed << std::setprecision(3) << value;
+    return output.str();
 }
 
 [[nodiscard]] bool
@@ -8590,7 +8816,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             chunk_size.height = std::max(chunk_size.height, layer.height);
             for (std::uint32_t y = 0; y < layer.height; ++y) {
                 for (std::uint32_t x = 0; x < layer.width; ++x) {
-                    const auto cell_index = static_cast<std::size_t>(y) * static_cast<std::size_t>(layer.width) +
+                    const auto cell_index = (static_cast<std::size_t>(y) * static_cast<std::size_t>(layer.width)) +
                                             static_cast<std::size_t>(x);
                     if (cell_index >= layer.cells.size() || layer.cells[cell_index].empty()) {
                         continue;
@@ -9065,7 +9291,8 @@ void print_usage() {
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
-                 "[--require-runtime-ui-workbench] [--require-runtime-ui-production-stack] "
+                 "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
+                 "[--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
                  "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
                  "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow] "
@@ -9213,6 +9440,10 @@ void print_usage() {
         }
         if (arg == "--require-runtime-menu-hud") {
             options.require_runtime_menu_hud = true;
+            continue;
+        }
+        if (arg == "--require-runtime-ui-standard-widgets") {
+            options.require_runtime_ui_standard_widgets = true;
             continue;
         }
         if (arg == "--require-runtime-ui-workbench") {
@@ -9938,6 +10169,10 @@ int main(int argc, char** argv) {
     const auto runtime_ui_workbench_probe = options.require_runtime_ui_workbench
                                                 ? validate_gameplay_2d_runtime_ui_workbench()
                                                 : RuntimeUiWorkbenchProbeResult{};
+    const auto runtime_ui_standard_widgets_probe =
+        options.require_runtime_ui_standard_widgets
+            ? validate_runtime_ui_standard_widgets_package_evidence("sample_2d_desktop_runtime_package")
+            : RuntimeUiStandardWidgetsProbeResult{};
     const auto runtime_ui_production_stack_probe = options.require_runtime_ui_production_stack
                                                        ? validate_runtime_ui_production_stack_package_evidence()
                                                        : RuntimeUiProductionStackProbeResult{};
@@ -10782,6 +11017,33 @@ int main(int argc, char** argv) {
         << " runtime_ui_workbench_image_decoding=" << (runtime_ui_workbench_probe.image_decoding ? 1 : 0)
         << " runtime_ui_workbench_native_platform=" << (runtime_ui_workbench_probe.native_platform ? 1 : 0)
         << " runtime_ui_workbench_diagnostics=" << runtime_ui_workbench_probe.diagnostics
+        << " runtime_ui_standard_widgets_ready=" << (runtime_ui_standard_widgets_probe.ready ? 1 : 0)
+        << " runtime_ui_standard_widgets_provenance_ready="
+        << (runtime_ui_standard_widgets_probe.provenance_ready ? 1 : 0)
+        << " runtime_ui_standard_widgets_official_documentation_rows="
+        << runtime_ui_standard_widgets_probe.official_documentation_rows
+        << " runtime_ui_standard_widgets_first_party_design_rows="
+        << runtime_ui_standard_widgets_probe.first_party_design_rows
+        << " runtime_ui_standard_widgets_meter_rows=" << runtime_ui_standard_widgets_probe.meter_rows
+        << " runtime_ui_standard_widgets_menu_screens=" << runtime_ui_standard_widgets_probe.menu_screens
+        << " runtime_ui_standard_widgets_menu_actions=" << runtime_ui_standard_widgets_probe.menu_actions
+        << " runtime_ui_standard_widgets_document_elements=" << runtime_ui_standard_widgets_probe.document_elements
+        << " runtime_ui_meter_health_normalized=" << format_fixed3(runtime_ui_standard_widgets_probe.health_normalized)
+        << " runtime_ui_meter_mana_normalized=" << format_fixed3(runtime_ui_standard_widgets_probe.mana_normalized)
+        << " runtime_ui_meter_stamina_normalized="
+        << format_fixed3(runtime_ui_standard_widgets_probe.stamina_normalized)
+        << " runtime_ui_standard_widgets_health_accessibility_ready="
+        << (runtime_ui_standard_widgets_probe.health_accessibility_ready ? 1 : 0)
+        << " runtime_ui_standard_widgets_mana_localization_ready="
+        << (runtime_ui_standard_widgets_probe.mana_localization_ready ? 1 : 0)
+        << " runtime_ui_standard_widgets_stamina_warning_style_ready="
+        << (runtime_ui_standard_widgets_probe.stamina_warning_style_ready ? 1 : 0)
+        << " runtime_ui_standard_widgets_external_engine_code="
+        << (runtime_ui_standard_widgets_probe.external_engine_code ? 1 : 0)
+        << " runtime_ui_standard_widgets_external_engine_assets="
+        << (runtime_ui_standard_widgets_probe.external_engine_assets ? 1 : 0)
+        << " runtime_ui_standard_widgets_ui_middleware=" << (runtime_ui_standard_widgets_probe.ui_middleware ? 1 : 0)
+        << " runtime_ui_standard_widgets_diagnostics=" << runtime_ui_standard_widgets_probe.diagnostics
         << " runtime_ui_production_stack_status="
         << mirakana::ui::runtime_ui_production_stack_status_name(runtime_ui_production_stack_probe.status)
         << " runtime_ui_production_stack_reviewed=" << (runtime_ui_production_stack_probe.reviewed ? 1 : 0)
@@ -11941,6 +12203,36 @@ int main(int argc, char** argv) {
                   << " runtime_ui_workbench_accessibility_refs=" << runtime_ui_workbench_probe.accessibility_refs
                   << " runtime_ui_workbench_diagnostics=" << runtime_ui_workbench_probe.diagnostics << '\n';
         return 27;
+    }
+
+    if (options.require_runtime_ui_standard_widgets && !runtime_ui_standard_widgets_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_standard_widgets_unavailable"
+                  << " runtime_ui_standard_widgets_ready=" << (runtime_ui_standard_widgets_probe.ready ? 1 : 0)
+                  << " runtime_ui_standard_widgets_provenance_ready="
+                  << (runtime_ui_standard_widgets_probe.provenance_ready ? 1 : 0)
+                  << " runtime_ui_standard_widgets_official_documentation_rows="
+                  << runtime_ui_standard_widgets_probe.official_documentation_rows
+                  << " runtime_ui_standard_widgets_first_party_design_rows="
+                  << runtime_ui_standard_widgets_probe.first_party_design_rows
+                  << " runtime_ui_standard_widgets_meter_rows=" << runtime_ui_standard_widgets_probe.meter_rows
+                  << " runtime_ui_standard_widgets_menu_screens=" << runtime_ui_standard_widgets_probe.menu_screens
+                  << " runtime_ui_standard_widgets_menu_actions=" << runtime_ui_standard_widgets_probe.menu_actions
+                  << " runtime_ui_standard_widgets_document_elements="
+                  << runtime_ui_standard_widgets_probe.document_elements << " runtime_ui_meter_health_normalized="
+                  << format_fixed3(runtime_ui_standard_widgets_probe.health_normalized)
+                  << " runtime_ui_meter_mana_normalized="
+                  << format_fixed3(runtime_ui_standard_widgets_probe.mana_normalized)
+                  << " runtime_ui_meter_stamina_normalized="
+                  << format_fixed3(runtime_ui_standard_widgets_probe.stamina_normalized)
+                  << " runtime_ui_standard_widgets_external_engine_code="
+                  << (runtime_ui_standard_widgets_probe.external_engine_code ? 1 : 0)
+                  << " runtime_ui_standard_widgets_external_engine_assets="
+                  << (runtime_ui_standard_widgets_probe.external_engine_assets ? 1 : 0)
+                  << " runtime_ui_standard_widgets_ui_middleware="
+                  << (runtime_ui_standard_widgets_probe.ui_middleware ? 1 : 0)
+                  << " runtime_ui_standard_widgets_diagnostics=" << runtime_ui_standard_widgets_probe.diagnostics
+                  << '\n';
+        return 43;
     }
 
     if (options.require_runtime_ui_production_stack && !runtime_ui_production_stack_probe.package_evidence_ready) {

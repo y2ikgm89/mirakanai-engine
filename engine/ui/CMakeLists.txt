@@ -1,5 +1,6 @@
 add_library(mirakana_ui
     src/runtime_ui_production_stack.cpp
+    src/runtime_ui_standard_widgets.cpp
     src/runtime_ui_workbench.cpp
     src/ui.cpp
 )
