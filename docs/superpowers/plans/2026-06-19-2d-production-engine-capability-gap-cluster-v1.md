@@ -315,8 +315,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Static/public checks: `git diff --check`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, and `tools/check-agents.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-06-22; static checks were ok and CTest reported `100% tests passed, 0 tests failed out of 135`.
 - IP provenance: `external_code_copied=0`, `external_assets_copied=0`, `third_party_api_surface_copied=0`, `third_party_ui_layout_copied=0`, `third_party_trademark_public_api=0`, `license_records_updated=not_applicable`, `official_docs_used_for_category_mapping_only=1`.
-- Publication: `tools/check-publication-preflight.ps1`, candidate commit `c6430a0d`, branch push, and draft PR #721 are complete.
-- Slice close: PR #721 merged to `origin/main` at merge commit `3b4fe82e`; Phase 3 branch `codex/2d-dense-sprite-throughput` was created from that merged baseline.
+- Publication: `tools/check-publication-preflight.ps1`, branch push, PR #721, and publication closeout PR #724 are complete.
+- Slice close: PR #721 merged to `origin/main` at merge commit `3b4fe82e`; PR #724 merged publication evidence closeout at merge commit `23e56be8`; Phase 3 branch `codex/2d-dense-sprite-throughput` has merged that baseline.
 
 ### Phase 3: `2d-dense-sprite-throughput-v1`
 
