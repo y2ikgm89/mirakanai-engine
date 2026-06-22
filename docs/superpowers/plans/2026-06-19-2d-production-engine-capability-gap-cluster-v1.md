@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `gameengine-feature` before implementation. Use `gameengine-rendering` before renderer/RHI edits, `gameengine-editor` before editor-core or visible editor edits, `gameengine-performance-optimization` before performance-budget or benchmark edits, and `gameengine-cmake-build-system` before CMake or validation-script edits.
 
 **Plan ID:** `2d-production-engine-capability-gap-cluster-v1`
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Define a non-overlapping candidate milestone for the remaining reusable 2D game-engine capabilities needed to move from selected 2D package/source foundations to a production-grade 2D runtime creation loop.
 
@@ -18,7 +18,7 @@
 - Plan id: `2d-production-engine-capability-gap-cluster-v1`
 - Date: `2026-06-19`
 - Re-audited: `2026-06-21`
-- Status: `active-milestone` in branch `codex/2d-engine-gap-plan`; selected by `currentActivePlan`
+- Status: completed milestone; live execution returns to the production-completion selection gate after Phase 7 publication evidence.
 - Authored in isolated worktree: `.worktrees/codex-2d-engine-gap-plan`
 - Branch: `codex/2d-engine-gap-plan`
 - Parallel external plan: `environment-highest-commercial-readiness-v1` remains separate work outside this isolated branch.
@@ -420,7 +420,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - RED/GREEN tests added `MK_physics2d_runtime_extension_tests` for circle-vs-circle, circle-vs-AABB, AABB-vs-AABB exact sweeps, no-hit rows, initial-overlap rows, row-budget rejection, simulation-after-motion trigger enter/exit rows with rollback on trigger-row budget rejection, kinematic contact resolution with secondary slide blocker iteration, distance/hinge/prismatic/spring joint rows, trigger enter/exit data rows, and zero native/middleware dispatch counters.
 - Package-visible evidence added `sample_2d_desktop_runtime_package --require-2d-physics-runtime-extension`, `installed-2d-physics-runtime-extension-smoke`, installed validator expectations, CMake smoke args, game manifest rows, and static AI integration needles. The selected package smoke proves `2d_physics_runtime_extension_status=ready`, `simulate_status=simulated`, 2 simulation runs, 5 TOI rows, 3 exact sweep shape-pair rows, 4 hit rows, 1 no-hit row, 1 initial-overlap row, 1 kinematic contact row, 4 joint rows across distance/hinge/prismatic/spring, 2 trigger event rows, clean diagnostics, `native_handle_exposure=0`, `middleware_dispatches=0`, and `dynamic_vs_dynamic_ccd_claimed=0`.
 - Focused package validation: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { .\tools\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--max-frames','3','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-2d-physics-runtime-extension') }"` passed; CPack produced `Mirakanai-0.1.0-Windows-AMD64.zip` and installed desktop runtime validation reported `installed-desktop-runtime-validation: ok`.
-- Slice-close local gates: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, focused `tools/check-tidy.ps1 -Files engine/physics/src/physics2d.cpp,tests/unit/physics2d_runtime_extension_tests.cpp`, focused `tools/check-tidy.ps1 -Preset desktop-runtime-release -Configuration Release -Files games/sample_2d_desktop_runtime_package/main.cpp`, focused build/CTest, package smoke, and full `tools/validate.ps1` passed on 2026-06-22 with CTest 141/141 passing after merging latest `origin/main` and rerunning the strengthened physics extension tests. Pending publication gates: branch push, PR, hosted CI/PR Gate, merge, and local main synchronization.
+- Slice-close local gates: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-toolchain.ps1`, focused `tools/check-tidy.ps1 -Files engine/physics/src/physics2d.cpp,tests/unit/physics2d_runtime_extension_tests.cpp`, focused `tools/check-tidy.ps1 -Preset desktop-runtime-release -Configuration Release -Files games/sample_2d_desktop_runtime_package/main.cpp`, focused build/CTest, package smoke, and full `tools/validate.ps1` passed on 2026-06-22 with CTest 141/141 passing after merging latest `origin/main` and rerunning the strengthened physics extension tests. Publication: PR #730 head `3f51abf6` passed hosted PR Gate, Windows MSVC, Linux CMake/Coverage/ASan/Vulkan, static shards, iOS simulator, iOS Metal, macOS Metal CMake, and CodeQL, then merged to `origin/main` at merge commit `6a8e9c6c`.
 
 ### Phase 5: `2d-input-device-production-ux-v1`
 
@@ -464,6 +464,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Ready only when:** gesture/action rows, glyph lookup rows, keyboard layout rows, device assignment rows, and per-device profile rows are deterministic and package-visible, with UI rendering and native handles still unclaimed.
 
+**Local evidence:**
+
+- RED/GREEN tests added `MK_runtime_tests` coverage for tap, double-tap, long-press, pan, swipe, pinch, rotate gesture-to-action rows, duplicate rejection, device assignment rows, per-device profile rows with deadzone clamping diagnostics, symbolic glyph lookup rows, keyboard physical/logical/display label rows, invalid glyph/keyboard diagnostics, and explicit non-claims for native handles, UI rendering, input middleware, glyph rendering, and UI widgets.
+- Runtime/package surface adds `RuntimeInputDeviceProductionUxPlan`, `RuntimeInputGestureBindingRow`, `RuntimeInputDeviceAssignmentRow`, `RuntimeInputPerDeviceProfileRow`, `RuntimeInputGlyphAssetLookupRow`, `RuntimeInputKeyboardLayoutLabelRow`, and `plan_runtime_input_device_production_ux`, plus `sample_2d_desktop_runtime_package --require-2d-input-device-production-ux`, installed validator expectations, CMake smoke args, game manifest recipe rows, and static AI integration needles.
+- Focused validation on 2026-06-22 passed `tools/cmake.ps1 --build --preset dev --target MK_runtime_tests`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_runtime_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_runtime_tests$|^MK_editor_core_tests$"`, `tools/check-text-format.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` with `--require-2d-input-device-production-ux`. The package-visible counters prove `2d_input_device_production_ux_status=ready`, ready `1`, 7 gesture binding rows, 7 gesture event rows, 7 gesture action rows, 2 device assignments, 1 per-device profile, 2 glyph asset lookup rows, 2 keyboard layout label rows, zero diagnostics, zero clamped deadzones in the ready lane, and zero native-handle/UI/middleware/glyph-render/widget counters.
+- Slice-close local gates passed after fast-forwarding to latest `origin/main`: composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `check-public-api-boundaries`, focused clang-tidy for runtime/test/package files, focused build/CTest, package validation, and full `tools/validate.ps1` on 2026-06-22 with CTest 143/143 passing. Publication completed through PR #733 / merge commit `a199416c` after head `c870194b` passed hosted PR Gate, Windows MSVC, Linux CMake/Coverage/ASan/Vulkan, static shards, iOS simulator, iOS Metal, macOS Metal CMake, and CodeQL. Local `origin/main` synchronization verified the Phase 5 head reaches `origin/main`.
+
 ### Phase 6: `2d-production-workload-matrix-v1`
 
 **Target modules:**
@@ -501,6 +508,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 **Ready only when:** the validator passes in `-RequireReady`, all required workload rows exist, all ready timing rows have retained artifacts, no over-budget row exists, and broad optimization remains unclaimed unless specifically proven.
+
+- Local Phase 6 implementation adds [2D Production Workload Matrix v1](../../specs/2026-06-19-2d-production-workload-matrix-v1.md), `tools/validate-2d-production-workloads.ps1`, and `sample_2d_desktop_runtime_package` `performanceBudgets.workloadRows` for `2d-dense-arena`, `2d-sandbox-tilemap`, `2d-ui-overlay`, `2d-hot-reload-package`, and `2d-long-run-selected`.
+- Initial focused package validation passed `tools/validate-2d-production-workloads.ps1` and `tools/validate-2d-production-workloads.ps1 -RequireReady` with selected package-visible counters for sprite throughput, sandbox/tilemap, runtime UI atlas handoff, performance baseline, long-run readiness, and 2D input-device production UX. Representative counters include `2d_sprite_throughput_workload_rows=3`, `2d_sprite_throughput_dense_arena_4096_visible_sprites=4096`, `2d_sprite_throughput_projectile_storm_logical_sprites=12000`, `2d_sprite_throughput_upload_bytes=319488`, `runtime_ui_renderer_atlas_handoff_atlas_budget_rows=2`, positive `long_run_readiness_memory_high_water_bytes`, and clean broad-optimization/backend/Metal/native-handle non-claim counters.
+- Local slice-close gates passed on 2026-06-22, including composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `tools/validate-2d-production-workloads.ps1 -RequireReady`, and full `tools/validate.ps1` with CTest 143/143 passing. Publication completed through PR #735 after head `f1598e5dd56beee252f1b8599a58c84c94d3212f` passed hosted PR Gate, Windows MSVC, Linux CMake, Linux Vulkan Host Evidence, Full Repository Static Analysis shards 0-3, iOS Simulator smoke, iOS Metal Evidence, macOS Metal CMake, and CodeQL; PR #735 merged to `origin/main` at merge commit `6374f04a9b36ef11e9bc604d25f7d540dafe57ad` on 2026-06-22T01:00:54Z, and local merge-base verification confirmed the Phase 6 head reaches `origin/main`. Publication evidence closeout landed through PR #736 at merge commit `09251b53a13f2c890b7c4fad7611a368b9b52c5e`.
 
 ### Phase 7: `2d-package-playtest-productization-v1`
 
@@ -543,6 +554,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Ready only when:** a selected 2D package can run the reviewed playtest recipe, classify failures deterministically, import evidence rows, execute only reviewed hot-reload safe points, and preserve all existing non-claims around native watchers, active-session hot reload, package scripts, and runtime-host embedding.
 
+- Local Phase 7 implementation adds `Runtime2DPackagePlaytestRecipeRow`, `Runtime2DPackagePlaytestEvidenceRow`, `Runtime2DPackagePlaytestFailureClassification`, `Runtime2DPackagePlaytestDesc`, `Runtime2DPackagePlaytestResult`, and `plan_runtime_2d_package_playtest_productization` to compose the selected package playtest recipe and evidence rows without making editor core an execution surface.
+- `sample_2d_desktop_runtime_package --require-2d-package-playtest-productization` now proves the selected `installed-2d-package-playtest-productization-smoke-playtest` recipe against the installed package, required runtime-host launch row, hot-reload safe-point row, imported package-smoke evidence, package counters, profile artifact row, remediation handoff rows, and all eight failure classifications.
+- Focused package validation passed `tools/validate-2d-package-playtest-productization.ps1` and `tools/validate-2d-package-playtest-productization.ps1 -RequireReady` locally. The ready smoke reports `2d_package_playtest_productization_status=ready`, ready=1, one recipe row, one evidence row, one imported evidence row, 11 package-smoke counter rows, one profile artifact row, four remediation handoff rows, eight failure classification rows, clean diagnostics, declared validation/playtest/runtime-host/hot-reload-safe-point rows, and zero editor-core execution, validation-recipe execution, arbitrary shell execution, active-session hot reload, and native-handle exposure.
+- Local slice-close gates passed on 2026-06-22 after the PR #736 `origin/main` closeout merge, including composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `check-public-api-boundaries`, `check-toolchain`, focused clang-tidy for runtime/test files, focused build/CTest for hot-reload/editor tests, `tools/validate-2d-package-playtest-productization.ps1 -RequireReady`, and full `tools/validate.ps1` with CTest 143/143 passing.
+- Publication completed through PR #737. Head `c9705fd8ead4d13ec4d8cca93ac2fc0ccff1c8b4` passed hosted PR Gate, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Linux Vulkan Host Evidence, Full Repository Static Analysis shards 0-3, iOS Simulator smoke, iOS Metal Evidence, macOS Metal CMake, and CodeQL. PR #737 merged to `origin/main` at merge commit `db745fc05b9eeab5931bae7a9e0f4f66faa11a7e` on 2026-06-22T03:00:24Z, and local fetch plus merge-base verification confirmed the Phase 7 head reaches `origin/main`.
+
 ## Cross-Phase Validation Rules
 
 - Every C++ behavior phase starts with a focused RED test or compile failure.
@@ -565,8 +582,9 @@ This candidate milestone is complete only when all selected phases that remain i
 - `unsupportedProductionGaps` kept honest,
 - full `tools/validate.ps1` evidence for any runtime/build/public-contract slice.
 
-Until then, the correct answer for broad 2D production readiness is:
+At closeout, the selected milestone evidence is:
 
 - selected 2D source/package foundations: ready or host-gated as currently documented,
 - general tile/sandbox/UI/audio/input/sprite foundations: implemented as documented by their completed plans,
-- broad production 2D engine loop: candidate work in this plan, not ready.
+- selected production 2D engine loop and package playtest productization: completed through Phase 1-7 publication evidence,
+- broad all-feature/all-platform 2D engine readiness beyond the selected milestone: still an explicit non-claim until a future selected plan proves it.
