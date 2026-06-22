@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/mavg-async-overlap-performance.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "backend",
+    "workload_id",
+    "package_hash_sha256",
+    "camera_script_id",
+    "host_class",
+    "adapter_id",
+    "driver_version",
+    "memory_budget_bytes",
+    "sync_baseline",
+    "async_scheduler",
+    "profiler_artifact"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.MavgAsyncOverlapPerformanceEvidence.v1" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "backend": { "type": "string", "enum": ["d3d12", "vulkan", "metal_apple_host"] },
+    "workload_id": { "type": "string", "minLength": 1 },
+    "package_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "camera_script_id": { "type": "string", "minLength": 1 },
+    "host_class": { "type": "string", "minLength": 1 },
+    "adapter_id": { "type": "string", "minLength": 1 },
+    "driver_version": { "type": "string", "minLength": 1 },
+    "memory_budget_bytes": { "type": "integer", "minimum": 1 },
+    "sync_baseline": { "$ref": "#/$defs/runEvidence" },
+    "async_scheduler": { "$ref": "#/$defs/runEvidence" },
+    "profiler_artifact": { "$ref": "#/$defs/profilerArtifact" }
+  },
+  "$defs": {
+    "runEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "workload_id",
+        "package_hash_sha256",
+        "camera_script_id",
+        "backend",
+        "host_class",
+        "adapter_id",
+        "driver_version",
+        "replay_hash",
+        "warmup_frame_count",
+        "measured_frame_count",
+        "internal_engine_counters_from_non_captured_run",
+        "timing_window_only_evidence",
+        "frame_p95_us",
+        "frame_p99_us",
+        "streaming_stall_p95_us",
+        "memory_peak_bytes"
+      ],
+      "properties": {
+        "run_id": { "type": "string", "minLength": 1 },
+        "workload_id": { "type": "string", "minLength": 1 },
+        "package_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "camera_script_id": { "type": "string", "minLength": 1 },
+        "backend": { "type": "string", "enum": ["d3d12", "vulkan", "metal_apple_host"] },
+        "host_class": { "type": "string", "minLength": 1 },
+        "adapter_id": { "type": "string", "minLength": 1 },
+        "driver_version": { "type": "string", "minLength": 1 },
+        "replay_hash": { "type": "string", "minLength": 1 },
+        "warmup_frame_count": { "type": "integer", "minimum": 30 },
+        "measured_frame_count": { "type": "integer", "minimum": 120 },
+        "internal_engine_counters_from_non_captured_run": { "type": "boolean" },
+        "timing_window_only_evidence": { "type": "boolean" },
+        "frame_p95_us": { "type": "integer", "minimum": 1 },
+        "frame_p99_us": { "type": "integer", "minimum": 1 },
+        "streaming_stall_p95_us": { "type": "integer", "minimum": 1 },
+        "memory_peak_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "profilerArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "tool_version",
+        "capture_mode",
+        "artifact_path",
+        "trace_event_json_path",
+        "artifact_hash_sha256",
+        "reviewed",
+        "official_tool",
+        "profiler_overhead_basis_points",
+        "capture_duration_us",
+        "dropped_timestamps_or_overflow",
+        "symbols_or_debug_info_available",
+        "queue_timeline_available",
+        "io_timeline_available",
+        "gpu_timeline_available",
+        "memory_timeline_available",
+        "overlap_with_gpu_upload_or_draw_observed",
+        "representative_capture"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "enum": [
+            "pix_timing_capture",
+            "nsight_graphics_gpu_trace",
+            "radeon_gpu_profiler",
+            "intel_gpa",
+            "apple_metal_tools"
+          ]
+        },
+        "tool_version": { "type": "string", "minLength": 1 },
+        "capture_mode": { "type": "string", "minLength": 1 },
+        "artifact_path": { "type": "string", "minLength": 1 },
+        "trace_event_json_path": { "type": "string", "minLength": 1 },
+        "artifact_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "reviewed": { "type": "boolean" },
+        "official_tool": { "type": "boolean" },
+        "profiler_overhead_basis_points": { "type": "integer", "minimum": 0, "maximum": 500 },
+        "capture_duration_us": { "type": "integer", "minimum": 1 },
+        "dropped_timestamps_or_overflow": { "type": "boolean" },
+        "symbols_or_debug_info_available": { "type": "boolean" },
+        "queue_timeline_available": { "type": "boolean" },
+        "io_timeline_available": { "type": "boolean" },
+        "gpu_timeline_available": { "type": "boolean" },
+        "memory_timeline_available": { "type": "boolean" },
+        "overlap_with_gpu_upload_or_draw_observed": { "type": "boolean" },
+        "representative_capture": { "type": "boolean" }
+      }
+    }
+  }
+}
