@@ -1027,15 +1027,15 @@ plan_runtime_package_hot_reload_recook_change_review_v2(const RuntimePackageHotR
     return result;
 }
 
-[[nodiscard]] bool contains_id(const std::vector<std::string>& ids, std::string_view id) {
+[[nodiscard]] static bool contains_id(const std::vector<std::string>& ids, std::string_view id) {
     return std::ranges::find(ids, id) != ids.end();
 }
 
-void add_2d_package_playtest_diagnostic(Runtime2DPackagePlaytestResult& result, std::string code) {
+static void add_2d_package_playtest_diagnostic(Runtime2DPackagePlaytestResult& result, std::string code) {
     result.diagnostics.push_back(std::move(code));
 }
 
-[[nodiscard]] bool
+[[nodiscard]] static bool
 has_required_2d_package_playtest_failure_classifications(const Runtime2DPackagePlaytestRecipeRow& row) {
     constexpr Runtime2DPackagePlaytestFailureClassification required[]{
         Runtime2DPackagePlaytestFailureClassification::missing_package_file,
