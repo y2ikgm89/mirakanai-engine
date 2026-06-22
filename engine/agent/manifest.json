@@ -9986,6 +9986,7 @@
       {
         "id": "d3d12-windows-primary",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "windows"
         ],
@@ -10008,6 +10009,7 @@
       {
         "id": "long-run-host-soak",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "operator-owned long-running validation host",
           "stable thermal and power policy",
@@ -10021,6 +10023,7 @@
       {
         "id": "cpu-profiling-matrix-host",
         "status": "host-gated",
+        "residualClass": "external-artifact-required",
         "hosts": [
           "Windows Intel or AMD host with Windows Performance Toolkit",
           "Linux Intel or AMD host with perf",
@@ -10036,6 +10039,7 @@
       {
         "id": "optional-gpu-compute-review-host",
         "status": "host-gated",
+        "residualClass": "external-artifact-required",
         "hosts": [
           "Windows D3D12 or Vulkan capable host with GPU profiler",
           "Linux Vulkan capable host with GPU profiler",
@@ -10051,6 +10055,7 @@
       {
         "id": "vulkan-strict",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "windows with Vulkan runtime",
           "DXC SPIR-V CodeGen",
@@ -10071,6 +10076,7 @@
       {
         "id": "vulkan-strict-linux",
         "status": "host-gated",
+        "residualClass": "platform-host-required",
         "hosts": [
           "linux with Vulkan runtime",
           "Linux Vulkan ICD/runtime/driver evidence through vulkaninfo",
@@ -10089,6 +10095,7 @@
       {
         "id": "metal-apple",
         "status": "host-gated",
+        "residualClass": "platform-host-required",
         "hosts": [
           "macos",
           "ios",
@@ -10108,6 +10115,7 @@
       {
         "id": "android-gameactivity",
         "status": "host-gated",
+        "residualClass": "host-operation-required",
         "hosts": [
           "Android SDK",
           "NDK",
@@ -10123,6 +10131,7 @@
       {
         "id": "commercial-environment-closeout",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "strict Vulkan aggregate host",
           "Apple Metal aggregate host",
@@ -10144,6 +10153,7 @@
       {
         "id": "windows-msvc-desktop-editor",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "windows",
           "Visual Studio desktop-editor preset",
@@ -10157,6 +10167,7 @@
       {
         "id": "windows-msvc-dev-editor-game-module-driver-ctest",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "windows",
           "Visual Studio dev preset",
@@ -10170,6 +10181,7 @@
       {
         "id": "tidy-compile-database",
         "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "default Windows Visual Studio dev preset through CMake File API codemodel",
           "Makefile or Ninja generators with native compile_commands.json"

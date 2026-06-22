@@ -248,8 +248,18 @@ if (-not ([string]$geRhiModule[0].purpose).Contains("RhiResourceLifetimeRegistry
     Write-Error "engine manifest MK_rhi purpose must describe foundation-only resource lifetime/upload staging and remaining GPU allocator limits"
 }
 
+$allowedHostGateResidualClasses = @("ready", "external-artifact-required", "platform-host-required", "host-operation-required")
 foreach ($hostGate in $productionLoop.hostGates) {
-    Assert-Properties $hostGate @("id", "status", "hosts", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop hostGates"
+    Assert-Properties $hostGate @("id", "status", "residualClass", "hosts", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop hostGates"
+    if ($allowedHostGateResidualClasses -notcontains $hostGate.residualClass) {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' has invalid residualClass: $($hostGate.residualClass)"
+    }
+    if ($hostGate.status -eq "ready" -and $hostGate.residualClass -ne "ready") {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' is ready but residualClass is $($hostGate.residualClass)"
+    }
+    if ($hostGate.status -ne "ready" -and $hostGate.residualClass -eq "ready") {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' is not ready but residualClass is ready"
+    }
     foreach ($validationRecipe in @($hostGate.validationRecipes)) {
         if (-not $validationRecipeNames.ContainsKey($validationRecipe)) {
             Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' references unknown validation recipe: $validationRecipe"

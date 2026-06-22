@@ -1612,6 +1612,6 @@ if ($editorAiPlaytestOperatorWorkflowLoop.Count -ne 1) {
 }
 
 $productionReadinessAuditScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-production-readiness-audit.ps1") -Raw
-foreach ($needle in @("hostGates", "production-readiness-audit: host_gates=", "production-readiness-audit: host_gate_status[", "production-readiness-audit: host_gate=")) {
+foreach ($needle in @("hostGates", "residualClass", "production-readiness-audit: host_gates=", "production-readiness-audit: host_gate_status[", "production-readiness-audit: host_gate_residual_class[", "production-readiness-audit: host_gate=")) {
     Assert-ContainsText $productionReadinessAuditScriptText $needle "tools/check-production-readiness-audit.ps1"
 }
