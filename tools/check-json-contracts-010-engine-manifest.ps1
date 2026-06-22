@@ -1126,7 +1126,10 @@ if (-not (Test-Path (Join-Path $root "tools/collect-cpu-profiling-host-evidence.
 foreach ($needle in @("tools/collect-cpu-profiling-host-evidence.ps1", "-Mode Import", "tools/check-cpu-profiling-host-evidence.ps1", "-EvidenceRoot", "-RequireReady")) {
     Assert-ContainsText ([string]$cpuProfilingRecipe[0].command) $needle "engine manifest validationRecipes host-cpu-profiling-matrix command"
 }
-Assert-ContainsText (Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw) "check-cpu-profiling-host-evidence-collector.ps1" "tools/validate.ps1"
+$validateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw; Assert-ContainsText $validateScriptText "check-cpu-profiling-host-evidence-collector.ps1" "tools/validate.ps1"
+$androidValidationLayerHelperText = Get-Content -LiteralPath (Join-Path $root "tools/prepare-android-vulkan-validation-layers.ps1") -Raw
+foreach ($needle in @("OutputJniLibs", "libVkLayer_khronos_validation.so", "out/host-artifacts/android-validation-layers/jniLibs", "repository_mutation=0")) { Assert-ContainsText $androidValidationLayerHelperText $needle "tools/prepare-android-vulkan-validation-layers.ps1" }
+Assert-ContainsText $validateScriptText "check-android-vulkan-validation-layer-helper.ps1" "tools/validate.ps1"
 $optionalGpuComputeReview = $productionLoop.optionalGpuComputeReview
 Assert-Properties $optionalGpuComputeReview @("id", "status", "owner", "summary", "classifications", "requiredEvidenceFields", "candidateRows", "fallbackRequirements", "nonGoals", "officialReferences", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop.optionalGpuComputeReview"
 if ($optionalGpuComputeReview.id -ne "long-running-performance-readiness-v1-phase-7" -or $optionalGpuComputeReview.status -ne "review-only") { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview must be Phase 7 review-only" }
