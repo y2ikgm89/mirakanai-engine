@@ -908,6 +908,18 @@ if(BUILD_TESTING)
         COMMAND MK_runtime_scene_rhi_mavg_deformation_integration_tests
     )
 
+    add_executable(MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests
+        tests/unit/runtime_scene_rhi_mavg_ray_tracing_integration_tests.cpp
+    )
+    target_link_libraries(MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests
+        PRIVATE MK_runtime_scene_rhi MK_scene_renderer MK_runtime_rhi
+    )
+    target_include_directories(MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests)
+    add_test(NAME MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests
+        COMMAND MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests
+    )
+
     add_executable(MK_navigation_tests
         tests/unit/navigation_tests.cpp
     )

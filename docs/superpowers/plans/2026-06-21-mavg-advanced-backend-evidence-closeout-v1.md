@@ -101,8 +101,8 @@ The current plan was rechecked against official sources and Context7 on 2026-06-
 
 This document is a high-rigor gap-cluster and milestone plan, not a blanket readiness claim and not a promise that unfinished tasks can be implemented without task-local tightening. The quality bar is:
 
-- Tasks 1 through 7 have reached implementation-slice precision: public types, row ids, validation commands, negative tests, non-claims, docs, manifest rows, and static guards are named.
-- Tasks 8 through 11 are intentionally still milestone-level until selected. Before any code edit in those tasks, the implementer must add the same task-local precision used for Task 7: exact public/backend-private API names, validator output fields, schema fields, focused CTest target, negative tests, host-gated rows, and publication validation commands.
+- Tasks 1 through 8 have reached implementation-slice precision: public types, row ids, validation commands, negative tests, non-claims, docs, manifest rows, and static guards are named.
+- Tasks 9 through 11 are intentionally still milestone-level until selected. Before any code edit in those tasks, the implementer must add the same task-local precision used for Task 8: exact public/backend-private API names, validator output fields, schema fields, focused CTest target, negative tests, host-gated rows, and publication validation commands.
 - A future task is not ready for implementation if it only says "measure", "integrate", "optimize", "support", or "compare" without naming the exact data contract, backend feature query, artifact schema, ready field, and false/host-gated diagnostics.
 - The plan can be called highest-rigor for scope control and official-source gating today. It can be called highest-rigor for direct implementation only for the already tightened slices and for future slices after their task-local precision block is added.
 - If an official source changes, a tool reaches end-of-life, or a host/backend row cannot be reproduced, the row remains false or host-gated and the plan must be amended before implementation continues.
@@ -390,18 +390,26 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-deformation-in
 - Test: `tests/unit/runtime_scene_rhi_mavg_ray_tracing_integration_tests.cpp`
 - Optional backend files after value tests pass: `engine/rhi/d3d12/src/d3d12_mavg_ray_tracing_blas.cpp`, `engine/rhi/vulkan/src/vulkan_mavg_ray_tracing_blas.cpp`
 
-- [ ] Define `MavgRayTracingGeometryPolicy`, `MavgRayTracingBlasInputRow`, and `plan_mavg_ray_tracing_blas_inputs`.
-- [ ] Provide two explicit modes: resident-cluster BLAS input and fallback-mesh BLAS input. Never silently switch modes.
-- [ ] Require stable replay hash, geometry byte count, index format, transform row, material alpha policy, and fallback mismatch diagnostics.
-- [ ] D3D12 readiness requires DXR capability checks plus acceleration-structure build evidence from `BuildRaytracingAccelerationStructure`.
-- [ ] Vulkan readiness requires `VK_KHR_acceleration_structure` feature checks plus acceleration-structure build evidence.
-- [ ] Metal readiness for ray tracing is not inferred; it belongs to Task 9.
-- [ ] `mavg_ray_tracing_integration_ready=true` requires policy evidence plus selected backend acceleration-structure build evidence.
-- [ ] Run:
+- [x] Define `MavgRayTracingGeometryPolicy`, `MavgRayTracingBlasInputRow`, and `plan_mavg_ray_tracing_blas_inputs`.
+- [x] Provide two explicit modes: resident-cluster BLAS input and fallback-mesh BLAS input. Never silently switch modes.
+- [x] Require stable replay hash, geometry byte count, index format, transform row, material alpha policy, and fallback mismatch diagnostics.
+- [x] D3D12 readiness requires DXR capability checks plus acceleration-structure build evidence from `BuildRaytracingAccelerationStructure`.
+- [x] Vulkan readiness requires `VK_KHR_acceleration_structure` feature checks plus acceleration-structure build evidence.
+- [x] Metal readiness for ray tracing is not inferred; it belongs to Task 9.
+- [x] `mavg_ray_tracing_integration_ready=true` requires policy evidence plus selected backend acceleration-structure build evidence.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_runtime_scene_rhi_mavg_ray_tracing_integration_tests --output-on-failure
+```
+
+**2026-06-22 ray tracing policy contract evidence:** `mavg-ray-tracing-integration-v1` adds `mavg_ray_tracing_integration.hpp`, `MavgRayTracingGeometryPolicy`, `MavgRayTracingBlasInputRow`, `MavgRayTracingBackendExecutionRow`, `MavgRayTracingIntegrationResult`, and `plan_mavg_ray_tracing_blas_inputs`. The gate accepts explicit resident-cluster BLAS and fallback-mesh BLAS policy rows only when stable replay hash, geometry byte count, index format, transform row, material alpha policy, resident page evidence, and fallback mesh match evidence are present. It rejects implicit geometry mode switches, fallback mode mismatches, alpha-blended material policy, missing transform/replay/byte-count evidence, native handles, Metal readiness inference, and broad ray tracing readiness. The focused API can model future selected backend execution rows, but retained validation for this slice intentionally emits `mavg_ray_tracing_policy_ready=1`, `mavg_ray_tracing_integration_status=backend_acceleration_structure_build_required`, and `mavg_ray_tracing_integration_ready=0` because no D3D12 `BuildRaytracingAccelerationStructure` or Vulkan `VK_KHR_acceleration_structure` build execution evidence rows are committed. This slice does not promote mesh shader execution, Metal readiness, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, or broad CPU/GPU/memory optimization.
+
+Focused validation evidence on 2026-06-22:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-ray-tracing-integration.ps1
 ```
 
 ## Task 9: Apple-Host Metal MAVG Readiness
