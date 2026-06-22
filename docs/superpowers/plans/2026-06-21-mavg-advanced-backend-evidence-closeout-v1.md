@@ -448,25 +448,41 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mavg-metal-host-eviden
 
 ## Task 10: MAVG-Only Broad CPU/GPU/Memory Optimization Matrix
 
+**Task ID:** `mavg-broad-optimization-evidence-v1`
+
 **Files:**
 - Create: `schemas/mavg-broad-optimization-artifacts.schema.json`
 - Create: `tools/validate-mavg-broad-optimization.ps1`
+- Create: `tools/check-ai-integration-130-mavg-broad-optimization.ps1`
 - Create: `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_broad_optimization_evidence.hpp`
 - Create: `engine/runtime_rhi/src/mavg_broad_optimization_evidence.cpp`
+- Modify: `engine/runtime_rhi/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/004-modules.json`
+- Compose: `engine/agent/manifest.json`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
 - Test: `tests/unit/runtime_rhi_mavg_broad_optimization_evidence_tests.cpp`
 
-- [ ] Define required metrics: CPU frame p50/p95/p99, CPU streaming jobs p95, GPU frame p50/p95/p99, GPU upload p95, GPU draw/dispatch p95, VRAM peak, resident page bytes, page faults, IO bytes/sec, IO request count, heap allocation count, and replay hash.
-- [ ] Require at least these backend/host classes before `mavg_broad_cpu_gpu_memory_optimization_ready=true`: D3D12 NVIDIA/AMD/Intel where available, Vulkan NVIDIA/AMD/Intel where available, and Apple Metal family row where available. Missing classes remain host-gated and block broad readiness unless the manifest explicitly excludes that platform row in a reviewed plan update.
-- [ ] For each vendor/backend row, record the official profiler path used: PIX or vendor-supported alternative for D3D12, Nsight GPU Trace for NVIDIA where supported, RGP/RDP for AMD where supported, Intel GPA/GPA Framework or PIX for Intel D3D12 where supported, and Xcode/Metal debugger/Instruments/Metal counters for Apple Metal. If a current official tool is end-of-life, unsupported on the host/API, or unavailable, mark only that row host-gated and do not substitute another vendor's evidence.
-- [ ] Require each backend class to pass the same first-party MAVG stress package and one first-party gameplay package.
-- [ ] Reject single-vendor, single-backend, or synthetic-only results as broad optimization proof.
-- [ ] Keep this row scoped to MAVG. It must not promote `environment_broad_optimization_ready`, `renderer_broad_optimization_ready`, or broad engine commercial readiness.
-- [ ] Run:
+- [x] Add `RuntimeMavgBroadOptimizationEvidenceDesc`, `RuntimeMavgBroadOptimizationEvidenceRow`, `RuntimeMavgBroadOptimizationMetrics`, `RuntimeMavgBroadOptimizationEvidenceResult`, `RuntimeMavgBroadOptimizationDiagnosticCode`, `evaluate_runtime_mavg_broad_optimization_evidence`, `has_runtime_mavg_broad_optimization_diagnostic`, and `runtime_mavg_broad_optimization_status_label`.
+- [x] Define required metrics: CPU frame p50/p95/p99, CPU streaming jobs p95, GPU frame p50/p95/p99, GPU upload p95, GPU draw/dispatch p95, VRAM peak, resident page bytes, page faults, IO bytes/sec, IO request count, heap allocation count, and replay hash.
+- [x] Require exactly 14 backend/vendor/workload rows before `mavg_broad_cpu_gpu_memory_optimization_ready=true`: D3D12 NVIDIA/AMD/Intel, Vulkan NVIDIA/AMD/Intel, and Apple-host Metal, each for a first-party MAVG stress package and one first-party gameplay package. Missing classes remain host-gated and block broad readiness.
+- [x] For each vendor/backend row, record the official profiler path used, profiler tool version, `profiler_tool_support_source_id`, artifact id, artifact SHA-256, `profiler_capture_overhead_basis_points`, internal engine counters, and CPU/GPU/IO/memory/queue timeline availability.
+- [x] Enforce backend/vendor profiler compatibility: D3D12 NVIDIA accepts PIX or Nsight, D3D12 AMD accepts PIX or RGP, D3D12 Intel accepts PIX, Vulkan NVIDIA accepts Nsight, Vulkan AMD accepts RGP, Metal accepts Apple Metal tools on Apple vendor rows, and Vulkan Intel remains host-gated because Intel GPA 2025.1 is the final EOL release and no current supported official Intel Vulkan graphics profiler row is retained.
+- [x] Reject EOL/unsupported profiler tools, backend/vendor profiler mismatch, single-vendor or single-backend matrices, missing profiler support source ids, excessive capture overhead, synthetic-only rows, native handle access, broad engine readiness claims, and broad MAVG backend readiness claims.
+- [x] Keep this row scoped to MAVG. It must not promote `environment_broad_optimization_ready`, `renderer_broad_optimization_ready`, `environment_ready`, `renderer_ready`, package-visible broad MAVG backend readiness, Nanite compatibility/equivalence/superiority, or broad engine commercial readiness.
+- [x] Add `GameEngine.MavgBroadOptimizationArtifacts.v1` schema coverage for row identity, profiler tools, support source id, capture overhead, required metrics, and false-claim booleans.
+- [x] Add `tools/validate-mavg-broad-optimization.ps1`, which builds and runs `MK_runtime_rhi_mavg_broad_optimization_evidence_tests`, validates schema literals, and intentionally emits `mavg_broad_cpu_gpu_memory_optimization_status=host_evidence_required`, `mavg_broad_cpu_gpu_memory_optimization_ready=0`, `mavg_broad_optimization_required_rows=14`, `mavg_broad_optimization_intel_gpa_eol=1`, and `mavg_broad_optimization_intel_vulkan_supported_profiler_rows=0` until retained official profiler artifacts exist.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-broad-optimization.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-broad-optimization.ps1 -RequireReady
 ```
+
+Focused validation evidence on 2026-06-22: GREEN passed `MK_runtime_rhi_mavg_broad_optimization_evidence_tests` through `tools/validate-mavg-broad-optimization.ps1`. Retained output is intentionally host-gated: `mavg_broad_cpu_gpu_memory_optimization_status=host_evidence_required`, `mavg_broad_cpu_gpu_memory_optimization_ready=0`, `mavg_broad_optimization_required_rows=14`, `mavg_broad_optimization_retained_rows=0`, `mavg_broad_optimization_ready_rows=0`, `mavg_broad_optimization_intel_gpa_eol=1`, `mavg_broad_optimization_intel_vulkan_supported_profiler_rows=0`, `mavg_broad_optimization_package_visible_backend_readiness=0`, `mavg_broad_optimization_environment_ready=0`, `mavg_broad_optimization_renderer_ready=0`, and all Nanite claim counters 0. `tools/validate-mavg-broad-optimization.ps1 -RequireReady` is expected to fail until the 14-row retained official-profiler artifact matrix is committed and an official current Intel Vulkan row or reviewed exclusion plan exists.
 
 ## Task 11: Nanite Comparison Report Without Nanite Claims
 
