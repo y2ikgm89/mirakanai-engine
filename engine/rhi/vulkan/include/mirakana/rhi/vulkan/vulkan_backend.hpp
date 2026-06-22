@@ -72,6 +72,10 @@ struct VulkanPhysicalDeviceCandidate {
     bool supports_swapchain_extension{false};
     bool supports_dynamic_rendering{false};
     bool supports_synchronization2{false};
+    bool supports_mesh_shader_extension{false};
+    bool mesh_shader_supported{false};
+    bool task_shader_supported{false};
+    bool mesh_shader_queries_supported{false};
     std::vector<VulkanQueueFamilyCandidate> queue_families;
 };
 
@@ -115,6 +119,9 @@ struct VulkanLogicalDeviceCreateDesc {
     bool require_dynamic_rendering{true};
     bool require_synchronization2{true};
     bool require_present_queue{true};
+    bool require_mesh_shader{false};
+    bool require_task_shader{false};
+    bool enable_mesh_shader_queries{false};
 };
 
 struct VulkanLogicalDeviceCreatePlan {
@@ -123,6 +130,9 @@ struct VulkanLogicalDeviceCreatePlan {
     std::vector<std::string> enabled_extensions;
     bool dynamic_rendering_enabled{false};
     bool synchronization2_enabled{false};
+    bool mesh_shader_enabled{false};
+    bool task_shader_enabled{false};
+    bool mesh_shader_queries_enabled{false};
     std::string diagnostic;
 };
 

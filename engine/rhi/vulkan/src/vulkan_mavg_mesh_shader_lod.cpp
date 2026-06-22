@@ -22,6 +22,15 @@ namespace {
     return version.major > major || (version.major == major && version.minor >= minor);
 }
 
+[[nodiscard]] bool command_resolved(const VulkanCommandResolutionPlan& plan, std::string_view command_name) noexcept {
+    for (const auto& resolution : plan.resolutions) {
+        if (resolution.request.name == command_name) {
+            return resolution.resolved;
+        }
+    }
+    return false;
+}
+
 [[nodiscard]] bool valid_task_row(const VulkanMavgMeshShaderLodTaskRow& row) noexcept {
     constexpr std::uint32_t max_mesh_shader_group_thread_count = 128U;
     return row.output_vertex_count >= 3U && row.output_primitive_count > 0U && row.task_group_count_x > 0U &&
@@ -107,9 +116,17 @@ VulkanMavgMeshShaderLodCapabilityResult probe_vulkan_mavg_mesh_shader_lod_capabi
 
     const VulkanRuntimePhysicalDeviceSnapshot* selected = nullptr;
     for (const auto& device : snapshots.devices) {
-        if (device.supports_mesh_shader_extension) {
+        if (device.supports_mesh_shader_extension && device.mesh_shader_supported && device.task_shader_supported) {
             selected = &device;
             break;
+        }
+    }
+    if (selected == nullptr) {
+        for (const auto& device : snapshots.devices) {
+            if (device.supports_mesh_shader_extension) {
+                selected = &device;
+                break;
+            }
         }
     }
     if (selected == nullptr) {
@@ -146,8 +163,47 @@ VulkanMavgMeshShaderLodCapabilityResult probe_vulkan_mavg_mesh_shader_lod_capabi
     } else if (!result.mesh_shader_supported) {
         result.diagnostic_text = "vulkan_mesh_shader_feature_unavailable";
         ++result.diagnostic_count;
+    } else if (!result.task_shader_supported) {
+        result.diagnostic_text = "vulkan_task_shader_feature_unavailable";
+        ++result.diagnostic_count;
     } else {
         result.diagnostic_text.clear();
+    }
+
+    if (result.device_extension_supported && result.mesh_shader_supported && result.task_shader_supported) {
+        VulkanLogicalDeviceCreateDesc device_desc;
+        device_desc.required_extensions.clear();
+        device_desc.require_present_queue = false;
+        device_desc.require_mesh_shader = true;
+        device_desc.require_task_shader = true;
+
+        const auto candidate = make_physical_device_candidate(*selected);
+        const auto selection = select_physical_device(device_desc, {candidate});
+        const auto plan =
+            build_logical_device_create_plan(device_desc, candidate, selection, selected->device_extensions);
+        result.mesh_shader_enabled = plan.mesh_shader_enabled;
+        result.task_shader_enabled = plan.task_shader_enabled;
+        result.draw_indirect_count_enabled = false;
+        if (!plan.supported) {
+            result.diagnostic_text = plan.diagnostic;
+            ++result.diagnostic_count;
+            return result;
+        }
+
+        const auto runtime_device = create_runtime_device(loader_desc, instance_desc, device_desc);
+        if (!runtime_device.created) {
+            result.diagnostic_text = runtime_device.diagnostic.empty() ? "vulkan_mesh_shader_device_create_failed"
+                                                                       : runtime_device.diagnostic;
+            ++result.diagnostic_count;
+            return result;
+        }
+
+        result.mesh_shader_enabled = runtime_device.device.logical_device_plan().mesh_shader_enabled;
+        result.task_shader_enabled = runtime_device.device.logical_device_plan().task_shader_enabled;
+        result.draw_mesh_tasks_direct_command_available =
+            command_resolved(runtime_device.device.command_plan(), "vkCmdDrawMeshTasksEXT");
+        result.draw_mesh_tasks_indirect_command_available =
+            command_resolved(runtime_device.device.command_plan(), "vkCmdDrawMeshTasksIndirectEXT");
     }
 
     return result;
@@ -194,6 +250,13 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
     if (!capability.mesh_shader_enabled || !capability.task_shader_enabled) {
         result.host_gated = true;
         fail(result, 5U, "vulkan_mesh_shader_feature_enable_path_missing");
+        return result;
+    }
+
+    if (!capability.draw_mesh_tasks_direct_command_available ||
+        !capability.draw_mesh_tasks_indirect_command_available) {
+        result.host_gated = true;
+        fail(result, 5U, "vulkan_mesh_shader_draw_command_unavailable");
         return result;
     }
 
