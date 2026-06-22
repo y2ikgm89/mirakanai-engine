@@ -1405,6 +1405,15 @@ if(BUILD_TESTING)
                  COMMAND MK_mavg_vulkan_compute_generated_indirect_consumption_tests)
         set_tests_properties(MK_mavg_vulkan_compute_generated_indirect_consumption_tests PROPERTIES RUN_SERIAL TRUE)
 
+        add_executable(MK_mavg_vulkan_mesh_shader_lod_tests
+            tests/unit/vulkan_mavg_mesh_shader_lod_tests.cpp
+        )
+        target_link_libraries(MK_mavg_vulkan_mesh_shader_lod_tests PRIVATE MK_renderer MK_rhi_vulkan)
+        target_include_directories(MK_mavg_vulkan_mesh_shader_lod_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_mavg_vulkan_mesh_shader_lod_tests)
+        add_test(NAME MK_mavg_vulkan_mesh_shader_lod_tests COMMAND MK_mavg_vulkan_mesh_shader_lod_tests)
+        set_tests_properties(MK_mavg_vulkan_mesh_shader_lod_tests PROPERTIES RUN_SERIAL TRUE)
+
         add_executable(MK_vulkan_environment_weather_solver_tests
             tests/unit/vulkan_environment_weather_solver_tests.cpp
         )

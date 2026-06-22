@@ -2,6 +2,7 @@ add_library(mirakana_rhi_vulkan
     src/vulkan_backend.cpp
     src/vulkan_environment_weather_solver.cpp
     src/vulkan_mavg_gpu_culling_dispatch.cpp
+    src/vulkan_mavg_mesh_shader_lod.cpp
 )
 
 target_include_directories(mirakana_rhi_vulkan
