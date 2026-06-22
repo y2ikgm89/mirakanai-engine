@@ -1140,10 +1140,11 @@ $optionalGpuComputeHostGate = @($productionLoop.hostGates | Where-Object { $_.id
 if ($optionalGpuComputeHostGate.Count -ne 1 -or $optionalGpuComputeHostGate[0].status -ne "host-gated") { Write-Error "engine manifest aiOperableProductionLoop must expose one host-gated optional-gpu-compute-review-host gate" }
 if (-not $validationRecipeNames.ContainsKey("host-optional-gpu-compute-review")) { Write-Error "engine manifest validationRecipes missing host-optional-gpu-compute-review" }
 $optionalGpuComputeRecipe = @($engine.validationRecipes | Where-Object { $_.name -eq "host-optional-gpu-compute-review" })
-if (-not (Test-Path (Join-Path $root "tools/check-optional-gpu-compute-review-evidence.ps1"))) { Write-Error "tools/check-optional-gpu-compute-review-evidence.ps1 must exist for host-optional-gpu-compute-review evidence validation" }
-foreach ($needle in @("tools/check-optional-gpu-compute-review-evidence.ps1", "-EvidenceRoot", "-RequireReady")) { Assert-ContainsText ([string]$optionalGpuComputeRecipe[0].command) $needle "engine manifest validationRecipes host-optional-gpu-compute-review command" }
+foreach ($scriptFile in @("tools/collect-optional-gpu-compute-review-evidence.ps1", "tools/check-optional-gpu-compute-review-evidence.ps1")) { if (-not (Test-Path (Join-Path $root $scriptFile))) { Write-Error "$scriptFile must exist for host-optional-gpu-compute-review evidence handling" } }
+foreach ($needle in @("tools/collect-optional-gpu-compute-review-evidence.ps1", "-Mode Import", "tools/check-optional-gpu-compute-review-evidence.ps1", "-EvidenceRoot", "-RequireReady")) { Assert-ContainsText ([string]$optionalGpuComputeRecipe[0].command) $needle "engine manifest validationRecipes host-optional-gpu-compute-review command" }
 Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "Optional GPU Compute Review v1" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
 Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "review-only evidence selection" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
+Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "tools/collect-optional-gpu-compute-review-evidence.ps1" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
 Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "CMake linkage" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
 foreach ($productionLoopDoc in @($productionLoop.design, $productionLoop.foundationPlan, $productionLoop.currentActivePlan)) {
     if (-not (Test-Path (Join-Path $root $productionLoopDoc))) {

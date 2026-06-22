@@ -26,7 +26,7 @@ Phase 0/1 is implemented as the first review boundary and published through PR #
 - `recommendedNextPlan.id` is `next-production-gap-selection`.
 - `unsupportedProductionGaps` remains `[]`.
 - Phase 2 exposes `aiOperableProductionLoop.cpuProfilingMatrix` and `host-cpu-profiling-matrix` as the host-gated CPU profiling matrix contract.
-- Phase 7 updated docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`; follow-up evidence checking now uses `tools/check-optional-gpu-compute-review-evidence.ps1 -EvidenceRoot <artifact-root> [-RequireReady]` so incomplete candidate bundles stay host-gated.
+- Phase 7 updated docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`; follow-up evidence collection can use `tools/collect-optional-gpu-compute-review-evidence.ps1 -Mode Import -EvidenceRoot <artifact-root> ...`, and evidence checking uses `tools/check-optional-gpu-compute-review-evidence.ps1 -EvidenceRoot <artifact-root> [-RequireReady]` so incomplete candidate bundles stay host-gated.
 - Phase 7 does not make CUDA/HIP/SYCL, RHI compute, GPU async overlap, broad GPU compute, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization ready.
 
 ## Official References
@@ -351,7 +351,7 @@ Full `tools/validate.ps1` is required before publication because Phase 4 changes
 - [x] Permit CUDA/HIP/SYCL only for optional tooling or private adapters with clear install gates and scalar/RHI fallback paths.
 - [x] Reject candidates where vendor runtime installation, backend availability, synchronization proof, queue/profiler visibility, or fallback evidence would make default validation fragile.
 
-**Done When:** Every candidate has an explicit classification, `host-optional-gpu-compute-review` has a mechanical evidence checker, incomplete bundles fail closed, and no CUDA/HIP/SYCL runtime dependency has been introduced.
+**Done When:** Every candidate has an explicit classification, `host-optional-gpu-compute-review` has a mechanical evidence collector and checker, incomplete bundles fail closed, and no CUDA/HIP/SYCL runtime dependency has been introduced.
 
 **Phase 7 candidate classification:**
 
@@ -370,11 +370,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-optional-gpu-compute-review-collector.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-optional-gpu-compute-review-evidence.ps1 -EvidenceRoot <artifact-root> [-RequireReady]
 git diff --check
 ```
 
-Expected: `optionalGpuComputeReview`, `currentOptionalGpuComputeReview`, and `host-optional-gpu-compute-review` are schema/static-check visible; `tools/check-optional-gpu-compute-review-evidence.ps1` emits host-gated diagnostic counters without artifacts, fails closed under `-RequireReady`, and validates complete host-owned candidate bundles; CUDA/HIP/SYCL introduce no runtime dependency, no `vcpkg.json` feature, no CMake linkage, and no default validation dependency.
+Expected: `optionalGpuComputeReview`, `currentOptionalGpuComputeReview`, and `host-optional-gpu-compute-review` are schema/static-check visible; `tools/collect-optional-gpu-compute-review-evidence.ps1` shapes host-owned official-profiler artifacts into `evidence.json`; `tools/check-optional-gpu-compute-review-evidence.ps1` emits host-gated diagnostic counters without artifacts, fails closed under `-RequireReady`, and validates complete host-owned candidate bundles; CUDA/HIP/SYCL introduce no runtime dependency, no `vcpkg.json` feature, no CMake linkage, and no default validation dependency.
 
 **Phase 7 validation evidence:**
 
