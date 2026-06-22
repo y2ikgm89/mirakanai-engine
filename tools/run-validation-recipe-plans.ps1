@@ -621,6 +621,41 @@ function Get-ValidationRecipeCommandPlan {
             ) `
             -Message 'Android Vulkan platform validation requires Android SDK, NDK, adb device or emulator evidence, manifest Vulkan version/level feature declarations, Android debug-build instrumentation, host-supplied validation layer jniLibs, APK-packaged VK_LAYER_KHRONOS_validation evidence, same-launch VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, Android package smoke, Android Vulkan readback evidence, and no desktop Vulkan or Linux Vulkan inference.'
     }
+    elseif ($RecipeName -eq 'android-gameactivity-host') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_headless' } else { $SelectedGameTarget }
+        $scriptArguments = @(
+            '-Game',
+            $target,
+            '-RunPackageCommands',
+            '-RequireReady',
+            '-StartEmulator',
+            '-AvdName',
+            'GameEngine_API36',
+            '-AndroidAbi',
+            'x86_64',
+            '-ValidationLayerJniLibs',
+            'out/host-artifacts/android-validation-layers/jniLibs',
+            '-ExpectedEvidenceCounters',
+            'validation_recipe=android-gameactivity-host',
+            'host_gate=android-gameactivity',
+            'android_gameactivity_run_package_commands=1',
+            'android_gameactivity_mobile_check_ready=1',
+            'android_gameactivity_validation_layer_jni_libs_ready=1',
+            'android_gameactivity_requires_host_operation=0',
+            'android_gameactivity_debug_build_ready=1',
+            'android_gameactivity_release_package_ready=1',
+            'android_gameactivity_local_validation_key_ready=1',
+            'android_gameactivity_release_smoke_ready=1',
+            'android_gameactivity_host_ready=1',
+            'android_gameactivity_production_signing_material=0',
+            'android_gameactivity_play_upload_ready=0',
+            'android_gameactivity_physical_device_matrix_ready=0',
+            'android_gameactivity_native_handle_access=0'
+        )
+        $entry = Get-PwshScriptCommandPlan -ScriptPath 'tools/validate-android-gameactivity-host.ps1' -ScriptArguments $scriptArguments
+        $diagnostic = New-RunnerDiagnostic -Severity 'info' -Code 'host-operation-required' -Message 'Android GameActivity host validation is the reviewed wrapper for Android Debug build, local non-repository Release signing verification, and Release emulator install/launch smoke with prepared official Khronos validation-layer jniLibs for the selected emulator ABI. It requires an acknowledged Android host operation, keeps raw mobile scripts prompt-gated outside the wrapper, and does not claim production signing material, Play upload, physical-device matrix coverage, native handles, Apple readiness, all-platform readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'android-gameactivity'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($entry) -HostGates @('android-gameactivity') -RequiredAcknowledgements @('android-gameactivity') -AllowedGameTargets @('sample_headless') -AllowedStrictBackend @() -Diagnostics @($diagnostic)
+    }
     elseif ($RecipeName -eq 'environment-platform-ios-metal-package') {
         return Get-EnvironmentPlatformVulkanHostPlan `
             -Recipe $RecipeName `

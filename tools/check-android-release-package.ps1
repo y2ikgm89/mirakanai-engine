@@ -3,7 +3,10 @@
 
 param(
     [string]$Game = "sample_headless",
-    [switch]$UseLocalValidationKey
+    [switch]$UseLocalValidationKey,
+    [ValidateSet("arm64-v8a", "x86_64")]
+    [string]$AndroidAbi = "arm64-v8a",
+    [string]$ValidationLayerJniLibs = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -132,7 +135,23 @@ if ($keystorePath.StartsWith($repoRootPath, [System.StringComparison]::OrdinalIg
     Write-Error "Android Release signing key must not be stored inside the repository: $keystorePath"
 }
 
-& (Join-Path $PSScriptRoot "build-mobile-android.ps1") -Game $Game -Configuration Release
+$buildArguments = @{
+    Game = $Game
+    Configuration = "Release"
+    AndroidAbi = $AndroidAbi
+}
+if (-not [string]::IsNullOrWhiteSpace($ValidationLayerJniLibs)) {
+    $requiredValidationLayer = Join-Path $ValidationLayerJniLibs (Join-Path $AndroidAbi "libVkLayer_khronos_validation.so")
+    if (-not [System.IO.Path]::IsPathRooted($requiredValidationLayer)) {
+        $requiredValidationLayer = Join-Path $root $requiredValidationLayer
+    }
+    if (-not (Test-Path -LiteralPath $requiredValidationLayer -PathType Leaf)) {
+        Write-Error "ValidationLayerJniLibs must contain $AndroidAbi/libVkLayer_khronos_validation.so for Android Release package validation."
+    }
+    $buildArguments.ValidationLayerJniLibs = $ValidationLayerJniLibs
+}
+
+& (Join-Path $PSScriptRoot "build-mobile-android.ps1") @buildArguments
 
 $apk = Join-Path $root "platform\android\app\build\outputs\apk\release\app-release.apk"
 if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) {

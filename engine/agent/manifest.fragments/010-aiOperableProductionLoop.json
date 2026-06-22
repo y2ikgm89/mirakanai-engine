@@ -5553,14 +5553,15 @@
       },
       {
         "id": "android-gameactivity",
-        "status": "host-gated",
+        "status": "ready",
         "targets": [
           "android-gameactivity"
         ],
         "validationRecipes": [
-          "mobile-packaging"
+          "mobile-packaging",
+          "android-gameactivity-host"
         ],
-        "notes": "Android package templates and host validation exist on configured hosts, but generated games must run mobile-check and selected Android package commands before claiming readiness."
+        "notes": "Android package templates and host validation are ready for the reviewed sample_headless GameActivity lane. The 2026-06-23 android-gameactivity-host wrapper proof ran with -RunPackageCommands -RequireReady -StartEmulator -AvdName GameEngine_API36 -AndroidAbi x86_64 -ValidationLayerJniLibs out/host-artifacts/android-validation-layers/jniLibs and emitted android_gameactivity_mobile_check_ready=1, android_gameactivity_validation_layer_jni_libs_ready=1, android_gameactivity_debug_build_ready=1, android_gameactivity_release_package_ready=1, android_gameactivity_release_smoke_ready=1, android_gameactivity_host_ready=1, production_signing_material=0, play_upload_ready=0, physical_device_matrix_ready=0, and native_handle_access=0."
       },
       {
         "id": "ios-metal",
@@ -8162,8 +8163,8 @@
       },
       {
         "id": "android-gameactivity",
-        "status": "host-gated",
-        "residualClass": "host-operation-required",
+        "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "Android SDK",
           "NDK",
@@ -8172,9 +8173,10 @@
           "configured signing and AVD/device when required"
         ],
         "validationRecipes": [
-          "mobile-packaging"
+          "mobile-packaging",
+          "android-gameactivity-host"
         ],
-        "notes": "Android Debug/Release/signing/emulator lanes depend on mobile-check output and selected game package commands."
+        "notes": "Android Debug/Release/signing/emulator package evidence is ready through the reviewed android-gameactivity-host wrapper. The 2026-06-23 proof used the official Khronos validation-layer jniLibs prepared under ignored out/host-artifacts, Android Emulator GameEngine_API36, x86_64 ABI, local non-repository Release signing, and Release install/launch smoke; production signing, Play upload, physical-device matrix coverage, native handles, Apple readiness, and broad platform readiness remain explicit non-claims."
       },
       {
         "id": "commercial-environment-closeout",

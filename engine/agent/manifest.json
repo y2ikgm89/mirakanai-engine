@@ -1379,7 +1379,7 @@
       "platform": "android",
       "status": "template-toolchain-gated",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game \u003Cgame_name\u003E -Configuration \u003CDebug|Release\u003E",
-      "notes": "Android Gradle Plugin 9.1.0, Gradle 9.3.1, JDK 17, Android SDK Platform 36.1, Build Tools 36.0.0, Android SDK CMake 4.1.2, NDK CMake, Prefab, AndroidX AppCompat 1.7.1, AndroidX Core 1.18.0, GameActivity 3.0.4, NDK Vulkan loader linkage, private ANativeWindow/VK_KHR_android_surface creation bridge, private low-latency AAudio float32 output adapter, generated asset packaging, host-validated Debug/Release APK output, Release signing verification with non-repository upload keys, upload certificate export, deterministic ANDROID_AVD_HOME normalization, AVD readiness diagnostics, and emulator install/launch smoke coverage exist; generated game manifests are validated and packaged before package build attempts, and pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1 reports signing/toolchain/AVD/device blockers explicitly with stable kind slugs."
+      "notes": "Android Gradle Plugin 9.1.0, Gradle 9.3.1, JDK 17, Android SDK Platform 36.1, Build Tools 36.0.0, Android SDK CMake 4.1.2, NDK CMake, Prefab, AndroidX AppCompat 1.7.1, AndroidX Core 1.18.0, GameActivity 3.0.4, NDK Vulkan loader linkage, private ANativeWindow/VK_KHR_android_surface creation bridge, private low-latency AAudio float32 output adapter, generated asset packaging, host-validated Debug/Release APK output, Release signing verification with non-repository upload keys, upload certificate export, deterministic ANDROID_AVD_HOME normalization, AVD readiness diagnostics, and emulator install/launch smoke coverage exist; tools/validate-android-gameactivity-host.ps1 is the reviewed fail-closed wrapper for AI-operable Debug build, local Release signing verification, and Release emulator smoke evidence; generated game manifests are validated and packaged before package build attempts, and pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1 reports signing/toolchain/AVD/device blockers explicitly with stable kind slugs."
     },
     {
       "name": "ios-metal",
@@ -1774,6 +1774,11 @@
       "name": "environment-platform-android-vulkan-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-vulkan-runtime-host.ps1 -RequireReady -ValidationLayerJniLibs artifacts/environment/android/validation-layers/jniLibs -ExpectedEvidenceCounters validation_recipe=environment-platform-android-vulkan-package host_has_android_sdk=1 host_has_android_ndk=1 adb_device_or_emulator_ready=1 android_vulkan_profile_ready=1 android_gpu_debuggable_ready=1 android_validation_layer_jni_libs_ready=1 android_validation_layer_apk_packaged=1 VK_LAYER_KHRONOS_validation_ready=1 android_package_smoke_ready=1 android_vulkan_readback_ready=1 android_vulkan_validation_layer_enumerated=1 android_vulkan_validation_log_clean=1 environment_platform_android_vulkan_ready=1 environment_platform_requires_android_vulkan_host_evidence=0 environment_all_platform_unconditional_ready=0",
       "purpose": "Task 16 Android Vulkan host/device validator, tightened by Task 31 to the official Android NDK packaged validation-layer path. It requires an acknowledged android-vulkan-runtime-host, Android SDK, NDK, adb device or emulator evidence, Android manifest Vulkan version/level feature declarations, Android debug-build instrumentation, host-supplied validation layer jniLibs containing libVkLayer_khronos_validation.so, APK packaging evidence for the validation layer, same-launch VK_LAYER_KHRONOS_validation enumeration, clean validation logcat output, Android package smoke, Android Vulkan readback evidence, and no desktop or Linux Vulkan inference before environment_platform_android_vulkan_ready can be 1."
+    },
+    {
+      "name": "android-gameactivity-host",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-android-gameactivity-host.ps1 -RunPackageCommands -RequireReady -StartEmulator -AvdName GameEngine_API36 -AndroidAbi x86_64 -ValidationLayerJniLibs out/host-artifacts/android-validation-layers/jniLibs -ExpectedEvidenceCounters validation_recipe=android-gameactivity-host host_gate=android-gameactivity android_gameactivity_run_package_commands=1 android_gameactivity_mobile_check_ready=1 android_gameactivity_validation_layer_jni_libs_ready=1 android_gameactivity_requires_host_operation=0 android_gameactivity_debug_build_ready=1 android_gameactivity_release_package_ready=1 android_gameactivity_local_validation_key_ready=1 android_gameactivity_release_smoke_ready=1 android_gameactivity_host_ready=1 android_gameactivity_production_signing_material=0 android_gameactivity_play_upload_ready=0 android_gameactivity_physical_device_matrix_ready=0 android_gameactivity_native_handle_access=0",
+      "purpose": "Reviewed Android GameActivity host gate wrapper. It first runs mobile packaging diagnostics, then only when -RunPackageCommands is explicit it executes the official Android Gradle Debug build, local non-repository Release signing verification through check-android-release-package.ps1 -UseLocalValidationKey, and Release emulator install/launch smoke through smoke-android-package.ps1 -SkipBuild with packaged Khronos validation-layer jniLibs for the selected ABI. The default invocation is fail-closed and non-mutating, raw mobile lanes remain approval-gated, production signing material, Play upload, physical-device matrix coverage, native handles, Apple readiness, and broad platform readiness remain unclaimed."
     },
     {
       "name": "environment-platform-ios-metal-package",
@@ -7505,14 +7510,15 @@
       },
       {
         "id": "android-gameactivity",
-        "status": "host-gated",
+        "status": "ready",
         "targets": [
           "android-gameactivity"
         ],
         "validationRecipes": [
-          "mobile-packaging"
+          "mobile-packaging",
+          "android-gameactivity-host"
         ],
-        "notes": "Android package templates and host validation exist on configured hosts, but generated games must run mobile-check and selected Android package commands before claiming readiness."
+        "notes": "Android package templates and host validation are ready for the reviewed sample_headless GameActivity lane. The 2026-06-23 android-gameactivity-host wrapper proof ran with -RunPackageCommands -RequireReady -StartEmulator -AvdName GameEngine_API36 -AndroidAbi x86_64 -ValidationLayerJniLibs out/host-artifacts/android-validation-layers/jniLibs and emitted android_gameactivity_mobile_check_ready=1, android_gameactivity_validation_layer_jni_libs_ready=1, android_gameactivity_debug_build_ready=1, android_gameactivity_release_package_ready=1, android_gameactivity_release_smoke_ready=1, android_gameactivity_host_ready=1, production_signing_material=0, play_upload_ready=0, physical_device_matrix_ready=0, and native_handle_access=0."
       },
       {
         "id": "ios-metal",
@@ -10114,8 +10120,8 @@
       },
       {
         "id": "android-gameactivity",
-        "status": "host-gated",
-        "residualClass": "host-operation-required",
+        "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "Android SDK",
           "NDK",
@@ -10124,9 +10130,10 @@
           "configured signing and AVD/device when required"
         ],
         "validationRecipes": [
-          "mobile-packaging"
+          "mobile-packaging",
+          "android-gameactivity-host"
         ],
-        "notes": "Android Debug/Release/signing/emulator lanes depend on mobile-check output and selected game package commands."
+        "notes": "Android Debug/Release/signing/emulator package evidence is ready through the reviewed android-gameactivity-host wrapper. The 2026-06-23 proof used the official Khronos validation-layer jniLibs prepared under ignored out/host-artifacts, Android Emulator GameEngine_API36, x86_64 ABI, local non-repository Release signing, and Release install/launch smoke; production signing, Play upload, physical-device matrix coverage, native handles, Apple readiness, and broad platform readiness remain explicit non-claims."
       },
       {
         "id": "commercial-environment-closeout",
