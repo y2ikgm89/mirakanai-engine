@@ -840,6 +840,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_rhi_mavg_mesh_shader_capability_gate_tests)
     add_test(NAME MK_runtime_rhi_mavg_mesh_shader_capability_gate_tests COMMAND MK_runtime_rhi_mavg_mesh_shader_capability_gate_tests)
 
+    add_executable(MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests
+        tests/unit/runtime_rhi_mavg_autonomous_streaming_scheduler_tests.cpp
+    )
+    target_link_libraries(MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests PRIVATE MK_runtime_rhi)
+    target_include_directories(MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests)
+    add_test(NAME MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests COMMAND MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests)
+
     add_executable(MK_env_platform_v2_tests
         tests/unit/runtime_rhi_environment_platform_evidence_v2_tests.cpp
     )

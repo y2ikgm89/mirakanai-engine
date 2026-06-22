@@ -5,6 +5,10 @@
 $mavgAdvancedHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_advanced_backend_evidence.hpp"
 $mavgAdvancedSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_advanced_backend_evidence.cpp"
 $mavgAdvancedTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_advanced_backend_evidence_tests.cpp"
+$mavgAutonomousSchedulerHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_autonomous_streaming_scheduler.hpp"
+$mavgAutonomousSchedulerSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/mavg_autonomous_streaming_scheduler.cpp"
+$mavgAutonomousSchedulerTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_mavg_autonomous_streaming_scheduler_tests.cpp"
+$mavgAutonomousSchedulerValidationText = Get-AgentSurfaceText "tools/validate-mavg-autonomous-streaming-scheduler.ps1"
 $runtimeRhiCMakeText = Get-AgentSurfaceText "engine/runtime_rhi/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $mavgAdvancedSpecText = Get-AgentSurfaceText "docs/specs/2026-06-21-mavg-advanced-backend-evidence-v1.md"
@@ -77,6 +81,59 @@ foreach ($needle in @(
 Assert-ContainsText $runtimeRhiCMakeText "src/mavg_advanced_backend_evidence.cpp" "engine/runtime_rhi/CMakeLists.txt advanced evidence source registration"
 Assert-ContainsText $rootCMakeText "MK_runtime_rhi_mavg_advanced_backend_evidence_tests" "root CMake advanced evidence test target"
 
+foreach ($needle in @(
+        "RuntimeMavgAutonomousStreamingSchedulerState",
+        "RuntimeMavgAutonomousStreamingSchedulerDesc",
+        "RuntimeMavgAutonomousStreamingSchedulerResult",
+        "tick_runtime_mavg_autonomous_streaming_scheduler",
+        "RuntimeMavgAutonomousStreamingIoBackendKind",
+        "RuntimeMavgAutonomousStreamingSafePointPolicy",
+        "mavg_autonomous_streaming_scheduler_ready",
+        "exposed_native_handles",
+        "proved_async_overlap_performance"
+    )) {
+    Assert-ContainsText $mavgAutonomousSchedulerHeaderText $needle "mavg_autonomous_streaming_scheduler.hpp public contract"
+}
+
+foreach ($needle in @(
+        "select_mavg_lod_clusters",
+        "plan_runtime_mavg_page_streaming_requests",
+        "load_runtime_mavg_payload_pages_from_filesystem",
+        "load_runtime_mavg_payload_pages_from_direct_storage",
+        "tick_runtime_mavg_page_streaming_background_service",
+        "plan_runtime_mavg_gpu_memory_pressure_residency",
+        "execute_runtime_mavg_cluster_streaming_safe_point_adoption",
+        "result.exposed_native_handles = false",
+        "result.proved_async_overlap_performance = false"
+    )) {
+    Assert-ContainsText $mavgAutonomousSchedulerSourceText $needle "mavg_autonomous_streaming_scheduler.cpp implementation"
+}
+
+foreach ($needle in @(
+        "selects dispatches adopts and evicts without page requests",
+        "keeps pending rows and coalesces duplicates across frames",
+        "responds to camera movement and page heat priority",
+        "routes payload reads through directstorage executor",
+        "fails closed on directstorage executor failure",
+        "cancels selected pages before io",
+        "preserves safe point atomicity on invalid mount rows"
+    )) {
+    Assert-ContainsText $mavgAutonomousSchedulerTestsText $needle "MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests coverage"
+}
+
+foreach ($needle in @(
+        "MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests",
+        "mavg_autonomous_streaming_scheduler_ready=1",
+        "mavg_autonomous_streaming_scheduler_native_handles_exposed=0",
+        "mavg_autonomous_streaming_scheduler_async_overlap_performance_proof=0",
+        "mavg_autonomous_streaming_scheduler_broad_backend_readiness=0"
+    )) {
+    Assert-ContainsText $mavgAutonomousSchedulerValidationText $needle "validate-mavg-autonomous-streaming-scheduler.ps1 counters"
+}
+
+Assert-ContainsText $runtimeRhiCMakeText "src/mavg_autonomous_streaming_scheduler.cpp" "engine/runtime_rhi/CMakeLists.txt autonomous scheduler source registration"
+Assert-ContainsText $rootCMakeText "MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests" "root CMake autonomous scheduler test target"
+
 foreach ($surface in @(
         @{ Text = $mavgAdvancedSpecText; Label = "MAVG advanced evidence spec" },
         @{ Text = $mavgAdvancedPlanText; Label = "MAVG advanced evidence plan" },
@@ -97,7 +154,10 @@ foreach ($surface in @(
             "mavg_deformation_integration_ready",
             "mavg_ray_tracing_integration_ready",
             "mavg_broad_cpu_gpu_memory_optimization_ready",
-            "mavg_nanite_comparison_report_ready"
+            "mavg_nanite_comparison_report_ready",
+            "mavg-autonomous-streaming-scheduler-v1",
+            "RuntimeMavgAutonomousStreamingSchedulerResult",
+            "mavg_autonomous_streaming_scheduler_ready=1"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) advanced evidence claim matrix"
     }
@@ -134,7 +194,9 @@ foreach ($needle in @(
         "mavg_nanite_compatible",
         "mavg_nanite_equivalent",
         "mavg_nanite_superior",
-        "currentActivePlan"
+        "currentActivePlan",
+        "mavg_autonomous_streaming_scheduler_ready",
+        "RuntimeMavgAutonomousStreamingSchedulerResult"
     )) {
     Assert-ContainsText $runtimeRhiManifestText $needle "engine/agent/manifest.json MK_runtime_rhi advanced evidence"
 }

@@ -18,6 +18,19 @@ Implemented surface:
 - `evaluate_mavg_advanced_backend_evidence`
 - `MK_runtime_rhi_mavg_advanced_backend_evidence_tests`
 
+Follow-on Task 5 surface:
+
+- `mavg-autonomous-streaming-scheduler-v1`
+- `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_autonomous_streaming_scheduler.hpp`
+- `RuntimeMavgAutonomousStreamingSchedulerState`
+- `RuntimeMavgAutonomousStreamingSchedulerDesc`
+- `RuntimeMavgAutonomousStreamingSchedulerResult`
+- `tick_runtime_mavg_autonomous_streaming_scheduler`
+- `MK_runtime_rhi_mavg_autonomous_streaming_scheduler_tests`
+- `mavg_autonomous_streaming_scheduler_ready=1`
+
+The Task 5 ready row is limited to caller-owned runtime tick orchestration over existing LOD/page-streaming/payload-IO/background-service/GPU-memory-residency/safe-point-adoption helpers. It does not expose native handles, execute renderer/RHI backends, prove async-overlap/performance proof, infer Metal readiness, compare against Nanite, or promote broad MAVG backend readiness.
+
 ## Non-Overlap
 
 Completed MAVG plans already cover conventional LOD, asset graph/cook/package rows, byte-range page loading, background dispatch, caller-owned persistent background service state, safe-point adoption, streamed page GPU upload, streamed backend draw planning, D3D12/Vulkan GPU culling, D3D12/Vulkan indirect execution, DirectStorage system-memory adapter execution, and selected measured async-overlap performance proof.
