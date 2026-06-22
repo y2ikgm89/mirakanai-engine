@@ -415,22 +415,36 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-ray-tracing-in
 ## Task 9: Apple-Host Metal MAVG Readiness
 
 **Files:**
-- Create: `engine/rhi/metal/src/metal_mavg_mesh_lod.mm`
-- Create or modify: `shaders/metal/`
+- Create: `engine/rhi/metal/include/mirakana/rhi/metal/metal_mavg_mesh_lod.hpp`
+- Create: `engine/rhi/metal/src/metal_mavg_mesh_lod.cpp`
+- Create: `tests/unit/metal_mavg_mesh_lod_tests.cpp`
 - Create: `tools/check-mavg-metal-host-evidence.ps1`
-- Modify: `.github/workflows/validate.yml` only if a reviewed macOS host lane is required for this plan.
-- Test: Apple-host `MK_mavg_metal_mesh_lod_tests`
+- Create: `tools/check-ai-integration-129-mavg-metal-mesh-lod.ps1`
+- Modify: `engine/rhi/metal/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/004-modules.json`
+- Compose: `engine/agent/manifest.json`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
 
-- [ ] Add Apple-host capability capture for Metal GPU family, mesh/object shader support, ray tracing support, Xcode version, macOS version, and feature set table row id.
-- [ ] Implement selected MAVG meshlet LOD execution through Metal object/mesh shaders on Apple hardware that supports the row.
-- [ ] Add a Metal ray-tracing policy bridge only after Task 8 value rows exist; do not claim Metal RT from D3D12/Vulkan proof, and do not model Metal mesh shading plus render-pipeline ray tracing as one pipeline when the feature tables mark that combination incompatible.
-- [ ] Emit `mavg_metal_mesh_lod_ready=1` only from Apple-host execution evidence; Windows, Linux, and simulator-only evidence cannot promote it.
-- [ ] Run:
+### Task 9A: Metal Mesh LOD Host Evidence Gate
+
+- [x] Add `MetalMavgMeshLodHostEvidenceDesc`, `MetalMavgMeshLodHostEvidenceResult`, `MetalMavgMeshLodDiagnosticCode`, `evaluate_mavg_metal_mesh_lod_host_evidence`, `has_mavg_metal_mesh_lod_diagnostic`, and `metal_mavg_mesh_lod_host_evidence_status_line`.
+- [x] Require exact Apple-host prerequisites before local Metal readiness can be modeled: macOS host, full Xcode, `metal`, `metallib`, Apple Metal Feature Set Tables row id, Xcode version, macOS version, Apple GPU family, mesh shader support, object shader support, selected first-party MAVG workload, object/mesh shader pipeline creation, object/mesh shader dispatch, deterministic readback hash, and package-visible output.
+- [x] Keep retained branch evidence host-gated: `mavg_metal_mesh_lod_status=host_evidence_required`, `mavg_metal_mesh_lod_ready=0`, `mavg_mesh_shader_lod_ready=0`, and `mavg_metal_ray_tracing_ready=0`.
+- [x] Block simulator-only evidence, D3D12/Vulkan inference, ray-tracing pipeline conflation, native handle exposure, Nanite compatibility/equivalence/superiority requests, broad MAVG backend readiness, and broad CPU/GPU/memory optimization.
+- [x] Do not create `metal_mavg_mesh_lod.mm`, new Metal shaders, or `.github/workflows/validate.yml` in this slice. The Apple-host object/mesh shader draw/readback proof is the next Task 9B slice.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mavg-metal-host-evidence.ps1
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mavg-metal-host-evidence.ps1 -RequireReady
 ```
+
+`tools/check-mavg-metal-host-evidence.ps1 -RequireReady` is expected to fail until Task 9B retains Apple-host object/mesh shader execution, deterministic readback hash, and package-visible output artifacts.
+
+**2026-06-22 Metal host evidence contract:** `mavg-metal-mesh-lod-host-evidence-v1` adds a value-only Apple-host gate for Metal MAVG mesh LOD. It is source-backed by Apple Metal Feature Set Tables and Apple's object/mesh shader LOD sample path, but it does not claim Metal readiness from Windows, Linux, D3D12, Vulkan, simulator-only evidence, or ray tracing evidence. Current retained validation intentionally emits `mavg_metal_mesh_lod_status=host_evidence_required` and `mavg_metal_mesh_lod_ready=0` because no Apple-host object/mesh shader execution artifact is committed. This slice does not promote package-visible `mavg_mesh_shader_lod_ready`, Metal ray tracing, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, or broad CPU/GPU/memory optimization.
 
 ## Task 10: MAVG-Only Broad CPU/GPU/Memory Optimization Matrix
 
