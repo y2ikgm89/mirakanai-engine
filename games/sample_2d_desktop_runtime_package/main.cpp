@@ -33,6 +33,7 @@
 #include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime/production_network_replication.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
+#include "mirakana/runtime/resource_runtime.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/scripting_sandbox.hpp"
 #include "mirakana/runtime/session_services.hpp"
@@ -114,6 +115,8 @@ struct DesktopRuntimeOptions {
     bool require_2d_sprite_atlas_residency{false};
     bool require_2d_sprite_throughput{false};
     bool require_2d_physics_runtime_extension{false};
+    bool require_2d_input_device_production_ux{false};
+    bool require_2d_package_playtest_productization{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -301,6 +304,47 @@ struct Physics2DRuntimeExtensionProbeResult {
     std::uint64_t native_handle_exposure{0U};
     std::uint64_t middleware_dispatches{0U};
     bool dynamic_vs_dynamic_ccd_claimed{false};
+    bool ready{false};
+};
+
+struct InputDeviceProductionUxProbeResult {
+    std::uint64_t gesture_binding_rows{0U};
+    std::uint64_t gesture_event_rows{0U};
+    std::uint64_t gesture_action_rows{0U};
+    std::uint64_t device_assignment_rows{0U};
+    std::uint64_t per_device_profile_rows{0U};
+    std::uint64_t per_device_profile_clamped_deadzone_rows{0U};
+    std::uint64_t glyph_asset_lookup_rows{0U};
+    std::uint64_t keyboard_layout_label_rows{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t native_handle_access_rows{0U};
+    std::uint64_t ui_rendering_rows{0U};
+    std::uint64_t input_middleware_rows{0U};
+    std::uint64_t glyph_rendering_rows{0U};
+    std::uint64_t ui_widget_rows{0U};
+    bool ready{false};
+};
+
+struct PackagePlaytestProductizationProbeResult {
+    mirakana::runtime::Runtime2DPackagePlaytestStatus status{
+        mirakana::runtime::Runtime2DPackagePlaytestStatus::missing_recipe};
+    std::uint64_t recipe_rows{0U};
+    std::uint64_t evidence_rows{0U};
+    std::uint64_t imported_evidence_rows{0U};
+    std::uint64_t package_smoke_counter_rows{0U};
+    std::uint64_t profile_artifact_rows{0U};
+    std::uint64_t remediation_handoff_rows{0U};
+    std::uint64_t failure_classification_rows{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t declared_validation_recipe_rows{0U};
+    std::uint64_t declared_generated_playtest_rows{0U};
+    std::uint64_t declared_runtime_host_launch_rows{0U};
+    std::uint64_t declared_hot_reload_safe_point_rows{0U};
+    bool invoked_editor_core_execution{false};
+    bool invoked_validation_recipe_execution{false};
+    bool invoked_arbitrary_shell{false};
+    bool invoked_active_session_hot_reload{false};
+    bool exposed_native_handles{false};
     bool ready{false};
 };
 
@@ -1325,6 +1369,26 @@ sprite_atlas_residency_status_name(mirakana::runtime::RuntimeSpriteAtlasResidenc
 [[nodiscard]] const char*
 physics2d_runtime_extension_status_name(const Physics2DRuntimeExtensionProbeResult& result) noexcept {
     return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] const char*
+input_device_production_ux_status_name(const InputDeviceProductionUxProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] const char*
+package_playtest_productization_status_name(mirakana::runtime::Runtime2DPackagePlaytestStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::Runtime2DPackagePlaytestStatus::ready:
+        return "ready";
+    case mirakana::runtime::Runtime2DPackagePlaytestStatus::missing_recipe:
+        return "missing_recipe";
+    case mirakana::runtime::Runtime2DPackagePlaytestStatus::missing_evidence:
+        return "missing_evidence";
+    case mirakana::runtime::Runtime2DPackagePlaytestStatus::blocked:
+        return "blocked";
+    }
+    return "unknown";
 }
 
 [[nodiscard]] const char*
@@ -4889,6 +4953,293 @@ make_sprite_throughput_dense_draw_intents(std::uint64_t count, std::uint32_t mat
                   probe.native_handle_exposure == 0U && probe.middleware_dispatches == 0U &&
                   !probe.dynamic_vs_dynamic_ccd_claimed;
     return probe;
+}
+
+[[nodiscard]] std::uint64_t
+count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDeviceProductionUxPlan& plan,
+                                  mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode code) {
+    return static_cast<std::uint64_t>(std::ranges::count_if(
+        plan.diagnostics, [code](const auto& diagnostic) noexcept { return diagnostic.code == code; }));
+}
+
+[[nodiscard]] InputDeviceProductionUxProbeResult validate_2d_input_device_production_ux_package_evidence() {
+    mirakana::runtime::RuntimeInputActionMap base;
+    base.bind_key_in_context("gameplay", "confirm", mirakana::Key::space);
+    base.bind_key_in_context("gameplay", "cancel", mirakana::Key::escape);
+    base.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+    base.bind_gamepad_button_in_context("gameplay", "dash", mirakana::GamepadId{1}, mirakana::GamepadButton::south);
+
+    mirakana::runtime::RuntimeInputDeviceProductionUxRequest request;
+    request.base_actions = base;
+    request.gesture_bindings = {
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "cancel",
+                                                          .gesture = mirakana::TouchGestureKind::double_tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::long_press,
+                                                          .phase = mirakana::TouchGesturePhase::began},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pan,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "dash",
+                                                          .gesture = mirakana::TouchGestureKind::swipe,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pinch,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::rotate,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+    };
+    request.gesture_events = {
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::double_tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::long_press,
+                                    .phase = mirakana::TouchGesturePhase::began,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pan,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1,
+                                    .delta = mirakana::Vec2{.x = 6.0F, .y = 0.0F}},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::swipe,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1,
+                                    .velocity = mirakana::Vec2{.x = 720.0F, .y = 0.0F}},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pinch,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .secondary_pointer_id = mirakana::PointerId{2},
+                                    .touch_count = 2,
+                                    .scale = 1.25F},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::rotate,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .secondary_pointer_id = mirakana::PointerId{2},
+                                    .touch_count = 2,
+                                    .rotation_radians = 0.4F},
+    };
+    request.device_assignments = {
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{
+            .player_id = "player_one",
+            .device_id = "keyboard_mouse:0",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::keyboard_mouse,
+            .profile_id = "player_one_keyboard"},
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{.player_id = "player_two",
+                                                            .device_id = "gamepad:1",
+                                                            .device_kind =
+                                                                mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+                                                            .profile_id = "player_two_gamepad"},
+    };
+    request.per_device_profiles = {
+        mirakana::runtime::RuntimeInputPerDeviceProfileDesc{
+            .profile_id = "player_two_gamepad",
+            .device_id = "gamepad:1",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+            .left_stick_radial_deadzone = 0.35F,
+            .right_stick_radial_deadzone = 0.20F,
+            .response_curve = mirakana::runtime::RuntimeInputStickResponseCurve::squared},
+    };
+    request.glyph_assets = {
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "gamepad.1.button.south", .platform = "xbox", .asset_id = "ui/input/xbox_button_south"},
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "keyboard.key.space", .platform = "keyboard", .asset_id = "ui/input/key_space"},
+    };
+    request.keyboard_layout_labels = {
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "en-US",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "jp-JIS",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_device_production_ux(request);
+    InputDeviceProductionUxProbeResult result;
+    result.gesture_binding_rows = plan.gesture_binding_rows.size();
+    result.gesture_event_rows = request.gesture_events.size();
+    result.gesture_action_rows = plan.gesture_action_rows;
+    result.device_assignment_rows = plan.device_assignment_rows.size();
+    result.per_device_profile_rows = plan.per_device_profile_rows.size();
+    result.per_device_profile_clamped_deadzone_rows = static_cast<std::uint64_t>(std::ranges::count_if(
+        plan.per_device_profile_rows, [](const auto& row) noexcept { return row.clamped_deadzone; }));
+    result.glyph_asset_lookup_rows = plan.glyph_asset_lookup_rows.size();
+    result.keyboard_layout_label_rows = plan.keyboard_layout_label_rows.size();
+    result.diagnostics = plan.diagnostics.size();
+    result.native_handle_access_rows = plan.native_handle_access_rows;
+    result.ui_rendering_rows = plan.ui_rendering_rows;
+    result.input_middleware_rows = plan.input_middleware_rows;
+    result.glyph_rendering_rows = count_input_device_ux_diagnostics(
+        plan, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::glyph_rendering_requested);
+    result.ui_widget_rows = count_input_device_ux_diagnostics(
+        plan, mirakana::runtime::RuntimeInputDeviceProductionUxDiagnosticCode::ui_widget_requested);
+    result.ready = plan.ready() && result.gesture_binding_rows == 7U && result.gesture_event_rows == 7U &&
+                   result.gesture_action_rows == 7U && result.device_assignment_rows == 2U &&
+                   result.per_device_profile_rows == 1U && result.per_device_profile_clamped_deadzone_rows == 0U &&
+                   result.glyph_asset_lookup_rows == 2U && result.keyboard_layout_label_rows == 2U &&
+                   result.diagnostics == 0U && result.native_handle_access_rows == 0U &&
+                   result.ui_rendering_rows == 0U && result.input_middleware_rows == 0U &&
+                   result.glyph_rendering_rows == 0U && result.ui_widget_rows == 0U;
+    return result;
+}
+
+[[nodiscard]] PackagePlaytestProductizationProbeResult validate_2d_package_playtest_productization_package_evidence(
+    const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    using mirakana::runtime::Runtime2DPackagePlaytestEvidenceStatus;
+    using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
+
+    constexpr std::string_view kSelectedPlaytestRecipeId{"installed-2d-package-playtest-productization-smoke-playtest"};
+    constexpr std::string_view kValidationRecipeId{"installed-2d-package-playtest-productization-smoke"};
+    constexpr std::string_view kRuntimeHostLaunchRowId{"desktop-game-runtime-playtest"};
+    constexpr std::string_view kHotReloadSafePointEvidenceId{"packaged-2d-residency-budget"};
+
+    const auto
+        plan =
+            mirakana::runtime::plan_runtime_2d_package_playtest_productization(
+                mirakana::runtime::Runtime2DPackagePlaytestDesc{
+                    .manifest_validation_recipe_ids =
+                        {
+                            "desktop-game-runtime",
+                            "installed-2d-package-smoke",
+                            std::string{kValidationRecipeId},
+                        },
+                    .generated_playtest_recipe_ids =
+                        {
+                            "desktop-game-runtime-playtest",
+                            "installed-2d-package-smoke-playtest",
+                            std::string{kSelectedPlaytestRecipeId},
+                        },
+                    .runtime_host_launch_recipe_ids =
+                        {
+                            "desktop-game-runtime-playtest",
+                            "installed-d3d12-window-smoke-playtest",
+                        },
+                    .hot_reload_safe_point_evidence_ids =
+                        {
+                            "hot-reload-package-playtest-evidence",
+                            std::string{kHotReloadSafePointEvidenceId},
+                        },
+                    .recipe_rows =
+                        {
+                            mirakana::runtime::Runtime2DPackagePlaytestRecipeRow{
+                                .id = std::string{kSelectedPlaytestRecipeId},
+                                .validation_recipe_id = std::string{kValidationRecipeId},
+                                .reviewed_recipe_surface_id = "package-smoke-evidence-review",
+                                .evidence_kind = "package-smoke-counter-import",
+                                .expected_signals =
+                                    {
+                                        "2d_package_playtest_productization_status=ready",
+                                        "2d_package_playtest_productization_ready=1",
+                                        "2d_package_playtest_productization_editor_core_execution=0",
+                                        "2d_package_playtest_productization_arbitrary_shell_execution=0",
+                                    },
+                                .failure_classifications =
+                                    {
+                                        Runtime2DPackagePlaytestFailureClassification::missing_package_file,
+                                        Runtime2DPackagePlaytestFailureClassification::invalid_scene_binding,
+                                        Runtime2DPackagePlaytestFailureClassification::package_load_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::shader_tool_gap,
+                                        Runtime2DPackagePlaytestFailureClassification::counter_mismatch,
+                                        Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                                    },
+                                .runtime_host_launch_row_id = std::string{kRuntimeHostLaunchRowId},
+                                .hot_reload_safe_point_evidence_id = std::string{kHotReloadSafePointEvidenceId},
+                            },
+                        },
+                    .evidence_rows =
+                        {
+                            mirakana::runtime::Runtime2DPackagePlaytestEvidenceRow{
+                                .recipe_id = std::string{kSelectedPlaytestRecipeId},
+                                .status = runtime_package.has_value() ? Runtime2DPackagePlaytestEvidenceStatus::passed
+                                                                      : Runtime2DPackagePlaytestEvidenceStatus::missing,
+                                .stdout_summary =
+                                    "sample_2d_desktop_runtime_package package playtest smoke counters reviewed",
+                                .stderr_summary = "",
+                                .package_smoke_counters =
+                                    {
+                                        "package_smoke_status=passed",
+                                        "2d_package_playtest_productization_ready=1",
+                                        "2d_package_playtest_productization_recipe_rows=1",
+                                        "2d_package_playtest_productization_evidence_rows=1",
+                                        "2d_package_playtest_productization_imported_evidence_rows=1",
+                                        "2d_package_playtest_productization_failure_classification_rows=8",
+                                        "2d_package_playtest_productization_editor_core_execution=0",
+                                        "2d_package_playtest_productization_validation_recipe_execution=0",
+                                        "2d_package_playtest_productization_arbitrary_shell_execution=0",
+                                        "2d_package_playtest_productization_active_session_hot_reload=0",
+                                        "2d_package_playtest_productization_native_handle_exposure=0",
+                                    },
+                                .profile_artifacts =
+                                    {
+                                        "games/sample_2d_desktop_runtime_package/reports/playtest/latest/"
+                                        "package-smoke.summary.txt",
+                                    },
+                                .remediation_handoff_ids =
+                                    {
+                                        "missing-package-file-remediation",
+                                        "counter-mismatch-remediation",
+                                        "runtime-package-load-remediation",
+                                        "unsafe-mutation-request-remediation",
+                                    },
+                                .externally_supplied = true,
+                            },
+                        },
+                });
+
+    PackagePlaytestProductizationProbeResult result;
+    result.status = plan.status;
+    result.recipe_rows = plan.recipe_rows.size();
+    result.evidence_rows = plan.evidence_rows.size();
+    result.imported_evidence_rows = plan.imported_evidence_count;
+    result.package_smoke_counter_rows = plan.package_smoke_counter_count;
+    result.profile_artifact_rows = plan.profile_artifact_count;
+    result.remediation_handoff_rows = plan.remediation_handoff_count;
+    result.failure_classification_rows = plan.failure_classification_count;
+    result.diagnostics = plan.diagnostics.size();
+    result.invoked_editor_core_execution = plan.invoked_editor_core_execution;
+    result.invoked_validation_recipe_execution = plan.invoked_validation_recipe_execution;
+    result.invoked_arbitrary_shell = plan.invoked_arbitrary_shell;
+    result.invoked_active_session_hot_reload = plan.invoked_active_session_hot_reload;
+    result.exposed_native_handles = plan.exposed_native_handles;
+    for (const auto& row : plan.recipe_rows) {
+        result.declared_validation_recipe_rows += row.validation_recipe_declared ? 1U : 0U;
+        result.declared_generated_playtest_rows += row.generated_playtest_declared ? 1U : 0U;
+        result.declared_runtime_host_launch_rows += row.runtime_host_launch_declared ? 1U : 0U;
+        result.declared_hot_reload_safe_point_rows += row.hot_reload_safe_point_review_declared ? 1U : 0U;
+    }
+    result.ready = plan.succeeded() && result.recipe_rows == 1U && result.evidence_rows == 1U &&
+                   result.imported_evidence_rows == 1U && result.package_smoke_counter_rows == 11U &&
+                   result.profile_artifact_rows == 1U && result.remediation_handoff_rows == 4U &&
+                   result.failure_classification_rows == 8U && result.diagnostics == 0U &&
+                   result.declared_validation_recipe_rows == 1U && result.declared_generated_playtest_rows == 1U &&
+                   result.declared_runtime_host_launch_rows == 1U && result.declared_hot_reload_safe_point_rows == 1U &&
+                   !result.invoked_editor_core_execution && !result.invoked_validation_recipe_execution &&
+                   !result.invoked_arbitrary_shell && !result.invoked_active_session_hot_reload &&
+                   !result.exposed_native_handles;
+    return result;
 }
 
 [[nodiscard]] std::size_t
@@ -10002,6 +10353,7 @@ void print_usage() {
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
+                 "[--require-2d-input-device-production-ux] [--require-2d-package-playtest-productization] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
@@ -10146,6 +10498,14 @@ void print_usage() {
         }
         if (arg == "--require-2d-physics-runtime-extension") {
             options.require_2d_physics_runtime_extension = true;
+            continue;
+        }
+        if (arg == "--require-2d-input-device-production-ux") {
+            options.require_2d_input_device_production_ux = true;
+            continue;
+        }
+        if (arg == "--require-2d-package-playtest-productization") {
+            options.require_2d_package_playtest_productization = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -10325,6 +10685,11 @@ void print_usage() {
         options.require_sandbox_package_budgets = true;
         options.require_win32_runtime_host = true;
         options.require_win32_d3d12_presentation = true;
+        options.require_d3d12_renderer = true;
+        options.require_d3d12_shaders = true;
+    }
+    if (options.require_2d_package_playtest_productization) {
+        options.require_win32_runtime_host = true;
         options.require_d3d12_renderer = true;
         options.require_d3d12_shaders = true;
     }
@@ -10886,6 +11251,13 @@ int main(int argc, char** argv) {
     const auto physics_runtime_extension_probe = options.require_2d_physics_runtime_extension
                                                      ? validate_2d_physics_runtime_extension_package_evidence()
                                                      : Physics2DRuntimeExtensionProbeResult{};
+    const auto input_device_production_ux_probe = options.require_2d_input_device_production_ux
+                                                      ? validate_2d_input_device_production_ux_package_evidence()
+                                                      : InputDeviceProductionUxProbeResult{};
+    const auto package_playtest_productization_probe =
+        options.require_2d_package_playtest_productization
+            ? validate_2d_package_playtest_productization_package_evidence(runtime_package)
+            : PackagePlaytestProductizationProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -11706,6 +12078,66 @@ int main(int argc, char** argv) {
         << physics_runtime_extension_probe.middleware_dispatches
         << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
         << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0)
+        << " 2d_input_device_production_ux_status="
+        << input_device_production_ux_status_name(input_device_production_ux_probe)
+        << " 2d_input_device_production_ux_ready=" << (input_device_production_ux_probe.ready ? 1 : 0)
+        << " 2d_input_device_production_ux_gesture_binding_rows="
+        << input_device_production_ux_probe.gesture_binding_rows
+        << " 2d_input_device_production_ux_gesture_event_rows=" << input_device_production_ux_probe.gesture_event_rows
+        << " 2d_input_device_production_ux_gesture_action_rows=" << input_device_production_ux_probe.gesture_action_rows
+        << " 2d_input_device_production_ux_device_assignment_rows="
+        << input_device_production_ux_probe.device_assignment_rows
+        << " 2d_input_device_production_ux_per_device_profile_rows="
+        << input_device_production_ux_probe.per_device_profile_rows
+        << " 2d_input_device_production_ux_clamped_deadzone_rows="
+        << input_device_production_ux_probe.per_device_profile_clamped_deadzone_rows
+        << " 2d_input_device_production_ux_glyph_asset_lookup_rows="
+        << input_device_production_ux_probe.glyph_asset_lookup_rows
+        << " 2d_input_device_production_ux_keyboard_layout_label_rows="
+        << input_device_production_ux_probe.keyboard_layout_label_rows
+        << " 2d_input_device_production_ux_diagnostics=" << input_device_production_ux_probe.diagnostics
+        << " 2d_input_device_production_ux_native_handle_access_rows="
+        << input_device_production_ux_probe.native_handle_access_rows
+        << " 2d_input_device_production_ux_ui_rendering_rows=" << input_device_production_ux_probe.ui_rendering_rows
+        << " 2d_input_device_production_ux_input_middleware_rows="
+        << input_device_production_ux_probe.input_middleware_rows
+        << " 2d_input_device_production_ux_glyph_rendering_rows="
+        << input_device_production_ux_probe.glyph_rendering_rows
+        << " 2d_input_device_production_ux_ui_widget_rows=" << input_device_production_ux_probe.ui_widget_rows
+        << " 2d_package_playtest_productization_status="
+        << package_playtest_productization_status_name(package_playtest_productization_probe.status)
+        << " 2d_package_playtest_productization_ready=" << (package_playtest_productization_probe.ready ? 1 : 0)
+        << " 2d_package_playtest_productization_recipe_rows=" << package_playtest_productization_probe.recipe_rows
+        << " 2d_package_playtest_productization_evidence_rows=" << package_playtest_productization_probe.evidence_rows
+        << " 2d_package_playtest_productization_imported_evidence_rows="
+        << package_playtest_productization_probe.imported_evidence_rows
+        << " 2d_package_playtest_productization_package_smoke_counter_rows="
+        << package_playtest_productization_probe.package_smoke_counter_rows
+        << " 2d_package_playtest_productization_profile_artifact_rows="
+        << package_playtest_productization_probe.profile_artifact_rows
+        << " 2d_package_playtest_productization_remediation_handoff_rows="
+        << package_playtest_productization_probe.remediation_handoff_rows
+        << " 2d_package_playtest_productization_failure_classification_rows="
+        << package_playtest_productization_probe.failure_classification_rows
+        << " 2d_package_playtest_productization_diagnostics=" << package_playtest_productization_probe.diagnostics
+        << " 2d_package_playtest_productization_declared_validation_recipe_rows="
+        << package_playtest_productization_probe.declared_validation_recipe_rows
+        << " 2d_package_playtest_productization_declared_generated_playtest_rows="
+        << package_playtest_productization_probe.declared_generated_playtest_rows
+        << " 2d_package_playtest_productization_declared_runtime_host_launch_rows="
+        << package_playtest_productization_probe.declared_runtime_host_launch_rows
+        << " 2d_package_playtest_productization_declared_hot_reload_safe_point_rows="
+        << package_playtest_productization_probe.declared_hot_reload_safe_point_rows
+        << " 2d_package_playtest_productization_editor_core_execution="
+        << (package_playtest_productization_probe.invoked_editor_core_execution ? 1 : 0)
+        << " 2d_package_playtest_productization_validation_recipe_execution="
+        << (package_playtest_productization_probe.invoked_validation_recipe_execution ? 1 : 0)
+        << " 2d_package_playtest_productization_arbitrary_shell_execution="
+        << (package_playtest_productization_probe.invoked_arbitrary_shell ? 1 : 0)
+        << " 2d_package_playtest_productization_active_session_hot_reload="
+        << (package_playtest_productization_probe.invoked_active_session_hot_reload ? 1 : 0)
+        << " 2d_package_playtest_productization_native_handle_exposure="
+        << (package_playtest_productization_probe.exposed_native_handles ? 1 : 0)
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -12973,6 +13405,73 @@ int main(int argc, char** argv) {
                   << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
                   << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0) << '\n';
         return 46;
+    }
+
+    if (options.require_2d_input_device_production_ux && !input_device_production_ux_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_input_device_production_ux_unavailable"
+                  << " 2d_input_device_production_ux_status="
+                  << input_device_production_ux_status_name(input_device_production_ux_probe)
+                  << " 2d_input_device_production_ux_gesture_binding_rows="
+                  << input_device_production_ux_probe.gesture_binding_rows
+                  << " 2d_input_device_production_ux_gesture_event_rows="
+                  << input_device_production_ux_probe.gesture_event_rows
+                  << " 2d_input_device_production_ux_gesture_action_rows="
+                  << input_device_production_ux_probe.gesture_action_rows
+                  << " 2d_input_device_production_ux_device_assignment_rows="
+                  << input_device_production_ux_probe.device_assignment_rows
+                  << " 2d_input_device_production_ux_per_device_profile_rows="
+                  << input_device_production_ux_probe.per_device_profile_rows
+                  << " 2d_input_device_production_ux_clamped_deadzone_rows="
+                  << input_device_production_ux_probe.per_device_profile_clamped_deadzone_rows
+                  << " 2d_input_device_production_ux_glyph_asset_lookup_rows="
+                  << input_device_production_ux_probe.glyph_asset_lookup_rows
+                  << " 2d_input_device_production_ux_keyboard_layout_label_rows="
+                  << input_device_production_ux_probe.keyboard_layout_label_rows
+                  << " 2d_input_device_production_ux_diagnostics=" << input_device_production_ux_probe.diagnostics
+                  << " 2d_input_device_production_ux_native_handle_access_rows="
+                  << input_device_production_ux_probe.native_handle_access_rows
+                  << " 2d_input_device_production_ux_ui_rendering_rows="
+                  << input_device_production_ux_probe.ui_rendering_rows
+                  << " 2d_input_device_production_ux_input_middleware_rows="
+                  << input_device_production_ux_probe.input_middleware_rows
+                  << " 2d_input_device_production_ux_glyph_rendering_rows="
+                  << input_device_production_ux_probe.glyph_rendering_rows
+                  << " 2d_input_device_production_ux_ui_widget_rows=" << input_device_production_ux_probe.ui_widget_rows
+                  << '\n';
+        return 47;
+    }
+
+    if (options.require_2d_package_playtest_productization && !package_playtest_productization_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_package_playtest_productization_unavailable"
+                  << " 2d_package_playtest_productization_status="
+                  << package_playtest_productization_status_name(package_playtest_productization_probe.status)
+                  << " 2d_package_playtest_productization_recipe_rows="
+                  << package_playtest_productization_probe.recipe_rows
+                  << " 2d_package_playtest_productization_evidence_rows="
+                  << package_playtest_productization_probe.evidence_rows
+                  << " 2d_package_playtest_productization_imported_evidence_rows="
+                  << package_playtest_productization_probe.imported_evidence_rows
+                  << " 2d_package_playtest_productization_package_smoke_counter_rows="
+                  << package_playtest_productization_probe.package_smoke_counter_rows
+                  << " 2d_package_playtest_productization_profile_artifact_rows="
+                  << package_playtest_productization_probe.profile_artifact_rows
+                  << " 2d_package_playtest_productization_remediation_handoff_rows="
+                  << package_playtest_productization_probe.remediation_handoff_rows
+                  << " 2d_package_playtest_productization_failure_classification_rows="
+                  << package_playtest_productization_probe.failure_classification_rows
+                  << " 2d_package_playtest_productization_diagnostics="
+                  << package_playtest_productization_probe.diagnostics
+                  << " 2d_package_playtest_productization_editor_core_execution="
+                  << (package_playtest_productization_probe.invoked_editor_core_execution ? 1 : 0)
+                  << " 2d_package_playtest_productization_validation_recipe_execution="
+                  << (package_playtest_productization_probe.invoked_validation_recipe_execution ? 1 : 0)
+                  << " 2d_package_playtest_productization_arbitrary_shell_execution="
+                  << (package_playtest_productization_probe.invoked_arbitrary_shell ? 1 : 0)
+                  << " 2d_package_playtest_productization_active_session_hot_reload="
+                  << (package_playtest_productization_probe.invoked_active_session_hot_reload ? 1 : 0)
+                  << " 2d_package_playtest_productization_native_handle_exposure="
+                  << (package_playtest_productization_probe.exposed_native_handles ? 1 : 0) << '\n';
+        return 48;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {

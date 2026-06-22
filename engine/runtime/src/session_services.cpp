@@ -1692,6 +1692,123 @@ present_axis_source_tokens_safely(const std::vector<RuntimeInputAxisSource>& sou
     return tokens;
 }
 
+[[nodiscard]] std::string_view gesture_kind_name(TouchGestureKind kind) noexcept {
+    switch (kind) {
+    case TouchGestureKind::tap:
+        return "tap";
+    case TouchGestureKind::double_tap:
+        return "double_tap";
+    case TouchGestureKind::long_press:
+        return "long_press";
+    case TouchGestureKind::pan:
+        return "pan";
+    case TouchGestureKind::swipe:
+        return "swipe";
+    case TouchGestureKind::pinch:
+        return "pinch";
+    case TouchGestureKind::rotate:
+        return "rotate";
+    case TouchGestureKind::unknown:
+        return {};
+    }
+    return {};
+}
+
+[[nodiscard]] std::string_view gesture_phase_name(TouchGesturePhase phase) noexcept {
+    switch (phase) {
+    case TouchGesturePhase::began:
+        return "began";
+    case TouchGesturePhase::changed:
+        return "changed";
+    case TouchGesturePhase::ended:
+        return "ended";
+    case TouchGesturePhase::canceled:
+        return "canceled";
+    case TouchGesturePhase::unknown:
+        return {};
+    }
+    return {};
+}
+
+[[nodiscard]] std::string_view input_device_kind_name(RuntimeInputDeviceKind kind) noexcept {
+    switch (kind) {
+    case RuntimeInputDeviceKind::keyboard_mouse:
+        return "keyboard_mouse";
+    case RuntimeInputDeviceKind::gamepad:
+        return "gamepad";
+    case RuntimeInputDeviceKind::touch:
+        return "touch";
+    case RuntimeInputDeviceKind::unknown:
+        return {};
+    }
+    return {};
+}
+
+[[nodiscard]] std::string_view response_curve_name(RuntimeInputStickResponseCurve curve) noexcept {
+    switch (curve) {
+    case RuntimeInputStickResponseCurve::linear:
+        return "linear";
+    case RuntimeInputStickResponseCurve::squared:
+        return "squared";
+    case RuntimeInputStickResponseCurve::cubic:
+        return "cubic";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool is_valid_input_device_ux_id(std::string_view value) noexcept {
+    return !value.empty() && !contains_control_characters(value) && value.find('=') == std::string_view::npos &&
+           value.find(',') == std::string_view::npos;
+}
+
+[[nodiscard]] std::string input_device_ux_path(std::string_view prefix, std::string_view first,
+                                               std::string_view second = {}, std::string_view third = {}) {
+    std::string path(prefix);
+    path.append(first);
+    if (!second.empty()) {
+        path.push_back('.');
+        path.append(second);
+    }
+    if (!third.empty()) {
+        path.push_back('.');
+        path.append(third);
+    }
+    return path;
+}
+
+void add_input_device_ux_diagnostic(std::vector<RuntimeInputDeviceProductionUxDiagnostic>& diagnostics,
+                                    RuntimeInputDeviceProductionUxDiagnosticCode code, std::string path,
+                                    std::string message) {
+    diagnostics.push_back(RuntimeInputDeviceProductionUxDiagnostic{
+        .code = code,
+        .path = std::move(path),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] bool runtime_input_action_or_axis_exists(const RuntimeInputActionMap& base, std::string_view context,
+                                                       std::string_view action) noexcept {
+    return base.find(context, action) != nullptr || base.find_axis(context, action) != nullptr;
+}
+
+[[nodiscard]] std::size_t count_matching_gesture_events(const std::vector<TouchGestureEvent>& events,
+                                                        TouchGestureKind kind, TouchGesturePhase phase) noexcept {
+    return static_cast<std::size_t>(
+        std::ranges::count_if(events, [kind, phase](const TouchGestureEvent& event) noexcept {
+            return event.kind == kind && event.phase == phase;
+        }));
+}
+
+[[nodiscard]] float clamp_deadzone_for_input_device_ux(float value, bool& clamped) noexcept {
+    if (!std::isfinite(value)) {
+        clamped = true;
+        return 0.0F;
+    }
+    const auto clamped_value = std::clamp(value, 0.0F, 1.0F);
+    clamped = clamped || clamped_value != value;
+    return clamped_value;
+}
+
 } // namespace
 
 void RuntimeSaveData::set_value(std::string key, std::string value) {
@@ -2185,6 +2302,16 @@ bool RuntimeInputRebindingFocusCaptureResult::blocked() const noexcept {
 
 bool RuntimeInputRebindingPresentationModel::ready() const noexcept {
     return ready_for_display && !has_blocking_diagnostics && diagnostics.empty();
+}
+
+bool RuntimeInputDeviceProductionUxPlan::ready() const noexcept {
+    const auto ready_row = [](const auto& row) noexcept { return row.ready; };
+    return diagnostics.empty() && native_handle_access_rows == 0U && ui_rendering_rows == 0U &&
+           input_middleware_rows == 0U && std::ranges::all_of(gesture_binding_rows, ready_row) &&
+           std::ranges::all_of(device_assignment_rows, ready_row) &&
+           std::ranges::all_of(per_device_profile_rows, ready_row) &&
+           std::ranges::all_of(glyph_asset_lookup_rows, ready_row) &&
+           std::ranges::all_of(keyboard_layout_label_rows, ready_row);
 }
 
 std::string serialize_runtime_save_data(const RuntimeSaveData& data) {
@@ -2729,6 +2856,267 @@ make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
     }
 
     return model;
+}
+
+RuntimeInputDeviceProductionUxPlan
+plan_runtime_input_device_production_ux(const RuntimeInputDeviceProductionUxRequest& request) {
+    RuntimeInputDeviceProductionUxPlan plan;
+
+    if (request.request_native_handle_access) {
+        plan.native_handle_access_rows = 1U;
+        add_input_device_ux_diagnostic(
+            plan.diagnostics, RuntimeInputDeviceProductionUxDiagnosticCode::native_handle_requested,
+            "input_device_ux.native_handles", "runtime input device production UX keeps native input handles private");
+    }
+    if (request.request_ui_rendering) {
+        plan.ui_rendering_rows = 1U;
+        add_input_device_ux_diagnostic(
+            plan.diagnostics, RuntimeInputDeviceProductionUxDiagnosticCode::ui_rendering_requested,
+            "input_device_ux.ui_rendering",
+            "runtime input device production UX does not render UI panels or focus surfaces");
+    }
+    if (request.request_input_middleware) {
+        plan.input_middleware_rows = 1U;
+        add_input_device_ux_diagnostic(
+            plan.diagnostics, RuntimeInputDeviceProductionUxDiagnosticCode::input_middleware_requested,
+            "input_device_ux.middleware", "runtime input device production UX uses first-party input value rows only");
+    }
+
+    std::unordered_set<std::string> gesture_keys;
+    plan.gesture_binding_rows.reserve(request.gesture_bindings.size());
+    for (const auto& binding : request.gesture_bindings) {
+        RuntimeInputGestureBindingRow row;
+        row.context = binding.context;
+        row.action = binding.action;
+        row.gesture = binding.gesture;
+        row.phase = binding.phase;
+        row.id = input_device_ux_path("gesture.", binding.context, binding.action,
+                                      std::string(gesture_kind_name(binding.gesture)) + "." +
+                                          std::string(gesture_phase_name(binding.phase)));
+        row.matching_event_rows = count_matching_gesture_events(request.gesture_events, binding.gesture, binding.phase);
+
+        try {
+            validate_context_name(binding.context);
+        } catch (const std::exception& error) {
+            row.diagnostic = error.what();
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_context, row.id,
+                                           row.diagnostic);
+        }
+        try {
+            validate_action_name(binding.action);
+        } catch (const std::exception& error) {
+            row.diagnostic = error.what();
+            add_input_device_ux_diagnostic(
+                plan.diagnostics, RuntimeInputDeviceProductionUxDiagnosticCode::invalid_action, row.id, row.diagnostic);
+        }
+        if (gesture_kind_name(binding.gesture).empty() || gesture_phase_name(binding.phase).empty()) {
+            row.diagnostic = "runtime input gesture binding uses an unsupported gesture or phase";
+            add_input_device_ux_diagnostic(
+                plan.diagnostics, RuntimeInputDeviceProductionUxDiagnosticCode::invalid_action, row.id, row.diagnostic);
+        }
+        if (!runtime_input_action_or_axis_exists(request.base_actions, binding.context, binding.action)) {
+            row.diagnostic = "runtime input gesture binding targets a missing input action or axis";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::missing_base_binding, row.id,
+                                           row.diagnostic);
+        } else {
+            row.mapped_to_action = true;
+        }
+
+        const auto duplicate_key = input_device_ux_path("", binding.context, binding.action,
+                                                        std::string(gesture_kind_name(binding.gesture)) + "." +
+                                                            std::string(gesture_phase_name(binding.phase)));
+        if (!gesture_keys.insert(duplicate_key).second) {
+            row.diagnostic = "runtime input gesture binding duplicates a context/action/gesture/phase row";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::duplicate_gesture_binding,
+                                           row.id, row.diagnostic);
+        }
+
+        row.ready = row.mapped_to_action && row.diagnostic.empty();
+        if (row.ready) {
+            ++plan.gesture_action_rows;
+            row.diagnostic = row.matching_event_rows == 0U ? "gesture binding reviewed without sampled event"
+                                                           : "gesture binding mapped to runtime input action";
+        }
+        plan.gesture_binding_rows.push_back(std::move(row));
+    }
+
+    std::unordered_set<std::string> assigned_players;
+    std::unordered_set<std::string> assigned_devices;
+    plan.device_assignment_rows.reserve(request.device_assignments.size());
+    for (const auto& assignment : request.device_assignments) {
+        RuntimeInputDeviceAssignmentRow row;
+        row.player_id = assignment.player_id;
+        row.device_id = assignment.device_id;
+        row.device_kind = assignment.device_kind;
+        row.profile_id = assignment.profile_id;
+        row.id = input_device_ux_path("device_assignment.", assignment.player_id, assignment.device_id);
+
+        if (!is_valid_input_device_ux_id(assignment.player_id)) {
+            row.diagnostic = "runtime input device assignment player id is invalid";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_player_id, row.id,
+                                           row.diagnostic);
+        }
+        if (!is_valid_input_device_ux_id(assignment.device_id) ||
+            input_device_kind_name(assignment.device_kind).empty()) {
+            row.diagnostic = "runtime input device assignment device row is invalid";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_device_id, row.id,
+                                           row.diagnostic);
+        }
+        try {
+            validate_profile_id(assignment.profile_id);
+        } catch (const std::exception& error) {
+            row.diagnostic = error.what();
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_profile_id, row.id,
+                                           row.diagnostic);
+        }
+        if (!assigned_players.insert(assignment.player_id).second ||
+            !assigned_devices.insert(assignment.device_id).second) {
+            row.diagnostic = "runtime input device assignment duplicates a player or device";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::duplicate_device_assignment,
+                                           row.id, row.diagnostic);
+        }
+        row.ready = row.diagnostic.empty();
+        if (row.ready) {
+            row.diagnostic = "device assigned to runtime input profile";
+        }
+        plan.device_assignment_rows.push_back(std::move(row));
+    }
+
+    std::unordered_set<std::string> profile_keys;
+    plan.per_device_profile_rows.reserve(request.per_device_profiles.size());
+    for (const auto& profile : request.per_device_profiles) {
+        RuntimeInputPerDeviceProfileRow row;
+        row.profile_id = profile.profile_id;
+        row.device_id = profile.device_id;
+        row.device_kind = profile.device_kind;
+        row.response_curve = profile.response_curve;
+        row.id = input_device_ux_path("device_profile.", profile.profile_id, profile.device_id);
+
+        bool clamped = false;
+        row.left_stick_radial_deadzone =
+            clamp_deadzone_for_input_device_ux(profile.left_stick_radial_deadzone, clamped);
+        row.right_stick_radial_deadzone =
+            clamp_deadzone_for_input_device_ux(profile.right_stick_radial_deadzone, clamped);
+        row.clamped_deadzone = clamped;
+
+        try {
+            validate_profile_id(profile.profile_id);
+        } catch (const std::exception& error) {
+            row.diagnostic = error.what();
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_profile_id, row.id,
+                                           row.diagnostic);
+        }
+        if (!is_valid_input_device_ux_id(profile.device_id) || input_device_kind_name(profile.device_kind).empty()) {
+            row.diagnostic = "runtime input per-device profile device row is invalid";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_device_id, row.id,
+                                           row.diagnostic);
+        }
+        if (!profile_keys.insert(input_device_ux_path("", profile.profile_id, profile.device_id)).second) {
+            row.diagnostic = "runtime input per-device profile duplicates a profile/device row";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::duplicate_per_device_profile,
+                                           row.id, row.diagnostic);
+        }
+        if (row.clamped_deadzone) {
+            row.diagnostic = "runtime input per-device profile deadzone was clamped to the supported range";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::deadzone_clamped, row.id,
+                                           row.diagnostic);
+        }
+        row.ready = row.diagnostic.empty();
+        if (row.ready) {
+            row.diagnostic = "per-device input profile reviewed with " +
+                             std::string(response_curve_name(row.response_curve)) + " response curve";
+        }
+        plan.per_device_profile_rows.push_back(std::move(row));
+    }
+
+    std::unordered_set<std::string> glyph_keys;
+    plan.glyph_asset_lookup_rows.reserve(request.glyph_assets.size());
+    for (const auto& glyph : request.glyph_assets) {
+        RuntimeInputGlyphAssetLookupRow row;
+        row.glyph_lookup_key = glyph.glyph_lookup_key;
+        row.platform = glyph.platform;
+        row.asset_id = glyph.asset_id;
+        row.renders_glyph = glyph.request_render_glyph;
+        row.creates_ui_widget = glyph.request_create_ui_widget;
+        row.id = input_device_ux_path("glyph.", glyph.platform, glyph.glyph_lookup_key);
+
+        if (!is_valid_input_device_ux_id(glyph.glyph_lookup_key) || !is_valid_input_device_ux_id(glyph.platform) ||
+            !is_valid_input_device_ux_id(glyph.asset_id)) {
+            row.diagnostic = "runtime input glyph asset lookup row has an invalid id";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_glyph_asset, row.id,
+                                           row.diagnostic);
+        }
+        if (!glyph_keys.insert(input_device_ux_path("", glyph.platform, glyph.glyph_lookup_key)).second) {
+            row.diagnostic = "runtime input glyph asset lookup duplicates a platform/key row";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::duplicate_glyph_asset, row.id,
+                                           row.diagnostic);
+        }
+        if (row.renders_glyph) {
+            row.diagnostic = "runtime input glyph asset lookup must not render glyphs";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::glyph_rendering_requested,
+                                           row.id, row.diagnostic);
+        }
+        if (row.creates_ui_widget) {
+            row.diagnostic = "runtime input glyph asset lookup must not create UI widgets";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::ui_widget_requested, row.id,
+                                           row.diagnostic);
+        }
+        row.ready = row.diagnostic.empty();
+        if (row.ready) {
+            row.diagnostic = "symbolic glyph asset lookup reviewed";
+        }
+        plan.glyph_asset_lookup_rows.push_back(std::move(row));
+    }
+
+    std::unordered_set<std::string> keyboard_label_keys;
+    plan.keyboard_layout_label_rows.reserve(request.keyboard_layout_labels.size());
+    for (const auto& label : request.keyboard_layout_labels) {
+        RuntimeInputKeyboardLayoutLabelRow row;
+        row.layout_id = label.layout_id;
+        row.physical_key = label.physical_key;
+        row.logical_key = label.logical_key;
+        row.display_label = label.display_label;
+        row.id = input_device_ux_path("keyboard_layout.", label.layout_id,
+                                      std::string(key_name(label.physical_key)) + "." +
+                                          std::string(key_name(label.logical_key)));
+
+        if (!is_valid_input_device_ux_id(label.layout_id) || key_name(label.physical_key).empty() ||
+            key_name(label.logical_key).empty() || label.display_label.empty() ||
+            contains_control_characters(label.display_label)) {
+            row.diagnostic = "runtime input keyboard layout label row is invalid";
+            add_input_device_ux_diagnostic(plan.diagnostics,
+                                           RuntimeInputDeviceProductionUxDiagnosticCode::invalid_keyboard_layout_label,
+                                           row.id, row.diagnostic);
+        }
+        if (!keyboard_label_keys.insert(row.id).second) {
+            row.diagnostic = "runtime input keyboard layout label duplicates a layout/physical/logical row";
+            add_input_device_ux_diagnostic(
+                plan.diagnostics, RuntimeInputDeviceProductionUxDiagnosticCode::duplicate_keyboard_layout_label, row.id,
+                row.diagnostic);
+        }
+        row.ready = row.diagnostic.empty();
+        if (row.ready) {
+            row.diagnostic = "keyboard layout label distinguishes physical key, logical key, and display label";
+        }
+        plan.keyboard_layout_label_rows.push_back(std::move(row));
+    }
+
+    return plan;
 }
 
 RuntimeSessionProfilePathPlan plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request) {

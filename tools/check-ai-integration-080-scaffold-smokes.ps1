@@ -281,6 +281,10 @@ try {
     Assert-ContainsText $sample2dDesktopMain "simulate_physics2d_step" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "2d_physics_runtime_extension_status" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "--require-2d-input-device-production-ux" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "plan_runtime_input_device_production_ux" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_input_device_production_ux_status" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "2d_input_device_production_ux_native_handle_access_rows" "sample_2d_desktop_runtime_package main.cpp"
     $sample2dDesktopManifest = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json" | ConvertFrom-Json
     if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-effects-particles-smoke") {
         Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-effects-particles-smoke"
@@ -297,12 +301,18 @@ try {
     if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-physics-runtime-extension-smoke") {
         Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-physics-runtime-extension-smoke"
     }
+    if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-input-device-production-ux-smoke") {
+        Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-input-device-production-ux-smoke"
+    }
+    foreach ($recipeName in @("installed-2d-tilemap-runtime-ux-smoke", "installed-2d-runtime-ui-renderer-atlas-handoff-smoke", "installed-2d-long-run-readiness-smoke", "host-2d-long-run-readiness-soak")) { if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipeName) { Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing $recipeName" } }
     Assert-PerformanceBudgets `
         $sample2dDesktopManifest `
         "sample_2d_desktop_runtime_package manifest" `
         "installed-2d-performance-baseline-smoke" `
         "d3d12" `
         @("frame-p95-us", "frame-p99-us", "sprite-draw-count", "sandbox-package-bytes", "resident-memory-bytes")
+    $sample2dPerformanceBudgetText = $sample2dDesktopManifest.performanceBudgets | ConvertTo-Json -Depth 24
+    foreach ($needle in @("2d-dense-arena", "2d-sandbox-tilemap", "2d-ui-overlay", "2d-hot-reload-package", "2d-long-run-selected", "dense-arena-visible-sprites", "projectile-storm-logical-sprites", "sprite-throughput-upload-bytes", "sandbox-tile-visible-cells", "sandbox-tile-draw-rows", "sandbox-streaming-load-rows", "ui-overlay-renderer-sprites", "ui-overlay-atlas-budget-rows", "hot-reload-unsafe-execution-claims", "long-run-sample-frames", "sprite-throughput-workload-smoke", "sandbox-tilemap-workload-smoke", "ui-overlay-workload-smoke", "hot-reload-package-playtest-evidence", "long-run-selected-smoke", "long-run-host-soak-evidence", "broad-optimized-game", "cross-backend-performance-parity", "native-handles")) { Assert-ContainsText $sample2dPerformanceBudgetText $needle "sample_2d_desktop_runtime_package performanceBudgets Phase 6 workload matrix" }
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-sorting-layer" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-9slice-tiled" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
@@ -311,6 +321,7 @@ try {
     Assert-ContainsText $repositoryGamesCmake "--require-2d-sprite-atlas-residency" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-2d-sprite-throughput" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-2d-physics-runtime-extension" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
+    Assert-ContainsText $repositoryGamesCmake "--require-2d-input-device-production-ux" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
     foreach ($needle in @("load_runtime_asset_package", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "postprocess_policy_status=", "material_graph_authoring_targets=", "material_graph_compile_requests=", "--require-material-graph-authoring")) {
         Assert-ContainsText $materialShaderMain $needle "Desktop material/shader scaffold main.cpp"
@@ -320,7 +331,11 @@ try {
     Assert-ContainsText $validateInstalledRuntimeScript "2d_sprite_throughput_claimed_cross_backend_parity" "Installed desktop runtime validation"
     Assert-ContainsText $validateInstalledRuntimeScript "2d_physics_runtime_extension_status" "Installed desktop runtime validation"
     Assert-ContainsText $validateInstalledRuntimeScript "2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed" "Installed desktop runtime validation"
+    Assert-ContainsText $validateInstalledRuntimeScript "2d_input_device_production_ux_status" "Installed desktop runtime validation"
+    Assert-ContainsText $validateInstalledRuntimeScript "2d_input_device_production_ux_native_handle_access_rows" "Installed desktop runtime validation"
     Assert-ContainsText $validateInstalledRuntimeScript '$expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }' "Installed desktop runtime validation"
+    $validate2dWorkloadsScript = Get-AgentSurfaceText "tools/validate-2d-production-workloads.ps1"
+    foreach ($needle in @("2d-production-workloads: ok", "2d-dense-arena", "2d-sandbox-tilemap", "2d-ui-overlay", "2d-hot-reload-package", "2d-long-run-selected", "2d_sprite_throughput_status", "runtime_ui_renderer_atlas_handoff_status", "long_run_readiness_status", "2d_input_device_production_ux_status", "claimed_cross_backend_parity", "claimed_metal_readiness", "native_handles_exposed", '"2d_sprite_throughput_workload_rows" = "3"', '"2d_sprite_throughput_dense_arena_4096_visible_sprites" = "4096"', '"2d_sprite_throughput_projectile_storm_logical_sprites" = "12000"', '"2d_sprite_throughput_upload_bytes" = "319488"', '"sandbox_package_budget_streaming_load_rows" = "1"', '"tile_chunk_renderer_visible_cells" = "3"', '"tile_chunk_renderer_draw_rows" = "2"', '"runtime_ui_renderer_atlas_handoff_atlas_budget_rows" = "2"', '"runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted" = "2"', '"long_run_readiness_frames" = "3"', "long_run_readiness_memory_high_water_bytes", '"2d_input_device_production_ux_native_handle_access_rows" = "0"')) { Assert-ContainsText $validate2dWorkloadsScript $needle "2D production workload validator" }
 } finally {
     Remove-ScaffoldCheckRoot $materialShaderScaffoldRoot
 }
