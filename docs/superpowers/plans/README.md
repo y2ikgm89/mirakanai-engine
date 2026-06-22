@@ -57,9 +57,9 @@ When closing the active plan, do not leave `currentActivePlan` pointing at a com
 
 For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.json.aiOperableProductionLoop`, finish one selected unsupported gap or active phase at a time, prefer official best practices and clean breaking implementation over compatibility shims, optimize context and rate use with focused reads/tests and bounded independent subagents, keep the tree free of temporary/dead files, and close each phase only after code, tests, docs, skills, manifest, static checks, remaining gaps, next plan, and host-gated blockers match the validation evidence.
 
-## Current Runtime UI Work
+## Recent Completed Runtime UI Work
 
-[First-Party Runtime UI Standard Widgets v1](2026-06-21-first-party-runtime-ui-standard-widgets-v1.md) is the active implementation slice for first-party HUD meters, pause/settings menus, standard HUD composition, provenance review, selected 2D/3D package smoke counters, and static/docs/manifest synchronization. It keeps official Unity, Unreal Engine, and Godot documentation as category research only; source code, samples, public UI system names, marketplace content, assets, themes, layouts, UI middleware, production text/font/IME/accessibility readiness, and broad platform UI parity remain unclaimed.
+[First-Party Runtime UI Standard Widgets v1](2026-06-21-first-party-runtime-ui-standard-widgets-v1.md) is completed as the first-party HUD meters, pause/settings menus, standard HUD composition, provenance review, selected 2D/3D package smoke counter, and static/docs/manifest synchronization slice. It is retained as implementation evidence for `RuntimeUiStandardWidgetProvenanceDesc`, `plan_runtime_ui_meters`, `plan_runtime_ui_menu_stack`, `plan_runtime_ui_standard_hud`, and `--require-runtime-ui-standard-widgets`. It keeps official Unity, Unreal Engine, and Godot documentation as category research only; source code, samples, public UI system names, marketplace content, assets, themes, layouts, UI middleware, production text/font/IME/accessibility readiness, and broad platform UI parity remain unclaimed.
 
 ## Recent Completed Renderer Backend Parity Work
 
