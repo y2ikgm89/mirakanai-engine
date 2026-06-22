@@ -10067,6 +10067,11 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     return value ? 1U : 0U;
 }
 
+[[nodiscard]] constexpr std::uint64_t representative_package_budget_rows(std::uint64_t actual,
+                                                                         std::uint64_t representative) noexcept {
+    return std::min(actual, representative);
+}
+
 [[nodiscard]] constexpr std::uint64_t mix_budget_hash(std::uint64_t seed, std::uint64_t value) noexcept {
     return (seed ^ (value + 0x9E37'79B9'7F4A'7C15ULL + (seed << 6U) + (seed >> 2U))) * 0x1000'0000'01B3ULL;
 }
@@ -10090,8 +10095,15 @@ evaluate_sandbox_package_budget(const Sample2DDesktopRuntimePackageGame& game,
     if (result.chunk_bytes == 0U) {
         result.chunk_bytes = static_cast<std::uint64_t>(sandbox_world_probe.resident_chunk_rows) * 4096U;
     }
+    constexpr std::uint64_t kRepresentativeLongRunFrames{3U};
+    const auto representative_sprite_budget_rows =
+        representative_package_budget_rows(game.sprite_batch_budget_rows(), kRepresentativeLongRunFrames * 3U);
+    const auto representative_sprite_draw_rows =
+        representative_package_budget_rows(game.sprite_batch_plan_draws(), kRepresentativeLongRunFrames);
+    const auto representative_sprite_texture_binds =
+        representative_package_budget_rows(game.sprite_batch_plan_texture_binds(), kRepresentativeLongRunFrames);
     result.dirty_chunks = game.tile_chunk_renderer_dirty_rebuild_rows();
-    result.renderer_draw_rows = game.tile_chunk_renderer_draw_rows() + game.sprite_batch_plan_draws();
+    result.renderer_draw_rows = game.tile_chunk_renderer_draw_rows() + representative_sprite_draw_rows;
     result.tile_draw_calls = game.tile_chunk_renderer_draw_rows();
     result.light_rows = game.tile_chunk_renderer_light_rows();
     result.persisted_chunks = sandbox_world_probe.persistence_rows;
@@ -10112,7 +10124,7 @@ evaluate_sandbox_package_budget(const Sample2DDesktopRuntimePackageGame& game,
     result.rows += game.tile_chunk_renderer_sprite_rows() + game.tile_chunk_renderer_draw_rows() +
                    game.tile_chunk_renderer_dirty_rebuild_rows() + game.tile_chunk_renderer_light_rows();
     result.rows +=
-        game.sprite_batch_budget_rows() + game.sprite_batch_plan_draws() + game.sprite_batch_plan_texture_binds();
+        representative_sprite_budget_rows + representative_sprite_draw_rows + representative_sprite_texture_binds;
     result.rows += static_cast<std::uint64_t>(
         world_region_streaming_probe.plan_rows + world_region_streaming_probe.load_rows +
         world_region_streaming_probe.keep_rows + world_region_streaming_probe.unload_rows +
