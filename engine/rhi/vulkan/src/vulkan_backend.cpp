@@ -3197,7 +3197,7 @@ struct VulkanRuntimeValidationLogState {
     std::array<char, 768> first_message{};
 };
 
-void copy_debug_utils_text(std::span<char> destination, const char* source) noexcept {
+static void copy_debug_utils_text(std::span<char> destination, const char* source) noexcept {
     if (destination.empty()) {
         return;
     }
