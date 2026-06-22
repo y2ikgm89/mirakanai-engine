@@ -1334,7 +1334,7 @@ MK_TEST("vulkan runtime dynamic rendering clear can feed swapchain readback when
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
     instance_desc.required_extensions = {};
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -1810,17 +1810,17 @@ MK_TEST("vulkan runtime swapchain owns surface images and image views without ex
 
     const auto unsupported_plan = mirakana::rhi::vulkan::create_runtime_swapchain(
         empty_device, mirakana::rhi::vulkan::VulkanRuntimeSwapchainDesc{
-                          .surface = mirakana::rhi::SurfaceHandle{1},
+                          .surface = mirakana::rhi::SurfaceHandle{.value = 1},
                           .plan = mirakana::rhi::vulkan::VulkanSwapchainCreatePlan{},
                       });
     MK_REQUIRE(!unsupported_plan.created);
     MK_REQUIRE(unsupported_plan.diagnostic == "Vulkan swapchain create plan is required");
 
-    const auto no_device =
-        mirakana::rhi::vulkan::create_runtime_swapchain(empty_device, mirakana::rhi::vulkan::VulkanRuntimeSwapchainDesc{
-                                                                          .surface = mirakana::rhi::SurfaceHandle{1},
-                                                                          .plan = supported_plan,
-                                                                      });
+    const auto no_device = mirakana::rhi::vulkan::create_runtime_swapchain(
+        empty_device, mirakana::rhi::vulkan::VulkanRuntimeSwapchainDesc{
+                          .surface = mirakana::rhi::SurfaceHandle{.value = 1},
+                          .plan = supported_plan,
+                      });
     MK_REQUIRE(!no_device.created);
     MK_REQUIRE(no_device.diagnostic == "Vulkan runtime device is not available");
 
@@ -1837,7 +1837,7 @@ MK_TEST("vulkan runtime swapchain owns surface images and image views without ex
 
     const auto unsupported_host = mirakana::rhi::vulkan::create_runtime_swapchain(
         device_result.device, mirakana::rhi::vulkan::VulkanRuntimeSwapchainDesc{
-                                  .surface = mirakana::rhi::SurfaceHandle{1},
+                                  .surface = mirakana::rhi::SurfaceHandle{.value = 1},
                                   .plan = supported_plan,
                               });
     MK_REQUIRE(!unsupported_host.created);
@@ -1865,7 +1865,7 @@ MK_TEST("vulkan runtime frame sync owns semaphores fence and gates swapchain acq
 
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, {}, {},
-        mirakana::rhi::SurfaceHandle{1});
+        mirakana::rhi::SurfaceHandle{.value = 1});
     if (device_result.created) {
         auto sync_result = mirakana::rhi::vulkan::create_runtime_frame_sync(device_result.device);
         if (sync_result.created) {
@@ -1895,7 +1895,7 @@ MK_TEST("vulkan runtime queue present maps results without exposing native handl
 
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, {}, {},
-        mirakana::rhi::SurfaceHandle{1});
+        mirakana::rhi::SurfaceHandle{.value = 1});
     if (device_result.created) {
         auto sync_result = mirakana::rhi::vulkan::create_runtime_frame_sync(device_result.device);
         if (sync_result.created) {
@@ -2788,7 +2788,7 @@ MK_TEST("vulkan rhi device factory rejects incomplete supported mapping plans wh
     instance_desc.application_name = "GameEngineVulkanRhiIncompleteMappingPlan";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -2818,7 +2818,7 @@ MK_TEST("vulkan runtime texture barrier rejects states incompatible with texture
     instance_desc.application_name = "GameEngineVulkanRuntimeTextureBarrierCompatibility";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -2880,7 +2880,7 @@ MK_TEST("vulkan rhi device bridge creates backend neutral resources when runtime
     instance_desc.application_name = "GameEngineVulkanRhiResourceBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -2925,7 +2925,7 @@ MK_TEST("vulkan rhi device bridge reads backend neutral readback buffers when ru
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -3138,7 +3138,7 @@ MK_TEST("vulkan rhi device bridge creates compute pipeline and records dispatch 
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -3245,7 +3245,7 @@ MK_TEST("vulkan rhi device bridge proves compute dispatch readback with configur
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -3345,7 +3345,7 @@ MK_TEST("vulkan rhi device bridge proves runtime compute morph position readback
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -3505,7 +3505,7 @@ MK_TEST(
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -3742,7 +3742,7 @@ MK_TEST("vulkan rhi frame renderer consumes runtime compute morph output positio
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -3961,7 +3961,7 @@ MK_TEST("vulkan rhi device bridge updates buffer descriptor sets when runtime is
     instance_desc.application_name = "GameEngineVulkanRhiDescriptorUpdateBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4010,7 +4010,7 @@ MK_TEST("vulkan rhi device bridge updates sampled texture and sampler descriptor
     instance_desc.application_name = "GameEngineVulkanRhiTextureSamplerDescriptorUpdateBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4094,7 +4094,7 @@ MK_TEST("vulkan rhi device bridge records standalone texture copy commands when 
     instance_desc.application_name = "GameEngineVulkanRhiStandaloneTextureCopyBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4159,7 +4159,7 @@ MK_TEST("vulkan rhi device bridge records texture aliasing barriers when runtime
     instance_desc.application_name = "GameEngineVulkanRhiTextureAliasingBarrierBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4208,7 +4208,7 @@ MK_TEST("vulkan rhi device transient texture alias group shares one memory alloc
     instance_desc.application_name = "GameEngineVulkanRhiTransientTextureAliasMemory";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4265,7 +4265,7 @@ MK_TEST("vulkan rhi command list abandons texture transitions without committing
     instance_desc.application_name = "GameEngineVulkanRhiAbandonedTextureState";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4316,7 +4316,7 @@ MK_TEST("vulkan rhi command list rejects stale texture state submissions") {
     instance_desc.application_name = "GameEngineVulkanRhiStaleTextureSubmit";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4371,7 +4371,7 @@ MK_TEST("vulkan rhi command list rejects texture transitions incompatible with u
     instance_desc.application_name = "GameEngineVulkanRhiTextureTransitionCompatibility";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4459,7 +4459,7 @@ MK_TEST("vulkan rhi render pass rejects invalid depth attachments when runtime i
     instance_desc.application_name = "GameEngineVulkanRhiInvalidDepthAttachments";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4582,7 +4582,7 @@ MK_TEST("vulkan rhi device bridge clears standalone texture render targets when 
     instance_desc.application_name = "GameEngineVulkanRhiStandaloneTextureRenderBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4683,7 +4683,7 @@ MK_TEST("vulkan rhi device bridge draws standalone texture render targets when r
     instance_desc.application_name = "GameEngineVulkanRhiStandaloneTextureDrawBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4813,7 +4813,7 @@ MK_TEST("vulkan rhi device bridge proves visible draw readback with configured S
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -4935,7 +4935,7 @@ MK_TEST("vulkan rhi device bridge proves depth ordered draw readback with config
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -5196,7 +5196,7 @@ MK_TEST("vulkan rhi device executes indexed indirect draw into texture readback 
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -5352,7 +5352,7 @@ MK_TEST("vulkan rhi device executes count-buffer-limited indexed indirect draw i
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -5512,7 +5512,7 @@ MK_TEST("vulkan rhi device executes zero-count indexed indirect draw without sub
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -5671,7 +5671,7 @@ MK_TEST("vulkan rhi device rejects count buffer without upload copy_source usage
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -5847,7 +5847,7 @@ MK_TEST("vulkan rhi device bridge visibly samples depth textures after depth wri
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -6154,7 +6154,7 @@ MK_TEST("vulkan rhi device bridge samples scene depth in a postprocess pass when
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -6507,7 +6507,7 @@ MK_TEST("vulkan rhi device bridge applies height fog from scene depth and enviro
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {}, surface);
 #else
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {});
@@ -6871,7 +6871,7 @@ MK_TEST("vulkan rhi device bridge applies physical sky constants when configured
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {}, surface);
 #else
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {});
@@ -7135,7 +7135,7 @@ MK_TEST("vulkan rhi device bridge darkens a directional shadow receiver when con
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -7437,7 +7437,7 @@ MK_TEST("vulkan rhi device bridge proves visible texture sampling with configure
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -7606,7 +7606,7 @@ MK_TEST("vulkan rhi device executes strict environment texture upload and readba
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -7699,7 +7699,7 @@ MK_TEST("vulkan rhi device executes strict environment BC7 texture upload and re
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -7852,7 +7852,7 @@ MK_TEST("vulkan rhi frame renderer visibly samples runtime material texture bind
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -8035,7 +8035,7 @@ MK_TEST("vulkan rhi frame renderer visibly draws cooked runtime scene gpu palett
     if (!window.valid()) {
         return;
     }
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -8183,7 +8183,7 @@ MK_TEST("vulkan rhi device bridge owns swapchains and explicit frame release whe
     instance_desc.application_name = "GameEngineVulkanRhiSwapchainBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -8247,7 +8247,7 @@ MK_TEST("vulkan rhi device bridge records swapchain clear present submit and wai
     instance_desc.application_name = "GameEngineVulkanRhiCommandBridge";
     instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    const mirakana::rhi::SurfaceHandle surface{.value = reinterpret_cast<std::uintptr_t>(window.hwnd())};
     auto device_result = mirakana::rhi::vulkan::create_runtime_device(
         mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
         {}, surface);
@@ -8800,7 +8800,8 @@ MK_TEST("metal native ASTC texture upload and readback ownership stays host gate
         0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
     };
     const auto missing_upload = mirakana::rhi::metal::upload_native_texture_bytes(
-        missing_texture_target, mirakana::rhi::metal::MetalRuntimeTextureUploadDesc{payload.data(), payload.size()});
+        missing_texture_target,
+        mirakana::rhi::metal::MetalRuntimeTextureUploadDesc{.bytes = payload.data(), .byte_count = payload.size()});
     MK_REQUIRE(!missing_upload.uploaded);
     MK_REQUIRE(missing_upload.diagnostic == "Metal texture is required before texture upload");
 
@@ -8823,7 +8824,8 @@ MK_TEST("metal native ASTC texture upload and readback ownership stays host gate
     MK_REQUIRE(texture.texture.owns_texture());
 
     const auto upload = mirakana::rhi::metal::upload_native_texture_bytes(
-        texture.texture, mirakana::rhi::metal::MetalRuntimeTextureUploadDesc{payload.data(), payload.size()});
+        texture.texture,
+        mirakana::rhi::metal::MetalRuntimeTextureUploadDesc{.bytes = payload.data(), .byte_count = payload.size()});
     MK_REQUIRE(upload.uploaded);
     MK_REQUIRE(upload.format == mirakana::rhi::Format::astc_4x4_srgb);
     MK_REQUIRE(upload.source_bytes == payload.size());
@@ -8841,7 +8843,7 @@ MK_TEST("metal native drawable render encoder and present ownership stays host g
     mirakana::rhi::metal::MetalRuntimeDevice missing_device;
     const auto missing_drawable = mirakana::rhi::metal::acquire_native_drawable(
         missing_device, mirakana::rhi::metal::MetalDrawableAcquireDesc{
-                            .surface = mirakana::rhi::SurfaceHandle{1},
+                            .surface = mirakana::rhi::SurfaceHandle{.value = 1},
                             .extent = mirakana::rhi::Extent2D{.width = 4, .height = 4},
                             .format = mirakana::rhi::Format::bgra8_unorm,
                             .framebuffer_only = true,
