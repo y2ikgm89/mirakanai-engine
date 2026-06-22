@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/mavg-nanite-comparison-report.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "official_sources",
+    "comparison_axes",
+    "clean_room_policy",
+    "claim_policy"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.MavgNaniteComparisonReport.v1" },
+    "task_id": { "const": "mavg-nanite-comparison-report-v1" },
+    "official_sources": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/officialSource" }
+    },
+    "comparison_axes": {
+      "type": "array",
+      "minItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "virtualized_geometry_system",
+          "internal_compressed_mesh_format",
+          "fine_grained_streaming",
+          "automatic_lod",
+          "cluster_visibility_culling",
+          "fallback_mesh_behavior",
+          "ray_tracing_fallback_behavior",
+          "material_support_limits",
+          "deformation_support_limits",
+          "platform_support_limits",
+          "storage_memory_residency",
+          "authoring_import_workflow"
+        ]
+      }
+    },
+    "clean_room_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_docs_only",
+        "first_party_assets_only",
+        "unreal_source_used",
+        "private_nanite_format_used",
+        "epic_sample_assets_used"
+      ],
+      "properties": {
+        "public_docs_only": { "const": true },
+        "first_party_assets_only": { "const": true },
+        "unreal_source_used": { "const": false },
+        "private_nanite_format_used": { "const": false },
+        "epic_sample_assets_used": { "const": false }
+      }
+    },
+    "claim_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mavg_nanite_comparison_report_ready",
+        "mavg_nanite_compatible",
+        "mavg_nanite_equivalent",
+        "mavg_nanite_superior",
+        "mavg_nanite_marketing_claim_allowed"
+      ],
+      "properties": {
+        "mavg_nanite_comparison_report_ready": { "const": true },
+        "mavg_nanite_compatible": { "const": false },
+        "mavg_nanite_equivalent": { "const": false },
+        "mavg_nanite_superior": { "const": false },
+        "mavg_nanite_marketing_claim_allowed": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "officialSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "title",
+        "url",
+        "accessed_date"
+      ],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "url": {
+          "type": "string",
+          "pattern": "^https://dev\\.epicgames\\.com/documentation/unreal-engine/nanite-"
+        },
+        "accessed_date": { "type": "string", "pattern": "^20[0-9]{2}-[0-9]{2}-[0-9]{2}$" }
+      }
+    }
+  }
+}

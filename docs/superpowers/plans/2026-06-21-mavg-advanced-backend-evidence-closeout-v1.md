@@ -486,22 +486,33 @@ Focused validation evidence on 2026-06-22: GREEN passed `MK_runtime_rhi_mavg_bro
 
 ## Task 11: Nanite Comparison Report Without Nanite Claims
 
+**Task ID:** `mavg-nanite-comparison-report-v1`
+
 **Files:**
 - Create: `docs/specs/2026-06-21-mavg-nanite-comparison-taxonomy-v1.md`
 - Create: `tools/validate-mavg-nanite-comparison.ps1`
 - Create: `schemas/mavg-nanite-comparison-report.schema.json`
+- Create: `tools/check-ai-integration-131-mavg-nanite-comparison.ps1`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Compose: `engine/agent/manifest.json`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
 
-- [ ] Define comparison axes from public Epic docs only: virtualized geometry, internal compressed data, fine-grained streaming, automatic LOD, instance/detail scale, fallback mesh behavior, ray tracing fallback behavior, data size, material limits, deformation limits, and platform fallback.
-- [ ] Use only first-party MIRAIKANAI assets and generated test scenes. Do not use Unreal Engine source code, copied Nanite data formats, or Epic sample assets unless a separate legal review records the license and need.
-- [ ] Emit `mavg_nanite_comparison_report_ready=1` when the report is complete and reproducible.
-- [ ] Force `mavg_nanite_compatible=0`, `mavg_nanite_equivalent=0`, and `mavg_nanite_superior=0` in the validator output.
-- [ ] If a future operator wants those claims, require a separate plan with legal review, public wording review, cross-engine benchmark methodology, and hosted artifact preservation.
-- [ ] Run:
+- [x] Define comparison axes from public Epic docs only: virtualized geometry system, internal compressed mesh format, fine-grained streaming, automatic LOD, cluster visibility culling, fallback mesh behavior, ray tracing fallback behavior, material support limits, deformation support limits, platform support limits, storage/memory residency, and authoring/import workflow.
+- [x] Use only first-party MIRAIKANAI assets, generated scenes, and public Epic documentation. Do not use Unreal Engine source code, copied private Nanite data formats, shader code, screenshots, benchmark captures, or Epic sample assets.
+- [x] Add `GameEngine.MavgNaniteComparisonReport.v1` with required official source rows, 12 comparison axes, clean-room policy booleans, and claim-policy booleans.
+- [x] Emit `mavg_nanite_comparison_report_ready=1` only for the schema-backed clean-room report.
+- [x] Force `mavg_nanite_compatible=0`, `mavg_nanite_equivalent=0`, `mavg_nanite_superior=0`, and `mavg_nanite_marketing_claim_allowed=0` in the validator output.
+- [x] If a future operator wants those claims, require a separate plan with legal review, public wording review, cross-engine benchmark methodology, hosted artifact preservation, and explicit product-claim approval.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-nanite-comparison.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-nanite-comparison.ps1 -RequireReady
 ```
+
+Focused validation evidence on 2026-06-22: GREEN passed both validator forms. Retained output is `mavg_nanite_comparison_report_status=ready`, `mavg_nanite_comparison_report_ready=1`, `mavg_nanite_comparison_axes=12`, `mavg_nanite_official_source_rows=2`, `mavg_nanite_public_docs_only=1`, `mavg_nanite_first_party_assets_only=1`, `mavg_nanite_unreal_source_used=0`, `mavg_nanite_private_format_used=0`, `mavg_nanite_epic_sample_assets_used=0`, `mavg_nanite_compatible=0`, `mavg_nanite_equivalent=0`, `mavg_nanite_superior=0`, and `mavg_nanite_marketing_claim_allowed=0`. This closes only the comparison report row; it does not promote Nanite compatibility, equivalence, superiority, mesh shader readiness, Metal readiness, package-visible broad MAVG backend readiness, broad CPU/GPU/memory optimization, renderer readiness, environment readiness, or commercial readiness.
 
 ## Task 12: Docs, Manifest, Static Guards, And Closeout
 
