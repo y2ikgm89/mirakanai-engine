@@ -1061,8 +1061,8 @@ foreach ($needle in @("CUDA/HIP/SYCL runtime dependency", "vcpkg.json feature", 
 if (@($productionLoop.optionalGpuComputeReview.validationRecipes) -notcontains "host-optional-gpu-compute-review") { Write-Error "engine/agent/manifest.json aiOperableProductionLoop.optionalGpuComputeReview validationRecipes missing host-optional-gpu-compute-review" }
 $optionalGpuComputeRecipe = @($manifest.validationRecipes | Where-Object { $_.name -eq "host-optional-gpu-compute-review" })
 if ($optionalGpuComputeRecipe.Count -ne 1) { Write-Error "engine/agent/manifest.json validationRecipes must include host-optional-gpu-compute-review" }
-if (-not (Test-Path (Join-Path $root "tools/check-optional-gpu-compute-review-evidence.ps1"))) { Write-Error "tools/check-optional-gpu-compute-review-evidence.ps1 must exist for host-optional-gpu-compute-review evidence validation" }
-foreach ($needle in @("tools/check-optional-gpu-compute-review-evidence.ps1", "-EvidenceRoot", "-RequireReady")) { Assert-ContainsText ([string]$optionalGpuComputeRecipe[0].command) $needle "engine/agent/manifest.json validationRecipes host-optional-gpu-compute-review command" }
+foreach ($scriptFile in @("tools/collect-optional-gpu-compute-review-evidence.ps1", "tools/check-optional-gpu-compute-review-evidence.ps1")) { if (-not (Test-Path (Join-Path $root $scriptFile))) { Write-Error "$scriptFile must exist for host-optional-gpu-compute-review evidence handling" } }
+foreach ($needle in @("tools/collect-optional-gpu-compute-review-evidence.ps1", "-Mode Import", "tools/check-optional-gpu-compute-review-evidence.ps1", "-EvidenceRoot", "-RequireReady")) { Assert-ContainsText ([string]$optionalGpuComputeRecipe[0].command) $needle "engine/agent/manifest.json validationRecipes host-optional-gpu-compute-review command" }
 Assert-ActiveProductionPlanDrift $productionLoop
 Assert-NoGameSourceRawAssetIdFromName
 $physicsBackendAdapterDecision = @($productionLoop.physicsBackendAdapterDecisions | Where-Object { $_.id -eq "physics-1-0-jolt-native-adapter" })
