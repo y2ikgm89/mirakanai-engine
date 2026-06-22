@@ -65,6 +65,9 @@ struct VulkanMavgMeshShaderLodDispatchDesc {
     std::span<const std::uint32_t> task_shader_spirv;
     std::span<const std::uint32_t> mesh_shader_spirv;
     std::span<const std::uint32_t> fragment_shader_spirv;
+    std::string_view task_shader_entry_point{"main"};
+    std::string_view mesh_shader_entry_point{"main"};
+    std::string_view fragment_shader_entry_point{"main"};
     std::span<const VulkanMavgMeshShaderLodTaskRow> task_rows;
     std::uint32_t render_width{64};
     std::uint32_t render_height{64};

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <span>
 #include <string>
 #include <vector>
@@ -239,6 +240,9 @@ MK_TEST("vulkan mavg mesh shader lod executes mesh shader when host supports it"
             .task_shader_spirv = std::span<const std::uint32_t>{task_artifact.words},
             .mesh_shader_spirv = std::span<const std::uint32_t>{mesh_artifact.words},
             .fragment_shader_spirv = std::span<const std::uint32_t>{fragment_artifact.words},
+            .task_shader_entry_point = "task_main",
+            .mesh_shader_entry_point = "mesh_main",
+            .fragment_shader_entry_point = "fragment_main",
             .task_rows = std::span<const mirakana::rhi::vulkan::VulkanMavgMeshShaderLodTaskRow>{&row, 1},
         });
 
@@ -247,6 +251,15 @@ MK_TEST("vulkan mavg mesh shader lod executes mesh shader when host supports it"
         MK_REQUIRE(!result.mavg_mesh_shader_lod_vulkan_ready);
         MK_REQUIRE(!result.diagnostic_text.empty());
         return;
+    }
+
+    if (!result.succeeded) {
+        std::cerr << "vulkan_mavg_mesh_shader_lod diagnostic=" << result.diagnostic_text
+                  << " stage=" << result.failure_stage << " created_pipeline=" << result.created_mesh_pipeline_state
+                  << " used_mesh=" << result.used_mesh_shader_stage << " used_task=" << result.used_task_shader_stage
+                  << " direct_calls=" << result.draw_mesh_tasks_direct_calls
+                  << " executed=" << result.executed_mesh_shader << " readback_nonzero=" << result.readback_nonzero
+                  << " readback_hash=" << result.readback_hash << '\n';
     }
 
     MK_REQUIRE(result.succeeded);

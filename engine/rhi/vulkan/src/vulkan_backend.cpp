@@ -183,6 +183,8 @@ inline constexpr std::uint32_t vulkan_command_buffer_level_primary = 0;
 inline constexpr std::uint32_t vulkan_shader_stage_vertex_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_shader_stage_fragment_bit = 0x00000010U;
 inline constexpr std::uint32_t vulkan_shader_stage_compute_bit = 0x00000020U;
+inline constexpr std::uint32_t vulkan_shader_stage_task_bit_ext = 0x00000040U;
+inline constexpr std::uint32_t vulkan_shader_stage_mesh_bit_ext = 0x00000080U;
 inline constexpr std::uint32_t vulkan_descriptor_type_sampler = 0;
 inline constexpr std::uint32_t vulkan_descriptor_type_sampled_image = 2;
 inline constexpr std::uint32_t vulkan_descriptor_type_storage_image = 3;
@@ -7277,6 +7279,79 @@ void VulkanRuntimeGraphicsPipeline::reset() noexcept {
     }
 }
 
+struct VulkanRuntimeMeshGraphicsPipeline::Impl {
+    std::shared_ptr<VulkanRuntimeDevice::Impl> device_owner;
+    NativeVulkanPipeline pipeline{0};
+    Format color_format{Format::unknown};
+    Format depth_format{Format::unknown};
+    bool used_task_shader_stage{false};
+    bool used_mesh_shader_stage{false};
+    bool used_vertex_input_state{false};
+    bool destroyed{false};
+
+    ~Impl() {
+        reset();
+    }
+
+    void reset() noexcept {
+        if (pipeline != 0) {
+            destroyed = true;
+        }
+        if (device_owner != nullptr && device_owner->device != nullptr && device_owner->destroy_pipeline != nullptr &&
+            pipeline != 0) {
+            device_owner->destroy_pipeline(device_owner->device, pipeline, nullptr);
+        }
+        pipeline = 0;
+    }
+};
+
+VulkanRuntimeMeshGraphicsPipeline::VulkanRuntimeMeshGraphicsPipeline() noexcept = default;
+
+VulkanRuntimeMeshGraphicsPipeline::~VulkanRuntimeMeshGraphicsPipeline() = default;
+
+VulkanRuntimeMeshGraphicsPipeline::VulkanRuntimeMeshGraphicsPipeline(
+    VulkanRuntimeMeshGraphicsPipeline&& other) noexcept = default;
+
+VulkanRuntimeMeshGraphicsPipeline&
+VulkanRuntimeMeshGraphicsPipeline::operator=(VulkanRuntimeMeshGraphicsPipeline&& other) noexcept = default;
+
+VulkanRuntimeMeshGraphicsPipeline::VulkanRuntimeMeshGraphicsPipeline(std::unique_ptr<Impl> impl) noexcept
+    : impl_(std::move(impl)) {}
+
+bool VulkanRuntimeMeshGraphicsPipeline::owns_pipeline() const noexcept {
+    return impl_ != nullptr && impl_->pipeline != 0;
+}
+
+bool VulkanRuntimeMeshGraphicsPipeline::destroyed() const noexcept {
+    return impl_ != nullptr && impl_->destroyed;
+}
+
+Format VulkanRuntimeMeshGraphicsPipeline::color_format() const noexcept {
+    return impl_ != nullptr ? impl_->color_format : Format::unknown;
+}
+
+Format VulkanRuntimeMeshGraphicsPipeline::depth_format() const noexcept {
+    return impl_ != nullptr ? impl_->depth_format : Format::unknown;
+}
+
+bool VulkanRuntimeMeshGraphicsPipeline::uses_task_shader_stage() const noexcept {
+    return impl_ != nullptr && impl_->used_task_shader_stage;
+}
+
+bool VulkanRuntimeMeshGraphicsPipeline::uses_mesh_shader_stage() const noexcept {
+    return impl_ != nullptr && impl_->used_mesh_shader_stage;
+}
+
+bool VulkanRuntimeMeshGraphicsPipeline::used_vertex_input_state() const noexcept {
+    return impl_ != nullptr && impl_->used_vertex_input_state;
+}
+
+void VulkanRuntimeMeshGraphicsPipeline::reset() noexcept {
+    if (impl_ != nullptr) {
+        impl_->reset();
+    }
+}
+
 struct VulkanRuntimeComputePipeline::Impl {
     std::shared_ptr<VulkanRuntimeDevice::Impl> device_owner;
     NativeVulkanPipeline pipeline{0};
@@ -12940,6 +13015,328 @@ create_runtime_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipel
     return result;
 }
 
+VulkanRuntimeMeshGraphicsPipelineCreateResult
+create_runtime_mesh_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
+                                      const VulkanRuntimeMeshGraphicsPipelineDesc& desc) {
+    VulkanRuntimeMeshGraphicsPipelineCreateResult result;
+    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
+        result.diagnostic = "Vulkan runtime device is not available";
+        return result;
+    }
+    if (!layout.owns_layout()) {
+        result.diagnostic = "Vulkan runtime pipeline layout is required";
+        return result;
+    }
+    if (layout.impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan mesh graphics pipeline objects must share one runtime device";
+        return result;
+    }
+    if (desc.mesh_shader_spirv.empty()) {
+        result.diagnostic = "Vulkan mesh shader SPIR-V bytecode is required";
+        return result;
+    }
+    if (desc.task_shader_spirv.empty()) {
+        result.diagnostic = "Vulkan task shader SPIR-V bytecode is required";
+        return result;
+    }
+    if (desc.fragment_shader_spirv.empty()) {
+        result.diagnostic = "Vulkan fragment shader SPIR-V bytecode is required";
+        return result;
+    }
+    if (!device.impl_->logical_device_plan.mesh_shader_enabled ||
+        !device.impl_->logical_device_plan.task_shader_enabled) {
+        result.diagnostic = "Vulkan mesh and task shader features must be enabled";
+        return result;
+    }
+    if (!desc.dynamic_rendering.supported) {
+        result.diagnostic = "Vulkan dynamic rendering plan is required";
+        return result;
+    }
+    if (!dynamic_rendering_color_format_supported(desc.color_format)) {
+        result.diagnostic = "Vulkan mesh graphics pipeline color format is unsupported";
+        return result;
+    }
+    if (std::ranges::find(desc.dynamic_rendering.color_formats, desc.color_format) ==
+        desc.dynamic_rendering.color_formats.end()) {
+        result.diagnostic = "Vulkan mesh graphics pipeline color format must match dynamic rendering plan";
+        return result;
+    }
+    if (!valid_depth_state_for_format(desc.depth_format, desc.depth_state)) {
+        result.diagnostic = "Vulkan mesh graphics pipeline depth state is invalid or unsupported";
+        return result;
+    }
+    if (desc.depth_format != Format::unknown) {
+        if (!dynamic_rendering_depth_format_supported(desc.depth_format)) {
+            result.diagnostic = "Vulkan mesh graphics pipeline depth format is unsupported";
+            return result;
+        }
+        if (!desc.dynamic_rendering.depth_attachment_enabled ||
+            desc.dynamic_rendering.depth_format != desc.depth_format) {
+            result.diagnostic = "Vulkan mesh graphics pipeline depth format must match dynamic rendering plan";
+            return result;
+        }
+    }
+    if (desc.task_entry_point.empty() || desc.mesh_entry_point.empty() || desc.fragment_entry_point.empty()) {
+        result.diagnostic = "Vulkan mesh graphics pipeline shader entry points are required";
+        return result;
+    }
+    if (device.impl_->create_shader_module == nullptr || device.impl_->destroy_shader_module == nullptr ||
+        device.impl_->create_graphics_pipelines == nullptr || device.impl_->destroy_pipeline == nullptr) {
+        result.diagnostic = "Vulkan mesh graphics pipeline commands are unavailable";
+        return result;
+    }
+
+    const auto validate_spirv_words = [](std::span<const std::uint32_t> words, std::string_view label,
+                                         std::string& diagnostic) {
+        if (words.size() < spirv_header_word_count) {
+            diagnostic = std::string{"Vulkan "} + std::string{label} + " shader SPIR-V header is incomplete";
+            return false;
+        }
+        if (words.front() != spirv_magic_word) {
+            diagnostic = std::string{"Vulkan "} + std::string{label} + " shader SPIR-V magic word is invalid";
+            return false;
+        }
+        return true;
+    };
+    if (!validate_spirv_words(desc.mesh_shader_spirv, "mesh", result.diagnostic) ||
+        !validate_spirv_words(desc.task_shader_spirv, "task", result.diagnostic) ||
+        !validate_spirv_words(desc.fragment_shader_spirv, "fragment", result.diagnostic)) {
+        return result;
+    }
+
+    NativeVulkanShaderModule task_shader = 0;
+    NativeVulkanShaderModule mesh_shader = 0;
+    NativeVulkanShaderModule fragment_shader = 0;
+    auto destroy_created_modules = [&device, &task_shader, &mesh_shader, &fragment_shader]() noexcept {
+        if (device.impl_ != nullptr && device.impl_->device != nullptr &&
+            device.impl_->destroy_shader_module != nullptr) {
+            if (fragment_shader != 0) {
+                device.impl_->destroy_shader_module(device.impl_->device, fragment_shader, nullptr);
+            }
+            if (mesh_shader != 0) {
+                device.impl_->destroy_shader_module(device.impl_->device, mesh_shader, nullptr);
+            }
+            if (task_shader != 0) {
+                device.impl_->destroy_shader_module(device.impl_->device, task_shader, nullptr);
+            }
+        }
+        task_shader = 0;
+        mesh_shader = 0;
+        fragment_shader = 0;
+    };
+    const auto create_shader_module = [&device](std::span<const std::uint32_t> spirv, NativeVulkanShaderModule& module,
+                                                std::string_view label, std::string& diagnostic) {
+        const NativeVulkanShaderModuleCreateInfo create_info{
+            .s_type = vulkan_structure_type_shader_module_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .code_size = spirv.size_bytes(),
+            .code = spirv.data(),
+        };
+        const auto create_result =
+            device.impl_->create_shader_module(device.impl_->device, &create_info, nullptr, &module);
+        if (create_result != vulkan_success || module == 0) {
+            diagnostic = vulkan_result_diagnostic(
+                std::string{"Vulkan vkCreateShaderModule failed for "} + std::string{label}, create_result);
+            return false;
+        }
+        return true;
+    };
+    if (!create_shader_module(desc.task_shader_spirv, task_shader, "task shader", result.diagnostic) ||
+        !create_shader_module(desc.mesh_shader_spirv, mesh_shader, "mesh shader", result.diagnostic) ||
+        !create_shader_module(desc.fragment_shader_spirv, fragment_shader, "fragment shader", result.diagnostic)) {
+        destroy_created_modules();
+        return result;
+    }
+
+    const std::string task_entry{desc.task_entry_point};
+    const std::string mesh_entry{desc.mesh_entry_point};
+    const std::string fragment_entry{desc.fragment_entry_point};
+    const std::array<NativeVulkanPipelineShaderStageCreateInfo, 3> shader_stages{{
+        {
+            .s_type = vulkan_structure_type_pipeline_shader_stage_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .stage = vulkan_shader_stage_task_bit_ext,
+            .module = task_shader,
+            .name = task_entry.c_str(),
+            .specialization_info = nullptr,
+        },
+        {
+            .s_type = vulkan_structure_type_pipeline_shader_stage_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .stage = vulkan_shader_stage_mesh_bit_ext,
+            .module = mesh_shader,
+            .name = mesh_entry.c_str(),
+            .specialization_info = nullptr,
+        },
+        {
+            .s_type = vulkan_structure_type_pipeline_shader_stage_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .stage = vulkan_shader_stage_fragment_bit,
+            .module = fragment_shader,
+            .name = fragment_entry.c_str(),
+            .specialization_info = nullptr,
+        },
+    }};
+    const NativeVulkanViewport viewport{
+        .x = 0.0F,
+        .y = 0.0F,
+        .width = 1.0F,
+        .height = 1.0F,
+        .min_depth = 0.0F,
+        .max_depth = 1.0F,
+    };
+    const NativeVulkanRect2D scissor{
+        .offset = NativeVulkanOffset2D{.x = 0, .y = 0},
+        .extent = NativeVulkanExtent2D{.width = 1, .height = 1},
+    };
+    const NativeVulkanPipelineViewportStateCreateInfo viewport_state{
+        .s_type = vulkan_structure_type_pipeline_viewport_state_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .viewport_count = 1,
+        .viewports = &viewport,
+        .scissor_count = 1,
+        .scissors = &scissor,
+    };
+    const NativeVulkanPipelineRasterizationStateCreateInfo rasterization{
+        .s_type = vulkan_structure_type_pipeline_rasterization_state_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .depth_clamp_enable = 0,
+        .rasterizer_discard_enable = 0,
+        .polygon_mode = vulkan_polygon_mode_fill,
+        .cull_mode = vulkan_cull_mode_none,
+        .front_face = vulkan_front_face_counter_clockwise,
+        .depth_bias_enable = 0,
+        .depth_bias_constant_factor = 0.0F,
+        .depth_bias_clamp = 0.0F,
+        .depth_bias_slope_factor = 0.0F,
+        .line_width = 1.0F,
+    };
+    const NativeVulkanPipelineMultisampleStateCreateInfo multisample{
+        .s_type = vulkan_structure_type_pipeline_multisample_state_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .rasterization_samples = vulkan_sample_count_1_bit,
+        .sample_shading_enable = 0,
+        .min_sample_shading = 1.0F,
+        .sample_mask = nullptr,
+        .alpha_to_coverage_enable = 0,
+        .alpha_to_one_enable = 0,
+    };
+    const NativeVulkanStencilOpState stencil{};
+    const NativeVulkanPipelineDepthStencilStateCreateInfo depth_stencil{
+        .s_type = vulkan_structure_type_pipeline_depth_stencil_state_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .depth_test_enable = desc.depth_state.depth_test_enabled ? 1U : 0U,
+        .depth_write_enable = desc.depth_state.depth_write_enabled ? 1U : 0U,
+        .depth_compare_op = native_vulkan_compare_op(desc.depth_state.depth_compare),
+        .depth_bounds_test_enable = 0,
+        .stencil_test_enable = 0,
+        .front = stencil,
+        .back = stencil,
+        .min_depth_bounds = 0.0F,
+        .max_depth_bounds = 1.0F,
+    };
+    const NativeVulkanPipelineColorBlendAttachmentState color_blend_attachment{
+        .blend_enable = 0,
+        .src_color_blend_factor = 0,
+        .dst_color_blend_factor = 0,
+        .color_blend_op = 0,
+        .src_alpha_blend_factor = 0,
+        .dst_alpha_blend_factor = 0,
+        .alpha_blend_op = 0,
+        .color_write_mask = vulkan_color_component_r_bit | vulkan_color_component_g_bit | vulkan_color_component_b_bit |
+                            vulkan_color_component_a_bit,
+    };
+    const NativeVulkanPipelineColorBlendStateCreateInfo color_blend{
+        .s_type = vulkan_structure_type_pipeline_color_blend_state_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .logic_op_enable = 0,
+        .logic_op = 0,
+        .attachment_count = 1,
+        .attachments = &color_blend_attachment,
+        .blend_constants = {0.0F, 0.0F, 0.0F, 0.0F},
+    };
+    const std::array<std::uint32_t, 2> dynamic_states{
+        vulkan_dynamic_state_viewport,
+        vulkan_dynamic_state_scissor,
+    };
+    const NativeVulkanPipelineDynamicStateCreateInfo dynamic_state{
+        .s_type = vulkan_structure_type_pipeline_dynamic_state_create_info,
+        .next = nullptr,
+        .flags = 0,
+        .dynamic_state_count = 2,
+        .dynamic_states = dynamic_states.data(),
+    };
+    const std::uint32_t color_format = native_vulkan_format(desc.color_format);
+    const NativeVulkanPipelineRenderingCreateInfo rendering{
+        .s_type = vulkan_structure_type_pipeline_rendering_create_info,
+        .next = nullptr,
+        .view_mask = 0,
+        .color_attachment_count = 1,
+        .color_attachment_formats = &color_format,
+        .depth_attachment_format = native_vulkan_format(desc.depth_format),
+        .stencil_attachment_format = 0,
+    };
+    const NativeVulkanGraphicsPipelineCreateInfo create_info{
+        .s_type = vulkan_structure_type_graphics_pipeline_create_info,
+        .next = &rendering,
+        .flags = 0,
+        .stage_count = static_cast<std::uint32_t>(shader_stages.size()),
+        .stages = shader_stages.data(),
+        .vertex_input_state = nullptr,
+        .input_assembly_state = nullptr,
+        .tessellation_state = nullptr,
+        .viewport_state = &viewport_state,
+        .rasterization_state = &rasterization,
+        .multisample_state = &multisample,
+        .depth_stencil_state = desc.depth_format != Format::unknown ? &depth_stencil : nullptr,
+        .color_blend_state = &color_blend,
+        .dynamic_state = &dynamic_state,
+        .layout = layout.impl_->layout,
+        .render_pass = 0,
+        .subpass = 0,
+        .base_pipeline_handle = 0,
+        .base_pipeline_index = -1,
+    };
+
+    NativeVulkanPipeline pipeline = 0;
+    const auto create_result =
+        device.impl_->create_graphics_pipelines(device.impl_->device, 0, 1, &create_info, nullptr, &pipeline);
+    destroy_created_modules();
+    if (create_result != vulkan_success || pipeline == 0) {
+        result.diagnostic =
+            vulkan_result_diagnostic("Vulkan vkCreateGraphicsPipelines failed for mesh pipeline", create_result);
+        return result;
+    }
+
+    vulkan_label_runtime_object(static_cast<void*>(device.impl_.get()), vulkan_object_type_pipeline, pipeline,
+                                "GameEngine.RHI.Vulkan.MeshGraphicsPipeline");
+
+    auto impl = std::make_unique<VulkanRuntimeMeshGraphicsPipeline::Impl>();
+    impl->device_owner = device.impl_;
+    impl->pipeline = pipeline;
+    impl->color_format = desc.color_format;
+    impl->depth_format = desc.depth_format;
+    impl->used_task_shader_stage = true;
+    impl->used_mesh_shader_stage = true;
+    impl->used_vertex_input_state = false;
+    result.pipeline = VulkanRuntimeMeshGraphicsPipeline{std::move(impl)};
+    result.created = true;
+    result.used_task_shader_stage = true;
+    result.used_mesh_shader_stage = true;
+    result.used_vertex_input_state = false;
+    result.diagnostic = "Vulkan runtime mesh graphics pipeline owner ready";
+    return result;
+}
+
 VulkanRuntimeComputePipelineCreateResult create_runtime_compute_pipeline(VulkanRuntimeDevice& device,
                                                                          VulkanRuntimePipelineLayout& layout,
                                                                          VulkanRuntimeShaderModule& compute_shader,
@@ -14425,6 +14822,195 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     result.ended_rendering = true;
     result.recorded = true;
     result.diagnostic = "Vulkan texture dynamic rendering draw recorded";
+    return result;
+}
+
+VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+    VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+    VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc) {
+    VulkanRuntimeTextureRenderingMeshTasksDrawResult result;
+    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
+        result.diagnostic = "Vulkan runtime device is not available";
+        return result;
+    }
+    if (!command_pool.owns_primary_command_buffer()) {
+        result.diagnostic = "Vulkan runtime command pool is required";
+        return result;
+    }
+    if (command_pool.impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan mesh dynamic rendering objects must share one runtime device";
+        return result;
+    }
+    if (!command_pool.recording()) {
+        result.diagnostic = "Vulkan command buffer must be recording";
+        return result;
+    }
+    if (!texture.owns_image() || texture.impl_->image_view == 0 ||
+        !has_flag(texture.usage(), TextureUsage::render_target)) {
+        result.diagnostic = "Vulkan runtime render target texture is required";
+        return result;
+    }
+    if (!pipeline.owns_pipeline()) {
+        result.diagnostic = "Vulkan runtime mesh graphics pipeline is required";
+        return result;
+    }
+    if (texture.impl_->device_owner != device.impl_ || pipeline.impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan mesh dynamic rendering objects must share one runtime device";
+        return result;
+    }
+    if (!pipeline.uses_task_shader_stage() || !pipeline.uses_mesh_shader_stage() ||
+        pipeline.used_vertex_input_state()) {
+        result.diagnostic = "Vulkan mesh graphics pipeline must use task/mesh stages without vertex input state";
+        return result;
+    }
+    if (!desc.dynamic_rendering.supported) {
+        result.diagnostic = "Vulkan dynamic rendering plan is required";
+        return result;
+    }
+    if (!desc.dynamic_rendering.begin_rendering_command_resolved ||
+        !desc.dynamic_rendering.end_rendering_command_resolved) {
+        result.diagnostic = "Vulkan dynamic rendering commands are unavailable";
+        return result;
+    }
+    if (!valid_extent(desc.dynamic_rendering.extent)) {
+        result.diagnostic = "Vulkan dynamic rendering extent is required";
+        return result;
+    }
+    if (desc.dynamic_rendering.color_attachment_count != 1 || desc.dynamic_rendering.color_formats.size() != 1) {
+        result.diagnostic = "Vulkan dynamic rendering requires exactly one texture color attachment";
+        return result;
+    }
+    if (pipeline.color_format() != texture.format()) {
+        result.diagnostic = "Vulkan mesh dynamic rendering color format must match texture";
+        return result;
+    }
+    if (desc.dynamic_rendering.color_formats.front() != pipeline.color_format()) {
+        result.diagnostic = "Vulkan mesh dynamic rendering color format must match plan";
+        return result;
+    }
+    if (pipeline.depth_format() !=
+        (desc.dynamic_rendering.depth_attachment_enabled ? desc.dynamic_rendering.depth_format : Format::unknown)) {
+        result.diagnostic = "Vulkan mesh dynamic rendering depth format must match plan";
+        return result;
+    }
+    if (desc.dynamic_rendering.extent.width != texture.extent().width ||
+        desc.dynamic_rendering.extent.height != texture.extent().height) {
+        result.diagnostic = "Vulkan mesh dynamic rendering extent must match texture";
+        return result;
+    }
+    if (desc.group_count_x == 0 || desc.group_count_y == 0 || desc.group_count_z == 0) {
+        result.diagnostic = "Vulkan mesh task draw workgroup counts must be non-zero";
+        return result;
+    }
+    if (desc.dynamic_rendering.depth_attachment_enabled) {
+        if (desc.depth_texture == nullptr || !desc.depth_texture->owns_image() ||
+            desc.depth_texture->impl_->image_view == 0) {
+            result.diagnostic = "Vulkan mesh dynamic rendering depth texture is required";
+            return result;
+        }
+        if (desc.depth_texture->impl_->device_owner != device.impl_) {
+            result.diagnostic = "Vulkan mesh dynamic rendering depth texture must share one runtime device";
+            return result;
+        }
+        if (!has_flag(desc.depth_texture->usage(), TextureUsage::depth_stencil) ||
+            desc.depth_texture->format() != desc.dynamic_rendering.depth_format) {
+            result.diagnostic = "Vulkan mesh dynamic rendering depth texture must match the plan";
+            return result;
+        }
+        const auto depth_extent = desc.depth_texture->extent();
+        if (depth_extent.width != desc.dynamic_rendering.extent.width ||
+            depth_extent.height != desc.dynamic_rendering.extent.height || depth_extent.depth != 1) {
+            result.diagnostic = "Vulkan mesh dynamic rendering depth extent must match color extent";
+            return result;
+        }
+        if (desc.depth_load_action == LoadAction::clear && !valid_clear_depth(desc.clear_depth)) {
+            result.diagnostic = "Vulkan mesh dynamic rendering depth clear value must be finite and in [0, 1]";
+            return result;
+        }
+    } else if (desc.depth_texture != nullptr) {
+        result.diagnostic = "Vulkan mesh dynamic rendering depth texture requires a depth plan";
+        return result;
+    }
+    if (device.impl_->cmd_begin_rendering == nullptr || device.impl_->cmd_end_rendering == nullptr ||
+        device.impl_->cmd_bind_pipeline == nullptr || device.impl_->cmd_set_viewport == nullptr ||
+        device.impl_->cmd_set_scissor == nullptr || device.impl_->cmd_draw_mesh_tasks == nullptr) {
+        result.diagnostic = "Vulkan mesh dynamic rendering draw commands are unavailable";
+        return result;
+    }
+
+    const auto extent = desc.dynamic_rendering.extent;
+    const NativeVulkanRenderingAttachmentInfo color_attachment{
+        .s_type = vulkan_structure_type_rendering_attachment_info,
+        .next = nullptr,
+        .image_view = texture.impl_->image_view,
+        .image_layout = vulkan_image_layout_color_attachment_optimal,
+        .resolve_mode = vulkan_resolve_mode_none,
+        .resolve_image_view = 0,
+        .resolve_image_layout = vulkan_image_layout_color_attachment_optimal,
+        .load_op = native_vulkan_load_op(desc.color_load_action),
+        .store_op = native_vulkan_store_op(desc.color_store_action),
+        .clear_value = native_vulkan_clear_color(desc.clear_color),
+    };
+    NativeVulkanRenderingAttachmentInfo depth_attachment{};
+    const NativeVulkanRenderingAttachmentInfo* depth_attachment_ptr = nullptr;
+    if (desc.dynamic_rendering.depth_attachment_enabled) {
+        depth_attachment = NativeVulkanRenderingAttachmentInfo{
+            .s_type = vulkan_structure_type_rendering_attachment_info,
+            .next = nullptr,
+            .image_view = desc.depth_texture->impl_->image_view,
+            .image_layout = vulkan_image_layout_depth_stencil_attachment_optimal,
+            .resolve_mode = vulkan_resolve_mode_none,
+            .resolve_image_view = 0,
+            .resolve_image_layout = vulkan_image_layout_depth_stencil_attachment_optimal,
+            .load_op = native_vulkan_load_op(desc.depth_load_action),
+            .store_op = native_vulkan_store_op(desc.depth_store_action),
+            .clear_value = native_vulkan_clear_depth(desc.clear_depth),
+        };
+        depth_attachment_ptr = &depth_attachment;
+    }
+    const NativeVulkanRect2D render_area{
+        .offset = NativeVulkanOffset2D{.x = 0, .y = 0},
+        .extent = NativeVulkanExtent2D{.width = extent.width, .height = extent.height},
+    };
+    const NativeVulkanRenderingInfo rendering_info{
+        .s_type = vulkan_structure_type_rendering_info,
+        .next = nullptr,
+        .flags = 0,
+        .render_area = render_area,
+        .layer_count = 1,
+        .view_mask = 0,
+        .color_attachment_count = 1,
+        .color_attachments = &color_attachment,
+        .depth_attachment = depth_attachment_ptr,
+        .stencil_attachment = nullptr,
+    };
+    const NativeVulkanViewport viewport{
+        .x = 0.0F,
+        .y = 0.0F,
+        .width = static_cast<float>(extent.width),
+        .height = static_cast<float>(extent.height),
+        .min_depth = 0.0F,
+        .max_depth = 1.0F,
+    };
+    const NativeVulkanRect2D scissor{
+        .offset = NativeVulkanOffset2D{.x = 0, .y = 0},
+        .extent = NativeVulkanExtent2D{.width = extent.width, .height = extent.height},
+    };
+
+    auto* const command_buffer = command_pool.impl_->primary_command_buffer;
+    device.impl_->cmd_begin_rendering(command_buffer, &rendering_info);
+    result.began_rendering = true;
+    device.impl_->cmd_set_viewport(command_buffer, 0, 1, &viewport);
+    device.impl_->cmd_set_scissor(command_buffer, 0, 1, &scissor);
+    device.impl_->cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, pipeline.impl_->pipeline);
+    result.bound_pipeline = true;
+    device.impl_->cmd_draw_mesh_tasks(command_buffer, desc.group_count_x, desc.group_count_y, desc.group_count_z);
+    result.drew = true;
+    result.direct_draw_calls = 1U;
+    device.impl_->cmd_end_rendering(command_buffer);
+    result.ended_rendering = true;
+    result.recorded = true;
+    result.diagnostic = "Vulkan texture dynamic rendering mesh tasks draw recorded";
     return result;
 }
 

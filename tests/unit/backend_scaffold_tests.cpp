@@ -1733,6 +1733,56 @@ MK_TEST("vulkan runtime pipeline layout and graphics pipeline owners hide native
     MK_REQUIRE(pipeline_result.pipeline.destroyed());
 }
 
+MK_TEST("vulkan runtime mesh graphics pipeline keeps mesh stages backend private") {
+    static_assert(!std::is_copy_constructible_v<mirakana::rhi::vulkan::VulkanRuntimeMeshGraphicsPipeline>);
+    static_assert(!std::is_copy_assignable_v<mirakana::rhi::vulkan::VulkanRuntimeMeshGraphicsPipeline>);
+    static_assert(std::is_move_constructible_v<mirakana::rhi::vulkan::VulkanRuntimeMeshGraphicsPipeline>);
+    static_assert(std::is_move_assignable_v<mirakana::rhi::vulkan::VulkanRuntimeMeshGraphicsPipeline>);
+
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineRuntimeMeshGraphicsPipelineOwner";
+    instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    instance_desc.required_extensions = {};
+
+    mirakana::rhi::vulkan::VulkanLogicalDeviceCreateDesc device_desc;
+    device_desc.require_present_queue = false;
+    device_desc.require_mesh_shader = true;
+    device_desc.require_task_shader = true;
+
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device({}, instance_desc, device_desc);
+    if (!device_result.created) {
+        MK_REQUIRE(!device_result.diagnostic.empty());
+        return;
+    }
+
+    auto layout_result = mirakana::rhi::vulkan::create_runtime_pipeline_layout(
+        device_result.device, mirakana::rhi::vulkan::VulkanRuntimePipelineLayoutDesc{});
+    if (!layout_result.created) {
+        MK_REQUIRE(!layout_result.diagnostic.empty());
+        return;
+    }
+
+    mirakana::rhi::vulkan::VulkanDynamicRenderingDesc rendering_desc;
+    rendering_desc.extent = mirakana::rhi::Extent2D{.width = 16, .height = 16};
+    rendering_desc.color_attachments.push_back(mirakana::rhi::vulkan::VulkanDynamicRenderingColorAttachmentDesc{
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .load_action = mirakana::rhi::LoadAction::clear,
+        .store_action = mirakana::rhi::StoreAction::store,
+    });
+    const auto dynamic_rendering =
+        mirakana::rhi::vulkan::build_dynamic_rendering_plan(rendering_desc, device_result.device.command_plan());
+
+    const auto missing_mesh_shader = mirakana::rhi::vulkan::create_runtime_mesh_graphics_pipeline(
+        device_result.device, layout_result.layout,
+        mirakana::rhi::vulkan::VulkanRuntimeMeshGraphicsPipelineDesc{
+            .dynamic_rendering = dynamic_rendering,
+            .color_format = mirakana::rhi::Format::bgra8_unorm,
+        });
+    MK_REQUIRE(!missing_mesh_shader.created);
+    MK_REQUIRE(!missing_mesh_shader.used_vertex_input_state);
+    MK_REQUIRE(missing_mesh_shader.diagnostic == "Vulkan mesh shader SPIR-V bytecode is required");
+}
+
 MK_TEST("vulkan runtime swapchain owns surface images and image views without exposing handles") {
     static_assert(!std::is_copy_constructible_v<mirakana::rhi::vulkan::VulkanRuntimeSwapchain>);
     static_assert(!std::is_copy_assignable_v<mirakana::rhi::vulkan::VulkanRuntimeSwapchain>);

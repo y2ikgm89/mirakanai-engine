@@ -455,6 +455,8 @@ struct VulkanRuntimePipelineLayoutDesc;
 struct VulkanRuntimePipelineLayoutCreateResult;
 struct VulkanRuntimeGraphicsPipelineDesc;
 struct VulkanRuntimeGraphicsPipelineCreateResult;
+struct VulkanRuntimeMeshGraphicsPipelineDesc;
+struct VulkanRuntimeMeshGraphicsPipelineCreateResult;
 struct VulkanRuntimeComputePipelineDesc;
 struct VulkanRuntimeComputePipelineCreateResult;
 struct VulkanRuntimeComputePipelineBindResult;
@@ -474,6 +476,8 @@ struct VulkanRuntimeTextureRenderingClearDesc;
 struct VulkanRuntimeDynamicRenderingDrawDesc;
 struct VulkanRuntimeTextureRenderingDrawDesc;
 struct VulkanRuntimeDynamicRenderingDrawResult;
+struct VulkanRuntimeTextureRenderingMeshTasksDrawDesc;
+struct VulkanRuntimeTextureRenderingMeshTasksDrawResult;
 struct VulkanRuntimeSwapchainFrameBarrierDesc;
 struct VulkanRuntimeSwapchainFrameBarrierResult;
 struct VulkanRuntimeCommandBufferSubmitDesc;
@@ -508,6 +512,7 @@ class VulkanRuntimeDescriptorSetLayout;
 class VulkanRuntimeDescriptorSet;
 class VulkanRuntimePipelineLayout;
 class VulkanRuntimeGraphicsPipeline;
+class VulkanRuntimeMeshGraphicsPipeline;
 class VulkanRuntimeComputePipeline;
 class VulkanRuntimeSwapchain;
 class VulkanRuntimeFrameSync;
@@ -724,6 +729,9 @@ class VulkanRuntimeDevice {
     friend VulkanRuntimeGraphicsPipelineCreateResult create_runtime_graphics_pipeline(
         VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout, VulkanRuntimeShaderModule& vertex_shader,
         VulkanRuntimeShaderModule& fragment_shader, const VulkanRuntimeGraphicsPipelineDesc& desc);
+    friend VulkanRuntimeMeshGraphicsPipelineCreateResult
+    create_runtime_mesh_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
+                                          const VulkanRuntimeMeshGraphicsPipelineDesc& desc);
     friend VulkanRuntimeComputePipelineCreateResult
     create_runtime_compute_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
                                     VulkanRuntimeShaderModule& compute_shader,
@@ -755,6 +763,9 @@ class VulkanRuntimeDevice {
     record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                           VulkanRuntimeTexture& texture, VulkanRuntimeGraphicsPipeline& pipeline,
                                           const VulkanRuntimeTextureRenderingDrawDesc& desc);
+    friend VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+        VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+        VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc);
     friend VulkanRuntimeDynamicRenderingClearResult
     record_runtime_dynamic_rendering_clear(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                            VulkanRuntimeSwapchain& swapchain,
@@ -812,6 +823,7 @@ class VulkanRuntimeDevice {
     friend class VulkanRuntimeDescriptorSet;
     friend class VulkanRuntimePipelineLayout;
     friend class VulkanRuntimeGraphicsPipeline;
+    friend class VulkanRuntimeMeshGraphicsPipeline;
     friend class VulkanRuntimeComputePipeline;
     friend class VulkanRuntimeSwapchain;
     friend class VulkanRuntimeFrameSync;
@@ -876,6 +888,9 @@ class VulkanRuntimeCommandPool {
     record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                           VulkanRuntimeTexture& texture, VulkanRuntimeGraphicsPipeline& pipeline,
                                           const VulkanRuntimeTextureRenderingDrawDesc& desc);
+    friend VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+        VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+        VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc);
     friend VulkanRuntimeDynamicRenderingClearResult
     record_runtime_dynamic_rendering_clear(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                            VulkanRuntimeSwapchain& swapchain,
@@ -1052,6 +1067,9 @@ class VulkanRuntimeTexture {
     record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                           VulkanRuntimeTexture& texture, VulkanRuntimeGraphicsPipeline& pipeline,
                                           const VulkanRuntimeTextureRenderingDrawDesc& desc);
+    friend VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+        VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+        VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc);
     friend VulkanRuntimeTextureBarrierResult
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
@@ -1292,6 +1310,9 @@ class VulkanRuntimePipelineLayout {
     friend VulkanRuntimeGraphicsPipelineCreateResult create_runtime_graphics_pipeline(
         VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout, VulkanRuntimeShaderModule& vertex_shader,
         VulkanRuntimeShaderModule& fragment_shader, const VulkanRuntimeGraphicsPipelineDesc& desc);
+    friend VulkanRuntimeMeshGraphicsPipelineCreateResult
+    create_runtime_mesh_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
+                                          const VulkanRuntimeMeshGraphicsPipelineDesc& desc);
     friend VulkanRuntimeComputePipelineCreateResult
     create_runtime_compute_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
                                     VulkanRuntimeShaderModule& compute_shader,
@@ -1362,6 +1383,63 @@ class VulkanRuntimeGraphicsPipeline {
 struct VulkanRuntimeGraphicsPipelineCreateResult {
     VulkanRuntimeGraphicsPipeline pipeline;
     bool created{false};
+    std::string diagnostic;
+};
+
+struct VulkanRuntimeMeshGraphicsPipelineDesc {
+    VulkanDynamicRenderingPlan dynamic_rendering;
+    Format color_format{Format::unknown};
+    Format depth_format{Format::unknown};
+    std::span<const std::uint32_t> task_shader_spirv;
+    std::span<const std::uint32_t> mesh_shader_spirv;
+    std::span<const std::uint32_t> fragment_shader_spirv;
+    std::string_view task_entry_point{"main"};
+    std::string_view mesh_entry_point{"main"};
+    std::string_view fragment_entry_point{"main"};
+    DepthStencilStateDesc depth_state;
+};
+
+class VulkanRuntimeMeshGraphicsPipeline {
+  public:
+    VulkanRuntimeMeshGraphicsPipeline() noexcept;
+    ~VulkanRuntimeMeshGraphicsPipeline();
+
+    VulkanRuntimeMeshGraphicsPipeline(VulkanRuntimeMeshGraphicsPipeline&& other) noexcept;
+    VulkanRuntimeMeshGraphicsPipeline& operator=(VulkanRuntimeMeshGraphicsPipeline&& other) noexcept;
+
+    VulkanRuntimeMeshGraphicsPipeline(const VulkanRuntimeMeshGraphicsPipeline&) = delete;
+    VulkanRuntimeMeshGraphicsPipeline& operator=(const VulkanRuntimeMeshGraphicsPipeline&) = delete;
+
+    [[nodiscard]] bool owns_pipeline() const noexcept;
+    [[nodiscard]] bool destroyed() const noexcept;
+    [[nodiscard]] Format color_format() const noexcept;
+    [[nodiscard]] Format depth_format() const noexcept;
+    [[nodiscard]] bool uses_task_shader_stage() const noexcept;
+    [[nodiscard]] bool uses_mesh_shader_stage() const noexcept;
+    [[nodiscard]] bool used_vertex_input_state() const noexcept;
+    void reset() noexcept;
+
+  private:
+    struct Impl;
+
+    explicit VulkanRuntimeMeshGraphicsPipeline(std::unique_ptr<Impl> impl) noexcept;
+
+    std::unique_ptr<Impl> impl_;
+
+    friend VulkanRuntimeMeshGraphicsPipelineCreateResult
+    create_runtime_mesh_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
+                                          const VulkanRuntimeMeshGraphicsPipelineDesc& desc);
+    friend VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+        VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+        VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc);
+};
+
+struct VulkanRuntimeMeshGraphicsPipelineCreateResult {
+    VulkanRuntimeMeshGraphicsPipeline pipeline;
+    bool created{false};
+    bool used_task_shader_stage{false};
+    bool used_mesh_shader_stage{false};
+    bool used_vertex_input_state{false};
     std::string diagnostic;
 };
 
@@ -1706,6 +1784,30 @@ struct VulkanRuntimeTextureRenderingDrawDesc {
     ClearDepthValue clear_depth;
 };
 
+struct VulkanRuntimeTextureRenderingMeshTasksDrawDesc {
+    VulkanDynamicRenderingPlan dynamic_rendering;
+    std::uint32_t group_count_x{1};
+    std::uint32_t group_count_y{1};
+    std::uint32_t group_count_z{1};
+    LoadAction color_load_action{LoadAction::clear};
+    StoreAction color_store_action{StoreAction::store};
+    ClearColorValue clear_color;
+    VulkanRuntimeTexture* depth_texture{nullptr};
+    LoadAction depth_load_action{LoadAction::clear};
+    StoreAction depth_store_action{StoreAction::store};
+    ClearDepthValue clear_depth;
+};
+
+struct VulkanRuntimeTextureRenderingMeshTasksDrawResult {
+    bool recorded{false};
+    bool began_rendering{false};
+    bool bound_pipeline{false};
+    bool drew{false};
+    bool ended_rendering{false};
+    std::uint32_t direct_draw_calls{0};
+    std::string diagnostic;
+};
+
 struct VulkanRuntimeSwapchainFrameBarrierDesc {
     VulkanFrameSynchronizationBarrier barrier;
     std::uint32_t image_index{0};
@@ -2012,6 +2114,9 @@ create_runtime_pipeline_layout(VulkanRuntimeDevice& device, const VulkanRuntimeP
 create_runtime_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
                                  VulkanRuntimeShaderModule& vertex_shader, VulkanRuntimeShaderModule& fragment_shader,
                                  const VulkanRuntimeGraphicsPipelineDesc& desc);
+[[nodiscard]] VulkanRuntimeMeshGraphicsPipelineCreateResult
+create_runtime_mesh_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
+                                      const VulkanRuntimeMeshGraphicsPipelineDesc& desc);
 [[nodiscard]] VulkanRuntimeComputePipelineCreateResult
 create_runtime_compute_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipelineLayout& layout,
                                 VulkanRuntimeShaderModule& compute_shader,
@@ -2034,6 +2139,9 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
 record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                       VulkanRuntimeTexture& texture, VulkanRuntimeGraphicsPipeline& pipeline,
                                       const VulkanRuntimeTextureRenderingDrawDesc& desc);
+[[nodiscard]] VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+    VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+    VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc);
 [[nodiscard]] VulkanRuntimeDynamicRenderingClearResult
 record_runtime_dynamic_rendering_clear(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                        VulkanRuntimeSwapchain& swapchain,
