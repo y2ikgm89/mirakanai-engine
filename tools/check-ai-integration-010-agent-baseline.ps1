@@ -2431,7 +2431,8 @@ Assert-ContainsText $productionReadinessAuditPlanText "pwsh -NoProfile -Executio
 Assert-ContainsText $productionReadinessAuditPlanText "production-readiness-audit-check: ok" "Production 1.0 Readiness Audit plan"
 Assert-ContainsText $productionReadinessAuditScriptText "unsupportedProductionGaps" "tools/check-production-readiness-audit.ps1"
 Assert-ContainsText $productionReadinessAuditScriptText "hostGates" "tools/check-production-readiness-audit.ps1"
-foreach ($needle in @("production-readiness-audit: host_gates=", "production-readiness-audit: host_gate_status[", "production-readiness-audit: host_gate=")) {
+Assert-ContainsText $productionReadinessAuditScriptText "residualClass" "tools/check-production-readiness-audit.ps1"
+foreach ($needle in @("production-readiness-audit: host_gates=", "production-readiness-audit: host_gate_status[", "production-readiness-audit: host_gate_residual_class[", "production-readiness-audit: host_gate=")) {
     Assert-ContainsText $productionReadinessAuditScriptText $needle "tools/check-production-readiness-audit.ps1"
 }
 Assert-ContainsText $productionReadinessAuditScriptText "production-readiness-audit-check: ok" "tools/check-production-readiness-audit.ps1"

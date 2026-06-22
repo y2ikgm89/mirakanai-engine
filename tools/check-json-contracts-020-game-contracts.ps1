@@ -747,7 +747,21 @@ foreach ($gap in $productionLoop.unsupportedProductionGaps) {
     $knownUnsupportedGapIds[$gap.id] = $true
 }
 $knownHostGateIds = @{}
+$allowedHostGateResidualClasses = @("ready", "external-artifact-required", "platform-host-required", "host-operation-required")
 foreach ($hostGate in $productionLoop.hostGates) {
+    Assert-Properties $hostGate @("id", "status", "residualClass", "hosts", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop hostGates"
+    if ($allowedProductionStatuses -notcontains $hostGate.status) {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' has invalid status: $($hostGate.status)"
+    }
+    if ($allowedHostGateResidualClasses -notcontains $hostGate.residualClass) {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' has invalid residualClass: $($hostGate.residualClass)"
+    }
+    if ($hostGate.status -eq "ready" -and $hostGate.residualClass -ne "ready") {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' is ready but residualClass is $($hostGate.residualClass)"
+    }
+    if ($hostGate.status -ne "ready" -and $hostGate.residualClass -eq "ready") {
+        Write-Error "engine manifest aiOperableProductionLoop host gate '$($hostGate.id)' is not ready but residualClass is ready"
+    }
     $knownHostGateIds[$hostGate.id] = $true
 }
 $commandSurfaceIds = @{}

@@ -118,10 +118,16 @@ foreach ($status in @("ready", "host-gated", "planned", "blocked")) {
 
 $seenHostGateIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 $hostGateStatusCounts = @{}
+$allowedHostGateResidualClasses = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+foreach ($residualClass in @("ready", "external-artifact-required", "platform-host-required", "host-operation-required")) {
+    $allowedHostGateResidualClasses.Add($residualClass) | Out-Null
+}
+$hostGateResidualClassCounts = @{}
 
 foreach ($hostGate in $hostGates) {
     $id = [string]$hostGate.id
     $status = [string]$hostGate.status
+    $residualClass = [string]$hostGate.residualClass
     $hosts = @($hostGate.hosts)
     $validationRecipes = @($hostGate.validationRecipes)
     $notes = [string]$hostGate.notes
@@ -137,6 +143,18 @@ foreach ($hostGate in $hostGates) {
     }
     if (-not $allowedHostGateStatuses.Contains($status)) {
         Write-Error "hostGates[$id] has unexpected status '$status'"
+    }
+    if ([string]::IsNullOrWhiteSpace($residualClass)) {
+        Write-Error "hostGates[$id] must set residualClass"
+    }
+    if (-not $allowedHostGateResidualClasses.Contains($residualClass)) {
+        Write-Error "hostGates[$id] has unexpected residualClass '$residualClass'"
+    }
+    if ($status -eq "ready" -and $residualClass -ne "ready") {
+        Write-Error "hostGates[$id] is ready but residualClass is '$residualClass'"
+    }
+    if ($status -ne "ready" -and $residualClass -eq "ready") {
+        Write-Error "hostGates[$id] is not ready but residualClass is ready"
     }
     if ($hosts.Count -eq 0) {
         Write-Error "hostGates[$id] must list hosts"
@@ -168,6 +186,10 @@ foreach ($hostGate in $hostGates) {
         $hostGateStatusCounts[$status] = 0
     }
     $hostGateStatusCounts[$status] += 1
+    if (-not $hostGateResidualClassCounts.ContainsKey($residualClass)) {
+        $hostGateResidualClassCounts[$residualClass] = 0
+    }
+    $hostGateResidualClassCounts[$residualClass] += 1
 }
 
 Write-Host "production-readiness-audit: unsupported_gaps=$($gaps.Count)"
@@ -182,9 +204,12 @@ Write-Host "production-readiness-audit: host_gates=$($hostGates.Count)"
 foreach ($status in ($hostGateStatusCounts.Keys | Sort-Object)) {
     Write-Host "production-readiness-audit: host_gate_status[$status]=$($hostGateStatusCounts[$status])"
 }
+foreach ($residualClass in ($hostGateResidualClassCounts.Keys | Sort-Object)) {
+    Write-Host "production-readiness-audit: host_gate_residual_class[$residualClass]=$($hostGateResidualClassCounts[$residualClass])"
+}
 foreach ($hostGate in ($hostGates | Sort-Object id)) {
     $hostCount = @($hostGate.hosts).Count
     $recipeCount = @($hostGate.validationRecipes).Count
-    Write-Host "production-readiness-audit: host_gate=$($hostGate.id) status=$($hostGate.status) hosts=$hostCount recipes=$recipeCount"
+    Write-Host "production-readiness-audit: host_gate=$($hostGate.id) status=$($hostGate.status) residual_class=$($hostGate.residualClass) hosts=$hostCount recipes=$recipeCount"
 }
 Write-Host "production-readiness-audit-check: ok"

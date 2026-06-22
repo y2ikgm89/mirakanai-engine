@@ -365,7 +365,12 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "status", "hosts", "validationRecipes", "notes"]
+        "required": ["id", "status", "residualClass", "hosts", "validationRecipes", "notes"],
+        "properties": {
+          "residualClass": {
+            "enum": ["ready", "external-artifact-required", "platform-host-required", "host-operation-required"]
+          }
+        }
       }
     },
     "validationRecipeMap": {

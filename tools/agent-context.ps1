@@ -57,8 +57,9 @@ function New-MinimalManifestView([PSCustomObject]$full) {
         })
     $hgs = @($loop.hostGates | ForEach-Object {
             [PSCustomObject]@{
-                id     = $_.id
-                status = $_.status
+                id            = $_.id
+                status        = $_.status
+                residualClass = $_.residualClass
             }
         })
     return [PSCustomObject]@{
