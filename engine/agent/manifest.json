@@ -10127,7 +10127,7 @@
       },
       {
         "id": "windows-msvc-desktop-editor",
-        "status": "host-gated",
+        "status": "ready",
         "hosts": [
           "windows",
           "Visual Studio desktop-editor preset",
@@ -10136,7 +10136,7 @@
         "validationRecipes": [
           "desktop-editor"
         ],
-        "notes": "The optional native MK_editor lane is Windows-only and validates Win32/first-party retained UI/Direct3D 12 smoke behavior without SDL3, UI middleware, vcpkg UI packages, or public native handles."
+        "notes": "The optional native MK_editor lane is Windows-only and validates Win32/first-party retained UI/Direct3D 12 smoke behavior without SDL3, UI middleware, vcpkg UI packages, or public native handles. Local Windows MSVC host evidence on 2026-06-22 in branch codex/host-gate-audit ran pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1 from an isolated linked worktree after tools/prepare-worktree.ps1, configured the desktop-editor preset, built MK_editor and dependencies, and passed CTest 146/146 including MK_editor_native_shell_tests, MK_editor_smoke, MK_d3d12_rhi_tests, and editor game module driver load tests."
       },
       {
         "id": "windows-msvc-dev-editor-game-module-driver-ctest",

@@ -7027,6 +7027,7 @@ struct JobExecutionWorkStealingEvidence {
     mirakana::JobExecutionPoolStatus pool_status{mirakana::JobExecutionPoolStatus::invalid_configuration};
     mirakana::JobExecutionRunResult run_result;
     std::uint64_t task_side_effects{0};
+    bool task_start_wait_timed_out{false};
 };
 
 [[nodiscard]] JobExecutionWorkStealingEvidence build_package_job_execution_work_stealing_evidence(bool requested) {
