@@ -10107,7 +10107,7 @@
       },
       {
         "id": "commercial-environment-closeout",
-        "status": "host-gated",
+        "status": "ready",
         "hosts": [
           "strict Vulkan aggregate host",
           "Apple Metal aggregate host",
@@ -10121,9 +10121,10 @@
         "validationRecipes": [
           "desktop-runtime-sample-game-environment-commercial-readiness",
           "desktop-runtime-sample-game-environment-commercial-vulkan-evidence",
+          "environment-highest-commercial-readiness-closeout",
           "environment-platform-linux-vulkan-host-gate"
         ],
-        "notes": "Commercial environment readiness is intentionally blocked until the aggregate gate reports every selected dependency ready, package-visible, legally current, validation-guarded, and free of adjacent broad non-claim violations. The strict Vulkan bridge reduces only the selected strict Vulkan and Windows Vulkan blocker rows when its own strict Vulkan package smoke succeeds."
+        "notes": "Commercial environment closeout is ready through Environment Highest Commercial Readiness v1 Task 32 and the environment-highest-commercial-readiness-closeout validator, which reports environment_highest_commercial_ready=1, environment_commercial_ready=1, 16 ready rows, zero host-gated/dependency-gated/blocked/unsupported/missing commercial rows, all exact platform rows ready, and broad environment_ready unchanged at 0. The older commercial blocker and commercial Vulkan evidence recipes remain retained diagnostic lanes and do not override the highest-commercial closeout."
       },
       {
         "id": "windows-msvc-desktop-editor",
