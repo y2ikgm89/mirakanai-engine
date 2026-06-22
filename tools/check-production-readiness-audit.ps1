@@ -23,6 +23,11 @@ if ($null -eq $productionLoop) {
     Write-Error "engine/agent/manifest.json is missing aiOperableProductionLoop"
 }
 
+$hostGates = @($productionLoop.hostGates)
+if ($hostGates.Count -eq 0) {
+    Write-Error "Production readiness audit requires aiOperableProductionLoop.hostGates to make host-gated evidence explicit."
+}
+
 $gaps = @($productionLoop.unsupportedProductionGaps)
 $zeroGapCloseoutArchive = Join-Path $root "docs\superpowers\master-plans\production-completion-v1\99-historical-verdict-archive.md"
 if ($gaps.Count -eq 0) {
@@ -106,6 +111,65 @@ foreach ($gap in $gaps) {
     $statusCounts[$status] += 1
 }
 
+$allowedHostGateStatuses = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+foreach ($status in @("ready", "host-gated", "planned", "blocked")) {
+    $allowedHostGateStatuses.Add($status) | Out-Null
+}
+
+$seenHostGateIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+$hostGateStatusCounts = @{}
+
+foreach ($hostGate in $hostGates) {
+    $id = [string]$hostGate.id
+    $status = [string]$hostGate.status
+    $hosts = @($hostGate.hosts)
+    $validationRecipes = @($hostGate.validationRecipes)
+    $notes = [string]$hostGate.notes
+
+    if ([string]::IsNullOrWhiteSpace($id)) {
+        Write-Error "hostGates row has an empty id"
+    }
+    if (-not $seenHostGateIds.Add($id)) {
+        Write-Error "hostGates contains a duplicate id: $id"
+    }
+    if ([string]::IsNullOrWhiteSpace($status)) {
+        Write-Error "hostGates[$id] has an empty status"
+    }
+    if (-not $allowedHostGateStatuses.Contains($status)) {
+        Write-Error "hostGates[$id] has unexpected status '$status'"
+    }
+    if ($hosts.Count -eq 0) {
+        Write-Error "hostGates[$id] must list hosts"
+    }
+    foreach ($hostName in $hosts) {
+        if ([string]::IsNullOrWhiteSpace([string]$hostName)) {
+            Write-Error "hostGates[$id] contains an empty host entry"
+        }
+    }
+    if ($validationRecipes.Count -eq 0) {
+        Write-Error "hostGates[$id] must list validationRecipes"
+    }
+    foreach ($recipe in $validationRecipes) {
+        if ([string]::IsNullOrWhiteSpace([string]$recipe)) {
+            Write-Error "hostGates[$id] contains an empty validationRecipes entry"
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($notes)) {
+        Write-Error "hostGates[$id] must describe the evidence boundary in notes"
+    }
+    if ($status -eq "host-gated" -and
+        -not ($notes.Contains("must not") -or $notes.Contains("Missing") -or
+            $notes.Contains("depend") -or $notes.Contains("requires") -or
+            $notes.Contains("remain"))) {
+        Write-Error "hostGates[$id] is host-gated but does not explain the non-ready boundary in notes"
+    }
+
+    if (-not $hostGateStatusCounts.ContainsKey($status)) {
+        $hostGateStatusCounts[$status] = 0
+    }
+    $hostGateStatusCounts[$status] += 1
+}
+
 Write-Host "production-readiness-audit: unsupported_gaps=$($gaps.Count)"
 foreach ($status in ($statusCounts.Keys | Sort-Object)) {
     Write-Host "production-readiness-audit: status[$status]=$($statusCounts[$status])"
@@ -113,5 +177,14 @@ foreach ($status in ($statusCounts.Keys | Sort-Object)) {
 foreach ($gap in ($gaps | Sort-Object id)) {
     $requiredCount = @($gap.requiredBeforeReadyClaim).Count
     Write-Host "production-readiness-audit: gap=$($gap.id) tier=$($gap.oneDotZeroCloseoutTier) status=$($gap.status) required=$requiredCount"
+}
+Write-Host "production-readiness-audit: host_gates=$($hostGates.Count)"
+foreach ($status in ($hostGateStatusCounts.Keys | Sort-Object)) {
+    Write-Host "production-readiness-audit: host_gate_status[$status]=$($hostGateStatusCounts[$status])"
+}
+foreach ($hostGate in ($hostGates | Sort-Object id)) {
+    $hostCount = @($hostGate.hosts).Count
+    $recipeCount = @($hostGate.validationRecipes).Count
+    Write-Host "production-readiness-audit: host_gate=$($hostGate.id) status=$($hostGate.status) hosts=$hostCount recipes=$recipeCount"
 }
 Write-Host "production-readiness-audit-check: ok"

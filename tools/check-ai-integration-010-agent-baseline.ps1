@@ -2424,6 +2424,10 @@ Assert-ContainsText $productionReadinessAuditPlanText "**Status:** Completed" "P
 Assert-ContainsText $productionReadinessAuditPlanText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1" "Production 1.0 Readiness Audit plan"
 Assert-ContainsText $productionReadinessAuditPlanText "production-readiness-audit-check: ok" "Production 1.0 Readiness Audit plan"
 Assert-ContainsText $productionReadinessAuditScriptText "unsupportedProductionGaps" "tools/check-production-readiness-audit.ps1"
+Assert-ContainsText $productionReadinessAuditScriptText "hostGates" "tools/check-production-readiness-audit.ps1"
+foreach ($needle in @("production-readiness-audit: host_gates=", "production-readiness-audit: host_gate_status[", "production-readiness-audit: host_gate=")) {
+    Assert-ContainsText $productionReadinessAuditScriptText $needle "tools/check-production-readiness-audit.ps1"
+}
 Assert-ContainsText $productionReadinessAuditScriptText "production-readiness-audit-check: ok" "tools/check-production-readiness-audit.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "check-production-readiness-audit.ps1" "tools/validate.ps1"
 foreach ($readinessAuditDocCheck in @(
