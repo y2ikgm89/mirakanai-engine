@@ -257,8 +257,8 @@ foreach ($hostGate in $productionLoop.hostGates) {
     }
 }
 $vulkanGate = @($productionLoop.hostGates | Where-Object { $_.id -eq "vulkan-strict" })
-if ($vulkanGate.Count -ne 1 -or $vulkanGate[0].status -ne "host-gated") {
-    Write-Error "engine manifest aiOperableProductionLoop must keep vulkan-strict host-gated"
+if ($vulkanGate.Count -ne 1 -or $vulkanGate[0].status -ne "ready") {
+    Write-Error "engine manifest aiOperableProductionLoop must keep vulkan-strict ready after strict Windows Vulkan host evidence"
 }
 $metalGate = @($productionLoop.hostGates | Where-Object { $_.id -eq "metal-apple" })
 if ($metalGate.Count -ne 1 -or $metalGate[0].status -ne "host-gated") {

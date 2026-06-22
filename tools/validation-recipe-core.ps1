@@ -178,7 +178,7 @@ function Get-RepositoryToolCommandPlan {
     return Get-PwshScriptCommandPlan -ScriptPath $scriptPath
 }
 
-function Get-SampleDesktopRuntimeGameVulkanSmokeArgs {
+function Get-SampleDesktopRuntimeGameVulkanSceneGpuSmokeArgs {
     $list = New-Object System.Collections.ArrayList
     $list.Add('--smoke') | Out-Null
     $list.Add('--require-config') | Out-Null
@@ -186,8 +186,6 @@ function Get-SampleDesktopRuntimeGameVulkanSmokeArgs {
     $list.Add('--require-scene-package') | Out-Null
     $list.Add('runtime/sample_desktop_runtime_game.geindex') | Out-Null
     $list.Add('--require-vulkan-scene-shaders') | Out-Null
-    $list.Add('--video-driver') | Out-Null
-    $list.Add('windows') | Out-Null
     $list.Add('--require-vulkan-renderer') | Out-Null
     $list.Add('--require-scene-gpu-bindings') | Out-Null
     $list.Add('--require-postprocess') | Out-Null
@@ -195,7 +193,24 @@ function Get-SampleDesktopRuntimeGameVulkanSmokeArgs {
     $list.Add('--require-directional-shadow') | Out-Null
     $list.Add('--require-directional-shadow-filtering') | Out-Null
     $list.Add('--require-lighting-shadow-policy') | Out-Null
+    $list.Add('--require-renderer-quality-gates') | Out-Null
+    return $list.ToArray()
+}
+
+function Get-SampleDesktopRuntimeGameVulkanNativeUiOverlaySmokeArgs {
+    $list = New-Object System.Collections.ArrayList
+    foreach ($arg in @(Get-SampleDesktopRuntimeGameVulkanSceneGpuSmokeArgs)) {
+        $list.Add($arg) | Out-Null
+    }
     $list.Add('--require-native-ui-overlay') | Out-Null
+    return $list.ToArray()
+}
+
+function Get-SampleDesktopRuntimeGameVulkanSmokeArgs {
+    $list = New-Object System.Collections.ArrayList
+    foreach ($arg in @(Get-SampleDesktopRuntimeGameVulkanNativeUiOverlaySmokeArgs)) {
+        $list.Add($arg) | Out-Null
+    }
     $list.Add('--require-native-ui-textured-sprite-atlas') | Out-Null
     return $list.ToArray()
 }

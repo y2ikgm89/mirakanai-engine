@@ -911,6 +911,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-runtime-sample-game-environment-profile-package", "desktop-runtime-sample-game-environment-ready-aggregate", "desktop-runtime-sample-game-environment-vulkan-strict-aggregate", "desktop-runtime-sample-game-environment-backend-parity", "desktop-runtime-sample-game-environment-backend-parity-ready", "desktop-runtime-sample-game-environment-platform-readiness", "desktop-runtime-sample-game-environment-artist-workflow-package", "desktop-runtime-sample-game-environment-commercial-readiness", "desktop-runtime-sample-game-environment-commercial-vulkan-evidence", "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package", "environment-weather-metal-solver-host-gate",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
+            "desktop-runtime-sample-game-vulkan-scene-gpu-package",
+            "desktop-runtime-sample-game-vulkan-native-ui-overlay-package",
             "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package",
             "installed-2d-performance-baseline-smoke",
             "installed-2d-long-run-readiness-smoke",
@@ -921,8 +923,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 41) {
-        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 41 recipes"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 43) {
+        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 43 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine manifest run-validation-recipe must not expose a ready apply mode"
