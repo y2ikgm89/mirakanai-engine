@@ -1,6 +1,7 @@
 add_library(MK_rhi_metal
     src/metal_backend.cpp
     src/metal_environment_weather_solver.cpp
+    src/metal_mavg_mesh_lod.cpp
 )
 
 target_include_directories(MK_rhi_metal

@@ -1480,6 +1480,15 @@ if(BUILD_TESTING)
         )
     endif()
 
+    add_executable(MK_mavg_metal_mesh_lod_tests
+        tests/unit/metal_mavg_mesh_lod_tests.cpp
+    )
+    target_link_libraries(MK_mavg_metal_mesh_lod_tests PRIVATE MK_rhi_metal)
+    target_include_directories(MK_mavg_metal_mesh_lod_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_mavg_metal_mesh_lod_tests)
+    add_test(NAME MK_mavg_metal_mesh_lod_tests COMMAND MK_mavg_metal_mesh_lod_tests)
+    set_tests_properties(MK_mavg_metal_mesh_lod_tests PROPERTIES RUN_SERIAL TRUE)
+
     if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))
         add_executable(MK_platform_native_file_watcher_tests
             tests/unit/platform_native_file_watcher_tests.cpp
