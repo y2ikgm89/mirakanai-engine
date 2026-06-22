@@ -163,6 +163,7 @@
         "installed-2d-sprite-throughput-smoke",
         "installed-2d-physics-runtime-extension-smoke",
         "installed-2d-input-device-production-ux-smoke",
+        "installed-2d-package-playtest-productization-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-sandbox-package-budget-smoke",
@@ -1082,6 +1083,34 @@
           "hostGatePolicy": "respect-manifest-host-gates"
         },
         {
+          "id": "installed-2d-package-playtest-productization-smoke-playtest",
+          "validationRecipeId": "installed-2d-package-playtest-productization-smoke",
+          "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
+          "evidenceKind": "package-smoke-counter-import",
+          "expectedSignals": [
+            "2d_package_playtest_productization_status=ready",
+            "2d_package_playtest_productization_ready=1",
+            "2d_package_playtest_productization_editor_core_execution=0",
+            "2d_package_playtest_productization_validation_recipe_execution=0",
+            "2d_package_playtest_productization_arbitrary_shell_execution=0",
+            "2d_package_playtest_productization_active_session_hot_reload=0",
+            "2d_package_playtest_productization_native_handle_exposure=0"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-scene-binding",
+            "package-load-failure",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "hot-reload-recook-failure",
+            "runtime-replacement-failure",
+            "host-gated-backend"
+          ],
+          "runtimeHostLaunchRowId": "desktop-game-runtime-playtest",
+          "hotReloadSafePointEvidenceId": "packaged-2d-residency-budget",
+          "hostGatePolicy": "respect-manifest-host-gates"
+        },
+        {
           "id": "installed-2d-sprite-animation-smoke-playtest",
           "validationRecipeId": "installed-2d-sprite-animation-smoke",
           "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
@@ -1324,6 +1353,12 @@
           "evidence": "Repair game-owned descriptor rows without deleting validation evidence."
         },
         {
+          "id": "invalid-scene-binding",
+          "trigger": "The selected runtimeSceneValidationTargets row, scene asset key, package index, or package smoke scene binding is missing or invalid.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Repair reviewed scene/package descriptor rows without weakening the selected package playtest recipe."
+        },
+        {
           "id": "host-gated",
           "trigger": "A recipe requires host gates that are unavailable or unacknowledged on the current machine.",
           "remediationActionId": "validation-failure",
@@ -1346,6 +1381,30 @@
           "trigger": "Runtime package load, index, asset payload, or runtime scene validation fails.",
           "remediationActionId": "missing-package-file",
           "evidence": "Repair reviewed runtime package files and package index rows before rerunning smoke recipes."
+        },
+        {
+          "id": "package-load-failure",
+          "trigger": "The selected package playtest recipe cannot load the installed runtime package or package index.",
+          "remediationActionId": "missing-package-file",
+          "evidence": "Repair reviewed runtimePackageFiles and package artifacts before rerunning productized package playtest smoke."
+        },
+        {
+          "id": "hot-reload-recook-failure",
+          "trigger": "Reviewed recook-to-resident replacement evidence reports a recook failure or missing safe-point preflight.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Stop at reviewed hot-reload safe-point remediation; do not run package scripts or infer active-session hot reload."
+        },
+        {
+          "id": "runtime-replacement-failure",
+          "trigger": "Reviewed runtime replacement evidence reports a failed safe-point replacement or invalid resident catalog transition.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Repair reviewed runtime package rows or developer-owned engine capability evidence without native handles."
+        },
+        {
+          "id": "host-gated-backend",
+          "trigger": "The selected package playtest requires a backend or runtime host that is unavailable on the current host.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Record host-gated backend evidence and do not substitute another backend readiness claim."
         },
         {
           "id": "unsafe-mutation-request",
@@ -2798,6 +2857,10 @@
     {
       "name": "installed-2d-input-device-production-ux-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-input-device-production-ux"
+    },
+    {
+      "name": "installed-2d-package-playtest-productization-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-2d-package-playtest-productization"
     },
     {
       "name": "installed-2d-gameplay-authoring-review-smoke",

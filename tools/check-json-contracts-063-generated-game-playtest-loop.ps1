@@ -180,7 +180,7 @@ function Assert-JsonGeneratedGamePlaytestLoop {
         if (-not $surfaceIds.ContainsKey([string]$recipe.reviewedRecipeSurfaceId)) {
             Write-Error "$Label selected recipe '$($recipe.id)' references unknown reviewedRecipeSurfaceId: $($recipe.reviewedRecipeSurfaceId)"
         }
-        if (@("recipe-summary", "package-smoke-log", "gameplay-counter-summary") -notcontains [string]$recipe.evidenceKind) {
+        if (@("recipe-summary", "package-smoke-log", "gameplay-counter-summary", "package-smoke-counter-import") -notcontains [string]$recipe.evidenceKind) {
             Write-Error "$Label selected recipe '$($recipe.id)' evidenceKind is unsupported: $($recipe.evidenceKind)"
         }
         if ([string]$recipe.hostGatePolicy -ne "respect-manifest-host-gates") {

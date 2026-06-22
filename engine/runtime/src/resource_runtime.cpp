@@ -1027,6 +1027,131 @@ plan_runtime_package_hot_reload_recook_change_review_v2(const RuntimePackageHotR
     return result;
 }
 
+[[nodiscard]] bool contains_id(const std::vector<std::string>& ids, std::string_view id) {
+    return std::ranges::find(ids, id) != ids.end();
+}
+
+void add_2d_package_playtest_diagnostic(Runtime2DPackagePlaytestResult& result, std::string code) {
+    result.diagnostics.push_back(std::move(code));
+}
+
+[[nodiscard]] bool
+has_required_2d_package_playtest_failure_classifications(const Runtime2DPackagePlaytestRecipeRow& row) {
+    constexpr Runtime2DPackagePlaytestFailureClassification required[]{
+        Runtime2DPackagePlaytestFailureClassification::missing_package_file,
+        Runtime2DPackagePlaytestFailureClassification::invalid_scene_binding,
+        Runtime2DPackagePlaytestFailureClassification::package_load_failure,
+        Runtime2DPackagePlaytestFailureClassification::shader_tool_gap,
+        Runtime2DPackagePlaytestFailureClassification::counter_mismatch,
+        Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
+        Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
+        Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+    };
+
+    return std::ranges::all_of(required, [&row](Runtime2DPackagePlaytestFailureClassification classification) {
+        return std::ranges::find(row.failure_classifications, classification) != row.failure_classifications.end();
+    });
+}
+
+bool Runtime2DPackagePlaytestResult::succeeded() const noexcept {
+    return status == Runtime2DPackagePlaytestStatus::ready;
+}
+
+Runtime2DPackagePlaytestResult
+plan_runtime_2d_package_playtest_productization(const Runtime2DPackagePlaytestDesc& desc) {
+    Runtime2DPackagePlaytestResult result;
+    result.recipe_rows = desc.recipe_rows;
+    result.evidence_rows = desc.evidence_rows;
+    result.invoked_editor_core_execution = desc.request_editor_core_execution;
+    result.invoked_validation_recipe_execution = desc.request_validation_recipe_execution;
+    result.invoked_arbitrary_shell = desc.request_arbitrary_shell_execution;
+    result.invoked_active_session_hot_reload = desc.request_active_session_hot_reload;
+    result.exposed_native_handles = desc.request_native_handle_exposure;
+
+    if (desc.request_editor_core_execution) {
+        add_2d_package_playtest_diagnostic(result, "editor-core-execution-unsupported");
+    }
+    if (desc.request_validation_recipe_execution) {
+        add_2d_package_playtest_diagnostic(result, "validation-recipe-execution-unsupported");
+    }
+    if (desc.request_arbitrary_shell_execution) {
+        add_2d_package_playtest_diagnostic(result, "arbitrary-shell-execution-unsupported");
+    }
+    if (desc.request_active_session_hot_reload) {
+        add_2d_package_playtest_diagnostic(result, "active-session-hot-reload-unsupported");
+    }
+    if (desc.request_native_handle_exposure) {
+        add_2d_package_playtest_diagnostic(result, "native-handle-exposure-unsupported");
+    }
+
+    for (auto& row : result.recipe_rows) {
+        row.validation_recipe_declared = contains_id(desc.manifest_validation_recipe_ids, row.validation_recipe_id);
+        row.generated_playtest_declared = contains_id(desc.generated_playtest_recipe_ids, row.id);
+        row.runtime_host_launch_declared =
+            !row.runtime_host_launch_row_id.empty() &&
+            contains_id(desc.runtime_host_launch_recipe_ids, row.runtime_host_launch_row_id);
+        row.hot_reload_safe_point_review_declared =
+            !row.hot_reload_safe_point_evidence_id.empty() &&
+            contains_id(desc.hot_reload_safe_point_evidence_ids, row.hot_reload_safe_point_evidence_id);
+        result.failure_classification_count += row.failure_classifications.size();
+
+        if (row.id.empty() || row.validation_recipe_id.empty()) {
+            add_2d_package_playtest_diagnostic(result, "invalid-playtest-recipe-row");
+        }
+        if (!row.validation_recipe_declared) {
+            add_2d_package_playtest_diagnostic(result, "missing-manifest-validation-recipe");
+        }
+        if (!row.generated_playtest_declared) {
+            add_2d_package_playtest_diagnostic(result, "missing-generated-playtest-recipe");
+        }
+        if (!row.runtime_host_launch_declared) {
+            add_2d_package_playtest_diagnostic(result, "missing-runtime-host-launch-row");
+        }
+        if (!row.hot_reload_safe_point_review_declared) {
+            add_2d_package_playtest_diagnostic(result, "missing-hot-reload-safe-point-row");
+        }
+        if (!has_required_2d_package_playtest_failure_classifications(row)) {
+            add_2d_package_playtest_diagnostic(result, "missing-required-failure-classification");
+        }
+    }
+
+    for (const auto& evidence : result.evidence_rows) {
+        if (evidence.claims_editor_core_execution) {
+            add_2d_package_playtest_diagnostic(result, "evidence-claims-editor-core-execution");
+        }
+        if (evidence.claims_validation_recipe_execution) {
+            add_2d_package_playtest_diagnostic(result, "evidence-claims-validation-recipe-execution");
+        }
+        if (evidence.claims_arbitrary_shell_execution) {
+            add_2d_package_playtest_diagnostic(result, "evidence-claims-arbitrary-shell-execution");
+        }
+        if (evidence.claims_active_session_hot_reload) {
+            add_2d_package_playtest_diagnostic(result, "evidence-claims-active-session-hot-reload");
+        }
+        if (evidence.claims_native_handle_exposure) {
+            add_2d_package_playtest_diagnostic(result, "evidence-claims-native-handle-exposure");
+        }
+        if (evidence.externally_supplied && evidence.status != Runtime2DPackagePlaytestEvidenceStatus::missing) {
+            ++result.imported_evidence_count;
+        }
+        result.package_smoke_counter_count += evidence.package_smoke_counters.size();
+        result.profile_artifact_count += evidence.profile_artifacts.size();
+        result.remediation_handoff_count += evidence.remediation_handoff_ids.size();
+    }
+
+    if (!result.diagnostics.empty()) {
+        result.status = Runtime2DPackagePlaytestStatus::blocked;
+    } else if (result.recipe_rows.empty()) {
+        result.status = Runtime2DPackagePlaytestStatus::missing_recipe;
+    } else if (result.imported_evidence_count == 0) {
+        result.status = Runtime2DPackagePlaytestStatus::missing_evidence;
+    } else {
+        result.status = Runtime2DPackagePlaytestStatus::ready;
+    }
+
+    return result;
+}
+
 bool RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded() const noexcept {
     return status == RuntimePackageHotReloadReplacementIntentReviewStatusV2::review_ready;
 }
