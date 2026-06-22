@@ -56,6 +56,7 @@ The implementation owner must refresh these sources before further code edits wh
 | Vulkan Ray Tracing guide, https://docs.vulkan.org/guide/latest/extensions/ray_tracing.html | Vulkan ray tracing integration must use `VK_KHR_acceleration_structure` / ray tracing feature checks and opaque AS build rows. |
 | Vulkan acceleration structures, https://docs.vulkan.org/spec/latest/chapters/accelstructures.html | Vulkan acceleration structure ownership, build/update, and synchronization are application responsibilities and must be explicit evidence rows. |
 | Apple Metal ray tracing, https://developer.apple.com/videos/play/wwdc2023/10128/ | Metal ray tracing readiness is Apple-host-only and must remain separate from D3D12/Vulkan RT evidence. |
+| Khronos glTF 2.0 specification, https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html | Deformation policy rows map to stable primitive topology: morph target accessors provide weighted attribute deltas before skinning, skinning uses JOINTS_0/WEIGHTS_0 with bounded influence sets, and morph POSITION bounds require conservative expansion before MAVG cluster rows can be reviewed. |
 | Epic Nanite docs, https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine | Nanite comparison axes are virtualized geometry, internal compressed format, fine-grained streaming, automatic LOD, high instance/detail scale, and fallback behavior. |
 | Epic Nanite technical details, https://dev.epicgames.com/documentation/unreal-engine/nanite-technical-details | Fallback mesh behavior and ray tracing fallback policy are required comparison axes; they do not grant interoperability or equivalence claims. |
 | PIX Timing Captures, https://devblogs.microsoft.com/pix/timing-captures-new/ | Async-overlap proof can use CPU/GPU/file IO timing artifacts and must preserve profiler overhead metadata. |
@@ -92,6 +93,7 @@ The current plan was rechecked against official sources and Context7 on 2026-06-
 - Vulkan mesh execution must require `VK_EXT_mesh_shader`, `VkPhysicalDeviceMeshShaderFeaturesEXT`, `VkPhysicalDeviceMeshShaderPropertiesEXT`, and explicit `vkCmdDrawMeshTasksEXT` execution. `vkCmdDrawMeshTasksIndirectEXT` and `vkCmdDrawMeshTasksIndirectCountEXT` remain separate subclaims with indirect-buffer range, alignment, draw-count, and synchronization evidence.
 - Metal mesh and ray-tracing rows must be Apple-host rows backed by current Apple feature-family tables and Xcode/Metal tooling. Mesh shading, indirect mesh draws, render-pipeline ray tracing, and acceleration-structure features must be recorded as separate capability rows because Apple feature availability and compatibility differ by family and feature.
 - DirectStorage remains an IO backend. It can prove low-overhead small-read routing only for the selected executor path; it cannot promote autonomous scheduling, GPU upload overlap, GPU destinations, GDeflate, or performance readiness by itself.
+- glTF skinning and morph target rows are deformation policy inputs only. They can promote selected stable-cluster policy evidence after conservative bounds, material roots, resident page, and fallback draw range preservation are proven; they cannot promote backend execution, ray tracing, mesh shader execution, Metal readiness, Nanite claims, or broad MAVG backend readiness.
 - Nanite planning is clean-room comparison only. Epic public documentation supports taxonomy axes such as virtualized geometry, internal compressed format, fine-grained streaming, automatic LOD, fallback mesh behavior, and ray-tracing fallback behavior; it does not authorize `compatible`, `equivalent`, or `superior` product claims.
 - Async-overlap and broad optimization rows require internal counters plus reviewed profiler artifacts. PIX Timing Captures, Nsight Graphics GPU Trace, RGP, Intel GPA or supported alternatives, and Apple Metal tools each apply only to their named host/vendor/backend rows and must preserve tool version, capture mode, overhead, and missing-data diagnostics.
 
@@ -99,8 +101,8 @@ The current plan was rechecked against official sources and Context7 on 2026-06-
 
 This document is a high-rigor gap-cluster and milestone plan, not a blanket readiness claim and not a promise that unfinished tasks can be implemented without task-local tightening. The quality bar is:
 
-- Tasks 1 through 5 have reached implementation-slice precision: public types, row ids, validation commands, negative tests, non-claims, docs, manifest rows, and static guards are named.
-- Tasks 6 through 11 are intentionally still milestone-level until selected. Before any code edit in those tasks, the implementer must add the same task-local precision used for Task 5: exact public/backend-private API names, validator output fields, schema fields, focused CTest target, negative tests, host-gated rows, and publication validation commands.
+- Tasks 1 through 7 have reached implementation-slice precision: public types, row ids, validation commands, negative tests, non-claims, docs, manifest rows, and static guards are named.
+- Tasks 8 through 11 are intentionally still milestone-level until selected. Before any code edit in those tasks, the implementer must add the same task-local precision used for Task 7: exact public/backend-private API names, validator output fields, schema fields, focused CTest target, negative tests, host-gated rows, and publication validation commands.
 - A future task is not ready for implementation if it only says "measure", "integrate", "optimize", "support", or "compare" without naming the exact data contract, backend feature query, artifact schema, ready field, and false/host-gated diagnostics.
 - The plan can be called highest-rigor for scope control and official-source gating today. It can be called highest-rigor for direct implementation only for the already tightened slices and for future slices after their task-local precision block is added.
 - If an official source changes, a tool reaches end-of-life, or a host/backend row cannot be reproduced, the row remains false or host-gated and the plan must be amended before implementation continues.
@@ -338,7 +340,7 @@ Final scheduler-slice validation evidence on 2026-06-22: `tools/validate-mavg-au
 - [x] Promote `mavg_async_overlap_measured_performance_ready=true` only when all of these are true: p95 frame time improves by at least 5%, upload/streaming stall p95 improves by at least 20%, p99 frame time regresses by no more than 2%, visual replay hash matches, memory peak stays within budget, and profiler/timestamp evidence shows actual IO or CPU load overlap with GPU upload or draw work.
 - [x] Accept PIX, Nsight Graphics GPU Trace, or RGP artifact references as reviewed host evidence, but do not require any one vendor tool for all backends.
 - [x] Reject timing-window-only evidence from `mavg-streaming-upload-overlap-evidence-v1` as insufficient for performance proof.
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-async-overlap-performance.ps1
@@ -359,17 +361,25 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-async-overlap-
 - Create: `engine/runtime_scene_rhi/src/mavg_deformation_integration.cpp`
 - Test: `tests/unit/runtime_scene_rhi_mavg_deformation_integration_tests.cpp`
 
-- [ ] Define `MavgDeformationIntegrationDesc`, `MavgDeformationClusterBoundsRow`, and `plan_mavg_deformation_integrated_clusters`.
-- [ ] Support only selected first-party deformation rows: rigid transforms, linear blend skinning with bounded joint influence metadata, and morph target rows with conservative cluster AABB expansion.
-- [ ] Reject topology-changing deformation, runtime-generated triangle topology, and unbounded vertex displacement.
-- [ ] Require stable cluster ids, updated conservative bounds, material root preservation, residency page validity, and fallback draw range preservation.
-- [ ] Add D3D12/Vulkan execution tests only after backend-local dynamic vertex/payload upload rows exist; until then, keep execution subrows false and policy rows ready only.
-- [ ] `mavg_deformation_integration_ready=true` requires both policy evidence and selected backend execution evidence for the named backend set.
-- [ ] Run:
+- [x] Define `MavgDeformationIntegrationDesc`, `MavgDeformationClusterBoundsRow`, and `plan_mavg_deformation_integrated_clusters`.
+- [x] Support only selected first-party deformation rows: rigid transforms, linear blend skinning with bounded joint influence metadata, and morph target rows with conservative cluster AABB expansion.
+- [x] Reject topology-changing deformation, runtime-generated triangle topology, and unbounded vertex displacement.
+- [x] Require stable cluster ids, updated conservative bounds, material root preservation, residency page validity, and fallback draw range preservation.
+- [x] Add D3D12/Vulkan execution tests only after backend-local dynamic vertex/payload upload rows exist; until then, keep execution subrows false and policy rows ready only.
+- [x] `mavg_deformation_integration_ready=true` requires both policy evidence and selected backend execution evidence for the named backend set.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_scene_rhi_mavg_deformation_integration_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_runtime_scene_rhi_mavg_deformation_integration_tests --output-on-failure
+```
+
+**2026-06-22 deformation policy contract evidence:** `mavg-deformation-integration-v1` adds `mavg_deformation_integration.hpp`, `MavgDeformationIntegrationDesc`, `MavgDeformationClusterBoundsRow`, `MavgDeformationBackendExecutionRow`, `MavgDeformationIntegrationResult`, and `plan_mavg_deformation_integrated_clusters`. The gate accepts selected rigid transform, linear blend skinning, and morph target policy rows only when stable cluster ids, conservative deformed AABBs, material partition roots, resident pages, and fallback draw ranges are preserved. It rejects topology-changing deformation, runtime-generated triangle topology, unbounded vertex displacement, excessive joint influence counts, native handles, broad deformation readiness, invalid resident pages, material-root drift, and fallback draw range drift. The focused API can model future selected backend execution rows, but the retained validation for this slice intentionally emits `mavg_deformation_policy_ready=1`, `mavg_deformation_integration_status=backend_execution_required`, and `mavg_deformation_integration_ready=0` because no D3D12/Vulkan/Metal backend dynamic vertex/payload execution evidence rows are committed. This slice does not promote ray tracing, mesh shader execution, Metal readiness, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, or broad CPU/GPU/memory optimization.
+
+Focused validation evidence on 2026-06-22:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-deformation-integration.ps1
 ```
 
 ## Task 8: Ray Tracing Integration Gate
