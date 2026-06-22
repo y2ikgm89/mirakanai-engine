@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-21. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Async Overlap Performance Proof v1, selects MAVG Mesh Shader Capability Gate v1 as the current focused child plan, and preserves fail-closed non-claims for GPU DirectStorage destinations, GDeflate/GPU decompression, autonomous background streaming services beyond the selected proof lane, mesh shader execution, deformation, ray tracing, benchmark superiority, Metal readiness, Nanite equivalence/superiority, broad MAVG backend readiness, and broad optimization.
+**Latest audit:** 2026-06-22. This audit keeps the plan as the long-range master roadmap, reconciles completed MAVG child plans through MAVG Advanced Backend Evidence Closeout v1 Task 12, and preserves fail-closed non-claims for GPU DirectStorage destinations, GDeflate/GPU decompression, benchmark superiority, Metal mesh LOD readiness without Apple-host object/mesh shader execution, deformation/ray tracing backend execution readiness, broad CPU/GPU/memory optimization readiness, broad MAVG/backend/renderer/environment/commercial readiness, and Nanite compatibility/equivalence/superiority product claims.
 
 ## Master Plan Decision
 
@@ -31,9 +31,15 @@ Reasons:
 
 Use this file as the roadmap and decision contract. Create focused child plans under `docs/superpowers/plans/YYYY-MM-DD-mavg-<phase>.md` when executing a phase.
 
+## 2026-06-22 Advanced Backend Evidence Closeout Addendum
+
+MAVG Advanced Backend Evidence Closeout v1 is retained as a completed evidence cluster after Task 12 bookkeeping. It adds exact gates for package-visible backend readiness, D3D12/Vulkan direct mesh-shader LOD evidence, autonomous streaming scheduler readiness, measured async-overlap artifact evidence, deformation/ray tracing policy evidence, Metal mesh LOD host evidence, broad optimization artifact evidence, and a clean-room Nanite comparison taxonomy.
+
+The retained gates intentionally do not promote broad readiness. `mavg_package_visible_backend_readiness_ready=1`, `mavg_autonomous_streaming_scheduler_ready=1`, and `mavg_nanite_comparison_report_ready=1` are narrow rows. `mavg_async_overlap_measured_performance_ready=0`, `mavg_metal_mesh_lod_ready=0`, `mavg_deformation_integration_ready=0`, `mavg_ray_tracing_integration_ready=0`, and `mavg_broad_cpu_gpu_memory_optimization_ready=0` remain blocked or host-gated until exact future retained evidence lands. Nanite compatibility, replacement equivalence, superiority, Unreal interoperability, and marketing claims remain false by construction.
+
 ## 2026-06-21 Mesh Shader Capability Gate Selection Addendum
 
-MAVG Mesh Shader Capability Gate v1 (`mavg-mesh-shader-capability-gate-v1`) is the current focused child plan. It adds value-only `MK_runtime_rhi` capability-query evidence through `mavg_mesh_shader_capability_gate.hpp`, `RuntimeMavgMeshShaderCapabilityBackendRow`, `RuntimeMavgMeshShaderCapabilityGateResult`, and `evaluate_runtime_mavg_mesh_shader_capability_gate`.
+MAVG Mesh Shader Capability Gate v1 (`mavg-mesh-shader-capability-gate-v1`) was the selected focused child plan at the 2026-06-21 checkpoint and is now retained completed evidence. It adds value-only `MK_runtime_rhi` capability-query evidence through `mavg_mesh_shader_capability_gate.hpp`, `RuntimeMavgMeshShaderCapabilityBackendRow`, `RuntimeMavgMeshShaderCapabilityGateResult`, and `evaluate_runtime_mavg_mesh_shader_capability_gate`.
 
 The gate follows official D3D12 and Vulkan feature-query surfaces: selected D3D12 rows must represent `D3D12_FEATURE_D3D12_OPTIONS7` / `MeshShaderTier`, and selected Vulkan rows must represent `VK_EXT_mesh_shader` through `VkPhysicalDeviceMeshShaderFeaturesEXT` and `VkPhysicalDeviceMeshShaderPropertiesEXT`. The selected package lane emits `mavg_mesh_shader_capability_gate_ready=1`, two backend rows, two ready backend rows, two feature-query rows, two pipeline-statistics rows, D3D12/Vulkan capability readiness, compute/indirect fallback readiness, and `mesh shader execution remains 0`.
 

@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Define how MAVG evidence will be measured before implementation starts. This document prevents premature claims that MAVG is Nanite-like, production-ready, or superior on any axis. It does not add a benchmark runner, raw result artifact, package recipe, renderer path, or ready claim.
+Define how MAVG evidence is measured and promoted across retained MAVG implementation slices. This document prevents premature claims that MAVG is Nanite-like, production-ready, or superior on any axis. It does not add a benchmark runner, raw result artifact, package recipe, renderer path, or ready claim by itself.
 
 ## Status
 
-Active Phase 0 specification for `mavg-research-legal-benchmark-baseline-v1`. This is a methodology baseline only; benchmark execution and superiority claims remain unclaimed until future focused MAVG child plans add measured evidence.
+Retained methodology baseline for `mavg-research-legal-benchmark-baseline-v1` and later MAVG evidence closeouts. MAVG Advanced Backend Evidence Closeout v1 adds exact policy/report/artifact gates for mesh-shader LOD, Metal-host evidence, autonomous streaming, async-overlap artifacts, deformation/ray tracing policy, broad optimization artifacts, package-visible backend readiness, and Nanite comparison taxonomy. Benchmark superiority claims remain unclaimed until a separate future plan retains measured cross-host artifacts, public wording review, and legal/product approval.
 
 ## Benchmark Claim Ladder
 
