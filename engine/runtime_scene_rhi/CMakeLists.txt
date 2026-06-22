@@ -1,6 +1,7 @@
 add_library(mirakana_runtime_scene_rhi
     src/mavg_backend_readiness_closeout.cpp
     src/mavg_deformation_integration.cpp
+    src/mavg_ray_tracing_integration.cpp
     src/runtime_scene_rhi.cpp
 )
 
