@@ -10081,8 +10081,8 @@
       },
       {
         "id": "vulkan-strict-linux",
-        "status": "host-gated",
-        "residualClass": "platform-host-required",
+        "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "linux with Vulkan runtime",
           "Linux Vulkan ICD/runtime/driver evidence through vulkaninfo",
@@ -10094,9 +10094,10 @@
         ],
         "validationRecipes": [
           "shader-toolchain",
+          "environment-platform-linux-vulkan-package",
           "environment-platform-linux-vulkan-host-gate"
         ],
-        "notes": "Linux Vulkan platform readiness is distinct from Windows strict Vulkan and remains tied to the dedicated Linux package gate. The retained environment-platform-linux-vulkan-host-gate / vulkan-strict-linux prerequisite records Linux host/tool/runtime requirements and still emits report-only counters on non-ready hosts. Environment Highest Commercial Readiness v1 Task 28 promotes the platform row only when validate.yml linux-vulkan runs tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady under xvfb-run and proves vulkaninfo_ready=1, VK_LAYER_KHRONOS_validation_ready=1, dxc_spirv_codegen_ready=1, spirv_val_ready=1, linux_icd_runtime_ready=1, first_party_linux_runtime_host_ready=1, linux_package_script_ready=1, linux_installed_validator_ready=1, linux_package_smoke_ready=1, linux_vulkan_readback_ready=1, linux_vulkan_validation_log_clean=1, environment_platform_linux_vulkan_ready=1, environment_platform_requires_linux_vulkan_host_evidence=0, and environment_platform_windows_vulkan_inferred=0. Windows Vulkan, Win32/x64-windows package evidence, and compile-only Linux evidence remain forbidden as Linux Vulkan proof."
+        "notes": "Ready through PR #760 Linux Vulkan Host Evidence for validate.yml linux-vulkan running tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady under xvfb-run. Evidence proves validation_recipe=environment-platform-linux-vulkan-package, vulkaninfo_ready=1, VK_LAYER_KHRONOS_validation_ready=1, dxc_spirv_codegen_ready=1, spirv_val_ready=1, linux_icd_runtime_ready=1, first_party_linux_runtime_host_ready=1, linux_package_script_ready=1, linux_installed_validator_ready=1, linux_package_smoke_ready=1, linux_vulkan_readback_ready=1, linux_vulkan_validation_log_clean=1, environment_platform_linux_vulkan_ready=1, environment_platform_requires_linux_vulkan_host_evidence=0, environment_platform_windows_vulkan_inferred=0, environment_all_platform_unconditional_ready=0, and native_handle_access=0. Linux Vulkan platform readiness remains distinct from Windows strict Vulkan and is tied to the dedicated Linux package gate. Windows Vulkan, Win32/x64-windows package evidence, Android Vulkan evidence, Metal evidence, and compile-only Linux evidence remain forbidden as Linux Vulkan proof."
       },
       {
         "id": "metal-apple",
