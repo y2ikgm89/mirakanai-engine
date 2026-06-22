@@ -529,11 +529,11 @@ Focused validation evidence on 2026-06-22: GREEN passed both validator forms. Re
 - Modify or add: `schemas/engine-agent.schema.json`
 - Modify or add: `tools/check-ai-integration-*.ps1`
 
-- [ ] Update docs so every newly promoted row has a matching non-claim list.
-- [ ] Update manifest fragments only after code/tests for that row pass; never hand-edit `engine/agent/manifest.json`.
-- [ ] Add static needles for every public row id and every prohibited Nanite claim.
-- [ ] Keep `currentActivePlan` unchanged unless this plan is intentionally selected for execution.
-- [ ] Compose and validate:
+- [x] Update docs so every newly promoted row has a matching non-claim list.
+- [x] Update manifest fragments only after code/tests for that row pass; never hand-edit `engine/agent/manifest.json`.
+- [x] Add static needles for every public row id and every prohibited Nanite claim.
+- [x] Keep `currentActivePlan` unchanged unless this plan is intentionally selected for execution.
+- [x] Compose and validate:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -544,6 +544,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 git diff --check
 ```
+
+Closeout evidence on 2026-06-22: Tasks 1-11 are retained on `origin/main` through PRs #743, #745, #746, #748, #750, and #752 for the final unclaimed cluster rows covered by this plan. Task-specific docs, schema contracts, manifest command rows, and `tools/check-ai-integration-*.ps1` chapters now preserve every promoted row and every non-claim list. No additional Task 12 manifest fragment change is needed because `currentActivePlan` intentionally remains on the production-completion selection gate, and the Task 1-11 fragments already carry the machine-readable command and readiness surfaces. Local closeout validation is recorded below.
 
 ## Final Validation Gate
 
@@ -565,3 +567,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Nanite compatibility/equivalence/superiority remain false.
 - Docs, manifest fragments, composed manifest, schemas, static checks, and validation scripts agree with the exact claim boundaries.
 - `tools/validate.ps1` passes, or a concrete host/tooling blocker is recorded in the plan and manifest without promoting readiness.
+
+Final validation evidence on 2026-06-22: closeout branch static gates passed `tools/check-ai-integration.ps1`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/compose-agent-manifest.ps1 -Verify`, and `git diff --check`; full `tools/validate.ps1` passed with 150/150 CTest tests. Apple/Metal checks remain host-gated on this Windows host and did not promote Metal readiness.
