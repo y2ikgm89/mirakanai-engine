@@ -331,14 +331,22 @@ Final scheduler-slice validation evidence on 2026-06-22: `tools/validate-mavg-au
 - Create: `tools/validate-mavg-async-overlap-performance.ps1`
 - Test: `tests/unit/runtime_rhi_mavg_async_overlap_performance_tests.cpp`
 
-- [ ] Define a JSON artifact contract with workload id, package hash, adapter/backend, CPU frame timings, GPU timings, IO timings, queue overlap windows, memory budget, profiler tool metadata, and warmup/measurement frame counts.
-- [ ] Require two comparable runs: `sync_baseline` and `async_scheduler`, same package hash, same camera script, same backend, same host class, 30 warmup frames, and 120 measured frames.
-- [ ] Require internal engine timestamp/counter evidence from non-captured runs for threshold calculations, plus at least one reviewed external profiler artifact for overlap diagnosis. External profiler traces prove queue/IO/GPU overlap and memory behavior; they do not replace the non-captured timing threshold.
-- [ ] Record profiler overhead, capture mode, capture duration, dropped/timestamp-overflow status, symbol/debug-info availability, tool version, driver version, and adapter id. If profiler overhead or missing trace data makes the comparison non-representative, keep `mavg_async_overlap_measured_performance_ready=false`.
-- [ ] Promote `mavg_async_overlap_measured_performance_ready=true` only when all of these are true: p95 frame time improves by at least 5%, upload/streaming stall p95 improves by at least 20%, p99 frame time regresses by no more than 2%, visual replay hash matches, memory peak stays within budget, and profiler/timestamp evidence shows actual IO or CPU load overlap with GPU upload or draw work.
-- [ ] Accept PIX, Nsight Graphics GPU Trace, or RGP artifact references as reviewed host evidence, but do not require any one vendor tool for all backends.
-- [ ] Reject timing-window-only evidence from `mavg-streaming-upload-overlap-evidence-v1` as insufficient for performance proof.
+- [x] Define a JSON artifact contract with workload id, package hash, adapter/backend, CPU frame timings, GPU timings, IO timings, queue overlap windows, memory budget, profiler tool metadata, and warmup/measurement frame counts.
+- [x] Require two comparable runs: `sync_baseline` and `async_scheduler`, same package hash, same camera script, same backend, same host class, 30 warmup frames, and 120 measured frames.
+- [x] Require internal engine timestamp/counter evidence from non-captured runs for threshold calculations, plus at least one reviewed external profiler artifact for overlap diagnosis. External profiler traces prove queue/IO/GPU overlap and memory behavior; they do not replace the non-captured timing threshold.
+- [x] Record profiler overhead, capture mode, capture duration, dropped/timestamp-overflow status, symbol/debug-info availability, tool version, driver version, and adapter id. If profiler overhead or missing trace data makes the comparison non-representative, keep `mavg_async_overlap_measured_performance_ready=false`.
+- [x] Promote `mavg_async_overlap_measured_performance_ready=true` only when all of these are true: p95 frame time improves by at least 5%, upload/streaming stall p95 improves by at least 20%, p99 frame time regresses by no more than 2%, visual replay hash matches, memory peak stays within budget, and profiler/timestamp evidence shows actual IO or CPU load overlap with GPU upload or draw work.
+- [x] Accept PIX, Nsight Graphics GPU Trace, or RGP artifact references as reviewed host evidence, but do not require any one vendor tool for all backends.
+- [x] Reject timing-window-only evidence from `mavg-streaming-upload-overlap-evidence-v1` as insufficient for performance proof.
 - [ ] Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-async-overlap-performance.ps1
+```
+
+**2026-06-22 measured-performance contract evidence:** `mavg-async-overlap-performance-v1` adds `mavg_async_overlap_performance.hpp`, `RuntimeMavgAsyncOverlapMeasuredPerformanceDesc`, `RuntimeMavgAsyncOverlapRunEvidence`, `RuntimeMavgAsyncOverlapProfilerArtifactEvidence`, `RuntimeMavgAsyncOverlapMeasuredPerformanceResult`, `evaluate_runtime_mavg_async_overlap_measured_performance`, and `GameEngine.MavgAsyncOverlapPerformanceEvidence.v1`. The evaluator is side-effect-free and requires comparable `sync_baseline` / `async_scheduler` rows with matching workload, package hash, camera script, backend, host class, adapter id, replay hash, at least 30 warmup frames, at least 120 measured frames, non-captured internal counters, memory budget compliance, threshold evidence, and a reviewed official profiler artifact row. Accepted profiler-tool rows include PIX timing captures, Nsight Graphics GPU Trace, Radeon GPU Profiler, Intel GPA, and Apple Metal Tools evidence without requiring one vendor tool for all backends. The contract rejects timing-window-only evidence, profiler rows without queue/IO/GPU/memory timelines, non-representative captures, missing overlap, native handle claims, broad optimization claims, and mismatched artifacts. Current branch validation intentionally reports `mavg_async_overlap_measured_performance_status=host_evidence_required` and `mavg_async_overlap_measured_performance_ready=0` because no retained host profiler artifact row is committed; `RequireReady` remains reserved for a later host-evidence run. GPU DirectStorage destinations, GDeflate, mesh shader execution, Metal readiness, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, and broad CPU/GPU/memory optimization remain unclaimed.
+
+Focused validation evidence on 2026-06-22:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-async-overlap-performance.ps1
