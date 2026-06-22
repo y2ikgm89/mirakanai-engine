@@ -1476,8 +1476,8 @@
     },
     {
       "name": "host-cpu-profiling-matrix",
-      "command": "Host-owned external artifact collection: collect the selected workload with official WPR/WPA, Linux perf, Intel VTune, or AMD uProf tooling, attach trace/profiler artifacts, CPU topology, compiler flags, selected SIMD lane, before/after trace pair, and regression budget evidence. This recipe is not executed by default validation or by run-validation-recipe until a future reviewed runner surface is added.",
-      "purpose": "Record the Intel/AMD CPU Profiling Matrix v1 evidence needed before selecting Linux affinity, NUMA placement, broader SIMD, PGO/LTO, batch-size, scheduler-policy, or data-layout follow-up work. Missing tools, PMU counters, NUMA/NPS state, processor-group topology, before/after traces, or regression budgets remain host-gated and must not be treated as ready optimization evidence."
+      "command": "Host-owned external artifact collection: collect the selected workload with official WPR/WPA, Linux perf, Intel VTune, or AMD uProf tooling, attach trace/profiler artifacts, CPU topology, compiler flags, selected SIMD lane, before/after trace pair, and regression budget evidence, then validate the attached bundle with pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpu-profiling-host-evidence.ps1 -EvidenceRoot \u003Cartifact-root\u003E -RequireReady. Omit -RequireReady for diagnostic-only local host/tool availability checks. This recipe is not executed by default validation or by run-validation-recipe.",
+      "purpose": "Record and mechanically validate the Intel/AMD CPU Profiling Matrix v1 evidence needed before selecting Linux affinity, NUMA placement, broader SIMD, PGO/LTO, batch-size, scheduler-policy, or data-layout follow-up work. Missing tools, PMU counters, NUMA/NPS state, processor-group topology, before/after traces, artifact files, or regression budgets remain host-gated and must not be treated as ready optimization evidence."
     },
     {
       "name": "host-optional-gpu-compute-review",

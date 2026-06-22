@@ -1113,6 +1113,16 @@ foreach ($referenceId in @("windows-performance-recorder", "linux-perf-stat", "l
 if (@($cpuProfilingMatrix.validationRecipes) -notcontains "host-cpu-profiling-matrix") {
     Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix validationRecipes missing host-cpu-profiling-matrix"
 }
+$cpuProfilingRecipe = @($engine.validationRecipes | Where-Object { $_.name -eq "host-cpu-profiling-matrix" })
+if ($cpuProfilingRecipe.Count -ne 1) {
+    Write-Error "engine manifest validationRecipes must include one host-cpu-profiling-matrix recipe"
+}
+if (-not (Test-Path (Join-Path $root "tools/check-cpu-profiling-host-evidence.ps1"))) {
+    Write-Error "tools/check-cpu-profiling-host-evidence.ps1 must exist for host-cpu-profiling-matrix evidence validation"
+}
+foreach ($needle in @("tools/check-cpu-profiling-host-evidence.ps1", "-EvidenceRoot", "-RequireReady")) {
+    Assert-ContainsText ([string]$cpuProfilingRecipe[0].command) $needle "engine manifest validationRecipes host-cpu-profiling-matrix command"
+}
 $optionalGpuComputeReview = $productionLoop.optionalGpuComputeReview
 Assert-Properties $optionalGpuComputeReview @("id", "status", "owner", "summary", "classifications", "requiredEvidenceFields", "candidateRows", "fallbackRequirements", "nonGoals", "officialReferences", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop.optionalGpuComputeReview"
 if ($optionalGpuComputeReview.id -ne "long-running-performance-readiness-v1-phase-7" -or $optionalGpuComputeReview.status -ne "review-only") { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview must be Phase 7 review-only" }
