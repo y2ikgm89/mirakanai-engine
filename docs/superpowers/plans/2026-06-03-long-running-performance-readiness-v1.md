@@ -26,7 +26,7 @@ Phase 0/1 is implemented as the first review boundary and published through PR #
 - `recommendedNextPlan.id` is `next-production-gap-selection`.
 - `unsupportedProductionGaps` remains `[]`.
 - Phase 2 exposes `aiOperableProductionLoop.cpuProfilingMatrix` and `host-cpu-profiling-matrix` as the host-gated CPU profiling matrix contract.
-- Phase 7 updated docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`.
+- Phase 7 updated docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`; follow-up evidence checking now uses `tools/check-optional-gpu-compute-review-evidence.ps1 -EvidenceRoot <artifact-root> [-RequireReady]` so incomplete candidate bundles stay host-gated.
 - Phase 7 does not make CUDA/HIP/SYCL, RHI compute, GPU async overlap, broad GPU compute, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization ready.
 
 ## Official References
@@ -351,7 +351,7 @@ Full `tools/validate.ps1` is required before publication because Phase 4 changes
 - [x] Permit CUDA/HIP/SYCL only for optional tooling or private adapters with clear install gates and scalar/RHI fallback paths.
 - [x] Reject candidates where vendor runtime installation, backend availability, synchronization proof, queue/profiler visibility, or fallback evidence would make default validation fragile.
 
-**Done When:** Every candidate has an explicit classification and no CUDA/HIP/SYCL runtime dependency has been introduced.
+**Done When:** Every candidate has an explicit classification, `host-optional-gpu-compute-review` has a mechanical evidence checker, incomplete bundles fail closed, and no CUDA/HIP/SYCL runtime dependency has been introduced.
 
 **Phase 7 candidate classification:**
 
@@ -370,10 +370,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-optional-gpu-compute-review-evidence.ps1 -EvidenceRoot <artifact-root> [-RequireReady]
 git diff --check
 ```
 
-Expected: `optionalGpuComputeReview`, `currentOptionalGpuComputeReview`, and `host-optional-gpu-compute-review` are schema/static-check visible; CUDA/HIP/SYCL introduce no runtime dependency, no `vcpkg.json` feature, no CMake linkage, and no default validation dependency.
+Expected: `optionalGpuComputeReview`, `currentOptionalGpuComputeReview`, and `host-optional-gpu-compute-review` are schema/static-check visible; `tools/check-optional-gpu-compute-review-evidence.ps1` emits host-gated diagnostic counters without artifacts, fails closed under `-RequireReady`, and validates complete host-owned candidate bundles; CUDA/HIP/SYCL introduce no runtime dependency, no `vcpkg.json` feature, no CMake linkage, and no default validation dependency.
 
 **Phase 7 validation evidence:**
 
@@ -384,6 +385,9 @@ Expected: `optionalGpuComputeReview`, `currentOptionalGpuComputeReview`, and `ho
 | 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
 | 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass: `ai-integration-check: ok`. |
 | 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass: `text-format-check: ok`, `format-check: ok`. |
+| 2026-06-23 | Context7 `/websites/nvidia_cuda`, `/rocm/hip`, and `/khronosgroup/sycl_reference` | Pass: confirms the evidence checker requirements for profiling visibility, memory transfer/residency accounting, stream/event or queue synchronization proof, and fallback evidence before any CUDA/HIP/SYCL readiness claim. |
+| 2026-06-23 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-optional-gpu-compute-review-evidence.ps1 -ExpectedEvidenceCounters optional_gpu_compute_review_ready=0 optional_gpu_compute_review_host_gated=1 optional_gpu_compute_review_broad_optimization_claim=0` | Pass: diagnostic host/tool run emits host-gated counters without artifacts and keeps broad optimization at 0. |
+| 2026-06-23 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-optional-gpu-compute-review-evidence.ps1 -RequireReady` | Expected fail-closed: reports missing candidate classifications, profiler artifacts where required, synchronization proof, dependency/install gates, and fallback evidence before `optional_gpu_compute_review_ready` can be 1. |
 | 2026-06-03 | `git diff --check` | Pass: no whitespace errors. |
 
 Full `tools/validate.ps1` is not required for this Phase 7 closeout because the slice changes docs, schema, manifest fragments, composed manifest output, validation recipe descriptors, and static guards only; it does not change C++ runtime, build, packaging, or public API behavior.
