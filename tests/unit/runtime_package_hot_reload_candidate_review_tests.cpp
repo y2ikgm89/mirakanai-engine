@@ -5,6 +5,7 @@
 
 #include "mirakana/runtime/resource_runtime.hpp"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -238,6 +239,184 @@ MK_TEST("runtime package hot reload candidate review returns typed no-match stat
     MK_REQUIRE(no_matches.diagnostics[0].code == "unmatched-changed-path");
     MK_REQUIRE(!no_matches.invoked_package_load);
     MK_REQUIRE(!no_matches.committed);
+}
+
+MK_TEST("runtime 2D package playtest productization composes reviewed recipe and evidence rows") {
+    using mirakana::runtime::Runtime2DPackagePlaytestEvidenceStatus;
+    using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
+
+    const auto
+        result =
+            mirakana::runtime::plan_runtime_2d_package_playtest_productization(
+                mirakana::runtime::Runtime2DPackagePlaytestDesc{
+                    .manifest_validation_recipe_ids =
+                        {
+                            "installed-2d-package-smoke",
+                            "installed-2d-input-device-production-ux-smoke",
+                        },
+                    .generated_playtest_recipe_ids =
+                        {
+                            "installed-2d-package-smoke-playtest",
+                        },
+                    .runtime_host_launch_recipe_ids =
+                        {
+                            "desktop-game-runtime-playtest",
+                        },
+                    .hot_reload_safe_point_evidence_ids =
+                        {
+                            "hot-reload-package-playtest-evidence",
+                        },
+                    .recipe_rows =
+                        {
+                            mirakana::runtime::Runtime2DPackagePlaytestRecipeRow{
+                                .id = "installed-2d-package-smoke-playtest",
+                                .validation_recipe_id = "installed-2d-package-smoke",
+                                .reviewed_recipe_surface_id = "package-smoke-evidence-review",
+                                .evidence_kind = "package-smoke-log",
+                                .expected_signals = {"package_smoke_status=passed"},
+                                .failure_classifications =
+                                    {
+                                        Runtime2DPackagePlaytestFailureClassification::missing_package_file,
+                                        Runtime2DPackagePlaytestFailureClassification::invalid_scene_binding,
+                                        Runtime2DPackagePlaytestFailureClassification::package_load_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::shader_tool_gap,
+                                        Runtime2DPackagePlaytestFailureClassification::counter_mismatch,
+                                        Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                                    },
+                                .runtime_host_launch_row_id = "desktop-game-runtime-playtest",
+                                .hot_reload_safe_point_evidence_id = "hot-reload-package-playtest-evidence",
+                            },
+                        },
+                    .evidence_rows =
+                        {
+                            mirakana::runtime::Runtime2DPackagePlaytestEvidenceRow{
+                                .recipe_id = "installed-2d-package-smoke-playtest",
+                                .status = Runtime2DPackagePlaytestEvidenceStatus::passed,
+                                .stdout_summary = "package_smoke_status=passed; package_smoke_counter_rows=8",
+                                .stderr_summary = "",
+                                .package_smoke_counters =
+                                    {"package_smoke_status=passed", "2d_input_device_production_ux_ready=1"},
+                                .profile_artifacts =
+                                    {"reports/playtest/latest/installed-2d-package-smoke.profile.json"},
+                                .remediation_handoff_ids = {"mutation-ledger-remediation"},
+                                .externally_supplied = true,
+                            },
+                        },
+                });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::Runtime2DPackagePlaytestStatus::ready);
+    MK_REQUIRE(result.recipe_rows.size() == 1);
+    MK_REQUIRE(result.recipe_rows[0].id == "installed-2d-package-smoke-playtest");
+    MK_REQUIRE(result.recipe_rows[0].validation_recipe_declared);
+    MK_REQUIRE(result.recipe_rows[0].generated_playtest_declared);
+    MK_REQUIRE(result.recipe_rows[0].runtime_host_launch_declared);
+    MK_REQUIRE(result.recipe_rows[0].hot_reload_safe_point_review_declared);
+    MK_REQUIRE(result.evidence_rows.size() == 1);
+    MK_REQUIRE(result.imported_evidence_count == 1);
+    MK_REQUIRE(result.package_smoke_counter_count == 2);
+    MK_REQUIRE(result.profile_artifact_count == 1);
+    MK_REQUIRE(result.remediation_handoff_count == 1);
+    MK_REQUIRE(result.failure_classification_count == 8);
+    MK_REQUIRE(!result.invoked_editor_core_execution);
+    MK_REQUIRE(!result.invoked_validation_recipe_execution);
+    MK_REQUIRE(!result.invoked_arbitrary_shell);
+    MK_REQUIRE(!result.invoked_active_session_hot_reload);
+    MK_REQUIRE(!result.exposed_native_handles);
+    MK_REQUIRE(result.diagnostics.empty());
+}
+
+MK_TEST("runtime 2D package playtest productization requires all failure classifications") {
+    using mirakana::runtime::Runtime2DPackagePlaytestEvidenceStatus;
+    using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
+
+    const auto result = mirakana::runtime::plan_runtime_2d_package_playtest_productization(
+        mirakana::runtime::Runtime2DPackagePlaytestDesc{
+            .manifest_validation_recipe_ids = {"installed-2d-package-smoke"},
+            .generated_playtest_recipe_ids = {"installed-2d-package-smoke-playtest"},
+            .recipe_rows =
+                {
+                    mirakana::runtime::Runtime2DPackagePlaytestRecipeRow{
+                        .id = "installed-2d-package-smoke-playtest",
+                        .validation_recipe_id = "installed-2d-package-smoke",
+                        .reviewed_recipe_surface_id = "package-smoke-evidence-review",
+                        .evidence_kind = "package-smoke-log",
+                        .failure_classifications =
+                            {
+                                Runtime2DPackagePlaytestFailureClassification::missing_package_file,
+                                Runtime2DPackagePlaytestFailureClassification::counter_mismatch,
+                            },
+                    },
+                },
+            .evidence_rows =
+                {
+                    mirakana::runtime::Runtime2DPackagePlaytestEvidenceRow{
+                        .recipe_id = "installed-2d-package-smoke-playtest",
+                        .status = Runtime2DPackagePlaytestEvidenceStatus::passed,
+                        .stdout_summary = "package_smoke_status=passed",
+                        .package_smoke_counters = {"package_smoke_status=passed"},
+                        .externally_supplied = true,
+                    },
+                },
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::Runtime2DPackagePlaytestStatus::blocked);
+    MK_REQUIRE(result.diagnostics.size() == 3);
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "missing-runtime-host-launch-row") != result.diagnostics.end());
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "missing-hot-reload-safe-point-row") != result.diagnostics.end());
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "missing-required-failure-classification") !=
+               result.diagnostics.end());
+}
+
+MK_TEST("runtime 2D package playtest productization blocks unsupported execution claims") {
+    using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
+
+    const auto result = mirakana::runtime::plan_runtime_2d_package_playtest_productization(
+        mirakana::runtime::Runtime2DPackagePlaytestDesc{
+            .manifest_validation_recipe_ids = {"installed-2d-package-smoke"},
+            .generated_playtest_recipe_ids = {"installed-2d-package-smoke-playtest"},
+            .runtime_host_launch_recipe_ids = {"desktop-game-runtime-playtest"},
+            .hot_reload_safe_point_evidence_ids = {"hot-reload-package-playtest-evidence"},
+            .recipe_rows =
+                {
+                    mirakana::runtime::Runtime2DPackagePlaytestRecipeRow{
+                        .id = "installed-2d-package-smoke-playtest",
+                        .validation_recipe_id = "installed-2d-package-smoke",
+                        .reviewed_recipe_surface_id = "package-smoke-evidence-review",
+                        .evidence_kind = "package-smoke-log",
+                        .failure_classifications =
+                            {
+                                Runtime2DPackagePlaytestFailureClassification::missing_package_file,
+                                Runtime2DPackagePlaytestFailureClassification::invalid_scene_binding,
+                                Runtime2DPackagePlaytestFailureClassification::package_load_failure,
+                                Runtime2DPackagePlaytestFailureClassification::shader_tool_gap,
+                                Runtime2DPackagePlaytestFailureClassification::counter_mismatch,
+                                Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
+                                Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
+                                Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                            },
+                        .runtime_host_launch_row_id = "desktop-game-runtime-playtest",
+                        .hot_reload_safe_point_evidence_id = "hot-reload-package-playtest-evidence",
+                    },
+                },
+            .request_editor_core_execution = true,
+            .request_validation_recipe_execution = true,
+            .request_arbitrary_shell_execution = true,
+            .request_active_session_hot_reload = true,
+            .request_native_handle_exposure = true,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::Runtime2DPackagePlaytestStatus::blocked);
+    MK_REQUIRE(result.invoked_editor_core_execution);
+    MK_REQUIRE(result.invoked_validation_recipe_execution);
+    MK_REQUIRE(result.invoked_arbitrary_shell);
+    MK_REQUIRE(result.invoked_active_session_hot_reload);
+    MK_REQUIRE(result.exposed_native_handles);
+    MK_REQUIRE(result.diagnostics.size() == 5);
 }
 
 int main() {

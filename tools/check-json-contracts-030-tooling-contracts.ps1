@@ -1380,7 +1380,7 @@ $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($runtimeResourceGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-$recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason), ([string]$productionLoop.recommendedNextPlan.phase5LocalEvidence), ([string]$productionLoop.recommendedNextPlan.phase6LocalEvidence), ([string]$productionLoop.recommendedNextPlan.phase7LocalEvidence)) -join " "
 if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
     foreach ($needle in @(
         "General Purpose Game Production v1",
@@ -1393,7 +1393,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan production milestone"
     }
-} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "2d-production-engine-capability-gap-cluster-v1") { foreach ($needle in @("2D Production Engine Capability Gap Cluster v1", "RuntimeGameplayExecutionLoop2D", "execute_runtime_gameplay_loop_2d_step", "--require-2d-gameplay-execution-loop", "2d_gameplay_execution_loop_status=ready", "positive replay hash", "legal clean-room constraints", "official docs category-only", "unsupportedProductionGaps = []", "broad 2D production readiness")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe 2D production engine capability selection: $needle" } }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "2d-production-engine-capability-gap-cluster-v1") { foreach ($needle in @("2D Production Engine Capability Gap Cluster v1", "RuntimeGameplayExecutionLoop2D", "execute_runtime_gameplay_loop_2d_step", "--require-2d-gameplay-execution-loop", "2d_gameplay_execution_loop_status=ready", "positive replay hash", "2d-production-workload-matrix-v1", "tools/validate-2d-production-workloads.ps1", "2d-package-playtest-productization-v1", "Runtime2DPackagePlaytestRecipeRow", "plan_runtime_2d_package_playtest_productization", "tools/validate-2d-package-playtest-productization.ps1", "--require-2d-package-playtest-productization", "2d_package_playtest_productization_status=ready", "legal clean-room constraints", "official docs category-only", "unsupportedProductionGaps = []", "broad 2D production readiness")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe 2D production engine capability selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "generated-game-studio-v1") {
     foreach ($needle in @(
         "Generated Game Studio v1",
