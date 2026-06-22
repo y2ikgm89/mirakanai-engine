@@ -896,6 +896,20 @@ function Get-ValidationRecipeCommandPlan {
         $diagVulkan = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan generated material/shader scaffold package validation requires local Vulkan runtime, DXC SPIR-V CodeGen, and spirv-val readiness.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_generated_desktop_runtime_material_shader_package') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkan)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-scene-gpu-package') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanSceneGpuSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagVulkan = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan scene GPU package validation requires local Vulkan runtime, DXC SPIR-V CodeGen, spirv-val readiness, target-specific scene shader artifacts, Vulkan renderer selection, scene GPU bindings, postprocess, directional shadow, and renderer quality gate evidence.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkan)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-native-ui-overlay-package') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanNativeUiOverlaySmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagVulkan = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan native UI overlay package validation requires local Vulkan runtime, DXC SPIR-V CodeGen, spirv-val readiness, target-specific UI overlay shader artifacts, Vulkan renderer selection, scene GPU bindings, and native UI overlay draw evidence.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkan)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanSmokeArgs)

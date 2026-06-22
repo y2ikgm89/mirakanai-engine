@@ -784,6 +784,21 @@ $sampleVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-v
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-native-ui-textured-sprite-atlas")) {
     Assert-ArgvContainsText -Result $sampleVulkanDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package"
 }
+Assert-ArgvDoesNotContainText -Result $sampleVulkanDryRun -Unexpected "--video-driver" -Label "dry-run argv for desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package"
+$sampleVulkanSceneDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-scene-gpu-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-scene-gpu-bindings", "--require-renderer-quality-gates")) {
+    Assert-ArgvContainsText -Result $sampleVulkanSceneDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-scene-gpu-package"
+}
+foreach ($needle in @("--video-driver", "--require-native-ui-overlay", "--require-native-ui-textured-sprite-atlas")) {
+    Assert-ArgvDoesNotContainText -Result $sampleVulkanSceneDryRun -Unexpected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-scene-gpu-package"
+}
+$sampleVulkanOverlayDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-native-ui-overlay-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-native-ui-overlay")) {
+    Assert-ArgvContainsText -Result $sampleVulkanOverlayDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-native-ui-overlay-package"
+}
+foreach ($needle in @("--video-driver", "--require-native-ui-textured-sprite-atlas")) {
+    Assert-ArgvDoesNotContainText -Result $sampleVulkanOverlayDryRun -Unexpected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-native-ui-overlay-package"
+}
 Assert-DryRunRecipe -Recipe "dev-windows-editor-game-module-driver-load-tests" -ExpectedArgv @("-File", "tools/run-editor-game-module-driver-load-tests.ps1") | Out-Null
 
 $unknown = Invoke-RunnerJson -Arguments @("-Mode", "DryRun", "-Recipe", "not-a-recipe") -ExpectedExitCode 2
@@ -814,6 +829,16 @@ if ($unsupportedArgs.status -ne "rejected" -or @($unsupportedArgs.diagnostics | 
 $missingGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package") -ExpectedExitCode 2
 if ($missingGate.status -ne "rejected" -or @($missingGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "missing host-gate acknowledgement must be rejected with diagnostic code missing-host-gate-acknowledgement"
+}
+
+$missingVulkanSceneGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-scene-gpu-package") -ExpectedExitCode 2
+if ($missingVulkanSceneGate.status -ne "rejected" -or @($missingVulkanSceneGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan scene GPU package recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingVulkanOverlayGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-native-ui-overlay-package") -ExpectedExitCode 2
+if ($missingVulkanOverlayGate.status -ne "rejected" -or @($missingVulkanOverlayGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan native UI overlay package recipe must require vulkan-strict acknowledgement before execute"
 }
 
 $missingVulkanPrecipitationGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution") -ExpectedExitCode 2
