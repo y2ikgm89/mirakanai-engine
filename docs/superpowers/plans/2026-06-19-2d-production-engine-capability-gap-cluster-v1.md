@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `gameengine-feature` before implementation. Use `gameengine-rendering` before renderer/RHI edits, `gameengine-editor` before editor-core or visible editor edits, `gameengine-performance-optimization` before performance-budget or benchmark edits, and `gameengine-cmake-build-system` before CMake or validation-script edits.
 
 **Plan ID:** `2d-production-engine-capability-gap-cluster-v1`
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Define a non-overlapping candidate milestone for the remaining reusable 2D game-engine capabilities needed to move from selected 2D package/source foundations to a production-grade 2D runtime creation loop.
 
@@ -18,7 +18,7 @@
 - Plan id: `2d-production-engine-capability-gap-cluster-v1`
 - Date: `2026-06-19`
 - Re-audited: `2026-06-21`
-- Status: `active-milestone` in branch `codex/2d-engine-gap-plan`; selected by `currentActivePlan`
+- Status: completed milestone; live execution returns to the production-completion selection gate after Phase 7 publication evidence.
 - Authored in isolated worktree: `.worktrees/codex-2d-engine-gap-plan`
 - Branch: `codex/2d-engine-gap-plan`
 - Parallel external plan: `environment-highest-commercial-readiness-v1` remains separate work outside this isolated branch.
@@ -557,7 +557,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Local Phase 7 implementation adds `Runtime2DPackagePlaytestRecipeRow`, `Runtime2DPackagePlaytestEvidenceRow`, `Runtime2DPackagePlaytestFailureClassification`, `Runtime2DPackagePlaytestDesc`, `Runtime2DPackagePlaytestResult`, and `plan_runtime_2d_package_playtest_productization` to compose the selected package playtest recipe and evidence rows without making editor core an execution surface.
 - `sample_2d_desktop_runtime_package --require-2d-package-playtest-productization` now proves the selected `installed-2d-package-playtest-productization-smoke-playtest` recipe against the installed package, required runtime-host launch row, hot-reload safe-point row, imported package-smoke evidence, package counters, profile artifact row, remediation handoff rows, and all eight failure classifications.
 - Focused package validation passed `tools/validate-2d-package-playtest-productization.ps1` and `tools/validate-2d-package-playtest-productization.ps1 -RequireReady` locally. The ready smoke reports `2d_package_playtest_productization_status=ready`, ready=1, one recipe row, one evidence row, one imported evidence row, 11 package-smoke counter rows, one profile artifact row, four remediation handoff rows, eight failure classification rows, clean diagnostics, declared validation/playtest/runtime-host/hot-reload-safe-point rows, and zero editor-core execution, validation-recipe execution, arbitrary shell execution, active-session hot reload, and native-handle exposure.
-- Local slice-close gates passed on 2026-06-22 after the PR #736 `origin/main` closeout merge, including composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `check-public-api-boundaries`, `check-toolchain`, focused clang-tidy for runtime/test files, focused build/CTest for hot-reload/editor tests, `tools/validate-2d-package-playtest-productization.ps1 -RequireReady`, and full `tools/validate.ps1` with CTest 143/143 passing. Remaining Phase 7 gates are publication preflight, candidate commit, push, PR, hosted checks, merge, and local main synchronization.
+- Local slice-close gates passed on 2026-06-22 after the PR #736 `origin/main` closeout merge, including composed manifest verification, `check-json-contracts`, `check-ai-integration`, `check-agents`, `check-text-format`, `check-format`, `check-public-api-boundaries`, `check-toolchain`, focused clang-tidy for runtime/test files, focused build/CTest for hot-reload/editor tests, `tools/validate-2d-package-playtest-productization.ps1 -RequireReady`, and full `tools/validate.ps1` with CTest 143/143 passing.
+- Publication completed through PR #737. Head `c9705fd8ead4d13ec4d8cca93ac2fc0ccff1c8b4` passed hosted PR Gate, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Linux Vulkan Host Evidence, Full Repository Static Analysis shards 0-3, iOS Simulator smoke, iOS Metal Evidence, macOS Metal CMake, and CodeQL. PR #737 merged to `origin/main` at merge commit `db745fc05b9eeab5931bae7a9e0f4f66faa11a7e` on 2026-06-22T03:00:24Z, and local fetch plus merge-base verification confirmed the Phase 7 head reaches `origin/main`.
 
 ## Cross-Phase Validation Rules
 
@@ -581,8 +582,9 @@ This candidate milestone is complete only when all selected phases that remain i
 - `unsupportedProductionGaps` kept honest,
 - full `tools/validate.ps1` evidence for any runtime/build/public-contract slice.
 
-Until then, the correct answer for broad 2D production readiness is:
+At closeout, the selected milestone evidence is:
 
 - selected 2D source/package foundations: ready or host-gated as currently documented,
 - general tile/sandbox/UI/audio/input/sprite foundations: implemented as documented by their completed plans,
-- broad production 2D engine loop: candidate work in this plan, not ready.
+- selected production 2D engine loop and package playtest productization: completed through Phase 1-7 publication evidence,
+- broad all-feature/all-platform 2D engine readiness beyond the selected milestone: still an explicit non-claim until a future selected plan proves it.
