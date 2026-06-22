@@ -202,6 +202,103 @@ struct RuntimePackageHotReloadRecookChangeReviewResultV2 {
 [[nodiscard]] RuntimePackageHotReloadRecookChangeReviewResultV2
 plan_runtime_package_hot_reload_recook_change_review_v2(const RuntimePackageHotReloadRecookChangeReviewDescV2& desc);
 
+enum class Runtime2DPackagePlaytestStatus : std::uint8_t {
+    ready = 0,
+    missing_recipe,
+    missing_evidence,
+    blocked,
+};
+
+enum class Runtime2DPackagePlaytestEvidenceStatus : std::uint8_t {
+    passed = 0,
+    failed,
+    blocked,
+    host_gated,
+    missing,
+};
+
+enum class Runtime2DPackagePlaytestFailureClassification : std::uint8_t {
+    missing_package_file = 0,
+    invalid_scene_binding,
+    package_load_failure,
+    shader_tool_gap,
+    counter_mismatch,
+    hot_reload_recook_failure,
+    runtime_replacement_failure,
+    host_gated_backend,
+};
+
+struct Runtime2DPackagePlaytestRecipeRow {
+    std::string id;
+    std::string validation_recipe_id;
+    std::string reviewed_recipe_surface_id;
+    std::string evidence_kind;
+    std::vector<std::string> expected_signals;
+    std::vector<Runtime2DPackagePlaytestFailureClassification> failure_classifications;
+    std::string runtime_host_launch_row_id;
+    std::string hot_reload_safe_point_evidence_id;
+    bool validation_recipe_declared{false};
+    bool generated_playtest_declared{false};
+    bool runtime_host_launch_declared{false};
+    bool hot_reload_safe_point_review_declared{false};
+};
+
+struct Runtime2DPackagePlaytestEvidenceRow {
+    std::string recipe_id;
+    Runtime2DPackagePlaytestEvidenceStatus status{Runtime2DPackagePlaytestEvidenceStatus::missing};
+    std::string stdout_summary;
+    std::string stderr_summary;
+    std::vector<std::string> package_smoke_counters;
+    std::vector<std::string> profile_artifacts;
+    std::vector<std::string> remediation_handoff_ids;
+    bool externally_supplied{true};
+    bool claims_editor_core_execution{false};
+    bool claims_validation_recipe_execution{false};
+    bool claims_arbitrary_shell_execution{false};
+    bool claims_active_session_hot_reload{false};
+    bool claims_native_handle_exposure{false};
+};
+
+struct Runtime2DPackagePlaytestDesc {
+    std::vector<std::string> manifest_validation_recipe_ids;
+    std::vector<std::string> generated_playtest_recipe_ids;
+    std::vector<std::string> runtime_host_launch_recipe_ids;
+    std::vector<std::string> hot_reload_safe_point_evidence_ids;
+    std::vector<Runtime2DPackagePlaytestRecipeRow> recipe_rows;
+    std::vector<Runtime2DPackagePlaytestEvidenceRow> evidence_rows;
+    bool request_editor_core_execution{false};
+    bool request_validation_recipe_execution{false};
+    bool request_arbitrary_shell_execution{false};
+    bool request_active_session_hot_reload{false};
+    bool request_native_handle_exposure{false};
+};
+
+struct Runtime2DPackagePlaytestResult {
+    Runtime2DPackagePlaytestStatus status{Runtime2DPackagePlaytestStatus::missing_recipe};
+    std::vector<Runtime2DPackagePlaytestRecipeRow> recipe_rows;
+    std::vector<Runtime2DPackagePlaytestEvidenceRow> evidence_rows;
+    std::size_t imported_evidence_count{0};
+    std::size_t package_smoke_counter_count{0};
+    std::size_t profile_artifact_count{0};
+    std::size_t remediation_handoff_count{0};
+    std::size_t failure_classification_count{0};
+    bool invoked_editor_core_execution{false};
+    bool invoked_validation_recipe_execution{false};
+    bool invoked_arbitrary_shell{false};
+    bool invoked_active_session_hot_reload{false};
+    bool exposed_native_handles{false};
+    std::vector<std::string> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Reviews selected 2D package playtest recipes and externally supplied evidence rows.
+/// This pure planner joins already-declared manifest validation recipes, generated-game playtest rows, runtime-host
+/// launch review rows, and hot-reload safe-point evidence ids. It never executes validation recipes, runs shell
+/// commands, mutates editor state, performs active-session hot reload, or exposes renderer/RHI/native handles.
+[[nodiscard]] Runtime2DPackagePlaytestResult
+plan_runtime_2d_package_playtest_productization(const Runtime2DPackagePlaytestDesc& desc);
+
 struct RuntimeResourceHandleV2 {
     std::uint32_t index{0};
     std::uint32_t generation{0};

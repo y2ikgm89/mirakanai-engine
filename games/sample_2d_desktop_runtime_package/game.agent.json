@@ -162,6 +162,8 @@
         "installed-2d-sprite-atlas-residency-smoke",
         "installed-2d-sprite-throughput-smoke",
         "installed-2d-physics-runtime-extension-smoke",
+        "installed-2d-input-device-production-ux-smoke",
+        "installed-2d-package-playtest-productization-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-sandbox-package-budget-smoke",
@@ -270,6 +272,13 @@
           "evidence": "2D physics runtime extension smoke reports selected exact sweep/TOI, no-hit, initial-overlap, kinematic contact, distance/hinge/prismatic/spring joint, trigger enter/exit, clean diagnostic, zero native-handle, zero middleware, and zero dynamic-vs-dynamic CCD claim counters.",
           "recipeIds": [
             "installed-2d-physics-runtime-extension-smoke"
+          ]
+        },
+        {
+          "id": "input-device-production-ux-2d",
+          "evidence": "2D input device production UX smoke reports deterministic gesture/action, device assignment, per-device profile, symbolic glyph lookup, keyboard layout label, clean diagnostic, zero native-handle, zero UI rendering, zero input middleware, zero glyph rendering, and zero UI widget counters.",
+          "recipeIds": [
+            "installed-2d-input-device-production-ux-smoke"
           ]
         },
         {
@@ -1074,6 +1083,34 @@
           "hostGatePolicy": "respect-manifest-host-gates"
         },
         {
+          "id": "installed-2d-package-playtest-productization-smoke-playtest",
+          "validationRecipeId": "installed-2d-package-playtest-productization-smoke",
+          "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
+          "evidenceKind": "package-smoke-counter-import",
+          "expectedSignals": [
+            "2d_package_playtest_productization_status=ready",
+            "2d_package_playtest_productization_ready=1",
+            "2d_package_playtest_productization_editor_core_execution=0",
+            "2d_package_playtest_productization_validation_recipe_execution=0",
+            "2d_package_playtest_productization_arbitrary_shell_execution=0",
+            "2d_package_playtest_productization_active_session_hot_reload=0",
+            "2d_package_playtest_productization_native_handle_exposure=0"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-scene-binding",
+            "package-load-failure",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "hot-reload-recook-failure",
+            "runtime-replacement-failure",
+            "host-gated-backend"
+          ],
+          "runtimeHostLaunchRowId": "desktop-game-runtime-playtest",
+          "hotReloadSafePointEvidenceId": "packaged-2d-residency-budget",
+          "hostGatePolicy": "respect-manifest-host-gates"
+        },
+        {
           "id": "installed-2d-sprite-animation-smoke-playtest",
           "validationRecipeId": "installed-2d-sprite-animation-smoke",
           "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
@@ -1316,6 +1353,12 @@
           "evidence": "Repair game-owned descriptor rows without deleting validation evidence."
         },
         {
+          "id": "invalid-scene-binding",
+          "trigger": "The selected runtimeSceneValidationTargets row, scene asset key, package index, or package smoke scene binding is missing or invalid.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Repair reviewed scene/package descriptor rows without weakening the selected package playtest recipe."
+        },
+        {
           "id": "host-gated",
           "trigger": "A recipe requires host gates that are unavailable or unacknowledged on the current machine.",
           "remediationActionId": "validation-failure",
@@ -1338,6 +1381,30 @@
           "trigger": "Runtime package load, index, asset payload, or runtime scene validation fails.",
           "remediationActionId": "missing-package-file",
           "evidence": "Repair reviewed runtime package files and package index rows before rerunning smoke recipes."
+        },
+        {
+          "id": "package-load-failure",
+          "trigger": "The selected package playtest recipe cannot load the installed runtime package or package index.",
+          "remediationActionId": "missing-package-file",
+          "evidence": "Repair reviewed runtimePackageFiles and package artifacts before rerunning productized package playtest smoke."
+        },
+        {
+          "id": "hot-reload-recook-failure",
+          "trigger": "Reviewed recook-to-resident replacement evidence reports a recook failure or missing safe-point preflight.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Stop at reviewed hot-reload safe-point remediation; do not run package scripts or infer active-session hot reload."
+        },
+        {
+          "id": "runtime-replacement-failure",
+          "trigger": "Reviewed runtime replacement evidence reports a failed safe-point replacement or invalid resident catalog transition.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Repair reviewed runtime package rows or developer-owned engine capability evidence without native handles."
+        },
+        {
+          "id": "host-gated-backend",
+          "trigger": "The selected package playtest requires a backend or runtime host that is unavailable on the current host.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Record host-gated backend evidence and do not substitute another backend readiness claim."
         },
         {
           "id": "unsafe-mutation-request",
@@ -1958,6 +2025,7 @@
     "spriteAtlasRuntimeResidency": "mirakana::runtime::plan_runtime_sprite_atlas_residency under --require-2d-sprite-atlas-residency; selected smoke requires 2d_sprite_atlas_residency_status=ready, 2d_sprite_atlas_residency_ready=1, one cooked package page row, one renderer upload-handoff descriptor row, resident_bytes=4, diagnostics=0, invoked_runtime_source_decode=0, requested_renderer_residency_ownership=0, requested_public_native_handle=0, and invoked_renderer_upload=0 without runtime source image decoding, arbitrary imports, package mutation, renderer/RHI ownership, public native handles, backend readiness inference, or third-party engine API surface",
     "spriteThroughput": "mirakana::plan_sprite_batch_production_throughput plus mirakana::runtime::plan_runtime_entity_scale_culling_sprite_draw_intents under --require-2d-sprite-throughput; selected smoke requires 2d_sprite_throughput_status=ready, 2d_sprite_throughput_ready=1, culling draw-intent status ready, 3 workload rows, 512/4096 dense visible sprites, 12000 logical projectile sprites, 768 visible projectile sprites, 11232 culled projectile sprites, 14 draw rows, 5376 instance rows, 319488 upload bytes, 6 atlas-page rows, 5 material-lane rows, 1 measured row, 2 host-gated rows, 1 retained timing artifact, retained hash 9817, diagnostics=0, over_budget_rows=0, clean culling rows, and zero scene mutation, renderer ownership, native handle access, broad optimization, cross-backend parity, or Metal readiness claims",
     "physicsRuntimeExtension2D": "mirakana::simulate_physics2d_step under --require-2d-physics-runtime-extension; selected smoke requires 2d_physics_runtime_extension_status=ready, simulate_status=simulated, 2 simulation runs, 5 TOI rows, 3 exact sweep shape-pair rows, 4 hit rows, 1 no-hit row, 1 initial-overlap row, 1 kinematic contact row, 4 joint rows across distance/hinge/prismatic/spring, 2 trigger event rows with enter/exit, diagnostics=0, native_handle_exposure=0, middleware_dispatches=0, and dynamic_vs_dynamic_ccd_claimed=0 without middleware/native handles, dynamic-vs-dynamic CCD broad claims, renderer/RHI ownership, package mutation, or third-party engine API surface",
+    "inputDeviceProductionUx2D": "mirakana::runtime::plan_runtime_input_device_production_ux under --require-2d-input-device-production-ux; selected smoke requires 2d_input_device_production_ux_status=ready, 7 gesture binding rows, 7 gesture event rows, 7 gesture action rows, 2 device assignment rows, 1 per-device profile row, 0 clamped deadzone rows, 2 symbolic glyph asset lookup rows, 2 keyboard layout label rows, diagnostics=0, native_handle_access_rows=0, ui_rendering_rows=0, input_middleware_rows=0, glyph_rendering_rows=0, and ui_widget_rows=0 without visible runtime/game rebinding panels, UI rendering, text/IME, accessibility, native input handles, input middleware, or rendered glyph widgets",
     "worldEntityModel": "mirakana::runtime::plan_runtime_world_entity_lifecycle under --require-simulation-orchestration; selected smoke requires world_entity_model_status=ready, world_entity_model_ready=1, 3 entity rows, 4 component rows, 3 region ownership rows, 3 lifecycle rows, one persistence bridge row, one streaming bridge row, one duplicate-entity diagnostic probe, invalid_request bridge rejection with five diagnostics, zero rejected bridge rows, one propagated streaming diagnostic, fail-closed evidence, and world_entity_model_diagnostics=0 without scene mutation, lifecycle execution, package IO, streaming execution, renderer/RHI work, threads, or native handles",
     "addressableContentStreaming": "mirakana::runtime::plan_runtime_addressable_content_streaming under --require-simulation-orchestration; selected smoke requires addressable_content_status=ready, addressable_content_ready=1, 5 address rows, 6 dependency rows, 3 load rows, 1 release row, 4 refcount rows, resident byte and budget counters, budget_limited rejection diagnostics, and addressable_content_package_io=0/addressable_content_async_execution=0/addressable_content_committed=0/addressable_content_diagnostics=0 without reading packages, mutating resident state, executing async work, creating renderer/RHI resources, creating threads, or exposing native handles",
     "rpgSystems": "mirakana::runtime::plan_runtime_rpg_systems under --require-gameplay-systems; selected smoke requires rpg_systems_status=ready, rpg_systems_ready=1, rpg_systems_party_members=2, rpg_systems_enemy_members=1, rpg_systems_stat_rows=8, rpg_systems_progression_rows=2, rpg_systems_skill_rows=2, rpg_systems_skill_blocked_rows=1, rpg_systems_equipment_rows=2, rpg_systems_equipment_blocked_rows=1, rpg_systems_combat_turn_rows=6, rpg_systems_combat_rounds=2, rpg_systems_reward_rows=2, rpg_systems_save_validation_rows=2, rpg_systems_save_validation_repairable_rows=1, positive rpg_systems_replay_hash, zero combat/reward/save side-effect counters, and rpg_systems_diagnostics=0 without combat execution, reward application, save IO, package/world mutation, renderer/RHI work, native handles, or story/balance/tuning claims",
@@ -2035,6 +2103,11 @@
       "installed-2d-sandbox-package-budget-smoke",
       "installed-2d-performance-baseline-smoke",
       "installed-2d-long-run-readiness-smoke",
+      "installed-2d-sprite-throughput-smoke",
+      "installed-2d-tilemap-runtime-ux-smoke",
+      "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+      "installed-2d-input-device-production-ux-smoke",
+      "host-2d-long-run-readiness-soak",
       "installed-native-2d-sprite-smoke",
       "desktop-game-runtime"
     ],
@@ -2101,6 +2174,105 @@
         "unit": "bytes",
         "evidenceRequired": true,
         "notes": "Selected long-run readiness smoke must report zero memory growth with positive high-water evidence; this is not allocator enforcement or broad memory optimization."
+      },
+      {
+        "id": "dense-arena-visible-sprites",
+        "category": "draw",
+        "metric": "2d_sprite_throughput_dense_arena_4096_visible_sprites",
+        "limit": 4096,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected dense arena workload is capped at the package-visible 4096 visible sprite row and does not claim backend renderer quality."
+      },
+      {
+        "id": "projectile-storm-logical-sprites",
+        "category": "draw",
+        "metric": "2d_sprite_throughput_projectile_storm_logical_sprites",
+        "limit": 12000,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected projectile storm workload records logical sprite pressure before culling; it is not a broad bullet-hell optimization claim."
+      },
+      {
+        "id": "sprite-throughput-upload-bytes",
+        "category": "upload",
+        "metric": "2d_sprite_throughput_upload_bytes",
+        "limit": 319488,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Selected sprite throughput smoke bounds package-visible upload bytes without taking renderer/RHI residency ownership."
+      },
+      {
+        "id": "sandbox-tile-visible-cells",
+        "category": "draw",
+        "metric": "tile_chunk_renderer_visible_cells",
+        "limit": 3,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox tilemap workload uses the existing package tile chunk renderer proof."
+      },
+      {
+        "id": "sandbox-tile-draw-rows",
+        "category": "draw",
+        "metric": "tile_chunk_renderer_draw_rows",
+        "limit": 2,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox tilemap workload keeps draw rows deterministic and renderer-neutral."
+      },
+      {
+        "id": "sandbox-streaming-load-rows",
+        "category": "streaming",
+        "metric": "sandbox_package_budget_streaming_load_rows",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox package budget smoke records safe-point streaming intent without broad background streaming."
+      },
+      {
+        "id": "ui-overlay-renderer-sprites",
+        "category": "draw",
+        "metric": "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
+        "limit": 2,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload uses cooked UI atlas renderer handoff rows only."
+      },
+      {
+        "id": "ui-overlay-atlas-budget-rows",
+        "category": "memory",
+        "metric": "runtime_ui_renderer_atlas_handoff_atlas_budget_rows",
+        "limit": 2,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload records atlas budget rows without live glyph atlas generation or renderer upload ownership."
+      },
+      {
+        "id": "hot-reload-reviewed-replacement-rows",
+        "category": "streaming",
+        "metric": "hot_reload_package_external_evidence_rows",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Hot reload productization stays host-gated in this workload matrix until external recook-to-resident replacement evidence is imported."
+      },
+      {
+        "id": "hot-reload-unsafe-execution-claims",
+        "category": "streaming",
+        "metric": "hot_reload_package_unsafe_execution_claims",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "The workload matrix rejects package-script execution, arbitrary shell, and in-process hot reload claims."
+      },
+      {
+        "id": "long-run-sample-frames",
+        "category": "frame",
+        "metric": "long_run_readiness_frames",
+        "limit": 3,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected short long-run readiness is fixed at the deterministic package smoke sample count; the 108000-frame soak remains opt-in host evidence."
       }
     ],
     "evidenceRows": [
@@ -2169,6 +2341,189 @@
         "validationRecipeId": "installed-2d-performance-baseline-smoke",
         "status": "host-gated",
         "artifactPath": "out/performance/sample_2d_desktop_runtime_package/installed-2d-performance-baseline.trace.json"
+      },
+      {
+        "id": "sprite-throughput-workload-smoke",
+        "budgetRowIds": [
+          "dense-arena-visible-sprites",
+          "projectile-storm-logical-sprites",
+          "sprite-throughput-upload-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible 2d_sprite_throughput_* counters from installed 2D sprite throughput smoke, including dense arena, projectile storm, upload bytes, retained timing artifact hash, clean diagnostics, and zero broad optimization/backend/Metal claim counters.",
+        "validationRecipeId": "installed-2d-sprite-throughput-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "sandbox-tilemap-workload-smoke",
+        "budgetRowIds": [
+          "sandbox-tile-visible-cells",
+          "sandbox-tile-draw-rows",
+          "sandbox-streaming-load-rows"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible sandbox_package_budget_*, tilemap_*, and tile_chunk_renderer_* counters from selected sandbox/tilemap package smoke with clean diagnostics and zero renderer/RHI ownership side effects.",
+        "validationRecipeId": "installed-2d-sandbox-package-budget-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "ui-overlay-workload-smoke",
+        "budgetRowIds": [
+          "ui-overlay-renderer-sprites",
+          "ui-overlay-atlas-budget-rows"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible runtime_ui_renderer_atlas_handoff_* counters from cooked UI atlas handoff smoke with zero native handle, source decode, live glyph generation, and renderer upload side effects.",
+        "validationRecipeId": "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "hot-reload-package-playtest-evidence",
+        "budgetRowIds": [
+          "hot-reload-reviewed-replacement-rows",
+          "hot-reload-unsafe-execution-claims"
+        ],
+        "evidenceKind": "manual-host-evidence",
+        "source": "External operator playtest evidence under games/sample_2d_desktop_runtime_package/reports/playtest/latest may later attach reviewed recook-to-resident replacement rows. This matrix keeps the row host-gated and non-executing.",
+        "validationRecipeId": "installed-2d-package-smoke",
+        "status": "host-gated"
+      },
+      {
+        "id": "long-run-selected-smoke",
+        "budgetRowIds": [
+          "long-run-sample-frames",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible long_run_readiness_* counters from selected deterministic short long-run smoke, including three frames, zero over-budget frames, positive memory high-water, zero memory growth, and zero native/SIMD/GPU async/CUDA/HIP/SYCL side effects.",
+        "validationRecipeId": "installed-2d-long-run-readiness-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "long-run-host-soak-evidence",
+        "budgetRowIds": [
+          "long-run-sample-frames",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceKind": "manual-host-evidence",
+        "source": "Optional host-2d-long-run-readiness-soak evidence for a 108000-frame package soak. It is not part of default validation and must not promote broad long-running or broad optimization readiness.",
+        "validationRecipeId": "host-2d-long-run-readiness-soak",
+        "status": "host-gated"
+      }
+    ],
+    "workloadRows": [
+      {
+        "id": "2d-dense-arena",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-sprite-throughput-smoke"
+        ],
+        "budgetRowIds": [
+          "dense-arena-visible-sprites",
+          "projectile-storm-logical-sprites",
+          "sprite-throughput-upload-bytes"
+        ],
+        "evidenceRowIds": [
+          "sprite-throughput-workload-smoke"
+        ],
+        "artifactPolicy": "package-counter-retained-hash",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-sandbox-tilemap",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-sandbox-package-budget-smoke",
+          "installed-2d-tilemap-runtime-ux-smoke"
+        ],
+        "budgetRowIds": [
+          "sandbox-tile-visible-cells",
+          "sandbox-tile-draw-rows",
+          "sandbox-streaming-load-rows"
+        ],
+        "evidenceRowIds": [
+          "sandbox-tilemap-workload-smoke"
+        ],
+        "artifactPolicy": "package-counter-only",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-ui-overlay",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
+        ],
+        "budgetRowIds": [
+          "ui-overlay-renderer-sprites",
+          "ui-overlay-atlas-budget-rows"
+        ],
+        "evidenceRowIds": [
+          "ui-overlay-workload-smoke"
+        ],
+        "artifactPolicy": "package-counter-only",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-hot-reload-package",
+        "status": "host-gated",
+        "validationRecipeIds": [
+          "installed-2d-package-smoke"
+        ],
+        "budgetRowIds": [
+          "hot-reload-reviewed-replacement-rows",
+          "hot-reload-unsafe-execution-claims"
+        ],
+        "evidenceRowIds": [
+          "hot-reload-package-playtest-evidence"
+        ],
+        "artifactPolicy": "external-playtest-evidence",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
+      },
+      {
+        "id": "2d-long-run-selected",
+        "status": "ready",
+        "validationRecipeIds": [
+          "installed-2d-long-run-readiness-smoke",
+          "host-2d-long-run-readiness-soak"
+        ],
+        "budgetRowIds": [
+          "long-run-sample-frames",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceRowIds": [
+          "long-run-selected-smoke",
+          "long-run-host-soak-evidence"
+        ],
+        "artifactPolicy": "package-counter-with-optional-host-soak",
+        "unsupportedClaims": [
+          "broad-optimized-game",
+          "cross-vendor-performance-parity",
+          "cross-backend-performance-parity",
+          "native-handles"
+        ]
       }
     ],
     "unsupportedClaims": [
@@ -2498,6 +2853,14 @@
     {
       "name": "installed-2d-physics-runtime-extension-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-physics-runtime-extension"
+    },
+    {
+      "name": "installed-2d-input-device-production-ux-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-input-device-production-ux"
+    },
+    {
+      "name": "installed-2d-package-playtest-productization-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-2d-package-playtest-productization"
     },
     {
       "name": "installed-2d-gameplay-authoring-review-smoke",

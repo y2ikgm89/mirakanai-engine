@@ -1048,7 +1048,7 @@
                   },
                   "evidenceKind": {
                     "type": "string",
-                    "enum": ["recipe-summary", "package-smoke-log", "gameplay-counter-summary"]
+                    "enum": ["recipe-summary", "package-smoke-log", "gameplay-counter-summary", "package-smoke-counter-import"]
                   },
                   "expectedSignals": {
                     "type": "array",
