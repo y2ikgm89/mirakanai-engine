@@ -1605,3 +1605,8 @@ $editorAiPlaytestOperatorWorkflowLoop = @($productionLoop.reviewLoops | Where-Ob
 if ($editorAiPlaytestOperatorWorkflowLoop.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose one editor-ai-playtest-operator-workflow review loop"
 }
+
+$productionReadinessAuditScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-production-readiness-audit.ps1") -Raw
+foreach ($needle in @("hostGates", "production-readiness-audit: host_gates=", "production-readiness-audit: host_gate_status[", "production-readiness-audit: host_gate=")) {
+    Assert-ContainsText $productionReadinessAuditScriptText $needle "tools/check-production-readiness-audit.ps1"
+}
