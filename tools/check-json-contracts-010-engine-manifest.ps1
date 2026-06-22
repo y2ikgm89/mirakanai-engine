@@ -1120,9 +1120,13 @@ if ($cpuProfilingRecipe.Count -ne 1) {
 if (-not (Test-Path (Join-Path $root "tools/check-cpu-profiling-host-evidence.ps1"))) {
     Write-Error "tools/check-cpu-profiling-host-evidence.ps1 must exist for host-cpu-profiling-matrix evidence validation"
 }
-foreach ($needle in @("tools/check-cpu-profiling-host-evidence.ps1", "-EvidenceRoot", "-RequireReady")) {
+if (-not (Test-Path (Join-Path $root "tools/collect-cpu-profiling-host-evidence.ps1"))) {
+    Write-Error "tools/collect-cpu-profiling-host-evidence.ps1 must exist for host-cpu-profiling-matrix evidence collection"
+}
+foreach ($needle in @("tools/collect-cpu-profiling-host-evidence.ps1", "-Mode Import", "tools/check-cpu-profiling-host-evidence.ps1", "-EvidenceRoot", "-RequireReady")) {
     Assert-ContainsText ([string]$cpuProfilingRecipe[0].command) $needle "engine manifest validationRecipes host-cpu-profiling-matrix command"
 }
+Assert-ContainsText (Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw) "check-cpu-profiling-host-evidence-collector.ps1" "tools/validate.ps1"
 $optionalGpuComputeReview = $productionLoop.optionalGpuComputeReview
 Assert-Properties $optionalGpuComputeReview @("id", "status", "owner", "summary", "classifications", "requiredEvidenceFields", "candidateRows", "fallbackRequirements", "nonGoals", "officialReferences", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop.optionalGpuComputeReview"
 if ($optionalGpuComputeReview.id -ne "long-running-performance-readiness-v1-phase-7" -or $optionalGpuComputeReview.status -ne "review-only") { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview must be Phase 7 review-only" }

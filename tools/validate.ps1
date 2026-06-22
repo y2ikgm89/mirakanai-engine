@@ -541,6 +541,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-release-package-artifacts.ps1"
     Get-ValidateTask -ScriptFileName "check-ai-integration.ps1"
     Get-ValidateTask -ScriptFileName "check-production-readiness-audit.ps1"
+    Get-ValidateTask -ScriptFileName "check-cpu-profiling-host-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-ci-matrix.ps1"
     Get-ValidateTask -ScriptFileName "check-dependency-policy.ps1"
     Get-ValidateTask -ScriptFileName "check-vcpkg-environment.ps1"
