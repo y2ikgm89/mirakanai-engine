@@ -849,7 +849,7 @@ Assert-ContainsText $currentCapabilitiesContent "performanceBudgets" "docs/curre
 Assert-ContainsText $currentCapabilitiesContent "performanceBudgetEvidenceLoops" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "cpuProfilingMatrix" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "optionalGpuComputeReview" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesContent "host-gated Intel/AMD CPU profiling contract" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesContent "CPU profiling matrix host gate closeout" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "Optional GPU Compute Review v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "installed-2d-performance-baseline.trace.json" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "registeredSourceAssetCookTargets" "docs/current-capabilities.md"

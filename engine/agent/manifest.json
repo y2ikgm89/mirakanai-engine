@@ -10028,8 +10028,8 @@
       },
       {
         "id": "cpu-profiling-matrix-host",
-        "status": "host-gated",
-        "residualClass": "external-artifact-required",
+        "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "Windows Intel or AMD host with Windows Performance Toolkit",
           "Linux Intel or AMD host with perf",
@@ -10040,7 +10040,7 @@
         "validationRecipes": [
           "host-cpu-profiling-matrix"
         ],
-        "notes": "CPU profiling matrix evidence is external host-owned artifact collection. Missing profiler tools, missing PMU support, incomplete topology, missing NUMA/NPS state, missing before/after traces, or absent regression budgets must report host-gated evidence rather than ready CPU optimization."
+        "notes": "CPU profiling matrix host gate closeout is ready only through hosted Windows Performance Recorder, Windows Performance Analyzer, and WPA Exporter evidence on the Windows MSVC lane. The hosted validator runs host-cpu-profiling-matrix by recording official WPR CPU before/after ETL traces, attaching a WPT profiler summary, importing the bundle through tools/collect-cpu-profiling-host-evidence.ps1, and requiring tools/check-cpu-profiling-host-evidence.ps1 -RequireReady to emit cpu_profiling_matrix_ready=1, cpu_profiling_matrix_required_host_class_rows=1, cpu_profiling_matrix_missing_host_class_rows=0, cpu_profiling_matrix_trace_artifact_rows=2, cpu_profiling_matrix_profiler_artifact_rows=1, cpu_profiling_matrix_before_after_pairs=1, cpu_profiling_matrix_regression_budget_rows=1, cpu_profiling_matrix_broad_optimization=0, cpu_profiling_matrix_linux_affinity_execution=0, and cpu_profiling_matrix_numa_execution=0. This ready claim proves the selected Windows WPR/WPA artifact lane and the mechanical host evidence gate only; missing Linux perf, Intel VTune, AMD uProf, NUMA/NPS, broader SIMD, PGO/LTO, scheduler-policy, data-layout, GPU async, CUDA/HIP/SYCL, cross-vendor/backend parity, and broad CPU/GPU/memory optimization remains unclaimed."
       },
       {
         "id": "optional-gpu-compute-review-host",
