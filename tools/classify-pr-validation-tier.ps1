@@ -38,15 +38,56 @@ function Test-RuntimeOrBuildPath {
         $Path -eq "CMakePresets.json" -or
         $Path -match "^(cmake|engine|editor|games|platform|runtime|shaders|examples|tests)/" -or
         $Path -eq "vcpkg.json" -or
-        $Path -match "^tools/(validate|build|build-editor|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-text-format|check-text-format-contract|format|format-text|text-format-core|check-dependency-policy|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
+        $Path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-text-format|check-text-format-contract|format|format-text|text-format-core|check-dependency-policy|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
     )
 }
 
-function Test-WindowsOnlyValidationPath {
+function Test-WindowsCpuProfilingHostPath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     return (
-        $Path -eq "tools/validate-network-enet.ps1"
+        $Path -match "^tools/(validate-cpu-profiling-matrix-host-gate|collect-cpu-profiling-host-evidence|check-cpu-profiling-host-evidence|check-cpu-profiling-host-evidence-collector|check-cpu-profiling-matrix-host-gate-closeout)\.ps1$"
+    )
+}
+
+function Test-WindowsAssetImportersPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "CMakeLists.txt" -or
+        $Path -eq "CMakePresets.json" -or
+        $Path -eq "vcpkg.json" -or
+        $Path -match "^cmake/" -or
+        $Path -match "^engine/(assets|tools)/" -or
+        $Path -match "^tests/(unit/(asset|assets|tools)_.*|unit/tools_tests\.cpp)" -or
+        $Path -match "^tools/(bootstrap-deps|build-asset-importers|validate-environment-asset-pipeline-full)\.ps1$"
+    )
+}
+
+function Test-WindowsDesktopEditorPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "CMakeLists.txt" -or
+        $Path -eq "CMakePresets.json" -or
+        $Path -match "^cmake/" -or
+        $Path -match "^editor/" -or
+        $Path -match "^tests/(unit/editor_.*|fixtures/editor_.*)" -or
+        $Path -eq "tools/build-editor.ps1"
+    )
+}
+
+function Test-WindowsNetworkEnetPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "CMakeLists.txt" -or
+        $Path -eq "CMakePresets.json" -or
+        $Path -eq "vcpkg.json" -or
+        $Path -match "^cmake/" -or
+        $Path -match "^engine/runtime/network/enet/" -or
+        $Path -match "^tests/unit/runtime_network_(transport_adapter|enet|production_security)_tests\.cpp$" -or
+        $Path -match "^tools/(bootstrap-deps|validate-network-enet)\.ps1$"
     )
 }
 
@@ -146,6 +187,10 @@ function New-ValidationTierSelection {
     if ($All) {
         return [pscustomobject][ordered]@{
             windows_msvc = $true
+            windows_cpu_profiling_host = $true
+            windows_asset_importers = $true
+            windows_desktop_editor = $true
+            windows_network_enet = $true
             linux_cmake = $true
             linux_vulkan_host = $true
             linux_sanitizers = $true
@@ -165,7 +210,10 @@ function New-ValidationTierSelection {
     $sanitizerRelevant = $false
     $coverageRelevant = $false
     $cpp23Relevant = $false
-    $windowsOnlyValidation = $false
+    $windowsCpuProfilingHost = $false
+    $windowsAssetImporters = $false
+    $windowsDesktopEditor = $false
+    $windowsNetworkEnet = $false
     $linuxVulkanHostEvidence = $false
     $appleHostEvidence = $false
 
@@ -198,8 +246,17 @@ function New-ValidationTierSelection {
         if (Test-Cpp23RelevantPath -Path $path) {
             $cpp23Relevant = $true
         }
-        if (Test-WindowsOnlyValidationPath -Path $path) {
-            $windowsOnlyValidation = $true
+        if (Test-WindowsCpuProfilingHostPath -Path $path) {
+            $windowsCpuProfilingHost = $true
+        }
+        if (Test-WindowsAssetImportersPath -Path $path) {
+            $windowsAssetImporters = $true
+        }
+        if (Test-WindowsDesktopEditorPath -Path $path) {
+            $windowsDesktopEditor = $true
+        }
+        if (Test-WindowsNetworkEnetPath -Path $path) {
+            $windowsNetworkEnet = $true
         }
         if (Test-LinuxVulkanHostEvidencePath -Path $path) {
             $linuxVulkanHostEvidence = $true
@@ -215,7 +272,11 @@ function New-ValidationTierSelection {
     $heavyBuildLane = $ciOrWorkflow -or $runtimeOrBuild
 
     return [pscustomobject][ordered]@{
-        windows_msvc = ($heavyBuildLane -or $windowsOnlyValidation)
+        windows_msvc = $heavyBuildLane
+        windows_cpu_profiling_host = ($ciOrWorkflow -or $windowsCpuProfilingHost)
+        windows_asset_importers = ($ciOrWorkflow -or $windowsAssetImporters)
+        windows_desktop_editor = ($ciOrWorkflow -or $windowsDesktopEditor)
+        windows_network_enet = ($ciOrWorkflow -or $windowsNetworkEnet)
         linux_cmake = $heavyBuildLane
         linux_vulkan_host = ($ciOrWorkflow -or $linuxVulkanHostEvidence)
         linux_sanitizers = ($ciOrWorkflow -or $sanitizerRelevant)
@@ -236,6 +297,10 @@ function Write-GitHubActionsOutput {
 
     $lines = @(
         "windows_msvc=$($Selection.windows_msvc.ToString().ToLowerInvariant())",
+        "windows_cpu_profiling_host=$($Selection.windows_cpu_profiling_host.ToString().ToLowerInvariant())",
+        "windows_asset_importers=$($Selection.windows_asset_importers.ToString().ToLowerInvariant())",
+        "windows_desktop_editor=$($Selection.windows_desktop_editor.ToString().ToLowerInvariant())",
+        "windows_network_enet=$($Selection.windows_network_enet.ToString().ToLowerInvariant())",
         "linux_cmake=$($Selection.linux_cmake.ToString().ToLowerInvariant())",
         "linux_vulkan_host=$($Selection.linux_vulkan_host.ToString().ToLowerInvariant())",
         "linux_sanitizers=$($Selection.linux_sanitizers.ToString().ToLowerInvariant())",

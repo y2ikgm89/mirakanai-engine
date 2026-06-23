@@ -283,7 +283,7 @@ Assert-ContainsText $workflowsContent "Hosted PR Check Selection" "docs/workflow
 Assert-ContainsText $workflowsContent "always-running required gate" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Path-filtered workflows must not be branch-protection-required" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Docs/agent/rules/subagent-only" "docs/workflows.md"
-Assert-ContainsText $workflowsContent 'Do not run `Windows MSVC`, `macOS Metal CMake`, or `Full Repository Static Analysis`' "docs/workflows.md"
+Assert-ContainsText $workflowsContent 'Do not run `Windows MSVC`, optional Windows lanes, `macOS Metal CMake`, or `Full Repository Static Analysis`' "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr view <pr> --json headRefOid,statusCheckRollup,url" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub account billing/spending-limit" "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'hosted `static-analysis` failures' "docs/workflows.md"

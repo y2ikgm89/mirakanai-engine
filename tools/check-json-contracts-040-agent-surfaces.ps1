@@ -1174,6 +1174,10 @@ if ($ciMatrixClassifierInvocationMatches.Count -ne 1) {
 foreach ($needle in @(
     "Test-CiWorkflowPath",
     "Test-RuntimeOrBuildPath",
+    "Test-WindowsCpuProfilingHostPath",
+    "Test-WindowsAssetImportersPath",
+    "Test-WindowsDesktopEditorPath",
+    "Test-WindowsNetworkEnetPath",
     "Test-StaticPolicyPath",
     "tools/classify-pr-validation-tier.ps1",
     "tools/check-tidy.ps1",
