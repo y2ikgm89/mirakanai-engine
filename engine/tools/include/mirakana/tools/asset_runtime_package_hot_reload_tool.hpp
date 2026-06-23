@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/asset_dependency_graph.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
+#include "mirakana/tools/2d_source_pulse.hpp"
 #include "mirakana/tools/asset_file_scanner.hpp"
 #include "mirakana/tools/asset_import_tool.hpp"
 
@@ -127,6 +128,26 @@ struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct TwoDSourcePulseRuntimeReplacementDesc {
+    TwoDSourcePulsePlan source_pulse;
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc watch_tick;
+    bool runtime_scene_validation_succeeded{false};
+    bool operator_reviewed_safe_point{false};
+    bool request_editor_core_execution{false};
+    bool request_arbitrary_shell_execution{false};
+    bool request_active_session_without_safe_point{false};
+};
+
+struct TwoDSourcePulseRuntimeReplacementResult {
+    TwoDSourcePulseStatus status{TwoDSourcePulseStatus::blocked};
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult watch_tick;
+    std::vector<std::string> diagnostics;
+    bool invoked_runtime_replacement{false};
+    bool committed{false};
+    bool active_session_hot_reload{false};
+    bool native_handle_exposed{false};
+};
+
 /// Runs asset recook execution, feeds the helper-owned staged recook rows into the reviewed runtime package replacement
 /// safe point, and commits only the staged assets that matched the selected runtime package after the runtime resident
 /// package commit succeeds. This helper does not watch files, infer replacement targets, choose evictions, run package
@@ -147,5 +168,15 @@ execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
     AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
     runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
     const AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc& desc);
+
+/// Promotes already-reviewed 2D source pulse rows into the existing registered-asset hot-reload safe point after
+/// runtime scene validation and operator review. This helper does not start editor-core execution, arbitrary shell
+/// execution, native file watching, active-session replacement without a safe point, renderer/RHI ownership, package
+/// scripts, or native-handle integration.
+[[nodiscard]] TwoDSourcePulseRuntimeReplacementResult execute_2d_source_pulse_runtime_replacement_safe_point(
+    IFileSystem& filesystem, const AssetRegistry& assets, const AssetDependencyGraph& dependencies,
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
+    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    const TwoDSourcePulseRuntimeReplacementDesc& desc);
 
 } // namespace mirakana
