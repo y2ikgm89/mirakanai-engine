@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <exception>
+#include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 
@@ -100,6 +102,94 @@ watch_status_for_replacement_failure(AssetRuntimePackageHotReloadReplacementStat
         break;
     }
     return AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::runtime_replacement_failed;
+}
+
+[[nodiscard]] bool has_source_pulse_diagnostic(const std::vector<std::string>& diagnostics,
+                                               std::string_view code) noexcept {
+    return std::ranges::any_of(diagnostics, [code](const std::string& item) { return item == code; });
+}
+
+void add_source_pulse_diagnostic(TwoDSourcePulseRuntimeReplacementResult& result, std::string_view code) {
+    if (has_source_pulse_diagnostic(result.diagnostics, code)) {
+        return;
+    }
+    result.diagnostics.emplace_back(code);
+}
+
+void append_source_pulse_input_diagnostics(TwoDSourcePulseRuntimeReplacementResult& result,
+                                           const TwoDSourcePulseRuntimeReplacementDesc& desc) {
+    for (const auto& diagnostic : desc.source_pulse.diagnostics) {
+        add_source_pulse_diagnostic(result, diagnostic);
+    }
+
+    result.native_handle_exposed = desc.source_pulse.native_handle_exposed;
+    if (desc.source_pulse.native_handle_exposed) {
+        add_source_pulse_diagnostic(result, "native_handle_exposed");
+    }
+    if (!desc.runtime_scene_validation_succeeded) {
+        add_source_pulse_diagnostic(result, "runtime_scene_validation_required");
+    }
+    if (!desc.operator_reviewed_safe_point) {
+        add_source_pulse_diagnostic(result, "operator_reviewed_safe_point_required");
+    }
+    if (!desc.source_pulse.safe_point_required) {
+        add_source_pulse_diagnostic(result, "source_pulse_safe_point_required");
+    }
+    if (desc.request_editor_core_execution) {
+        add_source_pulse_diagnostic(result, "editor_core_execution_requested");
+    }
+    if (desc.request_arbitrary_shell_execution) {
+        add_source_pulse_diagnostic(result, "arbitrary_shell_execution_requested");
+    }
+    if (desc.request_active_session_without_safe_point) {
+        add_source_pulse_diagnostic(result, "active_session_without_safe_point_requested");
+    }
+}
+
+[[nodiscard]] std::vector<AssetHotReloadEvent>
+source_pulse_events_from_rows(const std::vector<TwoDSourcePulseEventRow>& rows) {
+    std::vector<AssetHotReloadEvent> events;
+    events.reserve(rows.size());
+    for (const auto& row : rows) {
+        events.push_back(AssetHotReloadEvent{
+            .kind = row.hot_reload_event_kind,
+            .asset = row.asset,
+            .path = row.path,
+            .previous_revision = row.previous_revision,
+            .current_revision = row.current_revision,
+            .previous_size_bytes = 0,
+            .current_size_bytes = 0,
+        });
+    }
+    return events;
+}
+
+[[nodiscard]] TwoDSourcePulseStatus
+source_pulse_status_for_watch_tick(AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus status) noexcept {
+    switch (status) {
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::primed:
+        return TwoDSourcePulseStatus::primed;
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::no_ready_changes:
+        return TwoDSourcePulseStatus::no_ready_changes;
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::recook_pending:
+        return TwoDSourcePulseStatus::recook_pending;
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::committed:
+        return TwoDSourcePulseStatus::committed;
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::scan_failed:
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::recook_failed:
+    case AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::runtime_replacement_failed:
+        break;
+    }
+    return TwoDSourcePulseStatus::failed;
+}
+
+void append_watch_tick_diagnostics(TwoDSourcePulseRuntimeReplacementResult& result) {
+    for (const auto& diagnostic : result.watch_tick.diagnostics) {
+        add_source_pulse_diagnostic(result, diagnostic.code);
+    }
+    if (!result.watch_tick.succeeded() && result.diagnostics.empty()) {
+        add_source_pulse_diagnostic(result, "watch_tick_failed");
+    }
 }
 
 [[nodiscard]] runtime::RuntimePackageHotReloadRecookReplacementDescV2
@@ -289,6 +379,60 @@ execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
 
     result.status = AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::committed;
     result.committed = true;
+    return result;
+}
+
+TwoDSourcePulseRuntimeReplacementResult execute_2d_source_pulse_runtime_replacement_safe_point(
+    IFileSystem& filesystem, const AssetRegistry& assets, const AssetDependencyGraph& dependencies,
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
+    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    const TwoDSourcePulseRuntimeReplacementDesc& desc) {
+    TwoDSourcePulseRuntimeReplacementResult result;
+    append_source_pulse_input_diagnostics(result, desc);
+    if (!result.diagnostics.empty()) {
+        result.status = TwoDSourcePulseStatus::blocked;
+        return result;
+    }
+
+    if (desc.source_pulse.status == TwoDSourcePulseStatus::no_ready_changes || desc.source_pulse.event_rows.empty()) {
+        result.status = TwoDSourcePulseStatus::no_ready_changes;
+        return result;
+    }
+
+    if (desc.source_pulse.status == TwoDSourcePulseStatus::blocked) {
+        add_source_pulse_diagnostic(result, "source_pulse_blocked");
+        result.status = TwoDSourcePulseStatus::blocked;
+        return result;
+    }
+
+    if (desc.source_pulse.status != TwoDSourcePulseStatus::recook_pending) {
+        add_source_pulse_diagnostic(result, "source_pulse_not_recook_pending");
+        result.status = TwoDSourcePulseStatus::blocked;
+        return result;
+    }
+
+    const auto scheduler_before_source_pulse = tick_state.scheduler;
+    try {
+        tick_state.scheduler.enqueue(source_pulse_events_from_rows(desc.source_pulse.event_rows), dependencies,
+                                     desc.watch_tick.now_tick);
+    } catch (const std::exception& error) {
+        tick_state.scheduler = scheduler_before_source_pulse;
+        result.status = TwoDSourcePulseStatus::failed;
+        add_source_pulse_diagnostic(result, "source_pulse_schedule_failed");
+        add_source_pulse_diagnostic(result, error.what());
+        return result;
+    }
+
+    tick_state.primed = true;
+    auto watch_tick_desc = desc.watch_tick;
+    watch_tick_desc.prime_without_recook = false;
+    result.watch_tick = execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
+        filesystem, assets, dependencies, tick_state, replacements, mount_set, catalog_cache, watch_tick_desc);
+    result.invoked_runtime_replacement = result.watch_tick.invoked_runtime_replacement;
+    result.committed = result.watch_tick.committed;
+    result.active_session_hot_reload = false;
+    result.status = source_pulse_status_for_watch_tick(result.watch_tick.status);
+    append_watch_tick_diagnostics(result);
     return result;
 }
 

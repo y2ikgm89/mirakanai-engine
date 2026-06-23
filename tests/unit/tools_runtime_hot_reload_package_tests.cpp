@@ -238,6 +238,33 @@ make_watch_tick_desc(mirakana::AssetId replacement, std::uint64_t now_tick) {
     return desc;
 }
 
+[[nodiscard]] mirakana::TwoDSourcePulsePlan
+make_source_pulse_plan(mirakana::AssetId replacement,
+                       std::string_view source_path = "source/textures/replacement.texture_source") {
+    mirakana::TwoDSourcePulsePlan plan;
+    plan.status = mirakana::TwoDSourcePulseStatus::recook_pending;
+    plan.safe_point_required = true;
+    plan.event_rows.push_back(mirakana::TwoDSourcePulseEventRow{
+        .asset = replacement,
+        .path = std::string(source_path),
+        .watch_event_kind = mirakana::FileWatchEventKind::modified,
+        .hot_reload_event_kind = mirakana::AssetHotReloadEventKind::modified,
+        .previous_revision = 7,
+        .current_revision = 9,
+    });
+    return plan;
+}
+
+[[nodiscard]] mirakana::TwoDSourcePulseRuntimeReplacementDesc
+make_source_pulse_runtime_desc(mirakana::AssetId replacement, std::uint64_t now_tick = 20) {
+    mirakana::TwoDSourcePulseRuntimeReplacementDesc desc;
+    desc.source_pulse = make_source_pulse_plan(replacement);
+    desc.watch_tick = make_watch_tick_desc(replacement, now_tick);
+    desc.runtime_scene_validation_succeeded = true;
+    desc.operator_reviewed_safe_point = true;
+    return desc;
+}
+
 [[nodiscard]] mirakana::AssetImportAction
 make_texture_import_action(mirakana::AssetId asset, std::string_view source_path, std::string_view output_path) {
     return mirakana::AssetImportAction{
@@ -254,6 +281,11 @@ make_texture_import_action(mirakana::AssetId asset, std::string_view source_path
     return std::ranges::find_if(requests, [asset, reason](const mirakana::AssetHotReloadRecookRequest& request) {
                return request.asset == asset && request.reason == reason;
            }) != requests.end();
+}
+
+[[nodiscard]] bool has_source_pulse_runtime_diagnostic(const mirakana::TwoDSourcePulseRuntimeReplacementResult& result,
+                                                       std::string_view code) {
+    return std::ranges::find(result.diagnostics, code) != result.diagnostics.end();
 }
 
 struct HotReloadFixture {
@@ -685,6 +717,188 @@ MK_TEST("asset runtime package registered watch tick reports scan exceptions bef
     MK_REQUIRE(fixture.filesystem.list_files_count() == 0);
     MK_REQUIRE(fixture.mount_set.generation() == previous_generation);
     MK_REQUIRE(fixture.replacements.pending_count() == 0);
+}
+
+MK_TEST("2d source pulse runtime replacement commits after scene validation and operator review") {
+    HotReloadFixture fixture;
+    mirakana::AssetRegistry assets;
+    mirakana::AssetDependencyGraph dependencies;
+    fixture.filesystem.write_text("source/textures/replacement.texture_source", texture_source_document());
+    const auto cooked = cooked_texture_document(fixture.replacement, "source/textures/replacement.texture_source");
+    write_package_index(fixture.filesystem, "runtime/packages/replacement.geindex", fixture.replacement,
+                        "textures/replacement.texture", cooked);
+    auto catalog_cache = make_refreshed_cache(fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+    const auto previous_generation = fixture.mount_set.generation();
+
+    const auto result = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        fixture.filesystem, assets, dependencies, tick_state, fixture.replacements, fixture.mount_set, catalog_cache,
+        make_source_pulse_runtime_desc(fixture.replacement));
+
+    MK_REQUIRE(result.status == mirakana::TwoDSourcePulseStatus::committed);
+    MK_REQUIRE(result.watch_tick.succeeded());
+    MK_REQUIRE(result.watch_tick.ready_recook_requests.size() == 1);
+    MK_REQUIRE(result.watch_tick.ready_recook_requests[0].asset == fixture.replacement);
+    MK_REQUIRE(result.watch_tick.ready_recook_requests[0].reason ==
+               mirakana::AssetHotReloadRecookReason::source_modified);
+    MK_REQUIRE(result.invoked_runtime_replacement);
+    MK_REQUIRE(result.committed);
+    MK_REQUIRE(!result.active_session_hot_reload);
+    MK_REQUIRE(!result.native_handle_exposed);
+    MK_REQUIRE(result.watch_tick.invoked_scan);
+    MK_REQUIRE(!result.watch_tick.invoked_native_file_watch);
+    MK_REQUIRE(result.watch_tick.invoked_runtime_replacement);
+    MK_REQUIRE(fixture.replacements.pending_count() == 0);
+    MK_REQUIRE(fixture.replacements.find_active(fixture.replacement)->revision == 9);
+    MK_REQUIRE(fixture.mount_set.generation() > previous_generation);
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), fixture.replacement).has_value());
+}
+
+MK_TEST("2d source pulse runtime replacement blocks without runtime scene validation") {
+    HotReloadFixture fixture;
+    mirakana::AssetRegistry assets;
+    mirakana::AssetDependencyGraph dependencies;
+    auto catalog_cache = make_refreshed_cache(fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+    auto desc = make_source_pulse_runtime_desc(fixture.replacement);
+    desc.runtime_scene_validation_succeeded = false;
+    const auto previous_generation = fixture.mount_set.generation();
+
+    const auto result = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        fixture.filesystem, assets, dependencies, tick_state, fixture.replacements, fixture.mount_set, catalog_cache,
+        desc);
+
+    MK_REQUIRE(result.status == mirakana::TwoDSourcePulseStatus::blocked);
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "runtime_scene_validation_required"));
+    MK_REQUIRE(!result.invoked_runtime_replacement);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(result.watch_tick.ready_recook_requests.empty());
+    MK_REQUIRE(fixture.mount_set.generation() == previous_generation);
+    MK_REQUIRE(fixture.replacements.find_active(fixture.replacement)->revision == 7);
+}
+
+MK_TEST("2d source pulse runtime replacement blocks without operator reviewed safe point") {
+    HotReloadFixture fixture;
+    mirakana::AssetRegistry assets;
+    mirakana::AssetDependencyGraph dependencies;
+    auto catalog_cache = make_refreshed_cache(fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+    auto desc = make_source_pulse_runtime_desc(fixture.replacement);
+    desc.operator_reviewed_safe_point = false;
+    const auto previous_generation = fixture.mount_set.generation();
+
+    const auto result = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        fixture.filesystem, assets, dependencies, tick_state, fixture.replacements, fixture.mount_set, catalog_cache,
+        desc);
+
+    MK_REQUIRE(result.status == mirakana::TwoDSourcePulseStatus::blocked);
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "operator_reviewed_safe_point_required"));
+    MK_REQUIRE(!result.invoked_runtime_replacement);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(fixture.mount_set.generation() == previous_generation);
+    MK_REQUIRE(fixture.replacements.find_active(fixture.replacement)->revision == 7);
+}
+
+MK_TEST("2d source pulse runtime replacement blocks active session without safe point") {
+    HotReloadFixture fixture;
+    mirakana::AssetRegistry assets;
+    mirakana::AssetDependencyGraph dependencies;
+    auto catalog_cache = make_refreshed_cache(fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+    auto desc = make_source_pulse_runtime_desc(fixture.replacement);
+    desc.source_pulse.safe_point_required = false;
+    desc.request_active_session_without_safe_point = true;
+    const auto previous_generation = fixture.mount_set.generation();
+
+    const auto result = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        fixture.filesystem, assets, dependencies, tick_state, fixture.replacements, fixture.mount_set, catalog_cache,
+        desc);
+
+    MK_REQUIRE(result.status == mirakana::TwoDSourcePulseStatus::blocked);
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "source_pulse_safe_point_required"));
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "active_session_without_safe_point_requested"));
+    MK_REQUIRE(!result.invoked_runtime_replacement);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(!result.active_session_hot_reload);
+    MK_REQUIRE(fixture.mount_set.generation() == previous_generation);
+}
+
+MK_TEST("2d source pulse runtime replacement rejects editor core and arbitrary shell execution") {
+    HotReloadFixture fixture;
+    mirakana::AssetRegistry assets;
+    mirakana::AssetDependencyGraph dependencies;
+    auto catalog_cache = make_refreshed_cache(fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+    auto desc = make_source_pulse_runtime_desc(fixture.replacement);
+    desc.request_editor_core_execution = true;
+    desc.request_arbitrary_shell_execution = true;
+    desc.source_pulse.native_handle_exposed = true;
+    const auto previous_generation = fixture.mount_set.generation();
+
+    const auto result = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        fixture.filesystem, assets, dependencies, tick_state, fixture.replacements, fixture.mount_set, catalog_cache,
+        desc);
+
+    MK_REQUIRE(result.status == mirakana::TwoDSourcePulseStatus::blocked);
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "editor_core_execution_requested"));
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "arbitrary_shell_execution_requested"));
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(result, "native_handle_exposed"));
+    MK_REQUIRE(result.native_handle_exposed);
+    MK_REQUIRE(!result.invoked_runtime_replacement);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(fixture.mount_set.generation() == previous_generation);
+}
+
+MK_TEST("2d source pulse runtime replacement preserves recook and runtime replacement failure diagnostics") {
+    HotReloadFixture recook_fixture;
+    mirakana::AssetRegistry assets;
+    mirakana::AssetDependencyGraph dependencies;
+    auto recook_catalog_cache = make_refreshed_cache(recook_fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState recook_tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+
+    const auto recook_failed = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        recook_fixture.filesystem, assets, dependencies, recook_tick_state, recook_fixture.replacements,
+        recook_fixture.mount_set, recook_catalog_cache, make_source_pulse_runtime_desc(recook_fixture.replacement));
+
+    MK_REQUIRE(recook_failed.status == mirakana::TwoDSourcePulseStatus::failed);
+    MK_REQUIRE(recook_failed.watch_tick.status ==
+               mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::recook_failed);
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(recook_failed, "recook-failed"));
+    MK_REQUIRE(recook_failed.invoked_runtime_replacement);
+    MK_REQUIRE(!recook_failed.committed);
+    MK_REQUIRE(recook_tick_state.scheduler.pending_count() == 1);
+    MK_REQUIRE(recook_fixture.replacements.find_active(recook_fixture.replacement)->revision == 7);
+
+    HotReloadFixture runtime_fixture;
+    runtime_fixture.filesystem.write_text("source/textures/replacement.texture_source", texture_source_document());
+    const auto cooked =
+        cooked_texture_document(runtime_fixture.replacement, "source/textures/replacement.texture_source");
+    write_package_index(runtime_fixture.filesystem, "runtime/packages/replacement.geindex", runtime_fixture.replacement,
+                        "textures/replacement.texture", cooked);
+    auto runtime_catalog_cache = make_refreshed_cache(runtime_fixture.mount_set);
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState runtime_tick_state{
+        mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0}};
+    auto runtime_desc = make_source_pulse_runtime_desc(runtime_fixture.replacement);
+    runtime_desc.watch_tick.runtime_replacement.selected_package_index_path = "runtime/packages/missing.geindex";
+
+    const auto runtime_failed = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+        runtime_fixture.filesystem, assets, dependencies, runtime_tick_state, runtime_fixture.replacements,
+        runtime_fixture.mount_set, runtime_catalog_cache, runtime_desc);
+
+    MK_REQUIRE(runtime_failed.status == mirakana::TwoDSourcePulseStatus::failed);
+    MK_REQUIRE(runtime_failed.watch_tick.status ==
+               mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::runtime_replacement_failed);
+    MK_REQUIRE(has_source_pulse_runtime_diagnostic(runtime_failed, "candidate-not-found"));
+    MK_REQUIRE(runtime_failed.invoked_runtime_replacement);
+    MK_REQUIRE(!runtime_failed.committed);
+    MK_REQUIRE(runtime_tick_state.scheduler.pending_count() == 1);
+    MK_REQUIRE(runtime_fixture.replacements.find_active(runtime_fixture.replacement)->revision == 7);
 }
 
 int main() {

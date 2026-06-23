@@ -246,9 +246,9 @@ Phase 2 validation evidence:
 
 Goal: turn a source pulse into a safe-point package replacement using existing asset recook and runtime resident package replacement helpers.
 
-- [ ] Extend `engine/tools/include/mirakana/tools/asset_runtime_package_hot_reload_tool.hpp` with a new value-only descriptor that accepts `TwoDSourcePulsePlan`.
-- [ ] Extend `engine/tools/asset/asset_runtime_package_hot_reload_tool.cpp`.
-- [ ] Extend `tests/unit/tools_runtime_hot_reload_package_tests.cpp`.
+- [x] Extend `engine/tools/include/mirakana/tools/asset_runtime_package_hot_reload_tool.hpp` with a new value-only descriptor that accepts `TwoDSourcePulsePlan`.
+- [x] Extend `engine/tools/asset/asset_runtime_package_hot_reload_tool.cpp`.
+- [x] Extend `tests/unit/tools_runtime_hot_reload_package_tests.cpp`.
 
 Public API shape:
 
@@ -300,12 +300,27 @@ Rules:
 
 Tests:
 
-- [ ] `commits_source_pulse_after_scene_validation_and_operator_review`.
-- [ ] `blocks_without_runtime_scene_validation`.
-- [ ] `blocks_without_operator_reviewed_safe_point`.
-- [ ] `blocks_active_session_without_safe_point`.
-- [ ] `does_not_execute_editor_core_or_arbitrary_shell`.
-- [ ] `preserves_existing_recook_failure_and_runtime_replacement_failure_diagnostics`.
+- [x] `commits_source_pulse_after_scene_validation_and_operator_review`.
+- [x] `blocks_without_runtime_scene_validation`.
+- [x] `blocks_without_operator_reviewed_safe_point`.
+- [x] `blocks_active_session_without_safe_point`.
+- [x] `does_not_execute_editor_core_or_arbitrary_shell`.
+- [x] `preserves_existing_recook_failure_and_runtime_replacement_failure_diagnostics`.
+
+Phase 3 validation evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_runtime_hot_reload_package_tests` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_runtime_hot_reload_package_tests` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS.
+- No third-party code, assets, dependencies, license obligations, or legal notice files were added in Phase 3.
 
 ## Phase 4: Editor-Core 2D Live Iteration Review Model
 
