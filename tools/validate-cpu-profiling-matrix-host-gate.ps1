@@ -121,11 +121,17 @@ $toolSummary.Add("Windows Performance Analyzer=$wpaPath")
 $toolSummary.Add("WPA Exporter=$wpaExporterPath")
 $toolSummary.Add("Xperf=$xperfPath")
 $toolSummary.Add("WPR status before collection:")
-$toolSummary.AddRange(@(& $wprPath -status 2>&1 | ForEach-Object { [string]$_ }))
+foreach ($summaryLine in @(& $wprPath -status 2>&1)) {
+    $null = $toolSummary.Add([string]$summaryLine)
+}
 $toolSummary.Add("WPR PMU sources:")
-$toolSummary.AddRange(@(& $wprPath -pmcsources 2>&1 | ForEach-Object { [string]$_ }))
+foreach ($summaryLine in @(& $wprPath -pmcsources 2>&1)) {
+    $null = $toolSummary.Add([string]$summaryLine)
+}
 $toolSummary.Add("WPA Exporter help probe:")
-$toolSummary.AddRange(@(& $wpaExporterPath -h 2>&1 | Select-Object -First 20 | ForEach-Object { [string]$_ }))
+foreach ($summaryLine in @(& $wpaExporterPath -h 2>&1 | Select-Object -First 20)) {
+    $null = $toolSummary.Add([string]$summaryLine)
+}
 $toolSummary | Set-Content -LiteralPath $profilerSummary -Encoding utf8NoBOM
 
 Invoke-WprCpuTrace -WprPath $wprPath -OutputPath $baselineTrace -DurationMilliseconds $TraceDurationMilliseconds
