@@ -201,7 +201,13 @@ Run `tools/build.ps1` separately only when the slice or release evidence explici
 
 Use an always-running required gate for branch protection. Path-filtered workflows must not be branch-protection-required directly because GitHub can leave skipped checks pending; if hosted cost needs reduction, keep heavy jobs conditional behind a required aggregate gate or use non-required supplemental workflows.
 
-The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and delegates PR file-diff classification to `tools/classify-pr-validation-tier.ps1`; `tools/check-ci-matrix.ps1` verifies docs-only, static-policy, runtime, Validate workflow, iOS workflow, classifier-policy, Linux Vulkan host evidence, Apple Metal host evidence, and non-PR classifications. `pr-gate` always runs after the matrix and is the stable aggregate check intended for branch protection; it fails if any selected lane is skipped, missing, failed, or cancelled. Platform evidence lanes are selected by explicit outputs such as `linux_vulkan_host`, `metal_host_evidence`, and `ios_metal_evidence` rather than being inferred from every general runtime/build change.
+The repository ruleset `main-pr-gate` is the active default-branch protection. It requires PR-based changes, blocks branch deletion and non-fast-forward updates, requires the latest-main `PR Gate` status check, has no bypass actors, enables auto-merge/update-branch, and keeps `delete_branch_on_merge` enabled. Audit the external GitHub setting with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-ruleset.ps1
+```
+
+The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and delegates PR file-diff classification to `tools/classify-pr-validation-tier.ps1`; `tools/check-ci-matrix.ps1` verifies docs-only, static-policy, runtime, Validate workflow, iOS workflow, classifier-policy, Linux Vulkan host evidence, Apple Metal host evidence, and non-PR classifications. `pr-gate` always runs after the matrix and is the stable aggregate check required by `main-pr-gate`; it fails if any selected lane is skipped, missing, failed, or cancelled. Platform evidence lanes are selected by explicit outputs such as `linux_vulkan_host`, `metal_host_evidence`, and `ios_metal_evidence` rather than being inferred from every general runtime/build change.
 
 Run the full hosted matrix for `main` push, release, scheduled/nightly, `merge_group`, and `workflow_dispatch` runs. For PRs, choose the cheapest tier that proves the touched surface:
 
