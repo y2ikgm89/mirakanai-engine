@@ -546,6 +546,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-cpu-profiling-matrix-host-gate-closeout.ps1"
     Get-ValidateTask -ScriptFileName "check-cpu-profiling-host-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-optional-gpu-compute-review-collector.ps1"
+    Get-ValidateTask -ScriptFileName "check-optional-gpu-compute-review-host-gate-closeout.ps1"
     Get-ValidateTask -ScriptFileName "check-android-vulkan-validation-layer-helper.ps1"
     Get-ValidateTask -ScriptFileName "check-android-gameactivity-host-validator.ps1"
     Get-ValidateTask -ScriptFileName "check-ci-matrix.ps1"

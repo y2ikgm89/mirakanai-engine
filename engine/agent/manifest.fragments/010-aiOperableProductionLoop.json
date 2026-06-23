@@ -1784,7 +1784,7 @@
         {
           "id": "runtime-rendering-or-simulation-rhi-compute",
           "classification": "rhi_compute",
-          "status": "host-gated",
+          "status": "ready",
           "requiredEvidence": [
             "selected RHI backend and workload",
             "queue family or queue type",
@@ -1792,7 +1792,7 @@
             "explicit barriers, semaphores, fences, or queue waits",
             "RHI fallback path"
           ],
-          "notes": "Runtime rendering, skinning, morph, simulation, and package-residency workloads prefer backend-neutral RHI compute instead of CUDA/HIP/SYCL so D3D12/Vulkan/Metal ownership and gameplay APIs remain first-party."
+          "notes": "Runtime rendering, skinning, morph, simulation, and package-residency workloads prefer backend-neutral RHI compute instead of CUDA/HIP/SYCL so D3D12/Vulkan/Metal ownership and gameplay APIs remain first-party. The selected closeout candidate is ready through retained strict Vulkan weather_simulation_stress evidence under artifacts/performance/optional-gpu-compute-review/2026-06-23-rhi-compute-vulkan-weather-simulation, validated by tools/validate-optional-gpu-compute-review-host-gate.ps1 with optional_gpu_compute_review_ready=1, one required candidate row, two profiler artifacts, queue/profiler visibility, dependency gate, RHI fallback, and zero broad GPU/async/parity/optimization side-effect counters."
         },
         {
           "id": "offline-asset-tool-acceleration",
@@ -8087,19 +8087,17 @@
       },
       {
         "id": "optional-gpu-compute-review-host",
-        "status": "host-gated",
-        "residualClass": "external-artifact-required",
+        "status": "ready",
+        "residualClass": "ready",
         "hosts": [
-          "Windows D3D12 or Vulkan capable host with GPU profiler",
-          "Linux Vulkan capable host with GPU profiler",
-          "NVIDIA CUDA Toolkit host when selected",
-          "AMD ROCm/HIP host when selected",
-          "SYCL implementation host when selected"
+          "Windows strict Vulkan host with Vulkan timestamp query and VK_LAYER_KHRONOS_validation retained evidence",
+          "first-party RHI weather solver fallback evidence",
+          "CUDA/HIP/SYCL hosts remain unselected for this closeout"
         ],
         "validationRecipes": [
           "host-optional-gpu-compute-review"
         ],
-        "notes": "Optional GPU compute review evidence is external host-owned artifact collection. Missing GPU profiler, missing stream/event proof, missing queue synchronization, missing CUDA/HIP/SYCL runtime, missing SYCL backend, or missing scalar/RHI fallback evidence must remain host-gated and must not introduce default validation, vcpkg.json, CMake, runtime dependency, broad GPU compute, async overlap, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization claims."
+        "notes": "Optional GPU compute review host gate closeout is ready only for the selected runtime-rendering-or-simulation-rhi-compute RHI candidate through retained strict Vulkan weather_simulation_stress evidence. The closeout validates Vulkan timestamp query + VK_LAYER_KHRONOS_validation artifacts under artifacts/performance/optional-gpu-compute-review/2026-06-23-rhi-compute-vulkan-weather-simulation with tools/validate-optional-gpu-compute-review-host-gate.ps1 and requires optional_gpu_compute_review_ready=1, optional_gpu_compute_review_required_candidate_rows=1, optional_gpu_compute_review_missing_candidate_rows=0, optional_gpu_compute_review_profiler_artifact_rows=2, optional_gpu_compute_review_broad_gpu_compute_claim=0, optional_gpu_compute_review_async_overlap_claim=0, optional_gpu_compute_review_cross_vendor_parity_claim=0, optional_gpu_compute_review_cross_backend_parity_claim=0, and optional_gpu_compute_review_broad_optimization_claim=0. CUDA/HIP/SYCL runtime remains unclaimed, offline GPU acceleration remains unclaimed, default validation/vcpkg/CMake/runtime dependencies remain 0, and broad CPU/GPU/memory optimization remains unclaimed."
       },
       {
         "id": "vulkan-strict",

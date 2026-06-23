@@ -1,0 +1,38 @@
+{
+  "candidate_id": "runtime-rendering-or-simulation-rhi-compute",
+  "classification": "rhi_compute",
+  "selected_backend": "vulkan_strict",
+  "workload_recipe": "desktop-runtime-sample-game-environment-weather-simulation-vulkan-solver-package plus environment-broad-optimization-cross-backend-measurement/weather_simulation_stress",
+  "data_transfer_cost": "Retained strict Vulkan weather_simulation_stress evidence reports upload_before_bytes=75497472 and upload_after_bytes=62914560 from the Vulkan timestamp/validation package smoke.",
+  "memory_residency": "Retained strict Vulkan weather_simulation_stress evidence reports memory_peak_before_bytes=872415232 and memory_peak_after_bytes=847249408 with no public native handles exposed.",
+  "synchronization": "Strict Vulkan package evidence uses VK_LAYER_KHRONOS_validation plus synchronization2/barrier/readback package counters; the weather solver package retains positive barrier/readback hash evidence and zero backend inference.",
+  "stream_event_usage": "The selected RHI compute review uses Vulkan queue, synchronization2 barrier, timestamp-query, and package readback proof. CUDA/HIP stream or SYCL event proof is not selected for this closeout.",
+  "queue_profiler_visibility": "Vulkan timestamp query and VK_LAYER_KHRONOS_validation profiler artifact retained under this evidence root, with gpu_timestamp_ticks_per_second=1000000000 and Chrome trace JSON summary.",
+  "dependency_burden": "Uses the existing strict Vulkan RHI/package evidence lane only. No CUDA/HIP/SYCL runtime, vcpkg feature, CMake linkage, or default validation dependency is added.",
+  "dependency_install_gate": "Strict Vulkan host evidence is already gated by Vulkan SDK, VK_LAYER_KHRONOS_validation, DXC SPIR-V, and spirv-val availability; vendor compute runtimes are not installed or selected.",
+  "scalar_or_rhi_fallback": "Runtime rendering or simulation candidates fall back through first-party RHI backends and the environment CPU reference/weather solver evidence; default CUDA/HIP/SYCL runtime compute remains rejected.",
+  "profiler_artifacts": [
+    {
+      "id": "vulkan-timestamp-validation",
+      "path": "artifacts/performance/optional-gpu-compute-review/2026-06-23-rhi-compute-vulkan-weather-simulation/runtime-rendering-or-simulation-rhi-compute/vulkan-timestamp-validation.csv"
+    },
+    {
+      "id": "trace-events",
+      "path": "artifacts/performance/optional-gpu-compute-review/2026-06-23-rhi-compute-vulkan-weather-simulation/runtime-rendering-or-simulation-rhi-compute/trace-events.json"
+    }
+  ],
+  "source_environment_optimization_evidence": "artifacts/environment/optimization/2026-06-19-vulkan-strict-validation-smoke/vulkan_strict/weather_simulation_stress/evidence.json",
+  "source_artifact_hash_sha256": "8c0b05eb1021c18d14906c9fa3f35ba96e050952801340e5268211156a5fbdf7",
+  "host": "windows",
+  "os_kernel_or_build": "retained host artifact",
+  "default_validation_dependency": 0,
+  "vcpkg_feature_added": 0,
+  "cmake_linkage_added": 0,
+  "runtime_dependency_added": 0,
+  "public_native_handles_exposed": 0,
+  "broad_gpu_compute_claim": 0,
+  "async_overlap_claim": 0,
+  "cross_vendor_parity_claim": 0,
+  "cross_backend_parity_claim": 0,
+  "broad_optimization_claim": 0
+}
