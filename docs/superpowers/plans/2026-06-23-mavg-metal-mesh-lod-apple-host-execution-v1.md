@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-metal-mesh-lod-apple-host-execution-v1`
 
-**Status:** Implemented locally; publication pending. This is Task 9B under `MAVG Advanced Backend Evidence Closeout v1`; it does not change `currentActivePlan`.
+**Status:** Published via PR #773 and merged to `origin/main` at `d745eeab502405ef8324e1c8c424d77aef529766`. This is Task 9B under `MAVG Advanced Backend Evidence Closeout v1`; it does not change `currentActivePlan`.
 
 **Date:** 2026-06-23
 
@@ -120,7 +120,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mavg-metal-host-eviden
 ```
 
 - [x] Run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` only after docs, manifest, schema, and static checks are green.
-- [ ] Run publication preflight, commit the validated candidate, push, open a draft PR, wait for hosted PR Gate, mark ready with `tools/ready-task-pr.ps1`, register auto-merge with the head SHA, verify `origin/main`, sync local `main`, and clean up the task worktree.
+- [x] Run publication preflight, commit the validated candidate, push, open a draft PR, wait for hosted PR Gate, mark ready with `tools/ready-task-pr.ps1`, register auto-merge with the head SHA, verify `origin/main`, sync local `main`, and clean up the task worktree.
 
 ## Done When
 
