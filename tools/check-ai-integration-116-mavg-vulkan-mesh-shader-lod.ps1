@@ -13,6 +13,8 @@ $vulkanMeshShaderLodMeshShaderText = Get-AgentSurfaceText "tests/shaders/vulkan_
 $vulkanMeshShaderLodFragmentShaderText = Get-AgentSurfaceText "tests/shaders/vulkan_mavg_mesh_shader_lod.frag.hlsl"
 $cmakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-21-mavg-advanced-backend-evidence-closeout-v1.md"
+$indirectPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-23-mavg-vulkan-mesh-shader-indirect-dispatch-v1.md"
+$indirectValidatorText = Get-AgentSurfaceText "tools/validate-mavg-vulkan-mesh-shader-indirect-dispatch.ps1"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $aiLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 
@@ -29,7 +31,18 @@ foreach ($needle in @(
         "mesh_shader_entry_point",
         "fragment_shader_entry_point",
         "readback_hash",
-        "mavg_mesh_shader_lod_vulkan_ready"
+        "mavg_mesh_shader_lod_vulkan_ready",
+        "VulkanMavgMeshShaderLodIndirectCommand",
+        "mavg_mesh_shader_lod_vulkan_indirect_ready",
+        "mavg_mesh_shader_lod_vulkan_indirect_count_ready",
+        "mavg_mesh_shader_lod_vulkan_indirect_count_host_gated",
+        "indirect_argument_buffer_usage_ready",
+        "indirect_count_buffer_usage_ready",
+        "draw_indirect_stage_barriers_recorded",
+        "task_shader_stage_barriers_recorded",
+        "mesh_shader_stage_barriers_recorded",
+        "shader_payload_consumed_by_task_or_mesh",
+        "mavg_mesh_shader_lod_ready_promoted"
     )) {
     Assert-ContainsText $vulkanMeshShaderLodHeaderText $needle "Vulkan MAVG mesh shader LOD backend-private API"
 }
@@ -49,6 +62,11 @@ foreach ($needle in @(
         "create_runtime_mesh_graphics_pipeline",
         "record_runtime_texture_rendering_mesh_tasks_draw",
         "cmd_draw_mesh_tasks",
+        "cmd_draw_mesh_tasks_indirect",
+        "cmd_draw_mesh_tasks_indirect_count",
+        "vkCmdDrawMeshTasksIndirectCountEXT",
+        "vulkan_structure_type_physical_device_vulkan_1_2_features",
+        "drawIndirectCount",
         "vertex_input_state = nullptr",
         "input_assembly_state = nullptr",
         "supports_mesh_shader_extension",
@@ -67,6 +85,8 @@ foreach ($needle in @(
         "mesh_shader_enabled",
         "task_shader_enabled",
         "mesh_shader_feature_queried",
+        "draw_indirect_count_supported",
+        "draw_indirect_count_enabled",
         "max_task_work_group_count_x",
         "max_task_work_group_count_y",
         "max_task_work_group_count_z",
@@ -113,13 +133,31 @@ foreach ($needle in @(
         "vulkan mavg mesh shader lod probe records mesh shader feature state",
         "vulkan mavg mesh shader lod host gates without mesh shader support",
         "vulkan mavg mesh shader lod rejects invalid workgroup counts",
+        "vulkan mavg mesh shader lod indirect command mirrors Vulkan xyz layout",
         "vulkan mavg mesh shader lod rejects indirect range overflow",
+        "vulkan mavg mesh shader lod rejects indirect argument buffer without indirect usage",
+        "vulkan mavg mesh shader lod rejects unaligned indirect argument offset",
+        "vulkan mavg mesh shader lod rejects indirect stride smaller than command size",
+        "vulkan mavg mesh shader lod rejects indirect count range overflow before host probing",
+        "vulkan mavg mesh shader lod rejects indirect count buffer without indirect usage",
+        "vulkan mavg mesh shader lod rejects unaligned indirect count buffer offset",
+        "vulkan mavg mesh shader lod rejects zero indirect count max draws",
+        "vulkan mavg mesh shader lod records indirect validation evidence for invalid stride",
+        "vulkan mavg mesh shader lod direct path keeps indirect evidence zero",
         "vulkan mavg mesh shader lod does not promote fallback indexed draw",
         "vulkan mavg mesh shader lod executes mesh shader when host supports it",
+        "vulkan mavg mesh shader lod executes indirect mesh tasks when host supports it",
+        "vulkan mavg mesh shader lod executes indirect count mesh tasks when host supports it",
         "task_shader_entry_point = ""task_main""",
         "mesh_shader_entry_point = ""mesh_main""",
         "fragment_shader_entry_point = ""fragment_main""",
         "vulkan_mavg_mesh_shader_lod diagnostic=",
+        "MK_VULKAN_MAVG_MESH_SHADER_LOD_PRINT_EVIDENCE",
+        "mavg_vulkan_mesh_shader_indirect_dispatch_ready",
+        "mavg_vulkan_mesh_shader_indirect_count_ready",
+        "mavg_vulkan_mesh_shader_payload_consumption_ready",
+        "mavg_mesh_shader_lod_ready",
+        "mavg_nanite_equivalent",
         "MK_VULKAN_TEST_MAVG_MESH_SHADER_LOD_TASK_SPV",
         "MK_VULKAN_TEST_MAVG_MESH_SHADER_LOD_MESH_SPV",
         "MK_VULKAN_TEST_MAVG_MESH_SHADER_LOD_FRAGMENT_SPV"
@@ -129,7 +167,10 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "groupshared Payload payload",
-        "DispatchMesh(1, 1, 1, payload)"
+        "DispatchMesh(1, 1, 1, payload)",
+        "StructuredBuffer<uint> shader_payload",
+        "[[vk::binding(0, 0)]]",
+        "shader_payload[0]"
     )) {
     Assert-ContainsText $vulkanMeshShaderLodTaskShaderText $needle "Vulkan MAVG mesh shader LOD task shader"
 }
@@ -137,7 +178,10 @@ foreach ($needle in @(
 foreach ($needle in @(
         "SetMeshOutputCounts(3, 1)",
         "out vertices VertexOut vertices_out[3]",
-        "out indices uint3 primitives_out[1]"
+        "out indices uint3 primitives_out[1]",
+        "StructuredBuffer<uint> shader_payload",
+        "[[vk::binding(0, 0)]]",
+        "shader_payload[1]"
     )) {
     Assert-ContainsText $vulkanMeshShaderLodMeshShaderText $needle "Vulkan MAVG mesh shader LOD mesh shader"
 }
@@ -166,7 +210,6 @@ foreach ($needle in @(
         "mesh_shader_enabled",
         "task_shader_enabled",
         "drawIndirectCount",
-        "offset + stride * (drawCount - 1) + sizeof(VkDrawMeshTasksIndirectCommandEXT) <= buffer_size_bytes",
         "mavg_mesh_shader_lod_vulkan_ready=true",
         "host_gated"
     )) {
@@ -174,9 +217,56 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "mavg-vulkan-mesh-shader-indirect-dispatch-v1",
+        "Context7 resolved Vulkan to the official Khronos source",
+        "vkCmdDrawMeshTasksIndirectEXT",
+        "vkCmdDrawMeshTasksIndirectCountEXT",
+        "VkDrawMeshTasksIndirectCommandEXT",
+        "drawIndirectCount",
+        "VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT",
+        "VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT",
+        "VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT",
+        "VulkanMavgMeshShaderLodIndirectCommand",
+        "mavg_vulkan_mesh_shader_indirect_dispatch_ready=1",
+        "mavg_vulkan_mesh_shader_indirect_count_ready=1",
+        "mavg_vulkan_mesh_shader_payload_consumption_ready=1",
+        "mavg_mesh_shader_lod_ready=0",
+        "mavg_nanite_equivalent=0",
+        "mavg_vulkan_native_handles_exposed=0",
+        'package-visible broad `mavg_mesh_shader_lod_ready`',
+        "Metal readiness",
+        "Nanite compatibility/equivalence/superiority"
+    )) {
+    Assert-ContainsText $indirectPlanText $needle "MAVG Vulkan mesh shader indirect dispatch plan evidence"
+}
+
+foreach ($needle in @(
+        "mavg-vulkan-mesh-shader-indirect-dispatch",
+        "MK_mavg_vulkan_mesh_shader_lod_tests",
+        "MK_VULKAN_MAVG_MESH_SHADER_LOD_PRINT_EVIDENCE",
+        "mavg_vulkan_mesh_shader_indirect_dispatch_ready",
+        "mavg_vulkan_mesh_shader_indirect_count_ready",
+        "mavg_vulkan_mesh_shader_payload_consumption_ready",
+        "mavg_mesh_shader_lod_ready",
+        "mavg_nanite_compatible",
+        "mavg_nanite_equivalent",
+        "mavg_nanite_superior",
+        "mavg_vulkan_native_handles_exposed",
+        "RequireReady"
+    )) {
+    Assert-ContainsText $indirectValidatorText $needle "MAVG Vulkan mesh shader indirect dispatch validator"
+}
+
+foreach ($needle in @(
         "Vulkan MAVG Mesh Shader LOD",
         "VulkanRuntimeMeshGraphicsPipeline",
-        "vkCmdDrawMeshTasksEXT deterministic readback proof",
+        "vkCmdDrawMeshTasksEXT",
+        "VulkanMavgMeshShaderLodIndirectCommand",
+        "vkCmdDrawMeshTasksIndirectEXT",
+        "vkCmdDrawMeshTasksIndirectCountEXT",
+        "mavg_vulkan_mesh_shader_indirect_dispatch_ready=1",
+        "mavg_vulkan_mesh_shader_indirect_count_ready=1",
+        "mavg_vulkan_mesh_shader_payload_consumption_ready=1",
         "mavg_mesh_shader_lod_vulkan_ready",
         "probe_vulkan_mavg_mesh_shader_lod_capability",
         "MK_mavg_vulkan_mesh_shader_lod_tests",

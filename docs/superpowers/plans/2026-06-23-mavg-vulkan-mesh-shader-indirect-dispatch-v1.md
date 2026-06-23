@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-vulkan-mesh-shader-indirect-dispatch-v1`
 
-**Status:** Planned. Not implemented. Current `origin/main` evidence remains selected Vulkan direct-dispatch only.
+**Status:** Implemented locally on `codex/mavg-vulkan-mesh-indirect-impl`; publication and hosted PR evidence pending. The slice proves selected Vulkan task+mesh direct, indirect, and indirect-count dispatch evidence on a ready host while keeping package-visible broad `mavg_mesh_shader_lod_ready` and all Nanite/Metal/broad backend claims false.
 
 **Date:** 2026-06-23
 
@@ -24,7 +24,7 @@
 - `vkCmdDrawMeshTasksIndirectCountEXT` execution or precise host-gated evidence.
 - synchronization2 barriers for compute/page upload to task/mesh shader consumption.
 
-This plan owns only those three subclaims. It does not reopen the completed direct-dispatch slice, and it must not claim Nanite compatibility, Metal readiness, deformation integration, ray tracing integration, broad CPU/GPU/memory optimization, or broad package-visible MAVG backend readiness.
+This plan owns only those three subclaims. It does not reopen the completed direct-dispatch slice, and it must not claim Nanite compatibility/equivalence/superiority, Metal readiness, deformation integration, ray tracing integration, broad CPU/GPU/memory optimization, or broad package-visible MAVG backend readiness.
 
 ## Official Source Gate
 
@@ -58,13 +58,42 @@ This plan must keep these non-claims explicit in code, tests, validators, docs, 
 - No public native Vulkan handle exposure.
 - No Metal, D3D12, deformation, ray tracing, async-overlap performance, broad optimization, or broad backend readiness promotion.
 
-## Current Code Baseline
+## Implementation Evidence
 
-- `engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_mesh_shader_lod.hpp` already has `request_indirect_draw`, `request_indirect_count_draw`, indirect/count buffer size and offset fields, and result counters for direct/indirect/count calls.
-- `engine/rhi/vulkan/src/vulkan_mavg_mesh_shader_lod.cpp` currently validates indirect range for `request_indirect_draw` but always records direct `vkCmdDrawMeshTasksEXT` and sets indirect/count calls to zero.
-- `probe_vulkan_mavg_mesh_shader_lod_capability` currently resolves `vkCmdDrawMeshTasksEXT` and `vkCmdDrawMeshTasksIndirectEXT`; it records count support fields but does not enable or resolve `vkCmdDrawMeshTasksIndirectCountEXT`.
-- `tests/unit/vulkan_mavg_mesh_shader_lod_tests.cpp` currently covers empty rows, feature probing, host gates, invalid workgroup counts, indirect range overflow, fallback non-promotion, and direct host-supported execution. It does not prove indirect execution or count-buffer execution.
-- `tools/check-ai-integration-116-mavg-vulkan-mesh-shader-lod.ps1` guards current direct-dispatch evidence and still expects the completed plan text to mention indirect/count constraints as future work.
+- `engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_mavg_mesh_shader_lod.hpp` now has `VulkanMavgMeshShaderLodIndirectCommand`, direct/indirect/indirect-count mode fields, result fields for indirect/count readiness, draw-indirect/task/mesh barrier counters, payload consumption, count-buffer value, executed draw count, and `mavg_mesh_shader_lod_ready_promoted=false`.
+- `engine/rhi/vulkan/src/vulkan_mavg_mesh_shader_lod.cpp` validates indirect/count buffer usage, 4-byte offset alignment, stride alignment and size, range bounds, `maxDrawIndirectCount`, workgroup limits, and count support before recording. It creates real indirect/count upload buffers, records synchronization2 draw-indirect barriers, records `vkCmdDrawMeshTasksIndirectEXT` or `vkCmdDrawMeshTasksIndirectCountEXT` only for the selected execution mode, and requires deterministic readback evidence before readiness.
+- `engine/rhi/vulkan/src/vulkan_backend.cpp` now queries/enables `VkPhysicalDeviceVulkan12Features::drawIndirectCount`, resolves `vkCmdDrawMeshTasksIndirectCountEXT` through `vkGetDeviceProcAddr` only when enabled, and keeps command resolution tied to mesh/task feature enablement.
+- `tests/shaders/vulkan_mavg_mesh_shader_lod.task.hlsl` and `.mesh.hlsl` now read a descriptor-backed payload buffer so the test can prove task/mesh shader consumption. The local host compiled all three shader artifacts with DXC `-spirv -fspv-target-env=vulkan1.3 -fspv-extension=SPV_EXT_mesh_shader`, and `spirv-val --target-env vulkan1.3` passed for task, mesh, and fragment SPIR-V.
+- `tests/unit/vulkan_mavg_mesh_shader_lod_tests.cpp` now covers direct non-promotion, invalid indirect usage/alignment/stride/range, invalid count usage/offset/range/count support, indirect execution readiness, indirect-count execution readiness, payload consumption, and validator counters. Mesh-only execution is intentionally outside this slice because the selected first-party evidence path uses a task+mesh pipeline; no mesh-only readiness claim is emitted.
+- `tools/validate-mavg-vulkan-mesh-shader-indirect-dispatch.ps1` now configures/builds/runs `MK_mavg_vulkan_mesh_shader_lod_tests`, prints the validation counters below, supports `-RequireReady`, and fails if broad `mavg_mesh_shader_lod_ready`, Nanite, or native-handle counters are promoted.
+
+Focused validation evidence on 2026-06-23:
+
+```text
+validation_recipe=mavg-vulkan-mesh-shader-indirect-dispatch
+mavg_vulkan_mesh_shader_spirv_artifacts_configured=1
+mavg_vulkan_mesh_shader_indirect_dispatch_status=ready
+mavg_vulkan_mesh_shader_indirect_dispatch_ready=1
+mavg_vulkan_mesh_shader_indirect_count_status=ready
+mavg_vulkan_mesh_shader_indirect_count_ready=1
+mavg_vulkan_mesh_shader_indirect_count_host_gated=0
+mavg_vulkan_mesh_shader_indirect_argument_buffer_usage_ready=1
+mavg_vulkan_mesh_shader_indirect_count_buffer_usage_ready=1
+mavg_vulkan_mesh_shader_indirect_stride_ready=1
+mavg_vulkan_mesh_shader_indirect_range_ready=1
+mavg_vulkan_mesh_shader_draw_indirect_stage_barriers=2
+mavg_vulkan_mesh_shader_task_stage_barriers=1
+mavg_vulkan_mesh_shader_mesh_stage_barriers=1
+mavg_vulkan_mesh_shader_payload_consumption_ready=1
+mavg_vulkan_mesh_shader_indirect_count_value=1
+mavg_vulkan_mesh_shader_indirect_executed_draw_count=1
+mavg_mesh_shader_lod_vulkan_ready=1
+mavg_mesh_shader_lod_ready=0
+mavg_nanite_compatible=0
+mavg_nanite_equivalent=0
+mavg_nanite_superior=0
+mavg_vulkan_native_handles_exposed=0
+```
 
 ## Implementation Decisions
 
@@ -167,15 +196,15 @@ mavg_vulkan_native_handles_exposed=0
 
 ### Task 1: RED Tests For Source-Backed Validation
 
-- [ ] Add tests that reject an indirect argument buffer descriptor without `BufferUsage::indirect`.
-- [ ] Add tests that reject non-4-byte `indirect_buffer_offset_bytes` and non-4-byte `indirect_stride_bytes`.
-- [ ] Add tests that reject `indirect_stride_bytes < sizeof(VkDrawMeshTasksIndirectCommandEXT)`.
-- [ ] Add tests that reject single-draw and multi-draw range overflow using the exact Khronos formulas.
-- [ ] Add tests that reject group counts exceeding task workgroup per-axis and total limits when task shader execution is selected.
-- [ ] Add tests that reject group counts exceeding mesh workgroup per-axis and total limits when mesh-only execution is selected.
-- [ ] Add tests that reject count-buffer execution when `drawIndirectCount` is unsupported or not enabled.
-- [ ] Add tests that reject count buffers without `BufferUsage::indirect`, unaligned `count_buffer_offset_bytes`, invalid `max_indirect_count_draws`, and count-buffer range overflow.
-- [ ] Add tests that prove direct dispatch still records one direct call and zero indirect/count calls.
+- [x] Add tests that reject an indirect argument buffer descriptor without `BufferUsage::indirect`.
+- [x] Add tests that reject non-4-byte `indirect_buffer_offset_bytes` and non-4-byte `indirect_stride_bytes`.
+- [x] Add tests that reject `indirect_stride_bytes < sizeof(VkDrawMeshTasksIndirectCommandEXT)`.
+- [x] Add tests that reject single-draw and multi-draw range overflow using the exact Khronos formulas.
+- [x] Add tests that reject group counts exceeding task workgroup per-axis and total limits when task shader execution is selected.
+- [x] Keep mesh-only execution outside this slice; selected readiness uses a task+mesh pipeline and emits no mesh-only readiness claim.
+- [x] Add tests that reject count-buffer execution when `drawIndirectCount` is unsupported or not enabled.
+- [x] Add tests that reject count buffers without `BufferUsage::indirect`, unaligned `count_buffer_offset_bytes`, invalid `max_indirect_count_draws`, and count-buffer range overflow.
+- [x] Add tests that prove direct dispatch still records one direct call and zero indirect/count calls.
 
 Expected focused command:
 
@@ -188,21 +217,21 @@ Expected RED result before implementation: at least one new test fails for missi
 
 ### Task 2: Indirect Descriptor And Validation Model
 
-- [ ] Add a backend-private indirect command value mirroring `VkDrawMeshTasksIndirectCommandEXT` with `group_count_x`, `group_count_y`, and `group_count_z`.
-- [ ] Add descriptor fields that distinguish direct, indirect, and indirect-count execution mode without changing default direct-dispatch behavior.
-- [ ] Add validation helpers for offset alignment, stride alignment, command size, single-draw bounds, multi-draw bounds, count-buffer bounds, workgroup limits, and `maxDrawIndirectCount` limits.
-- [ ] Keep validation side-effect-free until all preconditions pass.
-- [ ] Add result diagnostics for each validation failure with stable diagnostic strings.
+- [x] Add a backend-private indirect command value mirroring `VkDrawMeshTasksIndirectCommandEXT` with `group_count_x`, `group_count_y`, and `group_count_z`.
+- [x] Add descriptor fields that distinguish direct, indirect, and indirect-count execution mode without changing default direct-dispatch behavior.
+- [x] Add validation helpers for offset alignment, stride alignment, command size, single-draw bounds, multi-draw bounds, count-buffer bounds, workgroup limits, and `maxDrawIndirectCount` limits.
+- [x] Keep validation side-effect-free until all preconditions pass.
+- [x] Add result diagnostics for each validation failure with stable diagnostic strings.
 
 Expected GREEN result: validation-only unit tests pass, host-supported execution tests still behave as direct-dispatch only.
 
 ### Task 3: Backend Command Resolution And Feature Enablement
 
-- [ ] Extend Vulkan logical-device feature query/create planning so `drawIndirectCount` support can be queried and enabled when `request_indirect_count_draw` is selected.
-- [ ] Resolve `vkCmdDrawMeshTasksIndirectCountEXT` through `vkGetDeviceProcAddr` only when count-indirect support is available for the selected device.
-- [ ] Add `draw_mesh_tasks_indirect_count_command_available` population in `probe_vulkan_mavg_mesh_shader_lod_capability`.
-- [ ] Host-gate count-indirect execution when the feature, extension/core support, or command resolution is missing.
-- [ ] Keep `vkCmdDrawMeshTasksIndirectEXT` command resolution tied to mesh shader enablement.
+- [x] Extend Vulkan logical-device feature query/create planning so `drawIndirectCount` support can be queried and enabled when `request_indirect_count_draw` is selected.
+- [x] Resolve `vkCmdDrawMeshTasksIndirectCountEXT` through `vkGetDeviceProcAddr` only when count-indirect support is available for the selected device.
+- [x] Add `draw_mesh_tasks_indirect_count_command_available` population in `probe_vulkan_mavg_mesh_shader_lod_capability`.
+- [x] Host-gate count-indirect execution when the feature, extension/core support, or command resolution is missing.
+- [x] Keep `vkCmdDrawMeshTasksIndirectEXT` command resolution tied to mesh shader enablement.
 
 Expected focused command:
 
@@ -214,74 +243,74 @@ Expected result: direct-dispatch tests pass, count-indirect unsupported hosts re
 
 ### Task 4: Indirect Argument Buffer Execution
 
-- [ ] Create a `VulkanRuntimeBuffer` for `VkDrawMeshTasksIndirectCommandEXT` records with `BufferUsage::indirect | BufferUsage::copy_source`; add `BufferUsage::storage` when compute-generated mode is exercised.
-- [ ] Write CPU-generated indirect command records for the selected first-party task rows.
-- [ ] Record synchronization from upload writes to `VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT` before command consumption.
-- [ ] Extend `record_runtime_texture_rendering_mesh_tasks_draw` or add a backend-private sibling that records `vkCmdDrawMeshTasksIndirectEXT` without exposing native handles.
-- [ ] Require deterministic readback hash evidence for indirect dispatch readiness.
-- [ ] Set `draw_mesh_tasks_indirect_calls=1`, `draw_mesh_tasks_direct_calls=0`, and `mavg_mesh_shader_lod_vulkan_indirect_ready=true` only after execution and readback succeed.
+- [x] Create a `VulkanRuntimeBuffer` for `VkDrawMeshTasksIndirectCommandEXT` records with `BufferUsage::indirect | BufferUsage::copy_source`; compute-generated storage mode remains outside this slice.
+- [x] Write CPU-generated indirect command records for the selected first-party task rows.
+- [x] Record synchronization from upload writes to `VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT` before command consumption.
+- [x] Extend `record_runtime_texture_rendering_mesh_tasks_draw` to record `vkCmdDrawMeshTasksIndirectEXT` without exposing native handles.
+- [x] Require deterministic readback hash evidence for indirect dispatch readiness.
+- [x] Set `draw_mesh_tasks_indirect_calls=1`, `draw_mesh_tasks_direct_calls=0`, and `mavg_mesh_shader_lod_vulkan_indirect_ready=true` only after execution and readback succeed.
 
 Expected result: indirect mode can be ready on a host that supports the same mesh/task shader direct-dispatch evidence.
 
 ### Task 5: Indirect-Count Execution And Actual Count Evidence
 
-- [ ] Create a count buffer with `BufferUsage::indirect | BufferUsage::copy_source`; add `BufferUsage::storage` when compute-generated count mode is exercised.
-- [ ] Write or generate a 32-bit count value and clamp executed draws with `min(count_buffer_value, max_indirect_count_draws)` in result evidence.
-- [ ] Record synchronization from upload/compute writes to `VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT` before count and argument buffer consumption.
-- [ ] Record `vkCmdDrawMeshTasksIndirectCountEXT` only after feature, command, usage, offset, count, and range gates pass.
-- [ ] Read back or otherwise decode the actual count value into `last_indirect_count_buffer_value`.
-- [ ] Publish `last_indirect_executed_draw_count` and set `draw_mesh_tasks_indirect_count_calls=1` only when the command is recorded.
+- [x] Create a count buffer with `BufferUsage::indirect | BufferUsage::copy_source`; compute-generated count mode remains outside this slice.
+- [x] Write or generate a 32-bit count value and clamp executed draws with `min(count_buffer_value, max_indirect_count_draws)` in result evidence.
+- [x] Record synchronization from upload writes to `VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT` before count and argument buffer consumption.
+- [x] Record `vkCmdDrawMeshTasksIndirectCountEXT` only after feature, command, usage, offset, count, and range gates pass.
+- [x] Read back or otherwise decode the actual count value into `last_indirect_count_buffer_value`.
+- [x] Publish `last_indirect_executed_draw_count` and set `draw_mesh_tasks_indirect_count_calls=1` only when the command is recorded.
 
 Expected result: supported hosts can produce count-indirect readiness; unsupported hosts produce explicit `host_gated` evidence without readiness.
 
 ### Task 6: Task/Mesh Shader Payload Synchronization Evidence
 
-- [ ] Add a minimal descriptor-backed task/mesh payload read if existing shaders do not consume an external buffer.
-- [ ] If a new shader variant is required, place it under `tests/shaders/` and validate it with DXC SPIR-V CodeGen using `-spirv -fspv-target-env=vulkan1.3 -fspv-extension=SPV_EXT_mesh_shader`.
-- [ ] Record upload or compute-write barriers to `VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT` when task shader consumes payload data.
-- [ ] Record upload or compute-write barriers to `VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT` when mesh shader consumes payload data.
-- [ ] Do not use task stage bits unless `taskShader` is enabled; do not use mesh stage bits unless `meshShader` is enabled.
-- [ ] Add tests and static needles for `task_shader_stage_barriers_recorded`, `mesh_shader_stage_barriers_recorded`, and `shader_payload_consumed_by_task_or_mesh`.
+- [x] Add a minimal descriptor-backed task/mesh payload read if existing shaders do not consume an external buffer.
+- [x] Update shader sources under `tests/shaders/` and validate them with DXC SPIR-V CodeGen using `-spirv -fspv-target-env=vulkan1.3 -fspv-extension=SPV_EXT_mesh_shader`.
+- [x] Record upload-write barriers to `VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT` when task shader consumes payload data.
+- [x] Record upload-write barriers to `VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT` when mesh shader consumes payload data.
+- [x] Do not use task stage bits unless `taskShader` is enabled; do not use mesh stage bits unless `meshShader` is enabled.
+- [x] Add tests and static needles for `task_shader_stage_barriers_recorded`, `mesh_shader_stage_barriers_recorded`, and `shader_payload_consumed_by_task_or_mesh`.
 
 Expected result: synchronization evidence distinguishes indirect-command consumption from task/mesh shader data consumption.
 
 ### Task 7: Focused Validator And Static Guards
 
-- [ ] Add `tools/validate-mavg-vulkan-mesh-shader-indirect-dispatch.ps1`.
-- [ ] The validator must run `MK_mavg_vulkan_mesh_shader_lod_tests`, parse/status-print the counters in the Validation Surface section, and support `-RequireReady` only for a host with required SPIR-V artifacts and Vulkan feature support.
-- [ ] Add a new `tools/check-ai-integration-13x-mavg-vulkan-mesh-shader-indirect-dispatch.ps1` chapter or extend chapter 116 if the static-ledger owner requires extension rather than a new chapter.
-- [ ] Static needles must include official API names, feature names, buffer-usage rules, range formulas, sync2 stage names, counter names, and non-claim rows.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
+- [x] Add `tools/validate-mavg-vulkan-mesh-shader-indirect-dispatch.ps1`.
+- [x] The validator must run `MK_mavg_vulkan_mesh_shader_lod_tests`, parse/status-print the counters in the Validation Surface section, and support `-RequireReady` only for a host with required SPIR-V artifacts and Vulkan feature support.
+- [x] Extend chapter 116 rather than creating a duplicate chapter, keeping the static-ledger owner unchanged.
+- [x] Static needles must include official API names, feature names, buffer-usage rules, range formulas, sync2 stage names, counter names, and non-claim rows.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 
 Expected result: static checks fail if future edits remove official constraints or accidentally promote broad readiness.
 
 ### Task 8: Docs, Manifest, And Plan Registry
 
-- [ ] Update `docs/current-capabilities.md` and `docs/roadmap.md` with the narrow indirect evidence claim and non-claims.
-- [ ] Update `docs/superpowers/plans/README.md` with this implementation slice after the direct-dispatch Task 4 row.
-- [ ] Update `docs/superpowers/plans/2026-06-21-mavg-advanced-backend-evidence-closeout-v1.md` so the three unchecked Task 4 bullets point to this plan rather than looking like ambiguous abandoned work.
-- [ ] Update `engine/agent/manifest.fragments/004-modules.json` with the new backend-private evidence summary.
-- [ ] Update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only after implementation evidence exists; do not set this plan active merely because the plan file exists.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
+- [x] Update `docs/current-capabilities.md` and `docs/roadmap.md` with the narrow indirect evidence claim and non-claims.
+- [x] Update `docs/superpowers/plans/README.md` with this implementation slice after the direct-dispatch Task 4 row.
+- [x] Update `docs/superpowers/plans/2026-06-21-mavg-advanced-backend-evidence-closeout-v1.md` so the three unchecked Task 4 bullets point to this plan rather than looking like ambiguous abandoned work.
+- [x] Update `engine/agent/manifest.fragments/004-modules.json` with the new backend-private evidence summary.
+- [x] Update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only after implementation evidence exists; do not set this plan active merely because the plan file exists.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
 
 Expected result: manifest and docs describe selected Vulkan indirect evidence only, while `currentActivePlan` remains honest for the selected production-completion state.
 
 ### Task 9: Slice Validation And Publication
 
-- [ ] Run focused build and CTest:
+- [x] Run focused build and CTest:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_vulkan_mesh_shader_lod_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_mavg_vulkan_mesh_shader_lod_tests --output-on-failure
 ```
 
-- [ ] Run the focused validator without `-RequireReady` on unsupported hosts and with `-RequireReady` only on a host that has mesh/task shader, count-indirect, and SPIR-V artifact evidence:
+- [x] Run the focused validator without `-RequireReady` on unsupported hosts and with `-RequireReady` only on a host that has mesh/task shader, count-indirect, and SPIR-V artifact evidence:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-vulkan-mesh-shader-indirect-dispatch.ps1
 ```
 
-- [ ] Run agent-surface and static checks:
+- [x] Run agent-surface and static checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -293,7 +322,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 git diff --check
 ```
 
-- [ ] Run full validation after code, tests, docs, manifest, and static guards settle:
+- [x] Run full validation after code, tests, docs, manifest, and static guards settle:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
