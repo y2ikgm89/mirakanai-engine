@@ -31,6 +31,9 @@ For failures involving performance flags, ISA-specific targets, PGO, LTO, benchm
 
 For hosted PR/CI failures, bind the investigation to the latest PR head: inspect `gh pr view <pr> --json headRefOid,statusCheckRollup,url`,
 use logs for that same head, reproduce the narrowest matching local lane, and fix the repository contract instead of stale runs. Windows
+optional lane failures map to their owning wrappers first: `tools/validate-cpu-profiling-matrix-host-gate.ps1`,
+`tools/build-asset-importers.ps1`, `tools/build-editor.ps1`, or `tools/validate-network-enet.ps1`. Do not broaden the failure to
+`Windows MSVC` unless the shared desktop-runtime configure/build/test path is actually failing. Windows
 vcpkg package/install caches and build caches are acceleration only: `actions/cache/restore` may restore older compatible contents, but
 non-blocking `actions/cache/save` only attempts fresh caches after the lane succeeds and must not turn successful validation red. If all
 jobs fail before checkout with a GitHub account billing/spending-limit annotation or other billing or account limits, report that blocker.

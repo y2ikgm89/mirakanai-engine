@@ -203,6 +203,7 @@ Assert-ContainsText $agentsContent "For hosted PR/CI failures" "AGENTS.md"
 Assert-ContainsText $agentsContent "PR CI selection" "AGENTS.md"
 Assert-ContainsText $agentsContent "always-running required gate" "AGENTS.md"
 Assert-ContainsText $agentsContent "path-filtered required workflows" "AGENTS.md"
+Assert-ContainsText $agentsContent "job-level conditional lanes" "AGENTS.md"
 Assert-ContainsText $agentsContent "Docs/agent/rules/subagent-only PRs use agent/static guards" "AGENTS.md"
 Assert-ContainsText $agentsContent "HeaderFilterRegex" "AGENTS.md"
 Assert-ContainsText $agentsContent "--warnings-as-errors=*" "AGENTS.md"
@@ -399,26 +400,11 @@ foreach ($cmakeSkillPath in @(
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) 'Do not repair generated `out/build/<preset>` trees' $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
 }
-foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/build-fixer.md")) {
+foreach ($agentIntegrationReferencePath in @(".agents/skills/gameengine-agent-integration/references/integration-change-matrix.md", ".claude/skills/gameengine-agent-integration/references/integration-change-matrix.md")) { $agentIntegrationReferenceText = Get-AgentSurfaceText $agentIntegrationReferencePath; foreach ($needle in @("workflow-level path/branch filters can leave required checks pending", "job-level conditional lanes", "windows_cpu_profiling_host", "windows_asset_importers", "windows_desktop_editor", "windows_network_enet", "feature-scoped bootstrap", "actions/cache/restore", "actions/cache/save", "cache-primary-key")) { Assert-ContainsText $agentIntegrationReferenceText $needle $agentIntegrationReferencePath } }
+
+foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/build-fixer.md", ".cursor/agents/build-fixer.md")) {
     $buildFixerAgentText = Get-AgentSurfaceText $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "tools/check-toolchain.ps1" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "tools/cmake.ps1" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "tools/ctest.ps1" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "tools/check-format.ps1" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "tools/check-tidy.ps1" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText 'source-basename `.obj` path' $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "/MP2" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "/Zf" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "MSB8028" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText ".lastbuildstate" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "LinkIncremental=false" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "gh pr view <pr> --json headRefOid,statusCheckRollup,url" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "billing or account limits" $buildFixerPath
+    foreach ($needle in @("tools/check-toolchain.ps1", "tools/cmake.ps1", "tools/ctest.ps1", "tools/check-format.ps1", "tools/check-tidy.ps1", 'Do not repair generated `out/build/<preset>` trees', "CMakeCache.txt", "C1041", "COMPILE_PDB_OUTPUT_DIRECTORY", 'source-basename `.obj` path', "/MP2", "/Zf", 'global `/FS`', "MSB8028", ".lastbuildstate", "LinkIncremental=false", "gh pr view <pr> --json headRefOid,statusCheckRollup,url", "Windows optional lane failures", "tools/validate-cpu-profiling-matrix-host-gate.ps1", "tools/build-asset-importers.ps1", "tools/build-editor.ps1", "tools/validate-network-enet.ps1", "billing or account limits")) { Assert-ContainsText $buildFixerAgentText $needle $buildFixerPath }
 }
 $cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
@@ -652,6 +638,9 @@ foreach ($agentSkillSurface in @(
     Assert-ContainsText $agentSkillSurface.Text "publication-preflight: blocked" $agentSkillSurface.Label
     Assert-ContainsText $agentSkillSurface.Text "before staging/push/PR/merge" $agentSkillSurface.Label
 }
+
+$cursorAgentIntegrationRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-ai-agent-integration.mdc"
+foreach ($needle in @("PR CI selection", 'always-running `PR Gate`', "job-level conditional lanes", "windows_cpu_profiling_host", "windows_asset_importers", "windows_desktop_editor", "windows_network_enet", "tools/check-ci-matrix.ps1")) { Assert-ContainsText $cursorAgentIntegrationRuleText $needle ".cursor/rules/mirakana-ai-agent-integration.mdc" }
 
 $codexRulesText = Get-AgentSurfaceText ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRulesText '"tools/check-publication-preflight.ps1"' ".codex/rules/gameengine.rules"
