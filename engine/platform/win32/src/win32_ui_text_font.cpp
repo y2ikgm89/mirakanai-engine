@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -161,6 +162,14 @@ void append_diagnostic(std::vector<Win32UiTextShapeDiagnostic>& diagnostics, Win
         .code = code,
         .message = std::move(message),
         .byte_offset = byte_offset,
+    });
+}
+
+void append_diagnostic(std::vector<Win32UiFontDiagnostic>& diagnostics, Win32UiFontDiagnosticCode code,
+                       std::string message) {
+    diagnostics.push_back(Win32UiFontDiagnostic{
+        .code = code,
+        .message = std::move(message),
     });
 }
 
@@ -605,6 +614,238 @@ void append_grapheme_rows(std::string_view text, ui::TextLayoutRun& run) {
     return factory;
 }
 
+[[nodiscard]] bool valid_font_source_kind(Win32UiFontSourceKind source_kind) noexcept {
+    return source_kind == Win32UiFontSourceKind::system_font_collection ||
+           source_kind == Win32UiFontSourceKind::project_font_asset;
+}
+
+[[nodiscard]] bool valid_font_license_status(Win32UiFontSourceKind source_kind,
+                                             Win32UiFontLicenseStatus license_status) noexcept {
+    if (source_kind == Win32UiFontSourceKind::system_font_collection) {
+        return license_status == Win32UiFontLicenseStatus::system_font_runtime_reference;
+    }
+    if (source_kind == Win32UiFontSourceKind::project_font_asset) {
+        return license_status == Win32UiFontLicenseStatus::project_font_asset_license_recorded;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_font_pixel_format(ui::FontRasterizationPixelFormat pixel_format) noexcept {
+    return pixel_format == ui::FontRasterizationPixelFormat::alpha8;
+}
+
+void validate_font_load_request(const Win32UiFontLoadRequest& request,
+                                std::vector<Win32UiFontDiagnostic>& diagnostics) {
+    if (request.font_family.empty() || !is_adapter_safe(request.font_family)) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_font_family,
+                          "DirectWrite font loading requires an adapter-safe font family");
+    }
+    if (!valid_font_source_kind(request.source_kind)) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_source_kind,
+                          "DirectWrite font loading requires a known font source kind");
+    }
+    if (request.provenance_id.empty() || !is_adapter_safe(request.provenance_id)) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::missing_provenance,
+                          "DirectWrite font loading requires a source provenance row");
+    }
+    if (!valid_font_license_status(request.source_kind, request.license_status)) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::missing_license_status,
+                          "DirectWrite font loading requires a matching font license status row");
+    }
+    if (request.source_kind == Win32UiFontSourceKind::project_font_asset) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::unsupported_project_font_asset,
+                          "Project font asset loading is not selected for the Win32 DirectWrite proof");
+    }
+    if (request.row_budget == 0U) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::row_budget_exceeded,
+                          "DirectWrite font loading requires a positive row budget");
+    }
+}
+
+void validate_glyph_raster_request(const Win32UiGlyphRasterRequest& request,
+                                   std::vector<Win32UiFontDiagnostic>& diagnostics) {
+    validate_font_load_request(
+        Win32UiFontLoadRequest{
+            .font_family = request.font_family,
+            .source_kind = request.source_kind,
+            .provenance_id = request.provenance_id,
+            .license_status = request.license_status,
+            .row_budget = request.row_budget,
+        },
+        diagnostics);
+    if (request.resolved_face_id.empty() || !is_adapter_safe(request.resolved_face_id)) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::missing_face_id,
+                          "DirectWrite glyph rasterization requires a resolved face id");
+    }
+    if (request.glyph_id == 0U || request.glyph_id > std::numeric_limits<std::uint16_t>::max()) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_glyph_id,
+                          "DirectWrite glyph rasterization requires a non-zero 16-bit glyph id");
+    }
+    if (!std::isfinite(request.pixel_size) || request.pixel_size <= 0.0F) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_pixel_size,
+                          "DirectWrite glyph rasterization requires a positive finite pixel size");
+    }
+    if (!std::isfinite(request.dpi_scale) || request.dpi_scale <= 0.0F) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_dpi_scale,
+                          "DirectWrite glyph rasterization requires a positive finite DPI scale");
+    }
+    if (!valid_font_pixel_format(request.pixel_format)) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_pixel_format,
+                          "DirectWrite glyph rasterization currently emits alpha8 bitmap rows only");
+    }
+    if (request.atlas_padding > 4096U) {
+        append_diagnostic(diagnostics, Win32UiFontDiagnosticCode::invalid_atlas_padding,
+                          "DirectWrite glyph rasterization atlas padding exceeds the supported row budget");
+    }
+}
+
+[[nodiscard]] std::string make_resolved_face_id(const Win32UiFontLoadRequest& request,
+                                                const DWRITE_FONT_METRICS& metrics) {
+    return request.font_family + ":system:regular:normal:" + std::to_string(metrics.designUnitsPerEm);
+}
+
+struct LoadedDirectWriteFontFace {
+    ComPtr<IDWriteFactory> factory;
+    ComPtr<IDWriteFontFace> face;
+    Win32UiFontFaceRow row;
+    bool factory_created{false};
+    bool system_font_collection_loaded{false};
+    std::vector<Win32UiFontDiagnostic> diagnostics;
+};
+
+[[nodiscard]] LoadedDirectWriteFontFace load_directwrite_font_face(const Win32UiFontLoadRequest& request) {
+    LoadedDirectWriteFontFace loaded;
+    validate_font_load_request(request, loaded.diagnostics);
+    if (!loaded.diagnostics.empty()) {
+        return loaded;
+    }
+
+    std::wstring wide_font_family;
+    try {
+        wide_font_family = detail::wide_from_utf8(request.font_family);
+    } catch (...) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::invalid_font_family,
+                          "DirectWrite font family must be strict UTF-8");
+        return loaded;
+    }
+
+    loaded.factory = make_directwrite_factory();
+    if (loaded.factory == nullptr) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::directwrite_factory_unavailable,
+                          "DirectWrite factory creation failed");
+        return loaded;
+    }
+    loaded.factory_created = true;
+
+    ComPtr<IDWriteFontCollection> collection;
+    HRESULT hr = loaded.factory->GetSystemFontCollection(collection.GetAddressOf());
+    if (FAILED(hr) || collection == nullptr) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_collection_failed,
+                          "DirectWrite system font collection load failed");
+        return loaded;
+    }
+    loaded.system_font_collection_loaded = true;
+
+    UINT32 family_index = 0U;
+    BOOL family_exists = FALSE;
+    hr = collection->FindFamilyName(wide_font_family.c_str(), &family_index, &family_exists);
+    if (FAILED(hr) || family_exists == FALSE) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_family_not_found,
+                          "DirectWrite system font family was not found");
+        return loaded;
+    }
+
+    ComPtr<IDWriteFontFamily> family;
+    hr = collection->GetFontFamily(family_index, family.GetAddressOf());
+    if (FAILED(hr) || family == nullptr) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_face_failed,
+                          "DirectWrite font family resolution failed");
+        return loaded;
+    }
+
+    ComPtr<IDWriteFont> font;
+    hr = family->GetFirstMatchingFont(DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL,
+                                      font.GetAddressOf());
+    if (FAILED(hr) || font == nullptr) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_face_failed,
+                          "DirectWrite matching font resolution failed");
+        return loaded;
+    }
+
+    hr = font->CreateFontFace(loaded.face.GetAddressOf());
+    if (FAILED(hr) || loaded.face == nullptr) {
+        append_diagnostic(loaded.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_face_failed,
+                          "DirectWrite font face creation failed");
+        return loaded;
+    }
+
+    DWRITE_FONT_METRICS metrics{};
+    loaded.face->GetMetrics(&metrics);
+    loaded.row = Win32UiFontFaceRow{
+        .font_family = request.font_family,
+        .resolved_face_id = make_resolved_face_id(request, metrics),
+        .source_kind = request.source_kind,
+        .provenance_id = request.provenance_id,
+        .license_status = request.license_status,
+        .glyph_count = static_cast<std::uint32_t>(loaded.face->GetGlyphCount()),
+        .design_units_per_em = metrics.designUnitsPerEm,
+    };
+    return loaded;
+}
+
+[[nodiscard]] std::uint32_t extent_from_rect(const RECT& bounds, bool horizontal) noexcept {
+    const auto first = horizontal ? bounds.left : bounds.top;
+    const auto second = horizontal ? bounds.right : bounds.bottom;
+    if (second <= first) {
+        return 0U;
+    }
+    return static_cast<std::uint32_t>(second - first);
+}
+
+[[nodiscard]] bool checked_atlas_extent(std::uint32_t glyph_extent, std::uint32_t padding, float& out_extent) noexcept {
+    if (padding > (std::numeric_limits<std::uint32_t>::max() - glyph_extent) / 2U) {
+        return false;
+    }
+    out_extent = static_cast<float>(glyph_extent + (padding * 2U));
+    return std::isfinite(out_extent);
+}
+
+[[nodiscard]] std::vector<std::byte> alpha_texture_to_pixels(const std::vector<std::uint8_t>& alpha_texture,
+                                                             std::uint32_t width, std::uint32_t height,
+                                                             DWRITE_TEXTURE_TYPE texture_type) {
+    const auto pixel_count = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    std::vector<std::byte> pixels(pixel_count);
+    if (texture_type == DWRITE_TEXTURE_ALIASED_1x1) {
+        for (std::size_t index = 0U; index < pixel_count; ++index) {
+            pixels[index] = static_cast<std::byte>(alpha_texture[index]);
+        }
+        return pixels;
+    }
+
+    for (std::size_t index = 0U; index < pixel_count; ++index) {
+        const auto offset = index * 3U;
+        const auto alpha = static_cast<std::uint8_t>((static_cast<std::uint32_t>(alpha_texture[offset]) +
+                                                      static_cast<std::uint32_t>(alpha_texture[offset + 1U]) +
+                                                      static_cast<std::uint32_t>(alpha_texture[offset + 2U])) /
+                                                     3U);
+        pixels[index] = static_cast<std::byte>(alpha);
+    }
+    return pixels;
+}
+
+[[nodiscard]] bool valid_raster_allocation(const ui::GlyphAtlasAllocation& allocation) noexcept {
+    const auto& bitmap = allocation.bitmap;
+    const auto& metrics = allocation.metrics;
+    const auto pixel_count = static_cast<std::size_t>(bitmap.width) * static_cast<std::size_t>(bitmap.height);
+    return allocation.glyph != 0U && bitmap.pixel_format == ui::FontRasterizationPixelFormat::alpha8 &&
+           bitmap.pixels.size() == pixel_count && std::isfinite(metrics.width) && std::isfinite(metrics.height) &&
+           std::isfinite(metrics.bearing_x) && std::isfinite(metrics.bearing_y) && std::isfinite(metrics.advance_x) &&
+           std::isfinite(metrics.advance_y) && metrics.width >= 0.0F && metrics.height >= 0.0F &&
+           metrics.advance_x >= 0.0F && metrics.advance_y >= 0.0F && std::isfinite(allocation.atlas_bounds.width) &&
+           std::isfinite(allocation.atlas_bounds.height) && allocation.atlas_bounds.width >= 0.0F &&
+           allocation.atlas_bounds.height >= 0.0F;
+}
+
 } // namespace
 
 bool Win32UiTextShapeResult::succeeded() const noexcept {
@@ -834,6 +1075,326 @@ make_win32_directwrite_text_shaping_production_evidence(const Win32UiTextShapeRe
     };
     if (!row.ready) {
         row.blocker = result.diagnostics.empty() ? "Windows DirectWrite text shaping evidence is not ready"
+                                                 : result.diagnostics.front().message;
+    }
+    return row;
+}
+
+bool Win32UiFontLoadResult::succeeded() const noexcept {
+    return ready && diagnostics.empty();
+}
+
+bool Win32UiGlyphRasterResult::succeeded() const noexcept {
+    return ready && diagnostics.empty();
+}
+
+Win32UiFontLoadResult validate_win32_ui_font_load_result_rows(Win32UiFontLoadResult result, std::size_t row_budget) {
+    if (row_budget == 0U || result.font_face_rows.size() > row_budget) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::row_budget_exceeded,
+                          "DirectWrite font loading evidence rows exceed the request budget");
+    }
+    if (result.public_native_handles_exposed) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::public_native_handles_exposed,
+                          "DirectWrite font loading evidence must not expose native handles");
+    }
+    if (!result.directwrite_factory_created) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_factory_unavailable,
+                          "DirectWrite factory was not created for font loading");
+    }
+    if (!result.system_font_collection_loaded) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_collection_failed,
+                          "DirectWrite system font collection was not loaded");
+    }
+    if (result.font_face_rows.empty()) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_face_failed,
+                          "DirectWrite font loading requires a resolved font face row");
+    }
+    for (const auto& row : result.font_face_rows) {
+        if (row.font_family.empty() || !is_adapter_safe(row.font_family)) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::invalid_font_family,
+                              "DirectWrite font face row requires an adapter-safe font family");
+        }
+        if (row.resolved_face_id.empty() || !is_adapter_safe(row.resolved_face_id)) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::missing_face_id,
+                              "DirectWrite font face row requires a resolved face id");
+        }
+        if (!valid_font_source_kind(row.source_kind)) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::invalid_source_kind,
+                              "DirectWrite font face row requires a known source kind");
+        }
+        if (row.provenance_id.empty() || !is_adapter_safe(row.provenance_id)) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::missing_provenance,
+                              "DirectWrite font face row requires source provenance");
+        }
+        if (!valid_font_license_status(row.source_kind, row.license_status)) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::missing_license_status,
+                              "DirectWrite font face row requires a matching license status");
+        }
+        if (row.glyph_count == 0U || row.design_units_per_em == 0U) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_face_failed,
+                              "DirectWrite font face row requires glyph count and design units");
+        }
+    }
+    result.ready = result.diagnostics.empty();
+    return result;
+}
+
+Win32UiFontLoadResult load_win32_ui_font_face(const Win32UiFontLoadRequest& request) {
+    auto loaded = load_directwrite_font_face(request);
+    Win32UiFontLoadResult result;
+    result.directwrite_factory_created = loaded.factory_created;
+    result.system_font_collection_loaded = loaded.system_font_collection_loaded;
+    result.diagnostics = std::move(loaded.diagnostics);
+    if (loaded.face != nullptr) {
+        result.font_face_rows.push_back(std::move(loaded.row));
+    }
+    return validate_win32_ui_font_load_result_rows(std::move(result), request.row_budget);
+}
+
+Win32UiGlyphRasterResult validate_win32_ui_glyph_raster_result_rows(Win32UiGlyphRasterResult result,
+                                                                    std::size_t row_budget) {
+    const std::size_t row_count = result.font_face_rows.size() + result.bitmap_rows.size() +
+                                  result.metrics_rows.size() + result.color_rows.size() +
+                                  (result.allocation.has_value() ? 1U : 0U);
+    if (row_budget == 0U || row_count > row_budget) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::row_budget_exceeded,
+                          "DirectWrite glyph raster evidence rows exceed the request budget");
+    }
+    if (result.public_native_handles_exposed) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::public_native_handles_exposed,
+                          "DirectWrite glyph raster evidence must not expose native handles");
+    }
+    if (!result.directwrite_factory_created) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_factory_unavailable,
+                          "DirectWrite factory was not created for glyph rasterization");
+    }
+    if (!result.font_face_loaded || result.font_face_rows.empty()) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_font_face_failed,
+                          "DirectWrite glyph rasterization requires a resolved font face");
+    }
+    if (!result.glyph_metrics_queried || result.metrics_rows.empty()) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_glyph_metrics_failed,
+                          "DirectWrite glyph rasterization requires glyph metric rows");
+    }
+    if (!result.recommended_rendering_mode_queried) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_rendering_mode_failed,
+                          "DirectWrite glyph rasterization requires rendering mode evidence");
+    }
+    if (!result.glyph_run_analysis_created) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_glyph_run_analysis_failed,
+                          "DirectWrite glyph run analysis was not created");
+    }
+    if (!result.alpha_texture_created || result.bitmap_rows.empty()) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::missing_bitmap_pixels,
+                          "DirectWrite glyph rasterization requires bitmap pixel rows");
+    }
+    if (!result.allocation.has_value() || !valid_raster_allocation(*result.allocation)) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::invalid_metrics,
+                          "DirectWrite glyph rasterization requires a valid allocation, bitmap, and metrics row");
+    }
+    result.ready = result.diagnostics.empty();
+    return result;
+}
+
+Win32UiGlyphRasterResult rasterize_win32_ui_glyph(const Win32UiGlyphRasterRequest& request) {
+    Win32UiGlyphRasterResult result;
+    validate_glyph_raster_request(request, result.diagnostics);
+    if (!result.diagnostics.empty()) {
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+
+    auto loaded = load_directwrite_font_face(Win32UiFontLoadRequest{
+        .font_family = request.font_family,
+        .source_kind = request.source_kind,
+        .provenance_id = request.provenance_id,
+        .license_status = request.license_status,
+        .row_budget = request.row_budget,
+    });
+    result.directwrite_factory_created = loaded.factory_created;
+    result.system_font_collection_loaded = loaded.system_font_collection_loaded;
+    result.diagnostics.insert(result.diagnostics.end(), loaded.diagnostics.begin(), loaded.diagnostics.end());
+    if (loaded.face == nullptr) {
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+    result.font_face_loaded = true;
+    result.font_face_rows.push_back(loaded.row);
+    if (loaded.row.resolved_face_id != request.resolved_face_id) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::font_face_mismatch,
+                          "DirectWrite glyph rasterization request face id does not match the resolved face");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+
+    const auto glyph_index = static_cast<UINT16>(request.glyph_id);
+    DWRITE_GLYPH_METRICS glyph_metrics{};
+    HRESULT hr = loaded.face->GetDesignGlyphMetrics(&glyph_index, 1U, &glyph_metrics, FALSE);
+    if (FAILED(hr)) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_glyph_metrics_failed,
+                          "DirectWrite glyph metrics query failed");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+    result.glyph_metrics_queried = true;
+
+    const float design_to_dip = request.pixel_size / static_cast<float>(loaded.row.design_units_per_em);
+    const float design_to_pixel = design_to_dip * request.dpi_scale;
+    const FLOAT glyph_advance = static_cast<FLOAT>(static_cast<float>(glyph_metrics.advanceWidth) * design_to_dip);
+    const DWRITE_GLYPH_OFFSET glyph_offset{.advanceOffset = 0.0F, .ascenderOffset = 0.0F};
+    const DWRITE_GLYPH_RUN glyph_run{
+        .fontFace = loaded.face.Get(),
+        .fontEmSize = request.pixel_size,
+        .glyphCount = 1U,
+        .glyphIndices = &glyph_index,
+        .glyphAdvances = &glyph_advance,
+        .glyphOffsets = &glyph_offset,
+        .isSideways = FALSE,
+        .bidiLevel = 0U,
+    };
+
+    ComPtr<IDWriteRenderingParams> rendering_params;
+    hr = loaded.factory->CreateRenderingParams(rendering_params.GetAddressOf());
+    if (FAILED(hr) || rendering_params == nullptr) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_rendering_mode_failed,
+                          "DirectWrite rendering params creation failed");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+
+    DWRITE_RENDERING_MODE rendering_mode = DWRITE_RENDERING_MODE_ALIASED;
+    hr = loaded.face->GetRecommendedRenderingMode(request.pixel_size, request.dpi_scale, DWRITE_MEASURING_MODE_NATURAL,
+                                                  rendering_params.Get(), &rendering_mode);
+    if (FAILED(hr)) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_rendering_mode_failed,
+                          "DirectWrite recommended rendering mode query failed");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+    result.recommended_rendering_mode_queried = true;
+
+    const DWRITE_TEXTURE_TYPE texture_type =
+        rendering_mode == DWRITE_RENDERING_MODE_ALIASED ? DWRITE_TEXTURE_ALIASED_1x1 : DWRITE_TEXTURE_CLEARTYPE_3x1;
+    const std::size_t texture_stride = texture_type == DWRITE_TEXTURE_ALIASED_1x1 ? 1U : 3U;
+
+    ComPtr<IDWriteGlyphRunAnalysis> analysis;
+    hr = loaded.factory->CreateGlyphRunAnalysis(&glyph_run, request.dpi_scale, nullptr, rendering_mode,
+                                                DWRITE_MEASURING_MODE_NATURAL, 0.0F, 0.0F, analysis.GetAddressOf());
+    if (FAILED(hr) || analysis == nullptr) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_glyph_run_analysis_failed,
+                          "DirectWrite glyph run analysis creation failed");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+    result.glyph_run_analysis_created = true;
+
+    RECT texture_bounds{};
+    hr = analysis->GetAlphaTextureBounds(texture_type, &texture_bounds);
+    if (FAILED(hr)) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::directwrite_glyph_run_analysis_failed,
+                          "DirectWrite alpha texture bounds query failed");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+
+    const auto width = extent_from_rect(texture_bounds, true);
+    const auto height = extent_from_rect(texture_bounds, false);
+    const auto pixel_count = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    std::vector<std::uint8_t> alpha_texture(pixel_count * texture_stride);
+    if (!alpha_texture.empty()) {
+        hr = analysis->CreateAlphaTexture(texture_type, &texture_bounds, alpha_texture.data(),
+                                          static_cast<UINT32>(alpha_texture.size()));
+        if (FAILED(hr)) {
+            append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::missing_bitmap_pixels,
+                              "DirectWrite alpha texture creation failed");
+            return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+        }
+    }
+    result.alpha_texture_created = true;
+
+    float atlas_width = 0.0F;
+    float atlas_height = 0.0F;
+    if (!checked_atlas_extent(width, request.atlas_padding, atlas_width) ||
+        !checked_atlas_extent(height, request.atlas_padding, atlas_height)) {
+        append_diagnostic(result.diagnostics, Win32UiFontDiagnosticCode::atlas_overflow,
+                          "DirectWrite glyph rasterization atlas bounds overflowed");
+        return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+    }
+
+    const auto pixels = alpha_texture_to_pixels(alpha_texture, width, height, texture_type);
+    result.bitmap_rows.push_back(Win32UiGlyphBitmapRow{
+        .glyph_id = request.glyph_id,
+        .width = width,
+        .height = height,
+        .pixel_format = request.pixel_format,
+        .pixel_bytes = pixels.size(),
+        .atlas_padding = request.atlas_padding,
+    });
+    result.metrics_rows.push_back(Win32UiGlyphMetricsRow{
+        .glyph_id = request.glyph_id,
+        .width = static_cast<float>(width),
+        .height = static_cast<float>(height),
+        .bearing_x = static_cast<float>(texture_bounds.left),
+        .bearing_y = static_cast<float>(-texture_bounds.top),
+        .advance_x = static_cast<float>(glyph_metrics.advanceWidth) * design_to_pixel,
+        .advance_y = static_cast<float>(glyph_metrics.advanceHeight) * design_to_pixel,
+    });
+    result.color_rows.push_back(Win32UiGlyphColorRow{
+        .glyph_id = request.glyph_id,
+        .color_glyph_checked = true,
+        .color_glyph_used = false,
+    });
+    result.allocation = ui::GlyphAtlasAllocation{
+        .glyph = request.glyph_id,
+        .atlas_bounds = ui::Rect{.x = 0.0F, .y = 0.0F, .width = atlas_width, .height = atlas_height},
+        .bitmap =
+            ui::GlyphRasterBitmap{
+                .width = width,
+                .height = height,
+                .pixel_format = request.pixel_format,
+                .pixels = pixels,
+            },
+        .metrics =
+            ui::GlyphRasterMetrics{
+                .width = static_cast<float>(width),
+                .height = static_cast<float>(height),
+                .bearing_x = static_cast<float>(texture_bounds.left),
+                .bearing_y = static_cast<float>(-texture_bounds.top),
+                .advance_x = static_cast<float>(glyph_metrics.advanceWidth) * design_to_pixel,
+                .advance_y = static_cast<float>(glyph_metrics.advanceHeight) * design_to_pixel,
+            },
+    };
+
+    return validate_win32_ui_glyph_raster_result_rows(std::move(result), request.row_budget);
+}
+
+ui::RuntimeUiPlatformProductionEvidenceRow
+make_win32_directwrite_font_loading_production_evidence(const Win32UiFontLoadResult& result) {
+    ui::RuntimeUiPlatformProductionEvidenceRow row{
+        .id = "runtime-ui-platform.font-loading.win32.directwrite",
+        .feature = ui::RuntimeUiPlatformProductionFeature::real_font_loading,
+        .proof = ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+        .selected = true,
+        .ready = result.succeeded(),
+        .dependency_recorded = true,
+        .host_evidence_available = result.directwrite_factory_created && result.system_font_collection_loaded,
+        .public_native_handles = result.public_native_handles_exposed,
+    };
+    if (!row.ready) {
+        row.blocker = result.diagnostics.empty() ? "Windows DirectWrite font loading evidence is not ready"
+                                                 : result.diagnostics.front().message;
+    }
+    return row;
+}
+
+ui::RuntimeUiPlatformProductionEvidenceRow
+make_win32_directwrite_font_rasterization_production_evidence(const Win32UiGlyphRasterResult& result) {
+    ui::RuntimeUiPlatformProductionEvidenceRow row{
+        .id = "runtime-ui-platform.font-rasterization.win32.directwrite",
+        .feature = ui::RuntimeUiPlatformProductionFeature::font_rasterization,
+        .proof = ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+        .selected = true,
+        .ready = result.succeeded(),
+        .dependency_recorded = true,
+        .host_evidence_available = result.directwrite_factory_created && result.font_face_loaded &&
+                                   result.glyph_metrics_queried && result.glyph_run_analysis_created &&
+                                   result.alpha_texture_created,
+        .public_native_handles = result.public_native_handles_exposed,
+    };
+    if (!row.ready) {
+        row.blocker = result.diagnostics.empty() ? "Windows DirectWrite glyph rasterization evidence is not ready"
                                                  : result.diagnostics.front().message;
     }
     return row;

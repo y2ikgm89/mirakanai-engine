@@ -60,6 +60,10 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#if defined(_WIN32)
+#include "mirakana/platform/win32/win32_ui_text_font.hpp"
+#endif
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -125,6 +129,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_standard_widgets{false};
     bool require_runtime_ui_workbench{false};
     bool require_runtime_ui_production_stack{false};
+    bool require_runtime_ui_font_rasterization{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
     bool require_wasapi_audio{false};
@@ -1922,6 +1927,17 @@ struct RuntimeUiProductionStackProbeResult {
     std::uint64_t replay_hash{0U};
 };
 
+struct RuntimeUiFontRasterizationProbeResult {
+    bool ready{false};
+    std::size_t font_loading_rows{0U};
+    std::size_t glyph_raster_rows{0U};
+    std::size_t glyph_bitmap_rows{0U};
+    std::size_t glyph_metrics_rows{0U};
+    std::size_t font_license_rows{0U};
+    std::size_t diagnostics{0U};
+    bool native_handles_exposed{false};
+};
+
 struct RuntimeUiRendererAtlasHandoffProbeResult {
     bool ready{false};
     bool selected_package_evidence_ready{false};
@@ -3495,6 +3511,55 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         result.accessibility_publication_status_rows == 1U && result.accessibility_uia_host_gate_rows == 1U &&
         result.accessibility_platform_host_gate_rows == 1U && !result.accessibility_platform_parity_ready &&
         result.replay_hash != 0U;
+    return result;
+}
+
+[[nodiscard]] RuntimeUiFontRasterizationProbeResult validate_runtime_ui_font_rasterization_package_evidence() {
+    RuntimeUiFontRasterizationProbeResult result;
+#if defined(_WIN32)
+    const auto font_result = mirakana::win32::load_win32_ui_font_face(mirakana::win32::Win32UiFontLoadRequest{
+        .font_family = "Segoe UI",
+        .source_kind = mirakana::win32::Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = mirakana::win32::Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .row_budget = 8U,
+    });
+    result.font_loading_rows = font_result.font_face_rows.size();
+    result.font_license_rows = std::ranges::count_if(font_result.font_face_rows, [](const auto& row) {
+        return row.license_status != mirakana::win32::Win32UiFontLicenseStatus::unknown;
+    });
+    result.native_handles_exposed = font_result.public_native_handles_exposed;
+    result.diagnostics += font_result.diagnostics.size();
+
+    if (!font_result.succeeded() || font_result.font_face_rows.empty()) {
+        return result;
+    }
+
+    const auto& face = font_result.font_face_rows.front();
+    const auto raster_result = mirakana::win32::rasterize_win32_ui_glyph(mirakana::win32::Win32UiGlyphRasterRequest{
+        .font_family = face.font_family,
+        .resolved_face_id = face.resolved_face_id,
+        .source_kind = face.source_kind,
+        .provenance_id = face.provenance_id,
+        .license_status = face.license_status,
+        .glyph_id = 65U,
+        .pixel_size = 24.0F,
+        .dpi_scale = 1.0F,
+        .pixel_format = mirakana::ui::FontRasterizationPixelFormat::alpha8,
+        .atlas_padding = 2U,
+        .row_budget = 16U,
+    });
+    result.glyph_raster_rows = raster_result.allocation.has_value() ? 1U : 0U;
+    result.glyph_bitmap_rows = raster_result.bitmap_rows.size();
+    result.glyph_metrics_rows = raster_result.metrics_rows.size();
+    result.native_handles_exposed = result.native_handles_exposed || raster_result.public_native_handles_exposed;
+    result.diagnostics += raster_result.diagnostics.size();
+    result.ready = font_result.succeeded() && raster_result.succeeded() && result.font_loading_rows == 1U &&
+                   result.glyph_raster_rows == 1U && result.glyph_bitmap_rows == 1U &&
+                   result.glyph_metrics_rows == 1U && result.font_license_rows == 1U && !result.native_handles_exposed;
+#else
+    result.diagnostics = 1U;
+#endif
     return result;
 }
 
@@ -10371,6 +10436,7 @@ void print_usage() {
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
                  "[--require-runtime-ui-production-stack] "
+                 "[--require-runtime-ui-font-rasterization] "
                  "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
                  "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
                  "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow] "
@@ -10551,6 +10617,10 @@ void print_usage() {
         if (arg == "--require-runtime-ui-production-stack") {
             options.require_runtime_ui_production_stack = true;
             options.require_runtime_ui_workbench = true;
+            continue;
+        }
+        if (arg == "--require-runtime-ui-font-rasterization") {
+            options.require_runtime_ui_font_rasterization = true;
             continue;
         }
         if (arg == "--require-runtime-ui-renderer-atlas-handoff") {
@@ -11296,6 +11366,9 @@ int main(int argc, char** argv) {
     const auto runtime_ui_production_stack_probe = options.require_runtime_ui_production_stack
                                                        ? validate_runtime_ui_production_stack_package_evidence()
                                                        : RuntimeUiProductionStackProbeResult{};
+    const auto runtime_ui_font_rasterization_probe = options.require_runtime_ui_font_rasterization
+                                                         ? validate_runtime_ui_font_rasterization_package_evidence()
+                                                         : RuntimeUiFontRasterizationProbeResult{};
     const auto runtime_ui_renderer_atlas_handoff_probe =
         options.require_runtime_ui_renderer_atlas_handoff && runtime_package.has_value()
             ? validate_runtime_ui_renderer_atlas_handoff_package_evidence(*runtime_package)
@@ -12391,6 +12464,14 @@ int main(int argc, char** argv) {
         << (runtime_ui_production_stack_probe.invoked_renderer_upload ? 1 : 0)
         << " runtime_ui_production_stack_diagnostics=" << runtime_ui_production_stack_probe.diagnostics
         << " runtime_ui_production_stack_replay_hash=" << runtime_ui_production_stack_probe.replay_hash
+        << " runtime_ui_font_loading_rows=" << runtime_ui_font_rasterization_probe.font_loading_rows
+        << " runtime_ui_glyph_raster_rows=" << runtime_ui_font_rasterization_probe.glyph_raster_rows
+        << " runtime_ui_glyph_bitmap_rows=" << runtime_ui_font_rasterization_probe.glyph_bitmap_rows
+        << " runtime_ui_glyph_metrics_rows=" << runtime_ui_font_rasterization_probe.glyph_metrics_rows
+        << " runtime_ui_font_license_rows=" << runtime_ui_font_rasterization_probe.font_license_rows
+        << " runtime_ui_font_native_handles_exposed="
+        << (runtime_ui_font_rasterization_probe.native_handles_exposed ? 1 : 0)
+        << " runtime_ui_font_rasterization_diagnostics=" << runtime_ui_font_rasterization_probe.diagnostics
         << " runtime_ui_renderer_atlas_handoff_status="
         << runtime_ui_renderer_atlas_handoff_status_name(runtime_ui_renderer_atlas_handoff_probe.status)
         << " runtime_ui_renderer_atlas_handoff_ready=" << (runtime_ui_renderer_atlas_handoff_probe.ready ? 1 : 0)
@@ -13716,6 +13797,20 @@ int main(int argc, char** argv) {
             << (runtime_ui_production_stack_probe.accessibility_platform_parity_ready ? 1 : 0)
             << " runtime_ui_production_stack_diagnostics=" << runtime_ui_production_stack_probe.diagnostics << '\n';
         return 28;
+    }
+
+    if (options.require_runtime_ui_font_rasterization && !runtime_ui_font_rasterization_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_font_rasterization_unavailable"
+                  << " runtime_ui_font_loading_rows=" << runtime_ui_font_rasterization_probe.font_loading_rows
+                  << " runtime_ui_glyph_raster_rows=" << runtime_ui_font_rasterization_probe.glyph_raster_rows
+                  << " runtime_ui_glyph_bitmap_rows=" << runtime_ui_font_rasterization_probe.glyph_bitmap_rows
+                  << " runtime_ui_glyph_metrics_rows=" << runtime_ui_font_rasterization_probe.glyph_metrics_rows
+                  << " runtime_ui_font_license_rows=" << runtime_ui_font_rasterization_probe.font_license_rows
+                  << " runtime_ui_font_native_handles_exposed="
+                  << (runtime_ui_font_rasterization_probe.native_handles_exposed ? 1 : 0)
+                  << " runtime_ui_font_rasterization_diagnostics=" << runtime_ui_font_rasterization_probe.diagnostics
+                  << '\n';
+        return 58;
     }
 
     if (options.require_runtime_ui_renderer_atlas_handoff && !runtime_ui_renderer_atlas_handoff_probe.ready) {

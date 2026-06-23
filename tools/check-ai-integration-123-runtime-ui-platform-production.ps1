@@ -11,8 +11,10 @@ $runtimeUiPlatformProductionTestText = Get-AgentSurfaceText "tests/unit/runtime_
 $runtimeUiWin32TextHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_ui_text_font.hpp"
 $runtimeUiWin32TextSourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_ui_text_font.cpp"
 $runtimeUiWin32TextTestText = Get-AgentSurfaceText "tests/unit/win32_ui_text_font_tests.cpp"
+$sample2dPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $runtimeUiCMakeText = Get-AgentSurfaceText "engine/ui/CMakeLists.txt"
 $win32PlatformCMakeText = Get-AgentSurfaceText "engine/platform/win32/CMakeLists.txt"
+$gamesCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $moduleManifestText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $runtimeBackendReadinessText = Get-AgentSurfaceText "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
@@ -152,6 +154,81 @@ foreach ($needle in @(
     Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 3 validation"
 }
 
+foreach ($needle in @(
+        "Win32UiFontSourceKind",
+        "Win32UiFontLicenseStatus",
+        "Win32UiFontLoadRequest",
+        "Win32UiFontFaceRow",
+        "Win32UiGlyphRasterRequest",
+        "Win32UiGlyphRasterResult",
+        "Win32UiFontDiagnostic",
+        "load_win32_ui_font_face",
+        "rasterize_win32_ui_glyph",
+        "validate_win32_ui_font_load_result_rows",
+        "validate_win32_ui_glyph_raster_result_rows",
+        "make_win32_directwrite_font_loading_production_evidence",
+        "make_win32_directwrite_font_rasterization_production_evidence"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextHeaderText $needle "Win32 DirectWrite runtime UI font loading/rasterization public header"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 4"
+}
+
+foreach ($needle in @(
+        "Win32UiFontLoadRequest",
+        "Win32UiGlyphRasterRequest",
+        "load_win32_ui_font_face",
+        "rasterize_win32_ui_glyph",
+        "validate_win32_ui_font_load_result_rows",
+        "validate_win32_ui_glyph_raster_result_rows",
+        "make_win32_directwrite_font_loading_production_evidence",
+        "make_win32_directwrite_font_rasterization_production_evidence"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextTestText $needle "Win32 DirectWrite runtime UI font loading/rasterization tests"
+}
+
+foreach ($needle in @(
+        "GetSystemFontCollection",
+        "GetFirstMatchingFont",
+        "CreateFontFace",
+        "GetDesignGlyphMetrics",
+        "CreateGlyphRunAnalysis",
+        "CreateAlphaTexture"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextSourceText $needle "Win32 DirectWrite runtime UI font loading/rasterization source"
+}
+
+foreach ($needle in @(
+        "missing_provenance",
+        "missing_license_status",
+        "unsupported_project_font_asset",
+        "missing_face_id",
+        "invalid_pixel_size",
+        "invalid_atlas_padding",
+        "missing_bitmap_pixels",
+        "invalid_metrics",
+        "atlas_overflow",
+        "public_native_handles_exposed"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextHeaderText $needle "Win32 DirectWrite runtime UI font loading/rasterization diagnostics"
+    Assert-ContainsText $runtimeUiWin32TextTestText $needle "Win32 DirectWrite runtime UI font loading/rasterization tests"
+}
+
+foreach ($needle in @(
+        "--require-runtime-ui-font-rasterization",
+        "runtime_ui_font_loading_rows",
+        "runtime_ui_glyph_raster_rows",
+        "runtime_ui_glyph_bitmap_rows",
+        "runtime_ui_glyph_metrics_rows",
+        "runtime_ui_font_license_rows",
+        "runtime_ui_font_native_handles_exposed",
+        "runtime_ui_font_rasterization_diagnostics"
+    )) {
+    Assert-ContainsText $sample2dPackageText $needle "sample_2d_desktop_runtime_package runtime UI font rasterization counters"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 4 package counters"
+}
+
+Assert-ContainsText $gamesCMakeText "MK_platform_win32" "games CMake sample runtime UI font rasterization link"
+
 foreach ($section in @(
         "## Allowed Sources",
         "## Forbidden Inputs",
@@ -239,18 +316,23 @@ foreach ($needle in @(
 
 Assert-ContainsText $currentCapabilitiesText "First-Party UI Clean-Room Source Ledger v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "Runtime UI Platform Production Gate v1" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "Runtime UI Windows DirectWrite Text Shaping Adapter v1" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesText "Runtime UI Windows DirectWrite Text And Font Adapter v1" "docs/current-capabilities.md"
 Assert-ContainsText $runtimeBackendReadinessText "runtime-ui-platform-production-gate" "runtime backend readiness manifest"
 Assert-ContainsText $runtimeBackendReadinessText "runtime-ui-win32-directwrite-text-shaping" "runtime backend readiness manifest"
+Assert-ContainsText $runtimeBackendReadinessText "runtime-ui-win32-directwrite-font-rasterization" "runtime backend readiness manifest"
 Assert-ContainsText $validationRecipesText "runtime-ui-win32-directwrite-text-shaping" "validation recipes manifest"
+Assert-ContainsText $validationRecipesText "runtime-ui-win32-directwrite-font-rasterization" "validation recipes manifest"
 Assert-ContainsText $moduleManifestText "win32_ui_text_font.hpp" "module manifest MK_platform_win32 public header"
 Assert-ContainsText $gameCodeGuidanceText "currentRuntimeUiPlatformProductionGate" "game code guidance manifest"
 Assert-ContainsText $gameCodeGuidanceText "shape_win32_ui_text_with_directwrite" "game code guidance manifest runtime UI Win32 DirectWrite"
-Assert-ContainsText $dependencyDocsText "DirectWrite runtime UI text-shaping adapter" "docs/dependencies.md runtime UI DirectWrite adapter"
-Assert-ContainsText $legalDocsText "runtime UI Windows DirectWrite text-shaping adapter" "docs/legal-and-licensing.md runtime UI DirectWrite adapter"
+Assert-ContainsText $gameCodeGuidanceText "currentRuntimeUiWin32DirectWriteFontRasterization" "game code guidance manifest runtime UI Win32 DirectWrite font rasterization"
+Assert-ContainsText $gameCodeGuidanceText "rasterize_win32_ui_glyph" "game code guidance manifest runtime UI Win32 DirectWrite font rasterization"
+Assert-ContainsText $dependencyDocsText "DirectWrite runtime UI text/font adapter" "docs/dependencies.md runtime UI DirectWrite adapter"
+Assert-ContainsText $legalDocsText "runtime UI Windows DirectWrite text/font adapter" "docs/legal-and-licensing.md runtime UI DirectWrite adapter"
 Assert-ContainsText $currentCapabilitiesText "first-party-ui-clean-room: ok" "docs/current-capabilities.md"
 Assert-ContainsText $planRegistryText "First-Party Runtime UI And Editor Platform Production v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "selected Windows DirectWrite runtime UI text-shaping evidence" "docs/superpowers/plans/README.md"
+Assert-ContainsText $planRegistryText "selected Windows DirectWrite system-font loading and alpha8 glyph-rasterization evidence" "docs/superpowers/plans/README.md"
 
 $cleanRoomCheckScriptPath = Resolve-RequiredAgentPath "tools/check-first-party-ui-clean-room.ps1"
 & $cleanRoomCheckScriptPath

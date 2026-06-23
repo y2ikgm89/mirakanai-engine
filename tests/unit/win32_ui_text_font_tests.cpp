@@ -14,6 +14,14 @@
 
 namespace {
 
+using mirakana::win32::Win32UiFontDiagnostic;
+using mirakana::win32::Win32UiFontDiagnosticCode;
+using mirakana::win32::Win32UiFontLicenseStatus;
+using mirakana::win32::Win32UiFontLoadRequest;
+using mirakana::win32::Win32UiFontLoadResult;
+using mirakana::win32::Win32UiFontSourceKind;
+using mirakana::win32::Win32UiGlyphRasterRequest;
+using mirakana::win32::Win32UiGlyphRasterResult;
 using mirakana::win32::Win32UiTextBoundaryKind;
 using mirakana::win32::Win32UiTextBoundaryRow;
 using mirakana::win32::Win32UiTextFallbackFamilyRow;
@@ -38,6 +46,11 @@ using mirakana::win32::Win32UiTextShapeResult;
 
 [[nodiscard]] bool has_diagnostic(const std::vector<Win32UiTextShapeDiagnostic>& diagnostics,
                                   Win32UiTextShapeDiagnosticCode code) {
+    return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+[[nodiscard]] bool has_font_diagnostic(const std::vector<Win32UiFontDiagnostic>& diagnostics,
+                                       Win32UiFontDiagnosticCode code) {
     return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
@@ -155,6 +168,215 @@ MK_TEST("win32 DirectWrite text shaping validation rejects duplicate cluster row
 
     MK_REQUIRE(!validated.succeeded());
     MK_REQUIRE(has_diagnostic(validated.diagnostics, Win32UiTextShapeDiagnosticCode::duplicate_cluster_row));
+}
+
+MK_TEST("win32 DirectWrite font loading and glyph rasterization emit selected bitmap metrics evidence") {
+    const auto font_result = mirakana::win32::load_win32_ui_font_face(Win32UiFontLoadRequest{
+        .font_family = "Segoe UI",
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .row_budget = 8U,
+    });
+
+    MK_REQUIRE(font_result.succeeded());
+    MK_REQUIRE(font_result.directwrite_factory_created);
+    MK_REQUIRE(font_result.system_font_collection_loaded);
+    MK_REQUIRE(!font_result.public_native_handles_exposed);
+    MK_REQUIRE(font_result.font_face_rows.size() == 1U);
+    MK_REQUIRE(font_result.font_face_rows.front().font_family == "Segoe UI");
+    MK_REQUIRE(!font_result.font_face_rows.front().resolved_face_id.empty());
+    MK_REQUIRE(font_result.font_face_rows.front().source_kind == Win32UiFontSourceKind::system_font_collection);
+    MK_REQUIRE(font_result.font_face_rows.front().license_status ==
+               Win32UiFontLicenseStatus::system_font_runtime_reference);
+
+    const auto raster_result = mirakana::win32::rasterize_win32_ui_glyph(Win32UiGlyphRasterRequest{
+        .font_family = font_result.font_face_rows.front().font_family,
+        .resolved_face_id = font_result.font_face_rows.front().resolved_face_id,
+        .source_kind = font_result.font_face_rows.front().source_kind,
+        .provenance_id = font_result.font_face_rows.front().provenance_id,
+        .license_status = font_result.font_face_rows.front().license_status,
+        .glyph_id = 65U,
+        .pixel_size = 24.0F,
+        .dpi_scale = 1.0F,
+        .pixel_format = mirakana::ui::FontRasterizationPixelFormat::alpha8,
+        .atlas_padding = 2U,
+        .row_budget = 16U,
+    });
+
+    MK_REQUIRE(raster_result.succeeded());
+    MK_REQUIRE(raster_result.directwrite_factory_created);
+    MK_REQUIRE(raster_result.font_face_loaded);
+    MK_REQUIRE(raster_result.glyph_metrics_queried);
+    MK_REQUIRE(raster_result.glyph_run_analysis_created);
+    MK_REQUIRE(raster_result.alpha_texture_created);
+    MK_REQUIRE(!raster_result.public_native_handles_exposed);
+    MK_REQUIRE(raster_result.allocation.has_value());
+    MK_REQUIRE(raster_result.allocation->glyph == 65U);
+    MK_REQUIRE(raster_result.allocation->bitmap.pixel_format == mirakana::ui::FontRasterizationPixelFormat::alpha8);
+    MK_REQUIRE(!raster_result.allocation->bitmap.pixels.empty());
+    MK_REQUIRE(raster_result.allocation->metrics.advance_x > 0.0F);
+    MK_REQUIRE(raster_result.font_face_rows.size() == 1U);
+
+    const auto font_evidence = mirakana::win32::make_win32_directwrite_font_loading_production_evidence(font_result);
+    MK_REQUIRE(font_evidence.id == "runtime-ui-platform.font-loading.win32.directwrite");
+    MK_REQUIRE(font_evidence.feature == mirakana::ui::RuntimeUiPlatformProductionFeature::real_font_loading);
+    MK_REQUIRE(font_evidence.selected);
+    MK_REQUIRE(font_evidence.ready);
+    MK_REQUIRE(font_evidence.dependency_recorded);
+    MK_REQUIRE(font_evidence.host_evidence_available);
+    MK_REQUIRE(!font_evidence.public_native_handles);
+
+    const auto raster_evidence =
+        mirakana::win32::make_win32_directwrite_font_rasterization_production_evidence(raster_result);
+    MK_REQUIRE(raster_evidence.id == "runtime-ui-platform.font-rasterization.win32.directwrite");
+    MK_REQUIRE(raster_evidence.feature == mirakana::ui::RuntimeUiPlatformProductionFeature::font_rasterization);
+    MK_REQUIRE(raster_evidence.selected);
+    MK_REQUIRE(raster_evidence.ready);
+    MK_REQUIRE(raster_evidence.dependency_recorded);
+    MK_REQUIRE(raster_evidence.host_evidence_available);
+    MK_REQUIRE(!raster_evidence.public_native_handles);
+}
+
+MK_TEST("win32 DirectWrite font loading rejects missing provenance and unsupported project font assets") {
+    auto missing_provenance = Win32UiFontLoadRequest{
+        .font_family = "Segoe UI",
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .row_budget = 8U,
+    };
+    const auto missing_provenance_result = mirakana::win32::load_win32_ui_font_face(missing_provenance);
+    MK_REQUIRE(!missing_provenance_result.succeeded());
+    MK_REQUIRE(
+        has_font_diagnostic(missing_provenance_result.diagnostics, Win32UiFontDiagnosticCode::missing_provenance));
+
+    const auto missing_license_status_result = mirakana::win32::load_win32_ui_font_face(Win32UiFontLoadRequest{
+        .font_family = "Segoe UI",
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::unknown,
+        .row_budget = 8U,
+    });
+    MK_REQUIRE(!missing_license_status_result.succeeded());
+    MK_REQUIRE(has_font_diagnostic(missing_license_status_result.diagnostics,
+                                   Win32UiFontDiagnosticCode::missing_license_status));
+
+    const auto project_asset_result = mirakana::win32::load_win32_ui_font_face(Win32UiFontLoadRequest{
+        .font_family = "ProjectFont",
+        .source_kind = Win32UiFontSourceKind::project_font_asset,
+        .provenance_id = "project.font.asset",
+        .license_status = Win32UiFontLicenseStatus::project_font_asset_license_recorded,
+        .row_budget = 8U,
+    });
+    MK_REQUIRE(!project_asset_result.succeeded());
+    MK_REQUIRE(has_font_diagnostic(project_asset_result.diagnostics,
+                                   Win32UiFontDiagnosticCode::unsupported_project_font_asset));
+}
+
+MK_TEST("win32 DirectWrite glyph rasterization rejects missing face id zero pixel size and atlas overflow") {
+    const auto missing_face_result = mirakana::win32::rasterize_win32_ui_glyph(Win32UiGlyphRasterRequest{
+        .font_family = "Segoe UI",
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .glyph_id = 65U,
+        .pixel_size = 16.0F,
+        .dpi_scale = 1.0F,
+        .pixel_format = mirakana::ui::FontRasterizationPixelFormat::alpha8,
+        .row_budget = 16U,
+    });
+    MK_REQUIRE(!missing_face_result.succeeded());
+    MK_REQUIRE(has_font_diagnostic(missing_face_result.diagnostics, Win32UiFontDiagnosticCode::missing_face_id));
+
+    const auto font_result = mirakana::win32::load_win32_ui_font_face(Win32UiFontLoadRequest{
+        .font_family = "Segoe UI",
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .row_budget = 8U,
+    });
+    MK_REQUIRE(font_result.succeeded());
+
+    const auto zero_size_result = mirakana::win32::rasterize_win32_ui_glyph(Win32UiGlyphRasterRequest{
+        .font_family = "Segoe UI",
+        .resolved_face_id = font_result.font_face_rows.front().resolved_face_id,
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .glyph_id = 65U,
+        .pixel_size = 0.0F,
+        .dpi_scale = 1.0F,
+        .pixel_format = mirakana::ui::FontRasterizationPixelFormat::alpha8,
+        .row_budget = 16U,
+    });
+    MK_REQUIRE(!zero_size_result.succeeded());
+    MK_REQUIRE(has_font_diagnostic(zero_size_result.diagnostics, Win32UiFontDiagnosticCode::invalid_pixel_size));
+
+    const auto atlas_overflow_result = mirakana::win32::rasterize_win32_ui_glyph(Win32UiGlyphRasterRequest{
+        .font_family = "Segoe UI",
+        .resolved_face_id = font_result.font_face_rows.front().resolved_face_id,
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .glyph_id = 65U,
+        .pixel_size = 16.0F,
+        .dpi_scale = 1.0F,
+        .pixel_format = mirakana::ui::FontRasterizationPixelFormat::alpha8,
+        .atlas_padding = 4097U,
+        .row_budget = 16U,
+    });
+    MK_REQUIRE(!atlas_overflow_result.succeeded());
+    MK_REQUIRE(
+        has_font_diagnostic(atlas_overflow_result.diagnostics, Win32UiFontDiagnosticCode::invalid_atlas_padding));
+}
+
+MK_TEST("win32 DirectWrite glyph rasterization validation rejects missing bitmap metrics and native handles") {
+    const auto font_result = mirakana::win32::load_win32_ui_font_face(Win32UiFontLoadRequest{
+        .font_family = "Segoe UI",
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .row_budget = 8U,
+    });
+    MK_REQUIRE(font_result.succeeded());
+
+    auto raster_result = mirakana::win32::rasterize_win32_ui_glyph(Win32UiGlyphRasterRequest{
+        .font_family = "Segoe UI",
+        .resolved_face_id = font_result.font_face_rows.front().resolved_face_id,
+        .source_kind = Win32UiFontSourceKind::system_font_collection,
+        .provenance_id = "windows.system-font.segoe-ui",
+        .license_status = Win32UiFontLicenseStatus::system_font_runtime_reference,
+        .glyph_id = 65U,
+        .pixel_size = 16.0F,
+        .dpi_scale = 1.0F,
+        .pixel_format = mirakana::ui::FontRasterizationPixelFormat::alpha8,
+        .row_budget = 16U,
+    });
+    MK_REQUIRE(raster_result.succeeded());
+    MK_REQUIRE(raster_result.color_rows.size() == 1U);
+    MK_REQUIRE(raster_result.color_rows.front().color_glyph_checked);
+
+    Win32UiGlyphRasterResult missing_bitmap = raster_result;
+    missing_bitmap.alpha_texture_created = false;
+    missing_bitmap.allocation->bitmap.pixels.clear();
+    missing_bitmap.bitmap_rows.clear();
+    missing_bitmap = mirakana::win32::validate_win32_ui_glyph_raster_result_rows(std::move(missing_bitmap), 16U);
+    MK_REQUIRE(!missing_bitmap.succeeded());
+    MK_REQUIRE(has_font_diagnostic(missing_bitmap.diagnostics, Win32UiFontDiagnosticCode::missing_bitmap_pixels));
+
+    Win32UiGlyphRasterResult invalid_metrics = raster_result;
+    invalid_metrics.allocation->metrics.advance_x = -1.0F;
+    invalid_metrics.metrics_rows.front().advance_x = -1.0F;
+    invalid_metrics = mirakana::win32::validate_win32_ui_glyph_raster_result_rows(std::move(invalid_metrics), 16U);
+    MK_REQUIRE(!invalid_metrics.succeeded());
+    MK_REQUIRE(has_font_diagnostic(invalid_metrics.diagnostics, Win32UiFontDiagnosticCode::invalid_metrics));
+
+    Win32UiFontLoadResult native_font_handles = font_result;
+    native_font_handles.public_native_handles_exposed = true;
+    native_font_handles = mirakana::win32::validate_win32_ui_font_load_result_rows(std::move(native_font_handles), 8U);
+    MK_REQUIRE(!native_font_handles.succeeded());
+    MK_REQUIRE(
+        has_font_diagnostic(native_font_handles.diagnostics, Win32UiFontDiagnosticCode::public_native_handles_exposed));
 }
 
 #endif
