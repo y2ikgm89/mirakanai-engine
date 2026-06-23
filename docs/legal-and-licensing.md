@@ -71,6 +71,12 @@ Do not copy from:
 - decompiled or extracted commercial game assets
 - AI outputs that appear to reproduce identifiable third-party code or assets
 
+## First-Party Runtime UI Clean-Room Source Gate
+
+`docs/specs/2026-06-24-first-party-ui-clean-room-source-ledger-v1.md` records the allowed source classes for runtime/editor UI platform work. `tools/check-first-party-ui-clean-room.ps1` enforces the matching public-token guard through `check-ai-integration`. This gate does not add third-party code, assets, fonts, icons, screenshots, themes, samples, package-manager dependencies, or redistribution obligations.
+
+Unity, Unreal Engine, Godot, UI middleware, Microsoft SDK, Apple SDK, HarfBuzz, FreeType, AT-SPI2, Vulkan, and W3C references may be used only as official documentation for category research, host gates, or private adapter-boundary planning. They must not be copied into implementation source, sample assets, serialized UI imports, product-facing names, public API shapes, editor layouts, visual themes, or marketing compatibility/parity claims. Any future dependency, redistributable font/icon/image asset, UI middleware, or third-party adapter selection still requires `license-audit`, `vcpkg.json`, `docs/dependencies.md`, and `THIRD_PARTY_NOTICES.md` updates before use.
+
 ## AI Output
 
 AI-generated code and assets still require review. Record substantial AI-generated assets, prompts, tool names, generation dates, and review decisions when they become distributable content.

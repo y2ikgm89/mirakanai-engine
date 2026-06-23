@@ -210,10 +210,10 @@ MK_editor
 
 **Goal:** Make the plan discoverable while preserving current runtime/editor claims.
 
-- [ ] Add this file to `docs/superpowers/plans/`.
-- [ ] Add a candidate pointer to `docs/superpowers/plans/README.md`.
-- [ ] Do not edit `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` in this task.
-- [ ] Run:
+- [x] Add this file to `docs/superpowers/plans/`.
+- [x] Add a candidate pointer to `docs/superpowers/plans/README.md`.
+- [x] Do not edit `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` in this task.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
@@ -225,6 +225,8 @@ git diff --check
 **Expected:** All checks pass. If a check requires an active-plan pointer, remove the candidate registry text instead of changing the manifest pointer.
 
 **Done When:** The repository contains the plan and registry link only; no runtime, editor, manifest-readiness, dependency, or legal notice claim has changed.
+
+**Implementation Evidence (2026-06-24):** Task 0 landed through PR #776 and merge commit `ebc68438af2b8bfd6ccf3479e5fe29befb987158`. It added this candidate plan and the registry pointer only; the production-loop manifest active pointer stayed on the master selection gate.
 
 ## Task 1 - Clean-Room Source Ledger And Static Guard
 
@@ -240,10 +242,10 @@ git diff --check
 - Modify: `docs/dependencies.md`
 - Modify: `docs/current-capabilities.md`
 
-- [ ] Write the ledger with these exact sections: `Allowed Sources`, `Forbidden Inputs`, `Forbidden Public Names`, `Dependency Entry Gate`, `Trademark And Marketing Non-Claims`, `Review Evidence`.
-- [ ] Add allowed rows for official Unity/Unreal/Godot category docs only, Microsoft SDK docs, Apple SDK docs, HarfBuzz docs, FreeType docs, AT-SPI2 docs, Vulkan docs, W3C accessibility practices, and repository-owned code.
-- [ ] Add forbidden rows for external source, docs examples copied as implementation, sample assets, marketplace assets, default themes, fonts, icons, screenshots, UXML/USS/UMG/Slate/Godot scene/control tree imports, and visual/API parity claims.
-- [ ] Add `tools/check-first-party-ui-clean-room.ps1` to scan new public headers, `games/`, and `editor/core/include` for forbidden public identifiers:
+- [x] Write the ledger with these exact sections: `Allowed Sources`, `Forbidden Inputs`, `Forbidden Public Names`, `Dependency Entry Gate`, `Trademark And Marketing Non-Claims`, `Review Evidence`.
+- [x] Add allowed rows for official Unity/Unreal/Godot category docs only, Microsoft SDK docs, Apple SDK docs, HarfBuzz docs, FreeType docs, AT-SPI2 docs, Vulkan docs, W3C accessibility practices, and repository-owned code.
+- [x] Add forbidden rows for external source, docs examples copied as implementation, sample assets, marketplace assets, default themes, fonts, icons, screenshots, UXML/USS/UMG/Slate/Godot scene/control tree imports, and visual/API parity claims.
+- [x] Add `tools/check-first-party-ui-clean-room.ps1` to scan new public headers, `games/`, and `editor/core/include` for forbidden public identifiers:
 
 ```powershell
 @(
@@ -253,9 +255,9 @@ git diff --check
 )
 ```
 
-- [ ] The script must fail if a forbidden token appears outside docs/legal/source-ledger references and must print `first-party-ui-clean-room: ok` on success.
-- [ ] Register the script from `tools/check-ai-integration.ps1` through the static-contract ledger pattern used by existing chapter checks.
-- [ ] Run:
+- [x] The script must fail if a forbidden token appears outside docs/legal/source-ledger references and must print `first-party-ui-clean-room: ok` on success.
+- [x] Register the script from `tools/check-ai-integration.ps1` through the static-contract ledger pattern used by existing chapter checks.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-first-party-ui-clean-room.ps1
@@ -268,6 +270,18 @@ git diff --check
 **Expected:** The new script reports `first-party-ui-clean-room: ok`; agent checks pass.
 
 **Done When:** Implementation cannot add public UI/editor/game API tokens that imply Unity/Unreal/Godot/middleware copying without a static failure.
+
+**Implementation Evidence (2026-06-24):** Task 1 adds `docs/specs/2026-06-24-first-party-ui-clean-room-source-ledger-v1.md`, `tools/check-first-party-ui-clean-room.ps1`, and `tools/check-ai-integration-123-runtime-ui-platform-production.ps1`. The static-contract ledger discovers the new chapter automatically by numeric prefix; the entry script remains unchanged by design.
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-first-party-ui-clean-room.ps1` | Passed; printed `first-party-ui-clean-room: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed after the new chapter invoked the clean-room guard. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed; no manifest compose drift. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | Passed; no dependency records or vcpkg feature changes were required. |
+| `git diff --check` | Passed. |
 
 ## Task 2 - Runtime UI Platform Production Gate
 
