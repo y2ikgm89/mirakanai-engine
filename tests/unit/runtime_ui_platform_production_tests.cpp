@@ -167,6 +167,34 @@ MK_TEST("runtime ui platform production gate accepts selected Windows DirectWrit
     MK_REQUIRE(result.diagnostics.empty());
 }
 
+MK_TEST("runtime ui platform production gate accepts selected Windows DirectWrite font loading and rasterization "
+        "evidence") {
+    auto rows = make_complete_rows();
+    rows[2] = RuntimeUiPlatformProductionEvidenceRow{
+        .id = "runtime-ui-platform.font-loading.win32.directwrite",
+        .feature = RuntimeUiPlatformProductionFeature::real_font_loading,
+        .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+        .selected = true,
+        .ready = true,
+        .dependency_recorded = true,
+        .host_evidence_available = true,
+    };
+    rows[3] = RuntimeUiPlatformProductionEvidenceRow{
+        .id = "runtime-ui-platform.font-rasterization.win32.directwrite",
+        .feature = RuntimeUiPlatformProductionFeature::font_rasterization,
+        .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+        .selected = true,
+        .ready = true,
+        .dependency_recorded = true,
+        .host_evidence_available = true,
+    };
+
+    const auto result = mirakana::ui::evaluate_runtime_ui_platform_production(rows);
+
+    MK_REQUIRE(result.ready);
+    MK_REQUIRE(result.diagnostics.empty());
+}
+
 int main() {
     return mirakana::test::run_all();
 }
