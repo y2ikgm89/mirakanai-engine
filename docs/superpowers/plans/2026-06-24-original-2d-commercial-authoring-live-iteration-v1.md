@@ -326,9 +326,9 @@ Phase 3 validation evidence:
 
 Goal: expose the feature to the first-party editor core as retained review/evidence rows without executing commands or mutating files from editor core.
 
-- [ ] Extend `editor/core/include/mirakana/editor/playtest_package_review.hpp`.
-- [ ] Extend `editor/core/src/playtest_package_review.cpp`.
-- [ ] Extend `tests/unit/editor_core_tests.cpp`.
+- [x] Extend `editor/core/include/mirakana/editor/playtest_package_review.hpp`.
+- [x] Extend `editor/core/src/playtest_package_review.cpp`.
+- [x] Extend `tests/unit/editor_core_tests.cpp`.
 
 Public API shape:
 
@@ -393,11 +393,20 @@ Retained UI ids:
 
 Tests:
 
-- [ ] `reports_ready_when_originality_validation_source_pulse_and_safe_point_rows_are_ready`.
-- [ ] `keeps_editor_core_non_mutating_and_non_executing`.
-- [ ] `renders_retained_ui_rows`.
-- [ ] `rejects_package_script_arbitrary_shell_and_native_handle_claims`.
-- [ ] `keeps_host_gated_rows_host_gated_until_external_evidence_is_supplied`.
+- [x] `reports_ready_when_originality_validation_source_pulse_and_safe_point_rows_are_ready`.
+- [x] `keeps_editor_core_non_mutating_and_non_executing`.
+- [x] `renders_retained_ui_rows`.
+- [x] `rejects_package_script_arbitrary_shell_and_native_handle_claims`.
+- [x] `keeps_host_gated_rows_host_gated_until_external_evidence_is_supplied`.
+
+Phase 4 validation evidence (2026-06-24):
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed before implementation because `Editor2DLiveIterationEvidenceRow`, `Editor2DLiveIterationStageStatus`, `Editor2DLiveIterationReviewDesc`, and `make_editor_2d_live_iteration_review_model` were undefined.
+- GREEN focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` PASS.
+- GREEN focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` PASS.
+- GREEN focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` PASS.
+- GREEN slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS.
+- No third-party code, assets, dependencies, license obligations, external engine schemas, or legal notice files were added in Phase 4.
 
 ## Phase 5: Package And Installed Smoke Evidence
 

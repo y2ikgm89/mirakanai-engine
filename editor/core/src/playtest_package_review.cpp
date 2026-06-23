@@ -303,6 +303,152 @@ void append_validation_blocker(EditorRuntimeScenePackageValidationExecutionModel
     model.diagnostics.push_back(std::move(diagnostic));
 }
 
+[[nodiscard]] std::string join_values(const std::vector<std::string>& values);
+
+void reject_2d_live_iteration_claim(Editor2DLiveIterationReviewModel& model, std::string claim,
+                                    std::string diagnostic) {
+    model.unsupported_claims.push_back(std::move(claim));
+    model.diagnostics.push_back(std::move(diagnostic));
+}
+
+[[nodiscard]] std::string_view
+editor_2d_live_iteration_stage_status_label(Editor2DLiveIterationStageStatus status) noexcept {
+    switch (status) {
+    case Editor2DLiveIterationStageStatus::ready:
+        return "ready";
+    case Editor2DLiveIterationStageStatus::blocked:
+        return "blocked";
+    case Editor2DLiveIterationStageStatus::host_gated:
+        return "host_gated";
+    case Editor2DLiveIterationStageStatus::evidence_required:
+        return "evidence_required";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool is_retained_2d_live_iteration_row_id(std::string_view id) noexcept {
+    return id == "2d_live_iteration.review.originality" || id == "2d_live_iteration.review.runtime_scene_validation" ||
+           id == "2d_live_iteration.review.source_pulse" ||
+           id == "2d_live_iteration.review.package_replacement_safe_point" ||
+           id == "2d_live_iteration.review.external_evidence";
+}
+
+[[nodiscard]] const Editor2DLiveIterationEvidenceRow*
+find_2d_live_iteration_source_row(const std::vector<Editor2DLiveIterationEvidenceRow>& rows, std::string_view id) {
+    const auto match =
+        std::ranges::find_if(rows, [id](const Editor2DLiveIterationEvidenceRow& row) { return row.id == id; });
+    return match == rows.end() ? nullptr : &(*match);
+}
+
+[[nodiscard]] Editor2DLiveIterationEvidenceRow
+make_required_2d_live_iteration_row(std::string id, std::string source_model, std::string diagnostic) {
+    return Editor2DLiveIterationEvidenceRow{
+        .id = std::move(id),
+        .status = Editor2DLiveIterationStageStatus::evidence_required,
+        .source_model = std::move(source_model),
+        .validation_recipe_ids = {},
+        .host_gates = {},
+        .diagnostic = std::move(diagnostic),
+    };
+}
+
+[[nodiscard]] Editor2DLiveIterationEvidenceRow
+source_or_required_2d_live_iteration_row(const std::vector<Editor2DLiveIterationEvidenceRow>& rows, std::string id,
+                                         std::string source_model, std::string diagnostic) {
+    const auto* source = find_2d_live_iteration_source_row(rows, id);
+    if (source == nullptr) {
+        return make_required_2d_live_iteration_row(std::move(id), std::move(source_model), std::move(diagnostic));
+    }
+
+    Editor2DLiveIterationEvidenceRow row = *source;
+    if (row.source_model.empty()) {
+        row.source_model = std::move(source_model);
+    }
+    if (row.diagnostic.empty()) {
+        row.diagnostic = std::move(diagnostic);
+    }
+    return row;
+}
+
+[[nodiscard]] Editor2DLiveIterationEvidenceRow make_runtime_scene_validation_2d_live_iteration_row(
+    const EditorPlaytestPackageReviewModel& playtest_review,
+    const EditorRuntimeScenePackageValidationExecutionResult& runtime_scene_validation) {
+    Editor2DLiveIterationEvidenceRow row{
+        .id = "2d_live_iteration.review.runtime_scene_validation",
+        .status = Editor2DLiveIterationStageStatus::blocked,
+        .source_model = "EditorRuntimeScenePackageValidationExecutionResult",
+        .validation_recipe_ids = {"validate-runtime-scene-package"},
+        .host_gates = {},
+        .diagnostic = {},
+    };
+
+    if (!playtest_review.ready_for_runtime_scene_validation) {
+        row.diagnostic = "playtest package review is not ready for runtime scene validation";
+        return row;
+    }
+    if (!runtime_scene_validation.evidence_available) {
+        row.status = Editor2DLiveIterationStageStatus::evidence_required;
+        row.diagnostic = "runtime scene package validation evidence is required";
+        return row;
+    }
+
+    switch (runtime_scene_validation.status) {
+    case EditorRuntimeScenePackageValidationExecutionStatus::passed:
+        row.status = Editor2DLiveIterationStageStatus::ready;
+        row.diagnostic = "runtime scene package validation passed";
+        break;
+    case EditorRuntimeScenePackageValidationExecutionStatus::ready:
+        row.status = Editor2DLiveIterationStageStatus::evidence_required;
+        row.diagnostic = "runtime scene package validation is ready but has not supplied evidence";
+        break;
+    case EditorRuntimeScenePackageValidationExecutionStatus::failed:
+        row.status = Editor2DLiveIterationStageStatus::blocked;
+        row.diagnostic = "runtime scene package validation failed";
+        break;
+    case EditorRuntimeScenePackageValidationExecutionStatus::blocked:
+        row.status = Editor2DLiveIterationStageStatus::blocked;
+        row.diagnostic = "runtime scene package validation is blocked";
+        break;
+    }
+
+    if (!runtime_scene_validation.diagnostics.empty()) {
+        row.diagnostic = join_values(runtime_scene_validation.diagnostics);
+    }
+    return row;
+}
+
+[[nodiscard]] Editor2DLiveIterationStageStatus
+aggregate_2d_live_iteration_status(const Editor2DLiveIterationReviewModel& model) noexcept {
+    if (!model.unsupported_claims.empty()) {
+        return Editor2DLiveIterationStageStatus::blocked;
+    }
+
+    bool host_gated = false;
+    bool evidence_required = false;
+    for (const auto& row : model.rows) {
+        switch (row.status) {
+        case Editor2DLiveIterationStageStatus::blocked:
+            return Editor2DLiveIterationStageStatus::blocked;
+        case Editor2DLiveIterationStageStatus::host_gated:
+            host_gated = true;
+            break;
+        case Editor2DLiveIterationStageStatus::evidence_required:
+            evidence_required = true;
+            break;
+        case Editor2DLiveIterationStageStatus::ready:
+            break;
+        }
+    }
+
+    if (host_gated) {
+        return Editor2DLiveIterationStageStatus::host_gated;
+    }
+    if (evidence_required || model.rows.empty()) {
+        return Editor2DLiveIterationStageStatus::evidence_required;
+    }
+    return Editor2DLiveIterationStageStatus::ready;
+}
+
 [[nodiscard]] EditorAiPackageAuthoringDiagnosticStatus aggregate_status(bool blocked, bool host_gated) noexcept {
     if (blocked) {
         return EditorAiPackageAuthoringDiagnosticStatus::blocked;
@@ -1098,6 +1244,97 @@ mirakana::ui::UiDocument make_editor_runtime_scene_package_validation_execution_
     append_ui_label(document, row_root, row_id + ".unsupported", join_values(result.model.unsupported_claims));
     append_ui_label(document, row_root, row_id + ".diagnostics",
                     join_values(result.diagnostics.empty() ? result.model.diagnostics : result.diagnostics));
+
+    return document;
+}
+
+Editor2DLiveIterationReviewModel
+make_editor_2d_live_iteration_review_model(const Editor2DLiveIterationReviewDesc& desc) {
+    Editor2DLiveIterationReviewModel model;
+
+    if (desc.request_mutation) {
+        reject_2d_live_iteration_claim(model, "mutation",
+                                       "2D live iteration review is read-only and rejects mutation requests");
+    }
+    if (desc.request_validation_execution) {
+        reject_2d_live_iteration_claim(model, "validation execution",
+                                       "2D live iteration review rejects validation execution from editor core");
+    }
+    if (desc.request_arbitrary_shell_execution) {
+        reject_2d_live_iteration_claim(model, "arbitrary shell",
+                                       "2D live iteration review rejects arbitrary shell execution");
+    }
+    if (desc.request_package_script_execution) {
+        reject_2d_live_iteration_claim(model, "package script execution",
+                                       "2D live iteration review rejects package script execution");
+    }
+    if (desc.request_native_handle_exposure) {
+        reject_2d_live_iteration_claim(model, "native handle exposure",
+                                       "2D live iteration review does not expose native handles");
+    }
+
+    model.rows.push_back(source_or_required_2d_live_iteration_row(
+        desc.source_pulse_rows, "2d_live_iteration.review.originality", "TwoDOriginalityReviewModel",
+        "2D originality review evidence is required"));
+    model.rows.push_back(
+        make_runtime_scene_validation_2d_live_iteration_row(desc.playtest_review, desc.runtime_scene_validation));
+    model.rows.push_back(source_or_required_2d_live_iteration_row(
+        desc.source_pulse_rows, "2d_live_iteration.review.source_pulse", "TwoDSourcePulseWatchBridgeResult",
+        "2D Source Pulse watch bridge evidence is required"));
+    model.rows.push_back(source_or_required_2d_live_iteration_row(
+        desc.source_pulse_rows, "2d_live_iteration.review.package_replacement_safe_point",
+        "TwoDSourcePulseRuntimeReplacementResult",
+        "2D Source Pulse package replacement safe-point evidence is required"));
+    model.rows.push_back(source_or_required_2d_live_iteration_row(
+        desc.source_pulse_rows, "2d_live_iteration.review.external_evidence", "ExternalValidationEvidence",
+        "external validation evidence is required"));
+
+    for (const auto& row : desc.source_pulse_rows) {
+        if (row.id.empty()) {
+            model.diagnostics.emplace_back("2D live iteration source pulse evidence row id is required");
+            continue;
+        }
+        if (!is_retained_2d_live_iteration_row_id(row.id)) {
+            model.rows.push_back(row);
+        }
+    }
+
+    model.status = aggregate_2d_live_iteration_status(model);
+    if (std::ranges::any_of(model.diagnostics,
+                            [](const std::string& diagnostic) { return diagnostic.contains("row id is required"); })) {
+        model.status = Editor2DLiveIterationStageStatus::blocked;
+    }
+    model.ready_for_source_pulse_safe_point = model.status == Editor2DLiveIterationStageStatus::ready;
+    return model;
+}
+
+mirakana::ui::UiDocument make_editor_2d_live_iteration_review_ui_model(const Editor2DLiveIterationReviewModel& model) {
+    mirakana::ui::UiDocument document;
+    add_ui_or_throw(document, make_ui_root("2d_live_iteration.review", mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId root{"2d_live_iteration.review"};
+
+    append_ui_label(document, root, "2d_live_iteration.review.status",
+                    std::string(editor_2d_live_iteration_stage_status_label(model.status)));
+
+    for (const auto& row : model.rows) {
+        if (row.id.empty()) {
+            continue;
+        }
+        mirakana::ui::ElementDesc item = make_ui_child(row.id, root, mirakana::ui::SemanticRole::list_item);
+        item.text = make_ui_text(row.id);
+        add_ui_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId row_id{row.id};
+        append_ui_label(document, row_id, row.id + ".status",
+                        std::string(editor_2d_live_iteration_stage_status_label(row.status)));
+        append_ui_label(document, row_id, row.id + ".source_model", row.source_model);
+        append_ui_label(document, row_id, row.id + ".validation_recipes", join_values(row.validation_recipe_ids));
+        append_ui_label(document, row_id, row.id + ".host_gates", join_values(row.host_gates));
+        append_ui_label(document, row_id, row.id + ".diagnostic", row.diagnostic);
+    }
+
+    append_ui_label(document, root, "2d_live_iteration.review.unsupported_claims",
+                    join_values(model.unsupported_claims));
+    append_ui_label(document, root, "2d_live_iteration.review.diagnostics", join_values(model.diagnostics));
 
     return document;
 }
