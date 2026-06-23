@@ -721,6 +721,57 @@ MK_TEST("vulkan logical device create plan enables mesh and task shader features
     }));
 }
 
+MK_TEST("vulkan logical device create plan enables draw indirect count only when requested and supported") {
+    mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
+    device.name = "Mesh Shader Indirect Count";
+    device.type = mirakana::rhi::vulkan::VulkanPhysicalDeviceType::discrete_gpu;
+    device.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    device.supports_dynamic_rendering = true;
+    device.supports_synchronization2 = true;
+    device.supports_mesh_shader_extension = true;
+    device.mesh_shader_supported = true;
+    device.task_shader_supported = true;
+    device.draw_indirect_count_supported = true;
+    device.queue_families.push_back(mirakana::rhi::vulkan::VulkanQueueFamilyCandidate{
+        .index = 10,
+        .queue_count = 1,
+        .capabilities = mirakana::rhi::vulkan::VulkanQueueCapability::graphics |
+                        mirakana::rhi::vulkan::VulkanQueueCapability::compute,
+        .supports_present = false,
+    });
+
+    mirakana::rhi::vulkan::VulkanLogicalDeviceCreateDesc desc;
+    desc.required_extensions.clear();
+    desc.require_present_queue = false;
+    desc.require_mesh_shader = true;
+    desc.require_task_shader = true;
+    desc.require_draw_indirect_count = true;
+
+    const auto selection = mirakana::rhi::vulkan::select_physical_device(desc, {device});
+    const auto plan =
+        mirakana::rhi::vulkan::build_logical_device_create_plan(desc, device, selection, {"VK_EXT_mesh_shader"});
+
+    MK_REQUIRE(selection.suitable);
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.mesh_shader_enabled);
+    MK_REQUIRE(plan.task_shader_enabled);
+    MK_REQUIRE(plan.draw_indirect_count_enabled);
+
+    const auto requests = mirakana::rhi::vulkan::vulkan_device_command_requests(plan);
+    MK_REQUIRE(std::ranges::any_of(requests, [](const auto& request) {
+        return request.name == "vkCmdDrawMeshTasksIndirectCountEXT" && request.required;
+    }));
+
+    device.draw_indirect_count_supported = false;
+    const auto unsupported_selection = mirakana::rhi::vulkan::select_physical_device(desc, {device});
+    const auto unsupported_plan = mirakana::rhi::vulkan::build_logical_device_create_plan(
+        desc, device, unsupported_selection, {"VK_EXT_mesh_shader"});
+
+    MK_REQUIRE(!unsupported_selection.suitable);
+    MK_REQUIRE(!unsupported_plan.supported);
+    MK_REQUIRE(unsupported_plan.diagnostic == "Vulkan device selection is not suitable");
+}
+
 MK_TEST("vulkan logical device create plan rejects unsuitable selections missing extensions and features") {
     mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
     device.name = "Candidate";
@@ -1781,6 +1832,43 @@ MK_TEST("vulkan runtime mesh graphics pipeline keeps mesh stages backend private
     MK_REQUIRE(!missing_mesh_shader.created);
     MK_REQUIRE(!missing_mesh_shader.used_vertex_input_state);
     MK_REQUIRE(missing_mesh_shader.diagnostic == "Vulkan mesh shader SPIR-V bytecode is required");
+}
+
+MK_TEST("vulkan mesh tasks draw descriptor supports direct indirect and indirect count modes") {
+    const auto mesh_payload_visibility =
+        mirakana::rhi::ShaderStageVisibility::task | mirakana::rhi::ShaderStageVisibility::mesh;
+    mirakana::rhi::DescriptorBindingDesc payload_binding{
+        .binding = 0,
+        .type = mirakana::rhi::DescriptorType::storage_buffer,
+        .count = 1,
+        .stages = mesh_payload_visibility,
+    };
+
+    mirakana::rhi::vulkan::VulkanRuntimeTextureRenderingMeshTasksDrawDesc desc;
+    desc.mesh_tasks_indirect_draw = true;
+    desc.mesh_tasks_indirect_count_draw = true;
+    desc.indirect_argument_buffer = nullptr;
+    desc.indirect_argument_buffer_offset = 4;
+    desc.indirect_count_buffer = nullptr;
+    desc.indirect_count_buffer_offset = 8;
+    desc.indirect_draw_count = 2;
+    desc.indirect_command_stride_bytes = mirakana::rhi::vulkan::vulkan_mesh_tasks_indirect_command_size_bytes;
+
+    mirakana::rhi::vulkan::VulkanRuntimeTextureRenderingMeshTasksDrawResult result;
+    result.direct_draw_calls = 1;
+    result.indirect_draw_calls = 2;
+    result.indirect_count_draw_calls = 3;
+
+    MK_REQUIRE(desc.mesh_tasks_indirect_draw);
+    MK_REQUIRE(desc.mesh_tasks_indirect_count_draw);
+    MK_REQUIRE(mirakana::rhi::has_stage_visibility(payload_binding.stages));
+    MK_REQUIRE(payload_binding.stages == mesh_payload_visibility);
+    MK_REQUIRE(desc.indirect_argument_buffer_offset == 4U);
+    MK_REQUIRE(desc.indirect_count_buffer_offset == 8U);
+    MK_REQUIRE(desc.indirect_draw_count == 2U);
+    MK_REQUIRE(result.direct_draw_calls == 1U);
+    MK_REQUIRE(result.indirect_draw_calls == 2U);
+    MK_REQUIRE(result.indirect_count_draw_calls == 3U);
 }
 
 MK_TEST("vulkan runtime swapchain owns surface images and image views without exposing handles") {

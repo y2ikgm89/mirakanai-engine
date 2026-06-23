@@ -3,25 +3,25 @@
 
 #include "mirakana/rhi/vulkan/vulkan_mavg_mesh_shader_lod.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstring>
 #include <limits>
 #include <string_view>
+#include <vector>
 
 namespace mirakana::rhi::vulkan {
 namespace {
 
-[[nodiscard]] bool extension_available(std::span<const std::string> extensions, std::string_view needle) noexcept {
-    for (const auto& extension : extensions) {
-        if (extension == needle) {
-            return true;
-        }
-    }
-    return false;
-}
-
-[[nodiscard]] bool api_version_at_least(VulkanApiVersion version, std::uint32_t major, std::uint32_t minor) noexcept {
-    return version.major > major || (version.major == major && version.minor >= minor);
-}
+inline constexpr std::uint64_t k_vulkan_pipeline_stage2_host_bit = 0x0000000000004000ULL;
+inline constexpr std::uint64_t k_vulkan_pipeline_stage2_draw_indirect_bit = 0x0000000000000002ULL;
+inline constexpr std::uint64_t k_vulkan_pipeline_stage2_task_shader_bit_ext = 0x0000000000080000ULL;
+inline constexpr std::uint64_t k_vulkan_pipeline_stage2_mesh_shader_bit_ext = 0x0000000000100000ULL;
+inline constexpr std::uint64_t k_vulkan_access2_host_write_bit = 0x0000000000004000ULL;
+inline constexpr std::uint64_t k_vulkan_access2_indirect_command_read_bit = 0x0000000000000001ULL;
+inline constexpr std::uint64_t k_vulkan_access2_shader_read_bit = 0x0000000000000020ULL;
+inline constexpr std::uint64_t k_shader_payload_buffer_size_bytes = sizeof(std::uint32_t) * 2ULL;
 
 [[nodiscard]] bool command_resolved(const VulkanCommandResolutionPlan& plan, std::string_view command_name) noexcept {
     for (const auto& resolution : plan.resolutions) {
@@ -80,6 +80,114 @@ namespace {
         return false;
     }
     return command_end_without_size + vulkan_mavg_mesh_shader_lod_indirect_command_size_bytes <= buffer_size_bytes;
+}
+
+[[nodiscard]] bool count_buffer_range_valid(std::uint64_t buffer_size_bytes, std::uint64_t offset_bytes) noexcept {
+    constexpr std::uint64_t count_buffer_size_bytes = sizeof(std::uint32_t);
+    return (offset_bytes % 4U) == 0U && offset_bytes <= buffer_size_bytes &&
+           count_buffer_size_bytes <= buffer_size_bytes - offset_bytes;
+}
+
+[[nodiscard]] std::uint64_t indirect_argument_payload_size_bytes(std::uint32_t draw_count,
+                                                                 std::uint32_t stride_bytes) noexcept {
+    if (draw_count == 0U) {
+        return 0;
+    }
+    return (static_cast<std::uint64_t>(stride_bytes) * static_cast<std::uint64_t>(draw_count - 1U)) +
+           vulkan_mavg_mesh_shader_lod_indirect_command_size_bytes;
+}
+
+[[nodiscard]] std::vector<std::uint8_t> encode_indirect_command_payload(const VulkanMavgMeshShaderLodTaskRow& row,
+                                                                        std::uint32_t draw_count,
+                                                                        std::uint32_t stride_bytes) {
+    std::vector<std::uint8_t> payload(
+        static_cast<std::size_t>(indirect_argument_payload_size_bytes(draw_count, stride_bytes)));
+    for (std::uint32_t draw_index = 0; draw_index < draw_count; ++draw_index) {
+        const VulkanMavgMeshShaderLodIndirectCommand command{
+            .group_count_x = row.task_group_count_x,
+            .group_count_y = row.task_group_count_y,
+            .group_count_z = row.task_group_count_z,
+        };
+        std::memcpy(payload.data() + (static_cast<std::size_t>(draw_index) * stride_bytes), &command, sizeof(command));
+    }
+    return payload;
+}
+
+[[nodiscard]] std::array<std::uint8_t, sizeof(std::uint32_t)> encode_u32_bytes(std::uint32_t value) noexcept {
+    std::array<std::uint8_t, sizeof(std::uint32_t)> bytes{};
+    std::memcpy(bytes.data(), &value, sizeof(value));
+    return bytes;
+}
+
+[[nodiscard]] std::array<std::uint8_t, k_shader_payload_buffer_size_bytes>
+encode_shader_payload_bytes(std::uint32_t task_value, std::uint32_t mesh_value) noexcept {
+    const std::array<std::uint32_t, 2> values{task_value, mesh_value};
+    std::array<std::uint8_t, k_shader_payload_buffer_size_bytes> bytes{};
+    std::memcpy(bytes.data(), values.data(), bytes.size());
+    return bytes;
+}
+
+void populate_indirect_validation(VulkanMavgMeshShaderLodDispatchResult& result,
+                                  const VulkanMavgMeshShaderLodDispatchDesc& desc) noexcept {
+    result.indirect_argument_buffer_usage_ready = has_flag(desc.indirect_buffer_usage, BufferUsage::indirect);
+    result.indirect_argument_offset_aligned = (desc.indirect_buffer_offset_bytes % 4U) == 0U;
+    result.indirect_stride_valid =
+        desc.indirect_stride_bytes >= vulkan_mavg_mesh_shader_lod_indirect_command_size_bytes &&
+        (desc.indirect_stride_bytes % 4U) == 0U;
+    const auto draw_count = desc.request_indirect_count_draw ? desc.max_indirect_count_draws : desc.indirect_draw_count;
+    result.indirect_argument_range_valid =
+        result.indirect_argument_buffer_usage_ready &&
+        indirect_range_valid(desc.indirect_buffer_size_bytes, desc.indirect_buffer_offset_bytes, draw_count,
+                             desc.indirect_stride_bytes);
+    result.draw_mesh_tasks_indirect_eligible = result.indirect_argument_buffer_usage_ready &&
+                                               result.indirect_argument_offset_aligned &&
+                                               result.indirect_stride_valid && result.indirect_argument_range_valid;
+
+    if (desc.request_indirect_count_draw) {
+        result.indirect_count_buffer_usage_ready = has_flag(desc.count_buffer_usage, BufferUsage::indirect);
+        result.indirect_count_offset_aligned = (desc.count_buffer_offset_bytes % 4U) == 0U;
+        result.indirect_count_range_valid =
+            result.indirect_count_buffer_usage_ready &&
+            count_buffer_range_valid(desc.count_buffer_size_bytes, desc.count_buffer_offset_bytes);
+        result.draw_mesh_tasks_indirect_count_eligible =
+            result.draw_mesh_tasks_indirect_eligible && result.indirect_count_buffer_usage_ready &&
+            result.indirect_count_offset_aligned && result.indirect_count_range_valid;
+    }
+}
+
+[[nodiscard]] std::string_view
+indirect_validation_failure_diagnostic(const VulkanMavgMeshShaderLodDispatchResult& result,
+                                       const VulkanMavgMeshShaderLodDispatchDesc& desc) noexcept {
+    if (!result.indirect_argument_buffer_usage_ready) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_argument_usage_invalid";
+    }
+    if (!result.indirect_argument_offset_aligned) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_argument_offset_unaligned";
+    }
+    if (!result.indirect_stride_valid) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_stride_invalid";
+    }
+    if (desc.request_indirect_count_draw && desc.max_indirect_count_draws == 0U) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_count_max_draws_invalid";
+    }
+    if (!result.indirect_argument_range_valid) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_argument_range_invalid";
+    }
+    return "vulkan_mavg_mesh_shader_lod_indirect_range_invalid";
+}
+
+[[nodiscard]] std::string_view
+indirect_count_validation_failure_diagnostic(const VulkanMavgMeshShaderLodDispatchResult& result) noexcept {
+    if (!result.indirect_count_buffer_usage_ready) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_count_usage_invalid";
+    }
+    if (!result.indirect_count_offset_aligned) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_count_offset_unaligned";
+    }
+    if (!result.indirect_count_range_valid) {
+        return "vulkan_mavg_mesh_shader_lod_indirect_count_range_invalid";
+    }
+    return "vulkan_mavg_mesh_shader_lod_indirect_count_validation_invalid";
 }
 
 void fail(VulkanMavgMeshShaderLodDispatchResult& result, std::uint32_t stage, std::string_view diagnostic) {
@@ -190,10 +298,7 @@ VulkanMavgMeshShaderLodCapabilityResult probe_vulkan_mavg_mesh_shader_lod_capabi
     result.max_mesh_work_group_total_count = selected->max_mesh_work_group_total_count;
     result.max_mesh_output_vertices = selected->max_mesh_output_vertices;
     result.max_mesh_output_primitives = selected->max_mesh_output_primitives;
-    result.draw_indirect_count_supported =
-        api_version_at_least(selected->api_version, 1, 2) ||
-        extension_available(selected->device_extensions, "VK_KHR_draw_indirect_count") ||
-        extension_available(selected->device_extensions, "VK_AMD_draw_indirect_count");
+    result.draw_indirect_count_supported = selected->draw_indirect_count_supported;
 
     if (!result.device_extension_supported) {
         result.diagnostic_text = "vulkan_ext_mesh_shader_unavailable";
@@ -214,6 +319,7 @@ VulkanMavgMeshShaderLodCapabilityResult probe_vulkan_mavg_mesh_shader_lod_capabi
         device_desc.require_present_queue = false;
         device_desc.require_mesh_shader = true;
         device_desc.require_task_shader = true;
+        device_desc.require_draw_indirect_count = result.draw_indirect_count_supported;
 
         const auto candidate = make_physical_device_candidate(*selected);
         const auto selection = select_physical_device(device_desc, {candidate});
@@ -221,7 +327,7 @@ VulkanMavgMeshShaderLodCapabilityResult probe_vulkan_mavg_mesh_shader_lod_capabi
             build_logical_device_create_plan(device_desc, candidate, selection, selected->device_extensions);
         result.mesh_shader_enabled = plan.mesh_shader_enabled;
         result.task_shader_enabled = plan.task_shader_enabled;
-        result.draw_indirect_count_enabled = false;
+        result.draw_indirect_count_enabled = plan.draw_indirect_count_enabled;
         if (!plan.supported) {
             result.diagnostic_text = plan.diagnostic;
             ++result.diagnostic_count;
@@ -238,10 +344,13 @@ VulkanMavgMeshShaderLodCapabilityResult probe_vulkan_mavg_mesh_shader_lod_capabi
 
         result.mesh_shader_enabled = runtime_device.device.logical_device_plan().mesh_shader_enabled;
         result.task_shader_enabled = runtime_device.device.logical_device_plan().task_shader_enabled;
+        result.draw_indirect_count_enabled = runtime_device.device.logical_device_plan().draw_indirect_count_enabled;
         result.draw_mesh_tasks_direct_command_available =
             command_resolved(runtime_device.device.command_plan(), "vkCmdDrawMeshTasksEXT");
         result.draw_mesh_tasks_indirect_command_available =
             command_resolved(runtime_device.device.command_plan(), "vkCmdDrawMeshTasksIndirectEXT");
+        result.draw_mesh_tasks_indirect_count_command_available =
+            command_resolved(runtime_device.device.command_plan(), "vkCmdDrawMeshTasksIndirectCountEXT");
     }
 
     return result;
@@ -262,10 +371,19 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
         fail(result, 2U, "vulkan_mavg_mesh_shader_lod_invalid_task_row");
         return result;
     }
-    if (desc.request_indirect_draw &&
-        !indirect_range_valid(desc.indirect_buffer_size_bytes, desc.indirect_buffer_offset_bytes,
-                              desc.indirect_draw_count, desc.indirect_stride_bytes)) {
-        fail(result, 3U, "vulkan_mavg_mesh_shader_lod_indirect_range_invalid");
+    if (desc.request_indirect_draw || desc.request_indirect_count_draw) {
+        populate_indirect_validation(result, desc);
+    }
+    if (desc.request_indirect_draw && !result.draw_mesh_tasks_indirect_eligible) {
+        fail(result, 3U, indirect_validation_failure_diagnostic(result, desc));
+        return result;
+    }
+    if (desc.request_indirect_count_draw && !result.draw_mesh_tasks_indirect_eligible) {
+        fail(result, 3U, indirect_validation_failure_diagnostic(result, desc));
+        return result;
+    }
+    if (desc.request_indirect_count_draw && !result.draw_mesh_tasks_indirect_count_eligible) {
+        fail(result, 3U, indirect_count_validation_failure_diagnostic(result));
         return result;
     }
 
@@ -295,6 +413,14 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
         !capability.draw_mesh_tasks_indirect_command_available) {
         result.host_gated = true;
         fail(result, 5U, "vulkan_mesh_shader_draw_command_unavailable");
+        return result;
+    }
+    if (desc.request_indirect_count_draw &&
+        (!capability.draw_indirect_count_supported || !capability.draw_indirect_count_enabled ||
+         !capability.draw_mesh_tasks_indirect_count_command_available)) {
+        result.host_gated = true;
+        result.mavg_mesh_shader_lod_vulkan_indirect_count_host_gated = true;
+        fail(result, 5U, "vulkan_mesh_shader_draw_indirect_count_host_gated");
         return result;
     }
 
@@ -334,6 +460,7 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
     device_desc.require_present_queue = false;
     device_desc.require_mesh_shader = true;
     device_desc.require_task_shader = true;
+    device_desc.require_draw_indirect_count = desc.request_indirect_count_draw;
 
     auto runtime_device = create_runtime_device(loader_desc, instance_desc, device_desc);
     if (!runtime_device.created) {
@@ -368,7 +495,35 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
         return result;
     }
 
-    auto pipeline_layout = create_runtime_pipeline_layout(runtime_device.device, VulkanRuntimePipelineLayoutDesc{});
+    DescriptorSetLayoutDesc payload_descriptor_layout_desc;
+    payload_descriptor_layout_desc.bindings = {
+        DescriptorBindingDesc{
+            .binding = 0,
+            .type = DescriptorType::storage_buffer,
+            .count = 1,
+            .stages = ShaderStageVisibility::task | ShaderStageVisibility::mesh,
+        },
+    };
+    auto payload_descriptor_layout = create_runtime_descriptor_set_layout(
+        runtime_device.device, VulkanRuntimeDescriptorSetLayoutDesc{.layout = payload_descriptor_layout_desc});
+    if (!payload_descriptor_layout.created) {
+        fail(result, 7U,
+             payload_descriptor_layout.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_descriptor_layout_failed"
+                                                          : payload_descriptor_layout.diagnostic);
+        return result;
+    }
+    auto payload_descriptor_set =
+        create_runtime_descriptor_set(runtime_device.device, payload_descriptor_layout.layout);
+    if (!payload_descriptor_set.created) {
+        fail(result, 7U,
+             payload_descriptor_set.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_descriptor_set_failed"
+                                                       : payload_descriptor_set.diagnostic);
+        return result;
+    }
+
+    auto pipeline_layout = create_runtime_pipeline_layout(
+        runtime_device.device,
+        VulkanRuntimePipelineLayoutDesc{.descriptor_set_layouts = {&payload_descriptor_layout.layout}});
     if (!pipeline_layout.created) {
         fail(result, 7U,
              pipeline_layout.diagnostic.empty() ? "vulkan_mesh_shader_lod_pipeline_layout_failed"
@@ -432,6 +587,119 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
         return result;
     }
 
+    auto shader_payload_buffer = create_runtime_buffer(
+        runtime_device.device, VulkanRuntimeBufferDesc{
+                                   .buffer = BufferDesc{.size_bytes = k_shader_payload_buffer_size_bytes,
+                                                        .usage = BufferUsage::storage | BufferUsage::copy_source},
+                                   .memory_domain = VulkanBufferMemoryDomain::upload,
+                               });
+    if (!shader_payload_buffer.created) {
+        fail(result, 7U,
+             shader_payload_buffer.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_buffer_create_failed"
+                                                      : shader_payload_buffer.diagnostic);
+        return result;
+    }
+    const auto shader_payload_bytes = encode_shader_payload_bytes(1U, 1U);
+    const auto payload_write = write_runtime_buffer(
+        runtime_device.device, shader_payload_buffer.buffer,
+        VulkanRuntimeBufferWriteDesc{
+            .byte_offset = 0,
+            .bytes = std::span<const std::uint8_t>{shader_payload_bytes.data(), shader_payload_bytes.size()},
+        });
+    if (!payload_write.written) {
+        fail(result, 7U,
+             payload_write.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_buffer_write_failed"
+                                              : payload_write.diagnostic);
+        return result;
+    }
+    const auto payload_descriptor_update = update_runtime_descriptor_set(
+        runtime_device.device, payload_descriptor_set.set,
+        VulkanRuntimeDescriptorWriteDesc{
+            .binding = 0,
+            .buffers = {VulkanRuntimeDescriptorBufferResource{.type = DescriptorType::storage_buffer,
+                                                              .buffer = &shader_payload_buffer.buffer}},
+        });
+    if (!payload_descriptor_update.updated) {
+        fail(result, 7U,
+             payload_descriptor_update.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_descriptor_update_failed"
+                                                          : payload_descriptor_update.diagnostic);
+        return result;
+    }
+
+    VulkanRuntimeBufferCreateResult indirect_argument_buffer;
+    VulkanRuntimeBufferCreateResult indirect_count_buffer;
+    std::uint32_t indirect_count_value = 0U;
+    if (desc.request_indirect_draw || desc.request_indirect_count_draw) {
+        indirect_argument_buffer =
+            create_runtime_buffer(runtime_device.device, VulkanRuntimeBufferDesc{
+                                                             .buffer =
+                                                                 BufferDesc{
+                                                                     .size_bytes = desc.indirect_buffer_size_bytes,
+                                                                     .usage = desc.indirect_buffer_usage,
+                                                                 },
+                                                             .memory_domain = VulkanBufferMemoryDomain::upload,
+                                                         });
+        if (!indirect_argument_buffer.created) {
+            fail(result, 7U,
+                 indirect_argument_buffer.diagnostic.empty()
+                     ? "vulkan_mesh_shader_lod_indirect_argument_buffer_create_failed"
+                     : indirect_argument_buffer.diagnostic);
+            return result;
+        }
+
+        const auto indirect_record_count =
+            desc.request_indirect_count_draw ? desc.max_indirect_count_draws : desc.indirect_draw_count;
+        auto indirect_payload =
+            encode_indirect_command_payload(first_row, indirect_record_count, desc.indirect_stride_bytes);
+        const auto argument_write = write_runtime_buffer(
+            runtime_device.device, indirect_argument_buffer.buffer,
+            VulkanRuntimeBufferWriteDesc{
+                .byte_offset = desc.indirect_buffer_offset_bytes,
+                .bytes = std::span<const std::uint8_t>{indirect_payload.data(), indirect_payload.size()},
+            });
+        if (!argument_write.written) {
+            fail(result, 7U,
+                 argument_write.diagnostic.empty() ? "vulkan_mesh_shader_lod_indirect_argument_write_failed"
+                                                   : argument_write.diagnostic);
+            return result;
+        }
+    }
+
+    if (desc.request_indirect_count_draw) {
+        indirect_count_buffer =
+            create_runtime_buffer(runtime_device.device, VulkanRuntimeBufferDesc{
+                                                             .buffer =
+                                                                 BufferDesc{
+                                                                     .size_bytes = desc.count_buffer_size_bytes,
+                                                                     .usage = desc.count_buffer_usage,
+                                                                 },
+                                                             .memory_domain = VulkanBufferMemoryDomain::upload,
+                                                         });
+        if (!indirect_count_buffer.created) {
+            fail(result, 7U,
+                 indirect_count_buffer.diagnostic.empty() ? "vulkan_mesh_shader_lod_indirect_count_buffer_create_failed"
+                                                          : indirect_count_buffer.diagnostic);
+            return result;
+        }
+
+        indirect_count_value = std::min(desc.indirect_draw_count, desc.max_indirect_count_draws);
+        const auto count_bytes = encode_u32_bytes(indirect_count_value);
+        const auto count_write =
+            write_runtime_buffer(runtime_device.device, indirect_count_buffer.buffer,
+                                 VulkanRuntimeBufferWriteDesc{
+                                     .byte_offset = desc.count_buffer_offset_bytes,
+                                     .bytes = std::span<const std::uint8_t>{count_bytes.data(), count_bytes.size()},
+                                 });
+        if (!count_write.written) {
+            fail(result, 7U,
+                 count_write.diagnostic.empty() ? "vulkan_mesh_shader_lod_indirect_count_write_failed"
+                                                : count_write.diagnostic);
+            return result;
+        }
+        result.last_indirect_count_buffer_value = indirect_count_value;
+        result.last_indirect_executed_draw_count = indirect_count_value;
+    }
+
     auto command_pool = create_runtime_command_pool(runtime_device.device, VulkanRuntimeCommandPoolDesc{});
     if (!command_pool.created || !command_pool.pool.begin_primary_command_buffer()) {
         fail(result, 7U,
@@ -450,6 +718,84 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
     }
     result.resource_barriers_recorded += barrier_to_render.barrier_count;
 
+    if (desc.request_indirect_draw || desc.request_indirect_count_draw) {
+        const auto indirect_record_count =
+            desc.request_indirect_count_draw ? desc.max_indirect_count_draws : desc.indirect_draw_count;
+        const auto argument_barrier = record_runtime_buffer_memory_barrier2(
+            runtime_device.device, command_pool.pool,
+            VulkanRuntimeBufferMemoryBarrierDesc{
+                .buffer = &indirect_argument_buffer.buffer,
+                .src_stage_mask = k_vulkan_pipeline_stage2_host_bit,
+                .src_access_mask = k_vulkan_access2_host_write_bit,
+                .dst_stage_mask = k_vulkan_pipeline_stage2_draw_indirect_bit,
+                .dst_access_mask = k_vulkan_access2_indirect_command_read_bit,
+                .offset = desc.indirect_buffer_offset_bytes,
+                .size = indirect_argument_payload_size_bytes(indirect_record_count, desc.indirect_stride_bytes),
+            });
+        if (!argument_barrier.recorded) {
+            fail(result, 7U,
+                 argument_barrier.diagnostic.empty() ? "vulkan_mesh_shader_lod_indirect_argument_barrier_failed"
+                                                     : argument_barrier.diagnostic);
+            return result;
+        }
+        result.resource_barriers_recorded += argument_barrier.barrier_count;
+        result.draw_indirect_stage_barriers_recorded += argument_barrier.barrier_count;
+    }
+
+    if (desc.request_indirect_count_draw) {
+        const auto count_barrier =
+            record_runtime_buffer_memory_barrier2(runtime_device.device, command_pool.pool,
+                                                  VulkanRuntimeBufferMemoryBarrierDesc{
+                                                      .buffer = &indirect_count_buffer.buffer,
+                                                      .src_stage_mask = k_vulkan_pipeline_stage2_host_bit,
+                                                      .src_access_mask = k_vulkan_access2_host_write_bit,
+                                                      .dst_stage_mask = k_vulkan_pipeline_stage2_draw_indirect_bit,
+                                                      .dst_access_mask = k_vulkan_access2_indirect_command_read_bit,
+                                                      .offset = desc.count_buffer_offset_bytes,
+                                                      .size = sizeof(std::uint32_t),
+                                                  });
+        if (!count_barrier.recorded) {
+            fail(result, 7U,
+                 count_barrier.diagnostic.empty() ? "vulkan_mesh_shader_lod_indirect_count_barrier_failed"
+                                                  : count_barrier.diagnostic);
+            return result;
+        }
+        result.resource_barriers_recorded += count_barrier.barrier_count;
+        result.draw_indirect_stage_barriers_recorded += count_barrier.barrier_count;
+    }
+
+    const auto payload_shader_barrier =
+        record_runtime_buffer_memory_barrier2(runtime_device.device, command_pool.pool,
+                                              VulkanRuntimeBufferMemoryBarrierDesc{
+                                                  .buffer = &shader_payload_buffer.buffer,
+                                                  .src_stage_mask = k_vulkan_pipeline_stage2_host_bit,
+                                                  .src_access_mask = k_vulkan_access2_host_write_bit,
+                                                  .dst_stage_mask = k_vulkan_pipeline_stage2_task_shader_bit_ext |
+                                                                    k_vulkan_pipeline_stage2_mesh_shader_bit_ext,
+                                                  .dst_access_mask = k_vulkan_access2_shader_read_bit,
+                                                  .offset = 0,
+                                                  .size = k_shader_payload_buffer_size_bytes,
+                                              });
+    if (!payload_shader_barrier.recorded) {
+        fail(result, 7U,
+             payload_shader_barrier.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_barrier_failed"
+                                                       : payload_shader_barrier.diagnostic);
+        return result;
+    }
+    result.resource_barriers_recorded += payload_shader_barrier.barrier_count;
+    result.task_shader_stage_barriers_recorded += payload_shader_barrier.barrier_count;
+    result.mesh_shader_stage_barriers_recorded += payload_shader_barrier.barrier_count;
+
+    const auto payload_descriptor_bind = record_runtime_descriptor_set_binding(
+        runtime_device.device, command_pool.pool, pipeline_layout.layout, payload_descriptor_set.set,
+        VulkanRuntimeDescriptorSetBindDesc{.first_set = 0U, .pipeline_bind_point = 0U});
+    if (!payload_descriptor_bind.recorded) {
+        fail(result, 7U,
+             payload_descriptor_bind.diagnostic.empty() ? "vulkan_mesh_shader_lod_payload_descriptor_bind_failed"
+                                                        : payload_descriptor_bind.diagnostic);
+        return result;
+    }
+
     const auto draw_result = record_runtime_texture_rendering_mesh_tasks_draw(
         runtime_device.device, command_pool.pool, render_target.texture, mesh_pipeline.pipeline,
         VulkanRuntimeTextureRenderingMeshTasksDrawDesc{
@@ -457,6 +803,17 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
             .group_count_x = first_row.task_group_count_x,
             .group_count_y = first_row.task_group_count_y,
             .group_count_z = first_row.task_group_count_z,
+            .mesh_tasks_indirect_draw = desc.request_indirect_draw,
+            .mesh_tasks_indirect_count_draw = desc.request_indirect_count_draw,
+            .indirect_argument_buffer = (desc.request_indirect_draw || desc.request_indirect_count_draw)
+                                            ? &indirect_argument_buffer.buffer
+                                            : nullptr,
+            .indirect_argument_buffer_offset = desc.indirect_buffer_offset_bytes,
+            .indirect_count_buffer = desc.request_indirect_count_draw ? &indirect_count_buffer.buffer : nullptr,
+            .indirect_count_buffer_offset = desc.count_buffer_offset_bytes,
+            .indirect_draw_count =
+                desc.request_indirect_count_draw ? desc.max_indirect_count_draws : desc.indirect_draw_count,
+            .indirect_command_stride_bytes = desc.indirect_stride_bytes,
             .color_load_action = LoadAction::clear,
             .color_store_action = StoreAction::store,
             .clear_color = ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
@@ -467,6 +824,8 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
         return result;
     }
     result.draw_mesh_tasks_direct_calls = draw_result.direct_draw_calls;
+    result.draw_mesh_tasks_indirect_calls = draw_result.indirect_draw_calls;
+    result.draw_mesh_tasks_indirect_count_calls = draw_result.indirect_count_draw_calls;
 
     const auto barrier_to_copy = record_runtime_texture_barrier(
         runtime_device.device, command_pool.pool, render_target.texture,
@@ -532,20 +891,39 @@ execute_vulkan_mavg_mesh_shader_lod(const VulkanMavgMeshShaderLodDispatchDesc& d
     result.executed_mesh_shader = draw_result.drew;
     result.readback_nonzero = any_readback_byte_nonzero(readback.bytes);
     result.readback_hash = hash_readback_bytes(readback.bytes);
-    result.draw_mesh_tasks_indirect_calls = 0U;
-    result.draw_mesh_tasks_indirect_count_calls = 0U;
-    result.draw_mesh_tasks_indirect_eligible = false;
-    result.draw_mesh_tasks_indirect_count_eligible = false;
-    result.mavg_mesh_shader_lod_vulkan_ready =
+    result.shader_payload_consumed_by_task_or_mesh =
+        result.task_shader_stage_barriers_recorded > 0U && result.mesh_shader_stage_barriers_recorded > 0U;
+    const auto common_execution_ready =
         result.executed_mesh_shader && result.created_mesh_pipeline_state && result.used_mesh_shader_stage &&
         result.used_task_shader_stage && !result.used_input_layout && !result.used_index_buffer &&
-        result.draw_mesh_tasks_direct_calls == 1U && result.readback_nonzero && result.readback_hash != 0U;
-    result.succeeded = result.mavg_mesh_shader_lod_vulkan_ready;
+        result.readback_nonzero && result.readback_hash != 0U && result.shader_payload_consumed_by_task_or_mesh;
+    result.mavg_mesh_shader_lod_vulkan_ready = common_execution_ready && !desc.request_indirect_draw &&
+                                               !desc.request_indirect_count_draw &&
+                                               result.draw_mesh_tasks_direct_calls == 1U;
+    result.mavg_mesh_shader_lod_vulkan_indirect_ready =
+        common_execution_ready && desc.request_indirect_draw && !desc.request_indirect_count_draw &&
+        result.draw_mesh_tasks_direct_calls == 0U && result.draw_mesh_tasks_indirect_calls == 1U &&
+        result.draw_indirect_stage_barriers_recorded > 0U;
+    result.mavg_mesh_shader_lod_vulkan_indirect_count_ready =
+        common_execution_ready && desc.request_indirect_count_draw && result.draw_mesh_tasks_direct_calls == 0U &&
+        result.draw_mesh_tasks_indirect_count_calls == 1U &&
+        result.last_indirect_count_buffer_value <= desc.max_indirect_count_draws &&
+        result.last_indirect_executed_draw_count ==
+            std::min(result.last_indirect_count_buffer_value, desc.max_indirect_count_draws) &&
+        result.draw_indirect_stage_barriers_recorded > 1U;
+    result.succeeded = result.mavg_mesh_shader_lod_vulkan_ready || result.mavg_mesh_shader_lod_vulkan_indirect_ready ||
+                       result.mavg_mesh_shader_lod_vulkan_indirect_count_ready;
     if (!result.succeeded) {
         fail(result, 7U, "vulkan_mesh_shader_lod_readback_not_ready");
         return result;
     }
-    result.diagnostic_text = "vulkan_mesh_shader_lod_execution_ready";
+    if (result.mavg_mesh_shader_lod_vulkan_indirect_count_ready) {
+        result.diagnostic_text = "vulkan_mesh_shader_lod_indirect_count_execution_ready";
+    } else if (result.mavg_mesh_shader_lod_vulkan_indirect_ready) {
+        result.diagnostic_text = "vulkan_mesh_shader_lod_indirect_execution_ready";
+    } else {
+        result.diagnostic_text = "vulkan_mesh_shader_lod_execution_ready";
+    }
     return result;
 }
 

@@ -13,6 +13,15 @@ namespace mirakana::rhi::vulkan {
 
 inline constexpr std::uint32_t vulkan_mavg_mesh_shader_lod_indirect_command_size_bytes = 12U;
 
+struct VulkanMavgMeshShaderLodIndirectCommand {
+    std::uint32_t group_count_x{0};
+    std::uint32_t group_count_y{0};
+    std::uint32_t group_count_z{0};
+};
+
+static_assert(sizeof(VulkanMavgMeshShaderLodIndirectCommand) ==
+              vulkan_mavg_mesh_shader_lod_indirect_command_size_bytes);
+
 struct VulkanMavgMeshShaderLodCapabilityResult {
     bool loader_available{false};
     bool instance_created{false};
@@ -74,10 +83,12 @@ struct VulkanMavgMeshShaderLodDispatchDesc {
     bool allow_conventional_indexed_fallback{false};
     bool request_indirect_draw{false};
     bool request_indirect_count_draw{false};
+    BufferUsage indirect_buffer_usage{BufferUsage::indirect | BufferUsage::copy_source};
     std::uint64_t indirect_buffer_size_bytes{0};
     std::uint64_t indirect_buffer_offset_bytes{0};
     std::uint32_t indirect_draw_count{0};
     std::uint32_t indirect_stride_bytes{vulkan_mavg_mesh_shader_lod_indirect_command_size_bytes};
+    BufferUsage count_buffer_usage{BufferUsage::indirect | BufferUsage::copy_source};
     std::uint64_t count_buffer_size_bytes{0};
     std::uint64_t count_buffer_offset_bytes{0};
     std::uint32_t max_indirect_count_draws{0};
@@ -99,9 +110,20 @@ struct VulkanMavgMeshShaderLodDispatchResult {
     bool executed_mesh_shader{false};
     bool readback_nonzero{false};
     bool mavg_mesh_shader_lod_vulkan_ready{false};
+    bool mavg_mesh_shader_lod_vulkan_indirect_ready{false};
+    bool mavg_mesh_shader_lod_vulkan_indirect_count_ready{false};
     bool draw_mesh_tasks_indirect_eligible{false};
     bool draw_mesh_tasks_indirect_count_eligible{false};
     bool mavg_mesh_shader_lod_vulkan_indirect_count_host_gated{false};
+    bool indirect_argument_buffer_usage_ready{false};
+    bool indirect_count_buffer_usage_ready{false};
+    bool indirect_argument_offset_aligned{false};
+    bool indirect_count_offset_aligned{false};
+    bool indirect_stride_valid{false};
+    bool indirect_argument_range_valid{false};
+    bool indirect_count_range_valid{false};
+    bool shader_payload_consumed_by_task_or_mesh{false};
+    bool mavg_mesh_shader_lod_ready_promoted{false};
     bool fallback_indexed_draw_preserved{false};
     bool fallback_indexed_draw_promoted_readiness{false};
     bool claimed_nanite_equivalence{false};
@@ -110,6 +132,11 @@ struct VulkanMavgMeshShaderLodDispatchResult {
     std::uint32_t draw_mesh_tasks_indirect_calls{0};
     std::uint32_t draw_mesh_tasks_indirect_count_calls{0};
     std::uint32_t resource_barriers_recorded{0};
+    std::uint32_t draw_indirect_stage_barriers_recorded{0};
+    std::uint32_t task_shader_stage_barriers_recorded{0};
+    std::uint32_t mesh_shader_stage_barriers_recorded{0};
+    std::uint32_t last_indirect_count_buffer_value{0};
+    std::uint32_t last_indirect_executed_draw_count{0};
     std::uint32_t diagnostic_count{0};
     std::uint32_t failure_stage{0};
     std::uint64_t readback_hash{0};

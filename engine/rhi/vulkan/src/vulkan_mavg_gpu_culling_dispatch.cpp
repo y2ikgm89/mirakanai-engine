@@ -339,8 +339,8 @@ dispatch_mavg_gpu_culling_indirect(const VulkanMavgGpuCullingDispatchDesc& desc)
     // VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT + VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT.
     constexpr std::uint64_t k_compute_shader_stage = 0x0000000000000800ULL;
     constexpr std::uint64_t k_shader_write_access = 0x0000000000000040ULL;
-    constexpr std::uint64_t k_draw_indirect_stage = 0x0000000000002000ULL;
-    constexpr std::uint64_t k_indirect_command_read_access = 0x0000000000000400ULL;
+    constexpr std::uint64_t k_draw_indirect_stage = 0x0000000000000002ULL;
+    constexpr std::uint64_t k_indirect_command_read_access = 0x0000000000000001ULL;
     constexpr std::uint64_t k_transfer_stage = 0x0000000000001000ULL;
     constexpr std::uint64_t k_transfer_read_access = 0x0000000000000800ULL;
 

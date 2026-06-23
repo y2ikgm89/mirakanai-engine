@@ -160,6 +160,7 @@ inline constexpr std::uint32_t vulkan_structure_type_command_buffer_submit_info 
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_features_2 = 1000059000;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_properties_2 = 1000059001;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_dynamic_rendering_features = 1000044003;
+inline constexpr std::uint32_t vulkan_structure_type_physical_device_vulkan_1_2_features = 51;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_vulkan_1_3_features = 53;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_mesh_shader_features_ext = 1000328000;
 inline constexpr std::uint32_t vulkan_structure_type_physical_device_mesh_shader_properties_ext = 1000328001;
@@ -301,9 +302,13 @@ inline constexpr std::uint64_t vulkan_pipeline_stage2_fragment_shader_bit = 0x00
 inline constexpr std::uint64_t vulkan_pipeline_stage2_compute_shader_bit = 0x0000000000000800ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_color_attachment_output_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_transfer_bit = 0x0000000000001000ULL;
-inline constexpr std::uint64_t vulkan_pipeline_stage2_draw_indirect_bit = 0x0000000000002000ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_draw_indirect_bit = 0x0000000000000002ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_host_bit = 0x0000000000004000ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_task_shader_bit_ext = 0x0000000000080000ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_mesh_shader_bit_ext = 0x0000000000100000ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_all_commands_bit = 0x0000000000010000ULL;
 inline constexpr std::uint64_t vulkan_access2_none = 0;
+inline constexpr std::uint64_t vulkan_access2_indirect_command_read_bit = 0x0000000000000001ULL;
 inline constexpr std::uint64_t vulkan_access2_shader_read_bit = 0x0000000000000020ULL;
 inline constexpr std::uint64_t vulkan_access2_shader_write_bit = 0x0000000000000040ULL;
 inline constexpr std::uint64_t vulkan_access2_color_attachment_write_bit = 0x0000000000000100ULL;
@@ -311,7 +316,7 @@ inline constexpr std::uint64_t vulkan_access2_depth_stencil_attachment_read_bit 
 inline constexpr std::uint64_t vulkan_access2_depth_stencil_attachment_write_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_access2_transfer_read_bit = 0x0000000000000800ULL;
 inline constexpr std::uint64_t vulkan_access2_transfer_write_bit = 0x0000000000001000ULL;
-inline constexpr std::uint64_t vulkan_access2_indirect_command_read_bit = 0x0000000000000400ULL;
+inline constexpr std::uint64_t vulkan_access2_host_write_bit = 0x0000000000004000ULL;
 inline constexpr std::uint64_t vulkan_access2_memory_read_bit = 0x0000000000008000ULL;
 inline constexpr std::uint64_t vulkan_access2_memory_write_bit = 0x0000000000010000ULL;
 inline constexpr std::uint32_t spirv_magic_word = 0x07230203U;
@@ -429,6 +434,58 @@ struct NativeVulkanPhysicalDeviceDynamicRenderingFeatures {
     std::uint32_t s_type;
     void* next;
     std::uint32_t dynamic_rendering;
+};
+
+struct NativeVulkanPhysicalDeviceVulkan12Features {
+    std::uint32_t s_type;
+    void* next;
+    std::uint32_t sampler_mirror_clamp_to_edge;
+    std::uint32_t draw_indirect_count;
+    std::uint32_t storage_buffer8_bit_access;
+    std::uint32_t uniform_and_storage_buffer8_bit_access;
+    std::uint32_t storage_push_constant8;
+    std::uint32_t shader_buffer_int64_atomics;
+    std::uint32_t shader_shared_int64_atomics;
+    std::uint32_t shader_float16;
+    std::uint32_t shader_int8;
+    std::uint32_t descriptor_indexing;
+    std::uint32_t shader_input_attachment_array_dynamic_indexing;
+    std::uint32_t shader_uniform_texel_buffer_array_dynamic_indexing;
+    std::uint32_t shader_storage_texel_buffer_array_dynamic_indexing;
+    std::uint32_t shader_uniform_buffer_array_non_uniform_indexing;
+    std::uint32_t shader_sampled_image_array_non_uniform_indexing;
+    std::uint32_t shader_storage_buffer_array_non_uniform_indexing;
+    std::uint32_t shader_storage_image_array_non_uniform_indexing;
+    std::uint32_t shader_input_attachment_array_non_uniform_indexing;
+    std::uint32_t shader_uniform_texel_buffer_array_non_uniform_indexing;
+    std::uint32_t shader_storage_texel_buffer_array_non_uniform_indexing;
+    std::uint32_t descriptor_binding_uniform_buffer_update_after_bind;
+    std::uint32_t descriptor_binding_sampled_image_update_after_bind;
+    std::uint32_t descriptor_binding_storage_image_update_after_bind;
+    std::uint32_t descriptor_binding_storage_buffer_update_after_bind;
+    std::uint32_t descriptor_binding_uniform_texel_buffer_update_after_bind;
+    std::uint32_t descriptor_binding_storage_texel_buffer_update_after_bind;
+    std::uint32_t descriptor_binding_update_unused_while_pending;
+    std::uint32_t descriptor_binding_partially_bound;
+    std::uint32_t descriptor_binding_variable_descriptor_count;
+    std::uint32_t runtime_descriptor_array;
+    std::uint32_t sampler_filter_minmax;
+    std::uint32_t scalar_block_layout;
+    std::uint32_t imageless_framebuffer;
+    std::uint32_t uniform_buffer_standard_layout;
+    std::uint32_t shader_subgroup_extended_types;
+    std::uint32_t separate_depth_stencil_layouts;
+    std::uint32_t host_query_reset;
+    std::uint32_t timeline_semaphore;
+    std::uint32_t buffer_device_address;
+    std::uint32_t buffer_device_address_capture_replay;
+    std::uint32_t buffer_device_address_multi_device;
+    std::uint32_t vulkan_memory_model;
+    std::uint32_t vulkan_memory_model_device_scope;
+    std::uint32_t vulkan_memory_model_availability_visibility_chains;
+    std::uint32_t shader_output_viewport_index;
+    std::uint32_t shader_output_layer;
+    std::uint32_t subgroup_broadcast_dynamic_id;
 };
 
 struct NativeVulkanPhysicalDeviceVulkan13Features {
@@ -1230,6 +1287,9 @@ using VulkanCmdDrawMeshTasks = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, 
                                                      std::uint32_t);
 using VulkanCmdDrawMeshTasksIndirect = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, NativeVulkanBuffer,
                                                              std::uint64_t, std::uint32_t, std::uint32_t);
+using VulkanCmdDrawMeshTasksIndirectCount = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, NativeVulkanBuffer,
+                                                                  std::uint64_t, NativeVulkanBuffer, std::uint64_t,
+                                                                  std::uint32_t, std::uint32_t);
 using VulkanCmdDispatch = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, std::uint32_t, std::uint32_t, std::uint32_t);
 using VulkanCmdPipelineBarrier2 = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, const NativeVulkanDependencyInfo*);
 using VulkanQueueSubmit2 = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanQueue, std::uint32_t,
@@ -1337,6 +1397,10 @@ struct RuntimePhysicalDeviceProperties {
     std::uint32_t driver_version{0};
     std::uint32_t vendor_id{0};
     std::uint32_t device_id{0};
+};
+
+struct Vulkan12FeatureSupport {
+    bool draw_indirect_count{false};
 };
 
 struct Vulkan13FeatureSupport {
@@ -1656,6 +1720,27 @@ query_vulkan13_feature_support(VulkanGetPhysicalDeviceFeatures2 get_physical_dev
     return support;
 }
 
+[[nodiscard]] Vulkan12FeatureSupport
+query_vulkan12_feature_support(VulkanGetPhysicalDeviceFeatures2 get_physical_device_features2,
+                               NativeVulkanPhysicalDevice physical_device) {
+    Vulkan12FeatureSupport support;
+    if (get_physical_device_features2 == nullptr || physical_device == nullptr) {
+        return support;
+    }
+
+    NativeVulkanPhysicalDeviceVulkan12Features vulkan12_features{};
+    vulkan12_features.s_type = vulkan_structure_type_physical_device_vulkan_1_2_features;
+    NativeVulkanPhysicalDeviceFeatures2 features{
+        .s_type = vulkan_structure_type_physical_device_features_2,
+        .next = &vulkan12_features,
+        .features = {},
+    };
+
+    get_physical_device_features2(physical_device, &features);
+    support.draw_indirect_count = vulkan12_features.draw_indirect_count != 0U;
+    return support;
+}
+
 [[nodiscard]] MeshShaderFeatureSupport
 query_mesh_shader_feature_support(VulkanGetPhysicalDeviceFeatures2 get_physical_device_features2,
                                   VulkanGetPhysicalDeviceProperties2 get_physical_device_properties2,
@@ -1739,6 +1824,7 @@ make_runtime_physical_device_snapshot(std::size_t device_index, NativeVulkanPhys
                                       VulkanGetPhysicalDeviceFeatures2 get_physical_device_features2) {
     auto properties = query_physical_device_properties(get_physical_device_properties2, physical_device);
     auto device_extensions = enumerate_device_extensions(enumerate_device_extension_properties, physical_device);
+    const auto vulkan12_features = query_vulkan12_feature_support(get_physical_device_features2, physical_device);
     const auto vulkan13_features = query_vulkan13_feature_support(get_physical_device_features2, physical_device);
     const auto supports_swapchain_extension =
         extension_is_available_in(device_extensions, std::string_view{"VK_KHR_swapchain"});
@@ -1766,6 +1852,7 @@ make_runtime_physical_device_snapshot(std::size_t device_index, NativeVulkanPhys
         .mesh_shader_supported = mesh_shader_features.mesh_shader,
         .task_shader_supported = mesh_shader_features.task_shader,
         .mesh_shader_queries_supported = mesh_shader_features.mesh_shader_queries,
+        .draw_indirect_count_supported = vulkan12_features.draw_indirect_count,
         .max_task_work_group_count_x = mesh_shader_features.max_task_work_group_count_x,
         .max_task_work_group_count_y = mesh_shader_features.max_task_work_group_count_y,
         .max_task_work_group_count_z = mesh_shader_features.max_task_work_group_count_z,
@@ -1913,6 +2000,14 @@ make_native_vulkan13_features(const VulkanLogicalDeviceCreatePlan& plan) noexcep
     };
 }
 
+[[nodiscard]] NativeVulkanPhysicalDeviceVulkan12Features
+make_native_vulkan12_features(const VulkanLogicalDeviceCreatePlan& plan) noexcept {
+    NativeVulkanPhysicalDeviceVulkan12Features features{};
+    features.s_type = vulkan_structure_type_physical_device_vulkan_1_2_features;
+    features.draw_indirect_count = plan.draw_indirect_count_enabled ? 1U : 0U;
+    return features;
+}
+
 [[nodiscard]] NativeVulkanPhysicalDeviceMeshShaderFeaturesExt
 make_native_mesh_shader_features(const VulkanLogicalDeviceCreatePlan& plan) noexcept {
     return NativeVulkanPhysicalDeviceMeshShaderFeaturesExt{
@@ -1927,21 +2022,27 @@ make_native_mesh_shader_features(const VulkanLogicalDeviceCreatePlan& plan) noex
 }
 
 [[nodiscard]] const void* chain_native_device_features(
+    NativeVulkanPhysicalDeviceVulkan12Features& vulkan12_features, bool enable_vulkan12_features,
     NativeVulkanPhysicalDeviceVulkan13Features& vulkan13_features, bool enable_vulkan13_features,
     NativeVulkanPhysicalDeviceMeshShaderFeaturesExt& mesh_shader_features, bool enable_mesh_shader_features) noexcept {
+    vulkan12_features.next = nullptr;
     vulkan13_features.next = nullptr;
     mesh_shader_features.next = nullptr;
-    if (enable_vulkan13_features && enable_mesh_shader_features) {
-        vulkan13_features.next = &mesh_shader_features;
-        return &vulkan13_features;
+
+    void* chain_head = nullptr;
+    void** next = &chain_head;
+    if (enable_vulkan12_features) {
+        *next = &vulkan12_features;
+        next = &vulkan12_features.next;
     }
     if (enable_vulkan13_features) {
-        return &vulkan13_features;
+        *next = &vulkan13_features;
+        next = &vulkan13_features.next;
     }
     if (enable_mesh_shader_features) {
-        return &mesh_shader_features;
+        *next = &mesh_shader_features;
     }
-    return nullptr;
+    return chain_head;
 }
 
 void append_instance_command_availability(std::vector<VulkanCommandAvailability>& availability,
@@ -2066,6 +2167,7 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
            (!desc.require_mesh_shader || device.mesh_shader_supported) &&
            (!desc.require_task_shader || (desc.require_mesh_shader && device.task_shader_supported)) &&
            (!desc.enable_mesh_shader_queries || device.mesh_shader_queries_supported) &&
+           (!desc.require_draw_indirect_count || device.draw_indirect_count_supported) &&
            has_required_queues(queues, desc.require_present_queue);
 }
 
@@ -2162,6 +2264,7 @@ template <typename AvailableDeviceExtensions>
         .mesh_shader_enabled = false,
         .task_shader_enabled = false,
         .mesh_shader_queries_enabled = false,
+        .draw_indirect_count_enabled = false,
         .diagnostic = {},
     };
 
@@ -2234,6 +2337,10 @@ template <typename AvailableDeviceExtensions>
         plan.diagnostic = "Vulkan mesh shader queries feature is required";
         return plan;
     }
+    if (desc.require_draw_indirect_count && !device.draw_indirect_count_supported) {
+        plan.diagnostic = "Vulkan drawIndirectCount feature is required";
+        return plan;
+    }
 
     for (const auto& optional : desc.optional_extensions) {
         if (extension_is_available_in(available_device_extensions, optional)) {
@@ -2247,6 +2354,7 @@ template <typename AvailableDeviceExtensions>
     plan.mesh_shader_enabled = desc.require_mesh_shader;
     plan.task_shader_enabled = desc.require_task_shader;
     plan.mesh_shader_queries_enabled = desc.enable_mesh_shader_queries;
+    plan.draw_indirect_count_enabled = desc.require_draw_indirect_count;
     plan.diagnostic = "Vulkan logical device create plan ready";
     return plan;
 }
@@ -2307,6 +2415,47 @@ template <typename AvailableDeviceExtensions>
     }
     byte_count = pixel_count * static_cast<std::uint64_t>(bytes_per_pixel);
     return true;
+}
+
+[[nodiscard]] bool checked_u64_add(std::uint64_t lhs, std::uint64_t rhs, std::uint64_t& result) noexcept {
+    if (lhs > (std::numeric_limits<std::uint64_t>::max)() - rhs) {
+        return false;
+    }
+    result = lhs + rhs;
+    return true;
+}
+
+[[nodiscard]] bool checked_u64_mul(std::uint64_t lhs, std::uint64_t rhs, std::uint64_t& result) noexcept {
+    if (lhs != 0U && rhs > (std::numeric_limits<std::uint64_t>::max)() / lhs) {
+        return false;
+    }
+    result = lhs * rhs;
+    return true;
+}
+
+[[nodiscard]] bool mesh_tasks_indirect_argument_range_valid(std::uint64_t buffer_size, std::uint64_t argument_offset,
+                                                            std::uint32_t draw_count,
+                                                            std::uint32_t stride_bytes) noexcept {
+    if (draw_count == 0U || (argument_offset % vulkan_mesh_tasks_indirect_offset_alignment_bytes) != 0U ||
+        stride_bytes < vulkan_mesh_tasks_indirect_command_size_bytes ||
+        (stride_bytes % vulkan_mesh_tasks_indirect_offset_alignment_bytes) != 0U) {
+        return false;
+    }
+
+    std::uint64_t stride_bytes64 = stride_bytes;
+    std::uint64_t last_draw_offset = 0;
+    if (!checked_u64_mul(stride_bytes64, static_cast<std::uint64_t>(draw_count - 1U), last_draw_offset)) {
+        return false;
+    }
+    std::uint64_t last_command_offset = 0;
+    if (!checked_u64_add(argument_offset, last_draw_offset, last_command_offset)) {
+        return false;
+    }
+    std::uint64_t range_end = 0;
+    if (!checked_u64_add(last_command_offset, vulkan_mesh_tasks_indirect_command_size_bytes, range_end)) {
+        return false;
+    }
+    return range_end <= buffer_size;
 }
 
 [[nodiscard]] std::uint32_t find_memory_type_index(const NativeVulkanPhysicalDeviceMemoryProperties& properties,
@@ -2693,6 +2842,12 @@ has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBi
     }
     if ((static_cast<std::uint32_t>(visibility) & static_cast<std::uint32_t>(ShaderStageVisibility::compute)) != 0U) {
         flags |= vulkan_shader_stage_compute_bit;
+    }
+    if ((static_cast<std::uint32_t>(visibility) & static_cast<std::uint32_t>(ShaderStageVisibility::task)) != 0U) {
+        flags |= vulkan_shader_stage_task_bit_ext;
+    }
+    if ((static_cast<std::uint32_t>(visibility) & static_cast<std::uint32_t>(ShaderStageVisibility::mesh)) != 0U) {
+        flags |= vulkan_shader_stage_mesh_bit_ext;
     }
     return flags;
 }
@@ -3375,6 +3530,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanCmdDrawIndexedIndirectCount cmd_draw_indexed_indirect_count{nullptr};
     VulkanCmdDrawMeshTasks cmd_draw_mesh_tasks{nullptr};
     VulkanCmdDrawMeshTasksIndirect cmd_draw_mesh_tasks_indirect{nullptr};
+    VulkanCmdDrawMeshTasksIndirectCount cmd_draw_mesh_tasks_indirect_count{nullptr};
     VulkanCmdPipelineBarrier2 cmd_pipeline_barrier2{nullptr};
     VulkanQueueSubmit2 queue_submit2{nullptr};
     VulkanQueueWaitIdle queue_wait_idle{nullptr};
@@ -8151,6 +8307,7 @@ VulkanPhysicalDeviceCandidate make_physical_device_candidate(const VulkanRuntime
         .mesh_shader_supported = snapshot.mesh_shader_supported,
         .task_shader_supported = snapshot.task_shader_supported,
         .mesh_shader_queries_supported = snapshot.mesh_shader_queries_supported,
+        .draw_indirect_count_supported = snapshot.draw_indirect_count_supported,
         .queue_families = snapshot.queue_families,
     };
 }
@@ -8212,6 +8369,7 @@ std::vector<VulkanCommandRequest> vulkan_backend_command_requests() {
         {.name = "vkCmdDrawIndexedIndirect", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCmdDrawMeshTasksEXT", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCmdDrawMeshTasksIndirectEXT", .scope = VulkanCommandScope::device, .required = true},
+        {.name = "vkCmdDrawMeshTasksIndirectCountEXT", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCreateShaderModule", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkDestroyShaderModule", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCreateDescriptorSetLayout", .scope = VulkanCommandScope::device, .required = true},
@@ -8295,9 +8453,13 @@ std::vector<VulkanCommandRequest> vulkan_device_command_requests(const VulkanLog
         if (is_synchronization2_command && !plan.synchronization2_enabled) {
             continue;
         }
-        const auto is_mesh_shader_command =
-            request.name == "vkCmdDrawMeshTasksEXT" || request.name == "vkCmdDrawMeshTasksIndirectEXT";
+        const auto is_mesh_shader_command = request.name == "vkCmdDrawMeshTasksEXT" ||
+                                            request.name == "vkCmdDrawMeshTasksIndirectEXT" ||
+                                            request.name == "vkCmdDrawMeshTasksIndirectCountEXT";
         if (is_mesh_shader_command && !plan.mesh_shader_enabled) {
+            continue;
+        }
+        if (request.name == "vkCmdDrawMeshTasksIndirectCountEXT" && !plan.draw_indirect_count_enabled) {
             continue;
         }
         requests.push_back(request);
@@ -9645,6 +9807,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto queue_infos =
         make_native_device_queue_create_infos(result.logical_device_plan.queue_families, queue_priorities);
     const auto device_extension_pointers = extension_name_pointers(result.logical_device_plan.enabled_extensions);
+    auto vulkan12_features = make_native_vulkan12_features(result.logical_device_plan);
+    const auto enable_vulkan12_features = result.logical_device_plan.draw_indirect_count_enabled;
     auto vulkan13_features = make_native_vulkan13_features(result.logical_device_plan);
     const auto enable_vulkan13_features =
         result.logical_device_plan.dynamic_rendering_enabled || result.logical_device_plan.synchronization2_enabled;
@@ -9652,8 +9816,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto enable_mesh_shader_features = result.logical_device_plan.mesh_shader_enabled ||
                                              result.logical_device_plan.task_shader_enabled ||
                                              result.logical_device_plan.mesh_shader_queries_enabled;
-    const auto* feature_chain = chain_native_device_features(vulkan13_features, enable_vulkan13_features,
-                                                             mesh_shader_features, enable_mesh_shader_features);
+    const auto* feature_chain =
+        chain_native_device_features(vulkan12_features, enable_vulkan12_features, vulkan13_features,
+                                     enable_vulkan13_features, mesh_shader_features, enable_mesh_shader_features);
     const auto device_create_info =
         make_native_device_create_info(queue_infos, device_extension_pointers, feature_chain);
 
@@ -9711,6 +9876,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdDrawMeshTasks>(get_device_proc_addr(device, "vkCmdDrawMeshTasksEXT"));
     const auto cmd_draw_mesh_tasks_indirect =
         reinterpret_cast<VulkanCmdDrawMeshTasksIndirect>(get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectEXT"));
+    const auto cmd_draw_mesh_tasks_indirect_count = reinterpret_cast<VulkanCmdDrawMeshTasksIndirectCount>(
+        get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectCountEXT"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
@@ -9803,6 +9970,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto device_command_plan = build_command_resolution_plan(device_requests, device_availability);
     const auto synchronization2_enabled = result.logical_device_plan.synchronization2_enabled;
     const auto mesh_shader_enabled = result.logical_device_plan.mesh_shader_enabled;
+    const auto draw_indirect_count_enabled = result.logical_device_plan.draw_indirect_count_enabled;
     const auto swapchain_enabled =
         extension_is_enabled(result.logical_device_plan.enabled_extensions, "VK_KHR_swapchain");
     if (!device_command_plan.supported || destroy_device == nullptr || get_device_queue == nullptr ||
@@ -9813,6 +9981,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         cmd_bind_vertex_buffers == nullptr || cmd_bind_index_buffer == nullptr || cmd_draw_indexed == nullptr ||
         cmd_draw_indexed_indirect == nullptr ||
         (mesh_shader_enabled && (cmd_draw_mesh_tasks == nullptr || cmd_draw_mesh_tasks_indirect == nullptr)) ||
+        (mesh_shader_enabled && draw_indirect_count_enabled && cmd_draw_mesh_tasks_indirect_count == nullptr) ||
         (synchronization2_enabled && (cmd_pipeline_barrier2 == nullptr || queue_submit2 == nullptr)) ||
         queue_wait_idle == nullptr || create_buffer == nullptr || destroy_buffer == nullptr ||
         get_buffer_memory_requirements == nullptr || create_image == nullptr || destroy_image == nullptr ||
@@ -9933,6 +10102,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_draw_indexed_indirect_count = cmd_draw_indexed_indirect_count;
     impl->cmd_draw_mesh_tasks = mesh_shader_enabled ? cmd_draw_mesh_tasks : nullptr;
     impl->cmd_draw_mesh_tasks_indirect = mesh_shader_enabled ? cmd_draw_mesh_tasks_indirect : nullptr;
+    impl->cmd_draw_mesh_tasks_indirect_count =
+        mesh_shader_enabled && draw_indirect_count_enabled ? cmd_draw_mesh_tasks_indirect_count : nullptr;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
@@ -10089,6 +10260,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto queue_infos =
         make_native_device_queue_create_infos(result.logical_device_plan.queue_families, queue_priorities);
     const auto device_extension_pointers = extension_name_pointers(result.logical_device_plan.enabled_extensions);
+    auto vulkan12_features = make_native_vulkan12_features(result.logical_device_plan);
+    const auto enable_vulkan12_features = result.logical_device_plan.draw_indirect_count_enabled;
     auto vulkan13_features = make_native_vulkan13_features(result.logical_device_plan);
     const auto enable_vulkan13_features =
         result.logical_device_plan.dynamic_rendering_enabled || result.logical_device_plan.synchronization2_enabled;
@@ -10096,8 +10269,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto enable_mesh_shader_features = result.logical_device_plan.mesh_shader_enabled ||
                                              result.logical_device_plan.task_shader_enabled ||
                                              result.logical_device_plan.mesh_shader_queries_enabled;
-    const auto* feature_chain = chain_native_device_features(vulkan13_features, enable_vulkan13_features,
-                                                             mesh_shader_features, enable_mesh_shader_features);
+    const auto* feature_chain =
+        chain_native_device_features(vulkan12_features, enable_vulkan12_features, vulkan13_features,
+                                     enable_vulkan13_features, mesh_shader_features, enable_mesh_shader_features);
     const auto device_create_info =
         make_native_device_create_info(queue_infos, device_extension_pointers, feature_chain);
 
@@ -10155,6 +10329,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdDrawMeshTasks>(get_device_proc_addr(device, "vkCmdDrawMeshTasksEXT"));
     const auto cmd_draw_mesh_tasks_indirect =
         reinterpret_cast<VulkanCmdDrawMeshTasksIndirect>(get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectEXT"));
+    const auto cmd_draw_mesh_tasks_indirect_count = reinterpret_cast<VulkanCmdDrawMeshTasksIndirectCount>(
+        get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectCountEXT"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
@@ -10246,6 +10422,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     const auto device_command_plan = build_command_resolution_plan(device_requests, device_availability);
     const auto synchronization2_enabled = result.logical_device_plan.synchronization2_enabled;
     const auto mesh_shader_enabled = result.logical_device_plan.mesh_shader_enabled;
+    const auto draw_indirect_count_enabled = result.logical_device_plan.draw_indirect_count_enabled;
     const auto swapchain_enabled =
         extension_is_enabled(result.logical_device_plan.enabled_extensions, "VK_KHR_swapchain");
     if (!device_command_plan.supported || destroy_device == nullptr || get_device_queue == nullptr ||
@@ -10256,6 +10433,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         cmd_bind_vertex_buffers == nullptr || cmd_bind_index_buffer == nullptr || cmd_draw_indexed == nullptr ||
         cmd_draw_indexed_indirect == nullptr ||
         (mesh_shader_enabled && (cmd_draw_mesh_tasks == nullptr || cmd_draw_mesh_tasks_indirect == nullptr)) ||
+        (mesh_shader_enabled && draw_indirect_count_enabled && cmd_draw_mesh_tasks_indirect_count == nullptr) ||
         (synchronization2_enabled && (cmd_pipeline_barrier2 == nullptr || queue_submit2 == nullptr)) ||
         queue_wait_idle == nullptr || create_buffer == nullptr || destroy_buffer == nullptr ||
         get_buffer_memory_requirements == nullptr || create_image == nullptr || destroy_image == nullptr ||
@@ -10376,6 +10554,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_draw_indexed_indirect_count = cmd_draw_indexed_indirect_count;
     impl->cmd_draw_mesh_tasks = mesh_shader_enabled ? cmd_draw_mesh_tasks : nullptr;
     impl->cmd_draw_mesh_tasks_indirect = mesh_shader_enabled ? cmd_draw_mesh_tasks_indirect : nullptr;
+    impl->cmd_draw_mesh_tasks_indirect_count =
+        mesh_shader_enabled && draw_indirect_count_enabled ? cmd_draw_mesh_tasks_indirect_count : nullptr;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
@@ -14898,9 +15078,80 @@ VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_renderin
         result.diagnostic = "Vulkan mesh dynamic rendering extent must match texture";
         return result;
     }
-    if (desc.group_count_x == 0 || desc.group_count_y == 0 || desc.group_count_z == 0) {
+    const auto mesh_tasks_indirect_count_draw = desc.mesh_tasks_indirect_count_draw;
+    const auto mesh_tasks_indirect_draw = desc.mesh_tasks_indirect_draw || mesh_tasks_indirect_count_draw;
+    if (desc.mesh_tasks_indirect_draw && desc.mesh_tasks_indirect_count_draw) {
+        result.diagnostic = "Vulkan mesh task draw mode must be direct, indirect, or indirect-count";
+        return result;
+    }
+    if (!mesh_tasks_indirect_draw && (desc.group_count_x == 0 || desc.group_count_y == 0 || desc.group_count_z == 0)) {
         result.diagnostic = "Vulkan mesh task draw workgroup counts must be non-zero";
         return result;
+    }
+    if (mesh_tasks_indirect_draw) {
+        if (desc.indirect_draw_count == 0U) {
+            result.diagnostic = "Vulkan mesh task indirect draw count is required";
+            return result;
+        }
+        if (desc.indirect_argument_buffer == nullptr || !desc.indirect_argument_buffer->owns_buffer()) {
+            result.diagnostic = "Vulkan mesh task indirect argument buffer is required";
+            return result;
+        }
+        if (desc.indirect_argument_buffer->impl_->device_owner != device.impl_) {
+            result.diagnostic = "Vulkan mesh task indirect argument buffer must share one runtime device";
+            return result;
+        }
+        if (!has_flag(desc.indirect_argument_buffer->usage(), BufferUsage::indirect)) {
+            result.diagnostic = "Vulkan mesh task indirect argument buffer requires indirect usage";
+            return result;
+        }
+        if ((desc.indirect_argument_buffer_offset % vulkan_mesh_tasks_indirect_offset_alignment_bytes) != 0U) {
+            result.diagnostic = "Vulkan mesh task indirect argument offset must be 4-byte aligned";
+            return result;
+        }
+        if (desc.indirect_command_stride_bytes < vulkan_mesh_tasks_indirect_command_size_bytes ||
+            (desc.indirect_command_stride_bytes % vulkan_mesh_tasks_indirect_offset_alignment_bytes) != 0U) {
+            result.diagnostic =
+                "Vulkan mesh task indirect command stride must be 4-byte aligned and at least the command size";
+            return result;
+        }
+        if (!mesh_tasks_indirect_argument_range_valid(desc.indirect_argument_buffer->byte_size(),
+                                                      desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
+                                                      desc.indirect_command_stride_bytes)) {
+            result.diagnostic = "Vulkan mesh task indirect argument range is outside the argument buffer";
+            return result;
+        }
+        if (device.impl_->cmd_draw_mesh_tasks_indirect == nullptr) {
+            result.diagnostic = "Vulkan mesh task indirect draw command is unavailable";
+            return result;
+        }
+        if (mesh_tasks_indirect_count_draw) {
+            if (desc.indirect_count_buffer == nullptr || !desc.indirect_count_buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan mesh task indirect count buffer is required";
+                return result;
+            }
+            if (desc.indirect_count_buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan mesh task indirect count buffer must share one runtime device";
+                return result;
+            }
+            if (!has_flag(desc.indirect_count_buffer->usage(), BufferUsage::indirect)) {
+                result.diagnostic = "Vulkan mesh task indirect count buffer requires indirect usage";
+                return result;
+            }
+            if ((desc.indirect_count_buffer_offset % vulkan_mesh_tasks_indirect_offset_alignment_bytes) != 0U) {
+                result.diagnostic = "Vulkan mesh task indirect count buffer offset must be 4-byte aligned";
+                return result;
+            }
+            if (desc.indirect_count_buffer_offset > desc.indirect_count_buffer->byte_size() ||
+                sizeof(std::uint32_t) > desc.indirect_count_buffer->byte_size() - desc.indirect_count_buffer_offset) {
+                result.diagnostic = "Vulkan mesh task indirect count range is outside the count buffer";
+                return result;
+            }
+            if (device.impl_->cmd_draw_mesh_tasks_indirect_count == nullptr) {
+                result.diagnostic = "Vulkan mesh task indirect count draw command is unavailable";
+                return result;
+            }
+        }
     }
     if (desc.dynamic_rendering.depth_attachment_enabled) {
         if (desc.depth_texture == nullptr || !desc.depth_texture->owns_image() ||
@@ -14933,7 +15184,10 @@ VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_renderin
     }
     if (device.impl_->cmd_begin_rendering == nullptr || device.impl_->cmd_end_rendering == nullptr ||
         device.impl_->cmd_bind_pipeline == nullptr || device.impl_->cmd_set_viewport == nullptr ||
-        device.impl_->cmd_set_scissor == nullptr || device.impl_->cmd_draw_mesh_tasks == nullptr) {
+        device.impl_->cmd_set_scissor == nullptr ||
+        (!mesh_tasks_indirect_draw && device.impl_->cmd_draw_mesh_tasks == nullptr) ||
+        (desc.mesh_tasks_indirect_draw && device.impl_->cmd_draw_mesh_tasks_indirect == nullptr) ||
+        (mesh_tasks_indirect_count_draw && device.impl_->cmd_draw_mesh_tasks_indirect_count == nullptr)) {
         result.diagnostic = "Vulkan mesh dynamic rendering draw commands are unavailable";
         return result;
     }
@@ -15004,9 +15258,22 @@ VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_renderin
     device.impl_->cmd_set_scissor(command_buffer, 0, 1, &scissor);
     device.impl_->cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, pipeline.impl_->pipeline);
     result.bound_pipeline = true;
-    device.impl_->cmd_draw_mesh_tasks(command_buffer, desc.group_count_x, desc.group_count_y, desc.group_count_z);
+    if (mesh_tasks_indirect_count_draw) {
+        device.impl_->cmd_draw_mesh_tasks_indirect_count(
+            command_buffer, desc.indirect_argument_buffer->impl_->buffer, desc.indirect_argument_buffer_offset,
+            desc.indirect_count_buffer->impl_->buffer, desc.indirect_count_buffer_offset, desc.indirect_draw_count,
+            desc.indirect_command_stride_bytes);
+        result.indirect_count_draw_calls = 1U;
+    } else if (desc.mesh_tasks_indirect_draw) {
+        device.impl_->cmd_draw_mesh_tasks_indirect(command_buffer, desc.indirect_argument_buffer->impl_->buffer,
+                                                   desc.indirect_argument_buffer_offset, desc.indirect_draw_count,
+                                                   desc.indirect_command_stride_bytes);
+        result.indirect_draw_calls = 1U;
+    } else {
+        device.impl_->cmd_draw_mesh_tasks(command_buffer, desc.group_count_x, desc.group_count_y, desc.group_count_z);
+        result.direct_draw_calls = 1U;
+    }
     result.drew = true;
-    result.direct_draw_calls = 1U;
     device.impl_->cmd_end_rendering(command_buffer);
     result.ended_rendering = true;
     result.recorded = true;

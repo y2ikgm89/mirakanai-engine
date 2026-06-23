@@ -22,6 +22,8 @@ using NativeVulkanCommandBuffer = void*;
 
 inline constexpr std::size_t invalid_vulkan_device_index = static_cast<std::size_t>(-1);
 inline constexpr std::uint32_t invalid_vulkan_queue_family = static_cast<std::uint32_t>(-1);
+inline constexpr std::uint32_t vulkan_mesh_tasks_indirect_command_size_bytes = 12U;
+inline constexpr std::uint32_t vulkan_mesh_tasks_indirect_offset_alignment_bytes = 4U;
 
 struct VulkanApiVersion {
     std::uint32_t major{0};
@@ -76,6 +78,7 @@ struct VulkanPhysicalDeviceCandidate {
     bool mesh_shader_supported{false};
     bool task_shader_supported{false};
     bool mesh_shader_queries_supported{false};
+    bool draw_indirect_count_supported{false};
     std::vector<VulkanQueueFamilyCandidate> queue_families;
 };
 
@@ -122,6 +125,7 @@ struct VulkanLogicalDeviceCreateDesc {
     bool require_mesh_shader{false};
     bool require_task_shader{false};
     bool enable_mesh_shader_queries{false};
+    bool require_draw_indirect_count{false};
 };
 
 struct VulkanLogicalDeviceCreatePlan {
@@ -133,6 +137,7 @@ struct VulkanLogicalDeviceCreatePlan {
     bool mesh_shader_enabled{false};
     bool task_shader_enabled{false};
     bool mesh_shader_queries_enabled{false};
+    bool draw_indirect_count_enabled{false};
     std::string diagnostic;
 };
 
@@ -577,6 +582,7 @@ struct VulkanRuntimePhysicalDeviceSnapshot {
     bool mesh_shader_supported{false};
     bool task_shader_supported{false};
     bool mesh_shader_queries_supported{false};
+    bool draw_indirect_count_supported{false};
     std::uint32_t max_task_work_group_count_x{0};
     std::uint32_t max_task_work_group_count_y{0};
     std::uint32_t max_task_work_group_count_z{0};
@@ -1011,6 +1017,9 @@ class VulkanRuntimeBuffer {
     record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                           VulkanRuntimeTexture& texture, VulkanRuntimeGraphicsPipeline& pipeline,
                                           const VulkanRuntimeTextureRenderingDrawDesc& desc);
+    friend VulkanRuntimeTextureRenderingMeshTasksDrawResult record_runtime_texture_rendering_mesh_tasks_draw(
+        VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool, VulkanRuntimeTexture& texture,
+        VulkanRuntimeMeshGraphicsPipeline& pipeline, const VulkanRuntimeTextureRenderingMeshTasksDrawDesc& desc);
 };
 
 struct VulkanRuntimeBufferCreateResult {
@@ -1789,6 +1798,14 @@ struct VulkanRuntimeTextureRenderingMeshTasksDrawDesc {
     std::uint32_t group_count_x{1};
     std::uint32_t group_count_y{1};
     std::uint32_t group_count_z{1};
+    bool mesh_tasks_indirect_draw{false};
+    bool mesh_tasks_indirect_count_draw{false};
+    VulkanRuntimeBuffer* indirect_argument_buffer{nullptr};
+    std::uint64_t indirect_argument_buffer_offset{0};
+    VulkanRuntimeBuffer* indirect_count_buffer{nullptr};
+    std::uint64_t indirect_count_buffer_offset{0};
+    std::uint32_t indirect_draw_count{0};
+    std::uint32_t indirect_command_stride_bytes{vulkan_mesh_tasks_indirect_command_size_bytes};
     LoadAction color_load_action{LoadAction::clear};
     StoreAction color_store_action{StoreAction::store};
     ClearColorValue clear_color;
@@ -1805,6 +1822,8 @@ struct VulkanRuntimeTextureRenderingMeshTasksDrawResult {
     bool drew{false};
     bool ended_rendering{false};
     std::uint32_t direct_draw_calls{0};
+    std::uint32_t indirect_draw_calls{0};
+    std::uint32_t indirect_count_draw_calls{0};
     std::string diagnostic;
 };
 

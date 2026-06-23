@@ -26,7 +26,9 @@ enum class ShaderStageVisibility : std::uint8_t {
     none = 0,
     vertex = 1U << 0U,
     fragment = 1U << 1U,
-    compute = 1U << 2U
+    compute = 1U << 2U,
+    task = 1U << 3U,
+    mesh = 1U << 4U
 };
 
 enum class PrimitiveTopology : std::uint8_t { triangle_list = 0, line_list };
