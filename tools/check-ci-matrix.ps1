@@ -886,6 +886,8 @@ Assert-ContainsAll $macosJob @(
     "name: metal-host-optimization-artifacts",
     "compression-level: 0",
     "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**",
+    "Validate Metal weather solver host gate",
+    "./tools/validate-environment-weather-metal-solver-host-gate.ps1",
     "cmake --preset ci-macos-appleclang",
     'cmake --build --preset ci-macos-appleclang --parallel "$(sysctl -n hw.logicalcpu)"',
     'ctest --preset ci-macos-appleclang --output-on-failure --parallel "$(sysctl -n hw.logicalcpu)"',

@@ -8144,8 +8144,8 @@
       },
       {
         "id": "metal-apple",
-        "status": "host-gated",
-        "residualClass": "platform-host-required",
+        "status": "ready",
+        "residualClass": "ready",
         "hosts": [
           "macos",
           "ios",
@@ -8157,10 +8157,12 @@
           "shader-toolchain",
           "mobile-packaging",
           "renderer-metal-apple-host-evidence",
+          "renderer-metal-environment-aggregate-apple-host-evidence",
+          "environment-platform-ios-metal-package",
           "environment-weather-metal-solver-host-gate",
           "ios-simulator-smoke"
         ],
-        "notes": "Metal visible presentation and Apple package readiness remain Apple-host gated and must not be marked ready from Windows validation."
+        "notes": "Apple Metal host gate closeout is ready only through hosted macOS Metal CMake and iOS Metal Evidence on Apple runners with full Xcode, xcrun, metal, and metallib. The macOS lane follows Apple Metal command-line tooling by compiling reviewed .metal sources to intermediate output and linking non-empty metallib libraries before renderer-metal-environment-aggregate-apple-host-evidence can emit environment_metal_host_aggregate_ready=1, environment_platform_macos_metal_ready=1, environment_platform_requires_macos_metal_host_evidence=0, and native_handle_access=0. The iOS Metal Evidence lane runs environment-platform-ios-metal-package and proves environment_platform_ios_metal_ready=1, environment_platform_requires_ios_metal_host_evidence=0, ios_package_smoke_ready=1, ios_metal_command_queue_ready=1, ios_metal_pipeline_ready=1, ios_metal_command_buffer_ready=1, ios_metal_readback_ready=1, environment_all_platform_unconditional_ready=0, and native_handle_access=0. The macOS lane also runs environment-weather-metal-solver-host-gate and must emit environment_weather_simulation_metal_gpu_solver_ready=1, environment_weather_simulation_metal_gpu_solver_metallib_valid=1, environment_weather_simulation_metal_gpu_solver_compute_pipeline_ready=1, environment_weather_simulation_metal_gpu_solver_native_handle_access=0, environment_weather_simulation_metal_gpu_solver_d3d12_inferred=0, and environment_weather_simulation_metal_gpu_solver_vulkan_inferred=0. Windows validation, D3D12 proof, Vulkan proof, Linux Vulkan proof, Android Vulkan proof, non-Apple hosts, and compile-only Metal evidence remain forbidden as Apple Metal host proof; broad environment_ready remains environment_ready=0 outside its selected D3D12 lane."
       },
       {
         "id": "android-gameactivity",

@@ -1074,6 +1074,10 @@ jobs:
           path: artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**
           if-no-files-found: warn
 
+      - name: Validate Metal weather solver host gate
+        shell: pwsh
+        run: ./tools/validate-environment-weather-metal-solver-host-gate.ps1
+
       - name: Configure
         run: cmake --preset ci-macos-appleclang
 
