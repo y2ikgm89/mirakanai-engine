@@ -168,6 +168,7 @@ UI dependency policy:
 
 - `MK_ui` and `MK_editor_ui` public contracts must stay first-party.
 - Low-level text shaping, font rasterization, IME, accessibility bridge, image decoding, and platform integration code may use official SDKs or audited libraries only behind adapters.
+- First-party runtime UI clean-room source gate: `docs/specs/2026-06-24-first-party-ui-clean-room-source-ledger-v1.md` and `tools/check-first-party-ui-clean-room.ps1` add provenance and public-token enforcement without adding a dependency. Official Unity, Unreal Engine, Godot, Microsoft, Apple, HarfBuzz, FreeType, AT-SPI2, Vulkan, and W3C documentation references are category or adapter-boundary research only; they are not repository dependencies and do not authorize copying source, samples, serialized UI formats, themes, fonts, icons, screenshots, API shapes, or public UI system names.
 - HarfBuzz, FreeType, ICU, or similar text/font libraries are future dependency-gated adapter candidates only; selecting any of them requires `license-audit`, `vcpkg.json`, this document, and `THIRD_PARTY_NOTICES.md` updates before use.
 - Qt, NoesisGUI, Slint, RmlUi, fonts, text/font libraries, or other UI middleware must be evaluated only after `license-audit`, `vcpkg.json`, this document, and `THIRD_PARTY_NOTICES.md` are updated.
 - No UI dependency may expose its headers, object model, native handles, or license obligations through public game APIs without an accepted architecture decision.
