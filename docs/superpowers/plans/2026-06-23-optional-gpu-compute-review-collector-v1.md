@@ -38,7 +38,7 @@ Official source checks:
 
 ## Done When
 
-The collector self-test passes, generated synthetic evidence validates with `tools/check-optional-gpu-compute-review-evidence.ps1`, manifest/static checks require both the collector and validator surfaces, full validation passes, and `unsupportedProductionGaps` remains `[]` with `optional-gpu-compute-review-host` still host-gated until real complete candidate artifact bundles are attached.
+The collector self-test passes, generated synthetic evidence validates with `tools/check-optional-gpu-compute-review-evidence.ps1`, manifest/static checks require both the collector and validator surfaces, full validation passes, and `unsupportedProductionGaps` remains `[]`. This collector plan by itself does not mark `optional-gpu-compute-review-host` ready from synthetic evidence; the later `optional-gpu-compute-review-host-closeout-v1` plan closes the selected RHI candidate only through retained real strict Vulkan artifacts.
 
 ## Validation
 
