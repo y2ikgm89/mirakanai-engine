@@ -193,24 +193,30 @@ function Assert-ValidationTierSelection {
         [Parameter(Mandatory = $true)][string]$Label,
         [string[]]$ChangedPath = @(),
         [switch]$RunAll,
-        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
-        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindowsMsvc,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxCmake,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxVulkanHost,
         [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
         [bool]$ExpectedLinuxCoverage = $false,
-        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
-        [bool]$ExpectedWindowsCpp23 = $false,
-        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+        [Parameter(Mandatory = $true)][bool]$ExpectedFullStaticAnalysis,
+        [bool]$ExpectedWindowsCpp23Release = $false,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMacosMetalCmake,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMetalHostEvidence,
+        [Parameter(Mandatory = $true)][bool]$ExpectedIosMetalEvidence
     )
 
     $selection = Get-ValidationTierSelection -Label $Label -ChangedPath $ChangedPath -RunAll:$RunAll.IsPresent
     $expectations = @{
-        windows = $ExpectedWindows
-        linux = $ExpectedLinux
+        windows_msvc = $ExpectedWindowsMsvc
+        linux_cmake = $ExpectedLinuxCmake
+        linux_vulkan_host = $ExpectedLinuxVulkanHost
         linux_sanitizers = $ExpectedLinuxSanitizers
         linux_coverage = $ExpectedLinuxCoverage
-        static_analysis = $ExpectedStaticAnalysis
-        macos = $ExpectedMacos
-        windows_cpp23 = $ExpectedWindowsCpp23
+        full_static_analysis = $ExpectedFullStaticAnalysis
+        windows_cpp23_release = $ExpectedWindowsCpp23Release
+        macos_metal_cmake = $ExpectedMacosMetalCmake
+        metal_host_evidence = $ExpectedMetalHostEvidence
+        ios_metal_evidence = $ExpectedIosMetalEvidence
     }
 
     foreach ($expectation in $expectations.GetEnumerator()) {
@@ -268,123 +274,184 @@ Assert-ContainsAll $releasePackageArtifactsScript @(
 Assert-ValidationTierSelection `
     -Label "docs-only PR" `
     -ChangedPath @("docs/testing.md", "AGENTS.md", ".agents/skills/gameengine-agent-integration/SKILL.md") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "static policy PR" `
     -ChangedPath @(".clang-tidy") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "runtime PR" `
     -ChangedPath @("engine/core/src/example.cpp") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $true `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $true
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "workflow PR" `
     -ChangedPath @(".github/workflows/validate.yml") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $true `
     -ExpectedLinuxSanitizers $true `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $true
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
     -ChangedPath @("tools/classify-pr-validation-tier.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "ci matrix policy PR" `
     -ChangedPath @("tools/check-ci-matrix.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "cpp23 policy infra PR" `
     -ChangedPath @("tools/check-cpp-standard-policy.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "coverage infra PR" `
     -ChangedPath @("tools/check-coverage.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $true `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "cpp23 evaluate infra PR" `
     -ChangedPath @("tools/evaluate-cpp23.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "optional ENet validation wrapper PR" `
     -ChangedPath @("tools/validate-network-enet.ps1") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "Linux Vulkan host evidence PR" `
+    -ChangedPath @("tools/validate-linux-vulkan-runtime-host.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $true `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "Apple Metal host evidence PR" `
+    -ChangedPath @("tools/validate-apple-metal-platform-host.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $true `
     -ExpectedLinuxSanitizers $true `
     -ExpectedLinuxCoverage $true `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $true
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 $checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
@@ -441,12 +508,16 @@ Assert-ContainsAll $changesJob @(
     "name: Select PR validation tier",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 10",
-    "windows: `${{ steps.classify.outputs.windows }}",
-    "linux: `${{ steps.classify.outputs.linux }}",
+    "windows_msvc: `${{ steps.classify.outputs.windows_msvc }}",
+    "linux_cmake: `${{ steps.classify.outputs.linux_cmake }}",
+    "linux_vulkan_host: `${{ steps.classify.outputs.linux_vulkan_host }}",
     "linux_sanitizers: `${{ steps.classify.outputs.linux_sanitizers }}",
     "linux_coverage: `${{ steps.classify.outputs.linux_coverage }}",
-    "static_analysis: `${{ steps.classify.outputs.static_analysis }}",
-    "windows_cpp23: `${{ steps.classify.outputs.windows_cpp23 }}",
+    "full_static_analysis: `${{ steps.classify.outputs.full_static_analysis }}",
+    "macos_metal_cmake: `${{ steps.classify.outputs.macos_metal_cmake }}",
+    "metal_host_evidence: `${{ steps.classify.outputs.metal_host_evidence }}",
+    "ios_metal_evidence: `${{ steps.classify.outputs.ios_metal_evidence }}",
+    "windows_cpp23_release: `${{ steps.classify.outputs.windows_cpp23_release }}",
     "fetch-depth: 0",
     "persist-credentials: false",
     "name: Classify touched surfaces",
@@ -460,7 +531,7 @@ $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "wind
 Assert-ContainsAll $windowsJob @(
     "name: Windows MSVC",
     "needs: changes",
-    "if: needs.changes.outputs.windows == 'true'",
+    "if: needs.changes.outputs.windows_msvc == 'true'",
     "runs-on: windows-2025-vs2026",
     "timeout-minutes: 120",
     $checkoutActionRef,
@@ -551,7 +622,7 @@ $windowsCpp23Job = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName 
 Assert-ContainsAll $windowsCpp23Job @(
     "name: Windows C++23 Release Evaluation",
     "needs: changes",
-    "if: needs.changes.outputs.windows_cpp23 == 'true'",
+    "if: needs.changes.outputs.windows_cpp23_release == 'true'",
     "runs-on: windows-2025-vs2026",
     "timeout-minutes: 150",
     $checkoutActionRef,
@@ -661,7 +732,7 @@ $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux"
 Assert-ContainsAll $linuxJob @(
     "name: Linux CMake",
     "needs: changes",
-    "if: needs.changes.outputs.linux == 'true'",
+    "if: needs.changes.outputs.linux_cmake == 'true'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 60",
     $checkoutActionRef,
@@ -706,7 +777,7 @@ $linuxVulkanJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "
 Assert-ContainsAll $linuxVulkanJob @(
     "name: Linux Vulkan Host Evidence",
     "needs: changes",
-    "if: needs.changes.outputs.linux == 'true'",
+    "if: needs.changes.outputs.linux_vulkan_host == 'true'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 60",
     $checkoutActionRef,
@@ -856,7 +927,7 @@ $macosJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "macos"
 Assert-ContainsAll $macosJob @(
     "name: macOS Metal CMake",
     "needs: changes",
-    "if: needs.changes.outputs.macos == 'true'",
+    "if: needs.changes.outputs.macos_metal_cmake == 'true'",
     "runs-on: macos-latest",
     "timeout-minutes: 90",
     $checkoutActionRef,
@@ -882,6 +953,7 @@ Assert-ContainsAll $macosJob @(
     "Prepare ccache",
     "ccache --zero-stats",
     "Environment Metal aggregate host evidence recipe and optimization artifacts",
+    "if: needs.changes.outputs.metal_host_evidence == 'true'",
     '$jobs = [int](& sysctl -n hw.logicalcpu)',
     "./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs `$jobs -RequireReady",
     "Upload Metal optimization artifacts",
@@ -909,7 +981,7 @@ $iosMetalJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "ios
 Assert-ContainsAll $iosMetalJob @(
     "name: iOS Metal Evidence",
     "needs: changes",
-    "if: needs.changes.outputs.macos == 'true'",
+    "if: needs.changes.outputs.ios_metal_evidence == 'true'",
     "runs-on: macos-26",
     "timeout-minutes: 60",
     $checkoutActionRef,
@@ -951,7 +1023,7 @@ $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobNam
 Assert-ContainsAll $staticAnalysisJob @(
     "name: Full Repository Static Analysis",
     "needs: changes",
-    "if: needs.changes.outputs.static_analysis == 'true'",
+    "if: needs.changes.outputs.full_static_analysis == 'true'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 90",
     "strategy:",

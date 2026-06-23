@@ -21,13 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      windows: ${{ steps.classify.outputs.windows }}
-      linux: ${{ steps.classify.outputs.linux }}
+      windows_msvc: ${{ steps.classify.outputs.windows_msvc }}
+      linux_cmake: ${{ steps.classify.outputs.linux_cmake }}
+      linux_vulkan_host: ${{ steps.classify.outputs.linux_vulkan_host }}
       linux_sanitizers: ${{ steps.classify.outputs.linux_sanitizers }}
       linux_coverage: ${{ steps.classify.outputs.linux_coverage }}
-      static_analysis: ${{ steps.classify.outputs.static_analysis }}
-      macos: ${{ steps.classify.outputs.macos }}
-      windows_cpp23: ${{ steps.classify.outputs.windows_cpp23 }}
+      full_static_analysis: ${{ steps.classify.outputs.full_static_analysis }}
+      macos_metal_cmake: ${{ steps.classify.outputs.macos_metal_cmake }}
+      metal_host_evidence: ${{ steps.classify.outputs.metal_host_evidence }}
+      ios_metal_evidence: ${{ steps.classify.outputs.ios_metal_evidence }}
+      windows_cpp23_release: ${{ steps.classify.outputs.windows_cpp23_release }}
     steps:
       - name: Checkout
         id: checkout
@@ -96,7 +99,7 @@ jobs:
   windows:
     name: Windows MSVC
     needs: changes
-    if: needs.changes.outputs.windows == 'true'
+    if: needs.changes.outputs.windows_msvc == 'true'
     runs-on: windows-2025-vs2026
     timeout-minutes: 120
     steps:
@@ -287,7 +290,7 @@ jobs:
   windows-cpp23:
     name: Windows C++23 Release Evaluation
     needs: changes
-    if: needs.changes.outputs.windows_cpp23 == 'true'
+    if: needs.changes.outputs.windows_cpp23_release == 'true'
     runs-on: windows-2025-vs2026
     timeout-minutes: 150
     steps:
@@ -480,7 +483,7 @@ jobs:
   linux:
     name: Linux CMake
     needs: changes
-    if: needs.changes.outputs.linux == 'true'
+    if: needs.changes.outputs.linux_cmake == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -569,7 +572,7 @@ jobs:
   linux-vulkan:
     name: Linux Vulkan Host Evidence
     needs: changes
-    if: needs.changes.outputs.linux == 'true'
+    if: needs.changes.outputs.linux_vulkan_host == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -911,7 +914,7 @@ jobs:
   static-analysis:
     name: Full Repository Static Analysis
     needs: changes
-    if: needs.changes.outputs.static_analysis == 'true'
+    if: needs.changes.outputs.full_static_analysis == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -1004,7 +1007,7 @@ jobs:
   macos:
     name: macOS Metal CMake
     needs: changes
-    if: needs.changes.outputs.macos == 'true'
+    if: needs.changes.outputs.macos_metal_cmake == 'true'
     runs-on: macos-latest
     timeout-minutes: 90
     env:
@@ -1062,6 +1065,7 @@ jobs:
           ccache --zero-stats
 
       - name: Environment Metal aggregate host evidence recipe and optimization artifacts
+        if: needs.changes.outputs.metal_host_evidence == 'true'
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
@@ -1113,7 +1117,7 @@ jobs:
   ios-metal:
     name: iOS Metal Evidence
     needs: changes
-    if: needs.changes.outputs.macos == 'true'
+    if: needs.changes.outputs.ios_metal_evidence == 'true'
     runs-on: macos-26
     timeout-minutes: 60
     steps:

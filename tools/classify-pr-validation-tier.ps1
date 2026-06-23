@@ -50,6 +50,40 @@ function Test-WindowsOnlyValidationPath {
     )
 }
 
+function Test-PlatformEvidenceFoundationPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "CMakeLists.txt" -or
+        $Path -eq "CMakePresets.json" -or
+        $Path -eq "vcpkg.json" -or
+        $Path -match "^cmake/" -or
+        $Path -match "^engine/(environment|platform|renderer|rhi|runtime_rhi|runtime_scene_rhi|scene_renderer|ui_renderer)/" -or
+        $Path -match "^games/sample_(2d_desktop_runtime_package|3d_desktop_runtime_package|desktop_runtime_game)/" -or
+        $Path -match "^platform/" -or
+        $Path -match "^shaders/" -or
+        $Path -match "^tools/(bootstrap-deps|check-shader-toolchain|common|package-desktop-runtime|run-validation-recipe|validate|build)\.ps1$"
+    )
+}
+
+function Test-LinuxVulkanHostEvidencePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        (Test-PlatformEvidenceFoundationPath -Path $Path) -or
+        $Path -match "^tools/(validate-linux-vulkan-runtime-host|validate-environment-backend-parity-v2|validate-environment-highest-commercial-readiness)\.ps1$"
+    )
+}
+
+function Test-AppleHostEvidencePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        (Test-PlatformEvidenceFoundationPath -Path $Path) -or
+        $Path -match "^tools/(apple-host-helpers|build-mobile-apple|check-mobile-packaging|generate-environment-metal-optimization-artifacts|smoke-ios-package|validate-apple-metal-platform-host|validate-environment-metal-host-aggregate|validate-environment-weather-metal-solver-host-gate|validate-renderer-metal-apple)\.ps1$"
+    )
+}
+
 function Test-SourceCodePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -111,13 +145,16 @@ function New-ValidationTierSelection {
 
     if ($All) {
         return [pscustomobject][ordered]@{
-            windows = $true
-            linux = $true
+            windows_msvc = $true
+            linux_cmake = $true
+            linux_vulkan_host = $true
             linux_sanitizers = $true
             linux_coverage = $true
-            static_analysis = $true
-            macos = $true
-            windows_cpp23 = $true
+            full_static_analysis = $true
+            macos_metal_cmake = $true
+            metal_host_evidence = $true
+            ios_metal_evidence = $true
+            windows_cpp23_release = $true
         }
     }
 
@@ -129,6 +166,8 @@ function New-ValidationTierSelection {
     $coverageRelevant = $false
     $cpp23Relevant = $false
     $windowsOnlyValidation = $false
+    $linuxVulkanHostEvidence = $false
+    $appleHostEvidence = $false
 
     $expandedInputPath = foreach ($rawPath in $InputPath) {
         if ($rawPath.Contains(",")) {
@@ -162,6 +201,12 @@ function New-ValidationTierSelection {
         if (Test-WindowsOnlyValidationPath -Path $path) {
             $windowsOnlyValidation = $true
         }
+        if (Test-LinuxVulkanHostEvidencePath -Path $path) {
+            $linuxVulkanHostEvidence = $true
+        }
+        if (Test-AppleHostEvidencePath -Path $path) {
+            $appleHostEvidence = $true
+        }
         if (Test-StaticPolicyPath -Path $path) {
             $staticPolicy = $true
         }
@@ -170,13 +215,16 @@ function New-ValidationTierSelection {
     $heavyBuildLane = $ciOrWorkflow -or $runtimeOrBuild
 
     return [pscustomobject][ordered]@{
-        windows = ($heavyBuildLane -or $windowsOnlyValidation)
-        linux = $heavyBuildLane
+        windows_msvc = ($heavyBuildLane -or $windowsOnlyValidation)
+        linux_cmake = $heavyBuildLane
+        linux_vulkan_host = ($ciOrWorkflow -or $linuxVulkanHostEvidence)
         linux_sanitizers = ($ciOrWorkflow -or $sanitizerRelevant)
         linux_coverage = $coverageRelevant
-        static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode)
-        macos = $heavyBuildLane
-        windows_cpp23 = ($ciOrWorkflow -or $cpp23Relevant)
+        full_static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode)
+        macos_metal_cmake = $heavyBuildLane
+        metal_host_evidence = ($ciOrWorkflow -or $appleHostEvidence)
+        ios_metal_evidence = ($ciOrWorkflow -or $appleHostEvidence)
+        windows_cpp23_release = ($ciOrWorkflow -or $cpp23Relevant)
     }
 }
 
@@ -187,13 +235,16 @@ function Write-GitHubActionsOutput {
     )
 
     $lines = @(
-        "windows=$($Selection.windows.ToString().ToLowerInvariant())",
-        "linux=$($Selection.linux.ToString().ToLowerInvariant())",
+        "windows_msvc=$($Selection.windows_msvc.ToString().ToLowerInvariant())",
+        "linux_cmake=$($Selection.linux_cmake.ToString().ToLowerInvariant())",
+        "linux_vulkan_host=$($Selection.linux_vulkan_host.ToString().ToLowerInvariant())",
         "linux_sanitizers=$($Selection.linux_sanitizers.ToString().ToLowerInvariant())",
         "linux_coverage=$($Selection.linux_coverage.ToString().ToLowerInvariant())",
-        "static_analysis=$($Selection.static_analysis.ToString().ToLowerInvariant())",
-        "macos=$($Selection.macos.ToString().ToLowerInvariant())",
-        "windows_cpp23=$($Selection.windows_cpp23.ToString().ToLowerInvariant())"
+        "full_static_analysis=$($Selection.full_static_analysis.ToString().ToLowerInvariant())",
+        "macos_metal_cmake=$($Selection.macos_metal_cmake.ToString().ToLowerInvariant())",
+        "metal_host_evidence=$($Selection.metal_host_evidence.ToString().ToLowerInvariant())",
+        "ios_metal_evidence=$($Selection.ios_metal_evidence.ToString().ToLowerInvariant())",
+        "windows_cpp23_release=$($Selection.windows_cpp23_release.ToString().ToLowerInvariant())"
     )
 
     Add-Content -LiteralPath $OutputPath -Value $lines -Encoding utf8

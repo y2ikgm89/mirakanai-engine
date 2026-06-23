@@ -201,7 +201,7 @@ Run `tools/build.ps1` separately only when the slice or release evidence explici
 
 Use an always-running required gate for branch protection. Path-filtered workflows must not be branch-protection-required directly because GitHub can leave skipped checks pending; if hosted cost needs reduction, keep heavy jobs conditional behind a required aggregate gate or use non-required supplemental workflows.
 
-The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and delegates PR file-diff classification to `tools/classify-pr-validation-tier.ps1`; `tools/check-ci-matrix.ps1` verifies docs-only, static-policy, runtime, workflow, and non-PR classifications. `pr-gate` always runs after the matrix and is the stable aggregate check intended for branch protection.
+The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and delegates PR file-diff classification to `tools/classify-pr-validation-tier.ps1`; `tools/check-ci-matrix.ps1` verifies docs-only, static-policy, runtime, workflow, Linux Vulkan host evidence, Apple Metal host evidence, and non-PR classifications. `pr-gate` always runs after the matrix and is the stable aggregate check intended for branch protection. Platform evidence lanes are selected by explicit outputs such as `linux_vulkan_host`, `metal_host_evidence`, and `ios_metal_evidence` rather than being inferred from every general runtime/build change.
 
 Run the full hosted matrix for `main` push, release, scheduled/nightly, and `workflow_dispatch` runs. For PRs, choose the cheapest tier that proves the touched surface:
 
@@ -392,8 +392,8 @@ GitHub Actions runs:
 - Linux: `cmake --preset ci-linux-clang`, build/CTest
 - Linux coverage: `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
-- macOS: `tools/validate-renderer-metal-apple.ps1 -Jobs <logical-cpu-count>` for the reviewed Metal host-evidence recipe, then `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
-- iOS Validate: pinned `macos-26` hosted runners first run `tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator`, then `tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -SkipIosBuild`. The validator delegates only the simulator smoke to `tools/smoke-ios-package.ps1`, which logs selected simulator/device state and runs bounded `xcrun simctl install`, `get_app_container`, `launch`, app-written Metal evidence-file checks, and cleanup for `sample_headless`.
+- macOS: conditionally runs the reviewed Metal host-evidence recipe when `metal_host_evidence` is selected, then runs `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
+- iOS Validate / iOS Metal Evidence: pinned `macos-26` hosted runners first run `tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator`, then `tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -SkipIosBuild` when `ios_metal_evidence` or the separate iOS workflow path filters select that lane. The validator delegates only the simulator smoke to `tools/smoke-ios-package.ps1`, which logs selected simulator/device state and runs bounded `xcrun simctl install`, `get_app_container`, `launch`, app-written Metal evidence-file checks, and cleanup for `sample_headless`.
 
 Local Linux validation should use the CI preset with Ninja and Clang:
 
