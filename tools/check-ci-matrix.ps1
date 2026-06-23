@@ -193,24 +193,38 @@ function Assert-ValidationTierSelection {
         [Parameter(Mandatory = $true)][string]$Label,
         [string[]]$ChangedPath = @(),
         [switch]$RunAll,
-        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
-        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindowsMsvc,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindowsCpuProfilingHost,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindowsAssetImporters,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindowsDesktopEditor,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindowsNetworkEnet,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxCmake,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxVulkanHost,
         [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
         [bool]$ExpectedLinuxCoverage = $false,
-        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
-        [bool]$ExpectedWindowsCpp23 = $false,
-        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+        [Parameter(Mandatory = $true)][bool]$ExpectedFullStaticAnalysis,
+        [bool]$ExpectedWindowsCpp23Release = $false,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMacosMetalCmake,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMetalHostEvidence,
+        [Parameter(Mandatory = $true)][bool]$ExpectedIosMetalEvidence
     )
 
     $selection = Get-ValidationTierSelection -Label $Label -ChangedPath $ChangedPath -RunAll:$RunAll.IsPresent
     $expectations = @{
-        windows = $ExpectedWindows
-        linux = $ExpectedLinux
+        windows_msvc = $ExpectedWindowsMsvc
+        windows_cpu_profiling_host = $ExpectedWindowsCpuProfilingHost
+        windows_asset_importers = $ExpectedWindowsAssetImporters
+        windows_desktop_editor = $ExpectedWindowsDesktopEditor
+        windows_network_enet = $ExpectedWindowsNetworkEnet
+        linux_cmake = $ExpectedLinuxCmake
+        linux_vulkan_host = $ExpectedLinuxVulkanHost
         linux_sanitizers = $ExpectedLinuxSanitizers
         linux_coverage = $ExpectedLinuxCoverage
-        static_analysis = $ExpectedStaticAnalysis
-        macos = $ExpectedMacos
-        windows_cpp23 = $ExpectedWindowsCpp23
+        full_static_analysis = $ExpectedFullStaticAnalysis
+        windows_cpp23_release = $ExpectedWindowsCpp23Release
+        macos_metal_cmake = $ExpectedMacosMetalCmake
+        metal_host_evidence = $ExpectedMetalHostEvidence
+        ios_metal_evidence = $ExpectedIosMetalEvidence
     }
 
     foreach ($expectation in $expectations.GetEnumerator()) {
@@ -268,123 +282,290 @@ Assert-ContainsAll $releasePackageArtifactsScript @(
 Assert-ValidationTierSelection `
     -Label "docs-only PR" `
     -ChangedPath @("docs/testing.md", "AGENTS.md", ".agents/skills/gameengine-agent-integration/SKILL.md") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "static policy PR" `
     -ChangedPath @(".clang-tidy") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "runtime PR" `
     -ChangedPath @("engine/core/src/example.cpp") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $true `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $true
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "workflow PR" `
     -ChangedPath @(".github/workflows/validate.yml") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedWindowsCpuProfilingHost $true `
+    -ExpectedWindowsAssetImporters $true `
+    -ExpectedWindowsDesktopEditor $true `
+    -ExpectedWindowsNetworkEnet $true `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $true `
     -ExpectedLinuxSanitizers $true `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $true
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
     -ChangedPath @("tools/classify-pr-validation-tier.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "ci matrix policy PR" `
     -ChangedPath @("tools/check-ci-matrix.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "cpp23 policy infra PR" `
     -ChangedPath @("tools/check-cpp-standard-policy.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "coverage infra PR" `
     -ChangedPath @("tools/check-coverage.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $true `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "cpp23 evaluate infra PR" `
     -ChangedPath @("tools/evaluate-cpp23.ps1") `
-    -ExpectedWindows $false `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
 
 Assert-ValidationTierSelection `
     -Label "optional ENet validation wrapper PR" `
     -ChangedPath @("tools/validate-network-enet.ps1") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $false `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $true `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
-    -ExpectedStaticAnalysis $false `
-    -ExpectedWindowsCpp23 $false `
-    -ExpectedMacos $false
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "optional asset importers validation wrapper PR" `
+    -ChangedPath @("tools/build-asset-importers.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $true `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "native desktop editor validation wrapper PR" `
+    -ChangedPath @("tools/build-editor.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $true `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "CPU profiling host validation wrapper PR" `
+    -ChangedPath @("tools/validate-cpu-profiling-matrix-host-gate.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $true `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "Linux Vulkan host evidence PR" `
+    -ChangedPath @("tools/validate-linux-vulkan-runtime-host.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $true `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false
+
+Assert-ValidationTierSelection `
+    -Label "Apple Metal host evidence PR" `
+    -ChangedPath @("tools/validate-apple-metal-platform-host.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedWindowsCpuProfilingHost $true `
+    -ExpectedWindowsAssetImporters $true `
+    -ExpectedWindowsDesktopEditor $true `
+    -ExpectedWindowsNetworkEnet $true `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $true `
     -ExpectedLinuxSanitizers $true `
     -ExpectedLinuxCoverage $true `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedWindowsCpp23 $true `
-    -ExpectedMacos $true
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $true `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 $checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
@@ -441,12 +622,20 @@ Assert-ContainsAll $changesJob @(
     "name: Select PR validation tier",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 10",
-    "windows: `${{ steps.classify.outputs.windows }}",
-    "linux: `${{ steps.classify.outputs.linux }}",
+    "windows_msvc: `${{ steps.classify.outputs.windows_msvc }}",
+    "windows_cpu_profiling_host: `${{ steps.classify.outputs.windows_cpu_profiling_host }}",
+    "windows_asset_importers: `${{ steps.classify.outputs.windows_asset_importers }}",
+    "windows_desktop_editor: `${{ steps.classify.outputs.windows_desktop_editor }}",
+    "windows_network_enet: `${{ steps.classify.outputs.windows_network_enet }}",
+    "linux_cmake: `${{ steps.classify.outputs.linux_cmake }}",
+    "linux_vulkan_host: `${{ steps.classify.outputs.linux_vulkan_host }}",
     "linux_sanitizers: `${{ steps.classify.outputs.linux_sanitizers }}",
     "linux_coverage: `${{ steps.classify.outputs.linux_coverage }}",
-    "static_analysis: `${{ steps.classify.outputs.static_analysis }}",
-    "windows_cpp23: `${{ steps.classify.outputs.windows_cpp23 }}",
+    "full_static_analysis: `${{ steps.classify.outputs.full_static_analysis }}",
+    "macos_metal_cmake: `${{ steps.classify.outputs.macos_metal_cmake }}",
+    "metal_host_evidence: `${{ steps.classify.outputs.metal_host_evidence }}",
+    "ios_metal_evidence: `${{ steps.classify.outputs.ios_metal_evidence }}",
+    "windows_cpp23_release: `${{ steps.classify.outputs.windows_cpp23_release }}",
     "fetch-depth: 0",
     "persist-credentials: false",
     "name: Classify touched surfaces",
@@ -460,7 +649,7 @@ $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "wind
 Assert-ContainsAll $windowsJob @(
     "name: Windows MSVC",
     "needs: changes",
-    "if: needs.changes.outputs.windows == 'true'",
+    "if: needs.changes.outputs.windows_msvc == 'true'",
     "runs-on: windows-2025-vs2026",
     "timeout-minutes: 120",
     $checkoutActionRef,
@@ -494,13 +683,8 @@ Assert-ContainsAll $windowsJob @(
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-',
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-dev-build",
-    "run: ./tools/bootstrap-deps.ps1",
+    "run: ./tools/bootstrap-deps.ps1 -Feature desktop-runtime",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
-    "Validate CPU profiling matrix host gate",
-    "run: ./tools/validate-cpu-profiling-matrix-host-gate.ps1",
-    "run: ./tools/build-asset-importers.ps1",
-    "run: ./tools/build-editor.ps1",
-    "run: ./tools/validate-network-enet.ps1",
     "Save vcpkg package cache",
     "Save vcpkg installed cache",
     "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
@@ -521,9 +705,16 @@ Assert-ContainsAll $windowsJob @(
     "retention-days: 14",
     "include-hidden-files: false",
     "out/build/dev/Testing/**/*.log",
-    "out/build/asset-importers/Testing/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml windows job"
+Assert-DoesNotContainAny $windowsJob @(
+    "Validate CPU profiling matrix host gate",
+    "run: ./tools/validate-cpu-profiling-matrix-host-gate.ps1",
+    "run: ./tools/build-asset-importers.ps1",
+    "run: ./tools/build-editor.ps1",
+    "run: ./tools/validate-network-enet.ps1",
+    "out/build/asset-importers/Testing/**/*.log"
+) ".github/workflows/validate.yml windows job optional validation split"
 
 $windowsCacheRestoreSteps = @(
     "Restore vcpkg tool checkout cache",
@@ -547,11 +738,132 @@ Assert-ContainsAll $windowsVcpkgToolSaveStep @(
     "key: `${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}"
 ) ".github/workflows/validate.yml windows job Save vcpkg tool checkout cache"
 
+$windowsCpuProfilingJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-cpu-profiling-host" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $windowsCpuProfilingJob @(
+    "name: Windows CPU Profiling Host Evidence",
+    "needs: changes",
+    "if: needs.changes.outputs.windows_cpu_profiling_host == 'true'",
+    "runs-on: windows-2025-vs2026",
+    "timeout-minutes: 60",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Validate CPU profiling matrix host gate",
+    "run: ./tools/validate-cpu-profiling-matrix-host-gate.ps1",
+    'if: ${{ failure() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: windows-cpu-profiling-host-evidence",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/cpu-profiling-matrix-host-gate/**",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml windows-cpu-profiling-host job"
+
+$windowsAssetImportersJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-asset-importers" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $windowsAssetImportersJob @(
+    "name: Windows Optional Asset Importers",
+    "needs: changes",
+    "if: needs.changes.outputs.windows_asset_importers == 'true'",
+    "runs-on: windows-2025-vs2026",
+    "timeout-minutes: 90",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Restore asset importers vcpkg tool checkout cache",
+    "id: restore-asset-importers-vcpkg-tool",
+    "Restore asset importers vcpkg package cache",
+    "id: restore-asset-importers-vcpkg-package",
+    "Restore asset importers vcpkg installed cache",
+    "id: restore-asset-importers-vcpkg-installed",
+    "Restore asset importers build cache",
+    "id: restore-asset-importers-build",
+    "run: ./tools/bootstrap-deps.ps1 -Feature asset-importers",
+    "Validate optional asset importers",
+    "run: ./tools/build-asset-importers.ps1",
+    "Save asset importers vcpkg tool checkout cache",
+    "Save asset importers vcpkg package cache",
+    "Save asset importers vcpkg installed cache",
+    "Save asset importers build cache",
+    "key: `${{ steps.restore-asset-importers-vcpkg-tool.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-asset-importers-vcpkg-package.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-asset-importers-vcpkg-installed.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-asset-importers-build.outputs.cache-primary-key }}",
+    'if: ${{ failure() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: windows-asset-importers-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/build/asset-importers/Testing/**/*.log",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml windows-asset-importers job"
+
+$windowsDesktopEditorJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-desktop-editor" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $windowsDesktopEditorJob @(
+    "name: Windows Native Desktop Editor",
+    "needs: changes",
+    "if: needs.changes.outputs.windows_desktop_editor == 'true'",
+    "runs-on: windows-2025-vs2026",
+    "timeout-minutes: 90",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Capture Windows toolchain cache identity",
+    "id: windows-toolchain-cache",
+    "windows-toolchain-cache-identity",
+    "Restore desktop editor build cache",
+    "id: restore-desktop-editor-build",
+    "Validate native desktop editor",
+    "run: ./tools/build-editor.ps1",
+    "Save desktop editor build cache",
+    "key: `${{ steps.restore-desktop-editor-build.outputs.cache-primary-key }}",
+    'if: ${{ failure() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: windows-desktop-editor-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/build/desktop-editor/Testing/**/*.log",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml windows-desktop-editor job"
+
+$windowsNetworkEnetJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-network-enet" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $windowsNetworkEnetJob @(
+    "name: Windows Optional ENet Network Adapter",
+    "needs: changes",
+    "if: needs.changes.outputs.windows_network_enet == 'true'",
+    "runs-on: windows-2025-vs2026",
+    "timeout-minutes: 90",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Restore ENet vcpkg tool checkout cache",
+    "id: restore-network-enet-vcpkg-tool",
+    "Restore ENet vcpkg package cache",
+    "id: restore-network-enet-vcpkg-package",
+    "Restore ENet vcpkg installed cache",
+    "id: restore-network-enet-vcpkg-installed",
+    "Restore ENet build cache",
+    "id: restore-network-enet-build",
+    "run: ./tools/bootstrap-deps.ps1 -Feature network-enet",
+    "Validate optional ENet network adapter",
+    "run: ./tools/validate-network-enet.ps1",
+    "Save ENet vcpkg tool checkout cache",
+    "Save ENet vcpkg package cache",
+    "Save ENet vcpkg installed cache",
+    "Save ENet build cache",
+    "key: `${{ steps.restore-network-enet-vcpkg-tool.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-network-enet-vcpkg-package.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-network-enet-vcpkg-installed.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-network-enet-build.outputs.cache-primary-key }}",
+    'if: ${{ failure() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: windows-network-enet-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/build/network-enet/Testing/**/*.log",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml windows-network-enet job"
+
 $windowsCpp23Job = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-cpp23" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $windowsCpp23Job @(
     "name: Windows C++23 Release Evaluation",
     "needs: changes",
-    "if: needs.changes.outputs.windows_cpp23 == 'true'",
+    "if: needs.changes.outputs.windows_cpp23_release == 'true'",
     "runs-on: windows-2025-vs2026",
     "timeout-minutes: 150",
     $checkoutActionRef,
@@ -587,7 +899,7 @@ Assert-ContainsAll $windowsCpp23Job @(
     '${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-',
     '${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-cpp23-build",
-    "run: ./tools/bootstrap-deps.ps1",
+    "run: ./tools/bootstrap-deps.ps1 -Feature desktop-runtime",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
     "Save vcpkg package cache",
     "Save vcpkg installed cache",
@@ -661,7 +973,7 @@ $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux"
 Assert-ContainsAll $linuxJob @(
     "name: Linux CMake",
     "needs: changes",
-    "if: needs.changes.outputs.linux == 'true'",
+    "if: needs.changes.outputs.linux_cmake == 'true'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 60",
     $checkoutActionRef,
@@ -706,7 +1018,7 @@ $linuxVulkanJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "
 Assert-ContainsAll $linuxVulkanJob @(
     "name: Linux Vulkan Host Evidence",
     "needs: changes",
-    "if: needs.changes.outputs.linux == 'true'",
+    "if: needs.changes.outputs.linux_vulkan_host == 'true'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 60",
     $checkoutActionRef,
@@ -856,7 +1168,7 @@ $macosJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "macos"
 Assert-ContainsAll $macosJob @(
     "name: macOS Metal CMake",
     "needs: changes",
-    "if: needs.changes.outputs.macos == 'true'",
+    "if: needs.changes.outputs.macos_metal_cmake == 'true'",
     "runs-on: macos-latest",
     "timeout-minutes: 90",
     $checkoutActionRef,
@@ -882,6 +1194,7 @@ Assert-ContainsAll $macosJob @(
     "Prepare ccache",
     "ccache --zero-stats",
     "Environment Metal aggregate host evidence recipe and optimization artifacts",
+    "if: needs.changes.outputs.metal_host_evidence == 'true'",
     '$jobs = [int](& sysctl -n hw.logicalcpu)',
     "./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs `$jobs -RequireReady",
     "Upload Metal optimization artifacts",
@@ -909,7 +1222,7 @@ $iosMetalJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "ios
 Assert-ContainsAll $iosMetalJob @(
     "name: iOS Metal Evidence",
     "needs: changes",
-    "if: needs.changes.outputs.macos == 'true'",
+    "if: needs.changes.outputs.ios_metal_evidence == 'true'",
     "runs-on: macos-26",
     "timeout-minutes: 60",
     $checkoutActionRef,
@@ -951,7 +1264,7 @@ $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobNam
 Assert-ContainsAll $staticAnalysisJob @(
     "name: Full Repository Static Analysis",
     "needs: changes",
-    "if: needs.changes.outputs.static_analysis == 'true'",
+    "if: needs.changes.outputs.full_static_analysis == 'true'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 90",
     "strategy:",
@@ -1006,6 +1319,10 @@ Assert-ContainsAll $prGateJob @(
     "- changes",
     "- agent-static",
     "- windows",
+    "- windows-cpu-profiling-host",
+    "- windows-asset-importers",
+    "- windows-desktop-editor",
+    "- windows-network-enet",
     "- linux",
     "- linux-vulkan",
     "- windows-cpp23",
@@ -1097,6 +1414,10 @@ Assert-ContainsAll $iosJob @(
 Assert-CheckoutRetryContract -Text $changesJob -Label ".github/workflows/validate.yml changes checkout retry" -RequiresFetchDepthZero
 Assert-CheckoutRetryContract -Text $agentStaticJob -Label ".github/workflows/validate.yml agent-static checkout retry" -RequiresFetchDepthZero
 Assert-CheckoutRetryContract -Text $windowsJob -Label ".github/workflows/validate.yml windows checkout retry"
+Assert-CheckoutRetryContract -Text $windowsCpuProfilingJob -Label ".github/workflows/validate.yml windows-cpu-profiling-host checkout retry"
+Assert-CheckoutRetryContract -Text $windowsAssetImportersJob -Label ".github/workflows/validate.yml windows-asset-importers checkout retry"
+Assert-CheckoutRetryContract -Text $windowsDesktopEditorJob -Label ".github/workflows/validate.yml windows-desktop-editor checkout retry"
+Assert-CheckoutRetryContract -Text $windowsNetworkEnetJob -Label ".github/workflows/validate.yml windows-network-enet checkout retry"
 Assert-CheckoutRetryContract -Text $windowsCpp23Job -Label ".github/workflows/validate.yml windows-cpp23 checkout retry"
 Assert-CheckoutRetryContract -Text $linuxJob -Label ".github/workflows/validate.yml linux checkout retry"
 Assert-CheckoutRetryContract -Text $linuxVulkanJob -Label ".github/workflows/validate.yml linux-vulkan checkout retry"
@@ -1114,6 +1435,10 @@ Assert-CcacheStatsGuard -Text $staticAnalysisJob -Label ".github/workflows/valid
 Assert-CcacheStatsGuard -Text $macosJob -Label ".github/workflows/validate.yml macos ccache stats guard"
 
 Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/validate.yml windows job id"
+Assert-MatchesText $validateWorkflow "^  windows-cpu-profiling-host:\s*$" ".github/workflows/validate.yml windows-cpu-profiling-host job id"
+Assert-MatchesText $validateWorkflow "^  windows-asset-importers:\s*$" ".github/workflows/validate.yml windows-asset-importers job id"
+Assert-MatchesText $validateWorkflow "^  windows-desktop-editor:\s*$" ".github/workflows/validate.yml windows-desktop-editor job id"
+Assert-MatchesText $validateWorkflow "^  windows-network-enet:\s*$" ".github/workflows/validate.yml windows-network-enet job id"
 Assert-MatchesText $validateWorkflow "^  windows-cpp23:\s*$" ".github/workflows/validate.yml windows-cpp23 job id"
 Assert-MatchesText $validateWorkflow "^  agent-static:\s*$" ".github/workflows/validate.yml agent-static job id"
 Assert-MatchesText $validateWorkflow "^  linux:\s*$" ".github/workflows/validate.yml linux job id"

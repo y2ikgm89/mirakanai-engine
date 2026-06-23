@@ -21,13 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      windows: ${{ steps.classify.outputs.windows }}
-      linux: ${{ steps.classify.outputs.linux }}
+      windows_msvc: ${{ steps.classify.outputs.windows_msvc }}
+      windows_cpu_profiling_host: ${{ steps.classify.outputs.windows_cpu_profiling_host }}
+      windows_asset_importers: ${{ steps.classify.outputs.windows_asset_importers }}
+      windows_desktop_editor: ${{ steps.classify.outputs.windows_desktop_editor }}
+      windows_network_enet: ${{ steps.classify.outputs.windows_network_enet }}
+      linux_cmake: ${{ steps.classify.outputs.linux_cmake }}
+      linux_vulkan_host: ${{ steps.classify.outputs.linux_vulkan_host }}
       linux_sanitizers: ${{ steps.classify.outputs.linux_sanitizers }}
       linux_coverage: ${{ steps.classify.outputs.linux_coverage }}
-      static_analysis: ${{ steps.classify.outputs.static_analysis }}
-      macos: ${{ steps.classify.outputs.macos }}
-      windows_cpp23: ${{ steps.classify.outputs.windows_cpp23 }}
+      full_static_analysis: ${{ steps.classify.outputs.full_static_analysis }}
+      macos_metal_cmake: ${{ steps.classify.outputs.macos_metal_cmake }}
+      metal_host_evidence: ${{ steps.classify.outputs.metal_host_evidence }}
+      ios_metal_evidence: ${{ steps.classify.outputs.ios_metal_evidence }}
+      windows_cpp23_release: ${{ steps.classify.outputs.windows_cpp23_release }}
     steps:
       - name: Checkout
         id: checkout
@@ -96,7 +103,7 @@ jobs:
   windows:
     name: Windows MSVC
     needs: changes
-    if: needs.changes.outputs.windows == 'true'
+    if: needs.changes.outputs.windows_msvc == 'true'
     runs-on: windows-2025-vs2026
     timeout-minutes: 120
     steps:
@@ -218,27 +225,11 @@ jobs:
 
       - name: Bootstrap vcpkg dependencies
         shell: pwsh
-        run: ./tools/bootstrap-deps.ps1
+        run: ./tools/bootstrap-deps.ps1 -Feature desktop-runtime
 
       - name: Validate
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
-
-      - name: Validate CPU profiling matrix host gate
-        shell: pwsh
-        run: ./tools/validate-cpu-profiling-matrix-host-gate.ps1
-
-      - name: Validate optional asset importers
-        shell: pwsh
-        run: ./tools/build-asset-importers.ps1
-
-      - name: Validate native desktop editor
-        shell: pwsh
-        run: ./tools/build-editor.ps1
-
-      - name: Validate optional ENet network adapter
-        shell: pwsh
-        run: ./tools/validate-network-enet.ps1
 
       - name: Save vcpkg tool checkout cache
         if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
@@ -281,13 +272,484 @@ jobs:
           include-hidden-files: false
           path: |
             out/build/dev/Testing/**/*.log
-            out/build/asset-importers/Testing/**/*.log
+          if-no-files-found: warn
+
+  windows-cpu-profiling-host:
+    name: Windows CPU Profiling Host Evidence
+    needs: changes
+    if: needs.changes.outputs.windows_cpu_profiling_host == 'true'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate CPU profiling matrix host gate
+        shell: pwsh
+        run: ./tools/validate-cpu-profiling-matrix-host-gate.ps1
+
+      - name: Upload CPU profiling host evidence
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-cpu-profiling-host-evidence
+          retention-days: 14
+          include-hidden-files: false
+          path: out/cpu-profiling-matrix-host-gate/**
+          if-no-files-found: warn
+
+  windows-asset-importers:
+    name: Windows Optional Asset Importers
+    needs: changes
+    if: needs.changes.outputs.windows_asset_importers == 'true'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Restore asset importers vcpkg tool checkout cache
+        id: restore-asset-importers-vcpkg-tool
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ runner.os }}-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-tool-
+
+      - name: Clone asset importers vcpkg tool checkout
+        shell: pwsh
+        run: |
+          if (Test-Path external/vcpkg/.git) {
+            Write-Information "external/vcpkg restored from cache" -InformationAction Continue
+          } else {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+
+      - name: Update asset importers vcpkg tool baseline
+        shell: pwsh
+        run: |
+          $manifest = Get-Content vcpkg.json -Raw | ConvertFrom-Json
+          $targetBaseline = $manifest.'builtin-baseline'
+          if (!(Test-Path external/vcpkg/.git)) {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+          try {
+            $currentBaseline = git -C external/vcpkg rev-parse HEAD
+            $resolvedTarget = git -C external/vcpkg rev-parse $targetBaseline
+          } catch {
+            $currentBaseline = [string]::Empty
+            $resolvedTarget = [string]::Empty
+          }
+          if ([string]::IsNullOrWhiteSpace($resolvedTarget) -or $currentBaseline -ne $resolvedTarget) {
+            git -C external/vcpkg fetch --depth 1 origin $targetBaseline
+            git -C external/vcpkg checkout --force $targetBaseline
+          }
+
+      - name: Capture Windows toolchain cache identity
+        id: windows-toolchain-cache
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+            throw "vswhere.exe was not found at '$vswhere'"
+          }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if ([string]::IsNullOrWhiteSpace($vsPath)) {
+            throw "Visual Studio with MSBuild was not found"
+          }
+          $toolRoot = Join-Path $vsPath "VC\Tools\MSVC"
+          $clPath = Get-ChildItem -LiteralPath $toolRoot -Directory |
+            Sort-Object -Property Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "bin\Hostx64\x64\cl.exe" } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($clPath)) {
+            throw "MSVC cl.exe was not found below '$toolRoot'"
+          }
+          $identityText = @($env:ImageOS, $env:ImageVersion, $vsPath, $clPath) -join "|"
+          $identityBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($identityText))
+          $identity = -join ($identityBytes | ForEach-Object { $_.ToString("x2") })
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "identity=$identity"
+          Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
+
+      - name: Restore asset importers vcpkg package cache
+        id: restore-asset-importers-vcpkg-package
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      - name: Restore asset importers vcpkg installed cache
+        id: restore-asset-importers-vcpkg-installed
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-installed-
+
+      - name: Restore asset importers build cache
+        id: restore-asset-importers-build
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            out/build/asset-importers
+            out/build/installed-asset-importers-consumer
+            out/install/asset-importers
+          key: ${{ runner.os }}-asset-importers-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-asset-importers-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-
+            ${{ runner.os }}-asset-importers-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
+
+      - name: Bootstrap asset importer dependencies
+        shell: pwsh
+        run: ./tools/bootstrap-deps.ps1 -Feature asset-importers
+
+      - name: Validate optional asset importers
+        shell: pwsh
+        run: ./tools/build-asset-importers.ps1
+
+      - name: Save asset importers vcpkg tool checkout cache
+        if: ${{ success() && !cancelled() && steps.restore-asset-importers-vcpkg-tool.outcome == 'success' && steps.restore-asset-importers-vcpkg-tool.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ steps.restore-asset-importers-vcpkg-tool.outputs.cache-primary-key }}
+
+      - name: Save asset importers vcpkg package cache
+        if: ${{ success() && !cancelled() && steps.restore-asset-importers-vcpkg-package.outcome == 'success' && steps.restore-asset-importers-vcpkg-package.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ steps.restore-asset-importers-vcpkg-package.outputs.cache-primary-key }}
+
+      - name: Save asset importers vcpkg installed cache
+        if: ${{ success() && !cancelled() && steps.restore-asset-importers-vcpkg-installed.outcome == 'success' && steps.restore-asset-importers-vcpkg-installed.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ steps.restore-asset-importers-vcpkg-installed.outputs.cache-primary-key }}
+
+      - name: Save asset importers build cache
+        if: ${{ success() && !cancelled() && steps.restore-asset-importers-build.outcome == 'success' && steps.restore-asset-importers-build.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            out/build/asset-importers
+            out/build/installed-asset-importers-consumer
+            out/install/asset-importers
+          key: ${{ steps.restore-asset-importers-build.outputs.cache-primary-key }}
+
+      - name: Upload asset importer test logs
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-asset-importers-test-logs
+          retention-days: 14
+          include-hidden-files: false
+          path: out/build/asset-importers/Testing/**/*.log
+          if-no-files-found: warn
+
+  windows-desktop-editor:
+    name: Windows Native Desktop Editor
+    needs: changes
+    if: needs.changes.outputs.windows_desktop_editor == 'true'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Capture Windows toolchain cache identity
+        id: windows-toolchain-cache
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+            throw "vswhere.exe was not found at '$vswhere'"
+          }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if ([string]::IsNullOrWhiteSpace($vsPath)) {
+            throw "Visual Studio with MSBuild was not found"
+          }
+          $toolRoot = Join-Path $vsPath "VC\Tools\MSVC"
+          $clPath = Get-ChildItem -LiteralPath $toolRoot -Directory |
+            Sort-Object -Property Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "bin\Hostx64\x64\cl.exe" } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($clPath)) {
+            throw "MSVC cl.exe was not found below '$toolRoot'"
+          }
+          $identityText = @($env:ImageOS, $env:ImageVersion, $vsPath, $clPath) -join "|"
+          $identityBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($identityText))
+          $identity = -join ($identityBytes | ForEach-Object { $_.ToString("x2") })
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "identity=$identity"
+          Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
+
+      - name: Restore desktop editor build cache
+        id: restore-desktop-editor-build
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/desktop-editor
+          key: ${{ runner.os }}-desktop-editor-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', '**/CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-desktop-editor-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', '**/CMakeLists.txt') }}-
+            ${{ runner.os }}-desktop-editor-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
+
+      - name: Validate native desktop editor
+        shell: pwsh
+        run: ./tools/build-editor.ps1
+
+      - name: Save desktop editor build cache
+        if: ${{ success() && !cancelled() && steps.restore-desktop-editor-build.outcome == 'success' && steps.restore-desktop-editor-build.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/desktop-editor
+          key: ${{ steps.restore-desktop-editor-build.outputs.cache-primary-key }}
+
+      - name: Upload desktop editor test logs
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-desktop-editor-test-logs
+          retention-days: 14
+          include-hidden-files: false
+          path: out/build/desktop-editor/Testing/**/*.log
+          if-no-files-found: warn
+
+  windows-network-enet:
+    name: Windows Optional ENet Network Adapter
+    needs: changes
+    if: needs.changes.outputs.windows_network_enet == 'true'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Restore ENet vcpkg tool checkout cache
+        id: restore-network-enet-vcpkg-tool
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ runner.os }}-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-tool-
+
+      - name: Clone ENet vcpkg tool checkout
+        shell: pwsh
+        run: |
+          if (Test-Path external/vcpkg/.git) {
+            Write-Information "external/vcpkg restored from cache" -InformationAction Continue
+          } else {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+
+      - name: Update ENet vcpkg tool baseline
+        shell: pwsh
+        run: |
+          $manifest = Get-Content vcpkg.json -Raw | ConvertFrom-Json
+          $targetBaseline = $manifest.'builtin-baseline'
+          if (!(Test-Path external/vcpkg/.git)) {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+          try {
+            $currentBaseline = git -C external/vcpkg rev-parse HEAD
+            $resolvedTarget = git -C external/vcpkg rev-parse $targetBaseline
+          } catch {
+            $currentBaseline = [string]::Empty
+            $resolvedTarget = [string]::Empty
+          }
+          if ([string]::IsNullOrWhiteSpace($resolvedTarget) -or $currentBaseline -ne $resolvedTarget) {
+            git -C external/vcpkg fetch --depth 1 origin $targetBaseline
+            git -C external/vcpkg checkout --force $targetBaseline
+          }
+
+      - name: Capture Windows toolchain cache identity
+        id: windows-toolchain-cache
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+            throw "vswhere.exe was not found at '$vswhere'"
+          }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if ([string]::IsNullOrWhiteSpace($vsPath)) {
+            throw "Visual Studio with MSBuild was not found"
+          }
+          $toolRoot = Join-Path $vsPath "VC\Tools\MSVC"
+          $clPath = Get-ChildItem -LiteralPath $toolRoot -Directory |
+            Sort-Object -Property Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "bin\Hostx64\x64\cl.exe" } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($clPath)) {
+            throw "MSVC cl.exe was not found below '$toolRoot'"
+          }
+          $identityText = @($env:ImageOS, $env:ImageVersion, $vsPath, $clPath) -join "|"
+          $identityBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($identityText))
+          $identity = -join ($identityBytes | ForEach-Object { $_.ToString("x2") })
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "identity=$identity"
+          Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
+
+      - name: Restore ENet vcpkg package cache
+        id: restore-network-enet-vcpkg-package
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      - name: Restore ENet vcpkg installed cache
+        id: restore-network-enet-vcpkg-installed
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-installed-
+
+      - name: Restore ENet build cache
+        id: restore-network-enet-build
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            out/build/network-enet
+            out/build/installed-network-enet-consumer
+            out/install/network-enet
+          key: ${{ runner.os }}-network-enet-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-network-enet-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-
+            ${{ runner.os }}-network-enet-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
+
+      - name: Bootstrap ENet dependencies
+        shell: pwsh
+        run: ./tools/bootstrap-deps.ps1 -Feature network-enet
+
+      - name: Validate optional ENet network adapter
+        shell: pwsh
+        run: ./tools/validate-network-enet.ps1
+
+      - name: Save ENet vcpkg tool checkout cache
+        if: ${{ success() && !cancelled() && steps.restore-network-enet-vcpkg-tool.outcome == 'success' && steps.restore-network-enet-vcpkg-tool.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ steps.restore-network-enet-vcpkg-tool.outputs.cache-primary-key }}
+
+      - name: Save ENet vcpkg package cache
+        if: ${{ success() && !cancelled() && steps.restore-network-enet-vcpkg-package.outcome == 'success' && steps.restore-network-enet-vcpkg-package.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ steps.restore-network-enet-vcpkg-package.outputs.cache-primary-key }}
+
+      - name: Save ENet vcpkg installed cache
+        if: ${{ success() && !cancelled() && steps.restore-network-enet-vcpkg-installed.outcome == 'success' && steps.restore-network-enet-vcpkg-installed.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ steps.restore-network-enet-vcpkg-installed.outputs.cache-primary-key }}
+
+      - name: Save ENet build cache
+        if: ${{ success() && !cancelled() && steps.restore-network-enet-build.outcome == 'success' && steps.restore-network-enet-build.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            out/build/network-enet
+            out/build/installed-network-enet-consumer
+            out/install/network-enet
+          key: ${{ steps.restore-network-enet-build.outputs.cache-primary-key }}
+
+      - name: Upload ENet test logs
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-network-enet-test-logs
+          retention-days: 14
+          include-hidden-files: false
+          path: out/build/network-enet/Testing/**/*.log
           if-no-files-found: warn
 
   windows-cpp23:
     name: Windows C++23 Release Evaluation
     needs: changes
-    if: needs.changes.outputs.windows_cpp23 == 'true'
+    if: needs.changes.outputs.windows_cpp23_release == 'true'
     runs-on: windows-2025-vs2026
     timeout-minutes: 150
     steps:
@@ -412,7 +874,7 @@ jobs:
 
       - name: Bootstrap vcpkg dependencies
         shell: pwsh
-        run: ./tools/bootstrap-deps.ps1
+        run: ./tools/bootstrap-deps.ps1 -Feature desktop-runtime
 
       - name: C++23 Release Evaluation
         shell: pwsh
@@ -480,7 +942,7 @@ jobs:
   linux:
     name: Linux CMake
     needs: changes
-    if: needs.changes.outputs.linux == 'true'
+    if: needs.changes.outputs.linux_cmake == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -569,7 +1031,7 @@ jobs:
   linux-vulkan:
     name: Linux Vulkan Host Evidence
     needs: changes
-    if: needs.changes.outputs.linux == 'true'
+    if: needs.changes.outputs.linux_vulkan_host == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -911,7 +1373,7 @@ jobs:
   static-analysis:
     name: Full Repository Static Analysis
     needs: changes
-    if: needs.changes.outputs.static_analysis == 'true'
+    if: needs.changes.outputs.full_static_analysis == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -1004,7 +1466,7 @@ jobs:
   macos:
     name: macOS Metal CMake
     needs: changes
-    if: needs.changes.outputs.macos == 'true'
+    if: needs.changes.outputs.macos_metal_cmake == 'true'
     runs-on: macos-latest
     timeout-minutes: 90
     env:
@@ -1062,6 +1524,7 @@ jobs:
           ccache --zero-stats
 
       - name: Environment Metal aggregate host evidence recipe and optimization artifacts
+        if: needs.changes.outputs.metal_host_evidence == 'true'
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
@@ -1113,7 +1576,7 @@ jobs:
   ios-metal:
     name: iOS Metal Evidence
     needs: changes
-    if: needs.changes.outputs.macos == 'true'
+    if: needs.changes.outputs.ios_metal_evidence == 'true'
     runs-on: macos-26
     timeout-minutes: 60
     steps:
@@ -1184,6 +1647,10 @@ jobs:
       - changes
       - agent-static
       - windows
+      - windows-cpu-profiling-host
+      - windows-asset-importers
+      - windows-desktop-editor
+      - windows-network-enet
       - linux
       - linux-vulkan
       - windows-cpp23

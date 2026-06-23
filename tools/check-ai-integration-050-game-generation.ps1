@@ -2190,7 +2190,14 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
             "PR validation tier selector",
             "tools/classify-pr-validation-tier.ps1",
             "PR aggregate gate",
-            "Windows/Linux/sanitizer/static-analysis/macOS/iOS",
+            "windows_msvc",
+            "windows_cpu_profiling_host",
+            "windows_asset_importers",
+            "windows_desktop_editor",
+            "windows_network_enet",
+            "linux_vulkan_host",
+            "metal_host_evidence",
+            "ios_metal_evidence",
             "static-analysis",
             "does not execute GitHub Actions locally"
         )
@@ -2218,7 +2225,14 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
             "tools/classify-pr-validation-tier.ps1",
             "tools/check-ci-matrix.ps1",
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
-            "Windows/Linux/sanitizer/macOS/iOS",
+            "windows_msvc",
+            "windows_cpu_profiling_host",
+            "windows_asset_importers",
+            "windows_desktop_editor",
+            "windows_network_enet",
+            "linux_vulkan_host",
+            "metal_host_evidence",
+            "ios_metal_evidence",
             "static-analysis",
             "broader build/package CI execution evidence"
         )

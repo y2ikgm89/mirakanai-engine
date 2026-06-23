@@ -12,6 +12,7 @@ alwaysApply: false
 - Edit `engine/agent/manifest.fragments/*.json`, then run `tools/compose-agent-manifest.ps1 -Write`; never hand-edit `engine/agent/manifest.json`.
 - Keep `.cursor/skills/gameengine-*` as thin pointers matching `.claude/skills/` except Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
 - Run `tools/check-agents.ps1` and the **Repository consistency checklist** in [`docs/workflows.md`](../../docs/workflows.md) when agent surfaces change.
+- PR CI selection keeps an always-running `PR Gate` plus job-level conditional lanes. When workflow policy changes, update `tools/classify-pr-validation-tier.ps1`, `tools/check-ci-matrix.ps1`, and docs/skills/subagents together; explicit Windows optional outputs are `windows_cpu_profiling_host`, `windows_asset_importers`, `windows_desktop_editor`, and `windows_network_enet`.
 - Static-contract chapter ownership: baseline needles in `check-ai-integration-010` / `check-json-contracts-040`; engine/RHI surfaces in `check-ai-integration-020`; runtime UI/tools surfaces in `check-json-contracts-050` (see `.claude/skills/gameengine-agent-integration/references/static-contract-chapters.md`).
 - Publication: `tools/check-publication-preflight.ps1` before staging/push/PR/merge; follow official GitHub Flow in `AGENTS.md`.
 
