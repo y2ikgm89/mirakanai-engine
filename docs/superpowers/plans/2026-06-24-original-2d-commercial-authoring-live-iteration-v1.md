@@ -73,11 +73,11 @@ Non-goals:
 
 Goal: create a first-party evidence model that proves this feature is implemented from approved source categories and rejects copied/external-engine implementation inputs.
 
-- [ ] Add `engine/tools/include/mirakana/tools/2d_originality_review.hpp`.
-- [ ] Add `engine/tools/asset/2d_originality_review.cpp`.
-- [ ] Register the source in `engine/tools/asset/CMakeLists.txt`.
-- [ ] Add `tests/unit/tools_2d_originality_review_tests.cpp`.
-- [ ] Register `MK_tools_2d_originality_review_tests` in root `CMakeLists.txt`.
+- [x] Add `engine/tools/include/mirakana/tools/2d_originality_review.hpp`.
+- [x] Add `engine/tools/asset/2d_originality_review.cpp`.
+- [x] Register the source in `engine/tools/asset/CMakeLists.txt`.
+- [x] Add `tests/unit/tools_2d_originality_review_tests.cpp`.
+- [x] Register `MK_tools_2d_originality_review_tests` in root `CMakeLists.txt`.
 
 Public API shape:
 
@@ -127,11 +127,11 @@ review_2d_originality_sources(std::span<const TwoDOriginalitySourceRow> rows);
 
 Tests:
 
-- [ ] `accepts_first_party_design_official_category_docs_and_platform_sdk_rows`.
-- [ ] `rejects_unity_unreal_godot_code_assets_schema_or_copied_docs`.
-- [ ] `rejects_external_engine_trademarks_in_public_surfaces`.
-- [ ] `requires_legal_counsel_review_even_when_engineering_gate_is_ready`.
-- [ ] `keeps_godot_mit_notice_as_future_notice_only_when_no_code_is_copied`.
+- [x] `accepts_first_party_design_official_category_docs_and_platform_sdk_rows`.
+- [x] `rejects_unity_unreal_godot_code_assets_schema_or_copied_docs`.
+- [x] `rejects_external_engine_trademarks_in_public_surfaces`.
+- [x] `requires_legal_counsel_review_even_when_engineering_gate_is_ready`.
+- [x] `keeps_godot_mit_notice_as_future_notice_only_when_no_code_is_copied`.
 
 Required counters for future package smoke:
 
@@ -145,6 +145,14 @@ Required counters for future package smoke:
 - `2d_originality_review_copied_asset_rows=0`
 - `2d_originality_review_trademark_surface_rows=0`
 - `2d_originality_review_requires_counsel_review=1`
+
+Phase 1 validation evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_2d_originality_review_tests` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_2d_originality_review_tests` PASS.
+- No third-party code, assets, dependencies, license obligations, or legal notice files were added in Phase 1.
 
 ## Phase 2: Source Pulse Watch Bridge
 
