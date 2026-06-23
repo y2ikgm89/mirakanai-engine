@@ -152,6 +152,7 @@
         "installed-2d-runtime-ui-workbench-smoke",
         "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+        "installed-2d-runtime-ui-tsf-session-smoke",
         "installed-2d-runtime-menu-hud-smoke",
         "installed-2d-runtime-ui-standard-widgets-smoke",
         "installed-2d-audio-gameplay-mixer-smoke",
@@ -321,6 +322,13 @@
           "evidence": "Runtime UI production stack smoke reports side-effect-free shaping direction/script/language rows, glyph ids/clusters/advances/offsets/fallback/bidi/line-break evidence, glyph bitmap/metrics/pixel-format rows, selected package counters, host gates, zero dependency-gated/skipped/adapter-invoked/unsupported rows, and a positive replay hash without claiming broad production UI readiness.",
           "recipeIds": [
             "installed-2d-runtime-ui-production-stack-smoke"
+          ]
+        },
+        {
+          "id": "runtime-ui-tsf-native-ime-session",
+          "evidence": "Runtime UI TSF native IME session smoke reports selected Windows TSF thread/document/context evidence with runtime_ui_tsf_session_ready=1, runtime_ui_tsf_composition_rows=3, runtime_ui_tsf_candidate_intent_rows=1, runtime_ui_tsf_text_area_rows=1, runtime_ui_ime_native_candidate_ui_ready=0, runtime_ui_ime_cross_platform_ready=0, and runtime_ui_tsf_diagnostics=0 without exposing TSF, COM, Win32, or native handles.",
+          "recipeIds": [
+            "installed-2d-runtime-ui-tsf-session-smoke"
           ]
         },
         {
@@ -2047,7 +2055,7 @@
     "platform": "win32-desktop-host-gated",
     "graphics": "NullRenderer fallback plus host-gated D3D12 package window smoke, native 2D sprite package proof with atlas-backed scene sprite plan counters, selected world/UI/effects sprite batch budget profile counters, renderer-owned native sprite batch execution counters, selected dense sprite throughput workload counters, and Vulkan package window smoke through packaged shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness beyond selected plan/budget/native-execution/throughput evidence, cross-backend parity by inference, Metal readiness by inference, and general production renderer quality remain unsupported.",
     "audio": "device-independent cooked audio payload mixed through mirakana_audio with host-gated audio_production_* review evidence",
-    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench, Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack, and cooked UI atlas renderer handoff counters through --require-runtime-ui-renderer-atlas-handoff",
+    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench, Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack, selected Windows TSF native IME session evidence through --require-runtime-ui-tsf-session, and cooked UI atlas renderer handoff counters through --require-runtime-ui-renderer-atlas-handoff",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
     "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, network production security threat-model/package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review, sandbox-world authoring review, and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, --require-sandbox-authoring-review, and --require-production-authoring-workflows"
@@ -2877,6 +2885,10 @@
     {
       "name": "installed-2d-runtime-ui-production-stack-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-production-stack"
+    },
+    {
+      "name": "installed-2d-runtime-ui-tsf-session-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-tsf-session"
     },
     {
       "name": "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",

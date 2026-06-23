@@ -61,6 +61,7 @@
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
 #if defined(_WIN32)
+#include "mirakana/platform/win32/win32_text_input.hpp"
 #include "mirakana/platform/win32/win32_ui_text_font.hpp"
 #endif
 
@@ -130,6 +131,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_workbench{false};
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_font_rasterization{false};
+    bool require_runtime_ui_tsf_session{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
     bool require_wasapi_audio{false};
@@ -1938,6 +1940,25 @@ struct RuntimeUiFontRasterizationProbeResult {
     bool native_handles_exposed{false};
 };
 
+struct RuntimeUiTsfSessionProbeResult {
+    bool ready{false};
+    bool evidence_ready{false};
+    bool host_evidence_available{false};
+    bool thread_manager_available{false};
+    bool document_manager_available{false};
+    bool context_available{false};
+    std::size_t focus_sink_rows{0U};
+    std::size_t text_store_lock_rows{0U};
+    std::size_t composition_rows{0U};
+    std::size_t candidate_intent_rows{0U};
+    std::size_t text_area_rows{0U};
+    std::size_t committed_text_rows{0U};
+    std::size_t diagnostics{0U};
+    bool native_candidate_ui_ready{false};
+    bool cross_platform_ready{false};
+    bool native_handles_exposed{false};
+};
+
 struct RuntimeUiRendererAtlasHandoffProbeResult {
     bool ready{false};
     bool selected_package_evidence_ready{false};
@@ -3557,6 +3578,59 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     result.ready = font_result.succeeded() && raster_result.succeeded() && result.font_loading_rows == 1U &&
                    result.glyph_raster_rows == 1U && result.glyph_bitmap_rows == 1U &&
                    result.glyph_metrics_rows == 1U && result.font_license_rows == 1U && !result.native_handles_exposed;
+#else
+    result.diagnostics = 1U;
+#endif
+    return result;
+}
+
+[[nodiscard]] RuntimeUiTsfSessionProbeResult validate_runtime_ui_tsf_session_package_evidence() {
+    RuntimeUiTsfSessionProbeResult result;
+#if defined(_WIN32)
+    const mirakana::ui::ElementId target{.value = "sample-2d-runtime-ui-tsf-target"};
+    const auto session_result = mirakana::win32::plan_win32_tsf_text_session(mirakana::win32::Win32TsfTextSessionDesc{
+        .active_request =
+            mirakana::ui::PlatformTextInputRequest{
+                .target = target,
+                .text_bounds = mirakana::ui::Rect{.x = 16.0F, .y = 24.0F, .width = 256.0F, .height = 32.0F},
+                .surrounding_text = "kana",
+                .cursor_byte_offset = 4U,
+            },
+        .composition_begin = true,
+        .composition_text = "ka",
+        .composition_cursor_byte_offset = 2U,
+        .composition_end = true,
+        .committed_text_rows = {mirakana::ui::CommittedTextInput{.target = target, .text = "\xE3\x81\x8B"}},
+        .candidate_intent_rows = {mirakana::win32::Win32TsfCandidateIntentRow{
+            .target = target,
+            .candidate_count = 3U,
+            .selected_index = 1U,
+            .native_candidate_ui_requested = true,
+        }},
+        .row_budget = 16U,
+    });
+    const auto evidence = mirakana::win32::make_win32_tsf_native_ime_production_evidence(session_result);
+    result.evidence_ready = evidence.ready;
+    result.host_evidence_available = evidence.host_evidence_available;
+    result.thread_manager_available = session_result.tsf_thread_manager_available;
+    result.document_manager_available = session_result.tsf_document_manager_available;
+    result.context_available = session_result.tsf_context_available;
+    result.focus_sink_rows = session_result.focus_sink_rows;
+    result.text_store_lock_rows = session_result.text_store_lock_rows;
+    result.composition_rows = session_result.composition_rows.size();
+    result.candidate_intent_rows = session_result.candidate_intent_rows.size();
+    result.text_area_rows = session_result.text_area_rows.size();
+    result.committed_text_rows = session_result.committed_text_rows.size();
+    result.diagnostics = session_result.diagnostics.size();
+    result.native_candidate_ui_ready = session_result.native_candidate_ui_ready;
+    result.cross_platform_ready = session_result.cross_platform_ime_ready;
+    result.native_handles_exposed = session_result.public_native_handles_exposed || evidence.public_native_handles;
+    result.ready = session_result.succeeded() && result.evidence_ready && result.host_evidence_available &&
+                   result.thread_manager_available && result.document_manager_available && result.context_available &&
+                   result.focus_sink_rows == 1U && result.text_store_lock_rows == 1U && result.composition_rows == 3U &&
+                   result.candidate_intent_rows == 1U && result.text_area_rows == 1U &&
+                   result.committed_text_rows == 1U && !result.native_candidate_ui_ready &&
+                   !result.cross_platform_ready && !result.native_handles_exposed;
 #else
     result.diagnostics = 1U;
 #endif
@@ -10436,7 +10510,7 @@ void print_usage() {
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
                  "[--require-runtime-ui-production-stack] "
-                 "[--require-runtime-ui-font-rasterization] "
+                 "[--require-runtime-ui-font-rasterization] [--require-runtime-ui-tsf-session] "
                  "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
                  "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
                  "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow] "
@@ -10621,6 +10695,10 @@ void print_usage() {
         }
         if (arg == "--require-runtime-ui-font-rasterization") {
             options.require_runtime_ui_font_rasterization = true;
+            continue;
+        }
+        if (arg == "--require-runtime-ui-tsf-session") {
+            options.require_runtime_ui_tsf_session = true;
             continue;
         }
         if (arg == "--require-runtime-ui-renderer-atlas-handoff") {
@@ -11369,6 +11447,9 @@ int main(int argc, char** argv) {
     const auto runtime_ui_font_rasterization_probe = options.require_runtime_ui_font_rasterization
                                                          ? validate_runtime_ui_font_rasterization_package_evidence()
                                                          : RuntimeUiFontRasterizationProbeResult{};
+    const auto runtime_ui_tsf_session_probe = options.require_runtime_ui_tsf_session
+                                                  ? validate_runtime_ui_tsf_session_package_evidence()
+                                                  : RuntimeUiTsfSessionProbeResult{};
     const auto runtime_ui_renderer_atlas_handoff_probe =
         options.require_runtime_ui_renderer_atlas_handoff && runtime_package.has_value()
             ? validate_runtime_ui_renderer_atlas_handoff_package_evidence(*runtime_package)
@@ -12472,6 +12553,14 @@ int main(int argc, char** argv) {
         << " runtime_ui_font_native_handles_exposed="
         << (runtime_ui_font_rasterization_probe.native_handles_exposed ? 1 : 0)
         << " runtime_ui_font_rasterization_diagnostics=" << runtime_ui_font_rasterization_probe.diagnostics
+        << " runtime_ui_tsf_session_ready=" << (runtime_ui_tsf_session_probe.ready ? 1 : 0)
+        << " runtime_ui_tsf_composition_rows=" << runtime_ui_tsf_session_probe.composition_rows
+        << " runtime_ui_tsf_candidate_intent_rows=" << runtime_ui_tsf_session_probe.candidate_intent_rows
+        << " runtime_ui_tsf_text_area_rows=" << runtime_ui_tsf_session_probe.text_area_rows
+        << " runtime_ui_ime_native_candidate_ui_ready="
+        << (runtime_ui_tsf_session_probe.native_candidate_ui_ready ? 1 : 0)
+        << " runtime_ui_ime_cross_platform_ready=" << (runtime_ui_tsf_session_probe.cross_platform_ready ? 1 : 0)
+        << " runtime_ui_tsf_diagnostics=" << runtime_ui_tsf_session_probe.diagnostics
         << " runtime_ui_renderer_atlas_handoff_status="
         << runtime_ui_renderer_atlas_handoff_status_name(runtime_ui_renderer_atlas_handoff_probe.status)
         << " runtime_ui_renderer_atlas_handoff_ready=" << (runtime_ui_renderer_atlas_handoff_probe.ready ? 1 : 0)
@@ -13811,6 +13900,32 @@ int main(int argc, char** argv) {
                   << " runtime_ui_font_rasterization_diagnostics=" << runtime_ui_font_rasterization_probe.diagnostics
                   << '\n';
         return 58;
+    }
+
+    if (options.require_runtime_ui_tsf_session && !runtime_ui_tsf_session_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_tsf_session_unavailable"
+                  << " runtime_ui_tsf_session_ready=" << (runtime_ui_tsf_session_probe.ready ? 1 : 0)
+                  << " runtime_ui_tsf_evidence_ready=" << (runtime_ui_tsf_session_probe.evidence_ready ? 1 : 0)
+                  << " runtime_ui_tsf_host_evidence=" << (runtime_ui_tsf_session_probe.host_evidence_available ? 1 : 0)
+                  << " runtime_ui_tsf_thread_manager="
+                  << (runtime_ui_tsf_session_probe.thread_manager_available ? 1 : 0)
+                  << " runtime_ui_tsf_document_manager="
+                  << (runtime_ui_tsf_session_probe.document_manager_available ? 1 : 0)
+                  << " runtime_ui_tsf_context=" << (runtime_ui_tsf_session_probe.context_available ? 1 : 0)
+                  << " runtime_ui_tsf_focus_sink_rows=" << runtime_ui_tsf_session_probe.focus_sink_rows
+                  << " runtime_ui_tsf_text_store_lock_rows=" << runtime_ui_tsf_session_probe.text_store_lock_rows
+                  << " runtime_ui_tsf_composition_rows=" << runtime_ui_tsf_session_probe.composition_rows
+                  << " runtime_ui_tsf_candidate_intent_rows=" << runtime_ui_tsf_session_probe.candidate_intent_rows
+                  << " runtime_ui_tsf_text_area_rows=" << runtime_ui_tsf_session_probe.text_area_rows
+                  << " runtime_ui_tsf_committed_text_rows=" << runtime_ui_tsf_session_probe.committed_text_rows
+                  << " runtime_ui_ime_native_candidate_ui_ready="
+                  << (runtime_ui_tsf_session_probe.native_candidate_ui_ready ? 1 : 0)
+                  << " runtime_ui_ime_cross_platform_ready="
+                  << (runtime_ui_tsf_session_probe.cross_platform_ready ? 1 : 0)
+                  << " runtime_ui_tsf_native_handles_exposed="
+                  << (runtime_ui_tsf_session_probe.native_handles_exposed ? 1 : 0)
+                  << " runtime_ui_tsf_diagnostics=" << runtime_ui_tsf_session_probe.diagnostics << '\n';
+        return 59;
     }
 
     if (options.require_runtime_ui_renderer_atlas_handoff && !runtime_ui_renderer_atlas_handoff_probe.ready) {
