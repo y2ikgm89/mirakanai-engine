@@ -284,6 +284,7 @@ Assert-ContainsText $workflowsContent "do not stash, merge into an active featur
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Selection" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "always-running required gate" "docs/workflows.md"
+foreach ($githubRulesetNeedle in @("main-pr-gate", "tools/check-github-repository-ruleset.ps1")) { Assert-ContainsText $workflowsContent $githubRulesetNeedle "docs/workflows.md" }
 Assert-ContainsText $workflowsContent "Path-filtered workflows must not be branch-protection-required" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Docs/agent/rules/subagent-only" "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'Do not run `Windows MSVC`, optional Windows lanes, `macOS Metal CMake`, or `Full Repository Static Analysis`' "docs/workflows.md"
@@ -577,7 +578,7 @@ Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'gh pr merge --auto --merge --match-head-commit <headRefOid>' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "guarded merged-worktree cleanup" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "official GitHub Flow" "docs/ai-integration.md"
-foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", "one PR per focused capability/gap-cluster/milestone", "never open PRs per commit or checklist item")) {
+foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", "one PR per focused capability/gap-cluster/milestone", "never open PRs per commit or checklist item", "main-pr-gate", "tools/check-github-repository-ruleset.ps1")) {
     Assert-ContainsText $aiIntegrationContent $aiIntegrationCadenceNeedle "docs/ai-integration.md"
 }
 Assert-ContainsText $aiIntegrationContent "Direct default-branch pushes are blocked" "docs/ai-integration.md"
