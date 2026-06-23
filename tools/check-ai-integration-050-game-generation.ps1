@@ -2083,7 +2083,10 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
     @{
         Path = "tools/classify-pr-validation-tier.ps1"
         Needles = @(
-            "Test-CiWorkflowPath",
+            "Test-ValidationWorkflowPath",
+            "Test-IosValidationWorkflowPath",
+            "Test-OtherCiWorkflowPath",
+            "Test-CiClassifierPolicyPath",
             "Test-RuntimeOrBuildPath",
             "Test-StaticPolicyPath",
             "tools/classify-pr-validation-tier.ps1",

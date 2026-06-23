@@ -357,14 +357,34 @@ Assert-ValidationTierSelection `
     -ExpectedLinuxCmake $true `
     -ExpectedLinuxVulkanHost $true `
     -ExpectedLinuxSanitizers $true `
-    -ExpectedLinuxCoverage $false `
+    -ExpectedLinuxCoverage $true `
     -ExpectedFullStaticAnalysis $true `
     -ExpectedWindowsCpp23Release $true `
     -ExpectedMacosMetalCmake $true `
     -ExpectedMetalHostEvidence $true `
     -ExpectedIosMetalEvidence $true `
-    -ExpectedSelectedLanes "windows_msvc,windows_cpu_profiling_host,windows_asset_importers,windows_desktop_editor,windows_network_enet,linux_cmake,linux_vulkan_host,linux_sanitizers,full_static_analysis,macos_metal_cmake,metal_host_evidence,ios_metal_evidence,windows_cpp23_release" `
-    -ExpectedClassificationReasons "ci-workflow"
+    -ExpectedSelectedLanes "windows_msvc,windows_cpu_profiling_host,windows_asset_importers,windows_desktop_editor,windows_network_enet,linux_cmake,linux_vulkan_host,linux_sanitizers,linux_coverage,full_static_analysis,macos_metal_cmake,metal_host_evidence,ios_metal_evidence,windows_cpp23_release" `
+    -ExpectedClassificationReasons "ci-validation-workflow"
+
+Assert-ValidationTierSelection `
+    -Label "iOS workflow PR" `
+    -ChangedPath @(".github/workflows/ios-validate.yml") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $true `
+    -ExpectedSelectedLanes "ios_metal_evidence" `
+    -ExpectedClassificationReasons "ci-ios-workflow"
 
 Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
@@ -379,10 +399,12 @@ Assert-ValidationTierSelection `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
     -ExpectedFullStaticAnalysis $false `
-    -ExpectedWindowsCpp23Release $true `
+    -ExpectedWindowsCpp23Release $false `
     -ExpectedMacosMetalCmake $false `
     -ExpectedMetalHostEvidence $false `
-    -ExpectedIosMetalEvidence $false
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "none" `
+    -ExpectedClassificationReasons "ci-classifier-policy"
 
 Assert-ValidationTierSelection `
     -Label "ci matrix policy PR" `
@@ -397,10 +419,12 @@ Assert-ValidationTierSelection `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
     -ExpectedFullStaticAnalysis $false `
-    -ExpectedWindowsCpp23Release $true `
+    -ExpectedWindowsCpp23Release $false `
     -ExpectedMacosMetalCmake $false `
     -ExpectedMetalHostEvidence $false `
-    -ExpectedIosMetalEvidence $false
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "none" `
+    -ExpectedClassificationReasons "ci-classifier-policy"
 
 Assert-ValidationTierSelection `
     -Label "cpp23 policy infra PR" `
@@ -626,6 +650,7 @@ Assert-ContainsAll $validateWorkflow @(
     "- main",
     "- master",
     "pull_request:",
+    "merge_group:",
     "workflow_dispatch:",
     "permissions:",
     "contents: read",
@@ -1356,6 +1381,12 @@ Assert-ContainsAll $prGateJob @(
     "- ios-metal",
     'if: ${{ always() && !cancelled() }}',
     "timeout-minutes: 10",
+    "`$laneJobs = [ordered]@{",
+    "windows_msvc = `"windows`"",
+    "ios_metal_evidence = `"ios-metal`"",
+    "`$selected = [string]`$outputs.`$laneName -eq `"true`"",
+    "`$jobResult -ne `"success`"",
+    "selected lane did not complete successfully",
     'toJson(needs)',
     'failure',
     'cancelled',

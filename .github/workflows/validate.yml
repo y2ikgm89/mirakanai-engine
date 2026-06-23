@@ -6,6 +6,7 @@ on:
       - main
       - master
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -1679,6 +1680,41 @@ jobs:
           foreach ($job in $needs.PSObject.Properties) {
             if ($job.Value.result -in @("failure", "cancelled")) {
               $failed += "$($job.Name)=$($job.Value.result)"
+            }
+          }
+          $laneJobs = [ordered]@{
+            windows_msvc = "windows"
+            windows_cpu_profiling_host = "windows-cpu-profiling-host"
+            windows_asset_importers = "windows-asset-importers"
+            windows_desktop_editor = "windows-desktop-editor"
+            windows_network_enet = "windows-network-enet"
+            linux_cmake = "linux"
+            linux_vulkan_host = "linux-vulkan"
+            linux_sanitizers = "linux-sanitizers"
+            linux_coverage = "linux-coverage"
+            full_static_analysis = "static-analysis"
+            macos_metal_cmake = "macos"
+            metal_host_evidence = "macos"
+            ios_metal_evidence = "ios-metal"
+            windows_cpp23_release = "windows-cpp23"
+          }
+          $outputs = $needs.changes.outputs
+          foreach ($laneName in $laneJobs.Keys) {
+            $selected = [string]$outputs.$laneName -eq "true"
+            if (-not $selected) {
+              continue
+            }
+
+            $jobName = $laneJobs[$laneName]
+            $jobProperty = $needs.PSObject.Properties[$jobName]
+            if ($null -eq $jobProperty) {
+              $failed += "$laneName selected lane did not complete successfully: missing job $jobName"
+              continue
+            }
+
+            $jobResult = [string]$jobProperty.Value.result
+            if ($jobResult -ne "success") {
+              $failed += "$laneName selected lane did not complete successfully: $jobName=$jobResult"
             }
           }
           if ($failed.Count -gt 0) {

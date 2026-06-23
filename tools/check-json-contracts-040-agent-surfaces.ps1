@@ -1174,7 +1174,10 @@ if ($ciMatrixClassifierInvocationMatches.Count -ne 1) {
     Write-Error "tools/check-ci-matrix.ps1 must invoke the PR validation tier classifier in one cached helper; found $($ciMatrixClassifierInvocationMatches.Count) direct invocations"
 }
 foreach ($needle in @(
-    "Test-CiWorkflowPath",
+    "Test-ValidationWorkflowPath",
+    "Test-IosValidationWorkflowPath",
+    "Test-OtherCiWorkflowPath",
+    "Test-CiClassifierPolicyPath",
     "Test-RuntimeOrBuildPath",
     "Test-WindowsCpuProfilingHostPath",
     "Test-WindowsAssetImportersPath",
@@ -1185,7 +1188,10 @@ foreach ($needle in @(
     "tools/check-tidy.ps1",
     "GitHubOutputPath",
     "selected_lanes",
-    "classification_reasons"
+    "classification_reasons",
+    "ci-validation-workflow",
+    "ci-ios-workflow",
+    "ci-classifier-policy"
 )) {
     if (-not $classifierScriptText.Contains($needle)) {
         Write-Error "tools/classify-pr-validation-tier.ps1 missing required PR validation tier classifier text: $needle"

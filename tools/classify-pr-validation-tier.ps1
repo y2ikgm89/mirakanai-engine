@@ -38,11 +38,34 @@ function ConvertTo-CiPath {
     return $normalizedPath
 }
 
-function Test-CiWorkflowPath {
+function Test-ValidationWorkflowPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return $Path -eq ".github/workflows/validate.yml"
+}
+
+function Test-IosValidationWorkflowPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return $Path -eq ".github/workflows/ios-validate.yml"
+}
+
+function Test-OtherCiWorkflowPath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     return (
-        $Path -match "^\.github/workflows/"
+        $Path -match "^\.github/workflows/" -and
+        -not (Test-ValidationWorkflowPath -Path $Path) -and
+        -not (Test-IosValidationWorkflowPath -Path $Path)
+    )
+}
+
+function Test-CiClassifierPolicyPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "tools/classify-pr-validation-tier.ps1" -or
+        $Path -eq "tools/check-ci-matrix.ps1"
     )
 }
 
@@ -178,8 +201,6 @@ function Test-Cpp23RelevantPath {
     return (
         $Path -eq "CMakePresets.json" -or
         $Path -eq "tools/evaluate-cpp23.ps1" -or
-        $Path -eq "tools/check-ci-matrix.ps1" -or
-        $Path -eq "tools/classify-pr-validation-tier.ps1" -or
         $Path -eq "tools/check-cpp-standard-policy.ps1" -or
         $Path -match "^tools/check-cpp-standard-(policy|flags)\.ps1$"
     )
@@ -281,7 +302,9 @@ function New-ValidationTierSelection {
         } -Reason @("non-pr-full-matrix")
     }
 
-    $ciOrWorkflow = $false
+    $validationWorkflow = $false
+    $iosValidationWorkflow = $false
+    $otherCiWorkflow = $false
     $runtimeOrBuild = $false
     $staticPolicy = $false
     $sourceCode = $false
@@ -307,9 +330,20 @@ function New-ValidationTierSelection {
 
     foreach ($rawPath in $expandedInputPath) {
         $path = ConvertTo-CiPath -Path $rawPath
-        if (Test-CiWorkflowPath -Path $path) {
-            $ciOrWorkflow = $true
+        if (Test-ValidationWorkflowPath -Path $path) {
+            $validationWorkflow = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-validation-workflow"
+        }
+        if (Test-IosValidationWorkflowPath -Path $path) {
+            $iosValidationWorkflow = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-ios-workflow"
+        }
+        if (Test-OtherCiWorkflowPath -Path $path) {
+            $otherCiWorkflow = $true
             Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-workflow"
+        }
+        if (Test-CiClassifierPolicyPath -Path $path) {
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-classifier-policy"
         }
         if (Test-RuntimeOrBuildPath -Path $path) {
             $runtimeOrBuild = $true
@@ -361,23 +395,24 @@ function New-ValidationTierSelection {
         }
     }
 
-    $heavyBuildLane = $ciOrWorkflow -or $runtimeOrBuild
+    $fullValidationWorkflowLane = $validationWorkflow -or $otherCiWorkflow
+    $heavyBuildLane = $fullValidationWorkflowLane -or $runtimeOrBuild
 
     return New-ValidationTierSelectionObject -LaneSelection @{
         windows_msvc = $heavyBuildLane
-        windows_cpu_profiling_host = ($ciOrWorkflow -or $windowsCpuProfilingHost)
-        windows_asset_importers = ($ciOrWorkflow -or $windowsAssetImporters)
-        windows_desktop_editor = ($ciOrWorkflow -or $windowsDesktopEditor)
-        windows_network_enet = ($ciOrWorkflow -or $windowsNetworkEnet)
+        windows_cpu_profiling_host = ($fullValidationWorkflowLane -or $windowsCpuProfilingHost)
+        windows_asset_importers = ($fullValidationWorkflowLane -or $windowsAssetImporters)
+        windows_desktop_editor = ($fullValidationWorkflowLane -or $windowsDesktopEditor)
+        windows_network_enet = ($fullValidationWorkflowLane -or $windowsNetworkEnet)
         linux_cmake = $heavyBuildLane
-        linux_vulkan_host = ($ciOrWorkflow -or $linuxVulkanHostEvidence)
-        linux_sanitizers = ($ciOrWorkflow -or $sanitizerRelevant)
-        linux_coverage = $coverageRelevant
+        linux_vulkan_host = ($fullValidationWorkflowLane -or $linuxVulkanHostEvidence)
+        linux_sanitizers = ($fullValidationWorkflowLane -or $sanitizerRelevant)
+        linux_coverage = ($fullValidationWorkflowLane -or $coverageRelevant)
         full_static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode)
         macos_metal_cmake = $heavyBuildLane
-        metal_host_evidence = ($ciOrWorkflow -or $appleHostEvidence)
-        ios_metal_evidence = ($ciOrWorkflow -or $appleHostEvidence)
-        windows_cpp23_release = ($ciOrWorkflow -or $cpp23Relevant)
+        metal_host_evidence = ($fullValidationWorkflowLane -or $appleHostEvidence)
+        ios_metal_evidence = ($fullValidationWorkflowLane -or $iosValidationWorkflow -or $appleHostEvidence)
+        windows_cpp23_release = ($fullValidationWorkflowLane -or $cpp23Relevant)
     } -Reason $classificationReasons.ToArray()
 }
 
