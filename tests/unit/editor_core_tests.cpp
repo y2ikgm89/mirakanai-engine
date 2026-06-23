@@ -336,6 +336,87 @@ find_ai_evidence_import_row(const std::vector<mirakana::editor::EditorAiPlaytest
     return it == rows.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::Editor2DLiveIterationEvidenceRow*
+find_2d_live_iteration_review_row(const std::vector<mirakana::editor::Editor2DLiveIterationEvidenceRow>& rows,
+                                  std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        rows, [id](const mirakana::editor::Editor2DLiveIterationEvidenceRow& row) { return row.id == id; });
+    return it == rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] mirakana::editor::Editor2DLiveIterationEvidenceRow
+make_2d_live_iteration_row(std::string id, mirakana::editor::Editor2DLiveIterationStageStatus status,
+                           std::string source_model, std::vector<std::string> validation_recipe_ids = {},
+                           std::vector<std::string> host_gates = {},
+                           std::string diagnostic = "2D live iteration evidence reviewed") {
+    return mirakana::editor::Editor2DLiveIterationEvidenceRow{
+        .id = std::move(id),
+        .status = status,
+        .source_model = std::move(source_model),
+        .validation_recipe_ids = std::move(validation_recipe_ids),
+        .host_gates = std::move(host_gates),
+        .diagnostic = std::move(diagnostic),
+    };
+}
+
+[[nodiscard]] mirakana::editor::EditorPlaytestPackageReviewModel make_ready_2d_live_iteration_playtest_review() {
+    return mirakana::editor::make_editor_playtest_package_review_model(
+        mirakana::editor::EditorPlaytestPackageReviewDesc{
+            .package_registration_draft_rows =
+                {
+                    {.kind = mirakana::editor::ScenePackageCandidateKind::package_index,
+                     .candidate_path = "games/sample/runtime/validation.geindex",
+                     .runtime_package_path = "runtime/validation.geindex",
+                     .runtime_file = true,
+                     .status = mirakana::editor::ScenePackageRegistrationDraftStatus::already_registered,
+                     .diagnostic = "runtime file is already registered"},
+                },
+            .runtime_scene_validation_targets =
+                {
+                    {.id = "packaged-scene",
+                     .package_index_path = "runtime/validation.geindex",
+                     .scene_asset_key = "assets/scenes/validation-level",
+                     .content_root = "",
+                     .validate_asset_references = true,
+                     .require_unique_node_names = true},
+                },
+            .selected_runtime_scene_validation_target_id = "packaged-scene",
+            .host_gated_smoke_recipes = {"desktop-runtime-2d-package-smoke"},
+        });
+}
+
+[[nodiscard]] mirakana::editor::EditorRuntimeScenePackageValidationExecutionResult
+make_passed_2d_live_iteration_runtime_scene_validation_result() {
+    mirakana::editor::EditorRuntimeScenePackageValidationExecutionResult result;
+    result.status = mirakana::editor::EditorRuntimeScenePackageValidationExecutionStatus::passed;
+    result.status_label = "passed";
+    result.model.status = mirakana::editor::EditorRuntimeScenePackageValidationExecutionStatus::passed;
+    result.model.status_label = "passed";
+    result.model.package_record_count = 4U;
+    result.model.scene_node_count = 2U;
+    result.model.reference_count = 4U;
+    result.evidence_available = true;
+    result.diagnostics.emplace_back("runtime scene package validation passed");
+    return result;
+}
+
+[[nodiscard]] std::vector<mirakana::editor::Editor2DLiveIterationEvidenceRow>
+make_ready_2d_live_iteration_source_pulse_rows() {
+    using mirakana::editor::Editor2DLiveIterationStageStatus;
+    return {
+        make_2d_live_iteration_row("2d_live_iteration.review.originality", Editor2DLiveIterationStageStatus::ready,
+                                   "TwoDOriginalityReviewModel", {"2d-originality-review"}),
+        make_2d_live_iteration_row("2d_live_iteration.review.source_pulse", Editor2DLiveIterationStageStatus::ready,
+                                   "TwoDSourcePulseWatchBridgeResult", {"source-pulse-watch-bridge"}),
+        make_2d_live_iteration_row("2d_live_iteration.review.package_replacement_safe_point",
+                                   Editor2DLiveIterationStageStatus::ready, "TwoDSourcePulseRuntimeReplacementResult",
+                                   {"source-pulse-runtime-replacement"}),
+        make_2d_live_iteration_row("2d_live_iteration.review.external_evidence",
+                                   Editor2DLiveIterationStageStatus::ready, "ExternalValidationEvidence",
+                                   {"desktop-runtime-2d-package-smoke"}),
+    };
+}
+
 [[nodiscard]] const mirakana::editor::EditorResourceRow*
 find_editor_resource_row(const std::vector<mirakana::editor::EditorResourceRow>& rows, std::string_view id) noexcept {
     const auto it =
@@ -11179,6 +11260,134 @@ MK_TEST("editor runtime scene package validation execution records reviewed evid
     MK_REQUIRE(!unsupported.can_execute);
     MK_REQUIRE(unsupported.unsupported_claims.size() == 3U);
     MK_REQUIRE(unsupported.diagnostics.size() >= 3U);
+}
+
+MK_TEST("editor 2d live iteration review reports ready when originality validation source pulse and safe point rows "
+        "are ready") {
+    const auto model =
+        mirakana::editor::make_editor_2d_live_iteration_review_model(mirakana::editor::Editor2DLiveIterationReviewDesc{
+            .playtest_review = make_ready_2d_live_iteration_playtest_review(),
+            .runtime_scene_validation = make_passed_2d_live_iteration_runtime_scene_validation_result(),
+            .source_pulse_rows = make_ready_2d_live_iteration_source_pulse_rows(),
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DLiveIterationStageStatus::ready);
+    MK_REQUIRE(model.ready_for_source_pulse_safe_point);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.unsupported_claims.empty());
+    MK_REQUIRE(find_2d_live_iteration_review_row(model.rows, "2d_live_iteration.review.originality") != nullptr);
+    MK_REQUIRE(find_2d_live_iteration_review_row(model.rows, "2d_live_iteration.review.runtime_scene_validation") !=
+               nullptr);
+    MK_REQUIRE(find_2d_live_iteration_review_row(model.rows, "2d_live_iteration.review.source_pulse") != nullptr);
+    MK_REQUIRE(find_2d_live_iteration_review_row(model.rows,
+                                                 "2d_live_iteration.review.package_replacement_safe_point") != nullptr);
+    MK_REQUIRE(find_2d_live_iteration_review_row(model.rows, "2d_live_iteration.review.external_evidence") != nullptr);
+}
+
+MK_TEST("editor 2d live iteration review keeps editor core non mutating and non executing") {
+    const auto model =
+        mirakana::editor::make_editor_2d_live_iteration_review_model(mirakana::editor::Editor2DLiveIterationReviewDesc{
+            .playtest_review = make_ready_2d_live_iteration_playtest_review(),
+            .runtime_scene_validation = make_passed_2d_live_iteration_runtime_scene_validation_result(),
+            .source_pulse_rows = make_ready_2d_live_iteration_source_pulse_rows(),
+            .request_mutation = true,
+            .request_validation_execution = true,
+        });
+
+    auto has_diagnostic = [&model](std::string_view text) {
+        return std::ranges::any_of(model.diagnostics,
+                                   [text](const std::string& diagnostic) { return diagnostic.contains(text); });
+    };
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DLiveIterationStageStatus::blocked);
+    MK_REQUIRE(!model.ready_for_source_pulse_safe_point);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.unsupported_claims.size() == 2U);
+    MK_REQUIRE(has_diagnostic("mutation"));
+    MK_REQUIRE(has_diagnostic("validation execution"));
+}
+
+MK_TEST("editor 2d live iteration review renders retained ui rows") {
+    const auto model =
+        mirakana::editor::make_editor_2d_live_iteration_review_model(mirakana::editor::Editor2DLiveIterationReviewDesc{
+            .playtest_review = make_ready_2d_live_iteration_playtest_review(),
+            .runtime_scene_validation = make_passed_2d_live_iteration_runtime_scene_validation_result(),
+            .source_pulse_rows = make_ready_2d_live_iteration_source_pulse_rows(),
+        });
+
+    const auto ui = mirakana::editor::make_editor_2d_live_iteration_review_ui_model(model);
+
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_live_iteration.review"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_live_iteration.review.originality"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_live_iteration.review.runtime_scene_validation"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_live_iteration.review.source_pulse"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_live_iteration.review.package_replacement_safe_point"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_live_iteration.review.external_evidence"}) != nullptr);
+}
+
+MK_TEST("editor 2d live iteration review rejects package script arbitrary shell and native handle claims") {
+    const auto model =
+        mirakana::editor::make_editor_2d_live_iteration_review_model(mirakana::editor::Editor2DLiveIterationReviewDesc{
+            .playtest_review = make_ready_2d_live_iteration_playtest_review(),
+            .runtime_scene_validation = make_passed_2d_live_iteration_runtime_scene_validation_result(),
+            .source_pulse_rows = make_ready_2d_live_iteration_source_pulse_rows(),
+            .request_arbitrary_shell_execution = true,
+            .request_package_script_execution = true,
+            .request_native_handle_exposure = true,
+        });
+
+    auto has_unsupported_claim = [&model](std::string_view text) {
+        return std::ranges::any_of(model.unsupported_claims,
+                                   [text](const std::string& claim) { return claim.contains(text); });
+    };
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DLiveIterationStageStatus::blocked);
+    MK_REQUIRE(!model.ready_for_source_pulse_safe_point);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(has_unsupported_claim("arbitrary shell"));
+    MK_REQUIRE(has_unsupported_claim("package script execution"));
+    MK_REQUIRE(has_unsupported_claim("native handle exposure"));
+}
+
+MK_TEST("editor 2d live iteration review keeps host gated rows host gated until external evidence is supplied") {
+    auto rows = make_ready_2d_live_iteration_source_pulse_rows();
+    auto external_evidence = std::ranges::find_if(
+        rows, [](const auto& row) { return row.id == "2d_live_iteration.review.external_evidence"; });
+    MK_REQUIRE(external_evidence != rows.end());
+    external_evidence->status = mirakana::editor::Editor2DLiveIterationStageStatus::host_gated;
+    external_evidence->host_gates = {"desktop-runtime-2d-host"};
+    external_evidence->diagnostic = "desktop runtime package smoke evidence is host-gated";
+
+    const auto host_gated =
+        mirakana::editor::make_editor_2d_live_iteration_review_model(mirakana::editor::Editor2DLiveIterationReviewDesc{
+            .playtest_review = make_ready_2d_live_iteration_playtest_review(),
+            .runtime_scene_validation = make_passed_2d_live_iteration_runtime_scene_validation_result(),
+            .source_pulse_rows = rows,
+        });
+
+    const auto* host_gated_row =
+        find_2d_live_iteration_review_row(host_gated.rows, "2d_live_iteration.review.external_evidence");
+    MK_REQUIRE(host_gated_row != nullptr);
+    MK_REQUIRE(host_gated.status == mirakana::editor::Editor2DLiveIterationStageStatus::host_gated);
+    MK_REQUIRE(!host_gated.ready_for_source_pulse_safe_point);
+    MK_REQUIRE(host_gated_row->host_gates.size() == 1U);
+
+    rows = make_ready_2d_live_iteration_source_pulse_rows();
+    const auto ready =
+        mirakana::editor::make_editor_2d_live_iteration_review_model(mirakana::editor::Editor2DLiveIterationReviewDesc{
+            .playtest_review = make_ready_2d_live_iteration_playtest_review(),
+            .runtime_scene_validation = make_passed_2d_live_iteration_runtime_scene_validation_result(),
+            .source_pulse_rows = rows,
+        });
+
+    MK_REQUIRE(ready.status == mirakana::editor::Editor2DLiveIterationStageStatus::ready);
+    MK_REQUIRE(ready.ready_for_source_pulse_safe_point);
 }
 
 MK_TEST("editor ai package authoring diagnostics summarize descriptors payloads and host gates without mutation") {
