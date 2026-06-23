@@ -402,7 +402,7 @@ foreach ($cmakeSkillPath in @(
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) 'Do not repair generated `out/build/<preset>` trees' $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
 }
-foreach ($agentIntegrationReferencePath in @(".agents/skills/gameengine-agent-integration/references/integration-change-matrix.md", ".claude/skills/gameengine-agent-integration/references/integration-change-matrix.md")) { $agentIntegrationReferenceText = Get-AgentSurfaceText $agentIntegrationReferencePath; foreach ($needle in @("workflow-level path/branch filters can leave required checks pending", "job-level conditional lanes", "windows_cpu_profiling_host", "windows_asset_importers", "windows_desktop_editor", "windows_network_enet", "selected_lanes", "classification_reasons", "GITHUB_STEP_SUMMARY", "feature-scoped bootstrap", "actions/cache/restore", "actions/cache/save", "cache-primary-key")) { Assert-ContainsText $agentIntegrationReferenceText $needle $agentIntegrationReferencePath } }
+foreach ($agentIntegrationReferencePath in @(".agents/skills/gameengine-agent-integration/references/integration-change-matrix.md", ".claude/skills/gameengine-agent-integration/references/integration-change-matrix.md")) { $agentIntegrationReferenceText = Get-AgentSurfaceText $agentIntegrationReferencePath; foreach ($needle in @("workflow-level path/branch filters can leave required checks pending", "job-level conditional lanes", "windows_cpu_profiling_host", "windows_asset_importers", "windows_desktop_editor", "windows_network_enet", "selected_lanes", "classification_reasons", "GITHUB_STEP_SUMMARY", "selected lane is skipped", "merge_group", "feature-scoped bootstrap", "actions/cache/restore", "actions/cache/save", "cache-primary-key")) { Assert-ContainsText $agentIntegrationReferenceText $needle $agentIntegrationReferencePath } }
 
 foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/build-fixer.md", ".cursor/agents/build-fixer.md")) {
     $buildFixerAgentText = Get-AgentSurfaceText $buildFixerPath
@@ -530,10 +530,9 @@ Assert-ContainsText $testingContent "always-running aggregate gate" "docs/testin
 Assert-ContainsText $testingContent "selected_lanes" "docs/testing.md"
 Assert-ContainsText $testingContent "classification_reasons" "docs/testing.md"
 Assert-ContainsText $testingContent "GITHUB_STEP_SUMMARY" "docs/testing.md"
-Assert-ContainsText $testingContent "docs-agent-rules-subagent-only" "docs/testing.md"
-Assert-ContainsText $testingContent "runtime-or-build" "docs/testing.md"
-Assert-ContainsText $testingContent "apple-host-evidence" "docs/testing.md"
-Assert-ContainsText $testingContent "main push, release, scheduled/nightly, and workflow_dispatch" "docs/testing.md"
+foreach ($prCiSelectionNeedle in @("docs-agent-rules-subagent-only", "ci-validation-workflow", "ci-ios-workflow", "ci-classifier-policy", "runtime-or-build", "apple-host-evidence", 'main push, release, scheduled/nightly, `merge_group`, and `workflow_dispatch`')) {
+    Assert-ContainsText $testingContent $prCiSelectionNeedle "docs/testing.md"
+}
 Assert-ContainsText $workflowsContent "--warnings-as-errors=*" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "-Jobs" "docs/workflows.md"
 $agentOperationalReferenceContent = Get-AgentSurfaceText "docs/agent-operational-reference.md"
@@ -575,7 +574,7 @@ Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.opena
 Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr view" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
-Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --match-head-commit <headRefOid>" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent 'gh pr merge --auto --merge --match-head-commit <headRefOid>' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "guarded merged-worktree cleanup" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "official GitHub Flow" "docs/ai-integration.md"
 foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", "one PR per focused capability/gap-cluster/milestone", "never open PRs per commit or checklist item")) {
@@ -651,7 +650,7 @@ foreach ($agentSkillSurface in @(
 }
 
 $cursorAgentIntegrationRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-ai-agent-integration.mdc"
-foreach ($needle in @("PR CI selection", 'always-running `PR Gate`', "job-level conditional lanes", "windows_cpu_profiling_host", "windows_asset_importers", "windows_desktop_editor", "windows_network_enet", "selected_lanes", "classification_reasons", "GITHUB_STEP_SUMMARY", "tools/check-ci-matrix.ps1")) { Assert-ContainsText $cursorAgentIntegrationRuleText $needle ".cursor/rules/mirakana-ai-agent-integration.mdc" }
+foreach ($needle in @("PR CI selection", 'always-running `PR Gate`', "job-level conditional lanes", "windows_cpu_profiling_host", "windows_asset_importers", "windows_desktop_editor", "windows_network_enet", "selected_lanes", "classification_reasons", "GITHUB_STEP_SUMMARY", "selected lanes must succeed", "merge_group", "tools/check-ci-matrix.ps1")) { Assert-ContainsText $cursorAgentIntegrationRuleText $needle ".cursor/rules/mirakana-ai-agent-integration.mdc" }
 
 $codexRulesText = Get-AgentSurfaceText ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRulesText '"tools/check-publication-preflight.ps1"' ".codex/rules/gameengine.rules"

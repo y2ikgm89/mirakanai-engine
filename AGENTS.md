@@ -97,7 +97,7 @@
 - For hosted PR/CI failures, inspect latest PR head SHA, open the failing job log for that SHA, reproduce the narrowest local lane, fix root cause, then extend static guards when the failure exposed drift-prone contracts. Billing/spending-limit failures before checkout are hosted account blockers. Do not diagnose stale runs or loosen branch protection, Codex rules, or Claude permissions.
 - PR CI selection uses an always-running required gate plus job-level conditional lanes, not path-filtered required workflows.
   `tools/classify-pr-validation-tier.ps1` emits lane outputs plus `selected_lanes`/`classification_reasons`;
-  `tools/check-ci-matrix.ps1` guards the mapping, and `validate.yml` writes a summary.
+  `tools/check-ci-matrix.ps1` guards the mapping, and `validate.yml` writes a summary and requires selected lanes to succeed.
   `Agent Static Guards` runs `validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`; PR `Windows MSVC`
   runs `bootstrap-deps.ps1 -Feature desktop-runtime` then `validate.ps1 -SkipStaticChecks -SkipTidySmoke`; Windows optional
   lanes own CPU profiling host evidence, asset importers, native desktop editor, and ENet through their dedicated wrapper scripts.
