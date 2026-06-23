@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/mavg-metal-mesh-lod-host-execution.schema.json",
+  "title": "GameEngine MAVG Metal Mesh LOD Host Execution Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_id",
+    "host",
+    "feature_row",
+    "shader_row",
+    "execution_row",
+    "non_claims"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.MavgMetalMeshLodHostExecutionEvidence.v1" },
+    "claim_id": { "const": "mavg-metal-mesh-lod-apple-host-execution-v1" },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "macos_version",
+        "xcode_version",
+        "full_xcode_selected",
+        "metal_tool_ready",
+        "metallib_tool_ready"
+      ],
+      "properties": {
+        "platform": { "const": "macos" },
+        "macos_version": { "type": "string", "minLength": 1 },
+        "xcode_version": { "type": "string", "minLength": 1 },
+        "full_xcode_selected": { "const": true },
+        "metal_tool_ready": { "const": true },
+        "metallib_tool_ready": { "const": true }
+      }
+    },
+    "feature_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feature_set_table_source_id",
+        "apple_gpu_family",
+        "mesh_shader_supported",
+        "object_shader_supported"
+      ],
+      "properties": {
+        "feature_set_table_source_id": { "const": "Apple-Metal-Feature-Set-Tables-2026-05-21" },
+        "apple_gpu_family": { "type": "string", "minLength": 1 },
+        "mesh_shader_supported": { "const": true },
+        "object_shader_supported": { "const": true }
+      }
+    },
+    "shader_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "msl_source_validated",
+        "object_function",
+        "mesh_function",
+        "fragment_function",
+        "object_payload_declared",
+        "mesh_payload_consumed"
+      ],
+      "properties": {
+        "msl_source_validated": { "const": true },
+        "object_function": { "type": "string", "minLength": 1 },
+        "mesh_function": { "type": "string", "minLength": 1 },
+        "fragment_function": { "type": "string", "minLength": 1 },
+        "object_payload_declared": { "const": true },
+        "mesh_payload_consumed": { "const": true }
+      }
+    },
+    "execution_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "first_party_mavg_workload_id",
+        "object_mesh_pipeline_created",
+        "draw_mesh_threads_encoded",
+        "object_mesh_dispatch_executed",
+        "command_buffer_completed",
+        "meshlet_count",
+        "lod_level_count",
+        "readback_artifact_path",
+        "readback_artifact_hash_sha256",
+        "deterministic_readback_hash_sha256",
+        "package_visible_output_written",
+        "package_visible_output_rows"
+      ],
+      "properties": {
+        "first_party_mavg_workload_id": { "type": "string", "minLength": 1 },
+        "object_mesh_pipeline_created": { "const": true },
+        "draw_mesh_threads_encoded": { "const": true },
+        "object_mesh_dispatch_executed": { "const": true },
+        "command_buffer_completed": { "const": true },
+        "meshlet_count": { "type": "integer", "minimum": 1 },
+        "lod_level_count": { "type": "integer", "minimum": 1 },
+        "readback_artifact_path": { "type": "string", "minLength": 1 },
+        "readback_artifact_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "deterministic_readback_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "package_visible_output_written": { "const": true },
+        "package_visible_output_rows": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "non_claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "simulator_only_evidence",
+        "cross_backend_inference",
+        "ray_tracing_pipeline_conflation",
+        "native_handles_exposed",
+        "mavg_mesh_shader_lod_ready",
+        "mavg_metal_ray_tracing_ready",
+        "mavg_nanite_compatible",
+        "mavg_nanite_equivalent",
+        "mavg_nanite_superior",
+        "mavg_broad_backend_readiness",
+        "mavg_broad_optimization"
+      ],
+      "properties": {
+        "simulator_only_evidence": { "const": false },
+        "cross_backend_inference": { "const": false },
+        "ray_tracing_pipeline_conflation": { "const": false },
+        "native_handles_exposed": { "const": false },
+        "mavg_mesh_shader_lod_ready": { "const": false },
+        "mavg_metal_ray_tracing_ready": { "const": false },
+        "mavg_nanite_compatible": { "const": false },
+        "mavg_nanite_equivalent": { "const": false },
+        "mavg_nanite_superior": { "const": false },
+        "mavg_broad_backend_readiness": { "const": false },
+        "mavg_broad_optimization": { "const": false }
+      }
+    }
+  }
+}
