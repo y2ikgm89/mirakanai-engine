@@ -1149,6 +1149,8 @@ foreach ($needle in @(
     "Get-ValidationTierSelection",
     '-Label $Label',
     '$script:validationTierSelectionCache',
+    "ExpectedSelectedLanes",
+    "ExpectedClassificationReasons",
     "docs-only PR",
     "static policy PR",
     "runtime PR",
@@ -1181,7 +1183,9 @@ foreach ($needle in @(
     "Test-StaticPolicyPath",
     "tools/classify-pr-validation-tier.ps1",
     "tools/check-tidy.ps1",
-    "GitHubOutputPath"
+    "GitHubOutputPath",
+    "selected_lanes",
+    "classification_reasons"
 )) {
     if (-not $classifierScriptText.Contains($needle)) {
         Write-Error "tools/classify-pr-validation-tier.ps1 missing required PR validation tier classifier text: $needle"

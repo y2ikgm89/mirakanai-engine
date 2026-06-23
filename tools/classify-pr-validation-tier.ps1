@@ -10,6 +10,23 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$script:ValidationLaneNames = @(
+    "windows_msvc",
+    "windows_cpu_profiling_host",
+    "windows_asset_importers",
+    "windows_desktop_editor",
+    "windows_network_enet",
+    "linux_cmake",
+    "linux_vulkan_host",
+    "linux_sanitizers",
+    "linux_coverage",
+    "full_static_analysis",
+    "macos_metal_cmake",
+    "metal_host_evidence",
+    "ios_metal_evidence",
+    "windows_cpp23_release"
+)
+
 function ConvertTo-CiPath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -178,6 +195,67 @@ function Test-StaticPolicyPath {
     )
 }
 
+function Add-UniqueClassificationReason {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Reasons,
+        [Parameter(Mandatory = $true)][string]$Reason
+    )
+
+    if (-not $Reasons.Contains($Reason)) {
+        $Reasons.Add($Reason)
+    }
+}
+
+function Join-CiClassifierValue {
+    param([string[]]$Value = @())
+
+    $uniqueValue = @($Value | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($uniqueValue.Count -eq 0) {
+        return "none"
+    }
+
+    return ($uniqueValue -join ",")
+}
+
+function New-ValidationTierSelectionObject {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$LaneSelection,
+        [string[]]$Reason = @()
+    )
+
+    $selectedLane = foreach ($laneName in $script:ValidationLaneNames) {
+        if ([bool]$LaneSelection[$laneName]) {
+            $laneName
+        }
+    }
+
+    $classificationReason = @($Reason | Sort-Object -Unique)
+    if ($classificationReason.Count -eq 0) {
+        $classificationReason = @("docs-agent-rules-subagent-only")
+    }
+
+    return [pscustomobject][ordered]@{
+        windows_msvc = [bool]$LaneSelection["windows_msvc"]
+        windows_cpu_profiling_host = [bool]$LaneSelection["windows_cpu_profiling_host"]
+        windows_asset_importers = [bool]$LaneSelection["windows_asset_importers"]
+        windows_desktop_editor = [bool]$LaneSelection["windows_desktop_editor"]
+        windows_network_enet = [bool]$LaneSelection["windows_network_enet"]
+        linux_cmake = [bool]$LaneSelection["linux_cmake"]
+        linux_vulkan_host = [bool]$LaneSelection["linux_vulkan_host"]
+        linux_sanitizers = [bool]$LaneSelection["linux_sanitizers"]
+        linux_coverage = [bool]$LaneSelection["linux_coverage"]
+        full_static_analysis = [bool]$LaneSelection["full_static_analysis"]
+        macos_metal_cmake = [bool]$LaneSelection["macos_metal_cmake"]
+        metal_host_evidence = [bool]$LaneSelection["metal_host_evidence"]
+        ios_metal_evidence = [bool]$LaneSelection["ios_metal_evidence"]
+        windows_cpp23_release = [bool]$LaneSelection["windows_cpp23_release"]
+        selected_lanes = (Join-CiClassifierValue -Value $selectedLane)
+        classification_reasons = (Join-CiClassifierValue -Value $classificationReason)
+    }
+}
+
 function New-ValidationTierSelection {
     param(
         [string[]]$InputPath = @(),
@@ -185,7 +263,7 @@ function New-ValidationTierSelection {
     )
 
     if ($All) {
-        return [pscustomobject][ordered]@{
+        return New-ValidationTierSelectionObject -LaneSelection @{
             windows_msvc = $true
             windows_cpu_profiling_host = $true
             windows_asset_importers = $true
@@ -200,7 +278,7 @@ function New-ValidationTierSelection {
             metal_host_evidence = $true
             ios_metal_evidence = $true
             windows_cpp23_release = $true
-        }
+        } -Reason @("non-pr-full-matrix")
     }
 
     $ciOrWorkflow = $false
@@ -216,6 +294,7 @@ function New-ValidationTierSelection {
     $windowsNetworkEnet = $false
     $linuxVulkanHostEvidence = $false
     $appleHostEvidence = $false
+    $classificationReasons = [System.Collections.Generic.List[string]]::new()
 
     $expandedInputPath = foreach ($rawPath in $InputPath) {
         if ($rawPath.Contains(",")) {
@@ -230,48 +309,61 @@ function New-ValidationTierSelection {
         $path = ConvertTo-CiPath -Path $rawPath
         if (Test-CiWorkflowPath -Path $path) {
             $ciOrWorkflow = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-workflow"
         }
         if (Test-RuntimeOrBuildPath -Path $path) {
             $runtimeOrBuild = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "runtime-or-build"
         }
         if (Test-SourceCodePath -Path $path) {
             $sourceCode = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "source-code"
         }
         if (Test-SanitizerRelevantPath -Path $path) {
             $sanitizerRelevant = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "sanitizer-relevant"
         }
         if (Test-CoverageRelevantPath -Path $path) {
             $coverageRelevant = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "coverage-relevant"
         }
         if (Test-Cpp23RelevantPath -Path $path) {
             $cpp23Relevant = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "cpp23-relevant"
         }
         if (Test-WindowsCpuProfilingHostPath -Path $path) {
             $windowsCpuProfilingHost = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "windows-cpu-profiling-host"
         }
         if (Test-WindowsAssetImportersPath -Path $path) {
             $windowsAssetImporters = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "windows-asset-importers"
         }
         if (Test-WindowsDesktopEditorPath -Path $path) {
             $windowsDesktopEditor = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "windows-desktop-editor"
         }
         if (Test-WindowsNetworkEnetPath -Path $path) {
             $windowsNetworkEnet = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "windows-network-enet"
         }
         if (Test-LinuxVulkanHostEvidencePath -Path $path) {
             $linuxVulkanHostEvidence = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "linux-vulkan-host-evidence"
         }
         if (Test-AppleHostEvidencePath -Path $path) {
             $appleHostEvidence = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "apple-host-evidence"
         }
         if (Test-StaticPolicyPath -Path $path) {
             $staticPolicy = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "static-policy"
         }
     }
 
     $heavyBuildLane = $ciOrWorkflow -or $runtimeOrBuild
 
-    return [pscustomobject][ordered]@{
+    return New-ValidationTierSelectionObject -LaneSelection @{
         windows_msvc = $heavyBuildLane
         windows_cpu_profiling_host = ($ciOrWorkflow -or $windowsCpuProfilingHost)
         windows_asset_importers = ($ciOrWorkflow -or $windowsAssetImporters)
@@ -286,7 +378,7 @@ function New-ValidationTierSelection {
         metal_host_evidence = ($ciOrWorkflow -or $appleHostEvidence)
         ios_metal_evidence = ($ciOrWorkflow -or $appleHostEvidence)
         windows_cpp23_release = ($ciOrWorkflow -or $cpp23Relevant)
-    }
+    } -Reason $classificationReasons.ToArray()
 }
 
 function Write-GitHubActionsOutput {
@@ -295,21 +387,12 @@ function Write-GitHubActionsOutput {
         [Parameter(Mandatory = $true)][string]$OutputPath
     )
 
-    $lines = @(
-        "windows_msvc=$($Selection.windows_msvc.ToString().ToLowerInvariant())",
-        "windows_cpu_profiling_host=$($Selection.windows_cpu_profiling_host.ToString().ToLowerInvariant())",
-        "windows_asset_importers=$($Selection.windows_asset_importers.ToString().ToLowerInvariant())",
-        "windows_desktop_editor=$($Selection.windows_desktop_editor.ToString().ToLowerInvariant())",
-        "windows_network_enet=$($Selection.windows_network_enet.ToString().ToLowerInvariant())",
-        "linux_cmake=$($Selection.linux_cmake.ToString().ToLowerInvariant())",
-        "linux_vulkan_host=$($Selection.linux_vulkan_host.ToString().ToLowerInvariant())",
-        "linux_sanitizers=$($Selection.linux_sanitizers.ToString().ToLowerInvariant())",
-        "linux_coverage=$($Selection.linux_coverage.ToString().ToLowerInvariant())",
-        "full_static_analysis=$($Selection.full_static_analysis.ToString().ToLowerInvariant())",
-        "macos_metal_cmake=$($Selection.macos_metal_cmake.ToString().ToLowerInvariant())",
-        "metal_host_evidence=$($Selection.metal_host_evidence.ToString().ToLowerInvariant())",
-        "ios_metal_evidence=$($Selection.ios_metal_evidence.ToString().ToLowerInvariant())",
-        "windows_cpp23_release=$($Selection.windows_cpp23_release.ToString().ToLowerInvariant())"
+    $lines = foreach ($laneName in $script:ValidationLaneNames) {
+        "$laneName=$($Selection.$laneName.ToString().ToLowerInvariant())"
+    }
+    $lines += @(
+        "selected_lanes=$($Selection.selected_lanes)",
+        "classification_reasons=$($Selection.classification_reasons)"
     )
 
     Add-Content -LiteralPath $OutputPath -Value $lines -Encoding utf8

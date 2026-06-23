@@ -96,9 +96,8 @@
 - Static-analysis PR failures need root fixes: keep `HeaderFilterRegex` path aware and hosted `--warnings-as-errors=*`; suppress only `NN warnings generated.`; use `tools/check-tidy.ps1 -Files` locally and sharded `-Jobs 0` in CI. `validate.ps1` uses bounded static jobs, CMake File API reuse, `test.ps1 -SkipBuild`, CI-only static flags, and automatic CMake/CTest parallelism.
 - For hosted PR/CI failures, inspect latest PR head SHA, open the failing job log for that SHA, reproduce the narrowest local lane, fix root cause, then extend static guards when the failure exposed drift-prone contracts. Billing/spending-limit failures before checkout are hosted account blockers. Do not diagnose stale runs or loosen branch protection, Codex rules, or Claude permissions.
 - PR CI selection uses an always-running required gate plus job-level conditional lanes, not path-filtered required workflows.
-  `tools/classify-pr-validation-tier.ps1` emits explicit lane outputs such as `windows_msvc`, `windows_cpu_profiling_host`,
-  `windows_asset_importers`, `windows_desktop_editor`, `windows_network_enet`, `linux_cmake`, `linux_vulkan_host`,
-  `macos_metal_cmake`, `metal_host_evidence`, and `ios_metal_evidence`; `tools/check-ci-matrix.ps1` guards the mapping.
+  `tools/classify-pr-validation-tier.ps1` emits lane outputs plus `selected_lanes`/`classification_reasons`;
+  `tools/check-ci-matrix.ps1` guards the mapping, and `validate.yml` writes a summary.
   `Agent Static Guards` runs `validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`; PR `Windows MSVC`
   runs `bootstrap-deps.ps1 -Feature desktop-runtime` then `validate.ps1 -SkipStaticChecks -SkipTidySmoke`; Windows optional
   lanes own CPU profiling host evidence, asset importers, native desktop editor, and ENet through their dedicated wrapper scripts.

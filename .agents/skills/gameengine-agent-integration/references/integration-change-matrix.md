@@ -43,7 +43,8 @@ Use this reference only when an agent-surface change touches one of these durabl
   GitHub workflow-level path/branch filters can leave required checks pending. Keep heavy validation as job-level conditional lanes selected
   by `tools/classify-pr-validation-tier.ps1` and guarded by `tools/check-ci-matrix.ps1`. Explicit PR outputs include `windows_msvc`,
   `windows_cpu_profiling_host`, `windows_asset_importers`, `windows_desktop_editor`, `windows_network_enet`, `linux_cmake`,
-  `linux_vulkan_host`, `macos_metal_cmake`, `metal_host_evidence`, and `ios_metal_evidence`.
+  `linux_vulkan_host`, `macos_metal_cmake`, `metal_host_evidence`, and `ios_metal_evidence`. Classifier diagnostics include
+  `selected_lanes` and `classification_reasons`, and `validate.yml` writes them to `GITHUB_STEP_SUMMARY` for latest-head triage.
 - Windows CI lanes use feature-scoped bootstrap: `desktop-runtime` for `Windows MSVC` / C++23, `asset-importers` for `windows_asset_importers`, `network-enet` for `windows_network_enet`, and no vcpkg bootstrap for `windows_desktop_editor`. Optional lane failures should be reproduced with their owning wrapper script before broadening `Windows MSVC`.
 - CI caches are acceleration only. Use `actions/cache/restore` and `actions/cache/save`, reuse restore `cache-primary-key` when saving, and keep cache restore/save transport failures from becoming validation evidence. Docs/agent/rules/subagent-only changes run formatting plus agent/static guards; docs/agent-only PRs use lightweight static validation.
 - Hosted PR failure hardening: Static-analysis drift includes `.clang-tidy` `HeaderFilterRegex`, strict warnings, and `NN warnings generated.` handling. Keep `.codex/rules` and `.claude/settings.json` as command/permission gates, not troubleshooting playbooks.
