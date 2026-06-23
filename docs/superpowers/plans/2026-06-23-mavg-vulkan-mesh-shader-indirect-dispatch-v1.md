@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-vulkan-mesh-shader-indirect-dispatch-v1`
 
-**Status:** Implemented locally on `codex/mavg-vulkan-mesh-indirect-impl`; publication and hosted PR evidence pending. The slice proves selected Vulkan task+mesh direct, indirect, and indirect-count dispatch evidence on a ready host while keeping package-visible broad `mavg_mesh_shader_lod_ready` and all Nanite/Metal/broad backend claims false.
+**Status:** Completed and merged through PR #769 on 2026-06-23. The slice proves selected Vulkan task+mesh direct, indirect, and indirect-count dispatch evidence on a ready host while keeping package-visible broad `mavg_mesh_shader_lod_ready` and all Nanite/Metal/broad backend claims false.
 
 **Date:** 2026-06-23
 
@@ -328,6 +328,6 @@ git diff --check
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Run publication preflight, commit the validated slice, push the task branch, open a draft PR, wait for hosted checks, mark ready through `tools/ready-task-pr.ps1`, and register auto-merge only after the required PR gate succeeds.
+- [x] Run publication preflight, commit the validated slice, push the task branch, open a draft PR, wait for hosted checks, mark ready through `tools/ready-task-pr.ps1`, and register auto-merge only after the required PR gate succeeds.
 
 Expected final state: a validated PR that proves selected Vulkan mesh shader indirect dispatch evidence, count-indirect readiness or precise host-gated evidence, task/mesh synchronization evidence, and no broad MAVG readiness promotion.
