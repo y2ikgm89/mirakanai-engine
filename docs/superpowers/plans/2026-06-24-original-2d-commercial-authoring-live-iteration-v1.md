@@ -158,11 +158,11 @@ Phase 1 validation evidence:
 
 Goal: connect existing platform file watcher evidence to existing asset recook/runtime replacement safe points without exposing native handles or adding autonomous unsafe mutation.
 
-- [ ] Add `engine/tools/include/mirakana/tools/2d_source_pulse.hpp`.
-- [ ] Add `engine/tools/asset/2d_source_pulse.cpp`.
-- [ ] Register the source in `engine/tools/asset/CMakeLists.txt`.
-- [ ] Add `tests/unit/tools_2d_source_pulse_tests.cpp`.
-- [ ] Register `MK_tools_2d_source_pulse_tests` in root `CMakeLists.txt`.
+- [x] Add `engine/tools/include/mirakana/tools/2d_source_pulse.hpp`.
+- [x] Add `engine/tools/asset/2d_source_pulse.cpp`.
+- [x] Register the source in `engine/tools/asset/CMakeLists.txt`.
+- [x] Add `tests/unit/tools_2d_source_pulse_tests.cpp`.
+- [x] Register `MK_tools_2d_source_pulse_tests` in root `CMakeLists.txt`.
 
 Public API shape:
 
@@ -220,12 +220,27 @@ Implementation notes:
 
 Tests:
 
-- [ ] `maps_native_or_polling_file_events_to_source_pulse_rows`.
-- [ ] `rejects_invalid_paths_and_unknown_event_kinds`.
-- [ ] `rejects_native_handle_exposure`.
-- [ ] `rejects_autonomous_background_commit`.
-- [ ] `rejects_package_script_and_renderer_rhi_requests`.
-- [ ] `does_not_construct_or_own_platform_watchers`.
+- [x] `maps_native_or_polling_file_events_to_source_pulse_rows`.
+- [x] `rejects_invalid_paths_and_unknown_event_kinds`.
+- [x] `rejects_native_handle_exposure`.
+- [x] `rejects_autonomous_background_commit`.
+- [x] `rejects_package_script_and_renderer_rhi_requests`.
+- [x] `does_not_construct_or_own_platform_watchers`.
+
+Phase 2 validation evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_2d_source_pulse_tests` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_2d_source_pulse_tests` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS.
+- No third-party code, assets, dependencies, license obligations, or legal notice files were added in Phase 2.
 
 ## Phase 3: Reviewed Active-Session Package Replacement
 
