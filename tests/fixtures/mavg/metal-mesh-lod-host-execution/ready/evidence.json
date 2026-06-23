@@ -1,0 +1,53 @@
+{
+  "schema_version": "GameEngine.MavgMetalMeshLodHostExecutionEvidence.v1",
+  "claim_id": "mavg-metal-mesh-lod-apple-host-execution-v1",
+  "host": {
+    "platform": "macos",
+    "macos_version": "macOS 15.5",
+    "xcode_version": "Xcode 16.4",
+    "full_xcode_selected": true,
+    "metal_tool_ready": true,
+    "metallib_tool_ready": true
+  },
+  "feature_row": {
+    "feature_set_table_source_id": "Apple-Metal-Feature-Set-Tables-2026-05-21",
+    "apple_gpu_family": "Apple9",
+    "mesh_shader_supported": true,
+    "object_shader_supported": true
+  },
+  "shader_row": {
+    "msl_source_validated": true,
+    "object_function": "mavg_object_lod",
+    "mesh_function": "mavg_mesh_lod",
+    "fragment_function": "mavg_fragment_lod",
+    "object_payload_declared": true,
+    "mesh_payload_consumed": true
+  },
+  "execution_row": {
+    "first_party_mavg_workload_id": "sample_desktop_runtime_game.mavg_metal_mesh_lod_fixture",
+    "object_mesh_pipeline_created": true,
+    "draw_mesh_threads_encoded": true,
+    "object_mesh_dispatch_executed": true,
+    "command_buffer_completed": true,
+    "meshlet_count": 1,
+    "lod_level_count": 3,
+    "readback_artifact_path": "readback.bin",
+    "readback_artifact_hash_sha256": "a70925ac6bdd09a0f2cc2f2b94cc97235b0ac1307dc4fed3240cfff280f72c2c",
+    "deterministic_readback_hash_sha256": "a70925ac6bdd09a0f2cc2f2b94cc97235b0ac1307dc4fed3240cfff280f72c2c",
+    "package_visible_output_written": true,
+    "package_visible_output_rows": 1
+  },
+  "non_claims": {
+    "simulator_only_evidence": false,
+    "cross_backend_inference": false,
+    "ray_tracing_pipeline_conflation": false,
+    "native_handles_exposed": false,
+    "mavg_mesh_shader_lod_ready": false,
+    "mavg_metal_ray_tracing_ready": false,
+    "mavg_nanite_compatible": false,
+    "mavg_nanite_equivalent": false,
+    "mavg_nanite_superior": false,
+    "mavg_broad_backend_readiness": false,
+    "mavg_broad_optimization": false
+  }
+}

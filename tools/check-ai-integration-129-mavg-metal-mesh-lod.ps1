@@ -8,6 +8,8 @@ $metalMavgTestsText = Get-AgentSurfaceText "tests/unit/metal_mavg_mesh_lod_tests
 $metalCMakeText = Get-AgentSurfaceText "engine/rhi/metal/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $validatorText = Get-AgentSurfaceText "tools/check-mavg-metal-host-evidence.ps1"
+$schemaText = Get-AgentSurfaceText "schemas/mavg-metal-mesh-lod-host-execution.schema.json"
+$fixtureEvidenceText = Get-AgentSurfaceText "tests/fixtures/mavg/metal-mesh-lod-host-execution/ready/evidence.json"
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
@@ -15,6 +17,7 @@ $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $mavgAdvancedPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-21-mavg-advanced-backend-evidence-closeout-v1.md"
+$mavgMetalExecutionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-23-mavg-metal-mesh-lod-apple-host-execution-v1.md"
 
 foreach ($needle in @(
         "MetalMavgMeshLodHostEvidenceDesc",
@@ -72,24 +75,52 @@ Assert-ContainsText $rootCMakeText "MK_mavg_metal_mesh_lod_tests" "root CMake Me
 
 foreach ($needle in @(
         "validation_recipe=mavg-metal-mesh-lod-host-evidence",
+        '$ArtifactRootRelative = "artifacts/mavg/metal-mesh-lod-host-execution"',
+        "schemas/mavg-metal-mesh-lod-host-execution.schema.json",
+        "GameEngine.MavgMetalMeshLodHostExecutionEvidence.v1",
         "MK_mavg_metal_mesh_lod_tests",
         'mavg_metal_mesh_lod_status=$status',
         'mavg_metal_mesh_lod_ready=$(ConvertTo-CounterBit $ready)',
         "mavg_mesh_shader_lod_ready=0",
         "mavg_metal_ray_tracing_ready=0",
         "mavg_metal_mesh_lod_feature_set_table_source=Apple-Metal-Feature-Set-Tables-2026-05-21",
-        "mavg_metal_mesh_lod_object_mesh_pipeline_rows=0",
-        "mavg_metal_mesh_lod_object_mesh_dispatch_rows=0",
-        "mavg_metal_mesh_lod_readback_hash_rows=0",
-        "mavg_metal_mesh_lod_cross_backend_inference=0",
-        "mavg_metal_mesh_lod_ray_tracing_pipeline_conflation=0",
-        "mavg_metal_mesh_lod_native_handles_exposed=0",
-        "mavg_metal_mesh_lod_nanite_compatible=0",
-        "mavg_metal_mesh_lod_broad_backend_readiness=0",
+        'mavg_metal_mesh_lod_execution_artifact_rows=$artifactRows',
+        'mavg_metal_mesh_lod_execution_ready_rows=$readyRows',
+        'mavg_metal_mesh_lod_execution_invalid_rows=$invalidRows',
+        'mavg_metal_mesh_lod_execution_missing_artifacts=$missingArtifactRows',
+        'mavg_metal_mesh_lod_retained_apple_host_evidence=$(ConvertTo-CounterBit $ready)',
+        'mavg_metal_mesh_lod_object_mesh_pipeline_rows=$objectMeshPipelineRows',
+        'mavg_metal_mesh_lod_object_mesh_dispatch_rows=$objectMeshDispatchRows',
+        'mavg_metal_mesh_lod_draw_mesh_threads_rows=$drawMeshThreadsRows',
+        'mavg_metal_mesh_lod_shader_payload_rows=$shaderPayloadRows',
+        'mavg_metal_mesh_lod_readback_hash_rows=$readbackHashRows',
+        'mavg_metal_mesh_lod_cross_backend_inference=$crossBackendInferenceRows',
+        'mavg_metal_mesh_lod_ray_tracing_pipeline_conflation=$rayTracingConflationRows',
+        'mavg_metal_mesh_lod_native_handles_exposed=$nativeHandleRows',
+        'mavg_metal_mesh_lod_nanite_compatible=$naniteCompatibleRows',
+        'mavg_metal_mesh_lod_broad_backend_readiness=$broadBackendReadinessRows',
         "MAVG Metal mesh LOD readiness is incomplete"
     )) {
     Assert-ContainsText $validatorText $needle "tools/check-mavg-metal-host-evidence.ps1"
 }
+
+foreach ($needle in @(
+        "GameEngine.MavgMetalMeshLodHostExecutionEvidence.v1",
+        "mavg-metal-mesh-lod-apple-host-execution-v1",
+        "Apple-Metal-Feature-Set-Tables-2026-05-21",
+        "draw_mesh_threads_encoded",
+        "object_payload_declared",
+        "mesh_payload_consumed",
+        "deterministic_readback_hash_sha256",
+        "mavg_mesh_shader_lod_ready",
+        "mavg_nanite_superior",
+        "mavg_broad_backend_readiness"
+    )) {
+    Assert-ContainsText $schemaText $needle "MAVG Metal mesh LOD retained evidence schema"
+    Assert-ContainsText $fixtureEvidenceText $needle "MAVG Metal mesh LOD retained evidence fixture"
+}
+Assert-ContainsText $fixtureEvidenceText '"mavg_mesh_shader_lod_ready": false' "MAVG Metal fixture non-claim"
+Assert-ContainsText $fixtureEvidenceText '"mavg_nanite_superior": false' "MAVG Metal fixture Nanite non-claim"
 
 Assert-ContainsText $commandsFragmentText "mavgMetalHostEvidenceCheck" "manifest commands MAVG Metal host evidence command"
 
@@ -98,6 +129,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },
         @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
         @{ Text = $mavgAdvancedPlanText; Label = "MAVG advanced evidence plan" },
+        @{ Text = $mavgMetalExecutionPlanText; Label = "MAVG Metal mesh LOD 9B plan" },
         @{ Text = $modulesFragmentText; Label = "engine/agent/manifest.fragments/004-modules.json" },
         @{ Text = $manifestText; Label = "engine/agent/manifest.json" }
     )) {
@@ -109,6 +141,9 @@ foreach ($surface in @(
             "tools/check-mavg-metal-host-evidence.ps1",
             "mavg_metal_mesh_lod_status=host_evidence_required",
             "mavg_metal_mesh_lod_ready=0",
+            "mavg-metal-mesh-lod-apple-host-execution-v1",
+            "GameEngine.MavgMetalMeshLodHostExecutionEvidence.v1",
+            "drawMeshThreads",
             "Apple Metal Feature Set Tables",
             "object/mesh shader",
             "readback hash",
@@ -120,12 +155,13 @@ foreach ($surface in @(
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) Metal MAVG mesh LOD host gate"
     }
-    foreach ($forbiddenNeedle in @(
-            "mavg_metal_mesh_lod_ready=1",
-            "mavg_metal_mesh_lod_status=ready",
-            "mavg_metal_ray_tracing_ready=1"
-        )) {
-        Assert-DoesNotContainText $surface.Text $forbiddenNeedle "$($surface.Label) forbidden Metal MAVG ready claim"
+    if ($surface.Label -ne "MAVG advanced evidence plan") {
+        foreach ($forbiddenNeedle in @(
+                "mavg_mesh_shader_lod_ready=1",
+                "mavg_metal_ray_tracing_ready=1"
+            )) {
+            Assert-DoesNotContainText $surface.Text $forbiddenNeedle "$($surface.Label) forbidden Metal MAVG ready claim"
+        }
     }
 }
 
