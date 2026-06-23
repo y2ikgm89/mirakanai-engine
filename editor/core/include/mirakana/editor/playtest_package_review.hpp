@@ -668,6 +668,44 @@ struct EditorRuntimeScenePackageValidationExecutionResult {
     std::vector<std::string> diagnostics;
 };
 
+enum class Editor2DLiveIterationStageStatus : std::uint8_t {
+    ready,
+    blocked,
+    host_gated,
+    evidence_required,
+};
+
+struct Editor2DLiveIterationEvidenceRow {
+    std::string id;
+    Editor2DLiveIterationStageStatus status{Editor2DLiveIterationStageStatus::blocked};
+    std::string source_model;
+    std::vector<std::string> validation_recipe_ids;
+    std::vector<std::string> host_gates;
+    std::string diagnostic;
+};
+
+struct Editor2DLiveIterationReviewDesc {
+    EditorPlaytestPackageReviewModel playtest_review;
+    EditorRuntimeScenePackageValidationExecutionResult runtime_scene_validation;
+    std::vector<Editor2DLiveIterationEvidenceRow> source_pulse_rows;
+    bool request_mutation{false};
+    bool request_validation_execution{false};
+    bool request_arbitrary_shell_execution{false};
+    bool request_package_script_execution{false};
+    bool request_native_handle_exposure{false};
+};
+
+struct Editor2DLiveIterationReviewModel {
+    std::vector<Editor2DLiveIterationEvidenceRow> rows;
+    Editor2DLiveIterationStageStatus status{Editor2DLiveIterationStageStatus::blocked};
+    bool ready_for_source_pulse_safe_point{false};
+    bool mutates{false};
+    bool executes{false};
+    bool exposes_native_handles{false};
+    std::vector<std::string> unsupported_claims;
+    std::vector<std::string> diagnostics;
+};
+
 [[nodiscard]] std::string_view editor_playtest_review_step_status_label(EditorPlaytestReviewStepStatus status) noexcept;
 
 [[nodiscard]] std::string_view editor_runtime_scene_package_validation_execution_status_label(
@@ -703,6 +741,12 @@ execute_editor_runtime_scene_package_validation(IFileSystem& filesystem,
 
 [[nodiscard]] mirakana::ui::UiDocument make_editor_runtime_scene_package_validation_execution_ui_model(
     const EditorRuntimeScenePackageValidationExecutionResult& result);
+
+[[nodiscard]] Editor2DLiveIterationReviewModel
+make_editor_2d_live_iteration_review_model(const Editor2DLiveIterationReviewDesc& desc);
+
+[[nodiscard]] mirakana::ui::UiDocument
+make_editor_2d_live_iteration_review_ui_model(const Editor2DLiveIterationReviewModel& model);
 
 [[nodiscard]] EditorAiPackageAuthoringDiagnosticsModel
 make_editor_ai_package_authoring_diagnostics_model(const EditorAiPackageAuthoringDiagnosticsDesc& desc);
