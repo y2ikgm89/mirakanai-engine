@@ -224,6 +224,10 @@ jobs:
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
+      - name: Validate CPU profiling matrix host gate
+        shell: pwsh
+        run: ./tools/validate-cpu-profiling-matrix-host-gate.ps1
+
       - name: Validate optional asset importers
         shell: pwsh
         run: ./tools/build-asset-importers.ps1
