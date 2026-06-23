@@ -55,10 +55,10 @@ function Invoke-CpuSampleWorkload {
     param([Parameter(Mandatory = $true)][int]$DurationMilliseconds)
 
     $deadline = [DateTimeOffset]::UtcNow.AddMilliseconds($DurationMilliseconds)
-    $accumulator = [uint64]1469598103934665603
+    $accumulator = [int64]146959810
     while ([DateTimeOffset]::UtcNow -lt $deadline) {
         for ($index = 0; $index -lt 4096; $index += 1) {
-            $accumulator = ($accumulator -bxor [uint64]$index) * [uint64]1099511628211
+            $accumulator = [int64]((($accumulator * 1103515245) + 12345 + $index) % 2147483647)
         }
     }
     Write-Information "cpu-profiling-matrix-host-gate-workload-hash=$accumulator" -InformationAction Continue
