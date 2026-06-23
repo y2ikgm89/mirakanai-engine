@@ -149,6 +149,24 @@ MK_TEST("runtime ui platform production gate becomes ready only with all selecte
     MK_REQUIRE(result.diagnostics.empty());
 }
 
+MK_TEST("runtime ui platform production gate accepts selected Windows DirectWrite text shaping evidence") {
+    auto rows = make_complete_rows();
+    rows[1] = RuntimeUiPlatformProductionEvidenceRow{
+        .id = "runtime-ui-platform.text-shaping.win32.directwrite",
+        .feature = RuntimeUiPlatformProductionFeature::production_text_shaping,
+        .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+        .selected = true,
+        .ready = true,
+        .dependency_recorded = true,
+        .host_evidence_available = true,
+    };
+
+    const auto result = mirakana::ui::evaluate_runtime_ui_platform_production(rows);
+
+    MK_REQUIRE(result.ready);
+    MK_REQUIRE(result.diagnostics.empty());
+}
+
 int main() {
     return mirakana::test::run_all();
 }

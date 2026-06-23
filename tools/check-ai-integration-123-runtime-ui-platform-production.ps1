@@ -8,9 +8,15 @@ $runtimeUiCleanRoomLedgerText = Get-AgentSurfaceText "docs/specs/2026-06-24-firs
 $runtimeUiCleanRoomCheckText = Get-AgentSurfaceText "tools/check-first-party-ui-clean-room.ps1"
 $runtimeUiPlatformProductionHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/runtime_ui_platform_production.hpp"
 $runtimeUiPlatformProductionTestText = Get-AgentSurfaceText "tests/unit/runtime_ui_platform_production_tests.cpp"
+$runtimeUiWin32TextHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_ui_text_font.hpp"
+$runtimeUiWin32TextSourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_ui_text_font.cpp"
+$runtimeUiWin32TextTestText = Get-AgentSurfaceText "tests/unit/win32_ui_text_font_tests.cpp"
 $runtimeUiCMakeText = Get-AgentSurfaceText "engine/ui/CMakeLists.txt"
+$win32PlatformCMakeText = Get-AgentSurfaceText "engine/platform/win32/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
+$moduleManifestText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $runtimeBackendReadinessText = Get-AgentSurfaceText "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
+$validationRecipesText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $gameCodeGuidanceText = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
 $dependencyDocsText = Get-AgentSurfaceText "docs/dependencies.md"
 $legalDocsText = Get-AgentSurfaceText "docs/legal-and-licensing.md"
@@ -94,6 +100,56 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $rootCMakeText $needle "root CMake runtime UI platform production tests"
     Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan validation"
+}
+
+foreach ($needle in @(
+        "Win32UiTextShapeRequest",
+        "Win32UiTextShapeResult",
+        "Win32UiTextGlyphRow",
+        "Win32UiTextBoundaryRow",
+        "Win32UiTextFallbackFamilyRow",
+        "shape_win32_ui_text_with_directwrite",
+        "validate_win32_ui_text_shape_result_rows",
+        "make_win32_directwrite_text_shaping_production_evidence"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextHeaderText $needle "Win32 DirectWrite runtime UI text shaping public header"
+    Assert-ContainsText $runtimeUiWin32TextTestText $needle "Win32 DirectWrite runtime UI text shaping tests"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 3"
+}
+
+foreach ($needle in @(
+        "IDWriteFactory",
+        "IDWriteTextLayout",
+        "IDWriteTextAnalyzer",
+        "DWriteCreateFactory"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextSourceText $needle "Win32 DirectWrite runtime UI text shaping source"
+}
+
+foreach ($needle in @(
+        "invalid_utf8",
+        "missing_font_family",
+        "row_budget_exceeded",
+        "duplicate_cluster_row",
+        "public_native_handles_exposed"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextHeaderText $needle "Win32 DirectWrite runtime UI text shaping diagnostics"
+    Assert-ContainsText $runtimeUiWin32TextTestText $needle "Win32 DirectWrite runtime UI text shaping tests"
+}
+
+foreach ($needle in @(
+        "src/win32_ui_text_font.cpp",
+        "dwrite"
+    )) {
+    Assert-ContainsText $win32PlatformCMakeText $needle "Win32 platform CMake DirectWrite runtime UI text shaping"
+}
+
+foreach ($needle in @(
+        "MK_win32_ui_text_font_tests",
+        "tests/unit/win32_ui_text_font_tests.cpp"
+    )) {
+    Assert-ContainsText $rootCMakeText $needle "root CMake Win32 DirectWrite runtime UI text shaping tests"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 3 validation"
 }
 
 foreach ($section in @(
@@ -183,10 +239,18 @@ foreach ($needle in @(
 
 Assert-ContainsText $currentCapabilitiesText "First-Party UI Clean-Room Source Ledger v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "Runtime UI Platform Production Gate v1" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesText "Runtime UI Windows DirectWrite Text Shaping Adapter v1" "docs/current-capabilities.md"
 Assert-ContainsText $runtimeBackendReadinessText "runtime-ui-platform-production-gate" "runtime backend readiness manifest"
+Assert-ContainsText $runtimeBackendReadinessText "runtime-ui-win32-directwrite-text-shaping" "runtime backend readiness manifest"
+Assert-ContainsText $validationRecipesText "runtime-ui-win32-directwrite-text-shaping" "validation recipes manifest"
+Assert-ContainsText $moduleManifestText "win32_ui_text_font.hpp" "module manifest MK_platform_win32 public header"
 Assert-ContainsText $gameCodeGuidanceText "currentRuntimeUiPlatformProductionGate" "game code guidance manifest"
+Assert-ContainsText $gameCodeGuidanceText "shape_win32_ui_text_with_directwrite" "game code guidance manifest runtime UI Win32 DirectWrite"
+Assert-ContainsText $dependencyDocsText "DirectWrite runtime UI text-shaping adapter" "docs/dependencies.md runtime UI DirectWrite adapter"
+Assert-ContainsText $legalDocsText "runtime UI Windows DirectWrite text-shaping adapter" "docs/legal-and-licensing.md runtime UI DirectWrite adapter"
 Assert-ContainsText $currentCapabilitiesText "first-party-ui-clean-room: ok" "docs/current-capabilities.md"
 Assert-ContainsText $planRegistryText "First-Party Runtime UI And Editor Platform Production v1" "docs/superpowers/plans/README.md"
+Assert-ContainsText $planRegistryText "selected Windows DirectWrite runtime UI text-shaping evidence" "docs/superpowers/plans/README.md"
 
 $cleanRoomCheckScriptPath = Resolve-RequiredAgentPath "tools/check-first-party-ui-clean-room.ps1"
 & $cleanRoomCheckScriptPath
