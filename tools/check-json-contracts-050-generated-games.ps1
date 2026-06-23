@@ -271,8 +271,17 @@ if ($vulkanGate.Count -ne 1 -or $vulkanGate[0].status -ne "ready") {
     Write-Error "engine manifest aiOperableProductionLoop must keep vulkan-strict ready after strict Windows Vulkan host evidence"
 }
 $metalGate = @($productionLoop.hostGates | Where-Object { $_.id -eq "metal-apple" })
-if ($metalGate.Count -ne 1 -or $metalGate[0].status -ne "host-gated") {
-    Write-Error "engine manifest aiOperableProductionLoop must keep metal-apple host-gated"
+if ($metalGate.Count -ne 1 -or $metalGate[0].status -ne "ready" -or $metalGate[0].residualClass -ne "ready") {
+    Write-Error "engine manifest aiOperableProductionLoop must keep metal-apple ready after hosted Apple Metal closeout evidence"
+}
+foreach ($recipe in @("renderer-metal-environment-aggregate-apple-host-evidence", "environment-platform-ios-metal-package", "environment-weather-metal-solver-host-gate")) {
+    if (@($metalGate[0].validationRecipes) -notcontains $recipe) {
+        Write-Error "engine manifest aiOperableProductionLoop metal-apple host gate must reference $recipe"
+    }
+}
+$metalGateNotes = [string]$metalGate[0].notes
+foreach ($needle in @("Apple Metal host gate closeout", "environment_metal_host_aggregate_ready=1", "environment_platform_macos_metal_ready=1", "environment_platform_ios_metal_ready=1", "environment_weather_simulation_metal_gpu_solver_ready=1", "environment_weather_simulation_metal_gpu_solver_native_handle_access=0", "environment_ready=0")) {
+    Assert-ContainsText $metalGateNotes $needle "engine manifest aiOperableProductionLoop metal-apple host gate notes"
 }
 
 $recipeMapIds = @{}
