@@ -218,6 +218,10 @@ struct TextLayoutRequest {
     TextDirection direction{TextDirection::automatic};
     TextWrapMode wrap{TextWrapMode::clip};
     float max_width{0.0F};
+    float pixel_size{16.0F};
+    std::string language_tag{"und"};
+    std::string script_tag{"Zyyy"};
+    std::size_t row_budget{64U};
 };
 
 struct TextShapingSegmentEvidence {
@@ -429,6 +433,10 @@ enum class AdapterPayloadDiagnosticCode : std::uint8_t {
     invalid_text_shaping_text,
     invalid_text_shaping_font_family,
     invalid_text_shaping_max_width,
+    invalid_text_shaping_pixel_size,
+    invalid_text_shaping_language_tag,
+    invalid_text_shaping_script_tag,
+    invalid_text_shaping_row_budget,
     invalid_text_shaping_result,
     invalid_image_bounds,
     empty_image_reference,

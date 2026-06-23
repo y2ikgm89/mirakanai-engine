@@ -339,13 +339,13 @@ Validation evidence:
 - Create: `tests/unit/win32_ui_text_font_tests.cpp`
 - Modify: `tests/unit/runtime_ui_platform_production_tests.cpp`
 
-- [ ] Add `Win32UiTextShapeRequest`, `Win32UiTextShapeResult`, `Win32UiTextGlyphRow`, `Win32UiTextBoundaryRow`, and `shape_win32_ui_text_with_directwrite`.
-- [ ] Keep all COM and DirectWrite interfaces inside `.cpp` or private implementation details; the public header may contain only first-party value rows, strings, numbers, and booleans.
-- [ ] Require strict UTF-8 input, font family id, pixel size, direction, language tag, script tag, max width, and row budget.
-- [ ] The result must include glyph ids, cluster byte offsets on UTF-8 scalar boundaries, advance/offset pairs, fallback family rows, direction/script/language rows, line-break rows, bidi run rows, and diagnostic rows.
-- [ ] Add tests for ASCII, Japanese text, mixed LTR/RTL row evidence, missing font family, invalid UTF-8, duplicate clusters, missing fallback rows, and public native handle access set to zero.
-- [ ] Connect successful Windows proof rows into `RuntimeUiPlatformProductionEvidenceRow` as `production_text_shaping` with `official_sdk_adapter`.
-- [ ] Run:
+- [x] Add `Win32UiTextShapeRequest`, `Win32UiTextShapeResult`, `Win32UiTextGlyphRow`, `Win32UiTextBoundaryRow`, and `shape_win32_ui_text_with_directwrite`.
+- [x] Keep all COM and DirectWrite interfaces inside `.cpp` or private implementation details; the public header may contain only first-party value rows, strings, numbers, and booleans.
+- [x] Require strict UTF-8 input, font family id, pixel size, direction, language tag, script tag, max width, and row budget.
+- [x] The result must include glyph ids, cluster byte offsets on UTF-8 scalar boundaries, advance/offset pairs, fallback family rows, direction/script/language rows, line-break rows, bidi run rows, and diagnostic rows.
+- [x] Add tests for ASCII, Japanese text, mixed LTR/RTL row evidence, missing font family, invalid UTF-8, duplicate clusters, missing fallback rows, and public native handle access set to zero.
+- [x] Connect successful Windows proof rows into `RuntimeUiPlatformProductionEvidenceRow` as `production_text_shaping` with `official_sdk_adapter`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests MK_runtime_ui_platform_production_tests
@@ -356,6 +356,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 **Expected:** Windows DirectWrite adapter evidence passes on Windows hosts; non-Windows hosts fail closed as host-gated without promoting readiness.
 
 **Done When:** `production_text_shaping` can become ready only through selected Windows DirectWrite evidence, while Core Text and HarfBuzz/Fontconfig rows remain explicitly gated.
+
+**Implementation Evidence (2026-06-24):** Task 3 adds `engine/platform/win32/include/mirakana/platform/win32/win32_ui_text_font.hpp`, `engine/platform/win32/src/win32_ui_text_font.cpp`, `MK_win32_ui_text_font_tests`, `Win32UiTextFallbackFamilyRow`, `validate_win32_ui_text_shape_result_rows`, `make_win32_directwrite_text_shaping_production_evidence`, and selected `runtime-ui-platform.text-shaping.win32.directwrite` evidence conversion. The adapter uses Windows SDK DirectWrite behind private `.cpp` COM boundaries, emits value-only glyph, fallback, script/language, line-break, bidi, diagnostics, and no-public-native-handle rows, and keeps Core Text plus HarfBuzz/Fontconfig rows unclaimed.
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests` before implementation | Failed as expected on missing `mirakana/platform/win32/win32_ui_text_font.hpp`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests MK_runtime_ui_platform_production_tests MK_ui_renderer_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_ui_text_font_tests|MK_runtime_ui_platform_production_tests|MK_ui_renderer_tests"` | Passed. |
 
 ## Task 4 - Real Font Loading And Glyph Rasterization
 

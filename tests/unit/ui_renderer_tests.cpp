@@ -2386,12 +2386,20 @@ MK_TEST("ui text shaping request plan dispatches valid request to adapter") {
     request.direction = mirakana::ui::TextDirection::left_to_right;
     request.wrap = mirakana::ui::TextWrapMode::clip;
     request.max_width = 160.0F;
+    request.pixel_size = 18.0F;
+    request.language_tag = "en-US";
+    request.script_tag = "Latn";
+    request.row_budget = 32U;
 
     const auto plan = mirakana::ui::plan_text_shaping_request(request);
     MK_REQUIRE(plan.ready());
     MK_REQUIRE(plan.request.text == "Play");
     MK_REQUIRE(plan.request.font_family == "Inter");
     MK_REQUIRE(plan.request.max_width == 160.0F);
+    MK_REQUIRE(plan.request.pixel_size == 18.0F);
+    MK_REQUIRE(plan.request.language_tag == "en-US");
+    MK_REQUIRE(plan.request.script_tag == "Latn");
+    MK_REQUIRE(plan.request.row_budget == 32U);
     MK_REQUIRE(plan.diagnostics.empty());
 
     CapturingTextShapingAdapter adapter;
@@ -2410,6 +2418,10 @@ MK_TEST("ui text shaping request plan dispatches valid request to adapter") {
     MK_REQUIRE(adapter.published_request.text == "Play");
     MK_REQUIRE(adapter.published_request.font_family == "Inter");
     MK_REQUIRE(adapter.published_request.max_width == 160.0F);
+    MK_REQUIRE(adapter.published_request.pixel_size == 18.0F);
+    MK_REQUIRE(adapter.published_request.language_tag == "en-US");
+    MK_REQUIRE(adapter.published_request.script_tag == "Latn");
+    MK_REQUIRE(adapter.published_request.row_budget == 32U);
 }
 
 MK_TEST("ui text shaping request plan blocks invalid request before adapter") {
@@ -2493,6 +2505,26 @@ MK_TEST("ui text shaping request plan blocks invalid request before adapter") {
     MK_REQUIRE(invalid_utf8_plan.diagnostics.size() == 1);
     MK_REQUIRE(invalid_utf8_plan.diagnostics[0].code ==
                mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_text);
+
+    mirakana::ui::TextLayoutRequest invalid_adapter_fields_request;
+    invalid_adapter_fields_request.text = "Play";
+    invalid_adapter_fields_request.font_family = "Inter";
+    invalid_adapter_fields_request.pixel_size = 0.0F;
+    invalid_adapter_fields_request.language_tag = "";
+    invalid_adapter_fields_request.script_tag = "Latn\nBad";
+    invalid_adapter_fields_request.row_budget = 0U;
+
+    const auto invalid_adapter_fields_plan = mirakana::ui::plan_text_shaping_request(invalid_adapter_fields_request);
+    MK_REQUIRE(!invalid_adapter_fields_plan.ready());
+    MK_REQUIRE(invalid_adapter_fields_plan.diagnostics.size() == 4);
+    MK_REQUIRE(invalid_adapter_fields_plan.diagnostics[0].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_pixel_size);
+    MK_REQUIRE(invalid_adapter_fields_plan.diagnostics[1].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_language_tag);
+    MK_REQUIRE(invalid_adapter_fields_plan.diagnostics[2].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_script_tag);
+    MK_REQUIRE(invalid_adapter_fields_plan.diagnostics[3].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_row_budget);
 }
 
 MK_TEST("ui text shaping result reports invalid adapter runs") {
