@@ -1526,6 +1526,14 @@ if(BUILD_TESTING)
         MK_apply_common_target_options(MK_win32_platform_tests)
         add_test(NAME MK_win32_platform_tests COMMAND MK_win32_platform_tests)
 
+        add_executable(MK_win32_ui_text_font_tests
+            tests/unit/win32_ui_text_font_tests.cpp
+        )
+        target_link_libraries(MK_win32_ui_text_font_tests PRIVATE MK_platform_win32)
+        target_include_directories(MK_win32_ui_text_font_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_win32_ui_text_font_tests)
+        add_test(NAME MK_win32_ui_text_font_tests COMMAND MK_win32_ui_text_font_tests)
+
         add_executable(MK_win32_directstorage_byte_range_io_tests
             tests/unit/win32_directstorage_byte_range_io_tests.cpp
         )

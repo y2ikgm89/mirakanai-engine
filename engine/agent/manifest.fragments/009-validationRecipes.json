@@ -21,6 +21,11 @@
       "purpose": "Build and test the Windows-native platform foundation, including Win32 runtime/window/message-pump/cursor rows, keyboard/mouse input rows, clipboard/file-dialog/text-input rows, runtime UI contract interaction, and public API boundary checks."
     },
     {
+      "name": "runtime-ui-win32-directwrite-text-shaping",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests MK_runtime_ui_platform_production_tests MK_ui_renderer_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_win32_ui_text_font_tests|MK_runtime_ui_platform_production_tests|MK_ui_renderer_tests\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
+      "purpose": "Build and test selected Windows DirectWrite runtime UI text-shaping evidence, including strict UTF-8 request rows, glyph ids and scalar cluster byte offsets, fallback family rows, script/language rows, line-break rows, bidi rows, no public native handles, and RuntimeUiPlatformProductionEvidenceRow conversion for production_text_shaping official_sdk_adapter without promoting Core Text, HarfBuzz/Fontconfig, real font loading/rasterization, native IME, OS accessibility, renderer upload, or external engine parity."
+    },
+    {
       "name": "win32-runtime-host",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_win32_tests MK_runtime_host_win32_public_api_compile; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_runtime_host_win32_tests|MK_runtime_host_win32_public_api_compile\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1",
       "purpose": "Build and test the Windows-native runtime host and D3D12 presentation foundation, including Win32DesktopGameHost, Win32DesktopEventPump, deterministic NullRenderer fallback, D3D12 swapchain planning, host-supplied shader-bytecode renderer creation, resize/present report rows, and public native-handle isolation."

@@ -1599,6 +1599,34 @@ TextShapingRequestPlan plan_text_shaping_request(const TextLayoutRequest& reques
             .message = "text shaping request max width must be finite and non-negative",
         });
     }
+    if (!std::isfinite(plan.request.pixel_size) || plan.request.pixel_size <= 0.0F) {
+        plan.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = ElementId{"text.shaping"},
+            .code = AdapterPayloadDiagnosticCode::invalid_text_shaping_pixel_size,
+            .message = "text shaping request pixel size must be finite and positive",
+        });
+    }
+    if (plan.request.language_tag.empty() || !is_valid_adapter_string(plan.request.language_tag)) {
+        plan.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = ElementId{"text.shaping"},
+            .code = AdapterPayloadDiagnosticCode::invalid_text_shaping_language_tag,
+            .message = "text shaping request language tag must be non-empty and adapter-safe",
+        });
+    }
+    if (plan.request.script_tag.empty() || !is_valid_adapter_string(plan.request.script_tag)) {
+        plan.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = ElementId{"text.shaping"},
+            .code = AdapterPayloadDiagnosticCode::invalid_text_shaping_script_tag,
+            .message = "text shaping request script tag must be non-empty and adapter-safe",
+        });
+    }
+    if (plan.request.row_budget == 0U) {
+        plan.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = ElementId{"text.shaping"},
+            .code = AdapterPayloadDiagnosticCode::invalid_text_shaping_row_budget,
+            .message = "text shaping request row budget must be positive",
+        });
+    }
 
     return plan;
 }
