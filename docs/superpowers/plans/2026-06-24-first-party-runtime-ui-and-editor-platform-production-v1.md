@@ -373,28 +373,42 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 - Modify: `engine/platform/win32/include/mirakana/platform/win32/win32_ui_text_font.hpp`
 - Modify: `engine/platform/win32/src/win32_ui_text_font.cpp`
-- Modify: `engine/ui/include/mirakana/ui/ui.hpp`
-- Modify: `engine/ui/src/ui.cpp`
 - Modify: `tests/unit/win32_ui_text_font_tests.cpp`
-- Modify: `tests/unit/ui_renderer_tests.cpp`
+- Modify: `tests/unit/runtime_ui_platform_production_tests.cpp`
+- Modify: `games/CMakeLists.txt`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 
-- [ ] Add `Win32UiFontLoadRequest`, `Win32UiFontFaceRow`, `Win32UiGlyphRasterRequest`, `Win32UiGlyphRasterResult`, and `rasterize_win32_ui_glyph`.
-- [ ] Require font family, resolved face id, source kind (`system_font_collection` or `project_font_asset`), glyph id, pixel size, DPI scale, pixel format, bitmap dimensions, bearing, advance, atlas padding, and row budget.
-- [ ] Reject embedded or distributable fonts without a source/provenance row and license status.
-- [ ] Add tests for missing font provenance, missing face id, zero pixel size, missing bitmap pixels, invalid metrics, color glyph row handling, atlas overflow, and zero public native handle exposure.
-- [ ] Add sample package counters: `runtime_ui_font_loading_rows`, `runtime_ui_glyph_raster_rows`, `runtime_ui_glyph_bitmap_rows`, `runtime_ui_glyph_metrics_rows`, `runtime_ui_font_license_rows`, and `runtime_ui_font_native_handles_exposed=0`.
-- [ ] Run:
+- [x] Add `Win32UiFontSourceKind`, `Win32UiFontLicenseStatus`, `Win32UiFontLoadRequest`, `Win32UiFontFaceRow`, `Win32UiGlyphRasterRequest`, `Win32UiGlyphRasterResult`, and `rasterize_win32_ui_glyph`.
+- [x] Require font family, resolved face id, source kind (`system_font_collection` or `project_font_asset`), glyph id, pixel size, DPI scale, pixel format, bitmap dimensions, bearing, advance, atlas padding, and row budget.
+- [x] Reject embedded or distributable fonts without a source/provenance row and license status.
+- [x] Add tests for missing font provenance, missing face id, zero pixel size, missing bitmap pixels, invalid metrics, color glyph row handling, atlas overflow, and zero public native handle exposure.
+- [x] Add sample package counters: `runtime_ui_font_loading_rows`, `runtime_ui_glyph_raster_rows`, `runtime_ui_glyph_bitmap_rows`, `runtime_ui_glyph_metrics_rows`, `runtime_ui_font_license_rows`, and `runtime_ui_font_native_handles_exposed=0`.
+- [x] Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests MK_ui_renderer_tests sample_2d_desktop_runtime_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_ui_text_font_tests|MK_ui_renderer_tests|sample_2d_desktop_runtime_package"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests MK_runtime_ui_platform_production_tests MK_ui_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_ui_text_font_tests|MK_runtime_ui_platform_production_tests|MK_ui_renderer_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package
+Push-Location out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package
+.\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-font-rasterization
+Pop-Location
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
 
 **Expected:** Real glyph bitmap/metrics rows pass on supported Windows hosts; package counters remain zero/host-gated when host font evidence is unavailable.
 
 **Done When:** `real_font_loading` and `font_rasterization` are separate evidence rows and neither can be inferred from text shaping alone.
+
+**Implementation Evidence (2026-06-24):** Task 4 adds selected Windows DirectWrite font-loading and glyph-rasterization evidence through `Win32UiFontSourceKind`, `Win32UiFontLicenseStatus`, `Win32UiFontLoadRequest`, `Win32UiFontFaceRow`, `Win32UiGlyphRasterRequest`, `Win32UiGlyphRasterResult`, `Win32UiFontDiagnostic`, `load_win32_ui_font_face`, `rasterize_win32_ui_glyph`, `validate_win32_ui_font_load_result_rows`, `validate_win32_ui_glyph_raster_result_rows`, `make_win32_directwrite_font_loading_production_evidence`, and `make_win32_directwrite_font_rasterization_production_evidence`. The adapter uses the Windows SDK system font collection and DirectWrite glyph run analysis behind private `.cpp` COM boundaries, emits value-only provenance/license, face, bitmap, metrics, color-check, diagnostics, and no-public-native-handle rows, and keeps project font asset loading plus non-Windows font engines unclaimed.
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests` before implementation | Failed as expected on missing Task 4 font/raster APIs. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_font_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_ui_text_font_tests"` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package` | Passed. |
+| `.\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-font-rasterization` from the packaged sample directory | Passed with `runtime_ui_font_loading_rows=1`, `runtime_ui_glyph_raster_rows=1`, `runtime_ui_glyph_bitmap_rows=1`, `runtime_ui_glyph_metrics_rows=1`, `runtime_ui_font_license_rows=1`, `runtime_ui_font_native_handles_exposed=0`, and `runtime_ui_font_rasterization_diagnostics=0`. |
 
 ## Task 5 - Native Windows TSF IME Session
 

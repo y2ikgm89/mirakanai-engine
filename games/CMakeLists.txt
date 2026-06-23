@@ -1754,6 +1754,12 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_physics
             MK_tools
     )
+    if(WIN32)
+        target_link_libraries(sample_2d_desktop_runtime_package
+            PRIVATE
+                MK_platform_win32
+        )
+    endif()
     set_property(TARGET sample_2d_desktop_runtime_package PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
         "shaders/sample_2d_desktop_runtime_package_sprite.vs.dxil;shaders/sample_2d_desktop_runtime_package_sprite.ps.dxil;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.vs.dxil;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil"
     )
