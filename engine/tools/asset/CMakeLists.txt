@@ -5,6 +5,7 @@ add_library(MK_tools_asset OBJECT
     asset_import_tool.cpp
     asset_package_tool.cpp
     2d_originality_review.cpp
+    2d_source_pulse.cpp
     environment_texture_pipeline_v2.cpp
     environment_texture_source_review.cpp
     morph_mesh_cpu_source_bridge.cpp

@@ -1345,6 +1345,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_tools_2d_originality_review_tests)
     add_test(NAME MK_tools_2d_originality_review_tests COMMAND MK_tools_2d_originality_review_tests)
 
+    add_executable(MK_tools_2d_source_pulse_tests
+        tests/unit/tools_2d_source_pulse_tests.cpp
+    )
+    target_link_libraries(MK_tools_2d_source_pulse_tests PRIVATE MK_tools)
+    target_include_directories(MK_tools_2d_source_pulse_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_tools_2d_source_pulse_tests)
+    add_test(NAME MK_tools_2d_source_pulse_tests COMMAND MK_tools_2d_source_pulse_tests)
+
     add_executable(MK_tools_sandbox_world_authoring_tests
         tests/unit/tools_sandbox_world_authoring_tests.cpp
     )
