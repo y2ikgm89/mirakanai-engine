@@ -35,6 +35,8 @@ jobs:
       metal_host_evidence: ${{ steps.classify.outputs.metal_host_evidence }}
       ios_metal_evidence: ${{ steps.classify.outputs.ios_metal_evidence }}
       windows_cpp23_release: ${{ steps.classify.outputs.windows_cpp23_release }}
+      selected_lanes: ${{ steps.classify.outputs.selected_lanes }}
+      classification_reasons: ${{ steps.classify.outputs.classification_reasons }}
     steps:
       - name: Checkout
         id: checkout
@@ -57,18 +59,24 @@ jobs:
         run: |
           $runAll = "${{ github.event_name }}" -ne "pull_request"
           if ($runAll) {
-            ./tools/classify-pr-validation-tier.ps1 -RunAll -GitHubOutputPath $env:GITHUB_OUTPUT
-            return
+            $selection = ./tools/classify-pr-validation-tier.ps1 -RunAll -GitHubOutputPath $env:GITHUB_OUTPUT | ConvertFrom-Json
+          } else {
+            $base = "${{ github.event.pull_request.base.sha }}"
+            $head = "${{ github.event.pull_request.head.sha }}"
+            $files = @(git diff --name-only $base $head)
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "failed to compute PR file diff"
+            }
+
+            $selection = ./tools/classify-pr-validation-tier.ps1 -ChangedPath $files -GitHubOutputPath $env:GITHUB_OUTPUT | ConvertFrom-Json
           }
 
-          $base = "${{ github.event.pull_request.base.sha }}"
-          $head = "${{ github.event.pull_request.head.sha }}"
-          $files = @(git diff --name-only $base $head)
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "failed to compute PR file diff"
-          }
-
-          ./tools/classify-pr-validation-tier.ps1 -ChangedPath $files -GitHubOutputPath $env:GITHUB_OUTPUT
+          @(
+            "### PR validation tier selection",
+            "",
+            "- selected_lanes: $($selection.selected_lanes)",
+            "- classification_reasons: $($selection.classification_reasons)"
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
 
   agent-static:
     name: Agent Static Guards

@@ -206,7 +206,9 @@ function Assert-ValidationTierSelection {
         [bool]$ExpectedWindowsCpp23Release = $false,
         [Parameter(Mandatory = $true)][bool]$ExpectedMacosMetalCmake,
         [Parameter(Mandatory = $true)][bool]$ExpectedMetalHostEvidence,
-        [Parameter(Mandatory = $true)][bool]$ExpectedIosMetalEvidence
+        [Parameter(Mandatory = $true)][bool]$ExpectedIosMetalEvidence,
+        [string]$ExpectedSelectedLanes,
+        [string]$ExpectedClassificationReasons
     )
 
     $selection = Get-ValidationTierSelection -Label $Label -ChangedPath $ChangedPath -RunAll:$RunAll.IsPresent
@@ -232,6 +234,13 @@ function Assert-ValidationTierSelection {
         if ($actual -ne $expectation.Value) {
             Write-Error "ci-matrix-check: PR validation tier classifier $Label expected $($expectation.Key)=$($expectation.Value) but got $actual"
         }
+    }
+
+    if ($PSBoundParameters.ContainsKey("ExpectedSelectedLanes") -and [string]$selection.selected_lanes -ne $ExpectedSelectedLanes) {
+        Write-Error "ci-matrix-check: PR validation tier classifier $Label expected selected_lanes=$ExpectedSelectedLanes but got $($selection.selected_lanes)"
+    }
+    if ($PSBoundParameters.ContainsKey("ExpectedClassificationReasons") -and [string]$selection.classification_reasons -ne $ExpectedClassificationReasons) {
+        Write-Error "ci-matrix-check: PR validation tier classifier $Label expected classification_reasons=$ExpectedClassificationReasons but got $($selection.classification_reasons)"
     }
 }
 
@@ -295,7 +304,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindowsCpp23Release $false `
     -ExpectedMacosMetalCmake $false `
     -ExpectedMetalHostEvidence $false `
-    -ExpectedIosMetalEvidence $false
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "none" `
+    -ExpectedClassificationReasons "docs-agent-rules-subagent-only"
 
 Assert-ValidationTierSelection `
     -Label "static policy PR" `
@@ -331,7 +342,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindowsCpp23Release $false `
     -ExpectedMacosMetalCmake $true `
     -ExpectedMetalHostEvidence $false `
-    -ExpectedIosMetalEvidence $false
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "windows_msvc,linux_cmake,linux_sanitizers,full_static_analysis,macos_metal_cmake" `
+    -ExpectedClassificationReasons "runtime-or-build,sanitizer-relevant,source-code"
 
 Assert-ValidationTierSelection `
     -Label "workflow PR" `
@@ -349,7 +362,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindowsCpp23Release $true `
     -ExpectedMacosMetalCmake $true `
     -ExpectedMetalHostEvidence $true `
-    -ExpectedIosMetalEvidence $true
+    -ExpectedIosMetalEvidence $true `
+    -ExpectedSelectedLanes "windows_msvc,windows_cpu_profiling_host,windows_asset_importers,windows_desktop_editor,windows_network_enet,linux_cmake,linux_vulkan_host,linux_sanitizers,full_static_analysis,macos_metal_cmake,metal_host_evidence,ios_metal_evidence,windows_cpp23_release" `
+    -ExpectedClassificationReasons "ci-workflow"
 
 Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
@@ -565,7 +580,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindowsCpp23Release $true `
     -ExpectedMacosMetalCmake $true `
     -ExpectedMetalHostEvidence $true `
-    -ExpectedIosMetalEvidence $true
+    -ExpectedIosMetalEvidence $true `
+    -ExpectedSelectedLanes "windows_msvc,windows_cpu_profiling_host,windows_asset_importers,windows_desktop_editor,windows_network_enet,linux_cmake,linux_vulkan_host,linux_sanitizers,linux_coverage,full_static_analysis,macos_metal_cmake,metal_host_evidence,ios_metal_evidence,windows_cpp23_release" `
+    -ExpectedClassificationReasons "non-pr-full-matrix"
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 $checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
@@ -636,13 +653,19 @@ Assert-ContainsAll $changesJob @(
     "metal_host_evidence: `${{ steps.classify.outputs.metal_host_evidence }}",
     "ios_metal_evidence: `${{ steps.classify.outputs.ios_metal_evidence }}",
     "windows_cpp23_release: `${{ steps.classify.outputs.windows_cpp23_release }}",
+    "selected_lanes: `${{ steps.classify.outputs.selected_lanes }}",
+    "classification_reasons: `${{ steps.classify.outputs.classification_reasons }}",
     "fetch-depth: 0",
     "persist-credentials: false",
     "name: Classify touched surfaces",
     'github.event_name',
     'git diff --name-only $base $head',
     "tools/classify-pr-validation-tier.ps1 -RunAll -GitHubOutputPath `$env:GITHUB_OUTPUT",
-    "tools/classify-pr-validation-tier.ps1 -ChangedPath `$files -GitHubOutputPath `$env:GITHUB_OUTPUT"
+    "tools/classify-pr-validation-tier.ps1 -ChangedPath `$files -GitHubOutputPath `$env:GITHUB_OUTPUT",
+    "PR validation tier selection",
+    "selected_lanes",
+    "classification_reasons",
+    "GITHUB_STEP_SUMMARY"
 ) ".github/workflows/validate.yml changes job"
 
 $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows" -Label ".github/workflows/validate.yml"

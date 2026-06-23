@@ -389,6 +389,7 @@ GitHub Actions runs:
 
 - Windows PR lane: `tools/bootstrap-deps.ps1 -Feature desktop-runtime` then `tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke` after `Agent Static Guards` and `Full Repository Static Analysis` cover static evidence; local/default full validation remains `tools/validate.ps1`
 - Optional Windows lanes: `tools/validate-cpu-profiling-matrix-host-gate.ps1`, `tools/bootstrap-deps.ps1 -Feature asset-importers` plus `tools/build-asset-importers.ps1`, dependency-free `tools/build-editor.ps1`, and `tools/bootstrap-deps.ps1 -Feature network-enet` plus `tools/validate-network-enet.ps1` run only when their classifier outputs are selected or on non-PR full-matrix runs.
+- The `changes` job writes classifier diagnostics through GitHub's environment files: `selected_lanes` and `classification_reasons` are step/job outputs and are also appended to `GITHUB_STEP_SUMMARY` for quick hosted-failure triage without opening logs first.
 - Windows C++23 release: `tools/evaluate-cpp23.ps1 -Release`; D3D12 unit tests use Microsoft WARP for driver-independent CI evidence.
 - Linux: `cmake --preset ci-linux-clang`, build/CTest
 - Linux coverage: `tools/check-coverage.ps1 -Strict`

@@ -30,7 +30,7 @@ disappears with `LinkIncremental=false`, treat it as a CMake common-options regr
 For failures involving performance flags, ISA-specific targets, PGO, LTO, benchmark/package counters, or runtime-selected lanes, load `.claude/skills/gameengine-performance-optimization/SKILL.md`; fix target-local flags, fallback gates, and validation evidence before changing global build policy or throttles.
 
 For hosted PR/CI failures, bind the investigation to the latest PR head: inspect `gh pr view <pr> --json headRefOid,statusCheckRollup,url`,
-use logs for that same head, reproduce the narrowest matching local lane, and fix the repository contract instead of stale runs. Windows
+use logs for that same head, check the `Select PR validation tier` job summary `selected_lanes` / `classification_reasons`, reproduce the narrowest matching local lane, and fix the repository contract instead of stale runs. Windows
 optional lane failures map to their owning wrappers first: `tools/validate-cpu-profiling-matrix-host-gate.ps1`,
 `tools/build-asset-importers.ps1`, `tools/build-editor.ps1`, or `tools/validate-network-enet.ps1`. Do not broaden the failure to
 `Windows MSVC` unless the shared desktop-runtime configure/build/test path is actually failing. Windows
