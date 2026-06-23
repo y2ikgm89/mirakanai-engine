@@ -296,13 +296,13 @@ git diff --check
 - Modify: `engine/ui/CMakeLists.txt`
 - Create: `tests/unit/runtime_ui_platform_production_tests.cpp`
 
-- [ ] Add public first-party types with these names: `RuntimeUiPlatformProductionFeature`, `RuntimeUiPlatformProductionProofKind`, `RuntimeUiPlatformProductionEvidenceRow`, `RuntimeUiPlatformProductionResult`, and `evaluate_runtime_ui_platform_production`.
-- [ ] Required feature enum rows: `visible_ui_editor`, `production_text_shaping`, `real_font_loading`, `font_rasterization`, `native_ime_session`, `os_accessibility_publication`, `renderer_texture_upload_execution`, `clean_room_provenance`, `external_engine_parity_non_claim`.
-- [ ] Required proof enum rows: `first_party_contract`, `official_sdk_adapter`, `audited_dependency_adapter`, `selected_package_counter`, `visible_editor_shell`, `host_gate`, `dependency_gate`, `unsupported_non_claim`.
-- [ ] Add diagnostics for missing feature rows, duplicate row ids, public native handles, dependency not recorded, host evidence missing, renderer upload missing, external engine parity claim, middleware API exposure, copied external source, copied external asset, and row budget overflow.
-- [ ] Add RED tests that fail before implementation for missing `external_engine_parity_non_claim`, missing `clean_room_provenance`, missing renderer upload execution, native-handle exposure, and a broad production claim without all required selected rows.
-- [ ] Implement the gate so `result.ready == true` only when all selected Windows/D3D12 rows are ready and all cross-platform rows are either host-gated/dependency-gated with explicit blockers or unsupported non-claims.
-- [ ] Run:
+- [x] Add public first-party types with these names: `RuntimeUiPlatformProductionFeature`, `RuntimeUiPlatformProductionProofKind`, `RuntimeUiPlatformProductionEvidenceRow`, `RuntimeUiPlatformProductionResult`, and `evaluate_runtime_ui_platform_production`.
+- [x] Required feature enum rows: `visible_ui_editor`, `production_text_shaping`, `real_font_loading`, `font_rasterization`, `native_ime_session`, `os_accessibility_publication`, `renderer_texture_upload_execution`, `clean_room_provenance`, `external_engine_parity_non_claim`.
+- [x] Required proof enum rows: `first_party_contract`, `official_sdk_adapter`, `audited_dependency_adapter`, `selected_package_counter`, `visible_editor_shell`, `host_gate`, `dependency_gate`, `unsupported_non_claim`.
+- [x] Add diagnostics for missing feature rows, duplicate row ids, public native handles, dependency not recorded, host evidence missing, renderer upload missing, external engine parity claim, middleware API exposure, copied external source, copied external asset, and row budget overflow.
+- [x] Add RED tests that fail before implementation for missing `external_engine_parity_non_claim`, missing `clean_room_provenance`, missing renderer upload execution, native-handle exposure, and a broad production claim without all required selected rows.
+- [x] Implement the gate so `result.ready == true` only when all selected Windows/D3D12 rows are ready and all cross-platform rows are either host-gated/dependency-gated with explicit blockers or unsupported non-claims.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -310,6 +310,16 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_platform_production_tests"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
+
+Validation evidence:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_platform_production_tests` failed before implementation with missing `mirakana/ui/runtime_ui_platform_production.hpp`.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` passed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_platform_production_tests` passed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_platform_production_tests"` passed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests` passed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_production_stack_tests|MK_runtime_ui_platform_production_tests"` passed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed.
 
 **Expected:** Focused tests pass; public API boundary check confirms no native/platform/middleware types in public `mirakana::ui` headers.
 

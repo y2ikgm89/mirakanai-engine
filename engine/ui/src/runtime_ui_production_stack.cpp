@@ -473,7 +473,8 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
         if (row.claims_general_production_text_stack || row.claims_broad_platform_ui_parity) {
             append_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::unsupported_broad_production_claim,
                               row.id,
-                              "runtime UI production evidence must not claim broad production text or platform parity");
+                              "runtime UI production evidence must not claim broad production text or platform parity; "
+                              "use runtime UI platform production non-claim rows for platform-wide scope");
         }
         if (row.requires_optional_dependency_adapter && !row.dependency_adapter_reviewed) {
             append_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::unreviewed_dependency_adapter,
