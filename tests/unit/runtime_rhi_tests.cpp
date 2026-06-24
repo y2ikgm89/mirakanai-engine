@@ -162,6 +162,83 @@ make_runtime_texture_payload(mirakana::AssetId texture, mirakana::runtime::Runti
     };
 }
 
+[[nodiscard]] std::uint64_t checksum_bytes(std::span<const std::uint8_t> bytes) noexcept {
+    auto hash = std::uint64_t{1469598103934665603ULL};
+    for (const auto byte : bytes) {
+        hash ^= static_cast<std::uint64_t>(byte);
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetRecord
+make_runtime_payload_record(mirakana::runtime::RuntimeAssetHandle handle, mirakana::AssetId asset,
+                            mirakana::AssetKind kind, std::string path, std::string content,
+                            std::vector<mirakana::AssetId> dependencies = {}) {
+    return mirakana::runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = kind,
+        .path = std::move(path),
+        .content_hash = mirakana::hash_asset_cooked_content(content),
+        .source_revision = handle.value,
+        .dependencies = std::move(dependencies),
+        .content = std::move(content),
+    };
+}
+
+[[nodiscard]] std::string cooked_ui_atlas_payload(mirakana::AssetId atlas, mirakana::AssetId page) {
+    return "format=GameEngine.UiAtlas.v1\n"
+           "asset.id=" +
+           std::to_string(atlas.value) +
+           "\n"
+           "asset.kind=ui_atlas\n"
+           "source.decoding=unsupported\n"
+           "atlas.packing=unsupported\n"
+           "page.count=1\n"
+           "page.0.asset=" +
+           std::to_string(page.value) +
+           "\n"
+           "page.0.asset_uri=runtime/assets/ui/hud-atlas.texture.geasset\n"
+           "image.count=1\n"
+           "image.0.resource_id=hud.icon\n"
+           "image.0.asset_uri=runtime/assets/ui/hud-atlas.texture.geasset\n"
+           "image.0.page=" +
+           std::to_string(page.value) +
+           "\n"
+           "image.0.u0=0\n"
+           "image.0.v0=0\n"
+           "image.0.u1=1\n"
+           "image.0.v1=1\n"
+           "image.0.color=1,1,1,1\n"
+           "glyph.count=0\n";
+}
+
+[[nodiscard]] std::string cooked_ui_texture_payload(mirakana::AssetId texture) {
+    return "format=GameEngine.CookedTexture.v1\n"
+           "asset.id=" +
+           std::to_string(texture.value) +
+           "\n"
+           "asset.kind=texture\n"
+           "source.path=source/ui/hud-atlas.texture\n"
+           "texture.width=1\n"
+           "texture.height=1\n"
+           "texture.pixel_format=rgba8_unorm\n"
+           "texture.source_bytes=4\n"
+           "texture.data_hex=223344ff\n";
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetPackage make_runtime_ui_atlas_package(mirakana::AssetId atlas,
+                                                                                   mirakana::AssetId page) {
+    return mirakana::runtime::RuntimeAssetPackage({
+        make_runtime_payload_record(mirakana::runtime::RuntimeAssetHandle{81}, atlas, mirakana::AssetKind::ui_atlas,
+                                    "runtime/assets/ui/hud-atlas.uiatlas", cooked_ui_atlas_payload(atlas, page),
+                                    {page}),
+        make_runtime_payload_record(mirakana::runtime::RuntimeAssetHandle{82}, page, mirakana::AssetKind::texture,
+                                    "runtime/assets/ui/hud-atlas.texture.geasset", cooked_ui_texture_payload(page)),
+    });
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeMeshPayload
 make_runtime_mesh_payload(mirakana::AssetId mesh, mirakana::runtime::RuntimeAssetHandle handle) {
     return mirakana::runtime::RuntimeMeshPayload{
@@ -382,6 +459,200 @@ MK_TEST("runtime rhi texture upload rejects ring staging exhaustion before side 
     MK_REQUIRE(device.stats().buffer_writes == 0);
     MK_REQUIRE(device.stats().buffer_texture_copies == 0);
     MK_REQUIRE(device.stats().command_lists_begun == 0);
+}
+
+MK_TEST("runtime rhi ui atlas texture upload executes cooked package pages without production ready inference") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
+    const auto atlas = mirakana::AssetId::from_name("ui/runtime-upload-atlas");
+    const auto page = mirakana::AssetId::from_name("textures/runtime-upload-atlas-page");
+    const auto package = make_runtime_ui_atlas_package(atlas, page);
+    const std::vector<std::uint8_t> expected_page_bytes{0x22, 0x33, 0x44, 0xff};
+    const std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> expectations{
+        mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{
+            .page_asset = page,
+            .row_pitch_bytes = 256,
+            .require_readback_checksum_match = true,
+            .expected_readback_checksum = checksum_bytes(expected_page_bytes),
+        },
+    };
+    mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc desc{
+        .package = &package,
+        .atlas_asset = atlas,
+        .page_expectations = expectations,
+        .texture_upload_options = mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &ring},
+        .require_selected_d3d12_backend = false,
+    };
+
+    const auto result = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(device, desc);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(!result.ready());
+    MK_REQUIRE(result.backend_kind == mirakana::rhi::BackendKind::null);
+    MK_REQUIRE(result.atlas_page_payload_rows == 1);
+    MK_REQUIRE(result.texture_payload_rows == 1);
+    MK_REQUIRE(result.row_pitch_bytes == 256);
+    MK_REQUIRE(result.upload_buffer_allocations == 1);
+    MK_REQUIRE(result.uploaded_bytes == 256);
+    MK_REQUIRE(result.copy_to_texture_count == 1);
+    MK_REQUIRE(result.copy_to_readback_count == 1);
+    MK_REQUIRE(result.resource_transitions == 4);
+    MK_REQUIRE(result.descriptor_writes == 1);
+    MK_REQUIRE(result.readback_checksum != 0);
+    MK_REQUIRE(result.readback_checksum_matched);
+    MK_REQUIRE(result.submitted_fence.value != 0);
+    MK_REQUIRE(result.readback_fence.value != 0);
+    MK_REQUIRE(!result.native_handle_accessed);
+    MK_REQUIRE(!result.renderer_texture_upload_public_api);
+    MK_REQUIRE(result.d3d12_selected_proof_ready == false);
+    MK_REQUIRE(result.vulkan_upload_host_gated);
+    MK_REQUIRE(result.metal_upload_host_gated);
+}
+
+MK_TEST("runtime rhi ui atlas texture upload rejects missing atlas page payload before side effects") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
+    const auto atlas = mirakana::AssetId::from_name("ui/missing-page-atlas");
+    const auto page = mirakana::AssetId::from_name("textures/missing-page");
+    const mirakana::runtime::RuntimeAssetPackage package({
+        make_runtime_payload_record(mirakana::runtime::RuntimeAssetHandle{91}, atlas, mirakana::AssetKind::ui_atlas,
+                                    "runtime/assets/ui/missing-page.uiatlas", cooked_ui_atlas_payload(atlas, page),
+                                    {page}),
+    });
+    const std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> expectations{
+        mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{.page_asset = page, .row_pitch_bytes = 256},
+    };
+
+    const auto result = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(
+        device, mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+                    .package = &package,
+                    .atlas_asset = atlas,
+                    .page_expectations = expectations,
+                    .texture_upload_options = mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &ring},
+                });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.diagnostic.find("ui atlas page asset is missing") != std::string::npos);
+    MK_REQUIRE(result.copy_to_texture_count == 0);
+    MK_REQUIRE(device.stats().buffer_texture_copies == 0);
+}
+
+MK_TEST("runtime rhi ui atlas texture upload rejects missing upload ring descriptor and selected backend") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto atlas = mirakana::AssetId::from_name("ui/contract-atlas");
+    const auto page = mirakana::AssetId::from_name("textures/contract-atlas-page");
+    const auto package = make_runtime_ui_atlas_package(atlas, page);
+    const std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> expectations{
+        mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{.page_asset = page, .row_pitch_bytes = 256},
+    };
+
+    const auto missing_ring = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(
+        device, mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+                    .package = &package,
+                    .atlas_asset = atlas,
+                    .page_expectations = expectations,
+                });
+    MK_REQUIRE(!missing_ring.succeeded());
+    MK_REQUIRE(missing_ring.diagnostic.find("upload ring") != std::string::npos);
+
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
+    auto no_descriptor = mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+        .package = &package,
+        .atlas_asset = atlas,
+        .page_expectations = expectations,
+        .texture_upload_options = mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &ring},
+    };
+    no_descriptor.create_sampled_texture_descriptors = false;
+    const auto descriptor_result =
+        mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(device, no_descriptor);
+    MK_REQUIRE(!descriptor_result.succeeded());
+    MK_REQUIRE(descriptor_result.diagnostic.find("sampled texture descriptor") != std::string::npos);
+
+    auto backend_inference = no_descriptor;
+    backend_inference.create_sampled_texture_descriptors = true;
+    const auto backend_result =
+        mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(device, backend_inference);
+    MK_REQUIRE(!backend_result.succeeded());
+    MK_REQUIRE(backend_result.diagnostic.find("selected D3D12") != std::string::npos);
+    MK_REQUIRE(backend_result.d3d12_selected_proof_ready == false);
+}
+
+MK_TEST("runtime rhi ui atlas texture upload rejects row pitch and readback checksum mismatches") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
+    const auto atlas = mirakana::AssetId::from_name("ui/mismatch-atlas");
+    const auto page = mirakana::AssetId::from_name("textures/mismatch-atlas-page");
+    const auto package = make_runtime_ui_atlas_package(atlas, page);
+
+    const std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> bad_pitch{
+        mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{.page_asset = page, .row_pitch_bytes = 4},
+    };
+    const auto pitch_result = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(
+        device, mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+                    .package = &package,
+                    .atlas_asset = atlas,
+                    .page_expectations = bad_pitch,
+                    .texture_upload_options = mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &ring},
+                    .require_selected_d3d12_backend = false,
+                });
+    MK_REQUIRE(!pitch_result.succeeded());
+    MK_REQUIRE(pitch_result.diagnostic.find("row pitch") != std::string::npos);
+
+    const std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> bad_checksum{
+        mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{
+            .page_asset = page,
+            .row_pitch_bytes = 256,
+            .require_readback_checksum_match = true,
+            .expected_readback_checksum = 1,
+        },
+    };
+    const auto checksum_result = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(
+        device, mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+                    .package = &package,
+                    .atlas_asset = atlas,
+                    .page_expectations = bad_checksum,
+                    .texture_upload_options = mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &ring},
+                    .require_selected_d3d12_backend = false,
+                });
+    MK_REQUIRE(!checksum_result.succeeded());
+    MK_REQUIRE(checksum_result.diagnostic.find("readback checksum") != std::string::npos);
+    MK_REQUIRE(!checksum_result.readback_checksum_matched);
+}
+
+MK_TEST("runtime rhi ui atlas texture upload rejects public native handles and gameplay upload API requests") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
+    const auto atlas = mirakana::AssetId::from_name("ui/public-api-atlas");
+    const auto page = mirakana::AssetId::from_name("textures/public-api-atlas-page");
+    const auto package = make_runtime_ui_atlas_package(atlas, page);
+    const std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> expectations{
+        mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{.page_asset = page, .row_pitch_bytes = 256},
+    };
+    auto desc = mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+        .package = &package,
+        .atlas_asset = atlas,
+        .page_expectations = expectations,
+        .texture_upload_options = mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &ring},
+        .require_selected_d3d12_backend = false,
+    };
+
+    desc.request_public_native_handle = true;
+    const auto native_handle_result = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(device, desc);
+    MK_REQUIRE(!native_handle_result.succeeded());
+    MK_REQUIRE(native_handle_result.native_handle_accessed == false);
+    MK_REQUIRE(native_handle_result.diagnostic.find("native handle") != std::string::npos);
+
+    desc.request_public_native_handle = false;
+    desc.gameplay_requested_renderer_upload_api = true;
+    const auto gameplay_api_result = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(device, desc);
+    MK_REQUIRE(!gameplay_api_result.succeeded());
+    MK_REQUIRE(gameplay_api_result.renderer_texture_upload_public_api == true);
+    MK_REQUIRE(gameplay_api_result.diagnostic.find("gameplay UI") != std::string::npos);
 }
 
 MK_TEST("runtime rhi upload creates texture resource without copy for metadata only payload") {

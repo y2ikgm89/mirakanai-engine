@@ -444,6 +444,107 @@ void validate_buffer_texture_region(const TextureDesc& texture, const BufferText
     }
 }
 
+[[nodiscard]] std::uint64_t texture_storage_offset_bytes(Format format, const TextureDesc& texture, Offset3D offset) {
+    const auto block_width = format_block_width(format);
+    const auto block_height = format_block_height(format);
+    if (format_is_block_compressed(format) && (offset.x % block_width != 0U || offset.y % block_height != 0U)) {
+        throw std::invalid_argument("rhi buffer texture copy offset must align to format blocks");
+    }
+
+    const auto row_pitch = format_copy_row_bytes(format, texture.extent.width);
+    const auto image_pitch = checked_mul(format_copy_row_count(format, texture.extent.height), row_pitch,
+                                         "rhi texture storage image pitch overflowed");
+    const auto z_offset = checked_mul(offset.z, image_pitch, "rhi texture storage z offset overflowed");
+    const auto y_offset = checked_mul(static_cast<std::uint64_t>(offset.y / block_height), row_pitch,
+                                      "rhi texture storage y offset overflowed");
+    const auto x_offset = checked_mul(static_cast<std::uint64_t>(offset.x / block_width),
+                                      bytes_per_format_block(format), "rhi texture storage x offset overflowed");
+    return checked_add(checked_add(z_offset, y_offset, "rhi texture storage offset overflowed"), x_offset,
+                       "rhi texture storage offset overflowed");
+}
+
+void copy_buffer_to_texture_bytes(std::span<const std::uint8_t> source, std::span<std::uint8_t> destination,
+                                  const TextureDesc& texture, const BufferTextureCopyRegion& region) {
+    const auto format = texture.format;
+    const auto row_length = region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
+    const auto image_height =
+        region.buffer_image_height == 0 ? region.texture_extent.height : region.buffer_image_height;
+    const auto source_row_pitch = format_copy_row_bytes(format, row_length);
+    const auto source_image_pitch = checked_mul(format_copy_row_count(format, image_height), source_row_pitch,
+                                                "rhi buffer texture copy source image pitch overflowed");
+    const auto destination_row_pitch = format_copy_row_bytes(format, texture.extent.width);
+    const auto destination_image_pitch =
+        checked_mul(format_copy_row_count(format, texture.extent.height), destination_row_pitch,
+                    "rhi buffer texture copy destination image pitch overflowed");
+    const auto copy_row_count = format_copy_row_count(format, region.texture_extent.height);
+    const auto copy_row_bytes = format_copy_row_bytes(format, region.texture_extent.width);
+    const auto destination_base = texture_storage_offset_bytes(format, texture, region.texture_offset);
+
+    for (std::uint64_t depth = 0; depth < region.texture_extent.depth; ++depth) {
+        const auto source_depth_offset =
+            checked_add(region.buffer_offset,
+                        checked_mul(depth, source_image_pitch, "rhi buffer texture copy source depth overflowed"),
+                        "rhi buffer texture copy source offset overflowed");
+        const auto destination_depth_offset = checked_add(
+            destination_base,
+            checked_mul(depth, destination_image_pitch, "rhi buffer texture copy destination depth overflowed"),
+            "rhi buffer texture copy destination offset overflowed");
+        for (std::uint64_t row = 0; row < copy_row_count; ++row) {
+            const auto source_offset =
+                checked_add(source_depth_offset,
+                            checked_mul(row, source_row_pitch, "rhi buffer texture copy source row overflowed"),
+                            "rhi buffer texture copy source offset overflowed");
+            const auto destination_offset = checked_add(
+                destination_depth_offset,
+                checked_mul(row, destination_row_pitch, "rhi buffer texture copy destination row overflowed"),
+                "rhi buffer texture copy destination offset overflowed");
+            std::copy_n(source.begin() + checked_buffer_byte_difference(source_offset),
+                        checked_buffer_byte_difference(copy_row_bytes),
+                        destination.begin() + checked_buffer_byte_difference(destination_offset));
+        }
+    }
+}
+
+void copy_texture_to_buffer_bytes(std::span<const std::uint8_t> source, std::span<std::uint8_t> destination,
+                                  const TextureDesc& texture, const BufferTextureCopyRegion& region) {
+    const auto format = texture.format;
+    const auto row_length = region.buffer_row_length == 0 ? region.texture_extent.width : region.buffer_row_length;
+    const auto image_height =
+        region.buffer_image_height == 0 ? region.texture_extent.height : region.buffer_image_height;
+    const auto destination_row_pitch = format_copy_row_bytes(format, row_length);
+    const auto destination_image_pitch = checked_mul(format_copy_row_count(format, image_height), destination_row_pitch,
+                                                     "rhi texture buffer copy destination image pitch overflowed");
+    const auto source_row_pitch = format_copy_row_bytes(format, texture.extent.width);
+    const auto source_image_pitch = checked_mul(format_copy_row_count(format, texture.extent.height), source_row_pitch,
+                                                "rhi texture buffer copy source image pitch overflowed");
+    const auto copy_row_count = format_copy_row_count(format, region.texture_extent.height);
+    const auto copy_row_bytes = format_copy_row_bytes(format, region.texture_extent.width);
+    const auto source_base = texture_storage_offset_bytes(format, texture, region.texture_offset);
+
+    for (std::uint64_t depth = 0; depth < region.texture_extent.depth; ++depth) {
+        const auto source_depth_offset = checked_add(
+            source_base, checked_mul(depth, source_image_pitch, "rhi texture buffer copy source depth overflowed"),
+            "rhi texture buffer copy source offset overflowed");
+        const auto destination_depth_offset = checked_add(
+            region.buffer_offset,
+            checked_mul(depth, destination_image_pitch, "rhi texture buffer copy destination depth overflowed"),
+            "rhi texture buffer copy destination offset overflowed");
+        for (std::uint64_t row = 0; row < copy_row_count; ++row) {
+            const auto source_offset =
+                checked_add(source_depth_offset,
+                            checked_mul(row, source_row_pitch, "rhi texture buffer copy source row overflowed"),
+                            "rhi texture buffer copy source offset overflowed");
+            const auto destination_offset = checked_add(
+                destination_depth_offset,
+                checked_mul(row, destination_row_pitch, "rhi texture buffer copy destination row overflowed"),
+                "rhi texture buffer copy destination offset overflowed");
+            std::copy_n(source.begin() + checked_buffer_byte_difference(source_offset),
+                        checked_buffer_byte_difference(copy_row_bytes),
+                        destination.begin() + checked_buffer_byte_difference(destination_offset));
+        }
+    }
+}
+
 } // namespace
 
 std::uint32_t bytes_per_texel(Format format) {
@@ -677,6 +778,9 @@ class NullRhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("rhi buffer texture copy source range is outside the source buffer");
         }
         validate_buffer_texture_region(destination_desc, region);
+        const auto& source_bytes = device_.buffer_bytes_.at(source.value - 1U);
+        copy_buffer_to_texture_bytes(source_bytes, device_.texture_bytes_.at(destination.value - 1U), destination_desc,
+                                     region);
         ++device_.stats_.buffer_texture_copies;
     }
 
@@ -700,6 +804,8 @@ class NullRhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("rhi texture buffer copy destination range is outside the destination buffer");
         }
         validate_buffer_texture_region(source_desc, region);
+        copy_texture_to_buffer_bytes(device_.texture_bytes_.at(source.value - 1U),
+                                     device_.buffer_bytes_.at(destination.value - 1U), source_desc, region);
         ++device_.stats_.texture_buffer_copies;
     }
 
@@ -1645,6 +1751,8 @@ TextureHandle NullRhiDevice::create_texture(const TextureDesc& desc) {
     validate_texture_desc(desc);
     const auto handle = TextureHandle{next_texture_++};
     textures_.push_back(desc);
+    texture_bytes_.emplace_back(static_cast<std::size_t>(format_copy_compact_bytes(desc.format, desc.extent)),
+                                std::uint8_t{0});
     texture_active_.push_back(true);
     texture_states_.push_back(initial_texture_state(desc.usage));
     const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
@@ -1654,6 +1762,7 @@ TextureHandle NullRhiDevice::create_texture(const TextureDesc& desc) {
     });
     if (!lifetime_registration.succeeded()) {
         textures_.pop_back();
+        texture_bytes_.pop_back();
         texture_active_.pop_back();
         texture_states_.pop_back();
         --next_texture_;
