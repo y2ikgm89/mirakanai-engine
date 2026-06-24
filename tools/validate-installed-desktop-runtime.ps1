@@ -5051,7 +5051,12 @@ if ($requiresRuntimeUiRendererAtlasHandoff) {
             "runtime_ui_renderer_atlas_handoff_invoked_live_glyph_atlas_generation",
             "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload",
             "runtime_ui_renderer_atlas_handoff_diagnostics",
-            "runtime_ui_renderer_atlas_handoff_replay_hash"
+            "runtime_ui_renderer_atlas_handoff_replay_hash",
+            "ui_renderer_layers",
+            "ui_renderer_batches",
+            "ui_renderer_clip_rects",
+            "ui_renderer_unresolved_resources",
+            "ui_renderer_native_handles_exposed"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include runtime UI renderer atlas handoff field: $field"
@@ -5088,6 +5093,11 @@ if ($requiresRuntimeUiRendererAtlasHandoff) {
         "runtime_ui_renderer_atlas_handoff_invoked_live_glyph_atlas_generation" = "0"
         "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload" = "0"
         "runtime_ui_renderer_atlas_handoff_diagnostics" = "0"
+        "ui_renderer_layers" = "1"
+        "ui_renderer_batches" = "1"
+        "ui_renderer_clip_rects" = "1"
+        "ui_renderer_unresolved_resources" = "0"
+        "ui_renderer_native_handles_exposed" = "0"
     }
     foreach ($field in $expectedRuntimeUiRendererAtlasHandoffFields.Keys) {
         $expectedValue = $expectedRuntimeUiRendererAtlasHandoffFields[$field]

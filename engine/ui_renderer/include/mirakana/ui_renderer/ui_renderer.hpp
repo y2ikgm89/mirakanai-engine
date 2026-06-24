@@ -100,12 +100,104 @@ struct UiRendererGlyphAtlasPaletteBuildResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct UiRendererLayerRow {
+    ui::ElementId element;
+    std::string layer;
+    std::int32_t order{0};
+    bool modal{false};
+};
+
+struct UiRendererClipRectRow {
+    ui::ElementId element;
+    ui::Rect rect;
+};
+
+struct UiRendererScissorRow {
+    ui::ElementId element;
+    ui::Rect rect;
+};
+
+struct UiRendererMaskReviewRow {
+    ui::ElementId element;
+    ui::Rect rect;
+    bool reviewed{false};
+    bool requested_native_mask{false};
+};
+
+struct UiRendererAtlasResidencyRef {
+    AssetId atlas_page;
+    bool resident{false};
+    bool requested_native_handle{false};
+};
+
+struct UiRendererSubmission {
+    std::vector<UiRendererLayerRow> layer_rows;
+    std::vector<UiRendererClipRectRow> clip_rect_rows;
+    std::vector<UiRendererMaskReviewRow> mask_review_rows;
+    std::vector<UiRendererAtlasResidencyRef> atlas_residency_refs;
+    bool request_public_native_handle{false};
+    bool request_renderer_texture_upload{false};
+};
+
+enum class UiRendererExecutionDiagnosticCode : std::uint8_t {
+    missing_element_id,
+    unknown_element_id,
+    invalid_clip_rect,
+    invalid_mask_review,
+    unresolved_text_glyph,
+    unresolved_image_resource,
+    invalid_atlas_residency_ref,
+    missing_atlas_residency_ref,
+    unsupported_public_native_handle,
+    unsupported_renderer_texture_upload,
+};
+
+struct UiRendererExecutionDiagnostic {
+    UiRendererExecutionDiagnosticCode code{UiRendererExecutionDiagnosticCode::missing_element_id};
+    ui::ElementId element;
+    std::string message;
+};
+
+struct UiRendererOrderedElementRow {
+    ui::ElementId element;
+    std::string layer;
+    std::int32_t order{0};
+    bool modal{false};
+    std::size_t source_index{0};
+};
+
+struct UiRendererBatchRow {
+    std::string layer;
+    AssetId atlas_page;
+    bool textured{false};
+    std::size_t first_source_index{0};
+    std::size_t command_count{0};
+};
+
+struct UiRendererExecutionPlan {
+    std::vector<UiRendererLayerRow> layer_rows;
+    std::vector<UiRendererOrderedElementRow> ordered_elements;
+    std::vector<UiRendererClipRectRow> clip_rect_rows;
+    std::vector<UiRendererScissorRow> scissor_rows;
+    std::vector<UiRendererMaskReviewRow> mask_review_rows;
+    std::vector<UiRendererBatchRow> batch_rows;
+    std::vector<UiRendererAtlasResidencyRef> atlas_residency_refs;
+    std::size_t unresolved_resources{0};
+    std::size_t native_handles_exposed{0};
+    bool texture_upload_host_owned{true};
+    std::vector<UiRendererExecutionDiagnostic> diagnostics;
+    std::uint64_t replay_hash{0};
+
+    [[nodiscard]] bool ready() const noexcept;
+};
+
 struct UiRenderSubmitDesc {
     const UiRendererTheme* theme{nullptr};
     Color fallback_box_color{.r = 1.0F, .g = 1.0F, .b = 1.0F, .a = 1.0F};
     const UiRendererImagePalette* image_palette{nullptr};
     const UiRendererGlyphAtlasPalette* glyph_atlas{nullptr};
     ui::MonospaceTextLayoutPolicy text_layout_policy{};
+    const UiRendererSubmission* execution{nullptr};
 };
 
 struct UiRenderSubmitResult {
@@ -123,6 +215,11 @@ struct UiRenderSubmitResult {
     std::size_t accessibility_nodes_available{0};
     std::size_t adapter_diagnostics_available{0};
     std::size_t theme_colors_resolved{0};
+    std::size_t execution_layer_rows{0};
+    std::size_t execution_batch_rows{0};
+    std::size_t execution_clip_rect_rows{0};
+    std::size_t execution_unresolved_resources{0};
+    std::size_t execution_native_handles_exposed{0};
 };
 
 enum class UiRendererAtlasHandoffStatus : std::uint8_t {
@@ -246,6 +343,8 @@ build_ui_renderer_image_palette_from_runtime_ui_atlas(const runtime::RuntimeAsse
 [[nodiscard]] UiRendererGlyphAtlasPaletteBuildResult
 build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas(const runtime::RuntimeAssetPackage& package,
                                                             AssetId atlas_metadata_asset);
+[[nodiscard]] UiRendererExecutionPlan plan_ui_renderer_execution(const ui::RendererSubmission& submission,
+                                                                 UiRenderSubmitDesc desc = {});
 [[nodiscard]] UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtlasHandoffRequest& request);
 [[nodiscard]] UiRenderSubmitResult submit_ui_renderer_submission(IRenderer& renderer,
                                                                  const ui::RendererSubmission& submission,

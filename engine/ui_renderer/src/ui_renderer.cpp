@@ -3,6 +3,8 @@
 
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <algorithm>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -83,6 +85,478 @@ void hash_atlas_handoff_string(std::uint64_t& hash, std::string_view value) noex
     hash_atlas_handoff_bool(hash, request.invoked_renderer_upload);
     hash_atlas_handoff_u64(hash, request.seed);
     return hash == 0U ? 1U : hash;
+}
+
+constexpr std::uint64_t kExecutionFnvOffset{14695981039346656037ULL};
+constexpr std::uint64_t kExecutionFnvPrime{1099511628211ULL};
+
+enum class UiRendererExecutionDrawKind : std::uint8_t {
+    solid,
+    textured,
+};
+
+struct UiRendererElementBounds {
+    ui::ElementId element;
+    ui::Rect bounds;
+};
+
+struct UiRendererExecutionDrawItem {
+    ui::ElementId element;
+    std::string layer;
+    std::int32_t order{0};
+    bool modal{false};
+    std::size_t source_index{0};
+    ui::Rect bounds;
+    UiRendererExecutionDrawKind kind{UiRendererExecutionDrawKind::solid};
+    SpriteCommand command;
+    bool ready_to_draw{true};
+};
+
+struct UiRendererExecutionBuildResult {
+    UiRendererExecutionPlan plan;
+    UiRenderSubmitResult submit_result;
+    std::vector<UiRendererExecutionDrawItem> draw_items;
+};
+
+void hash_execution_byte(std::uint64_t& hash, std::uint8_t value) noexcept {
+    hash ^= value;
+    hash *= kExecutionFnvPrime;
+}
+
+void hash_execution_bool(std::uint64_t& hash, bool value) noexcept {
+    hash_execution_byte(hash, value ? 1U : 0U);
+}
+
+void hash_execution_u64(std::uint64_t& hash, std::uint64_t value) noexcept {
+    for (std::size_t shift = 0U; shift < 64U; shift += 8U) {
+        hash_execution_byte(hash, static_cast<std::uint8_t>((value >> shift) & 0xffU));
+    }
+}
+
+void hash_execution_i32(std::uint64_t& hash, std::int32_t value) noexcept {
+    hash_execution_u64(hash, static_cast<std::uint32_t>(value));
+}
+
+void hash_execution_string(std::uint64_t& hash, std::string_view value) noexcept {
+    for (const unsigned char character : value) {
+        hash_execution_byte(hash, character);
+    }
+    hash_execution_byte(hash, 0xffU);
+}
+
+void append_execution_diagnostic(std::vector<UiRendererExecutionDiagnostic>& diagnostics,
+                                 UiRendererExecutionDiagnosticCode code, ui::ElementId element, std::string message) {
+    diagnostics.push_back(UiRendererExecutionDiagnostic{
+        .code = code,
+        .element = std::move(element),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] const UiRendererLayerRow* find_layer_row(const UiRendererSubmission* execution,
+                                                       const ui::ElementId& element) noexcept {
+    if (execution == nullptr) {
+        return nullptr;
+    }
+    for (const auto& row : execution->layer_rows) {
+        if (row.element == element) {
+            return &row;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] const ui::Rect* find_element_bounds(std::span<const UiRendererElementBounds> bounds,
+                                                  const ui::ElementId& element) noexcept {
+    for (const auto& row : bounds) {
+        if (row.element == element) {
+            return &row.bounds;
+        }
+    }
+    return nullptr;
+}
+
+void append_element_bounds(std::vector<UiRendererElementBounds>& bounds, ui::ElementId element, ui::Rect rect) {
+    if (ui::empty(element) || find_element_bounds(bounds, element) != nullptr) {
+        return;
+    }
+    bounds.push_back(UiRendererElementBounds{
+        .element = std::move(element),
+        .bounds = rect,
+    });
+}
+
+[[nodiscard]] ui::Rect intersect_rect(ui::Rect lhs, ui::Rect rhs) noexcept {
+    const auto x0 = std::max(lhs.x, rhs.x);
+    const auto y0 = std::max(lhs.y, rhs.y);
+    const auto x1 = std::min(lhs.x + lhs.width, rhs.x + rhs.width);
+    const auto y1 = std::min(lhs.y + lhs.height, rhs.y + rhs.height);
+    return ui::Rect{.x = x0, .y = y0, .width = std::max(0.0F, x1 - x0), .height = std::max(0.0F, y1 - y0)};
+}
+
+[[nodiscard]] const UiRendererAtlasResidencyRef*
+find_atlas_residency_ref(std::span<const UiRendererAtlasResidencyRef> refs, AssetId atlas_page) noexcept {
+    if (atlas_page.value == 0U) {
+        return nullptr;
+    }
+    for (const auto& ref : refs) {
+        if (ref.atlas_page == atlas_page) {
+            return &ref;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] bool same_batch_key(const UiRendererExecutionDrawItem& lhs,
+                                  const UiRendererExecutionDrawItem& rhs) noexcept {
+    return lhs.layer == rhs.layer && lhs.kind == rhs.kind &&
+           lhs.command.texture.enabled == rhs.command.texture.enabled &&
+           lhs.command.texture.atlas_page == rhs.command.texture.atlas_page;
+}
+
+[[nodiscard]] bool has_layer_row(std::span<const UiRendererLayerRow> rows, std::string_view layer, std::int32_t order,
+                                 bool modal) noexcept {
+    for (const auto& row : rows) {
+        if (row.layer == layer && row.order == order && row.modal == modal) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool execution_draw_item_less(const UiRendererExecutionDrawItem& lhs,
+                                            const UiRendererExecutionDrawItem& rhs) noexcept {
+    if (lhs.modal != rhs.modal) {
+        return !lhs.modal && rhs.modal;
+    }
+    if (lhs.order != rhs.order) {
+        return lhs.order < rhs.order;
+    }
+    if (lhs.layer != rhs.layer) {
+        return lhs.layer < rhs.layer;
+    }
+    return lhs.source_index < rhs.source_index;
+}
+
+void append_execution_draw_item(UiRendererExecutionBuildResult& build, const UiRendererSubmission* execution,
+                                ui::ElementId element, ui::Rect bounds, UiRendererExecutionDrawKind kind,
+                                SpriteCommand command, std::size_t source_index) {
+    UiRendererLayerRow resolved_layer{
+        .element = element,
+        .layer = {},
+        .order = 0,
+        .modal = false,
+    };
+    if (const auto* layer = find_layer_row(execution, element); layer != nullptr) {
+        resolved_layer = *layer;
+    }
+
+    build.draw_items.push_back(UiRendererExecutionDrawItem{
+        .element = std::move(element),
+        .layer = std::move(resolved_layer.layer),
+        .order = resolved_layer.order,
+        .modal = resolved_layer.modal,
+        .source_index = source_index,
+        .bounds = bounds,
+        .kind = kind,
+        .command = command,
+        .ready_to_draw = true,
+    });
+}
+
+void validate_execution_rows(UiRendererExecutionBuildResult& build, const UiRendererSubmission* execution,
+                             std::span<const UiRendererElementBounds> bounds) {
+    if (execution == nullptr) {
+        return;
+    }
+
+    if (execution->request_public_native_handle) {
+        append_execution_diagnostic(build.plan.diagnostics,
+                                    UiRendererExecutionDiagnosticCode::unsupported_public_native_handle, {},
+                                    "ui renderer execution does not expose public native, GPU, or RHI handles");
+    }
+    if (execution->request_renderer_texture_upload) {
+        append_execution_diagnostic(build.plan.diagnostics,
+                                    UiRendererExecutionDiagnosticCode::unsupported_renderer_texture_upload, {},
+                                    "ui renderer texture upload execution stays host-owned outside MK_ui_renderer");
+    }
+
+    for (const auto& row : execution->layer_rows) {
+        if (ui::empty(row.element)) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::missing_element_id,
+                                        row.element, "ui renderer layer row requires an element id");
+            continue;
+        }
+        if (find_element_bounds(bounds, row.element) == nullptr) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::unknown_element_id,
+                                        row.element, "ui renderer layer row references an unknown submission element");
+        }
+    }
+
+    for (const auto& row : execution->clip_rect_rows) {
+        if (ui::empty(row.element)) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::missing_element_id,
+                                        row.element, "ui renderer clip row requires an element id");
+            continue;
+        }
+        const auto* element_bounds = find_element_bounds(bounds, row.element);
+        if (element_bounds == nullptr) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::unknown_element_id,
+                                        row.element, "ui renderer clip row references an unknown submission element");
+            continue;
+        }
+        if (!is_positive_ui_rect(row.rect)) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::invalid_clip_rect,
+                                        row.element, "ui renderer clip row requires positive finite bounds");
+            continue;
+        }
+        const auto clipped = intersect_rect(*element_bounds, row.rect);
+        if (!is_positive_ui_rect(clipped)) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::invalid_clip_rect,
+                                        row.element, "ui renderer clip row does not overlap the element bounds");
+            continue;
+        }
+        build.plan.clip_rect_rows.push_back(UiRendererClipRectRow{.element = row.element, .rect = clipped});
+        build.plan.scissor_rows.push_back(UiRendererScissorRow{.element = row.element, .rect = clipped});
+    }
+
+    for (const auto& row : execution->mask_review_rows) {
+        if (ui::empty(row.element)) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::missing_element_id,
+                                        row.element, "ui renderer mask review row requires an element id");
+            continue;
+        }
+        if (find_element_bounds(bounds, row.element) == nullptr) {
+            append_execution_diagnostic(build.plan.diagnostics, UiRendererExecutionDiagnosticCode::unknown_element_id,
+                                        row.element,
+                                        "ui renderer mask review row references an unknown submission element");
+            continue;
+        }
+        if (!row.reviewed || row.requested_native_mask || !is_positive_ui_rect(row.rect)) {
+            append_execution_diagnostic(
+                build.plan.diagnostics, UiRendererExecutionDiagnosticCode::invalid_mask_review, row.element,
+                "ui renderer mask rows require reviewed value-only bounds without native masks");
+            continue;
+        }
+        build.plan.mask_review_rows.push_back(row);
+    }
+
+    build.plan.atlas_residency_refs = execution->atlas_residency_refs;
+    for (const auto& ref : execution->atlas_residency_refs) {
+        if (ref.atlas_page.value == 0U) {
+            append_execution_diagnostic(build.plan.diagnostics,
+                                        UiRendererExecutionDiagnosticCode::invalid_atlas_residency_ref, {},
+                                        "ui renderer atlas residency row requires a first-party atlas page id");
+        }
+        if (ref.requested_native_handle) {
+            append_execution_diagnostic(build.plan.diagnostics,
+                                        UiRendererExecutionDiagnosticCode::unsupported_public_native_handle, {},
+                                        "ui renderer atlas residency rows must not expose native handles");
+        }
+    }
+}
+
+void validate_draw_item_residency(UiRendererExecutionBuildResult& build, const UiRendererSubmission* execution) {
+    if (execution == nullptr || execution->atlas_residency_refs.empty()) {
+        return;
+    }
+    for (auto& item : build.draw_items) {
+        if (!item.command.texture.enabled) {
+            continue;
+        }
+        const auto* ref = find_atlas_residency_ref(execution->atlas_residency_refs, item.command.texture.atlas_page);
+        if (ref == nullptr) {
+            item.ready_to_draw = false;
+            ++build.plan.unresolved_resources;
+            append_execution_diagnostic(build.plan.diagnostics,
+                                        UiRendererExecutionDiagnosticCode::missing_atlas_residency_ref, item.element,
+                                        "ui renderer textured command is missing an atlas residency row");
+            continue;
+        }
+        if (!ref->resident) {
+            item.ready_to_draw = false;
+            ++build.plan.unresolved_resources;
+            append_execution_diagnostic(build.plan.diagnostics,
+                                        UiRendererExecutionDiagnosticCode::invalid_atlas_residency_ref, item.element,
+                                        "ui renderer textured command references a non-resident atlas page");
+        }
+    }
+}
+
+void finalize_execution_plan(UiRendererExecutionBuildResult& build) {
+    std::ranges::stable_sort(build.draw_items, execution_draw_item_less);
+
+    const UiRendererExecutionDrawItem* batch_key = nullptr;
+    for (const auto& item : build.draw_items) {
+        if (!item.ready_to_draw) {
+            continue;
+        }
+        build.plan.ordered_elements.push_back(UiRendererOrderedElementRow{
+            .element = item.element,
+            .layer = item.layer,
+            .order = item.order,
+            .modal = item.modal,
+            .source_index = item.source_index,
+        });
+        if (!has_layer_row(build.plan.layer_rows, item.layer, item.order, item.modal)) {
+            build.plan.layer_rows.push_back(UiRendererLayerRow{
+                .element = item.element,
+                .layer = item.layer,
+                .order = item.order,
+                .modal = item.modal,
+            });
+        }
+        if (batch_key == nullptr || !same_batch_key(*batch_key, item)) {
+            build.plan.batch_rows.push_back(UiRendererBatchRow{
+                .layer = item.layer,
+                .atlas_page = item.command.texture.atlas_page,
+                .textured = item.command.texture.enabled,
+                .first_source_index = item.source_index,
+                .command_count = 1U,
+            });
+            batch_key = &item;
+        } else {
+            ++build.plan.batch_rows.back().command_count;
+        }
+    }
+}
+
+[[nodiscard]] std::uint64_t compute_execution_replay_hash(const UiRendererExecutionPlan& plan) noexcept {
+    auto hash = kExecutionFnvOffset;
+    hash_execution_u64(hash, plan.layer_rows.size());
+    for (const auto& row : plan.layer_rows) {
+        hash_execution_string(hash, row.element.value);
+        hash_execution_string(hash, row.layer);
+        hash_execution_i32(hash, row.order);
+        hash_execution_bool(hash, row.modal);
+    }
+    hash_execution_u64(hash, plan.ordered_elements.size());
+    for (const auto& row : plan.ordered_elements) {
+        hash_execution_string(hash, row.element.value);
+        hash_execution_string(hash, row.layer);
+        hash_execution_i32(hash, row.order);
+        hash_execution_bool(hash, row.modal);
+        hash_execution_u64(hash, row.source_index);
+    }
+    hash_execution_u64(hash, plan.clip_rect_rows.size());
+    hash_execution_u64(hash, plan.scissor_rows.size());
+    hash_execution_u64(hash, plan.mask_review_rows.size());
+    hash_execution_u64(hash, plan.batch_rows.size());
+    for (const auto& row : plan.batch_rows) {
+        hash_execution_string(hash, row.layer);
+        hash_execution_u64(hash, row.atlas_page.value);
+        hash_execution_bool(hash, row.textured);
+        hash_execution_u64(hash, row.command_count);
+    }
+    hash_execution_u64(hash, plan.atlas_residency_refs.size());
+    hash_execution_u64(hash, plan.unresolved_resources);
+    hash_execution_u64(hash, plan.native_handles_exposed);
+    hash_execution_u64(hash, plan.diagnostics.size());
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] UiRendererExecutionBuildResult build_ui_renderer_execution(const ui::RendererSubmission& submission,
+                                                                         UiRenderSubmitDesc desc) {
+    UiRendererExecutionBuildResult build;
+    const auto* execution = desc.execution;
+    const auto text_payload = desc.glyph_atlas == nullptr
+                                  ? ui::build_text_adapter_payload(submission)
+                                  : ui::build_text_adapter_payload(submission, desc.text_layout_policy);
+    const auto image_payload = ui::build_image_adapter_payload(submission);
+    const auto accessibility_payload = ui::build_accessibility_payload(submission);
+
+    build.submit_result.text_runs_available = submission.text_runs.size();
+    build.submit_result.text_adapter_rows_available = text_payload.rows.size();
+    build.submit_result.image_placeholders_available = image_payload.rows.size();
+    build.submit_result.accessibility_nodes_available = accessibility_payload.nodes.size();
+    build.submit_result.adapter_diagnostics_available =
+        text_payload.diagnostics.size() + image_payload.diagnostics.size() + accessibility_payload.diagnostics.size();
+
+    std::vector<UiRendererElementBounds> bounds;
+    for (const auto& box : submission.boxes) {
+        append_element_bounds(bounds, box.id, box.bounds);
+    }
+    for (const auto& text : submission.text_runs) {
+        append_element_bounds(bounds, text.id, text.bounds);
+    }
+    for (const auto& image : submission.image_placeholders) {
+        append_element_bounds(bounds, image.id, image.bounds);
+    }
+
+    std::size_t source_index = 0U;
+    for (const auto& box : submission.boxes) {
+        if (box.background_token.empty()) {
+            continue;
+        }
+        if (desc.theme != nullptr && desc.theme->find(box.background_token) != nullptr) {
+            ++build.submit_result.theme_colors_resolved;
+        }
+        append_execution_draw_item(build, execution, box.id, box.bounds, UiRendererExecutionDrawKind::solid,
+                                   make_ui_box_sprite_command(box, desc), source_index++);
+        ++build.submit_result.boxes_submitted;
+    }
+
+    if (desc.glyph_atlas != nullptr) {
+        for (const auto& row : text_payload.rows) {
+            for (const auto& line : row.lines) {
+                for (const auto& glyph : line.glyphs) {
+                    ++build.submit_result.text_glyphs_available;
+                    if (!is_positive_ui_rect(glyph.bounds)) {
+                        ++build.submit_result.text_glyphs_missing;
+                        ++build.plan.unresolved_resources;
+                        append_execution_diagnostic(build.plan.diagnostics,
+                                                    UiRendererExecutionDiagnosticCode::unresolved_text_glyph, row.id,
+                                                    "ui renderer glyph row has invalid bounds");
+                        continue;
+                    }
+                    const auto* binding = resolve_ui_text_glyph_binding(row, glyph, desc);
+                    if (binding == nullptr) {
+                        ++build.submit_result.text_glyphs_missing;
+                        ++build.plan.unresolved_resources;
+                        append_execution_diagnostic(build.plan.diagnostics,
+                                                    UiRendererExecutionDiagnosticCode::unresolved_text_glyph, row.id,
+                                                    "ui renderer glyph row has no atlas binding");
+                        continue;
+                    }
+                    append_execution_draw_item(build, execution, row.id, glyph.bounds,
+                                               UiRendererExecutionDrawKind::textured,
+                                               make_ui_text_glyph_sprite_command(glyph, *binding), source_index++);
+                    ++build.submit_result.text_glyphs_resolved;
+                    ++build.submit_result.text_glyph_sprites_submitted;
+                }
+            }
+        }
+    }
+
+    for (const auto& image : image_payload.rows) {
+        if (!is_positive_ui_rect(image.bounds) || (image.resource_id.empty() && image.asset_uri.empty())) {
+            continue;
+        }
+        const auto* binding = resolve_ui_image_binding(image, desc);
+        if (binding == nullptr) {
+            ++build.submit_result.image_resources_missing;
+            ++build.plan.unresolved_resources;
+            append_execution_diagnostic(build.plan.diagnostics,
+                                        UiRendererExecutionDiagnosticCode::unresolved_image_resource, image.id,
+                                        "ui renderer image row has no atlas binding");
+            continue;
+        }
+        append_execution_draw_item(build, execution, image.id, image.bounds, UiRendererExecutionDrawKind::textured,
+                                   make_ui_image_sprite_command(image, *binding), source_index++);
+        ++build.submit_result.image_resources_resolved;
+        ++build.submit_result.image_sprites_submitted;
+    }
+
+    validate_execution_rows(build, execution, bounds);
+    validate_draw_item_residency(build, execution);
+    finalize_execution_plan(build);
+    build.plan.replay_hash = compute_execution_replay_hash(build.plan);
+    build.submit_result.execution_layer_rows = build.plan.layer_rows.size();
+    build.submit_result.execution_batch_rows = build.plan.batch_rows.size();
+    build.submit_result.execution_clip_rect_rows = build.plan.clip_rect_rows.size();
+    build.submit_result.execution_unresolved_resources = build.plan.unresolved_resources;
+    build.submit_result.execution_native_handles_exposed = build.plan.native_handles_exposed;
+    return build;
 }
 
 } // namespace
@@ -206,6 +680,10 @@ bool UiRendererGlyphAtlasPaletteBuildResult::succeeded() const noexcept {
 
 bool UiRendererAtlasHandoffPlan::ready() const noexcept {
     return status == UiRendererAtlasHandoffStatus::ready && selected_package_evidence_ready && diagnostics.empty();
+}
+
+bool UiRendererExecutionPlan::ready() const noexcept {
+    return diagnostics.empty() && native_handles_exposed == 0U;
 }
 
 Color resolve_ui_box_color(const ui::RendererBox& box, const UiRenderSubmitDesc& desc) noexcept {
@@ -587,70 +1065,19 @@ UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtla
     return plan;
 }
 
+UiRendererExecutionPlan plan_ui_renderer_execution(const ui::RendererSubmission& submission, UiRenderSubmitDesc desc) {
+    return build_ui_renderer_execution(submission, desc).plan;
+}
+
 UiRenderSubmitResult submit_ui_renderer_submission(IRenderer& renderer, const ui::RendererSubmission& submission,
                                                    UiRenderSubmitDesc desc) {
-    UiRenderSubmitResult result;
-    const auto text_payload = desc.glyph_atlas == nullptr
-                                  ? ui::build_text_adapter_payload(submission)
-                                  : ui::build_text_adapter_payload(submission, desc.text_layout_policy);
-    const auto image_payload = ui::build_image_adapter_payload(submission);
-    const auto accessibility_payload = ui::build_accessibility_payload(submission);
-
-    result.text_runs_available = submission.text_runs.size();
-    result.text_adapter_rows_available = text_payload.rows.size();
-    result.image_placeholders_available = image_payload.rows.size();
-    result.accessibility_nodes_available = accessibility_payload.nodes.size();
-    result.adapter_diagnostics_available =
-        text_payload.diagnostics.size() + image_payload.diagnostics.size() + accessibility_payload.diagnostics.size();
-
-    for (const auto& box : submission.boxes) {
-        if (box.background_token.empty()) {
-            continue;
-        }
-        if (desc.theme != nullptr && desc.theme->find(box.background_token) != nullptr) {
-            ++result.theme_colors_resolved;
-        }
-        renderer.draw_sprite(make_ui_box_sprite_command(box, desc));
-        ++result.boxes_submitted;
-    }
-
-    if (desc.glyph_atlas != nullptr) {
-        for (const auto& row : text_payload.rows) {
-            for (const auto& line : row.lines) {
-                for (const auto& glyph : line.glyphs) {
-                    ++result.text_glyphs_available;
-                    if (!is_positive_ui_rect(glyph.bounds)) {
-                        ++result.text_glyphs_missing;
-                        continue;
-                    }
-                    const auto* binding = resolve_ui_text_glyph_binding(row, glyph, desc);
-                    if (binding == nullptr) {
-                        ++result.text_glyphs_missing;
-                        continue;
-                    }
-                    renderer.draw_sprite(make_ui_text_glyph_sprite_command(glyph, *binding));
-                    ++result.text_glyphs_resolved;
-                    ++result.text_glyph_sprites_submitted;
-                }
-            }
+    auto build = build_ui_renderer_execution(submission, desc);
+    for (const auto& item : build.draw_items) {
+        if (item.ready_to_draw) {
+            renderer.draw_sprite(item.command);
         }
     }
-
-    for (const auto& image : image_payload.rows) {
-        if (!is_positive_ui_rect(image.bounds) || (image.resource_id.empty() && image.asset_uri.empty())) {
-            continue;
-        }
-        const auto* binding = resolve_ui_image_binding(image, desc);
-        if (binding == nullptr) {
-            ++result.image_resources_missing;
-            continue;
-        }
-        renderer.draw_sprite(make_ui_image_sprite_command(image, *binding));
-        ++result.image_resources_resolved;
-        ++result.image_sprites_submitted;
-    }
-
-    return result;
+    return build.submit_result;
 }
 
 } // namespace mirakana

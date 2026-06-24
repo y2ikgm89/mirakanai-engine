@@ -237,17 +237,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 
 **Steps:**
 
-- [ ] Add RED tests in `tests/unit/ui_renderer_tests.cpp` for layer sorting, modal top-most ordering, clipping bounds, unresolved glyph/image resources, invalid atlas residency refs, native handle rejection, and deterministic batch grouping.
-- [ ] Extend `UiRendererSubmission` and `submit_ui_renderer_submission` in `engine/ui_renderer`.
-- [ ] Add package smoke counters: `ui_renderer_layers`, `ui_renderer_batches`, `ui_renderer_clip_rects`, `ui_renderer_unresolved_resources`, `ui_renderer_native_handles_exposed=0`.
-- [ ] Keep texture upload host-owned and outside `mirakana::ui`.
-- [ ] Run:
+- [x] Add RED tests in `tests/unit/ui_renderer_tests.cpp` for layer sorting, modal top-most ordering, clipping bounds, unresolved glyph/image resources, invalid atlas residency refs, native handle rejection, and deterministic batch grouping.
+- [x] Extend `UiRendererSubmission` and `submit_ui_renderer_submission` in `engine/ui_renderer`.
+- [x] Add package smoke counters: `ui_renderer_layers`, `ui_renderer_batches`, `ui_renderer_clip_rects`, `ui_renderer_unresolved_resources`, `ui_renderer_native_handles_exposed=0`.
+- [x] Keep texture upload host-owned and outside `mirakana::ui`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests sample_2d_desktop_runtime_package
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_ui_renderer_tests"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
+
+**2026-06-24 validation evidence:** The RED unit build first failed on missing `UiRendererSubmission`, `UiRendererLayerRow`, `UiRendererClipRectRow`, `UiRendererMaskReviewRow`, `UiRendererExecutionPlan`, `UiRendererExecutionDiagnosticCode`, and `plan_ui_renderer_execution`. After implementation, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_ui_renderer_tests"` passed. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package`, and `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-runtime-ui-atlas-upload','--require-runtime-ui-renderer-atlas-handoff')"` passed for the package lane. The package smoke reported `runtime_ui_renderer_atlas_handoff_status=ready`, `runtime_ui_renderer_atlas_handoff_ready=1`, `runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted=2`, `ui_renderer_layers=1`, `ui_renderer_batches=1`, `ui_renderer_clip_rects=1`, `ui_renderer_unresolved_resources=0`, and `ui_renderer_native_handles_exposed=0`. The current `dev` preset does not expose `sample_2d_desktop_runtime_package`, so package evidence uses the existing `desktop-runtime` preset.
 
 ## Phase 5 - Windows Text And Font Adapter v1
 

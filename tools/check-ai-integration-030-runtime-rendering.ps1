@@ -224,8 +224,8 @@ if ($geEditorCoreModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_editor_core module"
 }
 if ($geUiModule[0].status -ne "implemented-production-runtime-ui-workbench") { Write-Error "engine/agent/manifest.json MK_ui status must advertise the production runtime UI workbench slice honestly" }
-if ($geUiRendererModule[0].status -ne "implemented-runtime-ui-font-image-adapter") {
-    Write-Error "engine/agent/manifest.json MK_ui_renderer status must advertise the runtime UI font image adapter slice honestly"
+if ($geUiRendererModule[0].status -ne "implemented-runtime-ui-renderer-execution") {
+    Write-Error "engine/agent/manifest.json MK_ui_renderer status must advertise the runtime UI renderer execution slice honestly"
 }
 if ($geSceneModule[0].status -ne "implemented-scene-schema-v2-contract") {
     Write-Error "engine/agent/manifest.json MK_scene status must advertise the Scene/Component/Prefab Schema v2 contract slice honestly"

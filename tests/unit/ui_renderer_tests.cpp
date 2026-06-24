@@ -616,6 +616,231 @@ MK_TEST("ui renderer reports missing glyph atlas bindings without fake sprites")
     MK_REQUIRE(renderer.stats().sprites_submitted == 0);
 }
 
+MK_TEST("ui renderer execution plan sorts layers keeps modal topmost and clips to element bounds") {
+    mirakana::ui::RendererSubmission submission;
+    submission.boxes.push_back(mirakana::ui::RendererBox{
+        .id = mirakana::ui::ElementId{"hud"},
+        .role = mirakana::ui::SemanticRole::panel,
+        .bounds = mirakana::ui::Rect{.x = 10.0F, .y = 10.0F, .width = 60.0F, .height = 20.0F},
+        .background_token = "hud.panel",
+        .foreground_token = {},
+        .enabled = true,
+    });
+    submission.boxes.push_back(mirakana::ui::RendererBox{
+        .id = mirakana::ui::ElementId{"world"},
+        .role = mirakana::ui::SemanticRole::panel,
+        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 48.0F},
+        .background_token = "world.panel",
+        .foreground_token = {},
+        .enabled = true,
+    });
+    submission.boxes.push_back(mirakana::ui::RendererBox{
+        .id = mirakana::ui::ElementId{"pause_modal"},
+        .role = mirakana::ui::SemanticRole::dialog,
+        .bounds = mirakana::ui::Rect{.x = 20.0F, .y = 8.0F, .width = 40.0F, .height = 24.0F},
+        .background_token = "modal.panel",
+        .foreground_token = {},
+        .enabled = true,
+    });
+
+    mirakana::UiRendererSubmission execution;
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"hud"},
+        .layer = "hud",
+        .order = 10,
+        .modal = false,
+    });
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"world"},
+        .layer = "world",
+        .order = 0,
+        .modal = false,
+    });
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"pause_modal"},
+        .layer = "modal",
+        .order = 5,
+        .modal = true,
+    });
+    execution.clip_rect_rows.push_back(mirakana::UiRendererClipRectRow{
+        .element = mirakana::ui::ElementId{"hud"},
+        .rect = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
+    });
+    execution.mask_review_rows.push_back(mirakana::UiRendererMaskReviewRow{
+        .element = mirakana::ui::ElementId{"pause_modal"},
+        .rect = mirakana::ui::Rect{.x = 20.0F, .y = 8.0F, .width = 40.0F, .height = 24.0F},
+        .reviewed = true,
+        .requested_native_mask = false,
+    });
+
+    mirakana::UiRenderSubmitDesc desc;
+    desc.execution = &execution;
+    const auto plan = mirakana::plan_ui_renderer_execution(submission, desc);
+
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.layer_rows.size() == 3);
+    MK_REQUIRE(plan.ordered_elements.size() == 3);
+    MK_REQUIRE(plan.ordered_elements[0].element == mirakana::ui::ElementId{"world"});
+    MK_REQUIRE(plan.ordered_elements[1].element == mirakana::ui::ElementId{"hud"});
+    MK_REQUIRE(plan.ordered_elements[2].element == mirakana::ui::ElementId{"pause_modal"});
+    MK_REQUIRE(plan.ordered_elements[2].modal);
+    MK_REQUIRE(plan.clip_rect_rows.size() == 1);
+    MK_REQUIRE(plan.clip_rect_rows[0].rect == (mirakana::ui::Rect{10.0F, 10.0F, 22.0F, 6.0F}));
+    MK_REQUIRE(plan.scissor_rows.size() == 1);
+    MK_REQUIRE(plan.scissor_rows[0].rect == plan.clip_rect_rows[0].rect);
+    MK_REQUIRE(plan.mask_review_rows.size() == 1);
+    MK_REQUIRE(plan.mask_review_rows[0].reviewed);
+    MK_REQUIRE(plan.native_handles_exposed == 0);
+}
+
+MK_TEST("ui renderer execution plan reports unresolved resources invalid atlas residency and native handle requests") {
+    const auto atlas_page = mirakana::AssetId::from_name("ui/hud-atlas");
+
+    mirakana::ui::RendererSubmission submission;
+    mirakana::ui::RendererTextRun text;
+    text.id = mirakana::ui::ElementId{"title"};
+    text.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 12.0F};
+    text.text.label = "A";
+    text.text.font_family = "ui/body";
+    submission.text_runs.push_back(text);
+
+    mirakana::ui::RendererImagePlaceholder image;
+    image.id = mirakana::ui::ElementId{"portrait"};
+    image.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 4.0F, .width = 16.0F, .height = 16.0F};
+    image.image.resource_id = "ui/portrait";
+    submission.image_placeholders.push_back(image);
+
+    mirakana::UiRendererGlyphAtlasPalette glyph_atlas;
+    mirakana::UiRendererImagePalette image_palette;
+    mirakana::UiRendererImageBinding binding{
+        .resource_id = "ui/portrait",
+        .asset_uri = {},
+        .color = mirakana::Color{.r = 1.0F, .g = 1.0F, .b = 1.0F, .a = 1.0F},
+    };
+    binding.atlas_page = atlas_page;
+    binding.uv_rect = mirakana::SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F};
+    MK_REQUIRE(image_palette.try_add(binding));
+
+    mirakana::UiRendererSubmission execution;
+    execution.atlas_residency_refs.push_back(mirakana::UiRendererAtlasResidencyRef{
+        .atlas_page = atlas_page,
+        .resident = false,
+        .requested_native_handle = false,
+    });
+    execution.atlas_residency_refs.push_back(mirakana::UiRendererAtlasResidencyRef{
+        .atlas_page = mirakana::AssetId{},
+        .resident = true,
+        .requested_native_handle = true,
+    });
+    execution.request_public_native_handle = true;
+    execution.request_renderer_texture_upload = true;
+
+    mirakana::UiRenderSubmitDesc desc;
+    desc.image_palette = &image_palette;
+    desc.glyph_atlas = &glyph_atlas;
+    desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{
+        .glyph_advance = 8.0F, .whitespace_advance = 4.0F, .line_height = 10.0F};
+    desc.execution = &execution;
+
+    const auto plan = mirakana::plan_ui_renderer_execution(submission, desc);
+    const auto has_diagnostic = [&plan](mirakana::UiRendererExecutionDiagnosticCode code) {
+        for (const auto& diagnostic : plan.diagnostics) {
+            if (diagnostic.code == code) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.unresolved_resources == 2);
+    MK_REQUIRE(plan.native_handles_exposed == 0);
+    MK_REQUIRE(has_diagnostic(mirakana::UiRendererExecutionDiagnosticCode::unresolved_text_glyph));
+    MK_REQUIRE(has_diagnostic(mirakana::UiRendererExecutionDiagnosticCode::invalid_atlas_residency_ref));
+    MK_REQUIRE(has_diagnostic(mirakana::UiRendererExecutionDiagnosticCode::unsupported_public_native_handle));
+    MK_REQUIRE(has_diagnostic(mirakana::UiRendererExecutionDiagnosticCode::unsupported_renderer_texture_upload));
+}
+
+MK_TEST("ui renderer submission exposes deterministic execution counters and batch grouping") {
+    const auto atlas_page = mirakana::AssetId::from_name("ui/hud-atlas");
+
+    mirakana::ui::RendererSubmission submission;
+    mirakana::ui::RendererImagePlaceholder portrait;
+    portrait.id = mirakana::ui::ElementId{"portrait"};
+    portrait.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 16.0F, .height = 16.0F};
+    portrait.image.resource_id = "ui/portrait";
+    submission.image_placeholders.push_back(portrait);
+
+    mirakana::ui::RendererImagePlaceholder icon;
+    icon.id = mirakana::ui::ElementId{"icon"};
+    icon.bounds = mirakana::ui::Rect{.x = 16.0F, .y = 0.0F, .width = 16.0F, .height = 16.0F};
+    icon.image.resource_id = "ui/icon";
+    submission.image_placeholders.push_back(icon);
+
+    mirakana::UiRendererImagePalette image_palette;
+    mirakana::UiRendererImageBinding portrait_binding{
+        .resource_id = "ui/portrait",
+        .asset_uri = {},
+        .color = mirakana::Color{.r = 1.0F, .g = 0.0F, .b = 0.0F, .a = 1.0F},
+    };
+    portrait_binding.atlas_page = atlas_page;
+    portrait_binding.uv_rect = mirakana::SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 0.5F, .v1 = 1.0F};
+    MK_REQUIRE(image_palette.try_add(portrait_binding));
+    mirakana::UiRendererImageBinding icon_binding{
+        .resource_id = "ui/icon",
+        .asset_uri = {},
+        .color = mirakana::Color{.r = 0.0F, .g = 1.0F, .b = 0.0F, .a = 1.0F},
+    };
+    icon_binding.atlas_page = atlas_page;
+    icon_binding.uv_rect = mirakana::SpriteUvRect{.u0 = 0.5F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F};
+    MK_REQUIRE(image_palette.try_add(icon_binding));
+
+    mirakana::UiRendererSubmission execution;
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"portrait"},
+        .layer = "hud",
+        .order = 10,
+        .modal = false,
+    });
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"icon"},
+        .layer = "hud",
+        .order = 10,
+        .modal = false,
+    });
+    execution.atlas_residency_refs.push_back(mirakana::UiRendererAtlasResidencyRef{
+        .atlas_page = atlas_page,
+        .resident = true,
+        .requested_native_handle = false,
+    });
+
+    mirakana::UiRenderSubmitDesc desc;
+    desc.image_palette = &image_palette;
+    desc.execution = &execution;
+
+    const auto plan = mirakana::plan_ui_renderer_execution(submission, desc);
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.layer_rows.size() == 1);
+    MK_REQUIRE(plan.batch_rows.size() == 1);
+    MK_REQUIRE(plan.batch_rows[0].atlas_page == atlas_page);
+    MK_REQUIRE(plan.batch_rows[0].command_count == 2);
+
+    CaptureRenderer renderer(mirakana::Extent2D{.width = 64, .height = 32});
+    renderer.begin_frame();
+    const auto result = mirakana::submit_ui_renderer_submission(renderer, submission, desc);
+    renderer.end_frame();
+
+    MK_REQUIRE(result.execution_layer_rows == 1);
+    MK_REQUIRE(result.execution_batch_rows == 1);
+    MK_REQUIRE(result.execution_clip_rect_rows == 0);
+    MK_REQUIRE(result.execution_unresolved_resources == 0);
+    MK_REQUIRE(result.execution_native_handles_exposed == 0);
+    MK_REQUIRE(result.image_sprites_submitted == 2);
+    MK_REQUIRE(renderer.sprites.size() == 2);
+    MK_REQUIRE(renderer.sprites[0].texture.atlas_page == atlas_page);
+    MK_REQUIRE(renderer.sprites[1].texture.atlas_page == atlas_page);
+}
+
 MK_TEST("ui renderer resolves image palette resource id before asset uri fallback") {
     mirakana::UiRendererImagePalette image_palette;
     MK_REQUIRE(image_palette.try_add(
