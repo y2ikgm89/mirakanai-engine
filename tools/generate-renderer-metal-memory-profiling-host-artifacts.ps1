@@ -103,13 +103,26 @@ function Invoke-CapturedTool {
         [Parameter(Mandatory = $true)][string]$Description
     )
 
+    $result = Invoke-CapturedToolResult -FilePath $FilePath -Arguments $Arguments
+    if ($result.ExitCode -ne 0) {
+        Write-Error "$Description failed with exit code $($result.ExitCode).`n$($result.Text)"
+    }
+    return $result.Text
+}
+
+function Invoke-CapturedToolResult {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
     $output = @(& $FilePath @Arguments 2>&1)
     $exitCode = $LASTEXITCODE
     $text = [string]::Join("`n", @($output | ForEach-Object { [string]$_ }))
-    if ($exitCode -ne 0) {
-        Write-Error "$Description failed with exit code $exitCode.`n$text"
+    return [pscustomobject]@{
+        ExitCode = $exitCode
+        Text = $text
     }
-    return $text
 }
 
 function Assert-ExpectedCounters {
@@ -124,6 +137,77 @@ function Assert-ExpectedCounters {
     if ($missingExpectedCounters.Count -ne 0) {
         Write-Error "Renderer Metal memory/profiling host artifact producer did not emit expected counter(s): $([string]::Join(', ', $missingExpectedCounters))"
     }
+}
+
+function Get-ProbeHostGateReason {
+    param([Parameter(Mandatory = $true)][string]$ProbeText)
+
+    if ($ProbeText.Contains("MTLCreateSystemDefaultDevice returned nil")) {
+        return "metal_device_unavailable"
+    }
+    if ($ProbeText.Contains("Metal command queue creation failed")) {
+        return "metal_command_queue_unavailable"
+    }
+    if ($ProbeText.Contains("MTLResidencySet")) {
+        return "mtlresidencyset_unavailable"
+    }
+    if ($ProbeText.Contains("MTLCaptureDestinationGPUTraceDocument is not supported on this host")) {
+        return "metal_capture_destination_unavailable"
+    }
+    if ($ProbeText.Contains("MTLCaptureManager startCaptureWithDescriptor failed")) {
+        return "metal_capture_unavailable"
+    }
+    return ""
+}
+
+function Write-MacOSHostGatedProbeArtifacts {
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkloadRootFull,
+        [Parameter(Mandatory = $true)][string]$Reason,
+        [Parameter(Mandatory = $true)][string]$ProbeText
+    )
+
+    $summaryText = [string]::Join("`n", @(
+            "validation_recipe=renderer-metal-memory-profiling-host-evidence",
+            "plan_id=renderer-metal-memory-profiling-apple-host-artifacts-v1",
+            "renderer_metal_memory_profiling_host_artifacts_status=host_gated",
+            "renderer_metal_memory_profiling_host_gate_reason=$(ConvertTo-CounterValue -Value $Reason)",
+            "renderer_metal_memory_profiling_host_artifacts_ready=0",
+            "renderer_metal_memory_profiling_host_artifacts_probe_ready=0",
+            "renderer_metal_memory_profiling_host_artifacts_written=0",
+            "renderer_metal_memory_profiling_status=host_evidence_required",
+            "renderer_metal_memory_profiling_ready=0",
+            "renderer_backend_parity_ready=0",
+            "renderer_metal_broad_readiness=0",
+            "renderer_commercial_readiness=0",
+            "renderer_broad_quality_ready=0",
+            "renderer_environment_ready=0",
+            "probe_output_begin",
+            $ProbeText.Trim(),
+            "probe_output_end"
+        ))
+    Set-Content -LiteralPath (Join-Path $WorkloadRootFull "host-gate-summary.txt") `
+        -Value $summaryText -Encoding utf8
+
+    $summaryJson = [ordered]@{
+        schema = "GameEngine.RendererMetalMemoryProfilingHostGate.v1"
+        validation_recipe = "renderer-metal-memory-profiling-host-evidence"
+        plan_id = "renderer-metal-memory-profiling-apple-host-artifacts-v1"
+        status = "host_gated"
+        reason = $Reason
+        renderer_metal_memory_profiling_host_artifacts_ready = 0
+        renderer_metal_memory_profiling_host_artifacts_probe_ready = 0
+        renderer_metal_memory_profiling_host_artifacts_written = 0
+        renderer_metal_memory_profiling_ready = 0
+        renderer_backend_parity_ready = 0
+        renderer_metal_broad_readiness = 0
+        renderer_commercial_readiness = 0
+        renderer_broad_quality_ready = 0
+        renderer_environment_ready = 0
+        probe_output = $ProbeText
+    }
+    $summaryJson | ConvertTo-Json -Depth 4 |
+        Set-Content -LiteralPath (Join-Path $WorkloadRootFull "host-gate-summary.json") -Encoding utf8
 }
 
 if (-not (Test-SafeRepoRelativePath -RelativePath $ArtifactRootRelative)) {
@@ -227,8 +311,43 @@ if (-not (Test-Path -LiteralPath $probePath -PathType Leaf)) {
 
 Write-Information "renderer-metal-memory-profiling-host-artifacts: running Apple host probe..." `
     -InformationAction Continue
-$probeText = Invoke-CapturedTool -FilePath $probePath -Arguments @($workloadRootFull) `
-    -Description "Renderer Metal memory/profiling Apple host probe"
+$probeResult = Invoke-CapturedToolResult -FilePath $probePath -Arguments @($workloadRootFull)
+$probeText = $probeResult.Text
+if ($probeResult.ExitCode -ne 0) {
+    $hostGateReason = Get-ProbeHostGateReason -ProbeText $probeText
+    if ([string]::IsNullOrWhiteSpace($hostGateReason)) {
+        Write-Error "Renderer Metal memory/profiling Apple host probe failed with exit code $($probeResult.ExitCode).`n$probeText"
+    }
+
+    Write-MacOSHostGatedProbeArtifacts -WorkloadRootFull $workloadRootFull `
+        -Reason $hostGateReason -ProbeText $probeText
+    $counterLine = [string]::Join(" ", @(
+            "renderer-metal-memory-profiling-host-artifacts:",
+            "validation_recipe=renderer-metal-memory-profiling-host-evidence",
+            "host=macos",
+            "host_gate=metal-apple",
+            "renderer_metal_memory_profiling_host_artifacts_status=host_gated",
+            "renderer_metal_memory_profiling_host_gate_reason=$(ConvertTo-CounterValue -Value $hostGateReason)",
+            "renderer_metal_memory_profiling_host_artifacts_ready=0",
+            "renderer_metal_memory_profiling_host_artifacts_probe_ready=0",
+            "renderer_metal_memory_profiling_host_artifacts_written=0",
+            "renderer_metal_memory_profiling_status=host_evidence_required",
+            "renderer_metal_memory_profiling_ready=0",
+            "renderer_backend_parity_ready=0",
+            "renderer_metal_broad_readiness=0",
+            "renderer_commercial_readiness=0",
+            "renderer_broad_quality_ready=0",
+            "renderer_environment_ready=0"
+        ))
+    Write-Host $counterLine
+    Assert-ExpectedCounters -CounterText ([string]::Join("`n", @($probeText, $counterLine)))
+    if ($RequireReady.IsPresent) {
+        Write-Error "Renderer Metal memory/profiling host artifacts require an Apple host that can create MTLResidencySet and capture Metal GPU traces. Probe host gate reason: $hostGateReason.`n$probeText"
+    }
+    Write-Information "renderer-metal-memory-profiling-host-artifacts-check: host-gated" `
+        -InformationAction Continue
+    return
+}
 
 $summaryPath = Join-Path $workloadRootFull "probe-summary.json"
 if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {

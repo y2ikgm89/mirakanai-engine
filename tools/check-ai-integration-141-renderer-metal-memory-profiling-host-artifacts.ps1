@@ -29,6 +29,7 @@ foreach ($needle in @(
         "renderer-metal-memory-profiling-apple-host-artifacts-v1",
         "validation_recipe=renderer-metal-memory-profiling-host-evidence",
         "renderer_metal_memory_profiling_host_artifacts_status=host_gated",
+        "renderer_metal_memory_profiling_host_gate_reason",
         "renderer_metal_memory_profiling_host_artifacts_ready=0",
         "renderer_metal_memory_profiling_host_artifacts_ready=1",
         "renderer_metal_memory_profiling_status=ready",
@@ -94,7 +95,9 @@ foreach ($needle in @(
 }
 
 Assert-ContainsText $ciMatrixText "tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1" "tools/check-ci-matrix.ps1 renderer Metal host artifact case"
-Assert-ContainsText $workflowText "generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs -RequireReady" ".github/workflows/validate.yml renderer Metal host artifact lane"
+Assert-ContainsText $workflowText "GitHub-hosted macOS can be Metal-capable while still rejecting MTLResidencySet creation." ".github/workflows/validate.yml renderer Metal host artifact lane"
+Assert-ContainsText $workflowText "generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs" ".github/workflows/validate.yml renderer Metal host artifact lane"
+Assert-DoesNotContainText $workflowText "generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs -RequireReady" ".github/workflows/validate.yml renderer Metal host artifact hosted lane"
 Assert-ContainsText $workflowText "artifacts/renderer/metal-memory-profiling-host-evidence/**" ".github/workflows/validate.yml renderer Metal host artifact upload"
 Assert-ContainsText $commandsFragmentText "rendererMetalMemoryProfilingHostArtifactsCheck" "manifest commands renderer Metal memory/profiling host artifacts"
 

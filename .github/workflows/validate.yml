@@ -1544,7 +1544,9 @@ jobs:
         shell: pwsh
         run: |
           $jobs = [int](& sysctl -n hw.logicalcpu)
-          ./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs $jobs -RequireReady
+          # GitHub-hosted macOS can be Metal-capable while still rejecting MTLResidencySet creation.
+          # Keep -RequireReady for a physical/self-hosted Apple proof host; this lane records host-gated diagnostics.
+          ./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs $jobs
 
       - name: Upload Metal optimization artifacts
         if: ${{ always() && !cancelled() }}
