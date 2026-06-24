@@ -27,6 +27,7 @@ add_library(MK_editor_core
     core/src/project_wizard.cpp
     core/src/render_backend.cpp
     core/src/resource_panel.cpp
+    core/src/runtime_ui_authoring.cpp
     core/src/scene_authoring.cpp
     core/src/scene_edit.cpp
     core/src/shader_artifact_io.cpp
