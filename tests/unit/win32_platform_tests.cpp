@@ -15,6 +15,45 @@
 
 #if defined(_WIN32)
 
+namespace {
+
+[[nodiscard]] bool has_tsf_diagnostic(const std::vector<mirakana::win32::Win32TsfTextSessionDiagnostic>& diagnostics,
+                                      mirakana::win32::Win32TsfTextSessionDiagnosticCode code) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] mirakana::win32::Win32TsfTextSessionDesc make_valid_tsf_text_session_desc() {
+    const mirakana::ui::ElementId target{.value = "win32-tsf-target"};
+    return mirakana::win32::Win32TsfTextSessionDesc{
+        .active_request =
+            mirakana::ui::PlatformTextInputRequest{
+                .target = target,
+                .text_bounds = mirakana::ui::Rect{.x = 8.0F, .y = 12.0F, .width = 240.0F, .height = 32.0F},
+                .surrounding_text = "kana",
+                .cursor_byte_offset = 4U,
+            },
+        .composition_begin = true,
+        .composition_text = "ka",
+        .composition_cursor_byte_offset = 2U,
+        .composition_end = true,
+        .committed_text_rows = {mirakana::ui::CommittedTextInput{.target = target, .text = "\xE3\x81\x8B"}},
+        .candidate_intent_rows = {mirakana::win32::Win32TsfCandidateIntentRow{
+            .target = target,
+            .candidate_count = 3U,
+            .selected_index = 1U,
+            .native_candidate_ui_requested = true,
+        }},
+        .row_budget = 16U,
+    };
+}
+
+} // namespace
+
 MK_TEST("win32 CPU set worker placement filters unavailable rows and honors core preference") {
     const std::vector<mirakana::win32::Win32CpuSetRow> rows = {
         mirakana::win32::Win32CpuSetRow{.id = 10,
@@ -484,6 +523,106 @@ MK_TEST("win32 text input rows produce committed UTF-8 and session plans") {
                 });
     MK_REQUIRE(clipboard_command.has_value());
     MK_REQUIRE(clipboard_command->kind == mirakana::ui::TextEditClipboardCommandKind::paste_text);
+}
+
+MK_TEST("win32 TSF text session proof emits private official SDK evidence rows") {
+    const auto result = mirakana::win32::plan_win32_tsf_text_session(make_valid_tsf_text_session_desc());
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.tsf_thread_manager_available);
+    MK_REQUIRE(result.tsf_document_manager_available);
+    MK_REQUIRE(result.tsf_context_available);
+    MK_REQUIRE(result.focus_sink_rows == 1U);
+    MK_REQUIRE(result.text_store_lock_rows == 1U);
+    MK_REQUIRE(result.text_area_rows.size() == 1U);
+    MK_REQUIRE(result.text_area_rows.front().target.value == "win32-tsf-target");
+    MK_REQUIRE(result.text_area_rows.front().caret_rect.width == 240.0F);
+    MK_REQUIRE(result.composition_rows.size() == 3U);
+    MK_REQUIRE(result.composition_rows[0].begin);
+    MK_REQUIRE(result.composition_rows[1].update);
+    MK_REQUIRE(result.composition_rows[1].composition_text == "ka");
+    MK_REQUIRE(result.composition_rows[2].end);
+    MK_REQUIRE(result.committed_text_rows.size() == 1U);
+    MK_REQUIRE(result.committed_text_rows.front().target.value == "win32-tsf-target");
+    MK_REQUIRE(result.committed_text_rows.front().text == "\xE3\x81\x8B");
+    MK_REQUIRE(result.candidate_intent_rows.size() == 1U);
+    MK_REQUIRE(result.candidate_intent_rows.front().candidate_count == 3U);
+    MK_REQUIRE(!result.candidate_intent_rows.front().native_candidate_ui_ready);
+    MK_REQUIRE(!result.native_candidate_ui_ready);
+    MK_REQUIRE(!result.cross_platform_ime_ready);
+    MK_REQUIRE(!result.public_native_handles_exposed);
+
+    const auto evidence = mirakana::win32::make_win32_tsf_native_ime_production_evidence(result);
+    MK_REQUIRE(evidence.id == "runtime-ui-platform.native-ime.win32.tsf");
+    MK_REQUIRE(evidence.feature == mirakana::ui::RuntimeUiPlatformProductionFeature::native_ime_session);
+    MK_REQUIRE(evidence.proof == mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter);
+    MK_REQUIRE(evidence.selected);
+    MK_REQUIRE(evidence.ready);
+    MK_REQUIRE(evidence.dependency_recorded);
+    MK_REQUIRE(evidence.host_evidence_available);
+    MK_REQUIRE(!evidence.public_native_handles);
+    MK_REQUIRE(!evidence.external_engine_parity_claim);
+}
+
+MK_TEST("win32 TSF text session proof fails closed for invalid rows and parity claims") {
+    auto missing_target = make_valid_tsf_text_session_desc();
+    missing_target.active_request.target.value.clear();
+    const auto missing_target_result = mirakana::win32::plan_win32_tsf_text_session(missing_target);
+    MK_REQUIRE(!missing_target_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(missing_target_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::missing_active_target));
+
+    auto invalid_rect = make_valid_tsf_text_session_desc();
+    invalid_rect.active_request.text_bounds.width = 0.0F;
+    const auto invalid_rect_result = mirakana::win32::plan_win32_tsf_text_session(invalid_rect);
+    MK_REQUIRE(!invalid_rect_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(invalid_rect_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::invalid_caret_rect));
+
+    auto invalid_utf8 = make_valid_tsf_text_session_desc();
+    invalid_utf8.active_request.surrounding_text = std::string{"\xC3\x28", 2U};
+    const auto invalid_utf8_result = mirakana::win32::plan_win32_tsf_text_session(invalid_utf8);
+    MK_REQUIRE(!invalid_utf8_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(invalid_utf8_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::invalid_surrounding_text));
+
+    auto composition_without_begin = make_valid_tsf_text_session_desc();
+    composition_without_begin.composition_begin = false;
+    const auto composition_without_begin_result =
+        mirakana::win32::plan_win32_tsf_text_session(composition_without_begin);
+    MK_REQUIRE(!composition_without_begin_result.succeeded());
+    MK_REQUIRE(
+        has_tsf_diagnostic(composition_without_begin_result.diagnostics,
+                           mirakana::win32::Win32TsfTextSessionDiagnosticCode::composition_update_without_begin));
+
+    auto committed_mismatch = make_valid_tsf_text_session_desc();
+    committed_mismatch.committed_text_rows.front().target.value = "other-target";
+    const auto committed_mismatch_result = mirakana::win32::plan_win32_tsf_text_session(committed_mismatch);
+    MK_REQUIRE(!committed_mismatch_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(committed_mismatch_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::committed_text_target_mismatch));
+
+    auto candidates_without_session = make_valid_tsf_text_session_desc();
+    candidates_without_session.request_tsf_session = false;
+    const auto candidates_without_session_result =
+        mirakana::win32::plan_win32_tsf_text_session(candidates_without_session);
+    MK_REQUIRE(!candidates_without_session_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(candidates_without_session_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::candidate_rows_without_session));
+
+    auto native_handles = make_valid_tsf_text_session_desc();
+    native_handles.public_native_handles_exposed = true;
+    const auto native_handles_result = mirakana::win32::plan_win32_tsf_text_session(native_handles);
+    MK_REQUIRE(!native_handles_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(native_handles_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::public_native_handles_exposed));
+
+    auto broad_parity = make_valid_tsf_text_session_desc();
+    broad_parity.claims_cross_platform_ime_ready = true;
+    const auto broad_parity_result = mirakana::win32::plan_win32_tsf_text_session(broad_parity);
+    MK_REQUIRE(!broad_parity_result.succeeded());
+    MK_REQUIRE(has_tsf_diagnostic(broad_parity_result.diagnostics,
+                                  mirakana::win32::Win32TsfTextSessionDiagnosticCode::broad_ime_parity_claim));
 }
 
 #endif

@@ -422,22 +422,36 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Modify: `tests/unit/runtime_ui_platform_production_tests.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 
-- [ ] Add `Win32TsfTextSessionDesc`, `Win32TsfCompositionRow`, `Win32TsfCandidateIntentRow`, `Win32TsfTextAreaRow`, and `plan_win32_tsf_text_session`.
-- [ ] Record TSF thread manager availability, document manager availability, context availability, focus sink rows, text store lock rows, composition begin/update/end rows, committed text rows, candidate intent rows, caret/text area rectangles, and unsupported native candidate UI parity rows.
-- [ ] Keep TSF COM interfaces private to `.cpp` implementation details.
-- [ ] Add tests for missing active target, invalid caret rect, invalid UTF-8 surrounding text, composition update without begin row, committed text target mismatch, candidate rows without session, public native handle exposure, and broad IME parity claim.
-- [ ] Add package counters: `runtime_ui_tsf_session_ready`, `runtime_ui_tsf_composition_rows`, `runtime_ui_tsf_candidate_intent_rows`, `runtime_ui_tsf_text_area_rows`, `runtime_ui_ime_native_candidate_ui_ready=0`, `runtime_ui_ime_cross_platform_ready=0`.
-- [ ] Run:
+- [x] Add `Win32TsfTextSessionDesc`, `Win32TsfCompositionRow`, `Win32TsfCandidateIntentRow`, `Win32TsfTextAreaRow`, and `plan_win32_tsf_text_session`.
+- [x] Record TSF thread manager availability, document manager availability, context availability, focus sink rows, text store lock rows, composition begin/update/end rows, committed text rows, candidate intent rows, caret/text area rectangles, and unsupported native candidate UI parity rows.
+- [x] Keep TSF COM interfaces private to `.cpp` implementation details.
+- [x] Add tests for missing active target, invalid caret rect, invalid UTF-8 surrounding text, composition update without begin row, committed text target mismatch, candidate rows without session, public native handle exposure, and broad IME parity claim.
+- [x] Add package counters: `runtime_ui_tsf_session_ready`, `runtime_ui_tsf_composition_rows`, `runtime_ui_tsf_candidate_intent_rows`, `runtime_ui_tsf_text_area_rows`, `runtime_ui_ime_native_candidate_ui_ready=0`, `runtime_ui_ime_cross_platform_ready=0`.
+- [x] Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests sample_2d_desktop_runtime_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_platform_tests|MK_runtime_ui_platform_production_tests|sample_2d_desktop_runtime_package"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_platform_tests|MK_runtime_ui_platform_production_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package
+out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-tsf-session
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
 
 **Expected:** Windows TSF proof rows pass or report exact host gate; no macOS/Linux/mobile IME readiness is inferred.
 
 **Done When:** `native_ime_session` has selected Windows TSF evidence and all other platform IME rows remain host-gated with exact blockers.
+
+**Implementation Evidence (2026-06-24):** Task 5 adds selected Windows TSF native IME session evidence through `Win32TsfTextSessionDesc`, `Win32TsfCompositionRow`, `Win32TsfCandidateIntentRow`, `Win32TsfTextAreaRow`, `Win32TsfTextSessionResult`, `plan_win32_tsf_text_session`, and `make_win32_tsf_native_ime_production_evidence`. The adapter creates the TSF thread manager, document manager, context, and a private minimal `ITextStoreACP` / `ITfContextOwnerCompositionSink` implementation inside `win32_text_input.cpp`, emits value-only thread/document/context/focus/text-store-lock/composition/committed/candidate/text-area rows, and keeps TSF COM interfaces, HWND/native handles, native candidate UI, reconversion, virtual keyboard policy, and all non-Windows IME readiness unclaimed.
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests` before implementation | Failed as expected on missing Task 5 TSF APIs. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_platform_tests|MK_runtime_ui_platform_production_tests"` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package` | Passed. |
+| `out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-tsf-session` | Passed with `status=completed`, `runtime_ui_tsf_session_ready=1`, `runtime_ui_tsf_composition_rows=3`, `runtime_ui_tsf_candidate_intent_rows=1`, `runtime_ui_tsf_text_area_rows=1`, `runtime_ui_ime_native_candidate_ui_ready=0`, `runtime_ui_ime_cross_platform_ready=0`, and `runtime_ui_tsf_diagnostics=0`. |
 
 ## Task 6 - Runtime Windows UI Automation Publication
 

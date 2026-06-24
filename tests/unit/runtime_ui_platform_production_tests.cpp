@@ -195,6 +195,24 @@ MK_TEST("runtime ui platform production gate accepts selected Windows DirectWrit
     MK_REQUIRE(result.diagnostics.empty());
 }
 
+MK_TEST("runtime ui platform production gate accepts selected Windows TSF native IME evidence") {
+    auto rows = make_complete_rows();
+    rows[4] = RuntimeUiPlatformProductionEvidenceRow{
+        .id = "runtime-ui-platform.native-ime.win32.tsf",
+        .feature = RuntimeUiPlatformProductionFeature::native_ime_session,
+        .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+        .selected = true,
+        .ready = true,
+        .dependency_recorded = true,
+        .host_evidence_available = true,
+    };
+
+    const auto result = mirakana::ui::evaluate_runtime_ui_platform_production(rows);
+
+    MK_REQUIRE(result.ready);
+    MK_REQUIRE(result.diagnostics.empty());
+}
+
 int main() {
     return mirakana::test::run_all();
 }

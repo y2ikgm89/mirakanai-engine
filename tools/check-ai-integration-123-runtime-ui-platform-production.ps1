@@ -11,7 +11,11 @@ $runtimeUiPlatformProductionTestText = Get-AgentSurfaceText "tests/unit/runtime_
 $runtimeUiWin32TextHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_ui_text_font.hpp"
 $runtimeUiWin32TextSourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_ui_text_font.cpp"
 $runtimeUiWin32TextTestText = Get-AgentSurfaceText "tests/unit/win32_ui_text_font_tests.cpp"
+$runtimeUiWin32TextInputHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_text_input.hpp"
+$runtimeUiWin32TextInputSourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_text_input.cpp"
+$win32PlatformTestText = Get-AgentSurfaceText "tests/unit/win32_platform_tests.cpp"
 $sample2dPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
+$sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
 $runtimeUiCMakeText = Get-AgentSurfaceText "engine/ui/CMakeLists.txt"
 $win32PlatformCMakeText = Get-AgentSurfaceText "engine/platform/win32/CMakeLists.txt"
 $gamesCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
@@ -226,6 +230,94 @@ foreach ($needle in @(
     Assert-ContainsText $sample2dPackageText $needle "sample_2d_desktop_runtime_package runtime UI font rasterization counters"
     Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 4 package counters"
 }
+
+foreach ($needle in @(
+        "Win32TsfTextSessionDesc",
+        "Win32TsfCompositionRow",
+        "Win32TsfCandidateIntentRow",
+        "Win32TsfTextAreaRow",
+        "Win32TsfTextSessionResult",
+        "plan_win32_tsf_text_session",
+        "make_win32_tsf_native_ime_production_evidence"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextInputHeaderText $needle "Win32 TSF runtime UI native IME public header"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 5"
+}
+
+foreach ($needle in @(
+        "plan_win32_tsf_text_session",
+        "make_win32_tsf_native_ime_production_evidence",
+        "RuntimeUiPlatformProductionFeature::native_ime_session"
+    )) {
+    Assert-ContainsText $win32PlatformTestText $needle "Win32 TSF runtime UI native IME tests"
+}
+
+foreach ($needle in @(
+        "ITfThreadMgr",
+        "ITfDocumentMgr",
+        "ITextStoreACP",
+        "ITfContextOwnerCompositionSink",
+        "CLSID_TF_ThreadMgr",
+        "CreateDocumentMgr",
+        "CreateContext",
+        "RequestLock"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextInputSourceText $needle "Win32 TSF runtime UI native IME source"
+}
+
+foreach ($needle in @(
+        "missing_active_target",
+        "invalid_caret_rect",
+        "invalid_surrounding_text",
+        "composition_update_without_begin",
+        "committed_text_target_mismatch",
+        "candidate_rows_without_session",
+        "public_native_handles_exposed",
+        "broad_ime_parity_claim"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextInputHeaderText $needle "Win32 TSF runtime UI native IME diagnostics"
+    Assert-ContainsText $win32PlatformTestText $needle "Win32 TSF runtime UI native IME tests"
+}
+
+foreach ($needle in @(
+        "tsf_thread_manager_unavailable",
+        "tsf_document_manager_unavailable",
+        "tsf_context_unavailable"
+    )) {
+    Assert-ContainsText $runtimeUiWin32TextInputHeaderText $needle "Win32 TSF runtime UI native IME diagnostics"
+}
+
+foreach ($needle in @(
+        "--require-runtime-ui-tsf-session",
+        "runtime_ui_tsf_session_ready",
+        "runtime_ui_tsf_composition_rows",
+        "runtime_ui_tsf_candidate_intent_rows",
+        "runtime_ui_tsf_text_area_rows",
+        "runtime_ui_ime_native_candidate_ui_ready",
+        "runtime_ui_ime_cross_platform_ready",
+        "runtime_ui_tsf_diagnostics"
+    )) {
+    Assert-ContainsText $sample2dPackageText $needle "sample_2d_desktop_runtime_package runtime UI TSF native IME counters"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 5 package counters"
+    Assert-ContainsText $sample2dManifestText $needle "sample_2d_desktop_runtime_package runtime UI TSF native IME recipe"
+}
+
+foreach ($needle in @(
+        "runtime-ui-win32-tsf-native-ime-session",
+        "native_ime_session"
+    )) {
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness manifest runtime UI TSF native IME"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes manifest runtime UI TSF native IME"
+}
+
+Assert-ContainsText $runtimeBackendReadinessText "Runtime UI Windows TSF Native IME Session v1" "runtime backend readiness manifest runtime UI TSF native IME"
+Assert-ContainsText $validationRecipesText "selected Windows TSF runtime UI native IME session evidence" "validation recipes manifest runtime UI TSF native IME"
+Assert-ContainsText $gameCodeGuidanceText "currentRuntimeUiWin32TsfNativeImeSession" "game code guidance manifest runtime UI TSF native IME"
+Assert-ContainsText $gameCodeGuidanceText "plan_win32_tsf_text_session" "game code guidance manifest runtime UI TSF native IME"
+Assert-ContainsText $dependencyDocsText "Windows TSF runtime UI IME session adapter" "docs/dependencies.md runtime UI TSF adapter"
+Assert-ContainsText $legalDocsText "Windows TSF native IME session adapter" "docs/legal-and-licensing.md runtime UI TSF adapter"
+Assert-ContainsText $currentCapabilitiesText "Runtime UI Windows TSF Native IME Session v1" "docs/current-capabilities.md"
+Assert-ContainsText $planRegistryText "selected Windows TSF native IME session evidence" "docs/superpowers/plans/README.md"
 
 Assert-ContainsText $gamesCMakeText "MK_platform_win32" "games CMake sample runtime UI font rasterization link"
 
