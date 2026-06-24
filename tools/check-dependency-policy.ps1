@@ -47,6 +47,60 @@ function Assert-CacheVariableEquals($preset, [string]$variable, [string]$expecte
     }
 }
 
+function Get-ManifestDependencyNames($dependencies) {
+    $names = @()
+    foreach ($dependency in @($dependencies)) {
+        if ($dependency -is [string]) {
+            $names += $dependency
+        } elseif (Test-JsonProperty -Object $dependency -Property "name") {
+            $names += [string](Get-JsonPropertyValue -Object $dependency -Property "name")
+        }
+    }
+
+    return @($names)
+}
+
+function Assert-RuntimeUiOptionalDependencyGate($candidate) {
+    $featureName = [string]$candidate.FeatureName
+    $packageName = [string]$candidate.PackageName
+    $noticeName = [string]$candidate.NoticeName
+
+    $defaultDependencyNames = Get-ManifestDependencyNames $manifest.dependencies
+    if ($defaultDependencyNames -contains $packageName) {
+        Write-Error "runtime UI optional dependency package '$packageName' must not be declared in default dependencies"
+    }
+
+    foreach ($featureProperty in @($manifest.features.PSObject.Properties)) {
+        $featureDependencyNames = Get-ManifestDependencyNames $featureProperty.Value.dependencies
+        if ($featureDependencyNames -contains $packageName -and $featureProperty.Name -ne $featureName) {
+            Write-Error "runtime UI optional dependency package '$packageName' must only be declared by feature '$featureName'"
+        }
+    }
+
+    $featureSelected = Test-JsonProperty -Object $manifest.features -Property $featureName
+    if (-not $featureSelected) {
+        Assert-TextContains "docs/dependencies.md" ([regex]::Escape($featureName)) "runtime UI dependency gate docs"
+        Assert-TextContains "docs/dependencies.md" ([regex]::Escape($noticeName)) "runtime UI dependency gate docs"
+        Assert-TextContains "docs/legal-and-licensing.md" ([regex]::Escape($featureName)) "runtime UI legal dependency gate"
+        Assert-TextContains "docs/legal-and-licensing.md" ([regex]::Escape($noticeName)) "runtime UI legal dependency gate"
+        Assert-TextDoesNotContain "THIRD_PARTY_NOTICES.md" "\| $([regex]::Escape($noticeName)) \|" "third-party notices"
+        return
+    }
+
+    $feature = Get-JsonPropertyValue -Object $manifest.features -Property $featureName
+    $dependencyNames = Get-ManifestDependencyNames $feature.dependencies
+    if ($dependencyNames -notcontains $packageName) {
+        Write-Error "runtime UI optional dependency feature '$featureName' must declare dependency: $packageName"
+    }
+
+    Assert-TextContains "docs/dependencies.md" ([regex]::Escape($featureName)) "runtime UI dependency gate docs"
+    Assert-TextContains "docs/dependencies.md" ([regex]::Escape($noticeName)) "runtime UI dependency gate docs"
+    Assert-TextContains "docs/legal-and-licensing.md" ([regex]::Escape($featureName)) "runtime UI legal dependency gate"
+    Assert-TextContains "docs/legal-and-licensing.md" ([regex]::Escape($noticeName)) "runtime UI legal dependency gate"
+    Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| $([regex]::Escape($noticeName)) \|" "third-party notices"
+    Assert-TextContains "tools/bootstrap-deps.ps1" ([regex]::Escape($featureName)) "bootstrap dependencies"
+}
+
 $manifest = Read-Json "vcpkg.json"
 $presets = Read-CMakePresets
 Assert-Property $manifest '$schema' "vcpkg manifest"
@@ -187,6 +241,14 @@ if ($directStorageWin32DependencyNames.Count -ne 1 -or $directStorageWin32Depend
 
 if ($manifest.dependencies -contains "dstorage") {
     Write-Error "dstorage must remain out of default dependencies; use the directstorage-win32 feature"
+}
+
+foreach ($candidate in @(
+        @{ FeatureName = "runtime-ui-harfbuzz"; PackageName = "harfbuzz"; NoticeName = "HarfBuzz" },
+        @{ FeatureName = "runtime-ui-freetype"; PackageName = "freetype"; NoticeName = "FreeType" },
+        @{ FeatureName = "runtime-ui-fontconfig"; PackageName = "fontconfig"; NoticeName = "Fontconfig" }
+    )) {
+    Assert-RuntimeUiOptionalDependencyGate $candidate
 }
 
 if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| SDL3 \|") {
