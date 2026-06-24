@@ -520,7 +520,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - [ ] Add D3D12 selected proof first. Add Vulkan and Metal rows as host-gated until their backend-specific upload/readback tests land.
 - [ ] Add tests for missing atlas page payload, missing upload ring, row-pitch mismatch, descriptor write missing, readback checksum mismatch, backend inference, public native handle exposure, and gameplay-requested renderer upload API.
 - [ ] Add package counters: `runtime_ui_atlas_upload_ready`, `runtime_ui_atlas_upload_backend=d3d12`, `runtime_ui_atlas_upload_bytes`, `runtime_ui_atlas_upload_copy_regions`, `runtime_ui_atlas_upload_resource_transitions`, `runtime_ui_atlas_upload_descriptor_writes`, `runtime_ui_atlas_upload_readback_hash`, `runtime_ui_renderer_texture_upload_public_api=0`.
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests MK_ui_renderer_tests sample_2d_desktop_runtime_package
@@ -545,12 +545,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Modify: `editor/core/CMakeLists.txt`
 - Modify: `tests/unit/editor_core_tests.cpp`
 
-- [ ] Add `EditorRuntimeUiDocumentModel`, `EditorRuntimeUiThemeModel`, `EditorRuntimeUiHierarchyRow`, `EditorRuntimeUiInspectorRow`, `EditorRuntimeUiStyleTokenRow`, `EditorRuntimeUiPreviewModel`, and `make_editor_runtime_ui_authoring_model`.
-- [ ] Add reviewed commands: `runtime_ui.element.add`, `runtime_ui.element.remove`, `runtime_ui.element.reorder`, `runtime_ui.element.select`, `runtime_ui.property.edit_text`, `runtime_ui.style.set_token`, `runtime_ui.preview.refresh`.
-- [ ] Commands must require expected document revision and must be undoable through existing editor history patterns.
-- [ ] Reject Unity/Godot/Unreal schema ids, copied external visual theme ids, native handle rows, renderer execution requests, package script execution, and validation recipe execution from editor-core command handling.
-- [ ] Add tests for hierarchy rows, inspector rows, style token editing, undo/redo, stale revision rejection, invalid schema rejection, external engine import token rejection, and preview model creation without native handles.
-- [ ] Run:
+- [x] Add `EditorRuntimeUiDocumentModel`, `EditorRuntimeUiThemeModel`, `EditorRuntimeUiHierarchyRow`, `EditorRuntimeUiInspectorRow`, `EditorRuntimeUiStyleTokenRow`, `EditorRuntimeUiPreviewModel`, and `make_editor_runtime_ui_authoring_model`.
+- [x] Add reviewed commands: `runtime_ui.element.add`, `runtime_ui.element.remove`, `runtime_ui.element.reorder`, `runtime_ui.element.select`, `runtime_ui.property.edit_text`, `runtime_ui.style.set_token`, `runtime_ui.preview.refresh`.
+- [x] Commands must require expected document revision and must be undoable through existing editor history patterns.
+- [x] Reject Unity/Godot/Unreal schema ids, copied external visual theme ids, native handle rows, renderer execution requests, package script execution, and validation recipe execution from editor-core command handling.
+- [x] Add tests for hierarchy rows, inspector rows, style token editing, undo/redo, stale revision rejection, invalid schema rejection, external engine import token rejection, and preview model creation without native handles.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests
@@ -562,6 +562,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Done When:** A visible shell can render runtime UI authoring without owning document semantics or copying external engine authoring models.
 
+**Evidence:** Task 8 merged in PR #789 / merge `094f2ec56fcc08943c72129d6747d847e08a42d5` with hosted PR Gate, Windows MSVC, Windows Native Desktop Editor, Linux, and CodeQL passing.
+
 ## Task 9 - Visible First-Party UI Editor Panel
 
 **Goal:** Expose an actual visible runtime UI editor panel inside `MK_editor` using first-party editor-core models.
@@ -570,16 +572,25 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 - Modify: `editor/src/first_party_editor_document.hpp`
 - Modify: `editor/src/first_party_editor_document.cpp`
-- Modify: `editor/src/win32_first_party_editor_host.hpp`
-- Modify: `editor/src/win32_first_party_editor_host.cpp`
+- Modify: `editor/src/native_editor_app.hpp`
+- Modify: `editor/src/native_editor_app.cpp`
+- Modify: `editor/src/main.cpp`
+- Modify: `editor/core/include/mirakana/editor/editor_panel.hpp`
+- Modify: `editor/core/src/workspace.cpp`
+- Modify: `editor/core/src/editor_dock_layout.cpp`
+- Modify: `editor/core/src/ai_operation_surface.cpp`
+- Modify: `tests/unit/editor_core_tests.cpp`
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 - Modify: `docs/editor.md`
+- Modify: `docs/current-capabilities.md`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
 
-- [ ] Add a retained panel id `runtime_ui_editor` to the first-party editor panel catalog.
-- [ ] Render hierarchy, inspector, style tokens, preview status, clean-room provenance status, text/font readiness, IME readiness, accessibility readiness, and renderer upload readiness rows from `EditorRuntimeUiPreviewModel`.
-- [ ] Use existing `mirakana::ui::UiDocument` rendering and `MK_ui_renderer` submissions for the panel.
-- [ ] Do not use Dear ImGui, Qt, Slint, RmlUi, NoesisGUI, Unity UI Builder, Unreal UMG Designer, Godot scene tree, external icons, copied layouts, or public native handles.
-- [ ] Add smoke counters: `editor_runtime_ui_editor_panel_visible=1`, `editor_runtime_ui_editor_hierarchy_rows`, `editor_runtime_ui_editor_inspector_rows`, `editor_runtime_ui_editor_style_rows`, `editor_runtime_ui_editor_preview_rows`, `editor_runtime_ui_editor_external_engine_parity_claim=0`, `editor_runtime_ui_editor_native_handles_exposed=0`.
+- [x] Add a retained panel id `runtime_ui_editor` to the first-party editor panel catalog.
+- [x] Render hierarchy, inspector, style tokens, preview status, clean-room provenance status, text/font readiness, IME readiness, accessibility readiness, and renderer upload readiness rows from `EditorRuntimeUiPreviewModel` and the selected first-party shell evidence rows.
+- [x] Use existing `mirakana::ui::UiDocument` rendering and `MK_ui_renderer` submissions for the panel.
+- [x] Do not use Dear ImGui, Qt, Slint, RmlUi, NoesisGUI, Unity UI Builder, Unreal UMG Designer, Godot scene tree, external icons, copied layouts, or public native handles.
+- [x] Add smoke counters: `editor_runtime_ui_editor_panel_visible=1`, `editor_runtime_ui_editor_hierarchy_rows`, `editor_runtime_ui_editor_inspector_rows`, `editor_runtime_ui_editor_style_rows`, `editor_runtime_ui_editor_preview_rows`, `editor_runtime_ui_editor_external_engine_parity_claim=0`, `editor_runtime_ui_editor_native_handles_exposed=0`.
 - [ ] Run:
 
 ```powershell
@@ -587,6 +598,17 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
+
+**Task 9 Focused Evidence (2026-06-24):**
+
+| Validation | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests"` | Passed: 1/1 test. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` | Passed: `desktop-editor` configured/built and CTest passed 155/155, including `MK_editor_smoke`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Passed. |
 
 **Expected:** The visible editor shell reports the new runtime UI editor panel and zero external parity/native handle rows.
 

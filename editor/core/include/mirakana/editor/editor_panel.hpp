@@ -18,7 +18,8 @@ enum class PanelId : std::uint8_t {
     input_rebinding,
     profiler,
     project_settings,
-    timeline
+    timeline,
+    runtime_ui_editor
 };
 
 } // namespace mirakana::editor

@@ -43,7 +43,7 @@ function Get-StaticContractLedger {
             SectionFiles = Get-StaticContractSectionFile -Prefix "check-json-contracts"
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
-            MaximumSectionLines = 1620
+            MaximumSectionLines = 1640
         }
     )
 }

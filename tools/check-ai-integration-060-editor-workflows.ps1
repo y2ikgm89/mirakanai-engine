@@ -2147,12 +2147,12 @@ $nativeEditorViewportChecks = @(
     @{
         Path = "CMakeLists.txt"
         Needles = @(
-            "editor_shell_panels=11",
+            "editor_shell_panels=12",
             "editor_shell_docking_status=single_window_ready",
-            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_tab_headers=12",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
-            "editor_shell_dock_focusable_controls=11",
+            "editor_shell_dock_focusable_controls=12",
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0"
@@ -2188,12 +2188,12 @@ $nativeEditorViewportChecks = @(
         Path = "docs/editor.md"
         Needles = @(
             "Viewport",
-            "editor_shell_panels=11",
+            "editor_shell_panels=12",
             "editor_shell_docking_status=single_window_ready",
-            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_tab_headers=12",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
-            "editor_shell_dock_focusable_controls=11",
+            "editor_shell_dock_focusable_controls=12",
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
@@ -2204,12 +2204,12 @@ $nativeEditorViewportChecks = @(
         Path = "docs/current-capabilities.md"
         Needles = @(
             "private visible D3D12 native Viewport panel",
-            "editor_shell_panels=11",
+            "editor_shell_panels=12",
             "editor_shell_docking_status=single_window_ready",
-            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_tab_headers=12",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
-            "editor_shell_dock_focusable_controls=11",
+            "editor_shell_dock_focusable_controls=12",
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
@@ -2220,12 +2220,12 @@ $nativeEditorViewportChecks = @(
         Path = "docs/roadmap.md"
         Needles = @(
             "private visible D3D12 viewport display",
-            "editor_shell_panels=11",
+            "editor_shell_panels=12",
             "editor_shell_docking_status=single_window_ready",
-            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_tab_headers=12",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
-            "editor_shell_dock_focusable_controls=11",
+            "editor_shell_dock_focusable_controls=12",
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
@@ -2236,12 +2236,12 @@ $nativeEditorViewportChecks = @(
         Path = "engine/agent/manifest.json"
         Needles = @(
             "private visible D3D12 viewport display",
-            "editor_shell_panels=11",
+            "editor_shell_panels=12",
             "editor_shell_docking_status=single_window_ready",
-            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_tab_headers=12",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
-            "editor_shell_dock_focusable_controls=11",
+            "editor_shell_dock_focusable_controls=12",
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",

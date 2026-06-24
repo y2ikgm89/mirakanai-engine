@@ -16,6 +16,7 @@
 #include "mirakana/editor/profiler.hpp"
 #include "mirakana/editor/project.hpp"
 #include "mirakana/editor/resource_panel.hpp"
+#include "mirakana/editor/runtime_ui_authoring.hpp"
 #include "mirakana/editor/scene_authoring.hpp"
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/editor/workspace.hpp"
@@ -129,6 +130,9 @@ class NativeEditorApp {
     [[nodiscard]] std::span<const EditorDiagnosticRow> console_rows() const noexcept;
     [[nodiscard]] const EditorResourcePanelModel& resources() const noexcept;
     [[nodiscard]] const EditorAiCommandPanelModel& ai_commands() const noexcept;
+    [[nodiscard]] const EditorRuntimeUiDocumentModel& runtime_ui_document() const noexcept;
+    [[nodiscard]] const EditorRuntimeUiThemeModel& runtime_ui_theme() const noexcept;
+    [[nodiscard]] const EditorRuntimeUiAuthoringModel& runtime_ui_authoring() const noexcept;
     [[nodiscard]] std::span<const NativeEditorEnvironmentArtistWorkflowCommandPlanRow>
     environment_artist_workflow_command_plans() const noexcept;
     [[nodiscard]] const EnvironmentArtistWorkflowExecutionReviewModel&

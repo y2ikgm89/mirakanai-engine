@@ -19,7 +19,7 @@ struct PanelOperationInfo {
     std::string_view label;
 };
 
-constexpr std::array<PanelOperationInfo, 11> operation_panels{{
+constexpr std::array<PanelOperationInfo, 12> operation_panels{{
     PanelOperationInfo{.panel = PanelId::scene, .token = "scene", .label = "Scene"},
     PanelOperationInfo{.panel = PanelId::inspector, .token = "inspector", .label = "Inspector"},
     PanelOperationInfo{.panel = PanelId::assets, .token = "assets", .label = "Assets"},
@@ -31,6 +31,7 @@ constexpr std::array<PanelOperationInfo, 11> operation_panels{{
     PanelOperationInfo{.panel = PanelId::profiler, .token = "profiler", .label = "Profiler"},
     PanelOperationInfo{.panel = PanelId::project_settings, .token = "project_settings", .label = "Project Settings"},
     PanelOperationInfo{.panel = PanelId::timeline, .token = "timeline", .label = "Timeline"},
+    PanelOperationInfo{.panel = PanelId::runtime_ui_editor, .token = "runtime_ui_editor", .label = "Runtime UI Editor"},
 }};
 
 struct PanelCommandInfo {
