@@ -1,5 +1,7 @@
 # Renderer Metal Memory Profiling Apple Host Artifacts v1 Implementation Plan
 
+**Status:** Completed through PR #809 / merge commit `1ec10475e04410974e9fe0f25cbbd21e5fa370c4`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a first-party Apple-host artifact producer that turns real macOS Metal heap, residency-set, and programmatic capture execution into validator-ready `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` evidence.
@@ -211,7 +213,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 git diff --check
 ```
 
-- [ ] **Step 3: Publish**
+- [x] **Step 3: Publish**
 
 Run publication preflight, commit task-owned files, push branch, open draft PR, wait for selected CI lanes, ready the PR through `tools/ready-task-pr.ps1`, auto-merge with `--match-head-commit`, verify head reaches `origin/main`, sync local `main`, and remove the worktree with guarded cleanup.
 
@@ -235,3 +237,5 @@ Run publication preflight, commit task-owned files, push branch, open draft PR, 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `git diff --check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after GitHub-hosted macOS host-gate handling | Passed on Windows; latest full validation log root `out/validation-logs/validate-20260625-021921-43304`. |
 | GitHub Actions `macOS Metal CMake` on PR #809 head `20160842ec1d80823553cf67244cd65e24796fcb` | The producer correctly emitted `renderer_metal_memory_profiling_host_artifacts_status=host_gated`, `renderer_metal_memory_profiling_host_gate_reason=mtlresidencyset_unavailable`, and uploaded two `host-gate-summary.*` files, but the job still failed because PowerShell retained the probe native `$LASTEXITCODE=1` after the handled host gate. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `git diff --check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after explicit host-gated `$LASTEXITCODE = 0` handling | Passed on Windows; latest full validation log root `out/validation-logs/validate-20260625-024347-2224`. |
+| `gh pr view 809 --json state,isDraft,mergedAt,mergeCommit,headRefOid,statusCheckRollup` | PASS: PR #809 is merged, head `bab101220633a622a0a68e7158fb0caeb8f32572` reached merge commit `1ec10475e04410974e9fe0f25cbbd21e5fa370c4`, and hosted PR Gate, Windows MSVC, Linux CMake/Coverage/ASan/Vulkan, static shards, macOS Metal CMake, iOS Metal, iOS Simulator smoke, and CodeQL passed. |
+| `git merge-base --is-ancestor bab101220633a622a0a68e7158fb0caeb8f32572 origin/main`; `git merge-base --is-ancestor 1ec10475e04410974e9fe0f25cbbd21e5fa370c4 origin/main` | PASS: the reviewed head and merge commit reach `origin/main`; local `main` was synced to `1ec10475e04410974e9fe0f25cbbd21e5fa370c4`. |
