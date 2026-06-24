@@ -19,6 +19,7 @@ $runtimeUiWin32AccessibilitySourceText = Get-AgentSurfaceText "engine/platform/w
 $win32PlatformTestText = Get-AgentSurfaceText "tests/unit/win32_platform_tests.cpp"
 $sample2dPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
+$runtimeUiPlatformProductionValidationText = Get-AgentSurfaceText "tools/validate-runtime-ui-platform-production.ps1"
 $runtimeUiCMakeText = Get-AgentSurfaceText "engine/ui/CMakeLists.txt"
 $win32PlatformCMakeText = Get-AgentSurfaceText "engine/platform/win32/CMakeLists.txt"
 $gamesCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
@@ -26,6 +27,7 @@ $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $moduleManifestText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $runtimeBackendReadinessText = Get-AgentSurfaceText "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
 $validationRecipesText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
+$agentManifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 $gameCodeGuidanceText = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
 $dependencyDocsText = Get-AgentSurfaceText "docs/dependencies.md"
 $legalDocsText = Get-AgentSurfaceText "docs/legal-and-licensing.md"
@@ -558,6 +560,100 @@ Assert-ContainsText $currentCapabilitiesText "first-party-ui-clean-room: ok" "do
 Assert-ContainsText $planRegistryText "First-Party Runtime UI And Editor Platform Production v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "selected Windows DirectWrite runtime UI text-shaping evidence" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "selected Windows DirectWrite system-font loading and alpha8 glyph-rasterization evidence" "docs/superpowers/plans/README.md"
+
+foreach ($needle in @(
+        "param(",
+        "[switch]`$RequireReady",
+        "[switch]`$SkipEditor",
+        "[switch]`$SkipPackage",
+        "[switch]`$StaticOnly",
+        "Push-Location `$root",
+        "Pop-Location",
+        "MK_runtime_ui_platform_production_tests",
+        "MK_win32_ui_text_font_tests",
+        "MK_win32_platform_tests",
+        "MK_ui_renderer_tests",
+        "MK_runtime_rhi_tests",
+        "MK_editor_core_tests",
+        "MK_editor_native_shell_tests",
+        "--require-runtime-ui-platform-package",
+        "runtime_ui_platform_runtime_package_ready=1",
+        "runtime_ui_platform_production_ready=0",
+        "runtime_ui_platform_production_ready=1",
+        "runtime_ui_platform_clean_room_ready=1",
+        "runtime_ui_platform_external_engine_parity_claim=0",
+        "runtime_ui_platform_public_native_handles_exposed=0",
+        "runtime_ui_text_shaping_selected_adapter=directwrite",
+        "runtime_ui_font_rasterization_selected_adapter=directwrite",
+        "runtime_ui_ime_selected_adapter=tsf",
+        "runtime_ui_accessibility_selected_adapter=uia",
+        "runtime_ui_renderer_upload_selected_backend=d3d12",
+        "editor_runtime_ui_editor_panel_visible=1",
+        "missing required runtime UI platform production counter",
+        "runtime UI platform production selected row is host gated"
+    )) {
+    Assert-ContainsText $runtimeUiPlatformProductionValidationText $needle "tools/validate-runtime-ui-platform-production.ps1"
+}
+
+foreach ($needle in @(
+        "tools/validate-runtime-ui-platform-production.ps1",
+        '`-RequireReady`',
+        '`-SkipEditor`',
+        '`-SkipPackage`',
+        '`-StaticOnly`',
+        "sample_2d_desktop_runtime_package --smoke --require-runtime-ui-platform-package",
+        "runtime_ui_platform_runtime_package_ready=1",
+        "runtime_ui_platform_production_ready=0",
+        "runtime_ui_platform_production_ready=1",
+        "runtime_ui_platform_clean_room_ready=1",
+        "runtime_ui_platform_external_engine_parity_claim=0",
+        "runtime_ui_platform_public_native_handles_exposed=0",
+        "runtime_ui_text_shaping_selected_adapter=directwrite",
+        "runtime_ui_font_rasterization_selected_adapter=directwrite",
+        "runtime_ui_ime_selected_adapter=tsf",
+        "runtime_ui_accessibility_selected_adapter=uia",
+        "runtime_ui_renderer_upload_selected_backend=d3d12",
+        "editor_runtime_ui_editor_panel_visible=1",
+        "missing required runtime UI platform production counter",
+        "runtime UI platform production selected row is host gated"
+    )) {
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 12"
+}
+
+foreach ($needle in @(
+        "--require-runtime-ui-platform-package",
+        "RuntimeUiPlatformProductionProbeResult",
+        "validate_runtime_ui_platform_production_package_evidence",
+        "runtime_ui_platform_runtime_package_ready",
+        "runtime_ui_platform_production_ready",
+        "runtime_ui_platform_clean_room_ready",
+        "runtime_ui_platform_external_engine_parity_claim",
+        "runtime_ui_platform_public_native_handles_exposed",
+        "runtime_ui_text_shaping_selected_adapter",
+        "runtime_ui_font_rasterization_selected_adapter",
+        "runtime_ui_ime_selected_adapter",
+        "runtime_ui_accessibility_selected_adapter",
+        "runtime_ui_renderer_upload_selected_backend"
+    )) {
+    Assert-ContainsText $sample2dPackageText $needle "sample_2d_desktop_runtime_package runtime UI platform production package smoke"
+}
+
+foreach ($needle in @(
+        "installed-2d-runtime-ui-platform-package-smoke",
+        "--require-runtime-ui-platform-package"
+    )) {
+    Assert-ContainsText $sample2dManifestText $needle "sample_2d_desktop_runtime_package runtime UI platform production recipe"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes runtime UI platform production wrapper"
+    Assert-ContainsText $agentManifestText $needle "composed manifest runtime UI platform production wrapper"
+}
+
+foreach ($needle in @(
+        "runtime-ui-platform-production-wrapper",
+        "validate-runtime-ui-platform-production.ps1"
+    )) {
+    Assert-ContainsText $validationRecipesText $needle "validation recipes runtime UI platform production wrapper"
+    Assert-ContainsText $agentManifestText $needle "composed manifest runtime UI platform production wrapper"
+}
 
 $cleanRoomCheckScriptPath = Resolve-RequiredAgentPath "tools/check-first-party-ui-clean-room.ps1"
 & $cleanRoomCheckScriptPath
