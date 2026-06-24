@@ -175,7 +175,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 
 **2026-06-24 validation evidence:** The RED check first failed on missing `mirakana/ui/runtime_ui_widgets.hpp`. The GREEN pass used `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_widgets_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_ui_widgets_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package`, and `out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-widgets`. The package target is not present in the current `dev` preset, so the sample-package evidence uses the existing `desktop-runtime` preset. The smoke reported `runtime_ui_widgets_status=ready`, `runtime_ui_widgets_ready=1`, `runtime_ui_widget_rows=10`, `runtime_ui_widget_command_rows=2`, `runtime_ui_widget_focusable_rows=6`, and `runtime_ui_widget_diagnostics=0`.
 
-## Phase 2 - Binding, Focus, And Input Routing v1
+## Phase 2 - Runtime UI Binding And Input Routing v1
 
 **Goal:** Make widgets useful in real game menus and HUDs by adding typed binding and input routing.
 
@@ -183,16 +183,22 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 
 **Steps:**
 
-- [ ] Add RED tests in `tests/unit/runtime_ui_binding_tests.cpp` for missing binding keys, type mismatches, disabled command invocation, navigation cycles, modal focus escape, unknown controller glyph refs, and pointer capture conflicts.
-- [ ] Add `runtime_ui_binding.hpp` / `runtime_ui_binding.cpp`.
-- [ ] Connect binding output to `UiDocument::set_text`, enabled state, visibility, command availability, and focus rows without executing gameplay commands.
-- [ ] Add package counters: `runtime_ui_binding_rows`, `runtime_ui_command_rows`, `runtime_ui_focus_scopes`, `runtime_ui_navigation_edges`, `runtime_ui_input_routing_ready`.
-- [ ] Run focused tests:
+- [x] Add RED tests in `tests/unit/runtime_ui_binding_tests.cpp` for missing binding keys, type mismatches, disabled command invocation, navigation cycles, modal focus escape, unknown controller glyph refs, and pointer capture conflicts.
+- [x] Add `runtime_ui_binding.hpp` / `runtime_ui_binding.cpp`.
+- [x] Connect binding output to `UiDocument::set_text`, enabled state, visibility, command availability, and focus rows without executing gameplay commands.
+- [x] Add package counters: `runtime_ui_binding_status`, `runtime_ui_binding_ready`, `runtime_ui_binding_rows`, `runtime_ui_command_rows`, `runtime_ui_focus_scopes`, `runtime_ui_navigation_edges`, `runtime_ui_input_routing_ready`, `runtime_ui_binding_gameplay_commands_executed`, `runtime_ui_binding_diagnostics`.
+- [x] Run focused tests:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_binding_tests sample_2d_desktop_runtime_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_binding_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_binding_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package
+Push-Location out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package
+.\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-binding
+Pop-Location
 ```
+
+**2026-06-24 validation evidence:** The RED unit check first failed on missing `mirakana/ui/runtime_ui_binding.hpp`. After implementation, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_binding_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_ui_binding_tests` passed for the binding contract. The package RED check first failed with `unknown argument: --require-runtime-ui-binding`; after adding the sample flag/counters, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package` passed and the build-output smoke from `out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package` with `.\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-binding` reported `runtime_ui_binding_status=ready`, `runtime_ui_binding_ready=1`, `runtime_ui_binding_rows=3`, `runtime_ui_command_rows=2`, `runtime_ui_focus_scopes=2`, `runtime_ui_navigation_edges=3`, `runtime_ui_input_routing_ready=1`, `runtime_ui_binding_gameplay_commands_executed=0`, and `runtime_ui_binding_diagnostics=0`.
 
 ## Phase 3 - First-Party UI Authoring Documents v1
 
