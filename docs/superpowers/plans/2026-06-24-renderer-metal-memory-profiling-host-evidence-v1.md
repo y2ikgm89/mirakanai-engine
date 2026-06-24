@@ -12,7 +12,7 @@
 
 **Plan ID:** `renderer-metal-memory-profiling-host-evidence-v1`
 
-**Status:** Validated locally; publication pending.
+**Status:** Published in draft PR #807; hosted CI pending.
 
 **Date:** 2026-06-24
 
@@ -143,6 +143,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS: `text-format-check: ok`; `format-check: ok`. |
 | `git diff --check` | PASS. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`; 157/157 CTest tests passed. Local Windows host lacks Apple Metal tools, and Apple host evidence remained diagnostic/host-gated as expected. |
+| `gh pr create --draft --base main --head codex/renderer-metal-memory-profiling-host-evidence` | PASS: opened draft PR #807. |
 
 ## Done When
 
