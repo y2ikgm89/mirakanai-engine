@@ -11,7 +11,7 @@
 ---
 
 Plan ID: `renderer-metal-memory-profiling-host-evidence-collector-v1`
-Status: Implemented locally; publication pending.
+Status: Draft PR published; hosted validation pending.
 
 ## Official Source Checks
 
@@ -227,3 +227,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS. |
 | `git diff --check` | PASS. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`, static checks passed, and CTest reported 157/157 tests passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` | PASS before commit and PASS before push. |
+| `git commit -m "Add renderer Metal memory profiling collector"` | PASS: commit `8a99f219`. |
+| `git push -u origin codex/renderer-metal-memory-profiling-host-evidence-collector` | PASS. |
+| `gh pr create --draft --base main --head codex/renderer-metal-memory-profiling-host-evidence-collector` | PASS: opened draft PR #808. |
