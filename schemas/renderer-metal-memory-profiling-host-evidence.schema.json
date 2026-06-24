@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/renderer-metal-memory-profiling-host-evidence.schema.json",
+  "title": "GameEngine Renderer Metal Memory Profiling Host Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_id",
+    "host",
+    "source_rows",
+    "memory_residency_row",
+    "profiling_capture_row",
+    "non_claims"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1" },
+    "claim_id": { "const": "renderer-metal-memory-profiling-host-evidence-v1" },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "macos_version",
+        "xcode_version",
+        "full_xcode_selected",
+        "metal_tool_ready",
+        "metallib_tool_ready"
+      ],
+      "properties": {
+        "platform": { "const": "macos" },
+        "macos_version": { "type": "string", "minLength": 1 },
+        "xcode_version": { "type": "string", "minLength": 1 },
+        "full_xcode_selected": { "const": true },
+        "metal_tool_ready": { "const": true },
+        "metallib_tool_ready": { "const": true }
+      }
+    },
+    "source_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "heap_documentation_source_id",
+        "residency_set_documentation_source_id",
+        "residency_request_documentation_source_id",
+        "command_queue_residency_documentation_source_id",
+        "capture_manager_documentation_source_id",
+        "programmatic_capture_documentation_source_id"
+      ],
+      "properties": {
+        "heap_documentation_source_id": { "const": "Apple-Metal-MTLHeap-2026-06-24" },
+        "residency_set_documentation_source_id": { "const": "Apple-Metal-MTLResidencySet-2026-06-24" },
+        "residency_request_documentation_source_id": { "const": "Apple-Metal-MTLResidencySet-requestResidency-2026-06-24" },
+        "command_queue_residency_documentation_source_id": { "const": "Apple-Metal-MTLCommandQueue-addResidencySet-2026-06-24" },
+        "capture_manager_documentation_source_id": { "const": "Apple-Metal-MTLCaptureManager-2026-06-24" },
+        "programmatic_capture_documentation_source_id": { "const": "Apple-Metal-ProgrammaticCapture-2026-06-24" }
+      }
+    },
+    "memory_residency_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proof_row_id",
+        "host_validation_recipe_id",
+        "first_party_workload_id",
+        "runtime_ready",
+        "command_queue_ready",
+        "heap_api_name",
+        "heap_allocation_ready",
+        "heap_resource_allocation_ready",
+        "heap_resource_rows",
+        "heap_allocated_bytes",
+        "resident_bytes",
+        "budget_bytes",
+        "residency_api_name",
+        "residency_set_ready",
+        "residency_set_allocation_rows",
+        "residency_request_ready",
+        "residency_commit_ready",
+        "command_queue_residency_set_committed",
+        "residency_pressure_evidence_ready",
+        "memory_pressure_sample_rows",
+        "memory_pressure_budget_status"
+      ],
+      "properties": {
+        "proof_row_id": { "const": "memory_residency" },
+        "host_validation_recipe_id": { "const": "renderer-metal-memory-profiling-host-evidence" },
+        "first_party_workload_id": { "type": "string", "minLength": 1 },
+        "runtime_ready": { "const": true },
+        "command_queue_ready": { "const": true },
+        "heap_api_name": { "const": "MTLHeap" },
+        "heap_allocation_ready": { "const": true },
+        "heap_resource_allocation_ready": { "const": true },
+        "heap_resource_rows": { "type": "integer", "minimum": 1 },
+        "heap_allocated_bytes": { "type": "integer", "minimum": 1 },
+        "resident_bytes": { "type": "integer", "minimum": 1 },
+        "budget_bytes": { "type": "integer", "minimum": 1 },
+        "residency_api_name": { "const": "MTLResidencySet" },
+        "residency_set_ready": { "const": true },
+        "residency_set_allocation_rows": { "type": "integer", "minimum": 1 },
+        "residency_request_ready": { "const": true },
+        "residency_commit_ready": { "const": true },
+        "command_queue_residency_set_committed": { "const": true },
+        "residency_pressure_evidence_ready": { "const": true },
+        "memory_pressure_sample_rows": { "type": "integer", "minimum": 1 },
+        "memory_pressure_budget_status": { "enum": [ "within_budget", "pressure_observed" ] }
+      }
+    },
+    "profiling_capture_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proof_row_id",
+        "host_validation_recipe_id",
+        "first_party_workload_id",
+        "runtime_ready",
+        "command_queue_ready",
+        "capture_api_name",
+        "capture_manager_ready",
+        "capture_descriptor_ready",
+        "capture_object_ready",
+        "capture_scope_ready",
+        "capture_scope_label",
+        "capture_boundary_ready",
+        "capture_started",
+        "capture_stopped",
+        "command_buffer_captured",
+        "capture_artifact_path",
+        "capture_artifact_hash_sha256",
+        "deterministic_capture_hash_sha256",
+        "capture_artifact_rows"
+      ],
+      "properties": {
+        "proof_row_id": { "const": "profiling_capture" },
+        "host_validation_recipe_id": { "const": "renderer-metal-memory-profiling-host-evidence" },
+        "first_party_workload_id": { "type": "string", "minLength": 1 },
+        "runtime_ready": { "const": true },
+        "command_queue_ready": { "const": true },
+        "capture_api_name": { "const": "MTLCaptureManager" },
+        "capture_manager_ready": { "const": true },
+        "capture_descriptor_ready": { "const": true },
+        "capture_object_ready": { "const": true },
+        "capture_scope_ready": { "const": true },
+        "capture_scope_label": { "type": "string", "minLength": 1 },
+        "capture_boundary_ready": { "const": true },
+        "capture_started": { "const": true },
+        "capture_stopped": { "const": true },
+        "command_buffer_captured": { "const": true },
+        "capture_artifact_path": { "type": "string", "minLength": 1 },
+        "capture_artifact_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "deterministic_capture_hash_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "capture_artifact_rows": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "non_claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "simulator_only_evidence",
+        "cross_backend_inference",
+        "native_handles_exposed",
+        "broad_backend_parity_ready",
+        "broad_metal_readiness",
+        "commercial_renderer_readiness",
+        "broad_renderer_quality",
+        "environment_ready",
+        "external_engine_api_parity"
+      ],
+      "properties": {
+        "simulator_only_evidence": { "const": false },
+        "cross_backend_inference": { "const": false },
+        "native_handles_exposed": { "const": false },
+        "broad_backend_parity_ready": { "const": false },
+        "broad_metal_readiness": { "const": false },
+        "commercial_renderer_readiness": { "const": false },
+        "broad_renderer_quality": { "const": false },
+        "environment_ready": { "const": false },
+        "external_engine_api_parity": { "const": false }
+      }
+    }
+  }
+}
