@@ -5,6 +5,8 @@
 #include "mirakana/ai/perception.hpp"
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/assets/asset_import_production_review.hpp"
+#include "mirakana/assets/asset_package.hpp"
+#include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
@@ -13,6 +15,7 @@
 #include "mirakana/navigation/navigation_grid.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/physics/physics2d.hpp"
+#include "mirakana/platform/file_watcher.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
@@ -51,6 +54,7 @@
 #include "mirakana/scene/render_packet.hpp"
 #include "mirakana/scene/scene.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
+#include "mirakana/tools/asset_runtime_package_hot_reload_tool.hpp"
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/sandbox_world_authoring.hpp"
@@ -122,6 +126,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_physics_runtime_extension{false};
     bool require_2d_input_device_production_ux{false};
     bool require_2d_package_playtest_productization{false};
+    bool require_2d_source_pulse{false};
     bool require_gameplay_authoring_review{false};
     bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
@@ -352,6 +357,25 @@ struct PackagePlaytestProductizationProbeResult {
     bool invoked_arbitrary_shell{false};
     bool invoked_active_session_hot_reload{false};
     bool exposed_native_handles{false};
+    bool ready{false};
+};
+
+struct SourcePulsePackageSmokeProbeResult {
+    mirakana::TwoDSourcePulseStatus status{mirakana::TwoDSourcePulseStatus::blocked};
+    std::uint64_t event_rows{0U};
+    std::uint64_t native_backend_rows{0U};
+    std::uint64_t polling_fallback_rows{0U};
+    std::uint64_t runtime_replacement_committed_rows{0U};
+    std::uint64_t runtime_scene_validation_required{0U};
+    std::uint64_t operator_safe_point_required{0U};
+    std::uint64_t diagnostics{0U};
+    bool invoked_editor_core_execution{false};
+    bool invoked_arbitrary_shell{false};
+    bool invoked_package_script{false};
+    bool exposed_native_handles{false};
+    bool imported_external_engine_schema{false};
+    bool used_external_engine_assets{false};
+    bool used_external_engine_code{false};
     bool ready{false};
 };
 
@@ -1396,6 +1420,29 @@ package_playtest_productization_status_name(mirakana::runtime::Runtime2DPackageP
         return "blocked";
     }
     return "unknown";
+}
+
+[[nodiscard]] const char* source_pulse_status_name(mirakana::TwoDSourcePulseStatus status) noexcept {
+    switch (status) {
+    case mirakana::TwoDSourcePulseStatus::blocked:
+        return "blocked";
+    case mirakana::TwoDSourcePulseStatus::primed:
+        return "primed";
+    case mirakana::TwoDSourcePulseStatus::no_ready_changes:
+        return "no_ready_changes";
+    case mirakana::TwoDSourcePulseStatus::recook_pending:
+        return "recook_pending";
+    case mirakana::TwoDSourcePulseStatus::committed:
+        return "committed";
+    case mirakana::TwoDSourcePulseStatus::failed:
+        return "failed";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+source_pulse_package_smoke_status_name(const SourcePulsePackageSmokeProbeResult& result) noexcept {
+    return result.ready ? "ready" : source_pulse_status_name(result.status);
 }
 
 [[nodiscard]] const char*
@@ -5378,6 +5425,232 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
                    !result.invoked_editor_core_execution && !result.invoked_validation_recipe_execution &&
                    !result.invoked_arbitrary_shell && !result.invoked_active_session_hot_reload &&
                    !result.exposed_native_handles;
+    return result;
+}
+
+[[nodiscard]] std::string source_pulse_texture_source_document() {
+    return "format=GameEngine.TextureSource.v1\n"
+           "texture.width=8\n"
+           "texture.height=4\n"
+           "texture.pixel_format=rgba8_unorm\n";
+}
+
+[[nodiscard]] std::string source_pulse_cooked_texture_document(mirakana::AssetId asset, std::string_view source_path) {
+    std::ostringstream output;
+    output << "format=GameEngine.CookedTexture.v1\n";
+    output << "asset.id=" << asset.value << '\n';
+    output << "asset.kind=texture\n";
+    output << "source.path=" << source_path << '\n';
+    output << "texture.width=8\n";
+    output << "texture.height=4\n";
+    output << "texture.pixel_format=rgba8_unorm\n";
+    output << "texture.source_bytes=128\n";
+    return output.str();
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetPackage
+make_source_pulse_loaded_package(mirakana::AssetId asset, std::string_view path, std::string_view content) {
+    return mirakana::runtime::RuntimeAssetPackage({mirakana::runtime::RuntimeAssetRecord{
+        .handle = mirakana::runtime::RuntimeAssetHandle{.value = 1},
+        .asset = asset,
+        .kind = mirakana::AssetKind::texture,
+        .path = std::string(path),
+        .content_hash = mirakana::hash_asset_cooked_content(content),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = std::string(content),
+    }});
+}
+
+void write_source_pulse_package_index(mirakana::MemoryFileSystem& filesystem, std::string_view index_path,
+                                      mirakana::AssetId asset, std::string_view payload_path,
+                                      std::string_view payload) {
+    const auto index = mirakana::build_asset_cooked_package_index({mirakana::AssetCookedArtifact{
+                                                                      .asset = asset,
+                                                                      .kind = mirakana::AssetKind::texture,
+                                                                      .path = std::string(payload_path),
+                                                                      .content = std::string(payload),
+                                                                      .source_revision = 9,
+                                                                      .dependencies = {},
+                                                                  }},
+                                                                  {});
+    filesystem.write_text(index_path, mirakana::serialize_asset_cooked_package_index(index));
+}
+
+[[nodiscard]] mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc
+make_source_pulse_watch_tick_desc(mirakana::AssetId replacement, std::string_view source_path,
+                                  std::string_view runtime_path, std::string_view package_index_path) {
+    mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc desc;
+    desc.import_plan.actions.push_back(mirakana::AssetImportAction{
+        .id = replacement,
+        .kind = mirakana::AssetImportActionKind::texture,
+        .source_path = std::string(source_path),
+        .output_path = std::string(runtime_path),
+        .dependencies = {},
+    });
+    desc.runtime_replacement.candidates.push_back(mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+        .package_index_path = std::string(package_index_path),
+        .content_root = "runtime",
+        .label = "source-pulse-replacement",
+    });
+    desc.runtime_replacement.discovery = mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{
+        .root = "runtime/packages",
+        .content_root = "runtime",
+    };
+    desc.runtime_replacement.selected_package_index_path = std::string(package_index_path);
+    desc.runtime_replacement.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 9};
+    desc.runtime_replacement.reviewed_existing_mount_ids = {
+        mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 9},
+    };
+    desc.runtime_replacement.overlay = mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins;
+    desc.runtime_replacement.budget = mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+        .max_resident_content_bytes = 4096U,
+        .max_resident_asset_records = {},
+    };
+    desc.runtime_replacement.protected_mount_ids = {
+        mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 9},
+    };
+    desc.now_tick = 20U;
+    return desc;
+}
+
+[[nodiscard]] SourcePulsePackageSmokeProbeResult validate_2d_source_pulse_package_evidence(
+    const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    constexpr std::string_view kSourcePath{"source/textures/source_pulse_replacement.texture_source"};
+    constexpr std::string_view kRuntimeOutputPath{"runtime/textures/source_pulse_replacement.texture"};
+    constexpr std::string_view kPackagePayloadPath{"textures/source_pulse_replacement.texture"};
+    constexpr std::string_view kPackageIndexPath{"runtime/packages/source_pulse_replacement.geindex"};
+
+    SourcePulsePackageSmokeProbeResult result;
+    result.runtime_scene_validation_required = 1U;
+    result.operator_safe_point_required = 1U;
+    const auto native_choice = mirakana::choose_file_watch_backend(mirakana::FileWatchBackendKind::native);
+    result.native_backend_rows =
+        native_choice.available && native_choice.selected == mirakana::FileWatchBackendKind::native ? 1U : 0U;
+    const auto polling_fallback = mirakana::choose_file_watch_backend(
+        mirakana::FileWatchBackendKind::native, mirakana::FileWatchBackendAvailability{
+                                                    .polling = true,
+                                                    .native = false,
+                                                    .native_backend = mirakana::FileWatchNativeBackendKind::unavailable,
+                                                });
+    result.polling_fallback_rows = polling_fallback.available && polling_fallback.fallback &&
+                                           polling_fallback.selected == mirakana::FileWatchBackendKind::polling
+                                       ? 1U
+                                       : 0U;
+
+    const auto source_pulse_plan = mirakana::plan_2d_source_pulse_events(mirakana::TwoDSourcePulseDesc{
+        .file_watch_events =
+            {
+                mirakana::FileWatchEvent{
+                    .kind = mirakana::FileWatchEventKind::modified,
+                    .path = std::string{kSourcePath},
+                    .previous_revision = 7U,
+                    .current_revision = 9U,
+                    .previous_size_bytes = 96U,
+                    .current_size_bytes = 128U,
+                },
+                mirakana::FileWatchEvent{
+                    .kind = mirakana::FileWatchEventKind::added,
+                    .path = "source/textures/source_pulse_new.texture_source",
+                    .previous_revision = 0U,
+                    .current_revision = 1U,
+                    .previous_size_bytes = 0U,
+                    .current_size_bytes = 64U,
+                },
+                mirakana::FileWatchEvent{
+                    .kind = mirakana::FileWatchEventKind::removed,
+                    .path = "source/textures/source_pulse_removed.texture_source",
+                    .previous_revision = 5U,
+                    .current_revision = 0U,
+                    .previous_size_bytes = 64U,
+                    .current_size_bytes = 0U,
+                },
+            },
+    });
+    result.status = source_pulse_plan.status;
+    result.event_rows = source_pulse_plan.event_rows.size();
+    result.diagnostics += source_pulse_plan.diagnostics.size();
+    result.exposed_native_handles = result.exposed_native_handles || source_pulse_plan.native_handle_exposed;
+    if (!runtime_package.has_value() || result.event_rows == 0U) {
+        result.ready = false;
+        return result;
+    }
+
+    try {
+        const auto replacement = source_pulse_plan.event_rows.front().asset;
+        mirakana::MemoryFileSystem filesystem;
+        filesystem.write_text(kSourcePath, source_pulse_texture_source_document());
+        const auto cooked = source_pulse_cooked_texture_document(replacement, kSourcePath);
+        write_source_pulse_package_index(filesystem, kPackageIndexPath, replacement, kPackagePayloadPath, cooked);
+
+        mirakana::AssetRegistry assets;
+        assets.add(mirakana::AssetRecord{
+            .id = replacement,
+            .kind = mirakana::AssetKind::texture,
+            .path = std::string{kSourcePath},
+        });
+        mirakana::AssetDependencyGraph dependencies;
+        mirakana::AssetRuntimeReplacementState replacements;
+        replacements.seed({mirakana::AssetFileSnapshot{
+            .asset = replacement,
+            .path = std::string{kRuntimeOutputPath},
+            .revision = 7U,
+            .size_bytes = 32U,
+        }});
+
+        mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+        const auto mount_result = mount_set.mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+            .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 9},
+            .label = "source-pulse-base",
+            .package = make_source_pulse_loaded_package(replacement, kPackagePayloadPath, cooked),
+        });
+        if (!mount_result.succeeded()) {
+            ++result.diagnostics;
+            return result;
+        }
+        mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+        const auto refresh =
+            catalog_cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
+                                  mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                                      .max_resident_content_bytes = 4096U,
+                                      .max_resident_asset_records = {},
+                                  });
+        if (!refresh.succeeded()) {
+            result.diagnostics +=
+                refresh.catalog_build.diagnostics.empty() ? 1U : refresh.catalog_build.diagnostics.size();
+            return result;
+        }
+
+        auto runtime_source_pulse = source_pulse_plan;
+        runtime_source_pulse.event_rows = {source_pulse_plan.event_rows.front()};
+        mirakana::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState tick_state{
+            mirakana::AssetHotReloadRecookSchedulerDesc{.debounce_ticks = 0U}};
+        auto watch_tick =
+            make_source_pulse_watch_tick_desc(replacement, kSourcePath, kRuntimeOutputPath, kPackageIndexPath);
+        mirakana::TwoDSourcePulseRuntimeReplacementDesc replacement_desc;
+        replacement_desc.source_pulse = std::move(runtime_source_pulse);
+        replacement_desc.watch_tick = std::move(watch_tick);
+        replacement_desc.runtime_scene_validation_succeeded = true;
+        replacement_desc.operator_reviewed_safe_point = true;
+
+        const auto replacement_result = mirakana::execute_2d_source_pulse_runtime_replacement_safe_point(
+            filesystem, assets, dependencies, tick_state, replacements, mount_set, catalog_cache, replacement_desc);
+        result.status = replacement_result.status;
+        result.runtime_replacement_committed_rows = replacement_result.committed ? 1U : 0U;
+        result.exposed_native_handles = result.exposed_native_handles || replacement_result.native_handle_exposed;
+        result.diagnostics += replacement_result.diagnostics.size();
+    } catch (const std::exception&) {
+        ++result.diagnostics;
+    }
+
+    result.ready = result.status == mirakana::TwoDSourcePulseStatus::committed && result.event_rows == 3U &&
+                   result.native_backend_rows >= 1U && result.polling_fallback_rows >= 1U &&
+                   result.runtime_replacement_committed_rows == 1U && result.runtime_scene_validation_required == 1U &&
+                   result.operator_safe_point_required == 1U && result.diagnostics == 0U &&
+                   !result.invoked_editor_core_execution && !result.invoked_arbitrary_shell &&
+                   !result.invoked_package_script && !result.exposed_native_handles &&
+                   !result.imported_external_engine_schema && !result.used_external_engine_assets &&
+                   !result.used_external_engine_code;
     return result;
 }
 
@@ -10505,7 +10778,8 @@ void print_usage() {
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
                  "[--require-2d-input-device-production-ux] [--require-2d-package-playtest-productization] "
-                 "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
+                 "[--require-2d-source-pulse] [--require-gameplay-authoring-review] "
+                 "[--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
@@ -10658,6 +10932,10 @@ void print_usage() {
         }
         if (arg == "--require-2d-package-playtest-productization") {
             options.require_2d_package_playtest_productization = true;
+            continue;
+        }
+        if (arg == "--require-2d-source-pulse") {
+            options.require_2d_source_pulse = true;
             continue;
         }
         if (arg == "--require-gameplay-authoring-review") {
@@ -10849,6 +11127,11 @@ void print_usage() {
         options.require_d3d12_shaders = true;
     }
     if (options.require_2d_package_playtest_productization) {
+        options.require_win32_runtime_host = true;
+        options.require_d3d12_renderer = true;
+        options.require_d3d12_shaders = true;
+    }
+    if (options.require_2d_source_pulse) {
         options.require_win32_runtime_host = true;
         options.require_d3d12_renderer = true;
         options.require_d3d12_shaders = true;
@@ -11418,6 +11701,9 @@ int main(int argc, char** argv) {
         options.require_2d_package_playtest_productization
             ? validate_2d_package_playtest_productization_package_evidence(runtime_package)
             : PackagePlaytestProductizationProbeResult{};
+    const auto source_pulse_package_probe = options.require_2d_source_pulse
+                                                ? validate_2d_source_pulse_package_evidence(runtime_package)
+                                                : SourcePulsePackageSmokeProbeResult{};
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
@@ -12304,6 +12590,27 @@ int main(int argc, char** argv) {
         << (package_playtest_productization_probe.invoked_active_session_hot_reload ? 1 : 0)
         << " 2d_package_playtest_productization_native_handle_exposure="
         << (package_playtest_productization_probe.exposed_native_handles ? 1 : 0)
+        << " 2d_source_pulse_status=" << source_pulse_package_smoke_status_name(source_pulse_package_probe)
+        << " 2d_source_pulse_ready=" << (source_pulse_package_probe.ready ? 1 : 0)
+        << " 2d_source_pulse_event_rows=" << source_pulse_package_probe.event_rows
+        << " 2d_source_pulse_native_backend_rows=" << source_pulse_package_probe.native_backend_rows
+        << " 2d_source_pulse_polling_fallback_rows=" << source_pulse_package_probe.polling_fallback_rows
+        << " 2d_source_pulse_runtime_replacement_committed_rows="
+        << source_pulse_package_probe.runtime_replacement_committed_rows
+        << " 2d_source_pulse_runtime_scene_validation_required="
+        << source_pulse_package_probe.runtime_scene_validation_required
+        << " 2d_source_pulse_operator_safe_point_required=" << source_pulse_package_probe.operator_safe_point_required
+        << " 2d_source_pulse_editor_core_execution="
+        << (source_pulse_package_probe.invoked_editor_core_execution ? 1 : 0)
+        << " 2d_source_pulse_arbitrary_shell_execution=" << (source_pulse_package_probe.invoked_arbitrary_shell ? 1 : 0)
+        << " 2d_source_pulse_package_script_execution=" << (source_pulse_package_probe.invoked_package_script ? 1 : 0)
+        << " 2d_source_pulse_native_handle_exposure=" << (source_pulse_package_probe.exposed_native_handles ? 1 : 0)
+        << " 2d_source_pulse_external_engine_schema_import="
+        << (source_pulse_package_probe.imported_external_engine_schema ? 1 : 0)
+        << " 2d_source_pulse_external_engine_asset_use="
+        << (source_pulse_package_probe.used_external_engine_assets ? 1 : 0)
+        << " 2d_source_pulse_external_engine_code_use="
+        << (source_pulse_package_probe.used_external_engine_code ? 1 : 0)
         << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
         << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
         << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
@@ -13654,6 +13961,36 @@ int main(int argc, char** argv) {
                   << " 2d_package_playtest_productization_native_handle_exposure="
                   << (package_playtest_productization_probe.exposed_native_handles ? 1 : 0) << '\n';
         return 48;
+    }
+
+    if (options.require_2d_source_pulse && !source_pulse_package_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_source_pulse_unavailable"
+                  << " 2d_source_pulse_status=" << source_pulse_status_name(source_pulse_package_probe.status)
+                  << " 2d_source_pulse_event_rows=" << source_pulse_package_probe.event_rows
+                  << " 2d_source_pulse_native_backend_rows=" << source_pulse_package_probe.native_backend_rows
+                  << " 2d_source_pulse_polling_fallback_rows=" << source_pulse_package_probe.polling_fallback_rows
+                  << " 2d_source_pulse_runtime_replacement_committed_rows="
+                  << source_pulse_package_probe.runtime_replacement_committed_rows
+                  << " 2d_source_pulse_runtime_scene_validation_required="
+                  << source_pulse_package_probe.runtime_scene_validation_required
+                  << " 2d_source_pulse_operator_safe_point_required="
+                  << source_pulse_package_probe.operator_safe_point_required
+                  << " 2d_source_pulse_editor_core_execution="
+                  << (source_pulse_package_probe.invoked_editor_core_execution ? 1 : 0)
+                  << " 2d_source_pulse_arbitrary_shell_execution="
+                  << (source_pulse_package_probe.invoked_arbitrary_shell ? 1 : 0)
+                  << " 2d_source_pulse_package_script_execution="
+                  << (source_pulse_package_probe.invoked_package_script ? 1 : 0)
+                  << " 2d_source_pulse_native_handle_exposure="
+                  << (source_pulse_package_probe.exposed_native_handles ? 1 : 0)
+                  << " 2d_source_pulse_external_engine_schema_import="
+                  << (source_pulse_package_probe.imported_external_engine_schema ? 1 : 0)
+                  << " 2d_source_pulse_external_engine_asset_use="
+                  << (source_pulse_package_probe.used_external_engine_assets ? 1 : 0)
+                  << " 2d_source_pulse_external_engine_code_use="
+                  << (source_pulse_package_probe.used_external_engine_code ? 1 : 0)
+                  << " 2d_source_pulse_diagnostics=" << source_pulse_package_probe.diagnostics << '\n';
+        return 49;
     }
 
     if (options.require_simulation_orchestration && !world_entity_model_probe.ready) {
