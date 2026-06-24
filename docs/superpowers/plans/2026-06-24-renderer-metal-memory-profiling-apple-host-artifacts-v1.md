@@ -15,6 +15,7 @@
 - Apple Developer Documentation says `MTLHeap` is a memory pool for suballocating Metal resources: <https://developer.apple.com/documentation/metal/mtlheap>.
 - Apple Developer Documentation says residency sets tell Metal which buffers, textures, and heaps to make resident/GPU-accessible: <https://developer.apple.com/documentation/metal/mtlresidencyset>.
 - Apple Developer Documentation says `MTLResidencySetDescriptor.initialCapacity` is the number of allocations a new residency set can store without reallocating memory: <https://developer.apple.com/documentation/metal/mtlresidencysetdescriptor/initialcapacity>.
+- Apple Developer Documentation says staged `MTLResidencySet.addAllocation(_:)` / `addAllocations(_:)` changes are applied by calling `MTLResidencySet.commit()`: <https://developer.apple.com/documentation/metal/mtlresidencyset/commit%28%29>.
 - Apple Developer Documentation says `MTLResidencySet.requestResidency()` asks Metal to prepare allocations for residency: <https://developer.apple.com/documentation/metal/mtlresidencyset/requestresidency%28%29>.
 - Apple Developer Documentation says a command queue can attach residency sets through `addResidencySet(_:)` / `addResidencySets`: <https://developer.apple.com/documentation/metal/mtlcommandqueue/addresidencyset%28_%3A%29>.
 - Apple Developer Documentation says `MTLCaptureManager` captures Metal command data programmatically, and the Xcode guide documents `MTLCaptureDescriptor.outputURL` for GPU trace documents: <https://developer.apple.com/documentation/metal/mtlcapturemanager> and <https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-programmatically>.
@@ -229,3 +230,4 @@ Run publication preflight, commit task-owned files, push branch, open draft PR, 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed. |
 | `git diff --check` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `git diff --check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after direct `newResidencySetWithDescriptor:error:` and `MTLResidencySet.commit()` fix | Passed on Windows; latest full validation log root `out/validation-logs/validate-20260625-013433-8348`. |

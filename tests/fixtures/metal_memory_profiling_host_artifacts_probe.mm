@@ -42,33 +42,6 @@ void remove_existing_path(NSURL* url) {
     }
 }
 
-[[nodiscard]] id invoke_id_with_object_and_error(id target, SEL selector, id argument, NSError** error_out) {
-    if (target == nil || ![target respondsToSelector:selector]) {
-        return nil;
-    }
-
-    NSMethodSignature* signature = [target methodSignatureForSelector:selector];
-    if (signature == nil) {
-        return nil;
-    }
-
-    NSInvocation* invocation = [NSInvocation invocationWithMethodSignature:signature];
-    [invocation setTarget:target];
-    [invocation setSelector:selector];
-    id mutable_argument = argument;
-    [invocation setArgument:&mutable_argument atIndex:2];
-    NSError* local_error = nil;
-    [invocation setArgument:&local_error atIndex:3];
-    [invocation invoke];
-    if (error_out != nullptr) {
-        *error_out = local_error;
-    }
-
-    __unsafe_unretained id unsafe_result = nil;
-    [invocation getReturnValue:&unsafe_result];
-    return unsafe_result;
-}
-
 [[nodiscard]] bool invoke_void_with_object(id target, SEL selector, id argument) {
     if (target == nil || ![target respondsToSelector:selector]) {
         return false;
@@ -174,21 +147,23 @@ int main(int argc, char** argv) {
         }
         heap_buffer.label = @"GameEngine.RHI.Metal.MemoryProfiling.HeapBuffer";
 
-        Class residency_descriptor_class = NSClassFromString(@"MTLResidencySetDescriptor");
-        if (residency_descriptor_class == Nil) {
-            fail(@"MTLResidencySetDescriptor class is not available on this Apple SDK/runtime");
+        if (!@available(macOS 15.0, *)) {
+            fail(@"MTLResidencySet requires macOS 15.0 or newer");
         }
-        id residency_descriptor = [[residency_descriptor_class alloc] init];
-        if ([residency_descriptor respondsToSelector:@selector(setLabel:)]) {
-            [residency_descriptor setValue:@"GameEngine.RHI.Metal.MemoryProfiling.ResidencySet" forKey:@"label"];
+        if (![device respondsToSelector:@selector(newResidencySetWithDescriptor:error:)]) {
+            fail(@"MTLDevice newResidencySetWithDescriptor:error: selector is unavailable on this host");
         }
-        if ([residency_descriptor respondsToSelector:@selector(setInitialCapacity:)]) {
-            [residency_descriptor setValue:@2 forKey:@"initialCapacity"];
+
+        MTLResidencySetDescriptor* residency_descriptor = [MTLResidencySetDescriptor new];
+        residency_descriptor.label = @"GameEngine.RHI.Metal.MemoryProfiling.ResidencySet";
+        residency_descriptor.initialCapacity = 2U;
+        if ([residency_descriptor respondsToSelector:@selector(setResourceOptions:)]) {
+            [residency_descriptor setValue:@(MTLResourceStorageModePrivate) forKey:@"resourceOptions"];
         }
 
         NSError* residency_error = nil;
-        id residency_set = invoke_id_with_object_and_error(
-            device, NSSelectorFromString(@"newResidencySetWithDescriptor:error:"), residency_descriptor, &residency_error);
+        id<MTLResidencySet> residency_set = [device newResidencySetWithDescriptor:residency_descriptor
+                                                                            error:&residency_error];
         if (residency_set == nil) {
             fail(@"MTLResidencySet creation failed", residency_error);
         }
@@ -206,6 +181,9 @@ int main(int argc, char** argv) {
             fail(@"MTLResidencySet allocation staging selector was unavailable");
         }
 
+        if (!invoke_void_no_args(residency_set, NSSelectorFromString(@"commit"))) {
+            fail(@"MTLResidencySet commit selector was unavailable");
+        }
         if (!invoke_void_no_args(residency_set, NSSelectorFromString(@"requestResidency"))) {
             fail(@"MTLResidencySet requestResidency selector was unavailable");
         }

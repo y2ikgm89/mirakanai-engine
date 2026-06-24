@@ -65,6 +65,7 @@ foreach ($needle in @(
         "MTLCreateSystemDefaultDevice",
         "MTLHeapDescriptor",
         "MTLResidencySetDescriptor",
+        "commit",
         "requestResidency",
         "addResidencySet",
         "MTLCaptureManager",
