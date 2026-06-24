@@ -14,6 +14,7 @@
 
 - Apple Developer Documentation says `MTLHeap` is a memory pool for suballocating Metal resources: <https://developer.apple.com/documentation/metal/mtlheap>.
 - Apple Developer Documentation says residency sets tell Metal which buffers, textures, and heaps to make resident/GPU-accessible: <https://developer.apple.com/documentation/metal/mtlresidencyset>.
+- Apple Developer Documentation says `MTLResidencySetDescriptor.initialCapacity` is the number of allocations a new residency set can store without reallocating memory: <https://developer.apple.com/documentation/metal/mtlresidencysetdescriptor/initialcapacity>.
 - Apple Developer Documentation says `MTLResidencySet.requestResidency()` asks Metal to prepare allocations for residency: <https://developer.apple.com/documentation/metal/mtlresidencyset/requestresidency%28%29>.
 - Apple Developer Documentation says a command queue can attach residency sets through `addResidencySet(_:)` / `addResidencySets`: <https://developer.apple.com/documentation/metal/mtlcommandqueue/addresidencyset%28_%3A%29>.
 - Apple Developer Documentation says `MTLCaptureManager` captures Metal command data programmatically, and the Xcode guide documents `MTLCaptureDescriptor.outputURL` for GPU trace documents: <https://developer.apple.com/documentation/metal/mtlcapturemanager> and <https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-programmatically>.

@@ -182,6 +182,9 @@ int main(int argc, char** argv) {
         if ([residency_descriptor respondsToSelector:@selector(setLabel:)]) {
             [residency_descriptor setValue:@"GameEngine.RHI.Metal.MemoryProfiling.ResidencySet" forKey:@"label"];
         }
+        if ([residency_descriptor respondsToSelector:@selector(setInitialCapacity:)]) {
+            [residency_descriptor setValue:@2 forKey:@"initialCapacity"];
+        }
 
         NSError* residency_error = nil;
         id residency_set = invoke_id_with_object_and_error(
