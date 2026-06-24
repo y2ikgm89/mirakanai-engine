@@ -1,0 +1,12 @@
+GameEngine.UiDocument.v1
+element id=root parent= role=root widget=screen localization=ui.main.root accessibility=Main_Menu style=screen
+element id=resume parent=root role=button widget=resume_button localization=ui.main.resume accessibility=Resume style=primary_button
+element id=settings parent=root role=button widget=settings_button localization=ui.main.settings accessibility=Settings style=secondary_button
+element id=volume parent=root role=slider widget=volume_slider localization=ui.settings.volume accessibility=Volume style=slider
+widget id=screen kind=menu_stack label=Main_Menu
+widget id=resume_button kind=button label=Resume
+widget id=settings_button kind=button label=Settings
+widget id=volume_slider kind=slider label=Volume
+binding id=bind.resume element=resume source=menu.resume target=text
+binding id=bind.settings element=settings source=menu.settings target=text
+binding id=bind.volume element=volume source=settings.volume target=enabled

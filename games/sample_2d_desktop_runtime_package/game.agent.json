@@ -561,6 +561,20 @@
           "updatePolicy": "Update only through reviewed game-local runtime package registration or UI atlas package surfaces; preserve reviewed aiWorkflow descriptors."
         },
         {
+          "id": "runtime-ui-main-menu-uidoc",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/ui/main_menu.uidoc",
+          "generatedBy": "tools/register-runtime-package-files.ps1",
+          "reviewedCommandSurfaceId": "register-runtime-package-files",
+          "updatePolicy": "Update only through reviewed game-local runtime package registration or first-party UI authoring validation surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-ui-default-uitheme",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/ui/default.uitheme",
+          "generatedBy": "tools/register-runtime-package-files.ps1",
+          "reviewedCommandSurfaceId": "register-runtime-package-files",
+          "updatePolicy": "Update only through reviewed game-local runtime package registration or first-party UI authoring validation surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
           "id": "runtime-assets-2d-playable-scene",
           "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/playable.scene",
           "generatedBy": "tools/new-game.ps1",
@@ -2625,6 +2639,8 @@
     "runtime/assets/2d/level.tilemap",
     "runtime/assets/2d/player.sprite_animation",
     "runtime/assets/2d/hud.uiatlas",
+    "runtime/ui/main_menu.uidoc",
+    "runtime/ui/default.uitheme",
     "runtime/assets/2d/playable.scene"
   ],
   "spriteAtlasSourceAuthoringTargets": [

@@ -7,3 +7,5 @@
 *.tilemap text eol=lf
 *.sprite_animation text eol=lf
 *.uiatlas text eol=lf
+*.uidoc text eol=lf
+*.uitheme text eol=lf

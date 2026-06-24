@@ -119,6 +119,18 @@
         "notes": "Runtime UI Binding And Input Routing v1 adds RuntimeUiBindingDocument, RuntimeUiBindingValueRow, RuntimeUiBindingRow, RuntimeUiCommandAvailabilityRow, RuntimeUiFocusScope, RuntimeUiNavigationEdge, RuntimeUiControllerGlyphRef, RuntimeUiPointerCaptureRow, RuntimeUiCommandInvocationRow, RuntimeUiInputRoutingPlan, RuntimeUiBindingPlan, runtime_ui_binding_value_type_name, runtime_ui_binding_target_name, runtime_ui_binding_plan_status_name, plan_runtime_ui_binding, and plan_runtime_ui_input_routing for typed text/enabled/visible binding rows, command availability validation, disabled command invocation diagnostics, focus scopes, navigation edge validation, modal focus escape rejection, unknown controller glyph diagnostics, pointer capture conflict diagnostics, and zero gameplay command execution. sample_2d_desktop_runtime_package can require --require-runtime-ui-binding and report runtime_ui_binding_status=ready, runtime_ui_binding_ready=1, runtime_ui_binding_rows=3, runtime_ui_command_rows=2, runtime_ui_focus_scopes=2, runtime_ui_navigation_edges=3, runtime_ui_input_routing_ready=1, runtime_ui_binding_gameplay_commands_executed=0, and runtime_ui_binding_diagnostics=0. This is selected value-model and package-visible binding/routing evidence only; it does not create a visible UI editor, render UI, execute gameplay commands, shape text, rasterize fonts, start native IME sessions, publish OS accessibility, upload renderer textures, adopt UI middleware, expose native handles, or claim Unity/Unreal/Godot compatibility or parity."
       },
       {
+        "name": "runtime-ui-authoring-documents",
+        "module": "MK_ui",
+        "status": "validated-first-party-authoring-format",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_authoring_tests sample_2d_desktop_runtime_package; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_ui_authoring_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package",
+        "notes": "First-Party UI Authoring Documents v1 adds RuntimeUiAuthoringDocument, RuntimeUiThemeDocument, RuntimeUiAuthoredElementRow, RuntimeUiAuthoredWidgetRow, RuntimeUiAuthoredBindingRow, RuntimeUiThemeTokenRow, RuntimeUiAuthoringDiagnostic, RuntimeUiAuthoringDocumentParseResult, RuntimeUiThemeParseResult, runtime_ui_theme_token_kind_name, parse_runtime_ui_document, write_runtime_ui_document, parse_runtime_ui_theme, and write_runtime_ui_theme for deterministic GameEngine.UiDocument.v1 and GameEngine.UiTheme.v1 line-based authoring files. MK_runtime_ui_authoring_tests covers parse/write round-trip, duplicate element ids, unknown parent ids, invalid theme tokens, unsafe path/native/middleware/external-engine tokens, missing localization keys, missing accessibility names, and unknown widget ids. sample_2d_desktop_runtime_package runtimePackageFiles include runtime/ui/main_menu.uidoc and runtime/ui/default.uitheme. This is first-party source authoring format and package-file evidence only; it does not adopt CSS/web semantics, Unity/Unreal/Godot API or visual parity, UI middleware, visible editor execution, renderer upload, text shaping, font rasterization, native IME, OS accessibility publication, package script execution, or native handle exposure."
+      },
+      {
         "name": "runtime-ui-production-stack-evidence",
         "module": "MK_ui",
         "status": "validated-selected-package-evidence",
