@@ -710,17 +710,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 **Files:**
 
 - Modify: `vcpkg.json` only if a dependency is selected.
-- Modify: `docs/dependencies.md` only if a dependency is selected.
-- Modify: `docs/legal-and-licensing.md` only if a dependency is selected.
+- Modify: `docs/dependencies.md` for reserved runtime UI optional dependency feature gates.
+- Modify: `docs/legal-and-licensing.md` for reserved runtime UI optional dependency feature gates.
 - Modify: `THIRD_PARTY_NOTICES.md` only if a dependency is selected.
 - Modify: `tools/bootstrap-deps.ps1` only if a vcpkg feature is selected.
 - Modify: `tools/check-dependency-policy.ps1` only if dependency policy needs new assertions.
+- Modify: `tools/check-ai-integration-060-editor-workflows.ps1` if dependency-gate needles change.
 
-- [ ] If HarfBuzz is selected, add it behind a non-default vcpkg feature named `runtime-ui-harfbuzz`.
-- [ ] If FreeType is selected, add it behind a non-default vcpkg feature named `runtime-ui-freetype`.
-- [ ] If Fontconfig is selected, add it behind a non-default vcpkg feature named `runtime-ui-fontconfig`.
-- [ ] Add notices with name, source URL, retrieved date, version or commit, copyright holder, SPDX license, modification status, and distribution target.
-- [ ] Run:
+- [x] Do not select HarfBuzz in this task; reserve `runtime-ui-harfbuzz` as the only allowed future feature gate for the `harfbuzz` package.
+- [x] Do not select FreeType in this task; reserve `runtime-ui-freetype` as the only allowed future feature gate for the `freetype` package.
+- [x] Do not select Fontconfig in this task; reserve `runtime-ui-fontconfig` as the only allowed future feature gate for the `fontconfig` package.
+- [x] Add dependency-policy assertions so any future selected runtime UI text/font dependency must have `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, and `tools/bootstrap-deps.ps1` evidence before it can pass.
+- [x] Do not add notices in this task because no third-party package is selected, distributed, or integrated.
+- [x] Run available dependency/static checks and record the dependency-bootstrap blocker:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
@@ -732,6 +734,16 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 **Expected:** Dependency selection is explicit, optional, reproducible, and legally recorded.
 
 **Done When:** No optional text/font dependency can be used by production UI code without manifest, dependency, legal, notice, and bootstrap evidence.
+
+### Task 11 Implementation Evidence - 2026-06-24
+
+| Command / check | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` | Blocked by the session approval policy before execution. No `vcpkg.json` feature or dependency was selected in this task. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | Passed: `dependency-policy-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed: `first-party-ui-clean-room: ok`, `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed: `agent-config-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Passed: `text-format-check: ok`. |
 
 ## Task 12 - Package Smoke And Validation Wrapper
 
