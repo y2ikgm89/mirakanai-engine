@@ -27,6 +27,16 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor.ai.ime.session`, `editor.ai.accessibility.uia_provider`, `editor.ai.viewport.display`, and `editor.ai.material_preview.display`;
   reviewed rich-text commands use `<rich_text_document_id>.copy_plain_text` and `<rich_text_document_id>.copy_selection_plain_text` only,
   reject stale revisions/native handles/shell execution/validation-recipe execution/screen coordinates, and do not mutate state.
+- Runtime UI authoring lives in GUI-independent `MK_editor_core` as `EditorRuntimeUiDocumentModel`,
+  `EditorRuntimeUiThemeModel`, `make_editor_runtime_ui_authoring_model`, `plan_editor_runtime_ui_authoring_command`, and
+  `make_editor_runtime_ui_authoring_command_action`; reviewed command ids are `runtime_ui.element.add`,
+  `runtime_ui.element.remove`, `runtime_ui.element.reorder`, `runtime_ui.element.select`,
+  `runtime_ui.property.edit_text`, `runtime_ui.style.set_token`, and `runtime_ui.preview.refresh`.
+  Mutating commands require the relevant expected document/theme revision, validate duplicate ids and hierarchy cycles,
+  keep reorder sibling/subtree-safe, route undoable changes through `UndoStack`, and must not execute renderer work,
+  package scripts, validation recipes, expose native handles, import external-engine schemas, copy external visual themes,
+  or claim visible runtime UI editor, Windows UIA runtime publication, D3D12 UI atlas upload, cross-platform adapter parity,
+  external engine compatibility, or broad platform UI readiness.
 - Dock command planning lives in `MK_editor_core` as `EditorDockCommandKind`, `EditorDockCommandRequest`, `EditorDockCommandPlan`,
   `plan_editor_dock_command`, and `apply_editor_dock_command`; AI operation overloads expose reviewed dock layout rows, rich-text
   `rich_text_rows`, and show/hide/activate/move/split/reset command rows, workspace v2 persists core dock layouts, and the native shell
