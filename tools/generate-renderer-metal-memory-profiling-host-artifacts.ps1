@@ -344,6 +344,7 @@ if ($probeResult.ExitCode -ne 0) {
     if ($RequireReady.IsPresent) {
         Write-Error "Renderer Metal memory/profiling host artifacts require an Apple host that can create MTLResidencySet and capture Metal GPU traces. Probe host gate reason: $hostGateReason.`n$probeText"
     }
+    $global:LASTEXITCODE = 0
     Write-Information "renderer-metal-memory-profiling-host-artifacts-check: host-gated" `
         -InformationAction Continue
     return

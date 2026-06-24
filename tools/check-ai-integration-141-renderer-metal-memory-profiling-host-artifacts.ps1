@@ -38,6 +38,7 @@ foreach ($needle in @(
         "renderer_metal_broad_readiness=0",
         "renderer_commercial_readiness=0",
         "renderer_broad_quality_ready=0",
+        "LASTEXITCODE = 0",
         "collect-renderer-metal-memory-profiling-host-evidence.ps1",
         "check-renderer-metal-memory-profiling-host-evidence.ps1",
         "MK_metal_memory_profiling_host_artifacts_probe",
