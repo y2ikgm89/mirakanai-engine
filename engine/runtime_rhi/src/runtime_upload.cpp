@@ -35,6 +35,17 @@ environment_texture_upload_execution_failure(rhi::IRhiDevice& device, std::strin
     return result;
 }
 
+[[nodiscard]] RuntimeUiAtlasTextureUploadResult ui_atlas_texture_upload_failure(rhi::IRhiDevice& device,
+                                                                                std::string diagnostic) {
+    RuntimeUiAtlasTextureUploadResult result;
+    result.backend_kind = device.backend_kind();
+    result.backend_name = std::string{device.backend_name()};
+    result.vulkan_upload_host_gated = true;
+    result.metal_upload_host_gated = true;
+    result.diagnostic = std::move(diagnostic);
+    return result;
+}
+
 [[nodiscard]] std::string
 runtime_texture_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
     if (diagnostics.empty()) {
@@ -277,6 +288,14 @@ struct RuntimeRhiTexturePayload {
     std::vector<std::uint8_t> bytes;
 };
 
+struct RuntimeUiAtlasTexturePageUploadPlan {
+    AssetId page_asset;
+    runtime::RuntimeTexturePayload payload;
+    RuntimeUiAtlasTexturePageUploadExpectation expectation;
+    std::uint64_t row_pitch_bytes{0};
+    std::uint64_t source_checksum{0};
+};
+
 [[nodiscard]] std::uint64_t align_up(std::uint64_t value, std::uint64_t alignment) {
     if (alignment == 0) {
         throw std::invalid_argument("runtime texture upload alignment must be non-zero");
@@ -341,6 +360,28 @@ struct RuntimeRhiTexturePayload {
         hash *= 1099511628211ULL;
     }
     return hash;
+}
+
+[[nodiscard]] const RuntimeUiAtlasTexturePageUploadExpectation*
+find_ui_atlas_upload_expectation(std::span<const RuntimeUiAtlasTexturePageUploadExpectation> expectations,
+                                 AssetId page_asset) noexcept {
+    const auto found = std::ranges::find_if(
+        expectations, [page_asset](const auto& expectation) { return expectation.page_asset == page_asset; });
+    return found == expectations.end() ? nullptr : &*found;
+}
+
+[[nodiscard]] bool ui_atlas_has_page(const runtime::RuntimeUiAtlasPayload& atlas, AssetId page_asset) noexcept {
+    return std::ranges::any_of(
+        atlas.pages, [page_asset](const runtime::RuntimeUiAtlasPage& page) { return page.asset == page_asset; });
+}
+
+[[nodiscard]] std::uint64_t mix_upload_checksum(std::uint64_t current, std::uint64_t value) noexcept {
+    auto hash = current == 0U ? 1469598103934665603ULL : current;
+    for (std::size_t shift = 0; shift < 64U; shift += 8U) {
+        hash ^= static_cast<std::uint8_t>((value >> shift) & 0xffU);
+        hash *= 1099511628211ULL;
+    }
+    return hash == 0U ? 1U : hash;
 }
 
 [[nodiscard]] std::uint64_t texture_copy_allocation_bytes(rhi::Format format,
@@ -996,6 +1037,232 @@ execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
         return result;
     } catch (const std::exception& error) {
         return environment_texture_upload_execution_failure(device, error.what());
+    }
+}
+
+RuntimeUiAtlasTextureUploadResult execute_runtime_ui_atlas_texture_upload(rhi::IRhiDevice& device,
+                                                                          const RuntimeUiAtlasTextureUploadDesc& desc) {
+    try {
+        RuntimeUiAtlasTextureUploadResult result;
+        result.backend_kind = device.backend_kind();
+        result.backend_name = std::string{device.backend_name()};
+        result.vulkan_upload_host_gated = true;
+        result.metal_upload_host_gated = true;
+        result.renderer_texture_upload_public_api = desc.gameplay_requested_renderer_upload_api;
+
+        if (desc.package == nullptr) {
+            result.diagnostic = "runtime ui atlas texture upload requires a runtime package";
+            return result;
+        }
+        if (desc.atlas_asset.value == 0) {
+            result.diagnostic = "runtime ui atlas texture upload requires a ui atlas asset";
+            return result;
+        }
+        if (desc.request_public_native_handle) {
+            result.diagnostic = "runtime ui atlas texture upload does not expose public native handles";
+            return result;
+        }
+        if (desc.gameplay_requested_renderer_upload_api) {
+            result.diagnostic = "runtime ui atlas texture upload does not expose renderer upload APIs to gameplay UI";
+            return result;
+        }
+        if (desc.texture_upload_options.upload_ring == nullptr) {
+            result.diagnostic = "runtime ui atlas texture upload requires a caller-owned upload ring";
+            return result;
+        }
+        if (!desc.create_sampled_texture_descriptors) {
+            result.diagnostic = "runtime ui atlas texture upload requires sampled texture descriptor evidence";
+            return result;
+        }
+        if (!desc.readback_after_upload) {
+            result.diagnostic = "runtime ui atlas texture upload requires readback checksum evidence";
+            return result;
+        }
+
+        const auto* atlas_record = desc.package->find(desc.atlas_asset);
+        if (atlas_record == nullptr) {
+            result.diagnostic = "runtime ui atlas texture upload ui atlas asset is missing from the runtime package";
+            return result;
+        }
+        const auto atlas_access = runtime::runtime_ui_atlas_payload(*atlas_record);
+        if (!atlas_access.succeeded()) {
+            result.diagnostic = "runtime ui atlas texture upload requires cooked GameEngine.UiAtlas.v1 payload: " +
+                                atlas_access.diagnostic;
+            return result;
+        }
+        if (atlas_access.payload.pages.empty()) {
+            result.diagnostic = "runtime ui atlas texture upload requires atlas page payload rows";
+            return result;
+        }
+        for (const auto& expectation : desc.page_expectations) {
+            if (expectation.page_asset.value == 0 || expectation.row_pitch_bytes == 0U) {
+                result.diagnostic = "runtime ui atlas texture upload requires nonzero row pitch expectations";
+                return result;
+            }
+            if (!ui_atlas_has_page(atlas_access.payload, expectation.page_asset)) {
+                result.diagnostic = "runtime ui atlas texture upload page expectation is not declared by the atlas";
+                return result;
+            }
+        }
+
+        std::vector<RuntimeUiAtlasTexturePageUploadPlan> page_plans;
+        page_plans.reserve(atlas_access.payload.pages.size());
+        for (const auto& page : atlas_access.payload.pages) {
+            ++result.atlas_page_payload_rows;
+            const auto* expectation = find_ui_atlas_upload_expectation(desc.page_expectations, page.asset);
+            if (expectation == nullptr) {
+                result.diagnostic = "runtime ui atlas texture upload is missing a row pitch expectation";
+                return result;
+            }
+            const auto* page_record = desc.package->find(page.asset);
+            if (page_record == nullptr) {
+                result.diagnostic = "runtime ui atlas page asset is missing from the runtime package";
+                return result;
+            }
+            if (page_record->kind != AssetKind::texture) {
+                result.diagnostic = "runtime ui atlas page asset is not a first-party texture payload";
+                return result;
+            }
+            const auto texture_access = runtime::runtime_texture_payload(*page_record);
+            if (!texture_access.succeeded()) {
+                result.diagnostic = "runtime ui atlas texture upload requires cooked GameEngine.CookedTexture.v1 "
+                                    "page payload: " +
+                                    texture_access.diagnostic;
+                return result;
+            }
+            if (texture_access.payload.bytes.empty()) {
+                result.diagnostic = "runtime ui atlas texture upload requires packaged texture bytes";
+                return result;
+            }
+
+            const auto format = runtime_texture_format(texture_access.payload.pixel_format);
+            const auto staging = make_texture_upload_staging(
+                format, texture_access.payload.width, texture_access.payload.height, texture_access.payload.bytes);
+            const auto row_pitch = rhi::format_copy_row_bytes(format, staging.region.buffer_row_length);
+            if (row_pitch != expectation->row_pitch_bytes) {
+                result.row_pitch_bytes = row_pitch;
+                result.diagnostic = "runtime ui atlas texture upload row pitch expectation mismatch";
+                return result;
+            }
+            const auto source_checksum = checksum_runtime_texture_bytes(texture_access.payload.bytes);
+            if (expectation->require_readback_checksum_match &&
+                expectation->expected_readback_checksum != source_checksum) {
+                result.source_checksum = source_checksum;
+                result.diagnostic = "runtime ui atlas texture upload readback checksum expectation mismatch";
+                return result;
+            }
+
+            ++result.texture_payload_rows;
+            page_plans.push_back(RuntimeUiAtlasTexturePageUploadPlan{
+                .page_asset = page.asset,
+                .payload = texture_access.payload,
+                .expectation = *expectation,
+                .row_pitch_bytes = row_pitch,
+                .source_checksum = source_checksum,
+            });
+        }
+
+        if (desc.require_selected_d3d12_backend && result.backend_kind != rhi::BackendKind::d3d12) {
+            result.diagnostic = "runtime ui atlas texture upload requires selected D3D12 backend proof";
+            return result;
+        }
+
+        auto upload_options = desc.texture_upload_options;
+        upload_options.usage = upload_options.usage | rhi::TextureUsage::shader_resource |
+                               rhi::TextureUsage::copy_destination | rhi::TextureUsage::copy_source;
+        for (const auto& page_plan : page_plans) {
+            const auto upload = upload_runtime_texture(device, page_plan.payload, upload_options);
+            if (!upload.succeeded()) {
+                result.diagnostic = "runtime ui atlas texture upload page upload failed: " + upload.diagnostic;
+                return result;
+            }
+            if (upload.owner_device != &device) {
+                result.diagnostic = "runtime ui atlas texture upload owner device evidence did not remain private";
+                return result;
+            }
+            ++result.owner_device_private_evidence_rows;
+            if (!upload.upload_buffer_caller_owned || upload.upload_buffer.value == 0) {
+                result.diagnostic = "runtime ui atlas texture upload requires caller upload ring allocation";
+                return result;
+            }
+            ++result.upload_buffer_allocations;
+            result.uploaded_bytes += upload.uploaded_bytes;
+            result.row_pitch_bytes = page_plan.row_pitch_bytes;
+            result.source_checksum = mix_upload_checksum(result.source_checksum, page_plan.source_checksum);
+            result.copy_to_texture_count += upload.copy_recorded ? 1U : 0U;
+            result.resource_transitions += upload.frame_graph_barriers_recorded;
+            result.submitted_fence = upload.submitted_fence;
+
+            const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{
+                .bindings = {rhi::DescriptorBindingDesc{
+                    .binding = 0,
+                    .type = rhi::DescriptorType::sampled_texture,
+                    .count = 1,
+                    .stages = rhi::ShaderStageVisibility::fragment,
+                }},
+            });
+            const auto descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = descriptor_set,
+                .binding = 0,
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, upload.texture)},
+            });
+            ++result.descriptor_writes;
+            result.sampled_descriptor_written = true;
+
+            const auto page_readback_bytes =
+                texture_copy_allocation_bytes(upload.texture_desc.format, upload.copy_region);
+            const auto readback_buffer = device.create_buffer(rhi::BufferDesc{
+                .size_bytes = page_readback_bytes,
+                .usage = rhi::BufferUsage::copy_destination,
+            });
+            auto commands = device.begin_command_list(upload_options.queue);
+            commands->transition_texture(upload.texture, rhi::ResourceState::shader_read,
+                                         rhi::ResourceState::copy_source);
+            commands->copy_texture_to_buffer(upload.texture, readback_buffer, upload.copy_region);
+            commands->transition_texture(upload.texture, rhi::ResourceState::copy_source,
+                                         rhi::ResourceState::shader_read);
+            commands->close();
+            const auto readback_fence = device.submit(*commands);
+            if (desc.wait_for_readback_completion) {
+                device.wait(readback_fence);
+            }
+
+            const auto padded_readback = device.read_buffer(readback_buffer, 0, page_readback_bytes);
+            const auto compact_readback =
+                compact_texture_readback_bytes(padded_readback, upload.texture_desc.format, upload.copy_region);
+            const auto page_readback_checksum = checksum_runtime_texture_bytes(compact_readback);
+            const auto page_checksum_matched =
+                compact_readback == page_plan.payload.bytes &&
+                (!page_plan.expectation.require_readback_checksum_match ||
+                 page_readback_checksum == page_plan.expectation.expected_readback_checksum);
+            result.readback_bytes += page_readback_bytes;
+            result.compact_readback_bytes += static_cast<std::uint64_t>(compact_readback.size());
+            result.readback_checksum = mix_upload_checksum(result.readback_checksum, page_readback_checksum);
+            result.readback_invoked = true;
+            ++result.copy_to_readback_count;
+            result.resource_transitions += 2U;
+            result.readback_fence = readback_fence;
+            if (!page_checksum_matched) {
+                result.readback_checksum_matched = false;
+                result.diagnostic = "runtime ui atlas texture upload readback checksum mismatch";
+                return result;
+            }
+        }
+
+        result.readback_checksum_matched = !page_plans.empty() && result.copy_to_readback_count == page_plans.size();
+        result.d3d12_selected_proof_ready =
+            result.backend_kind == rhi::BackendKind::d3d12 && result.atlas_page_payload_rows == page_plans.size() &&
+            result.texture_payload_rows == page_plans.size() && result.upload_buffer_allocations == page_plans.size() &&
+            result.copy_to_texture_count == page_plans.size() && result.copy_to_readback_count == page_plans.size() &&
+            result.descriptor_writes == page_plans.size() && result.resource_transitions >= page_plans.size() * 4U &&
+            result.submitted_fence.value != 0U && result.readback_fence.value != 0U &&
+            result.readback_checksum_matched && !result.native_handle_accessed &&
+            !result.renderer_texture_upload_public_api;
+        return result;
+    } catch (const std::exception& error) {
+        return ui_atlas_texture_upload_failure(device, error.what());
     }
 }
 

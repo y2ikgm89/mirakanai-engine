@@ -835,6 +835,8 @@ MK_TEST("ui renderer atlas handoff review accepts cooked glyph image atlas submi
         .glyph_atlas_metadata_built = glyph_palette.succeeded(),
         .atlas_eviction_diagnostics_reviewed = true,
         .texture_upload_handoff_reviewed = true,
+        .texture_upload_execution_reviewed = true,
+        .texture_upload_execution_ready = true,
         .renderer_submission_counters_reviewed = true,
         .selected_package_counter_evidence = true,
         .requested_renderer_texture_upload_api = false,
@@ -859,6 +861,7 @@ MK_TEST("ui renderer atlas handoff review accepts cooked glyph image atlas submi
     MK_REQUIRE(plan.atlas_budget_rows == 2U);
     MK_REQUIRE(plan.atlas_eviction_diagnostic_rows == 1U);
     MK_REQUIRE(plan.texture_upload_handoff_rows == 1U);
+    MK_REQUIRE(plan.texture_upload_execution_rows == 1U);
     MK_REQUIRE(plan.renderer_submission_counter_rows == 1U);
     MK_REQUIRE(plan.text_glyphs_resolved == 2U);
     MK_REQUIRE(plan.text_glyphs_missing == 0U);

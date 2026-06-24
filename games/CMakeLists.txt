@@ -1692,6 +1692,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-atlas-upload
             --require-runtime-ui-renderer-atlas-handoff
             --require-wasapi-audio
             --require-sandbox-package-budgets
@@ -1733,6 +1734,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-atlas-upload
             --require-runtime-ui-renderer-atlas-handoff
             --require-wasapi-audio
             --require-sandbox-package-budgets
@@ -1746,6 +1748,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_runtime_scene
             MK_scene
             MK_scene_renderer
+            MK_runtime_rhi
             MK_ui
             MK_ui_renderer
             MK_audio
@@ -1758,6 +1761,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         target_link_libraries(sample_2d_desktop_runtime_package
             PRIVATE
                 MK_platform_win32
+                MK_rhi_d3d12
         )
     endif()
     set_property(TARGET sample_2d_desktop_runtime_package PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS

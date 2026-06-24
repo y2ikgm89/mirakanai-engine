@@ -25,7 +25,7 @@ This plan treats the following items as intentionally unclaimed production-scope
 - Real font loading and glyph rasterization beyond current value rows and cooked atlas evidence.
 - Native IME session publication beyond current Win32/selected evidence rows.
 - OS accessibility publication for runtime UI beyond semantic rows, selected Windows UIA proof rows, and selected/editor-private evidence.
-- Renderer texture upload execution for UI atlas pages beyond current handoff/review rows.
+- Renderer texture upload execution for UI atlas pages beyond current handoff/review rows and the selected D3D12 proof that Task 7 adds.
 - Unity, Unreal Engine, or Godot compatibility, visual parity, API parity, scene/widget import parity, or marketing equivalence.
 
 The milestone is intentionally larger than a single PR. Each task below is a reviewable phase with its own tests, docs, and validation gate. A phase may be implemented in multiple small commits, but no phase may claim readiness until its "Done When" rows are satisfied.
@@ -76,7 +76,7 @@ This is an engineering compliance plan, not legal advice. The implementer must p
 - `MK_platform_win32` already owns Win32 text input planning, committed text conversion, text-edit commands, clipboard command mapping, and `Win32PlatformIntegrationAdapter`.
 - `MK_runtime_rhi` already owns `upload_runtime_texture` and related D3D12/Vulkan/RHI upload execution patterns for runtime texture payloads.
 - `MK_editor` already has a Windows native first-party shell path and private DirectWrite/TSF/UIA/D3D12 evidence. This plan does not treat editor-private evidence as automatic runtime UI production readiness.
-- Current docs intentionally keep broad production text shaping, real font loading/rasterization, native IME parity, non-Windows runtime OS accessibility publication, full UIA/screen-reader parity, renderer upload execution, and external engine parity unclaimed unless exact future proof rows land.
+- Current docs intentionally keep broad production text shaping, bundled/distributable project font asset loading, native IME parity, non-Windows runtime OS accessibility publication, full UIA/screen-reader parity, Vulkan/Metal renderer upload execution, and external engine parity unclaimed unless exact future proof rows land.
 
 ## Non-Negotiable Architecture Rules
 
@@ -507,26 +507,43 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 - Modify: `engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp`
 - Modify: `engine/ui_renderer/src/ui_renderer.cpp`
+- Modify: `engine/rhi/include/mirakana/rhi/rhi.hpp`
+- Modify: `engine/rhi/src/null_rhi.cpp`
 - Modify: `engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp`
 - Modify: `engine/runtime_rhi/src/runtime_upload.cpp`
-- Modify: `engine/runtime_rhi/CMakeLists.txt`
+- Modify: `games/CMakeLists.txt`
 - Modify: `tests/unit/ui_renderer_tests.cpp`
 - Modify: `tests/unit/runtime_rhi_tests.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 
-- [ ] Add `RuntimeUiAtlasTextureUploadDesc`, `RuntimeUiAtlasTextureUploadResult`, and `execute_runtime_ui_atlas_texture_upload` under `mirakana::runtime_rhi`.
-- [ ] Input must be cooked `GameEngine.UiAtlas.v1` page payloads and first-party texture payloads already present in the runtime package; no runtime source image decode is allowed.
-- [ ] Require row pitch, upload buffer allocation, `CopyTextureRegion` or backend-equivalent copy count, resource transition count, sampled descriptor write count, fence, optional readback checksum, owner-device pointer retained only in private result evidence, and `native_handle_accessed=false`.
-- [ ] Add D3D12 selected proof first. Add Vulkan and Metal rows as host-gated until their backend-specific upload/readback tests land.
-- [ ] Add tests for missing atlas page payload, missing upload ring, row-pitch mismatch, descriptor write missing, readback checksum mismatch, backend inference, public native handle exposure, and gameplay-requested renderer upload API.
-- [ ] Add package counters: `runtime_ui_atlas_upload_ready`, `runtime_ui_atlas_upload_backend=d3d12`, `runtime_ui_atlas_upload_bytes`, `runtime_ui_atlas_upload_copy_regions`, `runtime_ui_atlas_upload_resource_transitions`, `runtime_ui_atlas_upload_descriptor_writes`, `runtime_ui_atlas_upload_readback_hash`, `runtime_ui_renderer_texture_upload_public_api=0`.
-- [ ] Run:
+- [x] Add `RuntimeUiAtlasTextureUploadDesc`, `RuntimeUiAtlasTextureUploadResult`, and `execute_runtime_ui_atlas_texture_upload` under `mirakana::runtime_rhi`.
+- [x] Input must be cooked `GameEngine.UiAtlas.v1` page payloads and first-party texture payloads already present in the runtime package; no runtime source image decode is allowed.
+- [x] Require row pitch, upload buffer allocation, `CopyTextureRegion` or backend-equivalent copy count, resource transition count, sampled descriptor write count, fence, optional readback checksum, owner-device pointer retained only in private result evidence, and `native_handle_accessed=false`.
+- [x] Add D3D12 selected proof first. Add Vulkan and Metal rows as host-gated until their backend-specific upload/readback tests land.
+- [x] Add tests for missing atlas page payload, missing upload ring, row-pitch mismatch, descriptor write missing, readback checksum mismatch, backend inference, public native handle exposure, and gameplay-requested renderer upload API.
+- [x] Add package counters: `runtime_ui_atlas_upload_ready`, `runtime_ui_atlas_upload_backend=d3d12`, `runtime_ui_atlas_upload_uploaded_bytes`, `runtime_ui_atlas_upload_copy_to_texture_count`, `runtime_ui_atlas_upload_resource_transitions`, `runtime_ui_atlas_upload_descriptor_writes`, `runtime_ui_atlas_upload_readback_checksum`, `runtime_ui_renderer_texture_upload_public_api=0`.
+- [x] Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests MK_ui_renderer_tests sample_2d_desktop_runtime_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_rhi_tests|MK_ui_renderer_tests|sample_2d_desktop_runtime_package"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests MK_ui_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_rhi_tests|MK_ui_renderer_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package
+out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-atlas-upload --require-runtime-ui-renderer-atlas-handoff
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_2d_desktop_runtime_package_smoke"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
+
+**Implementation Evidence (2026-06-24):**
+
+| Validation | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests MK_ui_renderer_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_rhi_tests|MK_ui_renderer_tests"` | Passed: 2/2 tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package` | Passed after the first long build completed and the incremental rerun finished cleanly. |
+| `sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-atlas-upload --require-runtime-ui-renderer-atlas-handoff` | Passed with `runtime_ui_atlas_upload_ready=1`, `runtime_ui_atlas_upload_backend=d3d12`, `runtime_ui_atlas_upload_uploaded_bytes=256`, `runtime_ui_atlas_upload_readback_checksum_matched=1`, `runtime_ui_atlas_upload_sampled_descriptor_written=1`, `runtime_ui_atlas_upload_d3d12_selected_proof_ready=1`, `runtime_ui_renderer_texture_upload_public_api=0`, `runtime_ui_atlas_upload_native_handle_accessed=0`, `runtime_ui_renderer_atlas_handoff_texture_upload_execution_rows=1`, and `runtime_ui_atlas_upload_diagnostics=0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_2d_desktop_runtime_package_smoke"` | Passed: 1/1 test. |
 
 **Expected:** D3D12 upload execution passes on Windows/D3D12 hosts; Vulkan/Metal rows remain explicit host gates.
 

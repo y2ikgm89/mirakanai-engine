@@ -826,6 +826,7 @@ class NullRhiDevice final : public IRhiDevice {
     std::vector<bool> buffer_active_;
     std::vector<std::vector<std::uint8_t>> buffer_bytes_;
     std::vector<TextureDesc> textures_;
+    std::vector<std::vector<std::uint8_t>> texture_bytes_;
     std::vector<bool> texture_active_;
     std::vector<ResourceState> texture_states_;
     std::vector<SamplerDesc> samplers_;
