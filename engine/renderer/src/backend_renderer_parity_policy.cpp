@@ -22,6 +22,12 @@ struct AppleMetalEnvironmentProofMapping {
     std::string_view package_counter_id;
 };
 
+struct AppleMetalMemoryProfilingProofMapping {
+    BackendRendererParityFeatureKind feature{BackendRendererParityFeatureKind::memory_residency};
+    std::string_view proof_id;
+    std::string_view package_counter_id;
+};
+
 constexpr AppleMetalEnvironmentProofMapping kAppleMetalEnvironmentProofMappings[] = {
     {
         .feature = BackendRendererParityFeatureKind::synchronization,
@@ -37,6 +43,19 @@ constexpr AppleMetalEnvironmentProofMapping kAppleMetalEnvironmentProofMappings[
         .feature = BackendRendererParityFeatureKind::package_evidence,
         .proof_id = "apple_metal_environment.package_evidence",
         .package_counter_id = "metal_environment_ready_rows",
+    },
+};
+
+constexpr AppleMetalMemoryProfilingProofMapping kAppleMetalMemoryProfilingProofMappings[] = {
+    {
+        .feature = BackendRendererParityFeatureKind::memory_residency,
+        .proof_id = "apple_metal_memory_profiling.memory_residency",
+        .package_counter_id = "metal_memory_residency_evidence_ready",
+    },
+    {
+        .feature = BackendRendererParityFeatureKind::profiling_capture,
+        .proof_id = "apple_metal_memory_profiling.profiling_capture",
+        .package_counter_id = "metal_profiling_capture_evidence_ready",
     },
 };
 
@@ -91,9 +110,45 @@ apple_metal_environment_evidence_complete(const BackendRendererParityAppleMetalE
            desc.host_validation_recipe_id == kAppleMetalEnvironmentHostValidationRecipeId;
 }
 
+[[nodiscard]] bool apple_metal_memory_profiling_common_evidence_complete(
+    const BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc& desc) noexcept {
+    return desc.runtime_ready && desc.command_queue_ready &&
+           desc.host_validation_recipe_id == kAppleMetalEnvironmentHostValidationRecipeId;
+}
+
+[[nodiscard]] bool apple_metal_memory_residency_evidence_complete(
+    const BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc& desc) noexcept {
+    return apple_metal_memory_profiling_common_evidence_complete(desc) && desc.heap_allocation_ready &&
+           desc.residency_set_ready && desc.residency_commit_ready && desc.residency_pressure_evidence_ready;
+}
+
+[[nodiscard]] bool apple_metal_profiling_capture_evidence_complete(
+    const BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc& desc) noexcept {
+    return apple_metal_memory_profiling_common_evidence_complete(desc) && desc.capture_manager_ready &&
+           desc.capture_scope_ready && desc.capture_boundary_ready && desc.capture_artifact_ready;
+}
+
 [[nodiscard]] BackendRendererParityProofRow
 make_apple_metal_environment_proof_row(const AppleMetalEnvironmentProofMapping& mapping, const bool ready,
                                        const std::uint32_t source_index) {
+    return BackendRendererParityProofRow{
+        .proof_id = std::string{mapping.proof_id},
+        .feature = mapping.feature,
+        .selected_backend = rhi::BackendKind::metal,
+        .proof_backend = rhi::BackendKind::metal,
+        .reviewed = true,
+        .host_validated = ready,
+        .host_gate_required = !ready,
+        .host_validation_recipe_id = std::string{kAppleMetalEnvironmentHostValidationRecipeId},
+        .request_native_handle_access = false,
+        .package_counter_id = ready ? std::string{mapping.package_counter_id} : std::string{},
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] BackendRendererParityProofRow
+make_apple_metal_memory_profiling_proof_row(const AppleMetalMemoryProfilingProofMapping& mapping, const bool ready,
+                                            const std::uint32_t source_index) {
     return BackendRendererParityProofRow{
         .proof_id = std::string{mapping.proof_id},
         .feature = mapping.feature,
@@ -469,6 +524,21 @@ std::vector<BackendRendererParityProofRow> make_backend_renderer_parity_apple_me
     for (const auto& mapping : kAppleMetalEnvironmentProofMappings) {
         proofs.push_back(make_apple_metal_environment_proof_row(mapping, ready, source_index++));
     }
+    return proofs;
+}
+
+std::vector<BackendRendererParityProofRow> make_backend_renderer_parity_apple_metal_memory_profiling_proofs(
+    const BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc& desc) {
+    if (desc.native_handle_access) {
+        return {};
+    }
+
+    std::vector<BackendRendererParityProofRow> proofs;
+    proofs.reserve(std::size(kAppleMetalMemoryProfilingProofMappings));
+    proofs.push_back(make_apple_metal_memory_profiling_proof_row(
+        kAppleMetalMemoryProfilingProofMappings[0], apple_metal_memory_residency_evidence_complete(desc), 1U));
+    proofs.push_back(make_apple_metal_memory_profiling_proof_row(
+        kAppleMetalMemoryProfilingProofMappings[1], apple_metal_profiling_capture_evidence_complete(desc), 2U));
     return proofs;
 }
 

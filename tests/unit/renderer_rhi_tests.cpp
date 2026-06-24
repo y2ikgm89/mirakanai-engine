@@ -7078,6 +7078,85 @@ MK_TEST("backend renderer parity rejects Apple Metal environment native handle r
     MK_REQUIRE(proofs.empty());
 }
 
+MK_TEST("backend renderer parity maps Apple Metal memory profiling evidence to separate proof rows") {
+    const auto proofs = mirakana::make_backend_renderer_parity_apple_metal_memory_profiling_proofs(
+        mirakana::BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc{
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .heap_allocation_ready = true,
+            .residency_set_ready = true,
+            .residency_commit_ready = true,
+            .residency_pressure_evidence_ready = true,
+            .capture_manager_ready = true,
+            .capture_scope_ready = true,
+            .capture_boundary_ready = true,
+            .capture_artifact_ready = true,
+        });
+
+    constexpr mirakana::BackendRendererParityFeatureKind kExpectedFeatures[] = {
+        mirakana::BackendRendererParityFeatureKind::memory_residency,
+        mirakana::BackendRendererParityFeatureKind::profiling_capture,
+    };
+
+    MK_REQUIRE(proofs.size() == 2U);
+    for (std::size_t index = 0U; index < proofs.size(); ++index) {
+        const auto& row = proofs[index];
+        MK_REQUIRE(row.feature == kExpectedFeatures[index]);
+        MK_REQUIRE(row.selected_backend == mirakana::rhi::BackendKind::metal);
+        MK_REQUIRE(row.proof_backend == mirakana::rhi::BackendKind::metal);
+        MK_REQUIRE(row.reviewed);
+        MK_REQUIRE(row.host_validated);
+        MK_REQUIRE(!row.host_gate_required);
+        MK_REQUIRE(row.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+        MK_REQUIRE(!row.request_native_handle_access);
+        MK_REQUIRE(!row.package_counter_id.empty());
+    }
+}
+
+MK_TEST("backend renderer parity maps partial Apple Metal memory profiling evidence to host gated rows") {
+    const auto proofs = mirakana::make_backend_renderer_parity_apple_metal_memory_profiling_proofs(
+        mirakana::BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc{
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .heap_allocation_ready = true,
+            .residency_set_ready = true,
+            .residency_commit_ready = true,
+            .residency_pressure_evidence_ready = true,
+            .capture_manager_ready = true,
+            .capture_scope_ready = true,
+            .capture_boundary_ready = false,
+            .capture_artifact_ready = true,
+        });
+
+    MK_REQUIRE(proofs.size() == 2U);
+    MK_REQUIRE(proofs[0].feature == mirakana::BackendRendererParityFeatureKind::memory_residency);
+    MK_REQUIRE(proofs[0].host_validated);
+    MK_REQUIRE(!proofs[0].host_gate_required);
+    MK_REQUIRE(proofs[1].feature == mirakana::BackendRendererParityFeatureKind::profiling_capture);
+    MK_REQUIRE(!proofs[1].host_validated);
+    MK_REQUIRE(proofs[1].host_gate_required);
+    MK_REQUIRE(proofs[1].package_counter_id.empty());
+}
+
+MK_TEST("backend renderer parity rejects Apple Metal memory profiling native handle requests") {
+    const auto proofs = mirakana::make_backend_renderer_parity_apple_metal_memory_profiling_proofs(
+        mirakana::BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc{
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .heap_allocation_ready = true,
+            .residency_set_ready = true,
+            .residency_commit_ready = true,
+            .residency_pressure_evidence_ready = true,
+            .capture_manager_ready = true,
+            .capture_scope_ready = true,
+            .capture_boundary_ready = true,
+            .capture_artifact_ready = true,
+            .native_handle_access = true,
+        });
+
+    MK_REQUIRE(proofs.empty());
+}
+
 MK_TEST("backend renderer parity policy keeps Metal host gated and proves D3D12 Vulkan locally") {
     const auto plan = mirakana::plan_backend_renderer_parity_policy(make_backend_parity_request(false));
 

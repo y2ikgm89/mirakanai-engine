@@ -83,7 +83,9 @@ router says the current task needs detailed API names, detailed validation lanes
   host-gated until Apple-host proof exists, and keep D3D12/Vulkan evidence backend-local.
   `BackendRendererParityAppleMetalEnvironmentEvidenceDesc` and `make_backend_renderer_parity_apple_metal_environment_proofs` may map
   selected Apple-host `renderer-metal-apple-host-evidence` counters only into backend-local `synchronization`, `shader_validation`, and
-  `package_evidence` proof rows; `memory_residency` and `profiling_capture` require separate proof rows.
+  `package_evidence` proof rows. Use `BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc` and
+  `make_backend_renderer_parity_apple_metal_memory_profiling_proofs` for the separate `memory_residency` and
+  `profiling_capture` proof rows; missing heap/residency-set/capture evidence keeps those rows host-gated.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and

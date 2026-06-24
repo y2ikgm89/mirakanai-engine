@@ -80,6 +80,21 @@ struct BackendRendererParityAppleMetalEnvironmentEvidenceDesc {
     std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
 };
 
+struct BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc {
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool heap_allocation_ready{false};
+    bool residency_set_ready{false};
+    bool residency_commit_ready{false};
+    bool residency_pressure_evidence_ready{false};
+    bool capture_manager_ready{false};
+    bool capture_scope_ready{false};
+    bool capture_boundary_ready{false};
+    bool capture_artifact_ready{false};
+    bool native_handle_access{false};
+    std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
+};
+
 struct BackendRendererParityPolicyRequest {
     std::vector<rhi::BackendKind> required_backends;
     std::vector<BackendRendererParityFeatureKind> required_features;
@@ -120,6 +135,10 @@ backend_renderer_parity_proof_matches_selected_backend(const BackendRendererPari
 
 [[nodiscard]] std::vector<BackendRendererParityProofRow> make_backend_renderer_parity_apple_metal_environment_proofs(
     const BackendRendererParityAppleMetalEnvironmentEvidenceDesc& desc);
+
+[[nodiscard]] std::vector<BackendRendererParityProofRow>
+make_backend_renderer_parity_apple_metal_memory_profiling_proofs(
+    const BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc& desc);
 
 [[nodiscard]] BackendRendererParityPolicyPlan
 plan_backend_renderer_parity_policy(const BackendRendererParityPolicyRequest& request);
