@@ -91,6 +91,12 @@ router says the current task needs detailed API names, detailed validation lanes
   `MTLCaptureScope`, `memory_residency`, `profiling_capture`, and capture artifact evidence. Default validation remains
   `renderer_metal_memory_profiling_status=host_evidence_required` and `renderer_metal_memory_profiling_ready=0`; broad backend parity,
   broad Metal readiness, commercial renderer readiness, and broad renderer quality remain unclaimed.
+  Use `tools/collect-renderer-metal-memory-profiling-host-evidence.ps1` /
+  `renderer-metal-memory-profiling-host-evidence-collector-v1` only to shape host-owned Apple `MTLHeap`, `MTLResidencySet`,
+  `MTLCaptureManager`, `MTLCaptureScope`, and capture artifact evidence into the existing `evidence.json` contract; verify it with
+  `tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1`. The collector must not run arbitrary workloads, start
+  capture from default validation, expose native handles, infer D3D12/Vulkan proof, or claim broad backend parity, broad Metal readiness,
+  commercial renderer readiness, broad renderer quality, external-engine parity, or broad `environment_ready`.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and

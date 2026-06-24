@@ -1,9 +1,10 @@
 #requires -Version 7.0
 #requires -PSEdition Core
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [switch]$RequireReady,
+    [switch]$SkipFocusedRendererBuild,
     [string]$ArtifactRootRelative = "artifacts/renderer/metal-memory-profiling-host-evidence",
     [string[]]$ExpectedEvidenceCounters = @(),
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -189,47 +190,49 @@ if (-not $pwsh) {
     Write-Error "PowerShell 7 is required for renderer Metal memory/profiling host evidence validation."
 }
 
-Write-Information "renderer-metal-memory-profiling-host-evidence: configuring dev preset..." `
-    -InformationAction Continue
-$null = Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
-    "-NoProfile",
-    "-ExecutionPolicy",
-    "Bypass",
-    "-File",
-    (Join-Path $root "tools/cmake.ps1"),
-    "--preset",
-    "dev"
-)
+if (-not $SkipFocusedRendererBuild.IsPresent) {
+    Write-Information "renderer-metal-memory-profiling-host-evidence: configuring dev preset..." `
+        -InformationAction Continue
+    $null = Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        (Join-Path $root "tools/cmake.ps1"),
+        "--preset",
+        "dev"
+    )
 
-Write-Information "renderer-metal-memory-profiling-host-evidence: building focused renderer tests..." `
-    -InformationAction Continue
-$null = Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
-    "-NoProfile",
-    "-ExecutionPolicy",
-    "Bypass",
-    "-File",
-    (Join-Path $root "tools/cmake.ps1"),
-    "--build",
-    "--preset",
-    "dev",
-    "--target",
-    "MK_renderer_tests"
-)
+    Write-Information "renderer-metal-memory-profiling-host-evidence: building focused renderer tests..." `
+        -InformationAction Continue
+    $null = Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        (Join-Path $root "tools/cmake.ps1"),
+        "--build",
+        "--preset",
+        "dev",
+        "--target",
+        "MK_renderer_tests"
+    )
 
-Write-Information "renderer-metal-memory-profiling-host-evidence: running focused renderer CTest lane..." `
-    -InformationAction Continue
-$null = Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
-    "-NoProfile",
-    "-ExecutionPolicy",
-    "Bypass",
-    "-File",
-    (Join-Path $root "tools/ctest.ps1"),
-    "--preset",
-    "dev",
-    "--output-on-failure",
-    "-R",
-    "MK_renderer_tests"
-)
+    Write-Information "renderer-metal-memory-profiling-host-evidence: running focused renderer CTest lane..." `
+        -InformationAction Continue
+    $null = Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        (Join-Path $root "tools/ctest.ps1"),
+        "--preset",
+        "dev",
+        "--output-on-failure",
+        "-R",
+        "MK_renderer_tests"
+    )
+}
 
 $hostLabel = Get-RendererMetalHostLabel
 $developerDirectory = Get-AppleDeveloperDirectory

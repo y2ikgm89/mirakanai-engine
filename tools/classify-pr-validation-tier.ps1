@@ -161,7 +161,7 @@ function Test-AppleHostEvidencePath {
 
     return (
         (Test-PlatformEvidenceFoundationPath -Path $Path) -or
-        $Path -match "^tools/(apple-host-helpers|build-mobile-apple|check-mobile-packaging|generate-environment-metal-optimization-artifacts|smoke-ios-package|validate-apple-metal-platform-host|validate-environment-metal-host-aggregate|validate-environment-weather-metal-solver-host-gate|validate-renderer-metal-apple)\.ps1$"
+        $Path -match "^tools/(apple-host-helpers|build-mobile-apple|check-mobile-packaging|collect-renderer-metal-memory-profiling-host-evidence|check-renderer-metal-memory-profiling-host-evidence|check-renderer-metal-memory-profiling-host-evidence-collector|generate-environment-metal-optimization-artifacts|smoke-ios-package|validate-apple-metal-platform-host|validate-environment-metal-host-aggregate|validate-environment-weather-metal-solver-host-gate|validate-renderer-metal-apple)\.ps1$"
     )
 }
 

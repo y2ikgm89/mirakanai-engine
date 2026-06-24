@@ -589,6 +589,24 @@ Assert-ValidationTierSelection `
     -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
+    -Label "Renderer Metal memory profiling collector PR" `
+    -ChangedPath @("tools/collect-renderer-metal-memory-profiling-host-evidence.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
+
+Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
     -ExpectedWindowsMsvc $true `
