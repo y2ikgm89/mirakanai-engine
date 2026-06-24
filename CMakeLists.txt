@@ -1547,6 +1547,25 @@ if(BUILD_TESTING)
     add_test(NAME MK_mavg_metal_mesh_lod_tests COMMAND MK_mavg_metal_mesh_lod_tests)
     set_tests_properties(MK_mavg_metal_mesh_lod_tests PROPERTIES RUN_SERIAL TRUE)
 
+    if(APPLE)
+        enable_language(OBJCXX)
+        find_library(MK_TEST_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED)
+        find_library(MK_TEST_APPLE_METAL_FRAMEWORK Metal REQUIRED)
+        add_executable(MK_metal_memory_profiling_host_artifacts_probe
+            tests/fixtures/metal_memory_profiling_host_artifacts_probe.mm
+        )
+        target_link_libraries(MK_metal_memory_profiling_host_artifacts_probe
+            PRIVATE
+                ${MK_TEST_APPLE_FOUNDATION_FRAMEWORK}
+                ${MK_TEST_APPLE_METAL_FRAMEWORK}
+        )
+        target_compile_options(MK_metal_memory_profiling_host_artifacts_probe
+            PRIVATE
+                $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>
+        )
+        MK_apply_common_target_options(MK_metal_memory_profiling_host_artifacts_probe)
+    endif()
+
     if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))
         add_executable(MK_platform_native_file_watcher_tests
             tests/unit/platform_native_file_watcher_tests.cpp

@@ -98,6 +98,14 @@ counters.
   `tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1`. The collector must not run arbitrary workloads, start
   capture from default validation, expose native handles, infer D3D12/Vulkan proof, or claim broad backend parity, broad Metal readiness,
   commercial renderer readiness, broad renderer quality, external-engine parity, or broad `environment_ready`.
+  Use `tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1` / `renderer-metal-memory-profiling-apple-host-artifacts-v1`
+  only for Apple-host retained artifact production. The macOS/full-Xcode `-RequireReady` path builds
+  `MK_metal_memory_profiling_host_artifacts_probe`, captures real `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, and
+  `MTLCaptureScope` evidence, imports it through the collector, and may validate local `renderer_metal_memory_profiling_ready=1`.
+  GitHub-hosted macOS runs without `-RequireReady` and may record `host-gate-summary.*` diagnostics when `MTLResidencySet`
+  creation is rejected. Non-Apple/default validation stays host-gated, and broad backend parity, broad Metal readiness,
+  commercial renderer readiness,
+  broad renderer quality, external-engine parity, and broad `environment_ready` remain unclaimed.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and

@@ -607,6 +607,24 @@ Assert-ValidationTierSelection `
     -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
+    -Label "Renderer Metal memory profiling host artifacts PR" `
+    -ChangedPath @("tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $true
+
+Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
     -ExpectedWindowsMsvc $true `
@@ -1263,10 +1281,16 @@ Assert-ContainsAll $macosJob @(
     "if: needs.changes.outputs.metal_host_evidence == 'true'",
     '$jobs = [int](& sysctl -n hw.logicalcpu)',
     "./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs `$jobs -RequireReady",
+    "Renderer Metal memory profiling host artifacts",
+    "GitHub-hosted macOS can be Metal-capable while still rejecting MTLResidencySet creation.",
+    "./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs",
     "Upload Metal optimization artifacts",
     "name: metal-host-optimization-artifacts",
     "compression-level: 0",
     "artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**",
+    "Upload Renderer Metal memory profiling host artifacts",
+    "name: renderer-metal-memory-profiling-host-artifacts",
+    "artifacts/renderer/metal-memory-profiling-host-evidence/**",
     "Validate Metal weather solver host gate",
     "./tools/validate-environment-weather-metal-solver-host-gate.ps1",
     "cmake --preset ci-macos-appleclang",

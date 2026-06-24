@@ -1539,6 +1539,15 @@ jobs:
           $jobs = [int](& sysctl -n hw.logicalcpu)
           ./tools/generate-environment-metal-optimization-artifacts.ps1 -Jobs $jobs -RequireReady
 
+      - name: Renderer Metal memory profiling host artifacts
+        if: needs.changes.outputs.metal_host_evidence == 'true'
+        shell: pwsh
+        run: |
+          $jobs = [int](& sysctl -n hw.logicalcpu)
+          # GitHub-hosted macOS can be Metal-capable while still rejecting MTLResidencySet creation.
+          # Keep -RequireReady for a physical/self-hosted Apple proof host; this lane records host-gated diagnostics.
+          ./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs $jobs
+
       - name: Upload Metal optimization artifacts
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -1548,6 +1557,17 @@ jobs:
           compression-level: 0
           include-hidden-files: false
           path: artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/**
+          if-no-files-found: warn
+
+      - name: Upload Renderer Metal memory profiling host artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-metal-memory-profiling-host-artifacts
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/metal-memory-profiling-host-evidence/**
           if-no-files-found: warn
 
       - name: Validate Metal weather solver host gate
