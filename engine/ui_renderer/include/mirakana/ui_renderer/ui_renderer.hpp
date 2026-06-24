@@ -139,6 +139,7 @@ enum class UiRendererAtlasHandoffDiagnosticCode : std::uint8_t {
     atlas_budget_exceeded,
     missing_atlas_eviction_diagnostics,
     missing_texture_upload_handoff,
+    missing_texture_upload_execution,
     missing_renderer_submission_counters,
     missing_selected_package_counter_evidence,
     unresolved_text_glyphs,
@@ -170,6 +171,8 @@ struct UiRendererAtlasHandoffRequest {
     bool glyph_atlas_metadata_built{false};
     bool atlas_eviction_diagnostics_reviewed{false};
     bool texture_upload_handoff_reviewed{false};
+    bool texture_upload_execution_reviewed{false};
+    bool texture_upload_execution_ready{false};
     bool renderer_submission_counters_reviewed{false};
     bool selected_package_counter_evidence{false};
     bool requested_renderer_texture_upload_api{false};
@@ -194,6 +197,8 @@ struct UiRendererAtlasHandoffPlan {
     std::size_t atlas_budget_rows{0};
     std::size_t atlas_eviction_diagnostic_rows{0};
     std::size_t texture_upload_handoff_rows{0};
+    std::size_t texture_upload_execution_rows{0};
+    bool texture_upload_execution_ready{false};
     std::size_t renderer_submission_counter_rows{0};
     std::size_t text_glyphs_available{0};
     std::size_t text_glyphs_resolved{0};

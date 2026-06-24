@@ -70,6 +70,8 @@ void hash_atlas_handoff_string(std::uint64_t& hash, std::string_view value) noex
     hash_atlas_handoff_bool(hash, request.glyph_atlas_metadata_built);
     hash_atlas_handoff_bool(hash, request.atlas_eviction_diagnostics_reviewed);
     hash_atlas_handoff_bool(hash, request.texture_upload_handoff_reviewed);
+    hash_atlas_handoff_bool(hash, request.texture_upload_execution_reviewed);
+    hash_atlas_handoff_bool(hash, request.texture_upload_execution_ready);
     hash_atlas_handoff_bool(hash, request.renderer_submission_counters_reviewed);
     hash_atlas_handoff_bool(hash, request.selected_package_counter_evidence);
     hash_atlas_handoff_bool(hash, request.requested_renderer_texture_upload_api);
@@ -443,6 +445,9 @@ UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtla
     plan.atlas_budget_rows = (request.max_image_bindings > 0U ? 1U : 0U) + (request.max_glyph_bindings > 0U ? 1U : 0U);
     plan.atlas_eviction_diagnostic_rows = request.atlas_eviction_diagnostics_reviewed ? 1U : 0U;
     plan.texture_upload_handoff_rows = request.texture_upload_handoff_reviewed ? 1U : 0U;
+    plan.texture_upload_execution_rows =
+        request.texture_upload_execution_reviewed && request.texture_upload_execution_ready ? 1U : 0U;
+    plan.texture_upload_execution_ready = request.texture_upload_execution_ready;
     plan.renderer_submission_counter_rows = request.renderer_submission_counters_reviewed ? 1U : 0U;
     plan.text_glyphs_available = request.submit_result.text_glyphs_available;
     plan.text_glyphs_resolved = request.submit_result.text_glyphs_resolved;
@@ -499,6 +504,11 @@ UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtla
         append_atlas_handoff_diagnostic(
             plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_texture_upload_handoff,
             "runtime UI renderer atlas handoff requires texture upload handoff evidence rows");
+    }
+    if (!request.texture_upload_execution_reviewed || !request.texture_upload_execution_ready) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_texture_upload_execution,
+            "runtime UI renderer atlas handoff requires selected renderer texture upload execution evidence");
     }
     if (!request.renderer_submission_counters_reviewed) {
         append_atlas_handoff_diagnostic(
@@ -569,6 +579,7 @@ UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtla
 
     plan.reviewed = request.image_atlas_metadata_built && request.glyph_atlas_metadata_built &&
                     request.atlas_eviction_diagnostics_reviewed && request.texture_upload_handoff_reviewed &&
+                    request.texture_upload_execution_reviewed && request.texture_upload_execution_ready &&
                     request.renderer_submission_counters_reviewed && request.selected_package_counter_evidence;
     plan.selected_package_evidence_ready = plan.reviewed && plan.diagnostics.empty();
     plan.status = plan.selected_package_evidence_ready ? UiRendererAtlasHandoffStatus::ready

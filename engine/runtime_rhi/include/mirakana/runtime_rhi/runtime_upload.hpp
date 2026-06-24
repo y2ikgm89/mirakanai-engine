@@ -143,6 +143,65 @@ struct RuntimeEnvironmentTextureUploadExecutionResult {
     }
 };
 
+struct RuntimeUiAtlasTexturePageUploadExpectation {
+    AssetId page_asset;
+    std::uint64_t row_pitch_bytes{0};
+    bool require_readback_checksum_match{false};
+    std::uint64_t expected_readback_checksum{0};
+};
+
+struct RuntimeUiAtlasTextureUploadDesc {
+    const runtime::RuntimeAssetPackage* package{nullptr};
+    AssetId atlas_asset;
+    std::span<const RuntimeUiAtlasTexturePageUploadExpectation> page_expectations;
+    RuntimeTextureUploadOptions texture_upload_options;
+    bool create_sampled_texture_descriptors{true};
+    bool readback_after_upload{true};
+    bool wait_for_readback_completion{true};
+    bool require_selected_d3d12_backend{true};
+    bool gameplay_requested_renderer_upload_api{false};
+    bool request_public_native_handle{false};
+};
+
+struct RuntimeUiAtlasTextureUploadResult {
+    rhi::BackendKind backend_kind{rhi::BackendKind::null};
+    std::string backend_name;
+    std::size_t atlas_page_payload_rows{0};
+    std::size_t texture_payload_rows{0};
+    std::uint64_t row_pitch_bytes{0};
+    std::uint64_t uploaded_bytes{0};
+    std::uint64_t readback_bytes{0};
+    std::uint64_t compact_readback_bytes{0};
+    std::uint64_t source_checksum{0};
+    std::uint64_t readback_checksum{0};
+    std::size_t upload_buffer_allocations{0};
+    std::size_t copy_to_texture_count{0};
+    std::size_t copy_to_readback_count{0};
+    std::size_t resource_transitions{0};
+    std::size_t descriptor_writes{0};
+    std::size_t owner_device_private_evidence_rows{0};
+    rhi::FenceValue submitted_fence{};
+    rhi::FenceValue readback_fence{};
+    bool readback_invoked{false};
+    bool readback_checksum_matched{false};
+    bool sampled_descriptor_written{false};
+    bool d3d12_selected_proof_ready{false};
+    bool vulkan_upload_host_gated{false};
+    bool metal_upload_host_gated{false};
+    bool renderer_texture_upload_public_api{false};
+    bool native_handle_accessed{false};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty();
+    }
+
+    [[nodiscard]] bool ready() const noexcept {
+        return succeeded() && d3d12_selected_proof_ready && !renderer_texture_upload_public_api &&
+               !native_handle_accessed;
+    }
+};
+
 struct RuntimeMeshUploadOptions {
     rhi::BufferUsage vertex_usage{rhi::BufferUsage::vertex | rhi::BufferUsage::copy_destination};
     rhi::BufferUsage index_usage{rhi::BufferUsage::index | rhi::BufferUsage::copy_destination};
@@ -411,6 +470,9 @@ wait_for_runtime_uploads_on_queue(rhi::IRhiDevice& device, rhi::QueueKind consum
 execute_runtime_environment_texture_payload_upload(rhi::IRhiDevice& device,
                                                    const runtime::RuntimeEnvironmentTexturePayload& payload,
                                                    const RuntimeEnvironmentTextureUploadExecutionOptions& options = {});
+
+[[nodiscard]] RuntimeUiAtlasTextureUploadResult
+execute_runtime_ui_atlas_texture_upload(rhi::IRhiDevice& device, const RuntimeUiAtlasTextureUploadDesc& desc);
 
 [[nodiscard]] RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device,
                                                           const runtime::RuntimeMeshPayload& payload,

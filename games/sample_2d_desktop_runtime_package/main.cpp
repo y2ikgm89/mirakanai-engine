@@ -21,6 +21,7 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/renderer/tile_chunk_renderer.hpp"
+#include "mirakana/rhi/upload_staging.hpp"
 #include "mirakana/runtime/addressable_content_streaming.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
@@ -49,6 +50,7 @@
 #include "mirakana/runtime_host/shader_bytecode.hpp"
 #include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
 #include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
+#include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene/playable_2d.hpp"
 #include "mirakana/scene/render_packet.hpp"
@@ -68,6 +70,7 @@
 #include "mirakana/platform/win32/win32_text_input.hpp"
 #include "mirakana/platform/win32/win32_ui_accessibility.hpp"
 #include "mirakana/platform/win32/win32_ui_text_font.hpp"
+#include "mirakana/rhi/d3d12/d3d12_backend.hpp"
 #endif
 
 #include <algorithm>
@@ -81,6 +84,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <span>
 #include <sstream>
@@ -139,6 +143,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_font_rasterization{false};
     bool require_runtime_ui_tsf_session{false};
     bool require_runtime_ui_uia_publication{false};
+    bool require_runtime_ui_atlas_upload{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
     bool require_wasapi_audio{false};
@@ -2043,6 +2048,8 @@ struct RuntimeUiRendererAtlasHandoffProbeResult {
     std::size_t atlas_budget_rows{0U};
     std::size_t atlas_eviction_diagnostic_rows{0U};
     std::size_t texture_upload_handoff_rows{0U};
+    std::size_t texture_upload_execution_rows{0U};
+    bool texture_upload_execution_ready{false};
     std::size_t renderer_submission_counter_rows{0U};
     std::size_t text_glyphs_available{0U};
     std::size_t text_glyphs_resolved{0U};
@@ -2062,6 +2069,37 @@ struct RuntimeUiRendererAtlasHandoffProbeResult {
     bool invoked_renderer_upload{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
+};
+
+struct RuntimeUiAtlasUploadProbeResult {
+    bool ready{false};
+    bool succeeded{false};
+    std::string backend{"unavailable"};
+    std::size_t atlas_page_payload_rows{0U};
+    std::size_t texture_payload_rows{0U};
+    std::uint64_t row_pitch_bytes{0U};
+    std::uint64_t uploaded_bytes{0U};
+    std::uint64_t readback_bytes{0U};
+    std::uint64_t compact_readback_bytes{0U};
+    std::uint64_t source_checksum{0U};
+    std::uint64_t readback_checksum{0U};
+    std::size_t upload_buffer_allocations{0U};
+    std::size_t copy_to_texture_count{0U};
+    std::size_t copy_to_readback_count{0U};
+    std::size_t resource_transitions{0U};
+    std::size_t descriptor_writes{0U};
+    std::size_t owner_device_private_evidence_rows{0U};
+    std::uint64_t submitted_fence{0U};
+    std::uint64_t readback_fence{0U};
+    bool readback_invoked{false};
+    bool readback_checksum_matched{false};
+    bool sampled_descriptor_written{false};
+    bool d3d12_selected_proof_ready{false};
+    bool vulkan_upload_host_gated{false};
+    bool metal_upload_host_gated{false};
+    bool renderer_texture_upload_public_api{false};
+    bool native_handle_accessed{false};
+    std::size_t diagnostics{0U};
 };
 
 struct AudioGameplayMixerProbeResult {
@@ -3783,8 +3821,138 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     return result;
 }
 
+[[nodiscard]] std::uint64_t runtime_ui_atlas_upload_checksum(std::span<const std::uint8_t> bytes) noexcept {
+    auto hash = std::uint64_t{1469598103934665603ULL};
+    for (const auto byte : bytes) {
+        hash ^= static_cast<std::uint64_t>(byte);
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+[[nodiscard]] std::uint64_t runtime_ui_atlas_upload_align_up(std::uint64_t value, std::uint64_t alignment) noexcept {
+    const auto remainder = alignment == 0U ? 0U : value % alignment;
+    return remainder == 0U ? value : value + (alignment - remainder);
+}
+
+[[nodiscard]] mirakana::rhi::Format runtime_ui_atlas_upload_format(mirakana::TextureSourcePixelFormat format) noexcept {
+    switch (format) {
+    case mirakana::TextureSourcePixelFormat::rgba8_unorm:
+        return mirakana::rhi::Format::rgba8_unorm;
+    case mirakana::TextureSourcePixelFormat::r8_unorm:
+    case mirakana::TextureSourcePixelFormat::rg8_unorm:
+    case mirakana::TextureSourcePixelFormat::unknown:
+        break;
+    }
+    return mirakana::rhi::Format::unknown;
+}
+
+void fill_runtime_ui_atlas_upload_probe(RuntimeUiAtlasUploadProbeResult& probe,
+                                        const mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadResult& upload) {
+    probe.succeeded = upload.succeeded();
+    probe.ready = upload.ready();
+    probe.backend = upload.backend_name.empty() ? "unknown" : upload.backend_name;
+    probe.atlas_page_payload_rows = upload.atlas_page_payload_rows;
+    probe.texture_payload_rows = upload.texture_payload_rows;
+    probe.row_pitch_bytes = upload.row_pitch_bytes;
+    probe.uploaded_bytes = upload.uploaded_bytes;
+    probe.readback_bytes = upload.readback_bytes;
+    probe.compact_readback_bytes = upload.compact_readback_bytes;
+    probe.source_checksum = upload.source_checksum;
+    probe.readback_checksum = upload.readback_checksum;
+    probe.upload_buffer_allocations = upload.upload_buffer_allocations;
+    probe.copy_to_texture_count = upload.copy_to_texture_count;
+    probe.copy_to_readback_count = upload.copy_to_readback_count;
+    probe.resource_transitions = upload.resource_transitions;
+    probe.descriptor_writes = upload.descriptor_writes;
+    probe.owner_device_private_evidence_rows = upload.owner_device_private_evidence_rows;
+    probe.submitted_fence = upload.submitted_fence.value;
+    probe.readback_fence = upload.readback_fence.value;
+    probe.readback_invoked = upload.readback_invoked;
+    probe.readback_checksum_matched = upload.readback_checksum_matched;
+    probe.sampled_descriptor_written = upload.sampled_descriptor_written;
+    probe.d3d12_selected_proof_ready = upload.d3d12_selected_proof_ready;
+    probe.vulkan_upload_host_gated = upload.vulkan_upload_host_gated;
+    probe.metal_upload_host_gated = upload.metal_upload_host_gated;
+    probe.renderer_texture_upload_public_api = upload.renderer_texture_upload_public_api;
+    probe.native_handle_accessed = upload.native_handle_accessed;
+    probe.diagnostics = upload.succeeded() ? 0U : 1U;
+}
+
+[[nodiscard]] RuntimeUiAtlasUploadProbeResult
+validate_runtime_ui_atlas_upload_package_evidence(const mirakana::runtime::RuntimeAssetPackage& runtime_package) {
+    RuntimeUiAtlasUploadProbeResult result;
+#if defined(_WIN32)
+    try {
+        const auto* atlas_record = runtime_package.find(packaged_ui_atlas_asset_id());
+        if (atlas_record == nullptr) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        const auto atlas_access = mirakana::runtime::runtime_ui_atlas_payload(*atlas_record);
+        if (!atlas_access.succeeded() || atlas_access.payload.pages.empty()) {
+            result.diagnostics = 1U;
+            return result;
+        }
+
+        std::vector<mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation> expectations;
+        expectations.reserve(atlas_access.payload.pages.size());
+        for (const auto& page : atlas_access.payload.pages) {
+            const auto* page_record = runtime_package.find(page.asset);
+            if (page_record == nullptr) {
+                result.diagnostics = 1U;
+                return result;
+            }
+            const auto texture_access = mirakana::runtime::runtime_texture_payload(*page_record);
+            if (!texture_access.succeeded()) {
+                result.diagnostics = 1U;
+                return result;
+            }
+            const auto format = runtime_ui_atlas_upload_format(texture_access.payload.pixel_format);
+            if (format == mirakana::rhi::Format::unknown || texture_access.payload.bytes.empty()) {
+                result.diagnostics = 1U;
+                return result;
+            }
+            const auto row_bytes = mirakana::rhi::format_copy_row_bytes(format, texture_access.payload.width);
+            expectations.push_back(mirakana::runtime_rhi::RuntimeUiAtlasTexturePageUploadExpectation{
+                .page_asset = page.asset,
+                .row_pitch_bytes = runtime_ui_atlas_upload_align_up(row_bytes, 256U),
+                .require_readback_checksum_match = true,
+                .expected_readback_checksum = runtime_ui_atlas_upload_checksum(texture_access.payload.bytes),
+            });
+        }
+
+        auto device = mirakana::rhi::d3d12::create_rhi_device(
+            mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true, .enable_debug_layer = false});
+        if (device == nullptr) {
+            result.diagnostics = 1U;
+            return result;
+        }
+
+        mirakana::rhi::RhiUploadRing upload_ring(
+            *device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 4096U, .min_alignment = 256U, .buffer = {}});
+        const auto upload = mirakana::runtime_rhi::execute_runtime_ui_atlas_texture_upload(
+            *device, mirakana::runtime_rhi::RuntimeUiAtlasTextureUploadDesc{
+                         .package = &runtime_package,
+                         .atlas_asset = packaged_ui_atlas_asset_id(),
+                         .page_expectations = expectations,
+                         .texture_upload_options =
+                             mirakana::runtime_rhi::RuntimeTextureUploadOptions{.upload_ring = &upload_ring},
+                         .require_selected_d3d12_backend = true,
+                     });
+        fill_runtime_ui_atlas_upload_probe(result, upload);
+    } catch (const std::exception&) {
+        result.diagnostics = 1U;
+    }
+#else
+    result.diagnostics = 1U;
+#endif
+    return result;
+}
+
 [[nodiscard]] RuntimeUiRendererAtlasHandoffProbeResult validate_runtime_ui_renderer_atlas_handoff_package_evidence(
-    const mirakana::runtime::RuntimeAssetPackage& runtime_package) {
+    const mirakana::runtime::RuntimeAssetPackage& runtime_package,
+    const RuntimeUiAtlasUploadProbeResult& runtime_ui_atlas_upload_probe) {
     RuntimeUiRendererAtlasHandoffProbeResult result;
     const auto image_palette =
         mirakana::build_ui_renderer_image_palette_from_runtime_ui_atlas(runtime_package, packaged_ui_atlas_asset_id());
@@ -3835,6 +4003,8 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         .glyph_atlas_metadata_built = glyph_palette.succeeded(),
         .atlas_eviction_diagnostics_reviewed = true,
         .texture_upload_handoff_reviewed = true,
+        .texture_upload_execution_reviewed = runtime_ui_atlas_upload_probe.succeeded,
+        .texture_upload_execution_ready = runtime_ui_atlas_upload_probe.ready,
         .renderer_submission_counters_reviewed = true,
         .selected_package_counter_evidence = true,
         .requested_renderer_texture_upload_api = false,
@@ -3858,6 +4028,8 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     result.atlas_budget_rows = plan.atlas_budget_rows;
     result.atlas_eviction_diagnostic_rows = plan.atlas_eviction_diagnostic_rows;
     result.texture_upload_handoff_rows = plan.texture_upload_handoff_rows;
+    result.texture_upload_execution_rows = plan.texture_upload_execution_rows;
+    result.texture_upload_execution_ready = plan.texture_upload_execution_ready;
     result.renderer_submission_counter_rows = plan.renderer_submission_counter_rows;
     result.text_glyphs_available = plan.text_glyphs_available;
     result.text_glyphs_resolved = plan.text_glyphs_resolved;
@@ -3881,6 +4053,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
                    result.glyph_atlas_pages == 1U && result.glyph_atlas_bindings == 1U &&
                    result.atlas_placement_rows == 2U && result.atlas_budget_rows == 2U &&
                    result.atlas_eviction_diagnostic_rows == 1U && result.texture_upload_handoff_rows == 1U &&
+                   result.texture_upload_execution_rows == 1U && result.texture_upload_execution_ready &&
                    result.renderer_submission_counter_rows == 1U && result.text_glyphs_available == 1U &&
                    result.text_glyphs_resolved == 1U && result.text_glyphs_missing == 0U &&
                    result.text_glyph_sprites_submitted == 1U && result.image_placeholders_available == 1U &&
@@ -10884,7 +11057,8 @@ void print_usage() {
                  "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
                  "[--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-font-rasterization] [--require-runtime-ui-tsf-session] "
-                 "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
+                 "[--require-runtime-ui-atlas-upload] [--require-runtime-ui-renderer-atlas-handoff] "
+                 "[--require-audio-gameplay-mixer] "
                  "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
                  "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow] "
                  "[--require-performance-baseline] [--require-long-run-performance-readiness]\n";
@@ -11082,8 +11256,13 @@ void print_usage() {
             options.require_runtime_ui_uia_publication = true;
             continue;
         }
+        if (arg == "--require-runtime-ui-atlas-upload") {
+            options.require_runtime_ui_atlas_upload = true;
+            continue;
+        }
         if (arg == "--require-runtime-ui-renderer-atlas-handoff") {
             options.require_runtime_ui_renderer_atlas_handoff = true;
+            options.require_runtime_ui_atlas_upload = true;
             continue;
         }
         if (arg == "--require-audio-gameplay-mixer") {
@@ -11842,9 +12021,13 @@ int main(int argc, char** argv) {
     const auto runtime_ui_uia_publication_probe = options.require_runtime_ui_uia_publication
                                                       ? validate_runtime_ui_uia_publication_package_evidence()
                                                       : RuntimeUiUiaPublicationProbeResult{};
+    const auto runtime_ui_atlas_upload_probe = options.require_runtime_ui_atlas_upload && runtime_package.has_value()
+                                                   ? validate_runtime_ui_atlas_upload_package_evidence(*runtime_package)
+                                                   : RuntimeUiAtlasUploadProbeResult{};
     const auto runtime_ui_renderer_atlas_handoff_probe =
         options.require_runtime_ui_renderer_atlas_handoff && runtime_package.has_value()
-            ? validate_runtime_ui_renderer_atlas_handoff_package_evidence(*runtime_package)
+            ? validate_runtime_ui_renderer_atlas_handoff_package_evidence(*runtime_package,
+                                                                          runtime_ui_atlas_upload_probe)
             : RuntimeUiRendererAtlasHandoffProbeResult{};
     const auto audio_production_probe = audio_samples.has_value()
                                             ? validate_audio_production_package_evidence(*audio_samples)
@@ -12983,6 +13166,43 @@ int main(int argc, char** argv) {
         << " runtime_ui_accessibility_native_handles_exposed="
         << (runtime_ui_uia_publication_probe.native_handles_exposed ? 1 : 0)
         << " runtime_ui_uia_diagnostics=" << runtime_ui_uia_publication_probe.diagnostics
+        << " runtime_ui_atlas_upload_ready=" << (runtime_ui_atlas_upload_probe.ready ? 1 : 0)
+        << " runtime_ui_atlas_upload_succeeded=" << (runtime_ui_atlas_upload_probe.succeeded ? 1 : 0)
+        << " runtime_ui_atlas_upload_backend=" << runtime_ui_atlas_upload_probe.backend
+        << " runtime_ui_atlas_upload_atlas_page_payload_rows=" << runtime_ui_atlas_upload_probe.atlas_page_payload_rows
+        << " runtime_ui_atlas_upload_texture_payload_rows=" << runtime_ui_atlas_upload_probe.texture_payload_rows
+        << " runtime_ui_atlas_upload_row_pitch_bytes=" << runtime_ui_atlas_upload_probe.row_pitch_bytes
+        << " runtime_ui_atlas_upload_uploaded_bytes=" << runtime_ui_atlas_upload_probe.uploaded_bytes
+        << " runtime_ui_atlas_upload_readback_bytes=" << runtime_ui_atlas_upload_probe.readback_bytes
+        << " runtime_ui_atlas_upload_compact_readback_bytes=" << runtime_ui_atlas_upload_probe.compact_readback_bytes
+        << " runtime_ui_atlas_upload_source_checksum=" << runtime_ui_atlas_upload_probe.source_checksum
+        << " runtime_ui_atlas_upload_readback_checksum=" << runtime_ui_atlas_upload_probe.readback_checksum
+        << " runtime_ui_atlas_upload_upload_buffer_allocations="
+        << runtime_ui_atlas_upload_probe.upload_buffer_allocations
+        << " runtime_ui_atlas_upload_copy_to_texture_count=" << runtime_ui_atlas_upload_probe.copy_to_texture_count
+        << " runtime_ui_atlas_upload_copy_to_readback_count=" << runtime_ui_atlas_upload_probe.copy_to_readback_count
+        << " runtime_ui_atlas_upload_resource_transitions=" << runtime_ui_atlas_upload_probe.resource_transitions
+        << " runtime_ui_atlas_upload_descriptor_writes=" << runtime_ui_atlas_upload_probe.descriptor_writes
+        << " runtime_ui_atlas_upload_owner_device_private_evidence_rows="
+        << runtime_ui_atlas_upload_probe.owner_device_private_evidence_rows
+        << " runtime_ui_atlas_upload_submitted_fence=" << runtime_ui_atlas_upload_probe.submitted_fence
+        << " runtime_ui_atlas_upload_readback_fence=" << runtime_ui_atlas_upload_probe.readback_fence
+        << " runtime_ui_atlas_upload_readback_invoked=" << (runtime_ui_atlas_upload_probe.readback_invoked ? 1 : 0)
+        << " runtime_ui_atlas_upload_readback_checksum_matched="
+        << (runtime_ui_atlas_upload_probe.readback_checksum_matched ? 1 : 0)
+        << " runtime_ui_atlas_upload_sampled_descriptor_written="
+        << (runtime_ui_atlas_upload_probe.sampled_descriptor_written ? 1 : 0)
+        << " runtime_ui_atlas_upload_d3d12_selected_proof_ready="
+        << (runtime_ui_atlas_upload_probe.d3d12_selected_proof_ready ? 1 : 0)
+        << " runtime_ui_atlas_upload_vulkan_host_gated="
+        << (runtime_ui_atlas_upload_probe.vulkan_upload_host_gated ? 1 : 0)
+        << " runtime_ui_atlas_upload_metal_host_gated="
+        << (runtime_ui_atlas_upload_probe.metal_upload_host_gated ? 1 : 0)
+        << " runtime_ui_renderer_texture_upload_public_api="
+        << (runtime_ui_atlas_upload_probe.renderer_texture_upload_public_api ? 1 : 0)
+        << " runtime_ui_atlas_upload_native_handle_accessed="
+        << (runtime_ui_atlas_upload_probe.native_handle_accessed ? 1 : 0)
+        << " runtime_ui_atlas_upload_diagnostics=" << runtime_ui_atlas_upload_probe.diagnostics
         << " runtime_ui_renderer_atlas_handoff_status="
         << runtime_ui_renderer_atlas_handoff_status_name(runtime_ui_renderer_atlas_handoff_probe.status)
         << " runtime_ui_renderer_atlas_handoff_ready=" << (runtime_ui_renderer_atlas_handoff_probe.ready ? 1 : 0)
@@ -13005,6 +13225,10 @@ int main(int argc, char** argv) {
         << runtime_ui_renderer_atlas_handoff_probe.atlas_eviction_diagnostic_rows
         << " runtime_ui_renderer_atlas_handoff_texture_upload_handoff_rows="
         << runtime_ui_renderer_atlas_handoff_probe.texture_upload_handoff_rows
+        << " runtime_ui_renderer_atlas_handoff_texture_upload_execution_rows="
+        << runtime_ui_renderer_atlas_handoff_probe.texture_upload_execution_rows
+        << " runtime_ui_renderer_atlas_handoff_texture_upload_execution_ready="
+        << (runtime_ui_renderer_atlas_handoff_probe.texture_upload_execution_ready ? 1 : 0)
         << " runtime_ui_renderer_atlas_handoff_renderer_submission_counter_rows="
         << runtime_ui_renderer_atlas_handoff_probe.renderer_submission_counter_rows
         << " runtime_ui_renderer_atlas_handoff_text_glyphs_available="
@@ -14410,6 +14634,34 @@ int main(int argc, char** argv) {
         return 60;
     }
 
+    if (options.require_runtime_ui_atlas_upload && !runtime_ui_atlas_upload_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_atlas_upload_unavailable"
+                  << " runtime_ui_atlas_upload_ready=" << (runtime_ui_atlas_upload_probe.ready ? 1 : 0)
+                  << " runtime_ui_atlas_upload_succeeded=" << (runtime_ui_atlas_upload_probe.succeeded ? 1 : 0)
+                  << " runtime_ui_atlas_upload_backend=" << runtime_ui_atlas_upload_probe.backend
+                  << " runtime_ui_atlas_upload_atlas_page_payload_rows="
+                  << runtime_ui_atlas_upload_probe.atlas_page_payload_rows
+                  << " runtime_ui_atlas_upload_texture_payload_rows="
+                  << runtime_ui_atlas_upload_probe.texture_payload_rows
+                  << " runtime_ui_atlas_upload_copy_to_texture_count="
+                  << runtime_ui_atlas_upload_probe.copy_to_texture_count
+                  << " runtime_ui_atlas_upload_copy_to_readback_count="
+                  << runtime_ui_atlas_upload_probe.copy_to_readback_count
+                  << " runtime_ui_atlas_upload_resource_transitions="
+                  << runtime_ui_atlas_upload_probe.resource_transitions
+                  << " runtime_ui_atlas_upload_descriptor_writes=" << runtime_ui_atlas_upload_probe.descriptor_writes
+                  << " runtime_ui_atlas_upload_readback_checksum_matched="
+                  << (runtime_ui_atlas_upload_probe.readback_checksum_matched ? 1 : 0)
+                  << " runtime_ui_atlas_upload_d3d12_selected_proof_ready="
+                  << (runtime_ui_atlas_upload_probe.d3d12_selected_proof_ready ? 1 : 0)
+                  << " runtime_ui_renderer_texture_upload_public_api="
+                  << (runtime_ui_atlas_upload_probe.renderer_texture_upload_public_api ? 1 : 0)
+                  << " runtime_ui_atlas_upload_native_handle_accessed="
+                  << (runtime_ui_atlas_upload_probe.native_handle_accessed ? 1 : 0)
+                  << " runtime_ui_atlas_upload_diagnostics=" << runtime_ui_atlas_upload_probe.diagnostics << '\n';
+        return 61;
+    }
+
     if (options.require_runtime_ui_renderer_atlas_handoff && !runtime_ui_renderer_atlas_handoff_probe.ready) {
         std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_renderer_atlas_handoff_unavailable"
                   << " runtime_ui_renderer_atlas_handoff_status="
@@ -14422,6 +14674,10 @@ int main(int argc, char** argv) {
                   << runtime_ui_renderer_atlas_handoff_probe.image_atlas_bindings
                   << " runtime_ui_renderer_atlas_handoff_glyph_atlas_bindings="
                   << runtime_ui_renderer_atlas_handoff_probe.glyph_atlas_bindings
+                  << " runtime_ui_renderer_atlas_handoff_texture_upload_execution_rows="
+                  << runtime_ui_renderer_atlas_handoff_probe.texture_upload_execution_rows
+                  << " runtime_ui_renderer_atlas_handoff_texture_upload_execution_ready="
+                  << (runtime_ui_renderer_atlas_handoff_probe.texture_upload_execution_ready ? 1 : 0)
                   << " runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted="
                   << runtime_ui_renderer_atlas_handoff_probe.renderer_sprites_submitted
                   << " runtime_ui_renderer_atlas_handoff_diagnostics="
