@@ -12,9 +12,15 @@
 
 **Plan ID:** `first-party-ui-runtime-editor-production-roadmap-v1`
 
-**Status:** Candidate implementation milestone. This plan does not change `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until an operator explicitly selects it.
+**Status:** Retained completed/superseded roadmap evidence. Phases 1-4 completed directly in this plan. Phases 5-11 are closed by [First-Party Runtime UI And Editor Platform Production v1](2026-06-24-first-party-runtime-ui-and-editor-platform-production-v1.md), which selected the Windows DirectWrite/TSF/UIA, D3D12 UI atlas upload, visible runtime UI editor, cross-platform adapter gate, optional dependency gate, wrapper, and final publication proof. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` remains on the production-completion selection gate.
 
 **Date:** 2026-06-12
+
+## 2026-06-24 Supersession Closeout
+
+[First-Party Runtime UI And Editor Platform Production v1](2026-06-24-first-party-runtime-ui-and-editor-platform-production-v1.md) is the selected follow-on milestone for the original Phase 5-11 scope. It completed the selected Windows DirectWrite text-shaping/font-loading/rasterization rows, Windows TSF native IME session rows, Windows UIA runtime accessibility publication rows, D3D12 runtime UI atlas upload/readback rows, GUI-independent runtime UI editor authoring model, visible first-party `runtime_ui_editor` panel smoke, cross-platform adapter gate rows, optional dependency/middleware decision gate rows, `tools/validate-runtime-ui-platform-production.ps1 -RequireReady`, and hosted publication evidence through PR #796 / merge commit `7c2022b4`.
+
+The Phase 5-11 boxes below are therefore closed as superseded work items rather than active remaining tasks in this roadmap. The exact selected ready claims and remaining non-claims live in the follow-on plan, `docs/current-capabilities.md`, `docs/ui.md`, manifest fragments, and static checks. Core Text, HarfBuzz/FreeType/Fontconfig, bundled/distributable project font asset loading, native candidate UI, reconversion, non-Windows IME sessions, NSAccessibility, AT-SPI2, Android/iOS accessibility, full UIA/screen-reader parity, Vulkan/Metal renderer upload execution, UI middleware readiness, and external-engine parity remain future gated rows unless a new dated plan selects and proves them.
 
 ## Context7 Status
 
@@ -135,9 +141,9 @@ MK_editor
 
 **Steps:**
 
-- [ ] Add this plan to `docs/superpowers/plans/README.md` as a candidate UI production milestone.
-- [ ] Do not change `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` in Phase 0.
-- [ ] Run:
+- [x] Add this plan to `docs/superpowers/plans/README.md` as a candidate UI production milestone.
+- [x] Do not change `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` in Phase 0.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
@@ -163,7 +169,7 @@ git diff --check
 - [x] Implement validation in `engine/ui/src/runtime_ui_widgets.cpp`.
 - [x] Register the new source/test target in `engine/ui/CMakeLists.txt`.
 - [x] Add selected package counters in `games/sample_2d_desktop_runtime_package/main.cpp`: `runtime_ui_widgets_status`, `runtime_ui_widgets_ready`, `runtime_ui_widget_rows`, `runtime_ui_widget_command_rows`, `runtime_ui_widget_focusable_rows`, `runtime_ui_widget_diagnostics`.
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -261,11 +267,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Steps:**
 
-- [ ] Add RED tests for a private Windows DirectWrite adapter test target that returns glyph ids, clusters, advances, offsets, fallback rows, glyph bitmap metrics, and atlas allocation evidence without exposing DirectWrite interfaces.
-- [ ] Implement the private adapter under `engine/platform/win32/src/`.
-- [ ] Keep public headers first-party; platform SDK includes stay in `.cpp` files or private implementation headers.
-- [ ] Add manifest/docs rows that say this is Windows host evidence only.
-- [ ] Run:
+- [x] Superseded by the selected Windows DirectWrite text/font proof in the follow-on platform production plan: add RED tests for a private Windows DirectWrite adapter test target that returns glyph ids, clusters, advances, offsets, fallback rows, glyph bitmap metrics, and atlas allocation evidence without exposing DirectWrite interfaces.
+- [x] Superseded by the selected Windows DirectWrite text/font proof in the follow-on platform production plan: implement the private adapter under `engine/platform/win32/src/`.
+- [x] Superseded by the selected Windows DirectWrite text/font proof in the follow-on platform production plan: keep public headers first-party; platform SDK includes stay in `.cpp` files or private implementation headers.
+- [x] Superseded by the selected Windows DirectWrite text/font proof in the follow-on platform production plan: add manifest/docs rows that say this is Windows host evidence only.
+- [x] Superseded by the selected Windows DirectWrite text/font proof in the follow-on platform production plan: run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_ui_text_adapter_tests
@@ -281,10 +287,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Steps:**
 
-- [ ] Add tests for `RuntimeUiTextEditDocument`, selection ranges, grapheme-safe cursor movement rows, committed-text validation, composition update rows, candidate intent rows, and fail-closed unsupported native candidate UI claims.
-- [ ] Route Windows TSF evidence through private adapter rows without exposing TSF interfaces.
-- [ ] Add package counters: `runtime_ui_text_edit_ready`, `runtime_ui_ime_composition_rows`, `runtime_ui_ime_candidate_intent_rows`, `runtime_ui_ime_native_candidate_ui_ready=0`, `runtime_ui_ime_native_handles_exposed=0`.
-- [ ] Run focused tests and `tools/build-editor.ps1` if editor shell text input is touched.
+- [x] Superseded by the selected Windows TSF native IME session proof in the follow-on platform production plan: add tests for text session, composition, committed text, candidate intent rows, text-area rows, and fail-closed unsupported native candidate UI claims.
+- [x] Superseded by the selected Windows TSF native IME session proof in the follow-on platform production plan: route Windows TSF evidence through private adapter rows without exposing TSF interfaces.
+- [x] Superseded by the selected Windows TSF native IME session proof in the follow-on platform production plan: add package counters for selected TSF session readiness, composition rows, candidate intent rows, text-area rows, native candidate UI non-readiness, and cross-platform non-readiness.
+- [x] Superseded by the selected Windows TSF native IME session proof in the follow-on platform production plan: run focused tests and the required package/editor validation wrapper.
 
 ## Phase 7 - Runtime Accessibility Publication v1
 
@@ -294,10 +300,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Steps:**
 
-- [ ] Add tests for role/name/state/focus/action/relationship/live-region/reading-order rows.
-- [ ] Add Windows UIA provider host evidence behind private adapter code.
-- [ ] Add package counters: `runtime_ui_accessibility_nodes`, `runtime_ui_accessibility_role_rows`, `runtime_ui_accessibility_name_rows`, `runtime_ui_accessibility_action_rows`, `runtime_ui_accessibility_uia_provider_ready`, `runtime_ui_accessibility_cross_platform_ready=0`.
-- [ ] Run focused UIA provider tests, public API boundary check, and package smoke.
+- [x] Superseded by the selected Windows UIA runtime accessibility publication proof in the follow-on platform production plan: add tests for accessibility node, role/name/state/focus/action/relationship/live-region/reading-order publication rows.
+- [x] Superseded by the selected Windows UIA runtime accessibility publication proof in the follow-on platform production plan: add Windows UIA provider host evidence behind private adapter code.
+- [x] Superseded by the selected Windows UIA runtime accessibility publication proof in the follow-on platform production plan: add package counters for accessibility nodes, action/event rows, selected UIA provider readiness, native-handle non-exposure, and cross-platform non-readiness.
+- [x] Superseded by the selected Windows UIA runtime accessibility publication proof in the follow-on platform production plan: run focused UIA provider tests, public API boundary check, and package smoke.
 
 ## Phase 8 - Editor UI Builder Foundation v1
 
@@ -307,11 +313,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Steps:**
 
-- [ ] Add RED tests in `tests/unit/editor_core_tests.cpp` for hierarchy rows, inspector rows, selected element state, style token edits, undoable document edits, invalid authoring file rejection, and no native handle exposure.
-- [ ] Add `editor/core/include/mirakana/editor/ui_authoring.hpp` and `editor/core/src/ui_authoring.cpp`.
-- [ ] Extend `editor/core/include/mirakana/editor/ui_model.hpp` and `editor/core/src/ui_model.cpp` only for shared retained model helpers.
-- [ ] Add visible shell rows in `tests/unit/editor_native_shell_tests.cpp` only after editor-core rows are green.
-- [ ] Run:
+- [x] Superseded by the GUI-independent runtime UI authoring model and visible `runtime_ui_editor` panel proof in the follow-on platform production plan: add RED tests in `tests/unit/editor_core_tests.cpp` for hierarchy rows, inspector rows, selected element state, style token edits, undoable document edits, invalid authoring file rejection, and no native handle exposure.
+- [x] Superseded by the GUI-independent runtime UI authoring model and visible `runtime_ui_editor` panel proof in the follow-on platform production plan: add runtime UI authoring editor-core headers and sources.
+- [x] Superseded by the GUI-independent runtime UI authoring model and visible `runtime_ui_editor` panel proof in the follow-on platform production plan: extend shared retained editor UI model helpers only where needed.
+- [x] Superseded by the GUI-independent runtime UI authoring model and visible `runtime_ui_editor` panel proof in the follow-on platform production plan: add visible shell rows in `tests/unit/editor_native_shell_tests.cpp` only after editor-core rows are green.
+- [x] Superseded by the GUI-independent runtime UI authoring model and visible `runtime_ui_editor` panel proof in the follow-on platform production plan: run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests
@@ -341,9 +347,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 
 **Steps:**
 
-- [ ] Add rows to manifest fragments and docs as host-gated/dependency-gated.
-- [ ] Do not add vcpkg dependencies in this phase.
-- [ ] Run:
+- [x] Superseded by Task 10 in the follow-on platform production plan: add rows to manifest fragments and docs as host-gated/dependency-gated.
+- [x] Superseded by Task 10 in the follow-on platform production plan: do not add vcpkg dependencies in this phase.
+- [x] Superseded by Task 10 in the follow-on platform production plan: run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -367,9 +373,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 
 **Steps:**
 
-- [ ] Add docs that these ids are not implemented and are not public API.
-- [ ] Add static checks rejecting middleware tokens in `engine/ui/include`, `editor/core/include`, and generated game code.
-- [ ] If a middleware adapter is selected by a separate dated implementation plan, run `license-audit`, update dependency docs and notices, add a vcpkg feature or external SDK host gate, and keep the adapter outside public `mirakana::ui`, generated-game, and `MK_editor_core` APIs.
+- [x] Superseded by Task 11 in the follow-on platform production plan: add docs that these ids are not implemented and are not public API.
+- [x] Superseded by Task 11 in the follow-on platform production plan: add static checks rejecting middleware tokens in `engine/ui/include`, `editor/core/include`, and generated game code.
+- [x] Retained as the required future process from Task 11 in the follow-on platform production plan: if a middleware adapter is selected by a separate dated implementation plan, run `license-audit`, update dependency docs and notices, add a vcpkg feature or external SDK host gate, and keep the adapter outside public `mirakana::ui`, generated-game, and `MK_editor_core` APIs.
 
 ## Phase 11 - Closeout And Validation
 
