@@ -13,6 +13,8 @@ $runtimeUiWin32TextSourceText = Get-AgentSurfaceText "engine/platform/win32/src/
 $runtimeUiWin32TextTestText = Get-AgentSurfaceText "tests/unit/win32_ui_text_font_tests.cpp"
 $runtimeUiWin32TextInputHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_text_input.hpp"
 $runtimeUiWin32TextInputSourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_text_input.cpp"
+$runtimeUiWin32AccessibilityHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_ui_accessibility.hpp"
+$runtimeUiWin32AccessibilitySourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_ui_accessibility.cpp"
 $win32PlatformTestText = Get-AgentSurfaceText "tests/unit/win32_platform_tests.cpp"
 $sample2dPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
@@ -318,6 +320,94 @@ Assert-ContainsText $dependencyDocsText "Windows TSF runtime UI IME session adap
 Assert-ContainsText $legalDocsText "Windows TSF native IME session adapter" "docs/legal-and-licensing.md runtime UI TSF adapter"
 Assert-ContainsText $currentCapabilitiesText "Runtime UI Windows TSF Native IME Session v1" "docs/current-capabilities.md"
 Assert-ContainsText $planRegistryText "selected Windows TSF native IME session evidence" "docs/superpowers/plans/README.md"
+
+foreach ($needle in @(
+        "Win32UiaRuntimeNodeRow",
+        "Win32UiaProviderPublicationDesc",
+        "Win32UiaProviderPublicationResult",
+        "publish_runtime_ui_to_win32_uia",
+        "make_win32_uia_accessibility_publication_production_evidence"
+    )) {
+    Assert-ContainsText $runtimeUiWin32AccessibilityHeaderText $needle "Win32 UIA runtime UI accessibility publication public header"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 6"
+}
+
+foreach ($needle in @(
+        "publish_runtime_ui_to_win32_uia",
+        "make_win32_uia_accessibility_publication_production_evidence",
+        "RuntimeUiPlatformProductionFeature::os_accessibility_publication"
+    )) {
+    Assert-ContainsText $win32PlatformTestText $needle "Win32 UIA runtime UI accessibility publication tests"
+}
+
+foreach ($needle in @(
+        "IRawElementProviderSimple",
+        "IInvokeProvider",
+        "GetPatternProvider",
+        "GetPropertyValue",
+        "UiaClientsAreListening",
+        "UiaRaiseAutomationEvent",
+        "UIA_InvokePatternId",
+        "ProviderOptions_ServerSideProvider"
+    )) {
+    Assert-ContainsText $runtimeUiWin32AccessibilitySourceText $needle "Win32 UIA runtime UI accessibility publication source"
+}
+
+foreach ($needle in @(
+        "missing_accessible_name",
+        "duplicate_runtime_id",
+        "invalid_bounds",
+        "focusable_without_action_pattern",
+        "child_without_parent",
+        "unsupported_pattern_claim",
+        "event_claim_without_provider_root",
+        "public_native_handles_exposed",
+        "broad_accessibility_parity_claim"
+    )) {
+    Assert-ContainsText $runtimeUiWin32AccessibilityHeaderText $needle "Win32 UIA runtime UI accessibility publication diagnostics"
+    Assert-ContainsText $win32PlatformTestText $needle "Win32 UIA runtime UI accessibility publication tests"
+}
+
+foreach ($needle in @(
+        "src/win32_ui_accessibility.cpp",
+        "uiautomationcore",
+        "oleaut32"
+    )) {
+    Assert-ContainsText $win32PlatformCMakeText $needle "Win32 platform CMake UIA runtime UI accessibility publication"
+}
+
+foreach ($needle in @(
+        "--require-runtime-ui-uia-publication",
+        "runtime_ui_uia_provider_ready",
+        "runtime_ui_accessibility_nodes",
+        "runtime_ui_accessibility_action_rows",
+        "runtime_ui_accessibility_event_rows",
+        "runtime_ui_accessibility_cross_platform_ready",
+        "runtime_ui_accessibility_native_handles_exposed",
+        "runtime_ui_uia_diagnostics"
+    )) {
+    Assert-ContainsText $sample2dPackageText $needle "sample_2d_desktop_runtime_package runtime UI UIA accessibility publication counters"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 6 package counters"
+    Assert-ContainsText $sample2dManifestText $needle "sample_2d_desktop_runtime_package runtime UI UIA accessibility publication recipe"
+}
+
+foreach ($needle in @(
+        "runtime-ui-win32-uia-accessibility-publication",
+        "os_accessibility_publication"
+    )) {
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness manifest runtime UI UIA accessibility publication"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes manifest runtime UI UIA accessibility publication"
+}
+
+Assert-ContainsText $runtimeBackendReadinessText "Runtime UI Windows UIA Accessibility Publication v1" "runtime backend readiness manifest runtime UI UIA accessibility publication"
+Assert-ContainsText $validationRecipesText "selected Windows UIA runtime UI accessibility publication evidence" "validation recipes manifest runtime UI UIA accessibility publication"
+Assert-ContainsText $moduleManifestText "win32_ui_accessibility.hpp" "module manifest MK_platform_win32 public header"
+Assert-ContainsText $gameCodeGuidanceText "currentRuntimeUiWin32UiaAccessibilityPublication" "game code guidance manifest runtime UI UIA accessibility publication"
+Assert-ContainsText $gameCodeGuidanceText "publish_runtime_ui_to_win32_uia" "game code guidance manifest runtime UI UIA accessibility publication"
+Assert-ContainsText $dependencyDocsText "Windows UI Automation runtime UI accessibility adapter" "docs/dependencies.md runtime UI UIA adapter"
+Assert-ContainsText $legalDocsText "Windows UI Automation runtime UI accessibility adapter" "docs/legal-and-licensing.md runtime UI UIA adapter"
+Assert-ContainsText $currentCapabilitiesText "Runtime UI Windows UIA Accessibility Publication v1" "docs/current-capabilities.md"
+Assert-ContainsText $planRegistryText "selected Windows UIA accessibility publication evidence" "docs/superpowers/plans/README.md"
 
 Assert-ContainsText $gamesCMakeText "MK_platform_win32" "games CMake sample runtime UI font rasterization link"
 

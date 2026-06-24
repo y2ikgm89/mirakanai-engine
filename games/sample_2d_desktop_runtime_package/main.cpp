@@ -66,6 +66,7 @@
 
 #if defined(_WIN32)
 #include "mirakana/platform/win32/win32_text_input.hpp"
+#include "mirakana/platform/win32/win32_ui_accessibility.hpp"
 #include "mirakana/platform/win32/win32_ui_text_font.hpp"
 #endif
 
@@ -137,6 +138,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_font_rasterization{false};
     bool require_runtime_ui_tsf_session{false};
+    bool require_runtime_ui_uia_publication{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
     bool require_wasapi_audio{false};
@@ -2006,6 +2008,28 @@ struct RuntimeUiTsfSessionProbeResult {
     bool native_handles_exposed{false};
 };
 
+struct RuntimeUiUiaPublicationProbeResult {
+    bool ready{false};
+    bool evidence_ready{false};
+    bool provider_root_available{false};
+    std::size_t nodes{0U};
+    std::size_t role_rows{0U};
+    std::size_t name_rows{0U};
+    std::size_t description_rows{0U};
+    std::size_t state_rows{0U};
+    std::size_t focus_rows{0U};
+    std::size_t action_rows{0U};
+    std::size_t relationship_rows{0U};
+    std::size_t reading_order_rows{0U};
+    std::size_t live_region_rows{0U};
+    std::size_t keyboard_pattern_rows{0U};
+    std::size_t bounds_rows{0U};
+    std::size_t event_rows{0U};
+    std::size_t diagnostics{0U};
+    bool cross_platform_ready{false};
+    bool native_handles_exposed{false};
+};
+
 struct RuntimeUiRendererAtlasHandoffProbeResult {
     bool ready{false};
     bool selected_package_evidence_ready{false};
@@ -3678,6 +3702,81 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
                    result.candidate_intent_rows == 1U && result.text_area_rows == 1U &&
                    result.committed_text_rows == 1U && !result.native_candidate_ui_ready &&
                    !result.cross_platform_ready && !result.native_handles_exposed;
+#else
+    result.diagnostics = 1U;
+#endif
+    return result;
+}
+
+[[nodiscard]] RuntimeUiUiaPublicationProbeResult validate_runtime_ui_uia_publication_package_evidence() {
+    RuntimeUiUiaPublicationProbeResult result;
+#if defined(_WIN32)
+    const mirakana::ui::ElementId root{.value = "sample-2d-runtime-ui-uia-root"};
+    const mirakana::ui::ElementId pause{.value = "sample-2d-runtime-ui-uia-pause"};
+    const auto
+        publication_result =
+            mirakana::win32::publish_runtime_ui_to_win32_uia(
+                mirakana::win32::Win32UiaProviderPublicationDesc{
+                    .provider_root_id = root,
+                    .nodes =
+                        {
+                            mirakana::win32::Win32UiaRuntimeNodeRow{
+                                .runtime_id = root,
+                                .child_runtime_ids = {pause},
+                                .role = mirakana::ui::SemanticRole::panel,
+                                .name = "HUD root",
+                                .description = "Sample runtime HUD root",
+                                .screen_bounds =
+                                    mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 1280.0F, .height = 720.0F},
+                                .reading_order = 0U,
+                                .live_region_status = "off",
+                            },
+                            mirakana::win32::Win32UiaRuntimeNodeRow{
+                                .runtime_id = pause,
+                                .parent_runtime_id = root,
+                                .role = mirakana::ui::SemanticRole::button,
+                                .name = "Pause",
+                                .description = "Open pause menu",
+                                .screen_bounds =
+                                    mirakana::ui::Rect{.x = 16.0F, .y = 16.0F, .width = 96.0F, .height = 32.0F},
+                                .focusable = true,
+                                .focused = true,
+                                .action_ids = {"invoke"},
+                                .invoke_pattern_supported = true,
+                                .reading_order = 1U,
+                                .keyboard_shortcut = "Esc",
+                                .event_publication_requested = true,
+                            },
+                        },
+                    .publish_events = true,
+                    .row_budget = 16U,
+                });
+    const auto evidence =
+        mirakana::win32::make_win32_uia_accessibility_publication_production_evidence(publication_result);
+    result.evidence_ready = evidence.ready;
+    result.provider_root_available = publication_result.uia_provider_root_available && evidence.host_evidence_available;
+    result.nodes = publication_result.node_rows.size();
+    result.role_rows = publication_result.role_rows;
+    result.name_rows = publication_result.name_rows;
+    result.description_rows = publication_result.description_rows;
+    result.state_rows = publication_result.state_rows;
+    result.focus_rows = publication_result.focus_rows;
+    result.action_rows = publication_result.action_rows;
+    result.relationship_rows = publication_result.relationship_rows;
+    result.reading_order_rows = publication_result.reading_order_rows;
+    result.live_region_rows = publication_result.live_region_rows;
+    result.keyboard_pattern_rows = publication_result.keyboard_pattern_rows;
+    result.bounds_rows = publication_result.bounds_rows;
+    result.event_rows = publication_result.event_publication_rows;
+    result.diagnostics = publication_result.diagnostics.size();
+    result.cross_platform_ready = publication_result.cross_platform_accessibility_ready;
+    result.native_handles_exposed = publication_result.public_native_handles_exposed || evidence.public_native_handles;
+    result.ready = publication_result.succeeded() && result.evidence_ready && result.provider_root_available &&
+                   result.nodes == 2U && result.role_rows == 2U && result.name_rows == 2U &&
+                   result.description_rows == 2U && result.state_rows == 2U && result.focus_rows == 1U &&
+                   result.action_rows == 1U && result.relationship_rows == 1U && result.reading_order_rows == 2U &&
+                   result.live_region_rows == 1U && result.keyboard_pattern_rows == 1U && result.bounds_rows == 2U &&
+                   result.event_rows == 1U && !result.cross_platform_ready && !result.native_handles_exposed;
 #else
     result.diagnostics = 1U;
 #endif
@@ -10979,6 +11078,10 @@ void print_usage() {
             options.require_runtime_ui_tsf_session = true;
             continue;
         }
+        if (arg == "--require-runtime-ui-uia-publication") {
+            options.require_runtime_ui_uia_publication = true;
+            continue;
+        }
         if (arg == "--require-runtime-ui-renderer-atlas-handoff") {
             options.require_runtime_ui_renderer_atlas_handoff = true;
             continue;
@@ -11736,6 +11839,9 @@ int main(int argc, char** argv) {
     const auto runtime_ui_tsf_session_probe = options.require_runtime_ui_tsf_session
                                                   ? validate_runtime_ui_tsf_session_package_evidence()
                                                   : RuntimeUiTsfSessionProbeResult{};
+    const auto runtime_ui_uia_publication_probe = options.require_runtime_ui_uia_publication
+                                                      ? validate_runtime_ui_uia_publication_package_evidence()
+                                                      : RuntimeUiUiaPublicationProbeResult{};
     const auto runtime_ui_renderer_atlas_handoff_probe =
         options.require_runtime_ui_renderer_atlas_handoff && runtime_package.has_value()
             ? validate_runtime_ui_renderer_atlas_handoff_package_evidence(*runtime_package)
@@ -12868,6 +12974,15 @@ int main(int argc, char** argv) {
         << (runtime_ui_tsf_session_probe.native_candidate_ui_ready ? 1 : 0)
         << " runtime_ui_ime_cross_platform_ready=" << (runtime_ui_tsf_session_probe.cross_platform_ready ? 1 : 0)
         << " runtime_ui_tsf_diagnostics=" << runtime_ui_tsf_session_probe.diagnostics
+        << " runtime_ui_uia_provider_ready=" << (runtime_ui_uia_publication_probe.ready ? 1 : 0)
+        << " runtime_ui_accessibility_nodes=" << runtime_ui_uia_publication_probe.nodes
+        << " runtime_ui_accessibility_action_rows=" << runtime_ui_uia_publication_probe.action_rows
+        << " runtime_ui_accessibility_event_rows=" << runtime_ui_uia_publication_probe.event_rows
+        << " runtime_ui_accessibility_cross_platform_ready="
+        << (runtime_ui_uia_publication_probe.cross_platform_ready ? 1 : 0)
+        << " runtime_ui_accessibility_native_handles_exposed="
+        << (runtime_ui_uia_publication_probe.native_handles_exposed ? 1 : 0)
+        << " runtime_ui_uia_diagnostics=" << runtime_ui_uia_publication_probe.diagnostics
         << " runtime_ui_renderer_atlas_handoff_status="
         << runtime_ui_renderer_atlas_handoff_status_name(runtime_ui_renderer_atlas_handoff_probe.status)
         << " runtime_ui_renderer_atlas_handoff_ready=" << (runtime_ui_renderer_atlas_handoff_probe.ready ? 1 : 0)
@@ -14263,6 +14378,36 @@ int main(int argc, char** argv) {
                   << (runtime_ui_tsf_session_probe.native_handles_exposed ? 1 : 0)
                   << " runtime_ui_tsf_diagnostics=" << runtime_ui_tsf_session_probe.diagnostics << '\n';
         return 59;
+    }
+
+    if (options.require_runtime_ui_uia_publication && !runtime_ui_uia_publication_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_uia_publication_unavailable"
+                  << " runtime_ui_uia_provider_ready=" << (runtime_ui_uia_publication_probe.ready ? 1 : 0)
+                  << " runtime_ui_uia_evidence_ready=" << (runtime_ui_uia_publication_probe.evidence_ready ? 1 : 0)
+                  << " runtime_ui_uia_provider_root="
+                  << (runtime_ui_uia_publication_probe.provider_root_available ? 1 : 0)
+                  << " runtime_ui_accessibility_nodes=" << runtime_ui_uia_publication_probe.nodes
+                  << " runtime_ui_accessibility_role_rows=" << runtime_ui_uia_publication_probe.role_rows
+                  << " runtime_ui_accessibility_name_rows=" << runtime_ui_uia_publication_probe.name_rows
+                  << " runtime_ui_accessibility_description_rows=" << runtime_ui_uia_publication_probe.description_rows
+                  << " runtime_ui_accessibility_state_rows=" << runtime_ui_uia_publication_probe.state_rows
+                  << " runtime_ui_accessibility_focus_rows=" << runtime_ui_uia_publication_probe.focus_rows
+                  << " runtime_ui_accessibility_action_rows=" << runtime_ui_uia_publication_probe.action_rows
+                  << " runtime_ui_accessibility_relationship_rows="
+                  << runtime_ui_uia_publication_probe.relationship_rows
+                  << " runtime_ui_accessibility_reading_order_rows="
+                  << runtime_ui_uia_publication_probe.reading_order_rows
+                  << " runtime_ui_accessibility_live_region_rows=" << runtime_ui_uia_publication_probe.live_region_rows
+                  << " runtime_ui_accessibility_keyboard_pattern_rows="
+                  << runtime_ui_uia_publication_probe.keyboard_pattern_rows
+                  << " runtime_ui_accessibility_bounds_rows=" << runtime_ui_uia_publication_probe.bounds_rows
+                  << " runtime_ui_accessibility_event_rows=" << runtime_ui_uia_publication_probe.event_rows
+                  << " runtime_ui_accessibility_cross_platform_ready="
+                  << (runtime_ui_uia_publication_probe.cross_platform_ready ? 1 : 0)
+                  << " runtime_ui_accessibility_native_handles_exposed="
+                  << (runtime_ui_uia_publication_probe.native_handles_exposed ? 1 : 0)
+                  << " runtime_ui_uia_diagnostics=" << runtime_ui_uia_publication_probe.diagnostics << '\n';
+        return 60;
     }
 
     if (options.require_runtime_ui_renderer_atlas_handoff && !runtime_ui_renderer_atlas_handoff_probe.ready) {

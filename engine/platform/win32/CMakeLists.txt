@@ -8,6 +8,7 @@ add_library(mirakana_platform_win32
     src/win32_input.cpp
     src/win32_runtime.cpp
     src/win32_text_input.cpp
+    src/win32_ui_accessibility.cpp
     src/win32_ui_text_font.cpp
     src/win32_utf.cpp
     src/win32_window.cpp
@@ -26,6 +27,8 @@ target_link_libraries(mirakana_platform_win32
         mirakana_ui
     PRIVATE
         ole32
+        oleaut32
+        uiautomationcore
         dwrite
         shell32
         user32
