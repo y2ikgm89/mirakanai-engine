@@ -126,6 +126,7 @@ foreach ($needle in @(
         "public_native_handles",
         "dependency_not_recorded",
         "host_evidence_missing",
+        "dependency_gate_missing",
         "renderer_upload_missing",
         "external_engine_parity_claim",
         "middleware_api_exposure",
