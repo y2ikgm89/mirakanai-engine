@@ -6,10 +6,14 @@
 #include "mirakana/ui/runtime_ui_platform_production.hpp"
 
 #include <algorithm>
+#include <array>
+#include <string_view>
 #include <vector>
 
 namespace {
 
+using mirakana::ui::RuntimeUiPlatformAdapterGateRow;
+using mirakana::ui::RuntimeUiPlatformAdapterGateStatus;
 using mirakana::ui::RuntimeUiPlatformProductionDiagnostic;
 using mirakana::ui::RuntimeUiPlatformProductionDiagnosticCode;
 using mirakana::ui::RuntimeUiPlatformProductionEvidenceRow;
@@ -19,6 +23,12 @@ using mirakana::ui::RuntimeUiPlatformProductionProofKind;
 [[nodiscard]] bool has_diagnostic(const std::vector<RuntimeUiPlatformProductionDiagnostic>& diagnostics,
                                   RuntimeUiPlatformProductionDiagnosticCode code) {
     return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+[[nodiscard]] const RuntimeUiPlatformAdapterGateRow* find_gate(std::string_view id) {
+    const auto rows = mirakana::ui::runtime_ui_platform_adapter_gate_rows();
+    const auto iter = std::ranges::find_if(rows, [id](const auto& row) { return row.id == id; });
+    return iter == rows.end() ? nullptr : &(*iter);
 }
 
 [[nodiscard]] RuntimeUiPlatformProductionEvidenceRow
@@ -68,6 +78,25 @@ make_row(RuntimeUiPlatformProductionFeature feature, RuntimeUiPlatformProduction
     rows[6].renderer_upload_executed = true;
     return rows;
 }
+
+constexpr std::array<std::string_view, 16U> kExpectedAdapterGateIds{
+    "runtime_ui.adapter.windows.directwrite",
+    "runtime_ui.adapter.windows.tsf",
+    "runtime_ui.adapter.windows.uia",
+    "runtime_ui.upload.windows.d3d12",
+    "runtime_ui.adapter.macos.core_text",
+    "runtime_ui.adapter.macos.input_method_kit",
+    "runtime_ui.adapter.macos.nsaccessibility",
+    "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+    "runtime_ui.adapter.linux.freetype",
+    "runtime_ui.adapter.linux.at_spi",
+    "runtime_ui.adapter.android.text_input",
+    "runtime_ui.adapter.android.accessibility",
+    "runtime_ui.adapter.ios.uitextinput",
+    "runtime_ui.adapter.ios.uiaccessibility",
+    "runtime_ui.upload.vulkan",
+    "runtime_ui.upload.metal",
+};
 
 } // namespace
 
@@ -147,6 +176,84 @@ MK_TEST("runtime ui platform production gate becomes ready only with all selecte
     MK_REQUIRE(result.ready_rows == 8U);
     MK_REQUIRE(result.unsupported_non_claim_rows == 1U);
     MK_REQUIRE(result.diagnostics.empty());
+}
+
+MK_TEST("runtime ui platform adapter gate rows expose exact cross-platform gate ids") {
+    const auto rows = mirakana::ui::runtime_ui_platform_adapter_gate_rows();
+
+    MK_REQUIRE(rows.size() == kExpectedAdapterGateIds.size());
+    for (const auto id : kExpectedAdapterGateIds) {
+        const auto* row = find_gate(id);
+        MK_REQUIRE(row != nullptr);
+        MK_REQUIRE(row->id == id);
+    }
+    for (std::size_t outer = 0U; outer < rows.size(); ++outer) {
+        for (std::size_t inner = outer + 1U; inner < rows.size(); ++inner) {
+            MK_REQUIRE(rows[outer].id != rows[inner].id);
+        }
+    }
+}
+
+MK_TEST("runtime ui platform adapter gate rows mark only Windows and D3D12 lanes selected") {
+    const auto rows = mirakana::ui::runtime_ui_platform_adapter_gate_rows();
+
+    const auto selected_rows = std::ranges::count_if(
+        rows, [](const auto& row) { return row.status == RuntimeUiPlatformAdapterGateStatus::selected_proof; });
+    const auto host_gated_rows = std::ranges::count_if(
+        rows, [](const auto& row) { return row.status == RuntimeUiPlatformAdapterGateStatus::host_gated; });
+    const auto dependency_gated_rows = std::ranges::count_if(
+        rows, [](const auto& row) { return row.status == RuntimeUiPlatformAdapterGateStatus::dependency_gated; });
+    const auto unsupported_rows = std::ranges::count_if(
+        rows, [](const auto& row) { return row.status == RuntimeUiPlatformAdapterGateStatus::unsupported; });
+
+    MK_REQUIRE(selected_rows == 4);
+    MK_REQUIRE(host_gated_rows == 10);
+    MK_REQUIRE(dependency_gated_rows == 2);
+    MK_REQUIRE(unsupported_rows == 0);
+
+    for (const auto id : {"runtime_ui.adapter.windows.directwrite", "runtime_ui.adapter.windows.tsf",
+                          "runtime_ui.adapter.windows.uia", "runtime_ui.upload.windows.d3d12"}) {
+        const auto* row = find_gate(id);
+        MK_REQUIRE(row != nullptr);
+        MK_REQUIRE(row->selected);
+        MK_REQUIRE(row->ready);
+        MK_REQUIRE(row->blocker.empty());
+    }
+}
+
+MK_TEST("runtime ui platform adapter gate rows keep unimplemented lanes fail-closed with blockers") {
+    const auto rows = mirakana::ui::runtime_ui_platform_adapter_gate_rows();
+
+    for (const auto& row : rows) {
+        if (row.status == RuntimeUiPlatformAdapterGateStatus::selected_proof) {
+            continue;
+        }
+        MK_REQUIRE(!row.selected);
+        MK_REQUIRE(!row.ready);
+        MK_REQUIRE(!row.blocker.empty());
+    }
+
+    const auto* harfbuzz_fontconfig = find_gate("runtime_ui.adapter.linux.harfbuzz_fontconfig");
+    const auto* freetype = find_gate("runtime_ui.adapter.linux.freetype");
+    const auto* vulkan = find_gate("runtime_ui.upload.vulkan");
+    const auto* metal = find_gate("runtime_ui.upload.metal");
+    MK_REQUIRE(harfbuzz_fontconfig != nullptr);
+    MK_REQUIRE(freetype != nullptr);
+    MK_REQUIRE(vulkan != nullptr);
+    MK_REQUIRE(metal != nullptr);
+    MK_REQUIRE(harfbuzz_fontconfig->status == RuntimeUiPlatformAdapterGateStatus::dependency_gated);
+    MK_REQUIRE(freetype->status == RuntimeUiPlatformAdapterGateStatus::dependency_gated);
+    MK_REQUIRE(vulkan->status == RuntimeUiPlatformAdapterGateStatus::host_gated);
+    MK_REQUIRE(metal->status == RuntimeUiPlatformAdapterGateStatus::host_gated);
+    MK_REQUIRE(harfbuzz_fontconfig->blocker ==
+               "requires explicit non-default audited HarfBuzz/Fontconfig dependency selection, vcpkg feature, and "
+               "legal notices");
+    MK_REQUIRE(freetype->blocker ==
+               "requires explicit non-default audited FreeType dependency selection, vcpkg feature, and legal notices");
+    MK_REQUIRE(vulkan->blocker ==
+               "requires selected Vulkan runtime UI atlas upload/readback execution evidence on a ready Vulkan host");
+    MK_REQUIRE(metal->blocker ==
+               "requires selected Metal runtime UI atlas upload/readback execution evidence on an Apple host");
 }
 
 MK_TEST("runtime ui platform production gate accepts selected Windows DirectWrite text shaping evidence") {

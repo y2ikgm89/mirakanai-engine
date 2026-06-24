@@ -645,8 +645,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 - Modify: `docs/current-capabilities.md`
 - Modify: `engine/agent/manifest.fragments/006-runtimeBackendReadiness.json`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+- Modify: `tests/unit/runtime_ui_platform_production_tests.cpp`
+- Modify: `tools/check-ai-integration-123-runtime-ui-platform-production.ps1`
 
-- [ ] Add gate ids:
+- [x] Add `RuntimeUiPlatformAdapterGateStatus`, `RuntimeUiPlatformAdapterGateRow`, `runtime_ui_platform_adapter_gate_status_name`, and `runtime_ui_platform_adapter_gate_rows`.
+- [x] Add gate ids:
 
 ```text
 runtime_ui.adapter.windows.directwrite
@@ -667,9 +671,9 @@ runtime_ui.upload.vulkan
 runtime_ui.upload.metal
 ```
 
-- [ ] Mark only implemented Windows/D3D12 rows as selected proof. Mark all unimplemented rows as host-gated or dependency-gated with exact blocker strings.
-- [ ] Do not add optional dependencies in this task.
-- [ ] Run:
+- [x] Mark only implemented Windows/D3D12 rows as selected proof. Mark all unimplemented rows as host-gated or dependency-gated with exact blocker strings.
+- [x] Do not add optional dependencies in this task.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -682,6 +686,22 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 **Expected:** Manifest/docs identify selected, host-gated, dependency-gated, and unsupported rows without changing unrelated production gap state.
 
 **Done When:** Cross-platform UI capability claims are machine-readable and fail closed.
+
+### Task 10 Implementation Evidence - 2026-06-24
+
+| Command / check | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_platform_production_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_platform_production_tests"` | Passed: 1/1 test. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed: `first-party-ui-clean-room: ok`, `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed: `agent-config-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Passed: `text-format-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed: `format-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed: `validate: ok`, 154/154 CTest tests. |
 
 ## Task 11 - Optional Dependency Adapter Selection Gate
 

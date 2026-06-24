@@ -56,6 +56,13 @@ enum class RuntimeUiPlatformProductionDiagnosticCode : std::uint8_t {
     invalid_non_claim_proof,
 };
 
+enum class RuntimeUiPlatformAdapterGateStatus : std::uint8_t {
+    selected_proof,
+    host_gated,
+    dependency_gated,
+    unsupported,
+};
+
 struct RuntimeUiPlatformProductionEvidenceRow {
     std::string id;
     RuntimeUiPlatformProductionFeature feature{RuntimeUiPlatformProductionFeature::visible_ui_editor};
@@ -93,10 +100,22 @@ struct RuntimeUiPlatformProductionResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct RuntimeUiPlatformAdapterGateRow {
+    std::string_view id;
+    RuntimeUiPlatformProductionProofKind proof{RuntimeUiPlatformProductionProofKind::host_gate};
+    RuntimeUiPlatformAdapterGateStatus status{RuntimeUiPlatformAdapterGateStatus::host_gated};
+    bool selected{false};
+    bool ready{false};
+    std::string_view blocker;
+};
+
 [[nodiscard]] std::string_view
 runtime_ui_platform_production_feature_name(RuntimeUiPlatformProductionFeature feature) noexcept;
 [[nodiscard]] std::string_view
 runtime_ui_platform_production_proof_name(RuntimeUiPlatformProductionProofKind proof) noexcept;
+[[nodiscard]] std::string_view
+runtime_ui_platform_adapter_gate_status_name(RuntimeUiPlatformAdapterGateStatus status) noexcept;
+[[nodiscard]] std::span<const RuntimeUiPlatformAdapterGateRow> runtime_ui_platform_adapter_gate_rows() noexcept;
 [[nodiscard]] RuntimeUiPlatformProductionResult
 evaluate_runtime_ui_platform_production(std::span<const RuntimeUiPlatformProductionEvidenceRow> rows,
                                         std::size_t row_budget = 64U);
