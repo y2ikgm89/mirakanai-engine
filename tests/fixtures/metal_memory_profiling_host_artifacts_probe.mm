@@ -150,7 +150,6 @@ int main(int argc, char** argv) {
         if (device == nil) {
             fail(@"MTLCreateSystemDefaultDevice returned nil");
         }
-        device.label = @"GameEngine.RHI.Metal.MemoryProfiling.Device";
 
         id<MTLCommandQueue> command_queue = [device newCommandQueue];
         if (command_queue == nil) {
