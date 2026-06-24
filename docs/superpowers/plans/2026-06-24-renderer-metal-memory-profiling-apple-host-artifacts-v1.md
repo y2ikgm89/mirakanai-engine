@@ -230,4 +230,4 @@ Run publication preflight, commit task-owned files, push branch, open draft PR, 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed. |
 | `git diff --check` | Passed. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `git diff --check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after direct `newResidencySetWithDescriptor:error:` and `MTLResidencySet.commit()` fix | Passed on Windows; latest full validation log root `out/validation-logs/validate-20260625-013433-8348`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `git diff --check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after direct `newResidencySetWithDescriptor:error:` and `MTLResidencySet.commit()` fix | Passed on Windows; latest full validation log root `out/validation-logs/validate-20260625-014501-24648`. |
