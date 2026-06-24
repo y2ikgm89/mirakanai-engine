@@ -266,7 +266,7 @@ MK_TEST("editor native shell no-user-config disables first-party shell persisten
 MK_TEST("editor native shell app exposes the core backed panel set") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
-    MK_REQUIRE(app.native_panel_count() == 11U);
+    MK_REQUIRE(app.native_panel_count() == 12U);
     MK_REQUIRE(app.has_native_panel("main_menu"));
     MK_REQUIRE(app.has_native_panel("scene"));
     MK_REQUIRE(app.has_native_panel("inspector"));
@@ -277,7 +277,15 @@ MK_TEST("editor native shell app exposes the core backed panel set") {
     MK_REQUIRE(app.has_native_panel("profiler"));
     MK_REQUIRE(app.has_native_panel("timeline"));
     MK_REQUIRE(app.has_native_panel("project_settings"));
+    MK_REQUIRE(app.has_native_panel("runtime_ui_editor"));
     MK_REQUIRE(app.has_native_panel("viewport"));
+
+    const auto& runtime_ui = app.runtime_ui_authoring();
+    MK_REQUIRE(runtime_ui.ready);
+    MK_REQUIRE(runtime_ui.hierarchy_rows.size() >= 2U);
+    MK_REQUIRE(runtime_ui.inspector_rows.size() >= 3U);
+    MK_REQUIRE(!runtime_ui.native_handles_exposed);
+    MK_REQUIRE(!runtime_ui.renderer_execution_requested);
 }
 
 MK_TEST("editor first party document includes visible panel roots") {
@@ -299,6 +307,47 @@ MK_TEST("editor first party document includes visible panel roots") {
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.profiler"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.timeline"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.project_settings"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor"));
+}
+
+MK_TEST("editor first party document exposes runtime UI editor authoring rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor.runtime_ui.hierarchy"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor.runtime_ui.hierarchy.root"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor.runtime_ui.inspector"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.inspector.selected.label"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor.runtime_ui.style_tokens"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.style_tokens.button.primary"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor.runtime_ui.preview"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor.runtime_ui.preview.document"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.preview.renderer_upload_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.platform_readiness.text_font_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.platform_readiness.ime_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.platform_readiness.accessibility_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.platform_readiness.renderer_upload_status"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.clean_room.external_engine_parity_claim"));
+    MK_REQUIRE(contains_element(shell_document.document,
+                                "editor.panel.runtime_ui_editor.runtime_ui.clean_room.native_handles_exposed"));
+
+    MK_REQUIRE(counters.runtime_ui_editor_panel_visible);
+    MK_REQUIRE(counters.runtime_ui_editor_hierarchy_rows >= 2U);
+    MK_REQUIRE(counters.runtime_ui_editor_inspector_rows >= 3U);
+    MK_REQUIRE(counters.runtime_ui_editor_style_rows >= 2U);
+    MK_REQUIRE(counters.runtime_ui_editor_preview_rows >= 1U);
+    MK_REQUIRE(!counters.runtime_ui_editor_external_engine_parity_claim);
+    MK_REQUIRE(!counters.runtime_ui_editor_native_handles_exposed);
 }
 
 MK_TEST("editor first party document renders dock tab headers gutters and focused active panels") {
@@ -335,10 +384,10 @@ MK_TEST("editor first party document renders dock tab headers gutters and focuse
     MK_REQUIRE(viewport_panel != nullptr);
     MK_REQUIRE(viewport_panel->style.background_token == "editor.panel.focused");
     MK_REQUIRE(shell_document.focused_element.value == "editor.dock.dock.viewport_stack.tab.viewport");
-    MK_REQUIRE(shell_document.tab_header_count == 11U);
+    MK_REQUIRE(shell_document.tab_header_count == 12U);
     MK_REQUIRE(shell_document.split_gutter_count == 3U);
     MK_REQUIRE(shell_document.active_panel_count == 4U);
-    MK_REQUIRE(shell_document.focusable_dock_control_count == 11U);
+    MK_REQUIRE(shell_document.focusable_dock_control_count == 12U);
     MK_REQUIRE(shell_document.docking_status == "single_window_ready");
 }
 
@@ -370,8 +419,8 @@ MK_TEST("editor first party document disables hidden dock tab commands") {
     MK_REQUIRE(!resources_tab->enabled);
     MK_REQUIRE(resources_tab->style.background_token == "editor.dock.tab.disabled");
     MK_REQUIRE(resources_panel == nullptr);
-    MK_REQUIRE(shell_document.tab_header_count == 11U);
-    MK_REQUIRE(shell_document.focusable_dock_control_count == 10U);
+    MK_REQUIRE(shell_document.tab_header_count == 12U);
+    MK_REQUIRE(shell_document.focusable_dock_control_count == 11U);
 }
 
 MK_TEST("editor first party document keeps stable semantic element ids") {
@@ -614,15 +663,15 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(counters.ui == "first_party");
     MK_REQUIRE(!counters.imgui_enabled);
     MK_REQUIRE(counters.backend == "d3d12");
-    MK_REQUIRE(counters.panel_count == 11U);
+    MK_REQUIRE(counters.panel_count == 12U);
     MK_REQUIRE(!counters.sdl3_enabled);
     MK_REQUIRE(!counters.viewport_native_handles_exposed);
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
     MK_REQUIRE(counters.docking_status == "single_window_ready");
-    MK_REQUIRE(counters.dock_tab_header_count == 11U);
+    MK_REQUIRE(counters.dock_tab_header_count == 12U);
     MK_REQUIRE(counters.dock_split_gutter_count == 3U);
     MK_REQUIRE(counters.dock_active_panel_count == 4U);
-    MK_REQUIRE(counters.dock_focusable_control_count == 11U);
+    MK_REQUIRE(counters.dock_focusable_control_count == 12U);
 }
 
 MK_TEST("editor first party win32 host result defaults to explicit no backend") {
@@ -1103,15 +1152,15 @@ MK_TEST("editor native shell app records deterministic panel smoke counters") {
     MK_REQUIRE(app.dock_active_panels_last_frame() == 0U);
     MK_REQUIRE(app.dock_focusable_controls_last_frame() == 0U);
 
-    app.record_native_panels_rendered(11U);
-    app.record_native_docking_frame("single_window_ready", 11U, 3U, 4U, 11U);
+    app.record_native_panels_rendered(12U);
+    app.record_native_docking_frame("single_window_ready", 12U, 3U, 4U, 12U);
 
-    MK_REQUIRE(app.panels_rendered_last_frame() == 11U);
+    MK_REQUIRE(app.panels_rendered_last_frame() == 12U);
     MK_REQUIRE(app.docking_status_last_frame() == "single_window_ready");
-    MK_REQUIRE(app.dock_tab_headers_last_frame() == 11U);
+    MK_REQUIRE(app.dock_tab_headers_last_frame() == 12U);
     MK_REQUIRE(app.dock_split_gutters_last_frame() == 3U);
     MK_REQUIRE(app.dock_active_panels_last_frame() == 4U);
-    MK_REQUIRE(app.dock_focusable_controls_last_frame() == 11U);
+    MK_REQUIRE(app.dock_focusable_controls_last_frame() == 12U);
 }
 
 MK_TEST("editor first party shell smoke counters expose visible texture readiness") {

@@ -484,7 +484,7 @@ MK_TEST("editor workspace creates required default panels") {
 
     MK_REQUIRE(workspace.project().name == "sample");
     MK_REQUIRE(workspace.project().root_path == "games/sample");
-    MK_REQUIRE(workspace.panel_count() == 11);
+    MK_REQUIRE(workspace.panel_count() == 12);
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::scene));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::inspector));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::assets));
@@ -494,6 +494,7 @@ MK_TEST("editor workspace creates required default panels") {
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::ai_commands));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::input_rebinding));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
+    MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::runtime_ui_editor));
 }
 
 MK_TEST("editor workspace toggles optional panels") {
@@ -506,6 +507,7 @@ MK_TEST("editor workspace toggles optional panels") {
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::project_settings));
     MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::timeline));
+    MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::runtime_ui_editor));
 
     workspace.set_panel_visible(mirakana::editor::PanelId::resources, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::ai_commands, true);
@@ -513,6 +515,7 @@ MK_TEST("editor workspace toggles optional panels") {
     workspace.set_panel_visible(mirakana::editor::PanelId::profiler, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::project_settings, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::timeline, true);
+    workspace.set_panel_visible(mirakana::editor::PanelId::runtime_ui_editor, true);
 
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::resources));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::ai_commands));
@@ -520,6 +523,7 @@ MK_TEST("editor workspace toggles optional panels") {
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::project_settings));
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::timeline));
+    MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::runtime_ui_editor));
 }
 
 MK_TEST("editor workspace serializes and restores panel state") {
@@ -540,10 +544,12 @@ MK_TEST("editor workspace serializes and restores panel state") {
     workspace.set_panel_visible(mirakana::editor::PanelId::resources, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::ai_commands, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::input_rebinding, true);
+    workspace.set_panel_visible(mirakana::editor::PanelId::runtime_ui_editor, true);
     const auto serialized_with_resources = mirakana::editor::serialize_workspace(workspace);
     MK_REQUIRE(serialized_with_resources.contains("panel.resources=visible"));
     MK_REQUIRE(serialized_with_resources.contains("panel.ai_commands=visible"));
     MK_REQUIRE(serialized_with_resources.contains("panel.input_rebinding=visible"));
+    MK_REQUIRE(serialized_with_resources.contains("panel.runtime_ui_editor=visible"));
     MK_REQUIRE(serialized.contains("panel.profiler=visible"));
 
     const auto restored = mirakana::editor::deserialize_workspace(serialized_with_resources);
@@ -553,6 +559,7 @@ MK_TEST("editor workspace serializes and restores panel state") {
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::resources));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::ai_commands));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::input_rebinding));
+    MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::runtime_ui_editor));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::profiler));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::scene));
     MK_REQUIRE(restored.dock_layout().root_id == "dock.root");
@@ -631,9 +638,10 @@ MK_TEST("editor core dock panel catalog aligns shell chrome native shell and wor
     const auto catalog = mirakana::editor::editor_dock_panel_catalog();
     const auto* main_menu = mirakana::editor::find_editor_dock_panel(catalog, "main_menu");
     const auto* input_rebinding = mirakana::editor::find_editor_dock_panel(catalog, "input_rebinding");
+    const auto* runtime_ui_editor = mirakana::editor::find_editor_dock_panel(catalog, "runtime_ui_editor");
     const auto* viewport = mirakana::editor::find_editor_dock_panel(catalog, "viewport");
 
-    MK_REQUIRE(catalog.size() == 12U);
+    MK_REQUIRE(catalog.size() == 13U);
     MK_REQUIRE(main_menu != nullptr);
     MK_REQUIRE(main_menu->shell_chrome);
     MK_REQUIRE(!main_menu->workspace_panel);
@@ -642,6 +650,11 @@ MK_TEST("editor core dock panel catalog aligns shell chrome native shell and wor
     MK_REQUIRE(!input_rebinding->shell_chrome);
     MK_REQUIRE(input_rebinding->workspace_panel);
     MK_REQUIRE(!input_rebinding->native_shell_panel);
+    MK_REQUIRE(runtime_ui_editor != nullptr);
+    MK_REQUIRE(!runtime_ui_editor->shell_chrome);
+    MK_REQUIRE(runtime_ui_editor->workspace_panel);
+    MK_REQUIRE(runtime_ui_editor->native_shell_panel);
+    MK_REQUIRE(runtime_ui_editor->label == "Runtime UI Editor");
     MK_REQUIRE(viewport != nullptr);
     MK_REQUIRE(viewport->workspace_panel);
     MK_REQUIRE(viewport->native_shell_panel);
@@ -1379,6 +1392,7 @@ MK_TEST("editor ai operation snapshot exposes visible panel rows") {
     const auto snapshot = mirakana::editor::make_editor_ai_operation_snapshot(workspace);
     const auto* scene = find_ai_operation_element(snapshot, "editor.panel.scene");
     const auto* resources = find_ai_operation_element(snapshot, "editor.panel.resources");
+    const auto* runtime_ui_editor = find_ai_operation_element(snapshot, "editor.panel.runtime_ui_editor");
 
     MK_REQUIRE(snapshot.revision > 0U);
     MK_REQUIRE(snapshot.diagnostics.empty());
@@ -1392,6 +1406,11 @@ MK_TEST("editor ai operation snapshot exposes visible panel rows") {
     MK_REQUIRE(resources->label == "Resources");
     MK_REQUIRE(!resources->visible);
     MK_REQUIRE(resources->enabled);
+    MK_REQUIRE(runtime_ui_editor != nullptr);
+    MK_REQUIRE(runtime_ui_editor->role == "panel");
+    MK_REQUIRE(runtime_ui_editor->label == "Runtime UI Editor");
+    MK_REQUIRE(!runtime_ui_editor->visible);
+    MK_REQUIRE(runtime_ui_editor->enabled);
 }
 
 MK_TEST("editor ai operation snapshot exposes dock layout rows") {

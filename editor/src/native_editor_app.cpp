@@ -41,7 +41,58 @@ namespace {
     workspace.set_panel_visible(PanelId::project_settings, true);
     workspace.set_panel_visible(PanelId::timeline, true);
     workspace.set_panel_visible(PanelId::input_rebinding, false);
+    workspace.set_panel_visible(PanelId::runtime_ui_editor, true);
     return workspace;
+}
+
+[[nodiscard]] EditorRuntimeUiDocumentModel make_default_runtime_ui_document() {
+    EditorRuntimeUiDocumentModel document;
+    document.document_id = "editor_runtime_hud";
+    document.revision = 1U;
+    document.elements = {
+        EditorRuntimeUiElementRow{
+            .id = "root",
+            .role = ui::SemanticRole::panel,
+            .label = "Runtime HUD",
+            .style_token = "panel.surface",
+        },
+        EditorRuntimeUiElementRow{
+            .id = "score_label",
+            .parent_id = "root",
+            .role = ui::SemanticRole::label,
+            .label = "Score 0000",
+            .style_token = "text.body",
+        },
+        EditorRuntimeUiElementRow{
+            .id = "start_button",
+            .parent_id = "root",
+            .role = ui::SemanticRole::button,
+            .label = "Start",
+            .style_token = "button.primary",
+        },
+    };
+    document.selected_element_id = "start_button";
+    return document;
+}
+
+[[nodiscard]] EditorRuntimeUiThemeModel make_default_runtime_ui_theme() {
+    EditorRuntimeUiThemeModel theme;
+    theme.revision = 1U;
+    theme.style_tokens = {
+        EditorRuntimeUiStyleTokenRow{.id = "panel.surface",
+                                     .label = "Panel surface",
+                                     .foreground_token = "editor.text",
+                                     .background_token = "editor.panel.background"},
+        EditorRuntimeUiStyleTokenRow{.id = "button.primary",
+                                     .label = "Primary button",
+                                     .foreground_token = "editor.text",
+                                     .background_token = "editor.action.primary"},
+        EditorRuntimeUiStyleTokenRow{.id = "text.body",
+                                     .label = "Body text",
+                                     .foreground_token = "editor.text",
+                                     .background_token = "editor.panel.background"},
+    };
+    return theme;
 }
 
 [[nodiscard]] SceneAuthoringDocument make_default_scene_document() {
@@ -546,6 +597,8 @@ struct NativeEditorApp::Impl {
           environment_artist_workflow_execution_review(
               make_default_environment_artist_workflow_execution_review(environment_authoring)),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
+          runtime_ui_document(make_default_runtime_ui_document()), runtime_ui_theme(make_default_runtime_ui_theme()),
+          runtime_ui_authoring(make_editor_runtime_ui_authoring_model(runtime_ui_document, runtime_ui_theme)),
           profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()),
           material_preview(make_default_material_preview_panel_model()),
           material_preview_display(plan_native_material_preview_display(NativeMaterialPreviewDisplayDesc{
@@ -577,6 +630,9 @@ struct NativeEditorApp::Impl {
     EnvironmentArtistWorkflowExecutionReviewModel environment_artist_workflow_execution_review;
     EditorResourcePanelModel resources;
     EditorAiCommandPanelModel ai_commands;
+    EditorRuntimeUiDocumentModel runtime_ui_document;
+    EditorRuntimeUiThemeModel runtime_ui_theme;
+    EditorRuntimeUiAuthoringModel runtime_ui_authoring;
     EditorProfilerPanelModel profiler;
     EditorTimelinePanelModel timeline;
     EditorMaterialAssetPreviewPanelModel material_preview;
@@ -706,6 +762,18 @@ const EditorResourcePanelModel& NativeEditorApp::resources() const noexcept {
 
 const EditorAiCommandPanelModel& NativeEditorApp::ai_commands() const noexcept {
     return impl_->ai_commands;
+}
+
+const EditorRuntimeUiDocumentModel& NativeEditorApp::runtime_ui_document() const noexcept {
+    return impl_->runtime_ui_document;
+}
+
+const EditorRuntimeUiThemeModel& NativeEditorApp::runtime_ui_theme() const noexcept {
+    return impl_->runtime_ui_theme;
+}
+
+const EditorRuntimeUiAuthoringModel& NativeEditorApp::runtime_ui_authoring() const noexcept {
+    return impl_->runtime_ui_authoring;
 }
 
 std::span<const NativeEditorEnvironmentArtistWorkflowCommandPlanRow>

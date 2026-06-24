@@ -229,6 +229,188 @@ void append_environment_artist_workflow_shell_execution_bridge(ui::UiDocument& d
     append_ui_document(document, root_id, make_environment_artist_workflow_execution_review_ui_model(review));
 }
 
+void append_runtime_ui_hierarchy_rows(ui::UiDocument& document, const ui::ElementId& root, std::string_view prefix,
+                                      const EditorRuntimeUiAuthoringModel& model) {
+    const std::string list_id = std::string{prefix} + ".hierarchy";
+    auto list = child(list_id, root, ui::SemanticRole::list);
+    list.accessibility_label = "Runtime UI Hierarchy";
+    add_or_throw(document, std::move(list));
+    const ui::ElementId list_root{list_id};
+
+    for (const auto& row : model.hierarchy_rows) {
+        const std::string row_id = list_id + "." + row.id;
+        auto item = child(row_id, list_root, ui::SemanticRole::list_item);
+        item.text = text(row.label);
+        item.accessibility_label = row.label;
+        item.enabled = true;
+        if (row.selected) {
+            item.style.background_token = "editor.panel.focused";
+        }
+        add_or_throw(document, std::move(item));
+        const ui::ElementId item_id{row_id};
+        append_label(document, item_id, row_id + ".role", std::string{ui::semantic_role_id(row.role)});
+        append_label(document, item_id, row_id + ".depth", std::to_string(row.depth));
+        append_label(document, item_id, row_id + ".order", std::to_string(row.order));
+    }
+}
+
+void append_runtime_ui_inspector_rows(ui::UiDocument& document, const ui::ElementId& root, std::string_view prefix,
+                                      const EditorRuntimeUiAuthoringModel& model) {
+    const std::string list_id = std::string{prefix} + ".inspector";
+    auto list = child(list_id, root, ui::SemanticRole::list);
+    list.accessibility_label = "Runtime UI Inspector";
+    add_or_throw(document, std::move(list));
+    const ui::ElementId list_root{list_id};
+
+    for (const auto& row : model.inspector_rows) {
+        const std::string row_id = list_id + "." + row.id;
+        auto item = child(row_id, list_root, ui::SemanticRole::list_item);
+        item.text = text(row.label + ": " + row.value);
+        item.accessibility_label = row.label;
+        item.enabled = row.editable;
+        add_or_throw(document, std::move(item));
+        const ui::ElementId item_id{row_id};
+        append_label(document, item_id, row_id + ".element", row.element_id);
+        append_label(document, item_id, row_id + ".editable", bool_label(row.editable));
+    }
+}
+
+void append_runtime_ui_style_rows(ui::UiDocument& document, const ui::ElementId& root, std::string_view prefix,
+                                  const EditorRuntimeUiAuthoringModel& model) {
+    const std::string list_id = std::string{prefix} + ".style_tokens";
+    auto list = child(list_id, root, ui::SemanticRole::list);
+    list.accessibility_label = "Runtime UI Style Tokens";
+    add_or_throw(document, std::move(list));
+    const ui::ElementId list_root{list_id};
+
+    for (const auto& row : model.style_token_rows) {
+        const std::string row_id = list_id + "." + row.id;
+        auto item = child(row_id, list_root, ui::SemanticRole::list_item);
+        item.text = text(row.label);
+        item.accessibility_label = row.label;
+        add_or_throw(document, std::move(item));
+        const ui::ElementId item_id{row_id};
+        append_label(document, item_id, row_id + ".foreground", row.foreground_token);
+        append_label(document, item_id, row_id + ".background", row.background_token);
+        append_label(document, item_id, row_id + ".copied_external_visual_theme",
+                     bool_label(row.copied_external_visual_theme));
+    }
+}
+
+void append_runtime_ui_preview_rows(ui::UiDocument& document, const ui::ElementId& root, std::string_view prefix,
+                                    const EditorRuntimeUiAuthoringModel& model) {
+    const std::string preview_id = std::string{prefix} + ".preview";
+    auto preview = child(preview_id, root, ui::SemanticRole::panel);
+    preview.accessibility_label = "Runtime UI Preview";
+    add_or_throw(document, std::move(preview));
+    const ui::ElementId preview_root{preview_id};
+
+    append_label(document, preview_root, preview_id + ".ready", bool_label(model.preview.ready));
+    append_label(document, preview_root, preview_id + ".renderer_upload_status", "not_ready_selected_task_pending");
+    append_label(document, preview_root, preview_id + ".renderer_execution_requested",
+                 bool_label(model.preview.renderer_execution_requested));
+    append_label(document, preview_root, preview_id + ".package_script_execution_requested",
+                 bool_label(model.preview.package_script_execution_requested));
+    append_label(document, preview_root, preview_id + ".validation_recipe_execution_requested",
+                 bool_label(model.preview.validation_recipe_execution_requested));
+
+    const std::string document_id = preview_id + ".document";
+    auto preview_document = child(document_id, preview_root, ui::SemanticRole::panel);
+    preview_document.accessibility_label = "Runtime UI Preview Document";
+    add_or_throw(document, std::move(preview_document));
+    append_ui_document(document, ui::ElementId{document_id}, model.preview.document);
+
+    const std::string diagnostics_id = preview_id + ".diagnostics";
+    auto diagnostics = child(diagnostics_id, preview_root, ui::SemanticRole::list);
+    diagnostics.accessibility_label = "Runtime UI Preview Diagnostics";
+    add_or_throw(document, std::move(diagnostics));
+    const ui::ElementId diagnostics_root{diagnostics_id};
+    for (std::size_t index = 0; index < model.preview.diagnostics.size(); ++index) {
+        const auto& diagnostic = model.preview.diagnostics[index];
+        append_label(document, diagnostics_root, diagnostics_id + "." + std::to_string(index),
+                     diagnostic.code + ": " + diagnostic.message);
+    }
+}
+
+void append_runtime_ui_platform_readiness_rows(ui::UiDocument& document, const NativeEditorApp& app,
+                                               const ui::ElementId& root, std::string_view prefix,
+                                               const EditorRuntimeUiAuthoringModel& model) {
+    const std::string readiness_id = std::string{prefix} + ".platform_readiness";
+    auto readiness = child(readiness_id, root, ui::SemanticRole::panel);
+    readiness.accessibility_label = "Runtime UI Platform Readiness";
+    readiness.enabled = false;
+    add_or_throw(document, std::move(readiness));
+    const ui::ElementId readiness_root{readiness_id};
+
+    const auto& text_atlas = app.text_atlas_handoff_evidence();
+    const auto& text_input = app.text_input_state();
+    const auto& accessibility = app.accessibility_state();
+    append_label(document, readiness_root, readiness_id + ".text_font_status", text_atlas.status);
+    append_label(document, readiness_root, readiness_id + ".text_font_adapter_invoked",
+                 bool_label(text_atlas.text_shaping_adapter_invoked && text_atlas.font_rasterizer_adapter_invoked));
+    append_label(document, readiness_root, readiness_id + ".text_font_glyphs_ready",
+                 bool_label(text_atlas.glyphs_ready));
+    append_label(document, readiness_root, readiness_id + ".text_font_native_handles_exposed",
+                 bool_label(text_atlas.native_handles_exposed));
+    append_label(document, readiness_root, readiness_id + ".ime_status", native_editor_text_input_status(text_input));
+    append_label(document, readiness_root, readiness_id + ".ime_caret_rect_ready",
+                 bool_label(text_input.caret_rect_ready));
+    append_label(document, readiness_root, readiness_id + ".ime_surrounding_text_ready",
+                 bool_label(text_input.surrounding_text_ready));
+    append_label(document, readiness_root, readiness_id + ".ime_native_handles_exposed",
+                 bool_label(text_input.native_handles_exposed));
+    append_label(document, readiness_root, readiness_id + ".accessibility_status", accessibility.status_id);
+    append_label(document, readiness_root, readiness_id + ".accessibility_nodes",
+                 std::to_string(accessibility.nodes.size()));
+    append_label(document, readiness_root, readiness_id + ".accessibility_native_handles_exposed",
+                 bool_label(accessibility.native_handles_exposed));
+    append_label(document, readiness_root, readiness_id + ".renderer_upload_status",
+                 model.preview.renderer_execution_requested ? "blocked_renderer_execution_requested"
+                                                            : "selected_d3d12_runtime_ui_atlas_upload_ready");
+    append_label(document, readiness_root, readiness_id + ".renderer_upload_native_handles_exposed",
+                 bool_label(model.preview.native_handles_exposed));
+}
+
+void append_runtime_ui_clean_room_rows(ui::UiDocument& document, const ui::ElementId& root, std::string_view prefix,
+                                       const EditorRuntimeUiAuthoringModel& model) {
+    const std::string clean_room_id = std::string{prefix} + ".clean_room";
+    auto clean_room = child(clean_room_id, root, ui::SemanticRole::panel);
+    clean_room.accessibility_label = "Runtime UI Clean Room Review";
+    clean_room.enabled = false;
+    add_or_throw(document, std::move(clean_room));
+    const ui::ElementId clean_room_root{clean_room_id};
+
+    append_label(document, clean_room_root, clean_room_id + ".external_engine_parity_claim", "false");
+    append_label(document, clean_room_root, clean_room_id + ".native_handles_exposed",
+                 bool_label(model.native_handles_exposed || model.preview.native_handles_exposed));
+    append_label(document, clean_room_root, clean_room_id + ".renderer_execution_requested",
+                 bool_label(model.renderer_execution_requested || model.preview.renderer_execution_requested));
+    append_label(
+        document, clean_room_root, clean_room_id + ".package_script_execution_requested",
+        bool_label(model.package_script_execution_requested || model.preview.package_script_execution_requested));
+    append_label(
+        document, clean_room_root, clean_room_id + ".validation_recipe_execution_requested",
+        bool_label(model.validation_recipe_execution_requested || model.preview.validation_recipe_execution_requested));
+}
+
+void append_runtime_ui_editor_panel(ui::UiDocument& document, const NativeEditorApp& app,
+                                    const ui::ElementId& panel_root) {
+    const std::string prefix = "editor.panel.runtime_ui_editor.runtime_ui";
+    const auto& model = app.runtime_ui_authoring();
+
+    append_label(document, panel_root, prefix + ".status", model.ready ? "ready" : "blocked");
+    append_label(document, panel_root, prefix + ".document_id", app.runtime_ui_document().document_id);
+    append_label(document, panel_root, prefix + ".document_revision",
+                 std::to_string(app.runtime_ui_document().revision));
+    append_label(document, panel_root, prefix + ".theme_revision", std::to_string(app.runtime_ui_theme().revision));
+    append_runtime_ui_hierarchy_rows(document, panel_root, prefix, model);
+    append_runtime_ui_inspector_rows(document, panel_root, prefix, model);
+    append_runtime_ui_style_rows(document, panel_root, prefix, model);
+    append_runtime_ui_preview_rows(document, panel_root, prefix, model);
+    append_runtime_ui_platform_readiness_rows(document, app, panel_root, prefix, model);
+    append_runtime_ui_clean_room_rows(document, panel_root, prefix, model);
+}
+
 void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, std::string_view panel_id,
                          const ui::ElementId& panel_root) {
     const std::string prefix = "editor.panel." + std::string{panel_id};
@@ -252,6 +434,8 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
         append_label(document, panel_root, prefix + ".status",
                      "project settings diagnostics " + std::to_string(app.project_settings_errors().size()));
         append_text_field(document, panel_root, app.text_input_state());
+    } else if (panel_id == "runtime_ui_editor") {
+        append_runtime_ui_editor_panel(document, app, panel_root);
     }
 }
 
@@ -464,6 +648,10 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         workflow_review.exposes_native_handles || std::ranges::any_of(workflow_command_plans, [](const auto& row) {
             return command_plan_exposes_native_handles(row);
         });
+    const auto& runtime_ui = app.runtime_ui_authoring();
+    const bool runtime_ui_native_handles_exposed =
+        runtime_ui.native_handles_exposed || runtime_ui.preview.native_handles_exposed;
+    const auto runtime_ui_preview_rows = static_cast<std::uint32_t>(runtime_ui.preview.document.traverse().size());
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -521,6 +709,14 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .environment_artist_workflow_executes_validation_recipes = workflow_review.executes_validation_recipes,
         .environment_artist_workflow_native_handles_exposed = workflow_native_handles_exposed,
         .environment_artist_workflow_ready_claimed = workflow_review.complete_artist_workflow_ready_claimed,
+        .runtime_ui_editor_panel_visible =
+            app.has_native_panel("runtime_ui_editor") && app.is_panel_visible(PanelId::runtime_ui_editor),
+        .runtime_ui_editor_hierarchy_rows = static_cast<std::uint32_t>(runtime_ui.hierarchy_rows.size()),
+        .runtime_ui_editor_inspector_rows = static_cast<std::uint32_t>(runtime_ui.inspector_rows.size()),
+        .runtime_ui_editor_style_rows = static_cast<std::uint32_t>(runtime_ui.style_token_rows.size()),
+        .runtime_ui_editor_preview_rows = runtime_ui_preview_rows,
+        .runtime_ui_editor_external_engine_parity_claim = false,
+        .runtime_ui_editor_native_handles_exposed = runtime_ui_native_handles_exposed,
         .docking_status = document.docking_status,
         .dock_tab_header_count = document.tab_header_count,
         .dock_split_gutter_count = document.split_gutter_count,
