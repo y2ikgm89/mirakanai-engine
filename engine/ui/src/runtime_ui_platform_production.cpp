@@ -236,6 +236,10 @@ void validate_common_row(RuntimeUiPlatformProductionResult& result, const Runtim
         append_diagnostic(result.diagnostics, RuntimeUiPlatformProductionDiagnosticCode::host_evidence_missing, row.id,
                           "runtime UI platform production host-gated rows require an explicit blocker");
     }
+    if (row.proof == RuntimeUiPlatformProductionProofKind::dependency_gate && row.blocker.empty()) {
+        append_diagnostic(result.diagnostics, RuntimeUiPlatformProductionDiagnosticCode::dependency_gate_missing,
+                          row.id, "runtime UI platform production dependency-gated rows require an explicit blocker");
+    }
 }
 
 void validate_feature_row(RuntimeUiPlatformProductionResult& result,

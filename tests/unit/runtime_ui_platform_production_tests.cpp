@@ -168,6 +168,20 @@ MK_TEST("runtime ui platform production gate rejects broad production claims wit
     MK_REQUIRE(has_diagnostic(result.diagnostics, RuntimeUiPlatformProductionDiagnosticCode::selected_row_not_ready));
 }
 
+MK_TEST("runtime ui platform production gate rejects dependency gates without blockers") {
+    auto rows = make_complete_rows();
+    rows[1].proof = RuntimeUiPlatformProductionProofKind::dependency_gate;
+    rows[1].dependency_recorded = false;
+    rows[1].host_evidence_available = false;
+    rows[1].blocker.clear();
+
+    const auto result = mirakana::ui::evaluate_runtime_ui_platform_production(rows);
+
+    MK_REQUIRE(!result.ready);
+    MK_REQUIRE(result.dependency_gated_rows == 1U);
+    MK_REQUIRE(has_diagnostic(result.diagnostics, RuntimeUiPlatformProductionDiagnosticCode::dependency_gate_missing));
+}
+
 MK_TEST("runtime ui platform production gate becomes ready only with all selected evidence and non-claims") {
     const auto result = mirakana::ui::evaluate_runtime_ui_platform_production(make_complete_rows());
 
