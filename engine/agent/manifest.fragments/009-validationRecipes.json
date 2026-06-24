@@ -16,6 +16,11 @@
       "purpose": "Check public headers and backend interop boundaries after public API or handle-boundary changes."
     },
     {
+      "name": "runtime-ui-widgets",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_widgets_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_ui_widgets_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package; out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-widgets",
+      "purpose": "Build and test Runtime Widget Vocabulary v1, including first-party button/toggle/slider/text-field/menu-stack/modal/list/tree/HUD-prompt/controller-glyph rows, state rows, command rows, fail-closed native/middleware token rejection, and selected sample_2d_desktop_runtime_package counters runtime_ui_widgets_status/runtime_ui_widgets_ready/runtime_ui_widget_rows/runtime_ui_widget_command_rows/runtime_ui_widget_focusable_rows/runtime_ui_widget_diagnostics."
+    },
+    {
       "name": "win32-platform",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"win32_platform|runtime_ui\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
       "purpose": "Build and test the Windows-native platform foundation, including Win32 runtime/window/message-pump/cursor rows, keyboard/mouse input rows, clipboard/file-dialog/text-input rows, runtime UI contract interaction, and public API boundary checks."
