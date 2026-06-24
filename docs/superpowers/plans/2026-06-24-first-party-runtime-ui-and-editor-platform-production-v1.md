@@ -752,13 +752,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 **Files:**
 
 - Create: `tools/validate-runtime-ui-platform-production.ps1`
+- Modify: `games/CMakeLists.txt`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 - Modify: `tools/check-ai-integration-123-runtime-ui-platform-production.ps1`
 
-- [ ] Add `tools/validate-runtime-ui-platform-production.ps1` with parameters `-RequireReady`, `-SkipEditor`, `-SkipPackage`, and `-StaticOnly`.
-- [ ] The wrapper must build and run selected tests:
+- [x] Add `tools/validate-runtime-ui-platform-production.ps1` with parameters `-RequireReady`, `-SkipEditor`, `-SkipPackage`, and `-StaticOnly`.
+- [x] The wrapper must build and run selected tests:
 
 ```powershell
 MK_runtime_ui_platform_production_tests
@@ -770,11 +771,12 @@ MK_editor_core_tests
 MK_editor_native_shell_tests
 ```
 
-- [ ] The wrapper must run `sample_2d_desktop_runtime_package --smoke --require-runtime-ui-platform-production` unless `-SkipPackage` is passed.
-- [ ] Required package counters under `-RequireReady`:
+- [x] The wrapper must run `sample_2d_desktop_runtime_package --smoke --require-runtime-ui-platform-package` unless `-SkipPackage` is passed.
+- [x] Required package counters under `-RequireReady`:
 
 ```text
-runtime_ui_platform_production_ready=1
+runtime_ui_platform_runtime_package_ready=1
+runtime_ui_platform_production_ready=0
 runtime_ui_platform_clean_room_ready=1
 runtime_ui_platform_external_engine_parity_claim=0
 runtime_ui_platform_public_native_handles_exposed=0
@@ -783,11 +785,19 @@ runtime_ui_font_rasterization_selected_adapter=directwrite
 runtime_ui_ime_selected_adapter=tsf
 runtime_ui_accessibility_selected_adapter=uia
 runtime_ui_renderer_upload_selected_backend=d3d12
+```
+
+- [x] Required wrapper final counters under `-RequireReady` after package plus editor smoke:
+
+```text
+runtime_ui_platform_production_ready=1
 editor_runtime_ui_editor_panel_visible=1
 ```
 
-- [ ] Add fail-closed diagnostics for missing counters, nonzero parity claims, nonzero public native handles, missing package rows, and host-gated selected rows under `-RequireReady`.
-- [ ] Run:
+The wrapper emits final `runtime_ui_platform_production_ready=1` only after the package counters and `editor_runtime_ui_editor_panel_visible=1` both pass, so the game package does not claim the visible editor shell by itself.
+
+- [x] Add fail-closed diagnostics for missing counters, nonzero parity claims, nonzero public native handles, missing package rows, and host-gated selected rows under `-RequireReady`; the wrapper emits `missing required runtime UI platform production counter` and `runtime UI platform production selected row is host gated` diagnostics.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1
@@ -799,6 +809,27 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 **Expected:** Default mode can report host/dependency gates; `-RequireReady` passes only after selected Windows/D3D12/editor package proof is complete.
 
 **Done When:** Agents and CI can validate this milestone through one explicit wrapper.
+
+### Task 12 Implementation Evidence - 2026-06-24
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` before implementation | RED: failed as expected because `tools/validate-runtime-ui-platform-production.ps1` was missing. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1 -SkipEditor` before target-local compile fix | RED: MSVC `C1128` on `sample_2d_desktop_runtime_package/main.cpp`; fixed by adding target-local MSVC `/bigobj` for `sample_2d_desktop_runtime_package` only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1 -SkipEditor` | PASS: selected runtime UI platform tests and package smoke passed with `runtime_ui_platform_runtime_package_ready=1` and `runtime_ui_platform_production_ready=0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1 -RequireReady` | PASS: selected tests, package counters, visible editor panel smoke, and final wrapper aggregate `runtime_ui_platform_production_ready=1` passed. |
+| Manual claim-boundary review | RED: package smoke overclaimed visible editor shell evidence by returning `runtime_ui_platform_production_ready=1`; fixed by making package smoke emit `runtime_ui_platform_runtime_package_ready=1` and `runtime_ui_platform_production_ready=0`, with final `runtime_ui_platform_production_ready=1` emitted only by the wrapper after `editor_runtime_ui_editor_panel_visible=1`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1 -StaticOnly` | PASS: `first-party-ui-clean-room: ok`; `runtime-ui-platform-production-validation: static-only ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | PASS: regenerated `engine/agent/manifest.json`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS: `agent-manifest-compose: ok`; `json-contract-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS: `first-party-ui-clean-room: ok`; `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1` | PASS: default wrapper mode passed selected tests and package smoke with `runtime-ui-platform-production-validation: package-proof ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Files games/sample_2d_desktop_runtime_package/main.cpp` | PASS: `tidy-check: ok (1 files)`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS: `format-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | PASS: `text-format-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS: `agent-config-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS: `public-api-boundary-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`; 27 static checks, mobile packaging gate, configure/build, and 154 CTest tests passed. |
 
 ## Task 13 - Docs, Manifest, Static Guards, And Claim Closeout
 
@@ -817,16 +848,16 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only if this plan is selected as active.
 - Generate: `engine/agent/manifest.json`
 
-- [ ] Update docs to say exactly which rows are ready: Windows DirectWrite text shaping, Windows real font load/raster proof, Windows TSF native IME session, Windows UIA runtime accessibility publication, D3D12 UI atlas upload execution, and visible runtime UI editor panel.
-- [ ] Update docs to say exactly which rows remain host-gated or dependency-gated: Core Text, InputMethodKit, NSAccessibility, HarfBuzz/FreeType/Fontconfig, AT-SPI2, Android/iOS text input/accessibility, Vulkan upload, Metal upload.
-- [ ] Preserve non-claims for Unity/UE/Godot compatibility, visual parity, API parity, serialized import parity, editor workflow parity, middleware readiness, public native handles, and all-platform UI parity.
-- [ ] Compose the manifest:
+- [x] Update docs to say exactly which rows are ready: Windows DirectWrite text shaping, Windows real font load/raster proof, Windows TSF native IME session, Windows UIA runtime accessibility publication, D3D12 UI atlas upload execution, and visible runtime UI editor panel.
+- [x] Update docs to say exactly which rows remain host-gated or dependency-gated: Core Text, InputMethodKit, NSAccessibility, HarfBuzz/FreeType/Fontconfig, AT-SPI2, Android/iOS text input/accessibility, Vulkan upload, Metal upload.
+- [x] Preserve non-claims for Unity/UE/Godot compatibility, visual parity, API parity, serialized import parity, editor workflow parity, middleware readiness, public native handles, and all-platform UI parity.
+- [x] Compose the manifest:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
 ```
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
@@ -842,11 +873,24 @@ git diff --check
 
 **Done When:** No current-truth doc or agent surface can imply broader UI readiness than validated evidence.
 
+### Task 13 Implementation Evidence - 2026-06-24
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | PASS: regenerated `engine/agent/manifest.json` after docs/manifest fragment updates. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS: `agent-manifest-compose: ok`; `json-contract-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS: `first-party-ui-clean-room: ok`; `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS: `agent-config-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS: `public-api-boundary-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS: `text-format-check: ok`; `format-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | PASS: `text-format-check: ok`. |
+| `git diff --check` | PASS: no whitespace errors. |
+
 ## Task 14 - Final Full Validation And Publication
 
 **Goal:** Close the selected milestone only after local validation and reviewable publication evidence exist.
 
-- [ ] Run full local validation:
+- [x] Run full local validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -857,7 +901,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - [ ] Run publication preflight:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/runtime-ui-editor-platform-production
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/runtime-ui-validation-wrapper
 ```
 
 - [ ] Stage only task-owned files.
@@ -869,6 +913,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 **Expected:** The milestone has a validated local checkpoint and a reviewable PR with evidence.
 
 **Done When:** The selected milestone is either merged with hosted evidence or explicitly blocked with exact host/dependency evidence, and `currentActivePlan` no longer points at a completed plan.
+
+### Task 14 Implementation Evidence - 2026-06-24
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | PASS: `toolchain-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1 -RequireReady` | PASS: selected package proof and visible editor smoke passed; wrapper emitted final `runtime_ui_platform_production_ready=1 runtime_ui_platform_runtime_package_ready=1 editor_runtime_ui_editor_panel_visible=1`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`; 154/154 CTest tests passed, static checks passed, diagnostic-only Apple/Metal host blockers remained non-blocking. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1` | PASS: default wrapper mode passed with package proof and selected tests. |
 
 ## Explicit Non-Claims After This Plan
 
@@ -887,10 +940,10 @@ Even after selected Windows/D3D12/editor proof passes, these remain unsupported 
 
 ## Final Verification Checklist
 
-- [ ] `tools/check-first-party-ui-clean-room.ps1` passes.
-- [ ] `tools/validate-runtime-ui-platform-production.ps1 -RequireReady` passes or records an exact host/dependency blocker.
-- [ ] `tools/check-public-api-boundaries.ps1` proves no native/middleware/external-engine public type leakage.
-- [ ] `tools/check-dependency-policy.ps1` passes if any optional dependency is selected.
-- [ ] `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1` pass.
-- [ ] `tools/validate.ps1` passes for code/runtime/editor/public-contract slices.
-- [ ] Docs, manifest fragments, validation recipes, package counters, current capabilities, roadmap, and this plan agree on ready/gated/unsupported rows.
+- [x] `tools/check-first-party-ui-clean-room.ps1` passes.
+- [x] `tools/validate-runtime-ui-platform-production.ps1 -RequireReady` passes or records an exact host/dependency blocker.
+- [x] `tools/check-public-api-boundaries.ps1` proves no native/middleware/external-engine public type leakage.
+- [x] `tools/check-dependency-policy.ps1` passes if any optional dependency is selected.
+- [x] `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1` pass.
+- [x] `tools/validate.ps1` passes for code/runtime/editor/public-contract slices.
+- [x] Docs, manifest fragments, validation recipes, package counters, current capabilities, roadmap, and this plan agree on ready/gated/unsupported rows.

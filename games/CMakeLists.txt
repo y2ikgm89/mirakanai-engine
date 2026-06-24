@@ -1757,6 +1757,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_physics
             MK_tools
     )
+    target_compile_options(sample_2d_desktop_runtime_package
+        PRIVATE
+            $<$<CXX_COMPILER_ID:MSVC>:/bigobj>
+    )
     if(WIN32)
         target_link_libraries(sample_2d_desktop_runtime_package
             PRIVATE

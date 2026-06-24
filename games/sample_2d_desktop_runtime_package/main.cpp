@@ -60,6 +60,7 @@
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/sandbox_world_authoring.hpp"
+#include "mirakana/ui/runtime_ui_platform_production.hpp"
 #include "mirakana/ui/runtime_ui_production_stack.hpp"
 #include "mirakana/ui/runtime_ui_standard_widgets.hpp"
 #include "mirakana/ui/runtime_ui_workbench.hpp"
@@ -140,6 +141,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_standard_widgets{false};
     bool require_runtime_ui_workbench{false};
     bool require_runtime_ui_production_stack{false};
+    bool require_runtime_ui_platform_package{false};
     bool require_runtime_ui_font_rasterization{false};
     bool require_runtime_ui_tsf_session{false};
     bool require_runtime_ui_uia_publication{false};
@@ -1983,6 +1985,16 @@ struct RuntimeUiProductionStackProbeResult {
     std::uint64_t replay_hash{0U};
 };
 
+struct RuntimeUiTextShapingProbeResult {
+    bool ready{false};
+    bool evidence_ready{false};
+    std::size_t glyph_rows{0U};
+    std::size_t fallback_rows{0U};
+    std::size_t boundary_rows{0U};
+    std::size_t diagnostics{0U};
+    bool native_handles_exposed{false};
+};
+
 struct RuntimeUiFontRasterizationProbeResult {
     bool ready{false};
     std::size_t font_loading_rows{0U};
@@ -2099,6 +2111,25 @@ struct RuntimeUiAtlasUploadProbeResult {
     bool metal_upload_host_gated{false};
     bool renderer_texture_upload_public_api{false};
     bool native_handle_accessed{false};
+    std::size_t diagnostics{0U};
+};
+
+struct RuntimeUiPlatformProductionProbeResult {
+    bool production_ready{false};
+    bool runtime_package_ready{false};
+    bool clean_room_ready{false};
+    bool external_engine_parity_claim{false};
+    bool public_native_handles_exposed{false};
+    std::string text_shaping_selected_adapter{"unavailable"};
+    std::string font_rasterization_selected_adapter{"unavailable"};
+    std::string ime_selected_adapter{"unavailable"};
+    std::string accessibility_selected_adapter{"unavailable"};
+    std::string renderer_upload_selected_backend{"unavailable"};
+    std::size_t selected_rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_non_claim_rows{0U};
     std::size_t diagnostics{0U};
 };
 
@@ -3644,6 +3675,35 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     return result;
 }
 
+[[nodiscard]] RuntimeUiTextShapingProbeResult validate_runtime_ui_text_shaping_package_evidence() {
+    RuntimeUiTextShapingProbeResult result;
+#if defined(_WIN32)
+    const auto shape_result =
+        mirakana::win32::shape_win32_ui_text_with_directwrite(mirakana::win32::Win32UiTextShapeRequest{
+            .text = "Runtime UI",
+            .font_family = "Segoe UI",
+            .pixel_size = 24.0F,
+            .direction = mirakana::ui::TextDirection::left_to_right,
+            .language_tag = "en-US",
+            .script_tag = "Latn",
+            .max_width = 256.0F,
+            .row_budget = 32U,
+        });
+    const auto evidence = mirakana::win32::make_win32_directwrite_text_shaping_production_evidence(shape_result);
+    result.evidence_ready = evidence.ready;
+    result.glyph_rows = shape_result.glyph_rows.size();
+    result.fallback_rows = shape_result.fallback_family_rows.size();
+    result.boundary_rows = shape_result.boundary_rows.size();
+    result.diagnostics = shape_result.diagnostics.size();
+    result.native_handles_exposed = shape_result.public_native_handles_exposed || evidence.public_native_handles;
+    result.ready = shape_result.succeeded() && result.evidence_ready && evidence.host_evidence_available &&
+                   result.glyph_rows > 0U && result.boundary_rows > 0U && !result.native_handles_exposed;
+#else
+    result.diagnostics = 1U;
+#endif
+    return result;
+}
+
 [[nodiscard]] RuntimeUiFontRasterizationProbeResult validate_runtime_ui_font_rasterization_package_evidence() {
     RuntimeUiFontRasterizationProbeResult result;
 #if defined(_WIN32)
@@ -4063,6 +4123,156 @@ validate_runtime_ui_atlas_upload_package_evidence(const mirakana::runtime::Runti
                    !result.requested_renderer_texture_upload_api && !result.requested_public_native_handle &&
                    !result.invoked_source_image_decode && !result.invoked_live_glyph_atlas_generation &&
                    !result.invoked_renderer_upload && result.replay_hash != 0U;
+    return result;
+}
+
+[[nodiscard]] RuntimeUiPlatformProductionProbeResult validate_runtime_ui_platform_production_package_evidence(
+    const RuntimeUiStandardWidgetsProbeResult& standard_widgets_probe,
+    const RuntimeUiTextShapingProbeResult& text_shaping_probe,
+    const RuntimeUiFontRasterizationProbeResult& font_rasterization_probe,
+    const RuntimeUiTsfSessionProbeResult& tsf_session_probe,
+    const RuntimeUiUiaPublicationProbeResult& uia_publication_probe,
+    const RuntimeUiAtlasUploadProbeResult& atlas_upload_probe) {
+    RuntimeUiPlatformProductionProbeResult result;
+    result.clean_room_ready = standard_widgets_probe.provenance_ready && !standard_widgets_probe.external_engine_code &&
+                              !standard_widgets_probe.external_engine_assets && !standard_widgets_probe.ui_middleware;
+    result.external_engine_parity_claim = standard_widgets_probe.external_engine_code ||
+                                          standard_widgets_probe.external_engine_assets ||
+                                          standard_widgets_probe.ui_middleware;
+    result.public_native_handles_exposed =
+        text_shaping_probe.native_handles_exposed || font_rasterization_probe.native_handles_exposed ||
+        tsf_session_probe.native_handles_exposed || uia_publication_probe.native_handles_exposed ||
+        atlas_upload_probe.native_handle_accessed || atlas_upload_probe.renderer_texture_upload_public_api;
+
+    result.text_shaping_selected_adapter = text_shaping_probe.ready ? "directwrite" : "unavailable";
+    result.font_rasterization_selected_adapter = font_rasterization_probe.ready ? "directwrite" : "unavailable";
+    result.ime_selected_adapter = tsf_session_probe.ready ? "tsf" : "unavailable";
+    result.accessibility_selected_adapter = uia_publication_probe.ready ? "uia" : "unavailable";
+    result.renderer_upload_selected_backend = atlas_upload_probe.ready ? atlas_upload_probe.backend : "unavailable";
+
+    const auto rows = std::array<mirakana::ui::RuntimeUiPlatformProductionEvidenceRow, 9U>{
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.visible-editor.native-shell",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::visible_ui_editor,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::visible_editor_shell,
+            .selected = false,
+            .ready = false,
+            .dependency_recorded = true,
+            .host_evidence_available = false,
+            .blocker = "visible Runtime UI Editor shell evidence is validated by "
+                       "tools/validate-runtime-ui-platform-production.ps1",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.text-shaping.win32.directwrite",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::production_text_shaping,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+            .selected = true,
+            .ready = text_shaping_probe.ready,
+            .dependency_recorded = true,
+            .host_evidence_available = text_shaping_probe.ready,
+            .public_native_handles = text_shaping_probe.native_handles_exposed,
+            .blocker = text_shaping_probe.ready ? std::string{} : "selected DirectWrite text shaping evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.font-loading.win32.directwrite",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::real_font_loading,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+            .selected = true,
+            .ready = font_rasterization_probe.ready,
+            .dependency_recorded = true,
+            .host_evidence_available = font_rasterization_probe.ready,
+            .public_native_handles = font_rasterization_probe.native_handles_exposed,
+            .blocker =
+                font_rasterization_probe.ready ? std::string{} : "selected DirectWrite font loading evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.font-rasterization.win32.directwrite",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::font_rasterization,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+            .selected = true,
+            .ready = font_rasterization_probe.ready,
+            .dependency_recorded = true,
+            .host_evidence_available = font_rasterization_probe.ready,
+            .public_native_handles = font_rasterization_probe.native_handles_exposed,
+            .blocker = font_rasterization_probe.ready ? std::string{}
+                                                      : "selected DirectWrite glyph rasterization evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.native-ime.win32.tsf",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::native_ime_session,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+            .selected = true,
+            .ready = tsf_session_probe.ready,
+            .dependency_recorded = true,
+            .host_evidence_available = tsf_session_probe.ready,
+            .public_native_handles = tsf_session_probe.native_handles_exposed,
+            .blocker = tsf_session_probe.ready ? std::string{} : "selected Windows TSF IME evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.accessibility.win32.uia",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::os_accessibility_publication,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+            .selected = true,
+            .ready = uia_publication_probe.ready,
+            .dependency_recorded = true,
+            .host_evidence_available = uia_publication_probe.ready,
+            .public_native_handles = uia_publication_probe.native_handles_exposed,
+            .blocker =
+                uia_publication_probe.ready ? std::string{} : "selected Windows UIA publication evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.renderer-upload.d3d12",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::renderer_texture_upload_execution,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::selected_package_counter,
+            .selected = true,
+            .ready = atlas_upload_probe.ready,
+            .dependency_recorded = true,
+            .host_evidence_available = atlas_upload_probe.ready,
+            .renderer_upload_executed = atlas_upload_probe.ready,
+            .public_native_handles =
+                atlas_upload_probe.native_handle_accessed || atlas_upload_probe.renderer_texture_upload_public_api,
+            .blocker =
+                atlas_upload_probe.ready ? std::string{} : "selected D3D12 runtime UI atlas upload evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.clean-room.first-party",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::clean_room_provenance,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::first_party_contract,
+            .selected = true,
+            .ready = result.clean_room_ready,
+            .dependency_recorded = true,
+            .host_evidence_available = true,
+            .external_engine_parity_claim = result.external_engine_parity_claim,
+            .middleware_api_exposure = standard_widgets_probe.ui_middleware,
+            .blocker = result.clean_room_ready ? std::string{} : "first-party clean-room provenance evidence missing",
+        },
+        mirakana::ui::RuntimeUiPlatformProductionEvidenceRow{
+            .id = "runtime-ui-platform.external-engine-parity-non-claim",
+            .feature = mirakana::ui::RuntimeUiPlatformProductionFeature::external_engine_parity_non_claim,
+            .proof = mirakana::ui::RuntimeUiPlatformProductionProofKind::unsupported_non_claim,
+            .selected = false,
+            .ready = false,
+            .dependency_recorded = true,
+            .host_evidence_available = true,
+            .external_engine_parity_claim = result.external_engine_parity_claim,
+            .blocker = "External engine compatibility, UI middleware, visual parity, API parity, and workflow parity "
+                       "are not claimed.",
+        },
+    };
+
+    const auto gate = mirakana::ui::evaluate_runtime_ui_platform_production(rows);
+    result.selected_rows = gate.selected_rows;
+    result.ready_rows = gate.ready_rows;
+    result.host_gated_rows = gate.host_gated_rows;
+    result.dependency_gated_rows = gate.dependency_gated_rows;
+    result.unsupported_non_claim_rows = gate.unsupported_non_claim_rows;
+    result.diagnostics = gate.diagnostics.size();
+    result.production_ready = gate.ready;
+    result.runtime_package_ready =
+        gate.diagnostics.empty() && result.clean_room_ready && !result.external_engine_parity_claim &&
+        !result.public_native_handles_exposed && result.text_shaping_selected_adapter == "directwrite" &&
+        result.font_rasterization_selected_adapter == "directwrite" && result.ime_selected_adapter == "tsf" &&
+        result.accessibility_selected_adapter == "uia" && result.renderer_upload_selected_backend == "d3d12";
     return result;
 }
 
@@ -11057,7 +11267,8 @@ void print_usage() {
                  "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
                  "[--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-font-rasterization] [--require-runtime-ui-tsf-session] "
-                 "[--require-runtime-ui-atlas-upload] [--require-runtime-ui-renderer-atlas-handoff] "
+                 "[--require-runtime-ui-uia-publication] [--require-runtime-ui-atlas-upload] "
+                 "[--require-runtime-ui-renderer-atlas-handoff] [--require-runtime-ui-platform-package] "
                  "[--require-audio-gameplay-mixer] "
                  "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
                  "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow] "
@@ -11263,6 +11474,16 @@ void print_usage() {
         if (arg == "--require-runtime-ui-renderer-atlas-handoff") {
             options.require_runtime_ui_renderer_atlas_handoff = true;
             options.require_runtime_ui_atlas_upload = true;
+            continue;
+        }
+        if (arg == "--require-runtime-ui-platform-package") {
+            options.require_runtime_ui_platform_package = true;
+            options.require_runtime_ui_standard_widgets = true;
+            options.require_runtime_ui_font_rasterization = true;
+            options.require_runtime_ui_tsf_session = true;
+            options.require_runtime_ui_uia_publication = true;
+            options.require_runtime_ui_atlas_upload = true;
+            options.require_runtime_ui_renderer_atlas_handoff = true;
             continue;
         }
         if (arg == "--require-audio-gameplay-mixer") {
@@ -12012,6 +12233,9 @@ int main(int argc, char** argv) {
     const auto runtime_ui_production_stack_probe = options.require_runtime_ui_production_stack
                                                        ? validate_runtime_ui_production_stack_package_evidence()
                                                        : RuntimeUiProductionStackProbeResult{};
+    const auto runtime_ui_text_shaping_probe = options.require_runtime_ui_platform_package
+                                                   ? validate_runtime_ui_text_shaping_package_evidence()
+                                                   : RuntimeUiTextShapingProbeResult{};
     const auto runtime_ui_font_rasterization_probe = options.require_runtime_ui_font_rasterization
                                                          ? validate_runtime_ui_font_rasterization_package_evidence()
                                                          : RuntimeUiFontRasterizationProbeResult{};
@@ -12029,6 +12253,12 @@ int main(int argc, char** argv) {
             ? validate_runtime_ui_renderer_atlas_handoff_package_evidence(*runtime_package,
                                                                           runtime_ui_atlas_upload_probe)
             : RuntimeUiRendererAtlasHandoffProbeResult{};
+    const auto runtime_ui_platform_production_probe =
+        options.require_runtime_ui_platform_package
+            ? validate_runtime_ui_platform_production_package_evidence(
+                  runtime_ui_standard_widgets_probe, runtime_ui_text_shaping_probe, runtime_ui_font_rasterization_probe,
+                  runtime_ui_tsf_session_probe, runtime_ui_uia_publication_probe, runtime_ui_atlas_upload_probe)
+            : RuntimeUiPlatformProductionProbeResult{};
     const auto audio_production_probe = audio_samples.has_value()
                                             ? validate_audio_production_package_evidence(*audio_samples)
                                             : AudioProductionProbeResult{};
@@ -13265,6 +13495,30 @@ int main(int argc, char** argv) {
         << (runtime_ui_renderer_atlas_handoff_probe.invoked_renderer_upload ? 1 : 0)
         << " runtime_ui_renderer_atlas_handoff_diagnostics=" << runtime_ui_renderer_atlas_handoff_probe.diagnostics
         << " runtime_ui_renderer_atlas_handoff_replay_hash=" << runtime_ui_renderer_atlas_handoff_probe.replay_hash
+        << " runtime_ui_platform_production_ready=" << (runtime_ui_platform_production_probe.production_ready ? 1 : 0)
+        << " runtime_ui_platform_runtime_package_ready="
+        << (runtime_ui_platform_production_probe.runtime_package_ready ? 1 : 0)
+        << " runtime_ui_platform_clean_room_ready=" << (runtime_ui_platform_production_probe.clean_room_ready ? 1 : 0)
+        << " runtime_ui_platform_external_engine_parity_claim="
+        << (runtime_ui_platform_production_probe.external_engine_parity_claim ? 1 : 0)
+        << " runtime_ui_platform_public_native_handles_exposed="
+        << (runtime_ui_platform_production_probe.public_native_handles_exposed ? 1 : 0)
+        << " runtime_ui_text_shaping_selected_adapter="
+        << runtime_ui_platform_production_probe.text_shaping_selected_adapter
+        << " runtime_ui_font_rasterization_selected_adapter="
+        << runtime_ui_platform_production_probe.font_rasterization_selected_adapter
+        << " runtime_ui_ime_selected_adapter=" << runtime_ui_platform_production_probe.ime_selected_adapter
+        << " runtime_ui_accessibility_selected_adapter="
+        << runtime_ui_platform_production_probe.accessibility_selected_adapter
+        << " runtime_ui_renderer_upload_selected_backend="
+        << runtime_ui_platform_production_probe.renderer_upload_selected_backend
+        << " runtime_ui_platform_selected_rows=" << runtime_ui_platform_production_probe.selected_rows
+        << " runtime_ui_platform_ready_rows=" << runtime_ui_platform_production_probe.ready_rows
+        << " runtime_ui_platform_host_gated_rows=" << runtime_ui_platform_production_probe.host_gated_rows
+        << " runtime_ui_platform_dependency_gated_rows=" << runtime_ui_platform_production_probe.dependency_gated_rows
+        << " runtime_ui_platform_unsupported_non_claim_rows="
+        << runtime_ui_platform_production_probe.unsupported_non_claim_rows
+        << " runtime_ui_platform_diagnostics=" << runtime_ui_platform_production_probe.diagnostics
         << " audio_production_status=" << audio_production_status_name(audio_production_probe.status)
         << " audio_production_reviewed=" << (audio_production_probe.reviewed ? 1 : 0)
         << " audio_production_ready=" << (audio_production_probe.production_audio_ready ? 1 : 0)
@@ -14683,6 +14937,38 @@ int main(int argc, char** argv) {
                   << " runtime_ui_renderer_atlas_handoff_diagnostics="
                   << runtime_ui_renderer_atlas_handoff_probe.diagnostics << '\n';
         return 29;
+    }
+
+    if (options.require_runtime_ui_platform_package && !runtime_ui_platform_production_probe.runtime_package_ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_platform_package_unavailable"
+                  << " runtime_ui_platform_production_ready="
+                  << (runtime_ui_platform_production_probe.production_ready ? 1 : 0)
+                  << " runtime_ui_platform_runtime_package_ready="
+                  << (runtime_ui_platform_production_probe.runtime_package_ready ? 1 : 0)
+                  << " runtime_ui_platform_clean_room_ready="
+                  << (runtime_ui_platform_production_probe.clean_room_ready ? 1 : 0)
+                  << " runtime_ui_platform_external_engine_parity_claim="
+                  << (runtime_ui_platform_production_probe.external_engine_parity_claim ? 1 : 0)
+                  << " runtime_ui_platform_public_native_handles_exposed="
+                  << (runtime_ui_platform_production_probe.public_native_handles_exposed ? 1 : 0)
+                  << " runtime_ui_text_shaping_selected_adapter="
+                  << runtime_ui_platform_production_probe.text_shaping_selected_adapter
+                  << " runtime_ui_font_rasterization_selected_adapter="
+                  << runtime_ui_platform_production_probe.font_rasterization_selected_adapter
+                  << " runtime_ui_ime_selected_adapter=" << runtime_ui_platform_production_probe.ime_selected_adapter
+                  << " runtime_ui_accessibility_selected_adapter="
+                  << runtime_ui_platform_production_probe.accessibility_selected_adapter
+                  << " runtime_ui_renderer_upload_selected_backend="
+                  << runtime_ui_platform_production_probe.renderer_upload_selected_backend
+                  << " runtime_ui_platform_selected_rows=" << runtime_ui_platform_production_probe.selected_rows
+                  << " runtime_ui_platform_ready_rows=" << runtime_ui_platform_production_probe.ready_rows
+                  << " runtime_ui_platform_host_gated_rows=" << runtime_ui_platform_production_probe.host_gated_rows
+                  << " runtime_ui_platform_dependency_gated_rows="
+                  << runtime_ui_platform_production_probe.dependency_gated_rows
+                  << " runtime_ui_platform_unsupported_non_claim_rows="
+                  << runtime_ui_platform_production_probe.unsupported_non_claim_rows
+                  << " runtime_ui_platform_diagnostics=" << runtime_ui_platform_production_probe.diagnostics << '\n';
+        return 62;
     }
 
     if (options.require_source_image_audio_codec_review &&
