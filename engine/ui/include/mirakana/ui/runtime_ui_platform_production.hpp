@@ -35,6 +35,26 @@ enum class RuntimeUiPlatformProductionProofKind : std::uint8_t {
     unsupported_non_claim,
 };
 
+enum class RuntimeUiPlatformAdapterGateStatus : std::uint8_t {
+    selected_proof,
+    host_gated,
+    dependency_gated,
+};
+
+struct RuntimeUiPlatformAdapterGateRow {
+    std::string id;
+    std::vector<RuntimeUiPlatformProductionFeature> features;
+    RuntimeUiPlatformProductionProofKind proof{RuntimeUiPlatformProductionProofKind::host_gate};
+    RuntimeUiPlatformAdapterGateStatus status{RuntimeUiPlatformAdapterGateStatus::host_gated};
+    bool selected{false};
+    bool ready{false};
+    bool dependency_recorded{false};
+    bool host_evidence_available{false};
+    bool optional_dependency_selected{false};
+    bool public_native_handles{false};
+    std::string blocker;
+};
+
 enum class RuntimeUiPlatformProductionDiagnosticCode : std::uint8_t {
     no_rows,
     missing_row_id,
@@ -54,6 +74,7 @@ enum class RuntimeUiPlatformProductionDiagnosticCode : std::uint8_t {
     selected_row_not_ready,
     missing_non_claim_blocker,
     invalid_non_claim_proof,
+    dependency_gate_missing,
 };
 
 struct RuntimeUiPlatformProductionEvidenceRow {
@@ -97,6 +118,9 @@ struct RuntimeUiPlatformProductionResult {
 runtime_ui_platform_production_feature_name(RuntimeUiPlatformProductionFeature feature) noexcept;
 [[nodiscard]] std::string_view
 runtime_ui_platform_production_proof_name(RuntimeUiPlatformProductionProofKind proof) noexcept;
+[[nodiscard]] std::string_view
+runtime_ui_platform_adapter_gate_status_name(RuntimeUiPlatformAdapterGateStatus status) noexcept;
+[[nodiscard]] std::vector<RuntimeUiPlatformAdapterGateRow> make_runtime_ui_platform_adapter_gate_rows();
 [[nodiscard]] RuntimeUiPlatformProductionResult
 evaluate_runtime_ui_platform_production(std::span<const RuntimeUiPlatformProductionEvidenceRow> rows,
                                         std::size_t row_budget = 64U);

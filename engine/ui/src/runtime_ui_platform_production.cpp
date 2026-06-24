@@ -65,12 +65,12 @@ void append_diagnostic(std::vector<RuntimeUiPlatformProductionDiagnostic>& diagn
     switch (proof) {
     case RuntimeUiPlatformProductionProofKind::official_sdk_adapter:
     case RuntimeUiPlatformProductionProofKind::audited_dependency_adapter:
-    case RuntimeUiPlatformProductionProofKind::dependency_gate:
         return true;
     case RuntimeUiPlatformProductionProofKind::first_party_contract:
     case RuntimeUiPlatformProductionProofKind::selected_package_counter:
     case RuntimeUiPlatformProductionProofKind::visible_editor_shell:
     case RuntimeUiPlatformProductionProofKind::host_gate:
+    case RuntimeUiPlatformProductionProofKind::dependency_gate:
     case RuntimeUiPlatformProductionProofKind::unsupported_non_claim:
         return false;
     }
@@ -162,6 +162,10 @@ void validate_common_row(RuntimeUiPlatformProductionResult& result, const Runtim
         append_diagnostic(result.diagnostics, RuntimeUiPlatformProductionDiagnosticCode::host_evidence_missing, row.id,
                           "runtime UI platform production host-gated rows require an explicit blocker");
     }
+    if (row.proof == RuntimeUiPlatformProductionProofKind::dependency_gate && row.blocker.empty()) {
+        append_diagnostic(result.diagnostics, RuntimeUiPlatformProductionDiagnosticCode::dependency_gate_missing,
+                          row.id, "runtime UI platform production dependency-gated rows require an explicit blocker");
+    }
 }
 
 void validate_feature_row(RuntimeUiPlatformProductionResult& result,
@@ -236,6 +240,164 @@ std::string_view runtime_ui_platform_production_proof_name(RuntimeUiPlatformProd
         return "unsupported_non_claim";
     }
     return "unknown";
+}
+
+std::string_view runtime_ui_platform_adapter_gate_status_name(RuntimeUiPlatformAdapterGateStatus status) noexcept {
+    switch (status) {
+    case RuntimeUiPlatformAdapterGateStatus::selected_proof:
+        return "selected_proof";
+    case RuntimeUiPlatformAdapterGateStatus::host_gated:
+        return "host_gated";
+    case RuntimeUiPlatformAdapterGateStatus::dependency_gated:
+        return "dependency_gated";
+    }
+    return "unknown";
+}
+
+std::vector<RuntimeUiPlatformAdapterGateRow> make_runtime_ui_platform_adapter_gate_rows() {
+    using Feature = RuntimeUiPlatformProductionFeature;
+    using Proof = RuntimeUiPlatformProductionProofKind;
+    using Status = RuntimeUiPlatformAdapterGateStatus;
+
+    return {
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.windows.directwrite",
+            .features = {Feature::production_text_shaping, Feature::real_font_loading, Feature::font_rasterization},
+            .proof = Proof::official_sdk_adapter,
+            .status = Status::selected_proof,
+            .selected = true,
+            .ready = true,
+            .dependency_recorded = true,
+            .host_evidence_available = true,
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.windows.tsf",
+            .features = {Feature::native_ime_session},
+            .proof = Proof::official_sdk_adapter,
+            .status = Status::selected_proof,
+            .selected = true,
+            .ready = true,
+            .dependency_recorded = true,
+            .host_evidence_available = true,
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.windows.uia",
+            .features = {Feature::os_accessibility_publication},
+            .proof = Proof::official_sdk_adapter,
+            .status = Status::selected_proof,
+            .selected = true,
+            .ready = true,
+            .dependency_recorded = true,
+            .host_evidence_available = true,
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.upload.windows.d3d12",
+            .features = {Feature::renderer_texture_upload_execution},
+            .proof = Proof::selected_package_counter,
+            .status = Status::selected_proof,
+            .selected = true,
+            .ready = true,
+            .dependency_recorded = true,
+            .host_evidence_available = true,
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.macos.core_text",
+            .features = {Feature::production_text_shaping, Feature::real_font_loading, Feature::font_rasterization},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires macOS/Xcode Core Text and Core Graphics adapter implementation plus Apple-host "
+                       "validation; Windows DirectWrite evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.macos.input_method_kit",
+            .features = {Feature::native_ime_session},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires macOS/Xcode InputMethodKit adapter implementation and Apple-host validation; "
+                       "Windows TSF evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.macos.nsaccessibility",
+            .features = {Feature::os_accessibility_publication},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires macOS/Xcode NSAccessibility adapter implementation and Apple-host validation; "
+                       "Windows UIA evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+            .features = {Feature::production_text_shaping, Feature::real_font_loading},
+            .proof = Proof::dependency_gate,
+            .status = Status::dependency_gated,
+            .blocker = "Requires explicit runtime-ui-harfbuzz and runtime-ui-fontconfig dependency selection, "
+                       "vcpkg bootstrap, legal notices, adapter implementation, and Linux host validation.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.linux.freetype",
+            .features = {Feature::font_rasterization},
+            .proof = Proof::dependency_gate,
+            .status = Status::dependency_gated,
+            .blocker = "Requires explicit runtime-ui-freetype dependency selection, vcpkg bootstrap, legal notices, "
+                       "adapter implementation, and Linux host validation.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.linux.at_spi",
+            .features = {Feature::os_accessibility_publication},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires Linux AT-SPI2 adapter implementation and Linux accessibility host validation; "
+                       "Windows UIA evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.android.text_input",
+            .features = {Feature::native_ime_session},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires Android text-input adapter implementation and Android device or emulator host "
+                       "validation; Windows TSF evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.android.accessibility",
+            .features = {Feature::os_accessibility_publication},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires Android accessibility adapter implementation and Android device or emulator host "
+                       "validation; Windows UIA evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.ios.uitextinput",
+            .features = {Feature::native_ime_session},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires iOS UITextInput adapter implementation and Xcode simulator or device validation; "
+                       "Windows TSF evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.adapter.ios.uiaccessibility",
+            .features = {Feature::os_accessibility_publication},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires iOS UIAccessibility adapter implementation and Xcode simulator or device validation; "
+                       "Windows UIA evidence cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.upload.vulkan",
+            .features = {Feature::renderer_texture_upload_execution},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker =
+                "Requires Vulkan UI atlas upload/readback package proof with DXC SPIR-V, spirv-val, "
+                "synchronization, validation-layer, and host runtime evidence; D3D12 proof cannot satisfy this gate.",
+        },
+        RuntimeUiPlatformAdapterGateRow{
+            .id = "runtime_ui.upload.metal",
+            .features = {Feature::renderer_texture_upload_execution},
+            .proof = Proof::host_gate,
+            .status = Status::host_gated,
+            .blocker = "Requires Apple-host Metal UI atlas upload/readback proof with Xcode metal/metallib and "
+                       "runtime validation; D3D12 or Vulkan proof cannot satisfy this gate.",
+        },
+    };
 }
 
 RuntimeUiPlatformProductionResult

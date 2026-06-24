@@ -116,7 +116,119 @@
           "macos"
         ],
         "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_platform_production_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_runtime_ui_platform_production_tests\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
-        "notes": "Runtime UI Platform Production Gate v1 adds RuntimeUiPlatformProductionFeature, RuntimeUiPlatformProductionProofKind, RuntimeUiPlatformProductionEvidenceRow, RuntimeUiPlatformProductionResult, and evaluate_runtime_ui_platform_production for a single fail-closed UI platform readiness evaluator. Required feature rows are visible_ui_editor, production_text_shaping, real_font_loading, font_rasterization, native_ime_session, os_accessibility_publication, renderer_texture_upload_execution, clean_room_provenance, and external_engine_parity_non_claim. Required proof kinds are first_party_contract, official_sdk_adapter, audited_dependency_adapter, selected_package_counter, visible_editor_shell, host_gate, dependency_gate, and unsupported_non_claim. The evaluator rejects missing feature rows, duplicate row ids, public native handles, missing dependency records, host gates without explicit blockers, missing renderer upload execution proof, external Unity/Unreal/Godot parity claims, UI middleware exposure, copied external source/assets, selected rows that are not ready, invalid non-claim proof, and row budget overflow. This is the production claim gate only; it accepts selected Windows DirectWrite text/font evidence, selected Windows TSF native IME session evidence, selected Windows UIA accessibility publication evidence, and selected D3D12 UI atlas texture upload/readback evidence, but it does not implement or mark visible runtime UI editor completion, native candidate UI, non-Windows IME sessions, non-Windows accessibility publication, full UIA/screen-reader parity, Vulkan/Metal renderer texture upload execution, external engine compatibility, visual parity, API parity, or broad platform UI readiness."
+        "notes": "Runtime UI Platform Production Gate v1 adds RuntimeUiPlatformProductionFeature, RuntimeUiPlatformProductionProofKind, RuntimeUiPlatformProductionEvidenceRow, RuntimeUiPlatformProductionResult, and evaluate_runtime_ui_platform_production for a single fail-closed UI platform readiness evaluator. Required feature rows are visible_ui_editor, production_text_shaping, real_font_loading, font_rasterization, native_ime_session, os_accessibility_publication, renderer_texture_upload_execution, clean_room_provenance, and external_engine_parity_non_claim. Required proof kinds are first_party_contract, official_sdk_adapter, audited_dependency_adapter, selected_package_counter, visible_editor_shell, host_gate, dependency_gate, and unsupported_non_claim. The evaluator rejects missing feature rows, duplicate row ids, public native handles, missing dependency records, host/dependency gates without explicit blockers, missing renderer upload execution proof, external Unity/Unreal/Godot parity claims, UI middleware exposure, copied external source/assets, selected rows that are not ready, invalid non-claim proof, and row budget overflow. This is the production claim gate only; it accepts selected Windows DirectWrite text/font evidence, selected Windows TSF native IME session evidence, selected Windows UIA accessibility publication evidence, and selected D3D12 UI atlas texture upload/readback evidence, but it does not implement or mark visible runtime UI editor completion, native candidate UI, non-Windows IME sessions, non-Windows accessibility publication, full UIA/screen-reader parity, Vulkan/Metal renderer texture upload execution, external engine compatibility, visual parity, API parity, or broad platform UI readiness."
+      },
+      {
+        "name": "runtime-ui-cross-platform-adapter-gates",
+        "module": "MK_ui",
+        "status": "selected-windows-d3d12-and-fail-closed-gates",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos",
+          "android",
+          "ios"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_platform_production_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_runtime_ui_platform_production_tests\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1",
+        "notes": "First-Party Runtime UI And Editor Platform Production v1 Task 10 records exact runtime_ui adapter/upload gate ids through RuntimeUiPlatformAdapterGateRow and make_runtime_ui_platform_adapter_gate_rows. Selected proof is limited to Windows DirectWrite text/font/glyph evidence, Windows TSF native IME session evidence, Windows UIA runtime accessibility publication evidence, and D3D12 UI atlas upload/readback evidence. All macOS, Linux, Android, iOS, Vulkan, and Metal rows are host-gated or dependency-gated with exact blockers and no optional dependency selected.",
+        "adapterGates": [
+          {
+            "id": "runtime_ui.adapter.windows.directwrite",
+            "classification": "selected_proof",
+            "features": ["production_text_shaping", "real_font_loading", "font_rasterization"],
+            "blocker": ""
+          },
+          {
+            "id": "runtime_ui.adapter.windows.tsf",
+            "classification": "selected_proof",
+            "features": ["native_ime_session"],
+            "blocker": ""
+          },
+          {
+            "id": "runtime_ui.adapter.windows.uia",
+            "classification": "selected_proof",
+            "features": ["os_accessibility_publication"],
+            "blocker": ""
+          },
+          {
+            "id": "runtime_ui.upload.windows.d3d12",
+            "classification": "selected_proof",
+            "features": ["renderer_texture_upload_execution"],
+            "blocker": ""
+          },
+          {
+            "id": "runtime_ui.adapter.macos.core_text",
+            "classification": "host_gated",
+            "features": ["production_text_shaping", "real_font_loading", "font_rasterization"],
+            "blocker": "Requires macOS/Xcode Core Text and Core Graphics adapter implementation plus Apple-host validation; Windows DirectWrite evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.macos.input_method_kit",
+            "classification": "host_gated",
+            "features": ["native_ime_session"],
+            "blocker": "Requires macOS/Xcode InputMethodKit adapter implementation and Apple-host validation; Windows TSF evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.macos.nsaccessibility",
+            "classification": "host_gated",
+            "features": ["os_accessibility_publication"],
+            "blocker": "Requires macOS/Xcode NSAccessibility adapter implementation and Apple-host validation; Windows UIA evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+            "classification": "dependency_gated",
+            "features": ["production_text_shaping", "real_font_loading"],
+            "blocker": "Requires explicit runtime-ui-harfbuzz and runtime-ui-fontconfig dependency selection, vcpkg bootstrap, legal notices, adapter implementation, and Linux host validation."
+          },
+          {
+            "id": "runtime_ui.adapter.linux.freetype",
+            "classification": "dependency_gated",
+            "features": ["font_rasterization"],
+            "blocker": "Requires explicit runtime-ui-freetype dependency selection, vcpkg bootstrap, legal notices, adapter implementation, and Linux host validation."
+          },
+          {
+            "id": "runtime_ui.adapter.linux.at_spi",
+            "classification": "host_gated",
+            "features": ["os_accessibility_publication"],
+            "blocker": "Requires Linux AT-SPI2 adapter implementation and Linux accessibility host validation; Windows UIA evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.android.text_input",
+            "classification": "host_gated",
+            "features": ["native_ime_session"],
+            "blocker": "Requires Android text-input adapter implementation and Android device or emulator host validation; Windows TSF evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.android.accessibility",
+            "classification": "host_gated",
+            "features": ["os_accessibility_publication"],
+            "blocker": "Requires Android accessibility adapter implementation and Android device or emulator host validation; Windows UIA evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.ios.uitextinput",
+            "classification": "host_gated",
+            "features": ["native_ime_session"],
+            "blocker": "Requires iOS UITextInput adapter implementation and Xcode simulator or device validation; Windows TSF evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.adapter.ios.uiaccessibility",
+            "classification": "host_gated",
+            "features": ["os_accessibility_publication"],
+            "blocker": "Requires iOS UIAccessibility adapter implementation and Xcode simulator or device validation; Windows UIA evidence cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.upload.vulkan",
+            "classification": "host_gated",
+            "features": ["renderer_texture_upload_execution"],
+            "blocker": "Requires Vulkan UI atlas upload/readback package proof with DXC SPIR-V, spirv-val, synchronization, validation-layer, and host runtime evidence; D3D12 proof cannot satisfy this gate."
+          },
+          {
+            "id": "runtime_ui.upload.metal",
+            "classification": "host_gated",
+            "features": ["renderer_texture_upload_execution"],
+            "blocker": "Requires Apple-host Metal UI atlas upload/readback proof with Xcode metal/metallib and runtime validation; D3D12 or Vulkan proof cannot satisfy this gate."
+          }
+        ]
       },
       {
         "name": "runtime-ui-win32-directwrite-text-shaping",

@@ -41,6 +41,53 @@
       "purpose": "Build and test selected Windows UIA runtime UI accessibility publication evidence, including provider root availability, role/name/description/state/focus/action rows, parent-child relationships, reading order, live region status, keyboard pattern rows, screen-space bounds, event publication counters, no public native handles, package counters for runtime_ui_uia_provider_ready/runtime_ui_accessibility_nodes/runtime_ui_accessibility_action_rows/runtime_ui_accessibility_event_rows/runtime_ui_accessibility_cross_platform_ready/runtime_ui_accessibility_native_handles_exposed/runtime_ui_uia_diagnostics, and RuntimeUiPlatformProductionEvidenceRow conversion for os_accessibility_publication official_sdk_adapter without promoting NSAccessibility, AT-SPI2, Android/iOS accessibility, full UIA pattern/event parity, full screen-reader parity, renderer upload, or external engine parity."
     },
     {
+      "name": "runtime-ui-cross-platform-adapter-gates",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_platform_production_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_runtime_ui_platform_production_tests\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1",
+      "purpose": "Validate First-Party Runtime UI And Editor Platform Production v1 Task 10 exact cross-platform adapter gate catalog. Selected proof ids are runtime_ui.adapter.windows.directwrite, runtime_ui.adapter.windows.tsf, runtime_ui.adapter.windows.uia, and runtime_ui.upload.windows.d3d12. Host-gated ids are runtime_ui.adapter.macos.core_text, runtime_ui.adapter.macos.input_method_kit, runtime_ui.adapter.macos.nsaccessibility, runtime_ui.adapter.linux.at_spi, runtime_ui.adapter.android.text_input, runtime_ui.adapter.android.accessibility, runtime_ui.adapter.ios.uitextinput, runtime_ui.adapter.ios.uiaccessibility, runtime_ui.upload.vulkan, and runtime_ui.upload.metal. Dependency-gated ids are runtime_ui.adapter.linux.harfbuzz_fontconfig and runtime_ui.adapter.linux.freetype. The recipe must not select optional dependencies or promote Windows/D3D12 proof to macOS, Linux, Android, iOS, Vulkan, Metal, external-engine parity, public-native-handle, UI middleware, or broad platform UI readiness.",
+      "gateClassifications": {
+        "selected_proof": [
+          "runtime_ui.adapter.windows.directwrite",
+          "runtime_ui.adapter.windows.tsf",
+          "runtime_ui.adapter.windows.uia",
+          "runtime_ui.upload.windows.d3d12"
+        ],
+        "host_gated": [
+          "runtime_ui.adapter.macos.core_text",
+          "runtime_ui.adapter.macos.input_method_kit",
+          "runtime_ui.adapter.macos.nsaccessibility",
+          "runtime_ui.adapter.linux.at_spi",
+          "runtime_ui.adapter.android.text_input",
+          "runtime_ui.adapter.android.accessibility",
+          "runtime_ui.adapter.ios.uitextinput",
+          "runtime_ui.adapter.ios.uiaccessibility",
+          "runtime_ui.upload.vulkan",
+          "runtime_ui.upload.metal"
+        ],
+        "dependency_gated": [
+          "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+          "runtime_ui.adapter.linux.freetype"
+        ]
+      },
+      "gateIds": [
+        "runtime_ui.adapter.windows.directwrite",
+        "runtime_ui.adapter.windows.tsf",
+        "runtime_ui.adapter.windows.uia",
+        "runtime_ui.upload.windows.d3d12",
+        "runtime_ui.adapter.macos.core_text",
+        "runtime_ui.adapter.macos.input_method_kit",
+        "runtime_ui.adapter.macos.nsaccessibility",
+        "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+        "runtime_ui.adapter.linux.freetype",
+        "runtime_ui.adapter.linux.at_spi",
+        "runtime_ui.adapter.android.text_input",
+        "runtime_ui.adapter.android.accessibility",
+        "runtime_ui.adapter.ios.uitextinput",
+        "runtime_ui.adapter.ios.uiaccessibility",
+        "runtime_ui.upload.vulkan",
+        "runtime_ui.upload.metal"
+      ]
+    },
+    {
       "name": "win32-runtime-host",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_win32_tests MK_runtime_host_win32_public_api_compile; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_runtime_host_win32_tests|MK_runtime_host_win32_public_api_compile\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1",
       "purpose": "Build and test the Windows-native runtime host and D3D12 presentation foundation, including Win32DesktopGameHost, Win32DesktopEventPump, deterministic NullRenderer fallback, D3D12 swapchain planning, host-supplied shader-bytecode renderer creation, resize/present report rows, and public native-handle isolation."

@@ -28,6 +28,8 @@ $validationRecipesText = Get-AgentSurfaceText "engine/agent/manifest.fragments/0
 $gameCodeGuidanceText = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
 $dependencyDocsText = Get-AgentSurfaceText "docs/dependencies.md"
 $legalDocsText = Get-AgentSurfaceText "docs/legal-and-licensing.md"
+$uiDocsText = Get-AgentSurfaceText "docs/ui.md"
+$editorDocsText = Get-AgentSurfaceText "docs/editor.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 
@@ -89,11 +91,79 @@ foreach ($needle in @(
         "middleware_api_exposure",
         "copied_external_source",
         "copied_external_asset",
-        "row_budget_overflow"
+        "row_budget_overflow",
+        "dependency_gate_missing"
     )) {
     Assert-ContainsText $runtimeUiPlatformProductionHeaderText $needle "runtime UI platform production diagnostics"
     Assert-ContainsText $runtimeUiPlatformProductionTestText $needle "runtime UI platform production tests"
 }
+
+foreach ($needle in @(
+        "RuntimeUiPlatformAdapterGateRow",
+        "RuntimeUiPlatformAdapterGateStatus",
+        "make_runtime_ui_platform_adapter_gate_rows",
+        "runtime_ui_platform_adapter_gate_status_name"
+    )) {
+    Assert-ContainsText $runtimeUiPlatformProductionHeaderText $needle "runtime UI platform adapter gate public header"
+    Assert-ContainsText $runtimeUiPlatformProductionTestText $needle "runtime UI platform adapter gate tests"
+}
+
+foreach ($needle in @("selected_proof", "host_gated", "dependency_gated")) {
+    Assert-ContainsText $runtimeUiPlatformProductionHeaderText $needle "runtime UI platform adapter gate status enum"
+    Assert-ContainsText $runtimeUiPlatformProductionTestText $needle "runtime UI platform adapter gate status tests"
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness runtime UI adapter gate classification"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes runtime UI adapter gate classification"
+}
+
+foreach ($needle in @(
+        "runtime_ui.adapter.windows.directwrite",
+        "runtime_ui.adapter.windows.tsf",
+        "runtime_ui.adapter.windows.uia",
+        "runtime_ui.upload.windows.d3d12",
+        "runtime_ui.adapter.macos.core_text",
+        "runtime_ui.adapter.macos.input_method_kit",
+        "runtime_ui.adapter.macos.nsaccessibility",
+        "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+        "runtime_ui.adapter.linux.freetype",
+        "runtime_ui.adapter.linux.at_spi",
+        "runtime_ui.adapter.android.text_input",
+        "runtime_ui.adapter.android.accessibility",
+        "runtime_ui.adapter.ios.uitextinput",
+        "runtime_ui.adapter.ios.uiaccessibility",
+        "runtime_ui.upload.vulkan",
+        "runtime_ui.upload.metal"
+    )) {
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 10 gate ids"
+    Assert-ContainsText $runtimeUiPlatformProductionTestText $needle "runtime UI platform adapter gate tests"
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness runtime UI adapter gates"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes runtime UI adapter gates"
+    Assert-ContainsText $uiDocsText $needle "docs/ui.md runtime UI adapter gates"
+    Assert-ContainsText $currentCapabilitiesText $needle "docs/current-capabilities.md runtime UI adapter gates"
+}
+
+foreach ($needle in @(
+        "runtime_ui.adapter.windows.directwrite",
+        "runtime_ui.adapter.windows.tsf",
+        "runtime_ui.adapter.windows.uia",
+        "runtime_ui.upload.windows.d3d12"
+    )) {
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness selected runtime UI adapter gates"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes selected runtime UI adapter gates"
+}
+
+foreach ($needle in @(
+        "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+        "runtime_ui.adapter.linux.freetype"
+    )) {
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness dependency-gated runtime UI adapter gates"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes dependency-gated runtime UI adapter gates"
+}
+
+Assert-ContainsText $runtimeBackendReadinessText "runtime-ui-cross-platform-adapter-gates" "runtime backend readiness runtime UI adapter gate catalog"
+Assert-ContainsText $validationRecipesText "runtime-ui-cross-platform-adapter-gates" "validation recipes runtime UI adapter gate catalog"
+Assert-ContainsText $uiDocsText "make_runtime_ui_platform_adapter_gate_rows" "docs/ui.md runtime UI adapter gate catalog"
+Assert-ContainsText $editorDocsText 'Runtime game UI uses the separate `runtime_ui.adapter.*` and `runtime_ui.upload.*` gate catalog' "docs/editor.md runtime UI/editor gate namespace split"
+Assert-ContainsText $currentCapabilitiesText "Runtime UI Cross-Platform Adapter Gates v1" "docs/current-capabilities.md runtime UI adapter gate catalog"
 
 foreach ($needle in @(
         "src/runtime_ui_platform_production.cpp",
