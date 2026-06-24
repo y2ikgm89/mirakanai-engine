@@ -11,6 +11,7 @@
 #include "mirakana/platform/win32/win32_input.hpp"
 #include "mirakana/platform/win32/win32_runtime.hpp"
 #include "mirakana/platform/win32/win32_text_input.hpp"
+#include "mirakana/platform/win32/win32_ui_accessibility.hpp"
 #include "mirakana/platform/win32/win32_window.hpp"
 
 #if defined(_WIN32)
@@ -19,6 +20,17 @@ namespace {
 
 [[nodiscard]] bool has_tsf_diagnostic(const std::vector<mirakana::win32::Win32TsfTextSessionDiagnostic>& diagnostics,
                                       mirakana::win32::Win32TsfTextSessionDiagnosticCode code) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool
+has_uia_diagnostic(const std::vector<mirakana::win32::Win32UiaProviderPublicationDiagnostic>& diagnostics,
+                   mirakana::win32::Win32UiaProviderPublicationDiagnosticCode code) {
     for (const auto& diagnostic : diagnostics) {
         if (diagnostic.code == code) {
             return true;
@@ -48,6 +60,44 @@ namespace {
             .selected_index = 1U,
             .native_candidate_ui_requested = true,
         }},
+        .row_budget = 16U,
+    };
+}
+
+[[nodiscard]] mirakana::win32::Win32UiaProviderPublicationDesc make_valid_uia_publication_desc() {
+    const mirakana::ui::ElementId root{.value = "runtime-ui.root"};
+    const mirakana::ui::ElementId button{.value = "runtime-ui.pause"};
+    return mirakana::win32::Win32UiaProviderPublicationDesc{
+        .provider_root_id = root,
+        .nodes =
+            {
+                mirakana::win32::Win32UiaRuntimeNodeRow{
+                    .runtime_id = root,
+                    .child_runtime_ids = {button},
+                    .role = mirakana::ui::SemanticRole::panel,
+                    .name = "HUD root",
+                    .description = "Runtime HUD root",
+                    .screen_bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 640.0F, .height = 360.0F},
+                    .reading_order = 0U,
+                    .live_region_status = "off",
+                },
+                mirakana::win32::Win32UiaRuntimeNodeRow{
+                    .runtime_id = button,
+                    .parent_runtime_id = root,
+                    .role = mirakana::ui::SemanticRole::button,
+                    .name = "Pause",
+                    .description = "Open pause menu",
+                    .screen_bounds = mirakana::ui::Rect{.x = 16.0F, .y = 16.0F, .width = 96.0F, .height = 32.0F},
+                    .focusable = true,
+                    .focused = true,
+                    .action_ids = {"invoke"},
+                    .invoke_pattern_supported = true,
+                    .reading_order = 1U,
+                    .keyboard_shortcut = "Esc",
+                    .event_publication_requested = true,
+                },
+            },
+        .publish_events = true,
         .row_budget = 16U,
     };
 }
@@ -623,6 +673,111 @@ MK_TEST("win32 TSF text session proof fails closed for invalid rows and parity c
     MK_REQUIRE(!broad_parity_result.succeeded());
     MK_REQUIRE(has_tsf_diagnostic(broad_parity_result.diagnostics,
                                   mirakana::win32::Win32TsfTextSessionDiagnosticCode::broad_ime_parity_claim));
+}
+
+MK_TEST("win32 UIA provider publication emits private official SDK accessibility rows") {
+    const auto result = mirakana::win32::publish_runtime_ui_to_win32_uia(make_valid_uia_publication_desc());
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.uia_provider_root_available);
+    MK_REQUIRE(result.provider_root_id.value == "runtime-ui.root");
+    MK_REQUIRE(result.node_rows.size() == 2U);
+    MK_REQUIRE(result.role_rows == 2U);
+    MK_REQUIRE(result.name_rows == 2U);
+    MK_REQUIRE(result.description_rows == 2U);
+    MK_REQUIRE(result.state_rows == 2U);
+    MK_REQUIRE(result.focus_rows == 1U);
+    MK_REQUIRE(result.action_rows == 1U);
+    MK_REQUIRE(result.relationship_rows == 1U);
+    MK_REQUIRE(result.reading_order_rows == 2U);
+    MK_REQUIRE(result.live_region_rows == 1U);
+    MK_REQUIRE(result.keyboard_pattern_rows == 1U);
+    MK_REQUIRE(result.bounds_rows == 2U);
+    MK_REQUIRE(result.event_publication_rows == 1U);
+    MK_REQUIRE(!result.cross_platform_accessibility_ready);
+    MK_REQUIRE(!result.public_native_handles_exposed);
+
+    const auto evidence = mirakana::win32::make_win32_uia_accessibility_publication_production_evidence(result);
+    MK_REQUIRE(evidence.id == "runtime-ui-platform.accessibility.win32.uia");
+    MK_REQUIRE(evidence.feature == mirakana::ui::RuntimeUiPlatformProductionFeature::os_accessibility_publication);
+    MK_REQUIRE(evidence.proof == mirakana::ui::RuntimeUiPlatformProductionProofKind::official_sdk_adapter);
+    MK_REQUIRE(evidence.selected);
+    MK_REQUIRE(evidence.ready);
+    MK_REQUIRE(evidence.dependency_recorded);
+    MK_REQUIRE(evidence.host_evidence_available);
+    MK_REQUIRE(!evidence.public_native_handles);
+    MK_REQUIRE(!evidence.external_engine_parity_claim);
+}
+
+MK_TEST("win32 UIA provider publication fails closed for invalid rows and public handle claims") {
+    auto missing_name = make_valid_uia_publication_desc();
+    missing_name.nodes[1].name.clear();
+    const auto missing_name_result = mirakana::win32::publish_runtime_ui_to_win32_uia(missing_name);
+    MK_REQUIRE(!missing_name_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(missing_name_result.diagnostics,
+                                  mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::missing_accessible_name));
+
+    auto duplicate_id = make_valid_uia_publication_desc();
+    duplicate_id.nodes[1].runtime_id = duplicate_id.provider_root_id;
+    const auto duplicate_id_result = mirakana::win32::publish_runtime_ui_to_win32_uia(duplicate_id);
+    MK_REQUIRE(!duplicate_id_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(duplicate_id_result.diagnostics,
+                                  mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::duplicate_runtime_id));
+
+    auto invalid_bounds = make_valid_uia_publication_desc();
+    invalid_bounds.nodes[1].screen_bounds.width = 0.0F;
+    const auto invalid_bounds_result = mirakana::win32::publish_runtime_ui_to_win32_uia(invalid_bounds);
+    MK_REQUIRE(!invalid_bounds_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(invalid_bounds_result.diagnostics,
+                                  mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::invalid_bounds));
+
+    auto focus_without_action = make_valid_uia_publication_desc();
+    focus_without_action.nodes[1].invoke_pattern_supported = false;
+    focus_without_action.nodes[1].action_ids.clear();
+    const auto focus_without_action_result = mirakana::win32::publish_runtime_ui_to_win32_uia(focus_without_action);
+    MK_REQUIRE(!focus_without_action_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(
+        focus_without_action_result.diagnostics,
+        mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::focusable_without_action_pattern));
+
+    auto child_without_parent = make_valid_uia_publication_desc();
+    child_without_parent.nodes[1].parent_runtime_id.value = "missing-parent";
+    const auto child_without_parent_result = mirakana::win32::publish_runtime_ui_to_win32_uia(child_without_parent);
+    MK_REQUIRE(!child_without_parent_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(child_without_parent_result.diagnostics,
+                                  mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::child_without_parent));
+
+    auto unsupported_pattern = make_valid_uia_publication_desc();
+    unsupported_pattern.nodes[1].unsupported_pattern_claim = true;
+    const auto unsupported_pattern_result = mirakana::win32::publish_runtime_ui_to_win32_uia(unsupported_pattern);
+    MK_REQUIRE(!unsupported_pattern_result.succeeded());
+    MK_REQUIRE(
+        has_uia_diagnostic(unsupported_pattern_result.diagnostics,
+                           mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::unsupported_pattern_claim));
+
+    auto event_without_root = make_valid_uia_publication_desc();
+    event_without_root.provider_root_id.value.clear();
+    const auto event_without_root_result = mirakana::win32::publish_runtime_ui_to_win32_uia(event_without_root);
+    MK_REQUIRE(!event_without_root_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(
+        event_without_root_result.diagnostics,
+        mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::event_claim_without_provider_root));
+
+    auto native_handles = make_valid_uia_publication_desc();
+    native_handles.public_native_handles_exposed = true;
+    const auto native_handles_result = mirakana::win32::publish_runtime_ui_to_win32_uia(native_handles);
+    MK_REQUIRE(!native_handles_result.succeeded());
+    MK_REQUIRE(
+        has_uia_diagnostic(native_handles_result.diagnostics,
+                           mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::public_native_handles_exposed));
+
+    auto broad_accessibility = make_valid_uia_publication_desc();
+    broad_accessibility.claims_cross_platform_accessibility_ready = true;
+    const auto broad_accessibility_result = mirakana::win32::publish_runtime_ui_to_win32_uia(broad_accessibility);
+    MK_REQUIRE(!broad_accessibility_result.succeeded());
+    MK_REQUIRE(has_uia_diagnostic(
+        broad_accessibility_result.diagnostics,
+        mirakana::win32::Win32UiaProviderPublicationDiagnosticCode::broad_accessibility_parity_claim));
 }
 
 #endif
