@@ -1,6 +1,6 @@
 # Renderer Backend Parity Apple Memory Profiling Proof Rows v1 Implementation Plan
 
-**Status:** In progress.
+**Status:** Completed through PR #805 / merge commit `58a2017002895ba4d06ba7bc48675af7af3841f4`.
 
 **Date:** 2026-06-24
 
@@ -31,7 +31,7 @@ This plan does not claim broad backend parity, broad Metal readiness, commercial
 - [x] Add `BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc` and `make_backend_renderer_parity_apple_metal_memory_profiling_proofs`.
 - [x] Update docs, skills, manifest fragments, and static checks to name the new helper and preserve non-claims.
 - [x] Run focused renderer validation and agent-surface checks.
-- [ ] Run the required publication flow for this reviewable slice.
+- [x] Run the required publication flow for this reviewable slice.
 
 ## Implementation Evidence
 
@@ -49,6 +49,10 @@ This plan does not claim broad backend parity, broad Metal readiness, commercial
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | PASS: `text-format-check: ok`. |
 | `git diff --check` | PASS. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`; 157/157 CTest tests passed. Local Windows host lacks Apple Metal tools, and the Apple evidence checks remained diagnostic/host-gated as expected. |
+| `gh pr checks 805` | PASS: PR Gate, Windows MSVC, Linux CMake, Linux Vulkan Host Evidence, Linux Coverage, Linux Clang ASan/UBSan, Full Repository Static Analysis shards, macOS Metal CMake, iOS Metal Evidence, iOS Simulator smoke, CodeQL, and selected validation tier passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 805 -ExpectedBase main` | PASS: PR #805 moved from draft to ready at head `7c2f30c544cf66fd2b029bc1102d7d4ca9b8f9cc`. |
+| `gh pr merge 805 --auto --merge --match-head-commit 7c2f30c544cf66fd2b029bc1102d7d4ca9b8f9cc` | PASS: PR #805 merged to `origin/main` as merge commit `58a2017002895ba4d06ba7bc48675af7af3841f4`. |
+| `git merge-base --is-ancestor 7c2f30c544cf66fd2b029bc1102d7d4ca9b8f9cc origin/main` | PASS: the reviewed head reaches `origin/main`. |
 
 ## Done When
 
