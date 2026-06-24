@@ -506,6 +506,7 @@ $requires2dSpriteAtlasResidency = @($SmokeArgs) -contains "--require-2d-sprite-a
 $requires2dSpriteThroughput = @($SmokeArgs) -contains "--require-2d-sprite-throughput"
 $requires2dPhysicsRuntimeExtension = @($SmokeArgs) -contains "--require-2d-physics-runtime-extension"
 $requires2dInputDeviceProductionUx = @($SmokeArgs) -contains "--require-2d-input-device-production-ux"
+$requires2dSourcePulse = @($SmokeArgs) -contains "--require-2d-source-pulse"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
@@ -4604,6 +4605,30 @@ if ($requires2dInputDeviceProductionUx) {
         -EscapedGameTarget $escapedGameTarget `
         -ExpectedFields $expected2dInputDeviceProductionUxFields `
         -Context "2D input device production UX"
+}
+if ($requires2dSourcePulse) {
+    $expected2dSourcePulseFields = @{
+        "2d_source_pulse_status" = "ready"
+        "2d_source_pulse_ready" = "1"
+        "2d_source_pulse_event_rows" = "3"
+        "2d_source_pulse_native_backend_rows" = "1"
+        "2d_source_pulse_polling_fallback_rows" = "1"
+        "2d_source_pulse_runtime_replacement_committed_rows" = "1"
+        "2d_source_pulse_runtime_scene_validation_required" = "1"
+        "2d_source_pulse_operator_safe_point_required" = "1"
+        "2d_source_pulse_editor_core_execution" = "0"
+        "2d_source_pulse_arbitrary_shell_execution" = "0"
+        "2d_source_pulse_package_script_execution" = "0"
+        "2d_source_pulse_native_handle_exposure" = "0"
+        "2d_source_pulse_external_engine_schema_import" = "0"
+        "2d_source_pulse_external_engine_asset_use" = "0"
+        "2d_source_pulse_external_engine_code_use" = "0"
+    }
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -ExpectedFields $expected2dSourcePulseFields `
+        -Context "2D Source Pulse"
 }
 if ($requiresGameplayAuthoringReview) {
     foreach ($field in @(

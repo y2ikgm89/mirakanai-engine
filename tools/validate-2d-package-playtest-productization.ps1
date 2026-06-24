@@ -16,6 +16,8 @@ Set-Location $root
 $gameManifestPath = "games/sample_2d_desktop_runtime_package/game.agent.json"
 $recipeId = "installed-2d-package-playtest-productization-smoke"
 $playtestRecipeId = "installed-2d-package-playtest-productization-smoke-playtest"
+$sourcePulseRecipeId = "installed-2d-source-pulse-smoke"
+$sourcePulsePlaytestRecipeId = "installed-2d-source-pulse-smoke-playtest"
 $runtimeHostLaunchRowId = "desktop-game-runtime-playtest"
 $hotReloadSafePointEvidenceId = "packaged-2d-residency-budget"
 $hotReloadExternalEvidenceId = "hot-reload-package-playtest-evidence"
@@ -49,6 +51,23 @@ $readySmokeExpectations = @{
     "2d_package_playtest_productization_arbitrary_shell_execution" = "0"
     "2d_package_playtest_productization_active_session_hot_reload" = "0"
     "2d_package_playtest_productization_native_handle_exposure" = "0"
+}
+$sourcePulseSmokeExpectations = @{
+    "2d_source_pulse_status" = "ready"
+    "2d_source_pulse_ready" = "1"
+    "2d_source_pulse_event_rows" = "3"
+    "2d_source_pulse_native_backend_rows" = "1"
+    "2d_source_pulse_polling_fallback_rows" = "1"
+    "2d_source_pulse_runtime_replacement_committed_rows" = "1"
+    "2d_source_pulse_runtime_scene_validation_required" = "1"
+    "2d_source_pulse_operator_safe_point_required" = "1"
+    "2d_source_pulse_editor_core_execution" = "0"
+    "2d_source_pulse_arbitrary_shell_execution" = "0"
+    "2d_source_pulse_package_script_execution" = "0"
+    "2d_source_pulse_native_handle_exposure" = "0"
+    "2d_source_pulse_external_engine_schema_import" = "0"
+    "2d_source_pulse_external_engine_asset_use" = "0"
+    "2d_source_pulse_external_engine_code_use" = "0"
 }
 
 function Get-ObjectPropertyValue {
@@ -137,6 +156,9 @@ $validationRecipeSet = New-Set (@($game.validationRecipes) | ForEach-Object { [s
 if (-not $validationRecipeSet.Contains($recipeId)) {
     Write-Error "$gameManifestPath validationRecipes missing $recipeId"
 }
+if (-not $validationRecipeSet.Contains($sourcePulseRecipeId)) {
+    Write-Error "$gameManifestPath validationRecipes missing $sourcePulseRecipeId"
+}
 
 $aiWorkflow = Get-ObjectPropertyValue -Object $game -Name "aiWorkflow"
 if ($null -eq $aiWorkflow) {
@@ -201,6 +223,56 @@ Assert-ContainsAll (New-Set @($selectedRecipe.expectedSignals)) @(
     "2d_package_playtest_productization_native_handle_exposure=0"
 ) "$gameManifestPath $playtestRecipeId expectedSignals"
 
+$sourcePulseRecipe = @($playtestLoop.selectedRecipes | Where-Object { [string]$_.id -eq $sourcePulsePlaytestRecipeId })
+if ($sourcePulseRecipe.Count -ne 1) {
+    Write-Error "$gameManifestPath generatedGamePlaytestLoop selectedRecipes must declare exactly one $sourcePulsePlaytestRecipeId row"
+}
+$sourcePulseRecipe = $sourcePulseRecipe[0]
+Assert-ObjectProperties $sourcePulseRecipe @(
+    "id",
+    "validationRecipeId",
+    "reviewedRecipeSurfaceId",
+    "evidenceKind",
+    "expectedSignals",
+    "failureClassificationIds",
+    "runtimeHostLaunchRowId",
+    "hotReloadSafePointEvidenceId",
+    "hostGatePolicy"
+) "$gameManifestPath generatedGamePlaytestLoop selectedRecipe $sourcePulsePlaytestRecipeId"
+if ([string]$sourcePulseRecipe.validationRecipeId -ne $sourcePulseRecipeId) {
+    Write-Error "$gameManifestPath $sourcePulsePlaytestRecipeId validationRecipeId expected $sourcePulseRecipeId but was $($sourcePulseRecipe.validationRecipeId)"
+}
+if ([string]$sourcePulseRecipe.reviewedRecipeSurfaceId -ne "package-smoke-evidence-review") {
+    Write-Error "$gameManifestPath $sourcePulsePlaytestRecipeId reviewedRecipeSurfaceId must be package-smoke-evidence-review"
+}
+if ([string]$sourcePulseRecipe.evidenceKind -ne "package-smoke-counter-import") {
+    Write-Error "$gameManifestPath $sourcePulsePlaytestRecipeId evidenceKind must be package-smoke-counter-import"
+}
+if ([string]$sourcePulseRecipe.runtimeHostLaunchRowId -ne $runtimeHostLaunchRowId) {
+    Write-Error "$gameManifestPath $sourcePulsePlaytestRecipeId runtimeHostLaunchRowId expected $runtimeHostLaunchRowId"
+}
+if ([string]$sourcePulseRecipe.hotReloadSafePointEvidenceId -ne $hotReloadSafePointEvidenceId) {
+    Write-Error "$gameManifestPath $sourcePulsePlaytestRecipeId hotReloadSafePointEvidenceId expected $hotReloadSafePointEvidenceId"
+}
+Assert-ContainsAll (New-Set @($sourcePulseRecipe.failureClassificationIds)) $requiredFailureClassifications "$gameManifestPath $sourcePulsePlaytestRecipeId failureClassificationIds"
+Assert-ContainsAll (New-Set @($sourcePulseRecipe.expectedSignals)) @(
+    "2d_source_pulse_status=ready",
+    "2d_source_pulse_ready=1",
+    "2d_source_pulse_event_rows=3",
+    "2d_source_pulse_native_backend_rows=1",
+    "2d_source_pulse_polling_fallback_rows=1",
+    "2d_source_pulse_runtime_replacement_committed_rows=1",
+    "2d_source_pulse_runtime_scene_validation_required=1",
+    "2d_source_pulse_operator_safe_point_required=1",
+    "2d_source_pulse_editor_core_execution=0",
+    "2d_source_pulse_arbitrary_shell_execution=0",
+    "2d_source_pulse_package_script_execution=0",
+    "2d_source_pulse_native_handle_exposure=0",
+    "2d_source_pulse_external_engine_schema_import=0",
+    "2d_source_pulse_external_engine_asset_use=0",
+    "2d_source_pulse_external_engine_code_use=0"
+) "$gameManifestPath $sourcePulsePlaytestRecipeId expectedSignals"
+
 $streamingTargets = @($game.packageStreamingResidencyTargets | Where-Object { [string]$_.id -eq $hotReloadSafePointEvidenceId })
 if ($streamingTargets.Count -ne 1) {
     Write-Error "$gameManifestPath packageStreamingResidencyTargets must declare $hotReloadSafePointEvidenceId"
@@ -230,7 +302,8 @@ if ($RequireReady.IsPresent) {
         "--require-win32-runtime-host",
         "--require-d3d12-shaders",
         "--require-d3d12-renderer",
-        "--require-2d-package-playtest-productization"
+        "--require-2d-package-playtest-productization",
+        "--require-2d-source-pulse"
     )
 
     $packageOutput = & (Join-Path $PSScriptRoot "package-desktop-runtime.ps1") `
@@ -254,6 +327,9 @@ if ($RequireReady.IsPresent) {
 
     $fields = ConvertFrom-StatusLine -Output @($smokeOutput)
     foreach ($entry in $readySmokeExpectations.GetEnumerator()) {
+        Assert-SmokeField $fields $entry.Key $entry.Value
+    }
+    foreach ($entry in $sourcePulseSmokeExpectations.GetEnumerator()) {
         Assert-SmokeField $fields $entry.Key $entry.Value
     }
 }

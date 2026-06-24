@@ -412,11 +412,11 @@ Phase 4 validation evidence (2026-06-24):
 
 Goal: make the feature package-visible and installed-smoke visible for one selected 2D desktop runtime package.
 
-- [ ] Extend the selected 2D package sample under `games/sample_2d_desktop_runtime_package/` only if the package smoke currently owns the relevant counters there. If the current package smoke emits counters from tools scripts instead, update those scripts instead of game code.
-- [ ] Extend `tools/validate-2d-package-playtest-productization.ps1`.
-- [ ] Extend `tools/validate-2d-production-workloads.ps1` only if it owns the aggregate selected 2D workload readiness row.
-- [ ] Extend installed desktop runtime validators that already check `production_authoring_workflow_*` and `2d_package_playtest_productization_*` counters.
-- [ ] Add synthetic ignored evidence under `out/` only during validation; do not track generated artifacts.
+- [x] Extend the selected 2D package sample under `games/sample_2d_desktop_runtime_package/` only if the package smoke currently owns the relevant counters there. If the current package smoke emits counters from tools scripts instead, update those scripts instead of game code.
+- [x] Extend `tools/validate-2d-package-playtest-productization.ps1`.
+- [x] Extend `tools/validate-2d-production-workloads.ps1` only if it owns the aggregate selected 2D workload readiness row.
+- [x] Extend installed desktop runtime validators that already check `production_authoring_workflow_*` and `2d_package_playtest_productization_*` counters.
+- [x] Add synthetic ignored evidence under `out/` only during validation; do not track generated artifacts.
 
 Required counters:
 
@@ -442,19 +442,27 @@ Validation expectations:
 - Existing package smoke counters stay unchanged unless the added Source Pulse rows are explicitly selected.
 - `active_session_hot_reload=0` remains unchanged in existing validators until this phase adds an exact selected active-session Source Pulse counter. If promoted, the old broad counter must be replaced with a narrower `2d_source_pulse_active_session_safe_point_replacement=1` and all broad hot-reload claims must remain `0`.
 
+Phase 5 validation evidence (2026-06-24):
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-package-playtest-productization.ps1` failed before manifest/source updates because `validationRecipes` was missing `installed-2d-source-pulse-smoke`.
+- GREEN focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-package-playtest-productization.ps1` PASS.
+- GREEN package/installed smoke: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-package-playtest-productization.ps1 -RequireReady` PASS after the runtime recook path used the runtime package path while the package index kept the package-relative texture path.
+- GREEN aggregate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-production-workloads.ps1` PASS.
+- Source Pulse remains selected package evidence only: no tracked generated artifacts, third-party code, third-party assets, new dependencies, external engine schemas, package scripts, arbitrary shell execution, editor-core mutation, or native-handle exposure were added.
+
 ## Phase 6: Docs, Manifest, Static Guards, And Legal Records
 
 Goal: make the new behavior durable for agents and repository validators without broadening claims.
 
-- [ ] Update `docs/current-capabilities.md` with exact Source Pulse capability and non-claims.
-- [ ] Update `docs/roadmap.md` only if this feature changes roadmap status.
-- [ ] Update `docs/legal-and-licensing.md` only if a new dependency, license obligation, or legal process rule is added. If no third-party code/assets enter the repo, record "no dependency/legal notice changes" in the plan closeout evidence instead.
-- [ ] Update `docs/dependencies.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` only if a dependency is added. This plan should add none.
-- [ ] Update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and `engine/agent/manifest.fragments/014-gameCodeGuidance.json` with exact Source Pulse support and non-claims.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
-- [ ] Extend `tools/check-ai-integration-020-engine-manifest.ps1`, `tools/check-ai-integration-040-agent-surfaces.ps1`, `tools/check-ai-integration-050-game-generation.ps1`, `tools/check-ai-integration-060-editor-workflows.ps1`, and `tools/check-ai-integration-070-production-ledger.ps1` only for exact durable literals introduced by this feature.
-- [ ] Extend `tools/check-json-contracts-010-engine-manifest.ps1` and `tools/check-json-contracts-040-agent-surfaces.ps1` if manifest or retained row ids require schema/static checks.
-- [ ] Update `.agents/skills/gameengine-feature/SKILL.md`, `.claude/skills/gameengine-feature/SKILL.md`, and `.cursor/skills/gameengine-feature/SKILL.md` only if reusable workflow behavior changes. Do not touch skills for simple capability evidence.
+- [x] Update `docs/current-capabilities.md` with exact Source Pulse capability and non-claims.
+- [x] Update `docs/roadmap.md` only if this feature changes roadmap status.
+- [x] Update `docs/legal-and-licensing.md` only if a new dependency, license obligation, or legal process rule is added. If no third-party code/assets enter the repo, record "no dependency/legal notice changes" in the plan closeout evidence instead.
+- [x] Update `docs/dependencies.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` only if a dependency is added. This plan should add none.
+- [x] Update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and `engine/agent/manifest.fragments/014-gameCodeGuidance.json` with exact Source Pulse support and non-claims.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
+- [x] Extend `tools/check-ai-integration-020-engine-manifest.ps1`, `tools/check-ai-integration-040-agent-surfaces.ps1`, `tools/check-ai-integration-050-game-generation.ps1`, `tools/check-ai-integration-060-editor-workflows.ps1`, and `tools/check-ai-integration-070-production-ledger.ps1` only for exact durable literals introduced by this feature.
+- [x] Extend `tools/check-json-contracts-010-engine-manifest.ps1` and `tools/check-json-contracts-040-agent-surfaces.ps1` if manifest or retained row ids require schema/static checks.
+- [x] Update `.agents/skills/gameengine-feature/SKILL.md`, `.claude/skills/gameengine-feature/SKILL.md`, and `.cursor/skills/gameengine-feature/SKILL.md` only if reusable workflow behavior changes. Do not touch skills for simple capability evidence.
 
 Manifest wording must include:
 
@@ -463,6 +471,16 @@ Manifest wording must include:
 - Source Pulse does not import Unity, Unreal Engine, or Godot projects, schemas, code, samples, assets, or UI.
 - Source Pulse does not expose native handles, execute arbitrary shell commands, execute package scripts, mutate files from editor core, or claim broad 2D editor/all-platform readiness.
 - Legal readiness is an engineering evidence gate and still requires counsel for public commercial claims.
+
+Phase 6 validation evidence (2026-06-24):
+
+- `docs/current-capabilities.md` now separates Source Pulse API non-claims from the selected package-visible `2d_source_pulse_*` smoke lane.
+- `docs/roadmap.md` was not changed because this slice adds selected package evidence without changing roadmap status.
+- `docs/legal-and-licensing.md`, `docs/dependencies.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` were not changed because this slice adds no third-party code, third-party assets, dependency, license obligation, or legal notice record.
+- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` records retained Original 2D Commercial Authoring Live Iteration evidence without reopening `unsupportedProductionGaps`.
+- `engine/agent/manifest.fragments/014-gameCodeGuidance.json` records the exact selected `installed-2d-source-pulse-smoke` package guidance and non-claims.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` PASS and regenerated `engine/agent/manifest.json`.
+- `tools/check-ai-integration-136-2d-source-pulse-package-smoke.ps1` and `tools/check-json-contracts-073-2d-source-pulse-package-smoke.ps1` cover the durable Source Pulse package smoke literals instead of broadening unrelated chapters.
 
 ## Phase 7: Final Validation And Publication Gate
 
@@ -499,6 +517,20 @@ Before staging, run:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
+
+Phase 7 validation evidence (2026-06-24):
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-package-playtest-productization.ps1 -RequireReady` PASS and emitted `2d_source_pulse_status=ready`, `2d_source_pulse_ready=1`, `2d_source_pulse_event_rows=3`, `2d_source_pulse_native_backend_rows=1`, `2d_source_pulse_polling_fallback_rows=1`, `2d_source_pulse_runtime_replacement_committed_rows=1`, and all unsafe/external Source Pulse counters at `0`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-2d-production-workloads.ps1 -RequireReady` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` PASS after the new Source Pulse package-smoke JSON contract was aligned to the actual manifest path and legal-clean-room wording.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS, including 27 static checks, configured/build dev, and 154/154 CTest tests.
+- The host reported Metal/Apple diagnostics as expected host-gated checks inside validation; they are diagnostic/host-gated and did not fail the slice.
 
 ## Done When
 

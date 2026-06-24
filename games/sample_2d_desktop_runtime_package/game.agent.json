@@ -165,6 +165,7 @@
         "installed-2d-physics-runtime-extension-smoke",
         "installed-2d-input-device-production-ux-smoke",
         "installed-2d-package-playtest-productization-smoke",
+        "installed-2d-source-pulse-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-sandbox-package-budget-smoke",
@@ -357,6 +358,13 @@
           "evidence": "Source image/audio codec review smoke reports source_image_audio_codec_review_status=ready, six reviewed rows, exact vcpkg.libspng and vcpkg.miniaudio dependency/legal records, PNG RGBA8 pixel format evidence, audio sample-format evidence, selected package evidence, zero unsupported claims, zero SVG/background/HRTF/runtime-source/native/package side effects, and a positive replay hash without broad image or audio codec readiness.",
           "recipeIds": [
             "installed-2d-source-image-audio-codec-review-smoke"
+          ]
+        },
+        {
+          "id": "source-pulse-package-smoke",
+          "evidence": "Source Pulse package smoke reports 2d_source_pulse_status=ready, three reviewed file-watch change rows, native backend and polling fallback evidence rows, one reviewed runtime replacement safe-point commit, runtime scene validation and operator safe-point review gates, zero editor-core/arbitrary-shell/package-script/native-handle side effects, and zero external engine schema, asset, or code use.",
+          "recipeIds": [
+            "installed-2d-source-pulse-smoke"
           ]
         },
         {
@@ -1103,6 +1111,42 @@
             "2d_package_playtest_productization_arbitrary_shell_execution=0",
             "2d_package_playtest_productization_active_session_hot_reload=0",
             "2d_package_playtest_productization_native_handle_exposure=0"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-scene-binding",
+            "package-load-failure",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "hot-reload-recook-failure",
+            "runtime-replacement-failure",
+            "host-gated-backend"
+          ],
+          "runtimeHostLaunchRowId": "desktop-game-runtime-playtest",
+          "hotReloadSafePointEvidenceId": "packaged-2d-residency-budget",
+          "hostGatePolicy": "respect-manifest-host-gates"
+        },
+        {
+          "id": "installed-2d-source-pulse-smoke-playtest",
+          "validationRecipeId": "installed-2d-source-pulse-smoke",
+          "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
+          "evidenceKind": "package-smoke-counter-import",
+          "expectedSignals": [
+            "2d_source_pulse_status=ready",
+            "2d_source_pulse_ready=1",
+            "2d_source_pulse_event_rows=3",
+            "2d_source_pulse_native_backend_rows=1",
+            "2d_source_pulse_polling_fallback_rows=1",
+            "2d_source_pulse_runtime_replacement_committed_rows=1",
+            "2d_source_pulse_runtime_scene_validation_required=1",
+            "2d_source_pulse_operator_safe_point_required=1",
+            "2d_source_pulse_editor_core_execution=0",
+            "2d_source_pulse_arbitrary_shell_execution=0",
+            "2d_source_pulse_package_script_execution=0",
+            "2d_source_pulse_native_handle_exposure=0",
+            "2d_source_pulse_external_engine_schema_import=0",
+            "2d_source_pulse_external_engine_asset_use=0",
+            "2d_source_pulse_external_engine_code_use=0"
           ],
           "failureClassificationIds": [
             "missing-package-file",
@@ -2869,6 +2913,10 @@
     {
       "name": "installed-2d-package-playtest-productization-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-2d-package-playtest-productization"
+    },
+    {
+      "name": "installed-2d-source-pulse-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-2d-source-pulse"
     },
     {
       "name": "installed-2d-gameplay-authoring-review-smoke",
