@@ -63,6 +63,7 @@
 #include "mirakana/ui/runtime_ui_platform_production.hpp"
 #include "mirakana/ui/runtime_ui_production_stack.hpp"
 #include "mirakana/ui/runtime_ui_standard_widgets.hpp"
+#include "mirakana/ui/runtime_ui_widgets.hpp"
 #include "mirakana/ui/runtime_ui_workbench.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
@@ -139,6 +140,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_profile_resume{false};
     bool require_runtime_menu_hud{false};
     bool require_runtime_ui_standard_widgets{false};
+    bool require_runtime_ui_widgets{false};
     bool require_runtime_ui_workbench{false};
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_platform_package{false};
@@ -1907,6 +1909,15 @@ struct RuntimeUiStandardWidgetsProbeResult {
     std::size_t diagnostics{0U};
 };
 
+struct RuntimeUiWidgetsProbeResult {
+    mirakana::ui::RuntimeUiWidgetPlanStatus status{mirakana::ui::RuntimeUiWidgetPlanStatus::invalid_request};
+    bool ready{false};
+    std::size_t widget_rows{0U};
+    std::size_t command_rows{0U};
+    std::size_t focusable_rows{0U};
+    std::size_t diagnostics{0U};
+};
+
 struct RuntimeUiWorkbenchProbeResult {
     bool ready{false};
     mirakana::ui::RuntimeUiWorkbenchStatus status{mirakana::ui::RuntimeUiWorkbenchStatus::invalid_request};
@@ -3206,6 +3217,100 @@ validate_runtime_ui_standard_widgets_package_evidence(std::string_view sample_id
                    result.health_accessibility_ready && result.mana_localization_ready &&
                    result.stamina_warning_style_ready && !result.external_engine_code &&
                    !result.external_engine_assets && !result.ui_middleware && result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] RuntimeUiWidgetsProbeResult validate_runtime_ui_widgets_package_evidence() {
+    using mirakana::ui::RuntimeUiWidgetKind;
+    using mirakana::ui::RuntimeUiWidgetRow;
+
+    auto widget_rows = std::vector<RuntimeUiWidgetRow>{
+        {.id = "pause.resume",
+         .kind = RuntimeUiWidgetKind::button,
+         .label = "Resume",
+         .localization_key = "ui.pause.resume",
+         .accessibility_label = "Resume game",
+         .focusable = true},
+        {.id = "settings.fullscreen",
+         .kind = RuntimeUiWidgetKind::toggle,
+         .label = "Fullscreen",
+         .localization_key = "ui.settings.fullscreen",
+         .accessibility_label = "Fullscreen",
+         .focusable = true},
+        {.id = "settings.volume",
+         .kind = RuntimeUiWidgetKind::slider,
+         .label = "Volume",
+         .localization_key = "ui.settings.volume",
+         .accessibility_label = "Master volume",
+         .focusable = true,
+         .minimum_value = 0.0F,
+         .maximum_value = 1.0F,
+         .value = 0.75F},
+        {.id = "profile.name",
+         .kind = RuntimeUiWidgetKind::text_field,
+         .label = "Name",
+         .localization_key = "ui.profile.name",
+         .accessibility_label = "Profile name",
+         .focusable = true},
+        {.id = "pause.stack",
+         .kind = RuntimeUiWidgetKind::menu_stack,
+         .label = "Pause",
+         .localization_key = "ui.pause.title",
+         .accessibility_label = "Pause menu"},
+        {.id = "confirm.modal",
+         .kind = RuntimeUiWidgetKind::modal_layer,
+         .label = "Confirm",
+         .localization_key = "ui.confirm.title",
+         .accessibility_label = "Confirmation"},
+        {.id = "inventory.list",
+         .kind = RuntimeUiWidgetKind::list,
+         .label = "Inventory",
+         .localization_key = "ui.inventory.title",
+         .accessibility_label = "Inventory list",
+         .focusable = true},
+        {.id = "quests.tree",
+         .kind = RuntimeUiWidgetKind::tree,
+         .label = "Quests",
+         .localization_key = "ui.quests.title",
+         .accessibility_label = "Quest tree",
+         .focusable = true},
+        {.id = "hud.prompt",
+         .kind = RuntimeUiWidgetKind::hud_prompt,
+         .label = "Interact",
+         .localization_key = "ui.prompt.interact",
+         .accessibility_label = "Interact prompt"},
+        {.id = "controller.accept",
+         .kind = RuntimeUiWidgetKind::controller_glyph,
+         .label = "Accept",
+         .localization_key = "ui.controller.accept",
+         .accessibility_label = "Accept button",
+         .input_source_id = "gamepad.south"},
+    };
+    auto state_rows = std::vector<mirakana::ui::RuntimeUiWidgetStateRow>{
+        {.id = "state.fullscreen", .widget_id = "settings.fullscreen", .checked = true},
+        {.id = "state.volume", .widget_id = "settings.volume", .value = 0.75F},
+        {.id = "state.profile.name", .widget_id = "profile.name", .text = "Player"},
+    };
+    auto command_rows = std::vector<mirakana::ui::RuntimeUiWidgetCommandRow>{
+        {.id = "cmd.resume", .widget_id = "pause.resume", .command_id = "game.resume", .label = "Resume"},
+        {.id = "cmd.apply_volume",
+         .widget_id = "settings.volume",
+         .command_id = "settings.apply_volume",
+         .label = "Apply volume"},
+    };
+
+    const auto plan =
+        mirakana::ui::plan_runtime_ui_widgets(std::move(widget_rows), std::move(state_rows), std::move(command_rows));
+    RuntimeUiWidgetsProbeResult result{
+        .status = plan.status,
+        .ready = false,
+        .widget_rows = plan.widget_rows.size(),
+        .command_rows = plan.command_rows.size(),
+        .focusable_rows = plan.focusable_widget_rows,
+        .diagnostics = plan.diagnostics.size(),
+    };
+    result.ready = plan.ready && result.widget_rows == 10U && result.command_rows == 2U &&
+                   result.focusable_rows == 6U && result.diagnostics == 0U;
     return result;
 }
 
@@ -11264,7 +11369,8 @@ void print_usage() {
                  "[--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
-                 "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-workbench] "
+                 "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-widgets] "
+                 "[--require-runtime-ui-workbench] "
                  "[--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-font-rasterization] [--require-runtime-ui-tsf-session] "
                  "[--require-runtime-ui-uia-publication] [--require-runtime-ui-atlas-upload] "
@@ -11446,6 +11552,10 @@ void print_usage() {
             options.require_runtime_ui_standard_widgets = true;
             continue;
         }
+        if (arg == "--require-runtime-ui-widgets") {
+            options.require_runtime_ui_widgets = true;
+            continue;
+        }
         if (arg == "--require-runtime-ui-workbench") {
             options.require_runtime_ui_workbench = true;
             continue;
@@ -11479,6 +11589,7 @@ void print_usage() {
         if (arg == "--require-runtime-ui-platform-package") {
             options.require_runtime_ui_platform_package = true;
             options.require_runtime_ui_standard_widgets = true;
+            options.require_runtime_ui_widgets = true;
             options.require_runtime_ui_font_rasterization = true;
             options.require_runtime_ui_tsf_session = true;
             options.require_runtime_ui_uia_publication = true;
@@ -12230,6 +12341,9 @@ int main(int argc, char** argv) {
         options.require_runtime_ui_standard_widgets
             ? validate_runtime_ui_standard_widgets_package_evidence("sample_2d_desktop_runtime_package")
             : RuntimeUiStandardWidgetsProbeResult{};
+    const auto runtime_ui_widgets_probe = options.require_runtime_ui_widgets
+                                              ? validate_runtime_ui_widgets_package_evidence()
+                                              : RuntimeUiWidgetsProbeResult{};
     const auto runtime_ui_production_stack_probe = options.require_runtime_ui_production_stack
                                                        ? validate_runtime_ui_production_stack_package_evidence()
                                                        : RuntimeUiProductionStackProbeResult{};
@@ -13290,6 +13404,13 @@ int main(int argc, char** argv) {
         << (runtime_ui_standard_widgets_probe.external_engine_assets ? 1 : 0)
         << " runtime_ui_standard_widgets_ui_middleware=" << (runtime_ui_standard_widgets_probe.ui_middleware ? 1 : 0)
         << " runtime_ui_standard_widgets_diagnostics=" << runtime_ui_standard_widgets_probe.diagnostics
+        << " runtime_ui_widgets_status="
+        << mirakana::ui::runtime_ui_widget_plan_status_name(runtime_ui_widgets_probe.status)
+        << " runtime_ui_widgets_ready=" << (runtime_ui_widgets_probe.ready ? 1 : 0)
+        << " runtime_ui_widget_rows=" << runtime_ui_widgets_probe.widget_rows
+        << " runtime_ui_widget_command_rows=" << runtime_ui_widgets_probe.command_rows
+        << " runtime_ui_widget_focusable_rows=" << runtime_ui_widgets_probe.focusable_rows
+        << " runtime_ui_widget_diagnostics=" << runtime_ui_widgets_probe.diagnostics
         << " runtime_ui_production_stack_status="
         << mirakana::ui::runtime_ui_production_stack_status_name(runtime_ui_production_stack_probe.status)
         << " runtime_ui_production_stack_reviewed=" << (runtime_ui_production_stack_probe.reviewed ? 1 : 0)
@@ -14750,6 +14871,18 @@ int main(int argc, char** argv) {
                   << " runtime_ui_standard_widgets_diagnostics=" << runtime_ui_standard_widgets_probe.diagnostics
                   << '\n';
         return 43;
+    }
+
+    if (options.require_runtime_ui_widgets && !runtime_ui_widgets_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_widgets_unavailable"
+                  << " runtime_ui_widgets_status="
+                  << mirakana::ui::runtime_ui_widget_plan_status_name(runtime_ui_widgets_probe.status)
+                  << " runtime_ui_widgets_ready=" << (runtime_ui_widgets_probe.ready ? 1 : 0)
+                  << " runtime_ui_widget_rows=" << runtime_ui_widgets_probe.widget_rows
+                  << " runtime_ui_widget_command_rows=" << runtime_ui_widgets_probe.command_rows
+                  << " runtime_ui_widget_focusable_rows=" << runtime_ui_widgets_probe.focusable_rows
+                  << " runtime_ui_widget_diagnostics=" << runtime_ui_widgets_probe.diagnostics << '\n';
+        return 63;
     }
 
     if (options.require_runtime_ui_production_stack && !runtime_ui_production_stack_probe.package_evidence_ready) {

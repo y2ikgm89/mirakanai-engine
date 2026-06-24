@@ -5,10 +5,13 @@
 
 $runtimeUiStandardWidgetsHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/runtime_ui_standard_widgets.hpp"
 $runtimeUiStandardWidgetsSourceText = Get-AgentSurfaceText "engine/ui/src/runtime_ui_standard_widgets.cpp"
+$runtimeUiWidgetsHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/runtime_ui_widgets.hpp"
+$runtimeUiWidgetsSourceText = Get-AgentSurfaceText "engine/ui/src/runtime_ui_widgets.cpp"
 $runtimeUiPublicHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
 $runtimeUiCMakeText = Get-AgentSurfaceText "engine/ui/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $runtimeUiStandardWidgetsTestsText = Get-AgentSurfaceText "tests/unit/runtime_ui_standard_widgets_tests.cpp"
+$runtimeUiWidgetsTestsText = Get-AgentSurfaceText "tests/unit/runtime_ui_widgets_tests.cpp"
 $sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
@@ -112,7 +115,69 @@ foreach ($needle in @(
 
 Assert-ContainsText $runtimeUiPublicHeaderText "meter" "engine/ui/include/mirakana/ui/ui.hpp"
 Assert-ContainsText $runtimeUiCMakeText "src/runtime_ui_standard_widgets.cpp" "engine/ui/CMakeLists.txt"
+Assert-ContainsText $runtimeUiCMakeText "src/runtime_ui_widgets.cpp" "engine/ui/CMakeLists.txt"
 Assert-ContainsText $rootCMakeText "MK_runtime_ui_standard_widgets_tests" "CMakeLists.txt"
+Assert-ContainsText $rootCMakeText "MK_runtime_ui_widgets_tests" "CMakeLists.txt"
+
+foreach ($needle in @(
+        "RuntimeUiWidgetKind",
+        "RuntimeUiWidgetPlanStatus",
+        "RuntimeUiWidgetDiagnosticCode",
+        "RuntimeUiWidgetDiagnostic",
+        "RuntimeUiWidgetRow",
+        "RuntimeUiWidgetStateRow",
+        "RuntimeUiWidgetCommandRow",
+        "RuntimeUiWidgetPlan",
+        "runtime_ui_widget_kind_name",
+        "runtime_ui_widget_plan_status_name",
+        "plan_runtime_ui_widgets"
+    )) {
+    Assert-ContainsText $runtimeUiWidgetsHeaderText $needle "engine/ui/include/mirakana/ui/runtime_ui_widgets.hpp"
+}
+
+foreach ($needle in @(
+        "button",
+        "toggle",
+        "slider",
+        "text_field",
+        "menu_stack",
+        "modal_layer",
+        "list",
+        "tree",
+        "hud_prompt",
+        "controller_glyph",
+        "duplicate_widget_id",
+        "missing_label",
+        "invalid_slider_range",
+        "missing_command_target",
+        "public_native_handle",
+        "ui_middleware_token",
+        "native_or_external_token"
+    )) {
+    Assert-ContainsText $runtimeUiWidgetsHeaderText $needle "runtime UI widget vocabulary public header"
+    Assert-ContainsText $runtimeUiWidgetsTestsText $needle "runtime UI widget vocabulary tests"
+}
+
+foreach ($needle in @(
+        "contains_middleware_token",
+        "contains_native_or_external_token",
+        "RuntimeUiWidgetKind::controller_glyph",
+        "RuntimeUiWidgetDiagnosticCode::missing_input_source_id",
+        "RuntimeUiWidgetDiagnosticCode::missing_command_target",
+        "RuntimeUiWidgetDiagnosticCode::native_or_external_token",
+        "RuntimeUiWidgetPlanStatus::ready",
+        "RuntimeUiWidgetPlanStatus::diagnostics"
+    )) {
+    Assert-ContainsText $runtimeUiWidgetsSourceText $needle "engine/ui/src/runtime_ui_widgets.cpp"
+}
+
+foreach ($needle in @(
+        "runtime ui widget vocabulary accepts all first party widget kinds",
+        "runtime ui widget vocabulary rejects invalid widget rows",
+        "runtime ui widget vocabulary rejects unsafe command and middleware rows"
+    )) {
+    Assert-ContainsText $runtimeUiWidgetsTestsText $needle "tests/unit/runtime_ui_widgets_tests.cpp"
+}
 
 foreach ($publicTokenSurface in @(
         @{ Label = "engine/ui/include/mirakana/ui/runtime_ui_standard_widgets.hpp"; Text = $runtimeUiStandardWidgetsHeaderText },
@@ -181,6 +246,22 @@ foreach ($sampleSurface in @(
     }
 }
 
+foreach ($needle in @(
+        "mirakana/ui/runtime_ui_widgets.hpp",
+        "--require-runtime-ui-widgets",
+        "RuntimeUiWidgetsProbeResult",
+        "validate_runtime_ui_widgets_package_evidence",
+        "plan_runtime_ui_widgets",
+        "runtime_ui_widgets_status=",
+        "runtime_ui_widgets_ready=",
+        "runtime_ui_widget_rows=",
+        "runtime_ui_widget_command_rows=",
+        "runtime_ui_widget_focusable_rows=",
+        "runtime_ui_widget_diagnostics="
+    )) {
+    Assert-ContainsText $sample2dMainText $needle "games/sample_2d_desktop_runtime_package/main.cpp"
+}
+
 foreach ($manifestSurface in @(
         @{ Label = "games/sample_2d_desktop_runtime_package/game.agent.json"; Text = $sample2dManifestText; Recipe = "installed-2d-runtime-ui-standard-widgets-smoke" },
         @{ Label = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"; Text = $sample3dManifestText; Recipe = "installed-3d-runtime-ui-standard-widgets-smoke" }
@@ -238,6 +319,16 @@ foreach ($docsSurface in @(
 
 foreach ($docsSurface in @(
         @{ Label = "docs/ui.md"; Text = $uiDocsText },
+        @{ Label = "docs/current-capabilities.md"; Text = $currentCapabilitiesText },
+        @{ Label = "docs/roadmap.md"; Text = $roadmapText },
+        @{ Label = "docs/superpowers/plans/README.md"; Text = $planRegistryText }
+    )) {
+    Assert-ContainsText $docsSurface.Text "Runtime Widget Vocabulary v1" $docsSurface.Label
+    Assert-ContainsText $docsSurface.Text "plan_runtime_ui_widgets" $docsSurface.Label
+}
+
+foreach ($docsSurface in @(
+        @{ Label = "docs/ui.md"; Text = $uiDocsText },
         @{ Label = "docs/roadmap.md"; Text = $roadmapText },
         @{ Label = "docs/ai-game-development.md"; Text = $aiGameDevelopmentText },
         @{ Label = "docs/superpowers/plans/2026-06-21-first-party-runtime-ui-standard-widgets-v1.md"; Text = $planText }
@@ -253,7 +344,10 @@ foreach ($docsSurface in @(
 }
 
 foreach ($needle in @(
+        "engine/ui/include/mirakana/ui/runtime_ui_widgets.hpp",
         "engine/ui/include/mirakana/ui/runtime_ui_standard_widgets.hpp",
+        "RuntimeUiWidgetKind",
+        "plan_runtime_ui_widgets",
         "RuntimeUiStandardWidgetProvenanceDesc",
         "plan_runtime_ui_standard_hud",
         "external-engine-code"
@@ -262,6 +356,19 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "runtime-ui-widgets",
+        "RuntimeUiWidgetKind",
+        "RuntimeUiWidgetRow",
+        "RuntimeUiWidgetStateRow",
+        "RuntimeUiWidgetCommandRow",
+        "RuntimeUiWidgetPlan",
+        "plan_runtime_ui_widgets",
+        "--require-runtime-ui-widgets",
+        "runtime_ui_widgets_ready=1",
+        "runtime_ui_widget_rows=10",
+        "runtime_ui_widget_command_rows=2",
+        "runtime_ui_widget_focusable_rows=6",
+        "runtime_ui_widget_diagnostics=0",
         "runtime-ui-standard-widgets",
         "RuntimeUiStandardWidgetProvenanceDesc",
         "RuntimeUiMeterDesc",
@@ -287,6 +394,11 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "currentRuntimeUiWidgetsV1",
+        "RuntimeUiWidgetKind",
+        "plan_runtime_ui_widgets",
+        "--require-runtime-ui-widgets",
+        "runtime_ui_widgets_ready=1",
         "currentRuntimeUiStandardWidgetsV1",
         "RuntimeUiStandardWidgetProvenanceDesc",
         "plan_runtime_ui_standard_hud",

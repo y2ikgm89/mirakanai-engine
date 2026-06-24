@@ -158,11 +158,11 @@ git diff --check
 
 **Steps:**
 
-- [ ] Add RED tests in `tests/unit/runtime_ui_widgets_tests.cpp` for duplicate ids, missing labels, invalid slider ranges, command rows that target missing widgets, native/middleware token rejection, and controller glyph rows without an input-source id.
-- [ ] Add the public types in `engine/ui/include/mirakana/ui/runtime_ui_widgets.hpp`.
-- [ ] Implement validation in `engine/ui/src/runtime_ui_widgets.cpp`.
-- [ ] Register the new source/test target in `engine/ui/CMakeLists.txt`.
-- [ ] Add selected package counters in `games/sample_2d_desktop_runtime_package/main.cpp`: `runtime_ui_widgets_status`, `runtime_ui_widgets_ready`, `runtime_ui_widget_rows`, `runtime_ui_widget_command_rows`, `runtime_ui_widget_focusable_rows`, `runtime_ui_widget_diagnostics`.
+- [x] Add RED tests in `tests/unit/runtime_ui_widgets_tests.cpp` for duplicate ids, missing labels, invalid slider ranges, command rows that target missing widgets, native/middleware token rejection, and controller glyph rows without an input-source id.
+- [x] Add the public types in `engine/ui/include/mirakana/ui/runtime_ui_widgets.hpp`.
+- [x] Implement validation in `engine/ui/src/runtime_ui_widgets.cpp`.
+- [x] Register the new source/test target in `engine/ui/CMakeLists.txt`.
+- [x] Add selected package counters in `games/sample_2d_desktop_runtime_package/main.cpp`: `runtime_ui_widgets_status`, `runtime_ui_widgets_ready`, `runtime_ui_widget_rows`, `runtime_ui_widget_command_rows`, `runtime_ui_widget_focusable_rows`, `runtime_ui_widget_diagnostics`.
 - [ ] Run:
 
 ```powershell
@@ -172,6 +172,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 **Expected:** Tests pass and invalid requests fail closed with deterministic diagnostics.
+
+**2026-06-24 validation evidence:** The RED check first failed on missing `mirakana/ui/runtime_ui_widgets.hpp`. The GREEN pass used `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_widgets_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_ui_widgets_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package`, and `out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-widgets`. The package target is not present in the current `dev` preset, so the sample-package evidence uses the existing `desktop-runtime` preset. The smoke reported `runtime_ui_widgets_status=ready`, `runtime_ui_widgets_ready=1`, `runtime_ui_widget_rows=10`, `runtime_ui_widget_command_rows=2`, `runtime_ui_widget_focusable_rows=6`, and `runtime_ui_widget_diagnostics=0`.
 
 ## Phase 2 - Binding, Focus, And Input Routing v1
 
