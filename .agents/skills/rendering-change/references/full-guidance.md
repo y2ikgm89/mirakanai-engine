@@ -86,6 +86,11 @@ router says the current task needs detailed API names, detailed validation lanes
   `package_evidence` proof rows. Use `BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc` and
   `make_backend_renderer_parity_apple_metal_memory_profiling_proofs` for the separate `memory_residency` and
   `profiling_capture` proof rows; missing heap/residency-set/capture evidence keeps those rows host-gated.
+  Use `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` / `renderer-metal-memory-profiling-host-evidence-v1` only for retained
+  `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` rows proving exact `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`,
+  `MTLCaptureScope`, `memory_residency`, `profiling_capture`, and capture artifact evidence. Default validation remains
+  `renderer_metal_memory_profiling_status=host_evidence_required` and `renderer_metal_memory_profiling_ready=0`; broad backend parity,
+  broad Metal readiness, commercial renderer readiness, and broad renderer quality remain unclaimed.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and

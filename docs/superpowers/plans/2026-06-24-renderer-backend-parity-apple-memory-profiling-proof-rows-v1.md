@@ -10,6 +10,8 @@ Add a first-party, backend-neutral renderer policy boundary for the remaining `r
 
 This plan does not claim broad backend parity, broad Metal readiness, commercial renderer readiness, public native handles, or broad renderer quality. It adds exact proof row contracts that remain host-gated unless reviewed Apple-host evidence explicitly supplies the required counters.
 
+Follow-up retained artifact contract: [Renderer Metal Memory Profiling Host Evidence v1](2026-06-24-renderer-metal-memory-profiling-host-evidence-v1.md) adds `renderer-metal-memory-profiling-host-evidence-v1`, retained `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` rows, and `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` so exact Apple-host `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, `MTLCaptureScope`, `memory_residency`, `profiling_capture`, and capture artifact evidence can be validated separately. Default validation remains `renderer_metal_memory_profiling_status=host_evidence_required` and `renderer_metal_memory_profiling_ready=0`; broad backend parity, broad Metal readiness, commercial renderer readiness, and broad renderer quality remain unclaimed.
+
 ## Official Source Refresh
 
 - Apple Developer Documentation, `MTLHeap`: Metal resources can be suballocated from heaps.

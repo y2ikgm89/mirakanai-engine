@@ -23,6 +23,7 @@
     "iosSmoke": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game \u003Cgame_name\u003E -Configuration Debug",
     "appleHostEvidenceCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1",
     "mavgMetalHostEvidenceCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mavg-metal-host-evidence.ps1",
+    "rendererMetalMemoryProfilingHostEvidenceCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-profiling-host-evidence.ps1",
     "mavgBroadOptimizationCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-broad-optimization.ps1",
     "mavgNaniteComparisonCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-nanite-comparison.ps1",
     "productionReadinessAuditCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1",

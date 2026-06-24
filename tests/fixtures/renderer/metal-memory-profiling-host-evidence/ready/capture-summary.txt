@@ -1,0 +1,5 @@
+Renderer Metal memory/profiling retained fixture summary
+schema: GameEngine.RendererMetalMemoryProfilingHostEvidence.v1
+rows: memory_residency, profiling_capture
+APIs: MTLHeap, MTLResidencySet, MTLCaptureManager, MTLCaptureScope
+This deterministic fixture is not a real Apple-host capture.
