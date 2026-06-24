@@ -130,6 +130,24 @@ int main(int argc, char** argv) {
         }
         command_queue.label = @"GameEngine.RHI.Metal.MemoryProfiling.CommandQueue";
 
+        id<MTLResidencySet> residency_set = nil;
+        if (@available(macOS 15.0, *)) {
+            if (![device respondsToSelector:@selector(newResidencySetWithDescriptor:error:)]) {
+                fail(@"MTLDevice newResidencySetWithDescriptor:error: selector is unavailable on this host");
+            }
+
+            MTLResidencySetDescriptor* residency_descriptor = [MTLResidencySetDescriptor new];
+            residency_descriptor.label = @"GameEngine.RHI.Metal.MemoryProfiling.ResidencySet";
+
+            NSError* residency_error = nil;
+            residency_set = [device newResidencySetWithDescriptor:residency_descriptor error:&residency_error];
+            if (residency_set == nil) {
+                fail(@"MTLResidencySet creation failed", residency_error);
+            }
+        } else {
+            fail(@"MTLResidencySet requires macOS 15.0 or newer");
+        }
+
         constexpr NSUInteger heap_size = 65536;
         constexpr NSUInteger heap_buffer_bytes = 4096;
         MTLHeapDescriptor* heap_descriptor = [MTLHeapDescriptor new];
@@ -146,23 +164,6 @@ int main(int argc, char** argv) {
             fail(@"MTLHeap resource allocation failed");
         }
         heap_buffer.label = @"GameEngine.RHI.Metal.MemoryProfiling.HeapBuffer";
-
-        if (!@available(macOS 15.0, *)) {
-            fail(@"MTLResidencySet requires macOS 15.0 or newer");
-        }
-        if (![device respondsToSelector:@selector(newResidencySetWithDescriptor:error:)]) {
-            fail(@"MTLDevice newResidencySetWithDescriptor:error: selector is unavailable on this host");
-        }
-
-        MTLResidencySetDescriptor* residency_descriptor = [MTLResidencySetDescriptor new];
-        residency_descriptor.label = @"GameEngine.RHI.Metal.MemoryProfiling.ResidencySet";
-
-        NSError* residency_error = nil;
-        id<MTLResidencySet> residency_set = [device newResidencySetWithDescriptor:residency_descriptor
-                                                                            error:&residency_error];
-        if (residency_set == nil) {
-            fail(@"MTLResidencySet creation failed", residency_error);
-        }
 
         NSArray* residency_allocations = @[ heap, heap_buffer ];
         bool allocations_added = invoke_void_with_object(
