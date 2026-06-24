@@ -1,0 +1,10 @@
+GameEngine.UiTheme.v1
+color id=primary value=#2f6fed
+color id=surface value=#182230
+spacing id=panel_padding value=12
+spacing id=row_gap value=8
+typography id=body value=font.default.16
+border id=focus value=2
+opacity id=disabled value=0.50
+transition id=fade_fast value=120ms
+controller_glyph id=accept value=gamepad.south
