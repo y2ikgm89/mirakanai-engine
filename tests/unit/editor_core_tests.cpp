@@ -32,6 +32,7 @@
 #include "mirakana/editor/project_wizard.hpp"
 #include "mirakana/editor/render_backend.hpp"
 #include "mirakana/editor/resource_panel.hpp"
+#include "mirakana/editor/runtime_ui_authoring.hpp"
 #include "mirakana/editor/scene_authoring.hpp"
 #include "mirakana/editor/scene_edit.hpp"
 #include "mirakana/editor/shader_artifact_io.hpp"
@@ -14549,6 +14550,341 @@ MK_TEST("editor ui models build retained inspector assets commands and diagnosti
     MK_REQUIRE(serialized.contains("format=GameEngine.EditorUiModel.v1"));
     MK_REQUIRE(serialized.contains("element.2.id=inspector.transform.position.label"));
     MK_REQUIRE(serialized.contains("element.3.label=1,2,3"));
+}
+
+MK_TEST("editor runtime ui authoring builds hierarchy inspector style rows and preview") {
+    mirakana::editor::EditorRuntimeUiDocumentModel document;
+    document.document_id = "hud";
+    document.revision = 7;
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root",
+        .role = mirakana::ui::SemanticRole::panel,
+        .label = "HUD",
+        .style_token = "panel.primary",
+    });
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "start_button",
+        .parent_id = "root",
+        .role = mirakana::ui::SemanticRole::button,
+        .label = "Start",
+        .style_token = "button.primary",
+    });
+    document.selected_element_id = "start_button";
+
+    mirakana::editor::EditorRuntimeUiThemeModel theme;
+    theme.revision = 3;
+    theme.style_tokens.push_back(mirakana::editor::EditorRuntimeUiStyleTokenRow{
+        .id = "button.primary",
+        .label = "Primary button",
+        .foreground_token = "fg.action",
+        .background_token = "bg.action",
+    });
+
+    const auto model = mirakana::editor::make_editor_runtime_ui_authoring_model(document, theme);
+
+    MK_REQUIRE(model.ready);
+    MK_REQUIRE(model.hierarchy_rows.size() == 2);
+    MK_REQUIRE(model.hierarchy_rows[0].id == "root");
+    MK_REQUIRE(model.hierarchy_rows[1].id == "start_button");
+    MK_REQUIRE(model.hierarchy_rows[1].depth == 1);
+    MK_REQUIRE(model.hierarchy_rows[1].selected);
+    MK_REQUIRE(model.inspector_rows.size() >= 3);
+    MK_REQUIRE(std::ranges::any_of(model.inspector_rows,
+                                   [](const auto& row) { return row.id == "selected.label" && row.value == "Start"; }));
+    MK_REQUIRE(model.style_token_rows.size() == 1);
+    MK_REQUIRE(model.preview.ready);
+    MK_REQUIRE(!model.preview.native_handles_exposed);
+    MK_REQUIRE(!model.preview.renderer_execution_requested);
+    MK_REQUIRE(model.preview.document.find(mirakana::ui::ElementId{"root"}) != nullptr);
+    MK_REQUIRE(model.preview.document.find(mirakana::ui::ElementId{"start_button"})->role ==
+               mirakana::ui::SemanticRole::button);
+}
+
+MK_TEST("editor runtime ui authoring style token command is undoable") {
+    mirakana::editor::EditorRuntimeUiDocumentModel document;
+    document.document_id = "hud";
+    document.revision = 2;
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root", .role = mirakana::ui::SemanticRole::panel, .label = "HUD"});
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "health", .parent_id = "root", .role = mirakana::ui::SemanticRole::meter, .label = "Health"});
+    document.selected_element_id = "health";
+
+    mirakana::editor::EditorRuntimeUiThemeModel theme;
+    theme.revision = 4;
+    theme.style_tokens.push_back(mirakana::editor::EditorRuntimeUiStyleTokenRow{
+        .id = "meter.health",
+        .label = "Health meter",
+        .foreground_token = "fg.old",
+        .background_token = "bg.old",
+    });
+
+    mirakana::editor::UndoStack history;
+    MK_REQUIRE(history.execute(mirakana::editor::make_editor_runtime_ui_authoring_command_action(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.style.set_token",
+            .expected_document_revision = 2,
+            .expected_theme_revision = 4,
+            .style_token_id = "meter.health",
+            .foreground_token = "fg.health",
+            .background_token = "bg.health",
+        })));
+
+    MK_REQUIRE(theme.revision == 5);
+    MK_REQUIRE(theme.style_tokens[0].foreground_token == "fg.health");
+    MK_REQUIRE(theme.style_tokens[0].background_token == "bg.health");
+
+    MK_REQUIRE(history.undo());
+    MK_REQUIRE(theme.revision == 4);
+    MK_REQUIRE(theme.style_tokens[0].foreground_token == "fg.old");
+    MK_REQUIRE(theme.style_tokens[0].background_token == "bg.old");
+
+    MK_REQUIRE(history.redo());
+    MK_REQUIRE(theme.revision == 5);
+    MK_REQUIRE(theme.style_tokens[0].foreground_token == "fg.health");
+}
+
+MK_TEST("editor runtime ui authoring rejects stale unsafe and external engine requests") {
+    mirakana::editor::EditorRuntimeUiDocumentModel document;
+    document.schema_id = "GameEngine.RuntimeUiDocument.v1";
+    document.document_id = "hud";
+    document.revision = 8;
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root", .role = mirakana::ui::SemanticRole::panel, .label = "HUD"});
+
+    mirakana::editor::EditorRuntimeUiThemeModel theme;
+    theme.schema_id = "GameEngine.RuntimeUiTheme.v1";
+    theme.revision = 1;
+    theme.style_tokens.push_back(mirakana::editor::EditorRuntimeUiStyleTokenRow{
+        .id = "button.primary",
+        .label = "Primary button",
+        .foreground_token = "fg.old",
+        .background_token = "bg.old",
+    });
+
+    const auto missing_document_revision = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.add",
+            .parent_id = "root",
+            .element_id = "label",
+            .role = mirakana::ui::SemanticRole::label,
+            .label = "Score",
+        });
+    MK_REQUIRE(!missing_document_revision.accepted);
+    MK_REQUIRE(missing_document_revision.diagnostic_code == "missing_revision");
+
+    const auto missing_theme_revision = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.style.set_token",
+            .style_token_id = "button.primary",
+            .foreground_token = "fg.new",
+            .background_token = "bg.new",
+        });
+    MK_REQUIRE(!missing_theme_revision.accepted);
+    MK_REQUIRE(missing_theme_revision.diagnostic_code == "missing_revision");
+
+    const auto stale = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.add",
+            .expected_document_revision = 7,
+            .parent_id = "root",
+            .element_id = "label",
+            .role = mirakana::ui::SemanticRole::label,
+            .label = "Score",
+        });
+    MK_REQUIRE(!stale.accepted);
+    MK_REQUIRE(stale.diagnostic_code == "stale_revision");
+
+    auto imported = document;
+    imported.schema_id = "UnityEngine.UI.Document";
+    const auto imported_model = mirakana::editor::make_editor_runtime_ui_authoring_model(imported, theme);
+    MK_REQUIRE(!imported_model.ready);
+    MK_REQUIRE(std::ranges::any_of(imported_model.diagnostics,
+                                   [](const auto& row) { return row.code == "external_engine_schema"; }));
+
+    auto unsafe_preview_document = document;
+    unsafe_preview_document.requests_package_script_execution = true;
+    unsafe_preview_document.requests_validation_recipe_execution = true;
+    const auto unsafe_preview_model =
+        mirakana::editor::make_editor_runtime_ui_authoring_model(unsafe_preview_document, theme);
+    MK_REQUIRE(!unsafe_preview_model.preview.ready);
+    MK_REQUIRE(std::ranges::any_of(unsafe_preview_model.preview.diagnostics,
+                                   [](const auto& row) { return row.code == "package_script_execution_request"; }));
+    MK_REQUIRE(std::ranges::any_of(unsafe_preview_model.preview.diagnostics,
+                                   [](const auto& row) { return row.code == "validation_recipe_execution_request"; }));
+
+    const auto unsafe = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.preview.refresh",
+            .expected_document_revision = 8,
+            .request_renderer_execution = true,
+            .request_package_script_execution = true,
+            .request_validation_recipe_execution = true,
+            .request_native_handle_exposure = true,
+        });
+    MK_REQUIRE(!unsafe.accepted);
+    MK_REQUIRE(unsafe.diagnostic_code == "unsafe_request");
+    MK_REQUIRE(unsafe.renderer_execution_requested);
+    MK_REQUIRE(unsafe.package_script_execution_requested);
+    MK_REQUIRE(unsafe.validation_recipe_execution_requested);
+    MK_REQUIRE(unsafe.native_handle_exposure_requested);
+}
+
+MK_TEST("editor runtime ui authoring rejects invalid hierarchy and duplicate ids") {
+    mirakana::editor::EditorRuntimeUiDocumentModel cyclic_document;
+    cyclic_document.document_id = "hud";
+    cyclic_document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "panel_a", .parent_id = "panel_b", .role = mirakana::ui::SemanticRole::panel, .label = "A"});
+    cyclic_document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "panel_b", .parent_id = "panel_a", .role = mirakana::ui::SemanticRole::panel, .label = "B"});
+
+    mirakana::editor::EditorRuntimeUiThemeModel theme;
+    const auto cyclic_model = mirakana::editor::make_editor_runtime_ui_authoring_model(cyclic_document, theme);
+    MK_REQUIRE(!cyclic_model.ready);
+    MK_REQUIRE(
+        std::ranges::any_of(cyclic_model.diagnostics, [](const auto& row) { return row.code == "parent_cycle"; }));
+
+    mirakana::editor::EditorRuntimeUiDocumentModel duplicate_document;
+    duplicate_document.document_id = "hud";
+    duplicate_document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root", .role = mirakana::ui::SemanticRole::panel, .label = "Root"});
+    duplicate_document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root", .role = mirakana::ui::SemanticRole::button, .label = "Duplicate"});
+
+    mirakana::editor::EditorRuntimeUiThemeModel duplicate_theme;
+    duplicate_theme.style_tokens.push_back(mirakana::editor::EditorRuntimeUiStyleTokenRow{
+        .id = "button.primary",
+        .label = "Primary",
+        .foreground_token = "fg.one",
+        .background_token = "bg.one",
+    });
+    duplicate_theme.style_tokens.push_back(mirakana::editor::EditorRuntimeUiStyleTokenRow{
+        .id = "button.primary",
+        .label = "Duplicate primary",
+        .foreground_token = "fg.two",
+        .background_token = "bg.two",
+    });
+
+    const auto duplicate_model =
+        mirakana::editor::make_editor_runtime_ui_authoring_model(duplicate_document, duplicate_theme);
+    MK_REQUIRE(!duplicate_model.ready);
+    MK_REQUIRE(std::ranges::any_of(duplicate_model.diagnostics,
+                                   [](const auto& row) { return row.code == "duplicate_element_id"; }));
+    MK_REQUIRE(std::ranges::any_of(duplicate_model.diagnostics,
+                                   [](const auto& row) { return row.code == "duplicate_style_token"; }));
+}
+
+MK_TEST("editor runtime ui authoring reorder preserves sibling subtree order") {
+    mirakana::editor::EditorRuntimeUiDocumentModel document;
+    document.document_id = "hud";
+    document.revision = 10;
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root", .role = mirakana::ui::SemanticRole::panel, .label = "Root"});
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "group", .parent_id = "root", .role = mirakana::ui::SemanticRole::panel, .label = "Group"});
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "group.label", .parent_id = "group", .role = mirakana::ui::SemanticRole::label, .label = "Label"});
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "footer", .parent_id = "root", .role = mirakana::ui::SemanticRole::label, .label = "Footer"});
+
+    mirakana::editor::EditorRuntimeUiThemeModel theme;
+    const auto reordered = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.reorder",
+            .expected_document_revision = 10,
+            .element_id = "group",
+        });
+    MK_REQUIRE(reordered.accepted);
+    MK_REQUIRE(reordered.document.revision == 11);
+    MK_REQUIRE(reordered.document.elements.size() == 4);
+    MK_REQUIRE(reordered.document.elements[1].id == "footer");
+    MK_REQUIRE(reordered.document.elements[2].id == "group");
+    MK_REQUIRE(reordered.document.elements[3].id == "group.label");
+
+    const auto model = mirakana::editor::make_editor_runtime_ui_authoring_model(reordered.document, theme);
+    MK_REQUIRE(model.ready);
+    MK_REQUIRE(model.preview.document.find(mirakana::ui::ElementId{"group.label"}) != nullptr);
+
+    const auto child_before_parent = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.reorder",
+            .expected_document_revision = 10,
+            .element_id = "group.label",
+            .before_element_id = "group",
+        });
+    MK_REQUIRE(!child_before_parent.accepted);
+    MK_REQUIRE(child_before_parent.diagnostic_code == "invalid_reorder_request");
+
+    const auto parent_before_descendant = mirakana::editor::plan_editor_runtime_ui_authoring_command(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.reorder",
+            .expected_document_revision = 10,
+            .element_id = "group",
+            .before_element_id = "group.label",
+        });
+    MK_REQUIRE(!parent_before_descendant.accepted);
+    MK_REQUIRE(parent_before_descendant.diagnostic_code == "invalid_reorder_request");
+}
+
+MK_TEST("editor runtime ui authoring commands add select edit and remove elements") {
+    mirakana::editor::EditorRuntimeUiDocumentModel document;
+    document.document_id = "hud";
+    document.revision = 1;
+    document.elements.push_back(mirakana::editor::EditorRuntimeUiElementRow{
+        .id = "root", .role = mirakana::ui::SemanticRole::panel, .label = "HUD"});
+
+    mirakana::editor::EditorRuntimeUiThemeModel theme;
+    theme.revision = 1;
+
+    mirakana::editor::UndoStack history;
+    MK_REQUIRE(history.execute(mirakana::editor::make_editor_runtime_ui_authoring_command_action(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.add",
+            .expected_document_revision = 1,
+            .parent_id = "root",
+            .element_id = "score",
+            .role = mirakana::ui::SemanticRole::label,
+            .label = "Score 000",
+        })));
+    MK_REQUIRE(document.revision == 2);
+    MK_REQUIRE(document.selected_element_id == "score");
+    MK_REQUIRE(document.elements.size() == 2);
+
+    MK_REQUIRE(history.execute(mirakana::editor::make_editor_runtime_ui_authoring_command_action(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.property.edit_text",
+            .expected_document_revision = 2,
+            .element_id = "score",
+            .label = "Score 100",
+        })));
+    MK_REQUIRE(document.revision == 3);
+    MK_REQUIRE(document.elements[1].label == "Score 100");
+
+    MK_REQUIRE(history.execute(mirakana::editor::make_editor_runtime_ui_authoring_command_action(
+        document, theme,
+        mirakana::editor::EditorRuntimeUiAuthoringCommandRequest{
+            .command_id = "runtime_ui.element.remove",
+            .expected_document_revision = 3,
+            .element_id = "score",
+        })));
+    MK_REQUIRE(document.revision == 4);
+    MK_REQUIRE(document.elements.size() == 1);
+    MK_REQUIRE(document.selected_element_id.empty());
+
+    MK_REQUIRE(history.undo());
+    MK_REQUIRE(document.revision == 3);
+    MK_REQUIRE(document.elements.size() == 2);
+    MK_REQUIRE(document.elements[1].label == "Score 100");
 }
 
 MK_TEST("editor profiler panel model summarizes captures deterministically") {
