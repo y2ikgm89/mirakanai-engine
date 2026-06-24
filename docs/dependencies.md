@@ -16,15 +16,17 @@ Update the baseline only as an explicit dependency-maintenance task: update the 
 
 None are required for the default headless build.
 
-On Windows, the default validation build uses Windows SDK system libraries for the Win32 platform adapter, WASAPI audio adapter, D3D12 backend, DirectWrite runtime UI text/font adapter, Windows TSF runtime UI IME session adapter, DirectWrite editor text/font adapter, and tests:
+On Windows, the default validation build uses Windows SDK system libraries for the Win32 platform adapter, WASAPI audio adapter, D3D12 backend, DirectWrite runtime UI text/font adapter, Windows TSF runtime UI IME session adapter, Windows UI Automation runtime UI accessibility adapter, DirectWrite editor text/font adapter, and tests:
 
 - `ole32`
+- `oleaut32`
 - `shell32`
 - `user32`
 - `d3d12`
 - `dxgi`
 - `d3dcompiler`
 - `dwrite`
+- `uiautomationcore`
 
 These are official platform SDK libraries and are not bundled in the repository.
 

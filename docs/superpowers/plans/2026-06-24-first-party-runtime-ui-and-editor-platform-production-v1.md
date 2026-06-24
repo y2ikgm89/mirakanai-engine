@@ -24,7 +24,7 @@ This plan treats the following items as intentionally unclaimed production-scope
 - Production text shaping beyond current value rows and selected/editor-private evidence.
 - Real font loading and glyph rasterization beyond current value rows and cooked atlas evidence.
 - Native IME session publication beyond current Win32/selected evidence rows.
-- OS accessibility publication for runtime UI beyond semantic rows and selected/editor-private evidence.
+- OS accessibility publication for runtime UI beyond semantic rows, selected Windows UIA proof rows, and selected/editor-private evidence.
 - Renderer texture upload execution for UI atlas pages beyond current handoff/review rows.
 - Unity, Unreal Engine, or Godot compatibility, visual parity, API parity, scene/widget import parity, or marketing equivalence.
 
@@ -76,7 +76,7 @@ This is an engineering compliance plan, not legal advice. The implementer must p
 - `MK_platform_win32` already owns Win32 text input planning, committed text conversion, text-edit commands, clipboard command mapping, and `Win32PlatformIntegrationAdapter`.
 - `MK_runtime_rhi` already owns `upload_runtime_texture` and related D3D12/Vulkan/RHI upload execution patterns for runtime texture payloads.
 - `MK_editor` already has a Windows native first-party shell path and private DirectWrite/TSF/UIA/D3D12 evidence. This plan does not treat editor-private evidence as automatic runtime UI production readiness.
-- Current docs intentionally keep broad production text shaping, real font loading/rasterization, native IME parity, runtime OS accessibility publication, renderer upload execution, and external engine parity unclaimed unless exact future proof rows land.
+- Current docs intentionally keep broad production text shaping, real font loading/rasterization, native IME parity, non-Windows runtime OS accessibility publication, full UIA/screen-reader parity, renderer upload execution, and external engine parity unclaimed unless exact future proof rows land.
 
 ## Non-Negotiable Architecture Rules
 
@@ -128,7 +128,7 @@ MK_editor
 | Production text shaping | Windows DirectWrite adapter rows | Core Text, HarfBuzz/Fontconfig/ICU rows | Hand-rolled Unicode shaping, external API parity |
 | Real font loading/rasterization | Windows DirectWrite/Direct2D or DirectWrite glyph analysis rows | Core Text/Core Graphics, FreeType rows | Shipping copied fonts or external engine default fonts |
 | Native IME session | Windows TSF session evidence | InputMethodKit, IBus/Fcitx, Android/iOS input method rows | Native candidate UI parity across all OSes |
-| Runtime OS accessibility publication | Windows UIA provider rows | NSAccessibility, AT-SPI2, Android/iOS accessibility rows | Screen-reader parity across all OSes from semantic rows alone |
+| Runtime OS accessibility publication | Windows UIA provider rows | NSAccessibility, AT-SPI2, Android/iOS accessibility rows, full UIA pattern/event parity | Screen-reader parity across all OSes from semantic rows alone |
 | Renderer texture upload execution | D3D12 UI atlas upload/readback/hash rows through `MK_runtime_rhi` | Vulkan/Metal backend rows | Public renderer upload API from gameplay UI |
 | Clean-room provenance | Static and package-visible clean-room rows | Legal review updates for new dependencies | Compatibility, visual parity, or API parity claims |
 
@@ -462,18 +462,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Create: `engine/platform/win32/include/mirakana/platform/win32/win32_ui_accessibility.hpp`
 - Create: `engine/platform/win32/src/win32_ui_accessibility.cpp`
 - Modify: `engine/platform/win32/CMakeLists.txt`
-- Modify: `engine/ui/include/mirakana/ui/ui.hpp`
-- Modify: `engine/ui/src/ui.cpp`
 - Modify: `tests/unit/win32_platform_tests.cpp`
-- Modify: `tests/unit/runtime_ui_platform_production_tests.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 
-- [ ] Add `Win32UiaRuntimeNodeRow`, `Win32UiaProviderPublicationDesc`, `Win32UiaProviderPublicationResult`, and `publish_runtime_ui_to_win32_uia`.
-- [ ] Require role, name, description, state, focus, action rows, parent/child relationships, reading order, live region status, keyboard pattern, screen-space bounds, provider root id, child runtime ids, and event-publication counters.
-- [ ] Keep `IRawElementProviderSimple`, COM, `HWND`, and UIA types out of public `mirakana::ui` and generated-game headers.
-- [ ] Add tests for missing accessible names, duplicate runtime ids, invalid bounds, focusable node without action pattern, child without parent, unsupported pattern claim, event claim without provider root, and public native handle exposure.
-- [ ] Add package counters: `runtime_ui_uia_provider_ready`, `runtime_ui_accessibility_nodes`, `runtime_ui_accessibility_action_rows`, `runtime_ui_accessibility_event_rows`, `runtime_ui_accessibility_cross_platform_ready=0`, `runtime_ui_accessibility_native_handles_exposed=0`.
-- [ ] Run:
+- [x] Add `Win32UiaRuntimeNodeRow`, `Win32UiaProviderPublicationDesc`, `Win32UiaProviderPublicationResult`, `publish_runtime_ui_to_win32_uia`, and `make_win32_uia_accessibility_publication_production_evidence`.
+- [x] Require role, name, description, state, focus, action rows, parent/child relationships, reading order, live region status, keyboard pattern, screen-space bounds, provider root id, child runtime ids, and event-publication counters.
+- [x] Keep `IRawElementProviderSimple`, COM, `HWND`, and UIA types out of public `mirakana::ui` and generated-game headers.
+- [x] Add tests for missing accessible names, duplicate runtime ids, invalid bounds, focusable node without action pattern, child without parent, unsupported pattern claim, event claim without provider root, and public native handle exposure.
+- [x] Add package counters: `runtime_ui_uia_provider_ready`, `runtime_ui_accessibility_nodes`, `runtime_ui_accessibility_action_rows`, `runtime_ui_accessibility_event_rows`, `runtime_ui_accessibility_cross_platform_ready=0`, `runtime_ui_accessibility_native_handles_exposed=0`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests sample_2d_desktop_runtime_package
@@ -484,6 +481,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 **Expected:** UIA publication evidence passes on Windows hosts; NSAccessibility, AT-SPI2, Android, and iOS rows remain host-gated.
 
 **Done When:** Runtime UI OS accessibility publication is ready only for the selected Windows UIA proof row and cannot be inferred from semantic accessibility rows alone.
+
+### Task 6 Implementation Evidence - 2026-06-24
+
+| Command / check | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests` before implementation | RED: failed as expected because `mirakana/platform/win32/win32_ui_accessibility.hpp` did not exist. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_platform_production_tests` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_win32_platform_tests|MK_runtime_ui_platform_production_tests"` | Passed: 2/2 tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package` | Passed after the first long build completed and the incremental rerun finished cleanly. |
+| `out/build/desktop-runtime/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-uia-publication` | Passed with `status=completed`, `runtime_ui_uia_provider_ready=1`, `runtime_ui_accessibility_nodes=2`, `runtime_ui_accessibility_action_rows=1`, `runtime_ui_accessibility_event_rows=1`, `runtime_ui_accessibility_cross_platform_ready=0`, `runtime_ui_accessibility_native_handles_exposed=0`, and `runtime_ui_uia_diagnostics=0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed: `first-party-ui-clean-room: ok`, `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files "engine/platform/win32/src/win32_ui_accessibility.cpp,tests/unit/win32_platform_tests.cpp"` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Files "games/sample_2d_desktop_runtime_package/main.cpp"` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed: static checks, build, and 154/154 CTest tests. |
 
 ## Task 7 - UI Atlas Renderer Texture Upload Execution
 
