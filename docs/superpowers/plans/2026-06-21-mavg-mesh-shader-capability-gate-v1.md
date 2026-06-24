@@ -12,7 +12,11 @@
 
 **Plan ID:** `mavg-mesh-shader-capability-gate-v1`
 
-**Status:** Implemented; PR publication in progress.
+**Status:** Completed.
+
+**Closeout:** Completed through PR #718 / merge commit `1cfbae41e7f237f54be3331f4e24149b2eb272a8`.
+PR #718 head `bddce43ed9f55b8cf2f24d77b7cffaf610226c80` and the merge commit are reachable from `origin/main`.
+Live execution has returned to the production-completion selection gate: `currentActivePlan` points at `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `recommendedNextPlan.id = next-production-gap-selection`, and `unsupportedProductionGaps = []`.
 
 **Date:** 2026-06-21
 
@@ -132,4 +136,10 @@ Out of scope:
 
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-mesh-shader-capability-gate.ps1 -RequireReady`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Run publication preflight, commit the validated candidate, push branch `codex/mavg-mesh-shader-capability-gate`, open a draft PR, wait for hosted checks, mark ready with `tools/ready-task-pr.ps1`, and register auto-merge only after PR Gate succeeds.
+- [x] Run publication preflight, commit the validated candidate, push branch `codex/mavg-mesh-shader-capability-gate`, open a draft PR, wait for hosted checks, mark ready with `tools/ready-task-pr.ps1`, and register auto-merge only after PR Gate succeeds.
+
+Publication evidence:
+
+- PR #718 merged on 2026-06-21 at merge commit `1cfbae41e7f237f54be3331f4e24149b2eb272a8`.
+- PR #718 head `bddce43ed9f55b8cf2f24d77b7cffaf610226c80` is reachable from `origin/main`.
+- This closeout is docs/plan lifecycle synchronization only; implementation, tests, package counters, manifest rows, and static guards were already retained on `main`.
