@@ -2106,6 +2106,11 @@ struct RuntimeUiRendererAtlasHandoffProbeResult {
     bool invoked_renderer_upload{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
+    std::size_t ui_renderer_layers{0U};
+    std::size_t ui_renderer_batches{0U};
+    std::size_t ui_renderer_clip_rects{0U};
+    std::size_t ui_renderer_unresolved_resources{0U};
+    std::size_t ui_renderer_native_handles_exposed{0U};
 };
 
 struct RuntimeUiAtlasUploadProbeResult {
@@ -4281,12 +4286,50 @@ validate_runtime_ui_atlas_upload_package_evidence(const mirakana::runtime::Runti
     image.image.asset_uri = "runtime/assets/2d/player.texture.geasset";
     submission.image_placeholders.push_back(image);
 
+    mirakana::UiRendererSubmission execution;
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"hud-text"},
+        .layer = "hud",
+        .order = 10,
+        .modal = false,
+    });
+    execution.layer_rows.push_back(mirakana::UiRendererLayerRow{
+        .element = mirakana::ui::ElementId{"hud-icon"},
+        .layer = "hud",
+        .order = 10,
+        .modal = false,
+    });
+    execution.clip_rect_rows.push_back(mirakana::UiRendererClipRectRow{
+        .element = mirakana::ui::ElementId{"hud-icon"},
+        .rect = mirakana::ui::Rect{.x = 24.0F, .y = 4.0F, .width = 16.0F, .height = 16.0F},
+    });
+    const auto add_atlas_residency_ref = [&execution](mirakana::AssetId atlas_page) {
+        for (const auto& ref : execution.atlas_residency_refs) {
+            if (ref.atlas_page == atlas_page) {
+                return;
+            }
+        }
+        execution.atlas_residency_refs.push_back(mirakana::UiRendererAtlasResidencyRef{
+            .atlas_page = atlas_page,
+            .resident = true,
+            .requested_native_handle = false,
+        });
+    };
+    for (const auto atlas_page : image_palette.atlas_page_assets) {
+        add_atlas_residency_ref(atlas_page);
+    }
+    for (const auto atlas_page : glyph_palette.atlas_page_assets) {
+        add_atlas_residency_ref(atlas_page);
+    }
+
     mirakana::UiRenderSubmitDesc desc;
     desc.image_palette = &image_palette.palette;
     desc.glyph_atlas = &glyph_palette.palette;
     desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{
         .glyph_advance = 8.0F, .whitespace_advance = 4.0F, .line_height = 10.0F};
+    desc.execution = &execution;
 
+    const auto execution_plan = mirakana::plan_ui_renderer_execution(submission, desc);
     mirakana::NullRenderer renderer(mirakana::Extent2D{.width = 96, .height = 64});
     renderer.begin_frame();
     const auto submit = mirakana::submit_ui_renderer_submission(renderer, submission, desc);
@@ -4352,6 +4395,11 @@ validate_runtime_ui_atlas_upload_package_evidence(const mirakana::runtime::Runti
     result.invoked_renderer_upload = plan.invoked_renderer_upload;
     result.diagnostics = plan.diagnostics.size();
     result.replay_hash = plan.replay_hash;
+    result.ui_renderer_layers = submit.execution_layer_rows;
+    result.ui_renderer_batches = submit.execution_batch_rows;
+    result.ui_renderer_clip_rects = submit.execution_clip_rect_rows;
+    result.ui_renderer_unresolved_resources = submit.execution_unresolved_resources;
+    result.ui_renderer_native_handles_exposed = submit.execution_native_handles_exposed;
     result.ready = plan.ready() && result.image_atlas_pages == 1U && result.image_atlas_bindings == 1U &&
                    result.glyph_atlas_pages == 1U && result.glyph_atlas_bindings == 1U &&
                    result.atlas_placement_rows == 2U && result.atlas_budget_rows == 2U &&
@@ -4365,7 +4413,10 @@ validate_runtime_ui_atlas_upload_package_evidence(const mirakana::runtime::Runti
                    result.unsupported_claim_rows == 0U && result.side_effect_rows == 0U &&
                    !result.requested_renderer_texture_upload_api && !result.requested_public_native_handle &&
                    !result.invoked_source_image_decode && !result.invoked_live_glyph_atlas_generation &&
-                   !result.invoked_renderer_upload && result.replay_hash != 0U;
+                   !result.invoked_renderer_upload && execution_plan.ready() && result.ui_renderer_layers == 1U &&
+                   result.ui_renderer_batches == 1U && result.ui_renderer_clip_rects == 1U &&
+                   result.ui_renderer_unresolved_resources == 0U && result.ui_renderer_native_handles_exposed == 0U &&
+                   result.replay_hash != 0U;
     return result;
 }
 
@@ -13773,6 +13824,13 @@ int main(int argc, char** argv) {
         << (runtime_ui_renderer_atlas_handoff_probe.invoked_renderer_upload ? 1 : 0)
         << " runtime_ui_renderer_atlas_handoff_diagnostics=" << runtime_ui_renderer_atlas_handoff_probe.diagnostics
         << " runtime_ui_renderer_atlas_handoff_replay_hash=" << runtime_ui_renderer_atlas_handoff_probe.replay_hash
+        << " ui_renderer_layers=" << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_layers
+        << " ui_renderer_batches=" << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_batches
+        << " ui_renderer_clip_rects=" << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_clip_rects
+        << " ui_renderer_unresolved_resources="
+        << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_unresolved_resources
+        << " ui_renderer_native_handles_exposed="
+        << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_native_handles_exposed
         << " runtime_ui_platform_production_ready=" << (runtime_ui_platform_production_probe.production_ready ? 1 : 0)
         << " runtime_ui_platform_runtime_package_ready="
         << (runtime_ui_platform_production_probe.runtime_package_ready ? 1 : 0)
@@ -15240,6 +15298,13 @@ int main(int argc, char** argv) {
                   << (runtime_ui_renderer_atlas_handoff_probe.texture_upload_execution_ready ? 1 : 0)
                   << " runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted="
                   << runtime_ui_renderer_atlas_handoff_probe.renderer_sprites_submitted
+                  << " ui_renderer_layers=" << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_layers
+                  << " ui_renderer_batches=" << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_batches
+                  << " ui_renderer_clip_rects=" << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_clip_rects
+                  << " ui_renderer_unresolved_resources="
+                  << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_unresolved_resources
+                  << " ui_renderer_native_handles_exposed="
+                  << runtime_ui_renderer_atlas_handoff_probe.ui_renderer_native_handles_exposed
                   << " runtime_ui_renderer_atlas_handoff_diagnostics="
                   << runtime_ui_renderer_atlas_handoff_probe.diagnostics << '\n';
         return 29;

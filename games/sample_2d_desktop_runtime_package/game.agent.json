@@ -352,7 +352,7 @@
         },
         {
           "id": "runtime-ui-renderer-atlas-handoff",
-          "evidence": "Runtime UI renderer atlas handoff smoke loads cooked GameEngine.UiAtlas.v1 metadata from runtimePackageFiles, builds image and glyph palettes, submits one glyph and one image through MK_ui_renderer, then reports selected package counters without source image decoding, live glyph atlas generation, renderer upload APIs, native handles, or broad UI rendering claims.",
+          "evidence": "Runtime UI renderer atlas handoff smoke loads cooked GameEngine.UiAtlas.v1 metadata from runtimePackageFiles, builds image and glyph palettes, plans UiRendererSubmission execution rows, submits one glyph and one image through MK_ui_renderer, then reports selected package counters for renderer layers, batches, clip rects, unresolved resources, and zero native handles without source image decoding, live glyph atlas generation, renderer upload APIs, native handles, or broad UI rendering claims.",
           "recipeIds": [
             "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
           ]
@@ -2138,7 +2138,7 @@
     "platform": "win32-desktop-host-gated",
     "graphics": "NullRenderer fallback plus host-gated D3D12 package window smoke, native 2D sprite package proof with atlas-backed scene sprite plan counters, selected world/UI/effects sprite batch budget profile counters, renderer-owned native sprite batch execution counters, selected dense sprite throughput workload counters, and Vulkan package window smoke through packaged shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness beyond selected plan/budget/native-execution/throughput evidence, cross-backend parity by inference, Metal readiness by inference, and general production renderer quality remain unsupported.",
     "audio": "device-independent cooked audio payload mixed through mirakana_audio with host-gated audio_production_* review evidence",
-    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench, Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack, selected Windows TSF native IME session evidence through --require-runtime-ui-tsf-session, selected Windows UIA accessibility publication evidence through --require-runtime-ui-uia-publication, cooked UI atlas renderer handoff counters through --require-runtime-ui-renderer-atlas-handoff, and first-party runtime UI platform package proof through --require-runtime-ui-platform-package without external engine parity claims or public native handles",
+    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench, Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack, selected Windows TSF native IME session evidence through --require-runtime-ui-tsf-session, selected Windows UIA accessibility publication evidence through --require-runtime-ui-uia-publication, cooked UI atlas renderer handoff and UiRendererSubmission execution counters through --require-runtime-ui-renderer-atlas-handoff, and first-party runtime UI platform package proof through --require-runtime-ui-platform-package without external engine parity claims or public native handles",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
     "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, network production security threat-model/package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review, sandbox-world authoring review, and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, --require-sandbox-authoring-review, and --require-production-authoring-workflows"
@@ -2339,6 +2339,51 @@
         "notes": "Selected UI overlay workload records atlas budget rows without live glyph atlas generation or renderer upload ownership."
       },
       {
+        "id": "ui-overlay-renderer-execution-layers",
+        "category": "draw",
+        "metric": "ui_renderer_layers",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload records one deterministic renderer execution layer."
+      },
+      {
+        "id": "ui-overlay-renderer-execution-batches",
+        "category": "draw",
+        "metric": "ui_renderer_batches",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload records deterministic batch grouping over cooked atlas resources."
+      },
+      {
+        "id": "ui-overlay-renderer-execution-clip-rects",
+        "category": "draw",
+        "metric": "ui_renderer_clip_rects",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload records clip and scissor evidence without renderer-native handles."
+      },
+      {
+        "id": "ui-overlay-renderer-unresolved-resources",
+        "category": "draw",
+        "metric": "ui_renderer_unresolved_resources",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload requires cooked glyph and image atlas residency to resolve before submit."
+      },
+      {
+        "id": "ui-overlay-renderer-native-handles",
+        "category": "draw",
+        "metric": "ui_renderer_native_handles_exposed",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected UI overlay workload forbids public native or RHI handle exposure."
+      },
+      {
         "id": "hot-reload-reviewed-replacement-rows",
         "category": "streaming",
         "metric": "hot_reload_package_external_evidence_rows",
@@ -2461,10 +2506,15 @@
         "id": "ui-overlay-workload-smoke",
         "budgetRowIds": [
           "ui-overlay-renderer-sprites",
-          "ui-overlay-atlas-budget-rows"
+          "ui-overlay-atlas-budget-rows",
+          "ui-overlay-renderer-execution-layers",
+          "ui-overlay-renderer-execution-batches",
+          "ui-overlay-renderer-execution-clip-rects",
+          "ui-overlay-renderer-unresolved-resources",
+          "ui-overlay-renderer-native-handles"
         ],
         "evidenceKind": "package-smoke-counter",
-        "source": "Package-visible runtime_ui_renderer_atlas_handoff_* counters from cooked UI atlas handoff smoke with zero native handle, source decode, live glyph generation, and renderer upload side effects.",
+        "source": "Package-visible runtime_ui_renderer_atlas_handoff_* and ui_renderer_* counters from cooked UI atlas handoff smoke with deterministic execution rows, zero native handle, zero source decode, zero live glyph generation, and zero renderer upload side effects.",
         "validationRecipeId": "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
         "status": "ready"
       },
@@ -2558,7 +2608,12 @@
         ],
         "budgetRowIds": [
           "ui-overlay-renderer-sprites",
-          "ui-overlay-atlas-budget-rows"
+          "ui-overlay-atlas-budget-rows",
+          "ui-overlay-renderer-execution-layers",
+          "ui-overlay-renderer-execution-batches",
+          "ui-overlay-renderer-execution-clip-rects",
+          "ui-overlay-renderer-unresolved-resources",
+          "ui-overlay-renderer-native-handles"
         ],
         "evidenceRowIds": [
           "ui-overlay-workload-smoke"
