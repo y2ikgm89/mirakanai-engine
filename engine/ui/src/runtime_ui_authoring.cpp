@@ -5,11 +5,10 @@
 
 #include <algorithm>
 #include <cctype>
-#include <charconv>
+#include <cmath>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -292,10 +291,36 @@ void validate_safe_token(std::vector<RuntimeUiAuthoringDiagnostic>& diagnostics,
     if (value.empty() || value.front() == '-') {
         return false;
     }
-    const auto* first = value.data();
-    const auto* last = value.data() + value.size();
-    const auto result = std::from_chars(first, last, out);
-    return result.ec == std::errc{} && result.ptr == last && out >= 0.0F;
+
+    float whole = 0.0F;
+    float fractional = 0.0F;
+    float fractional_scale = 1.0F;
+    bool saw_digit = false;
+    bool saw_decimal = false;
+
+    for (const char ch : value) {
+        if (std::isdigit(static_cast<unsigned char>(ch)) != 0) {
+            saw_digit = true;
+            const auto digit = static_cast<float>(ch - '0');
+            if (saw_decimal) {
+                fractional_scale *= 10.0F;
+                fractional += digit / fractional_scale;
+            } else {
+                whole = (whole * 10.0F) + digit;
+            }
+            continue;
+        }
+
+        if (ch == '.' && !saw_decimal) {
+            saw_decimal = true;
+            continue;
+        }
+
+        return false;
+    }
+
+    out = whole + fractional;
+    return saw_digit && std::isfinite(out) && out >= 0.0F;
 }
 
 [[nodiscard]] bool is_integer_or_float(std::string_view value) noexcept {
