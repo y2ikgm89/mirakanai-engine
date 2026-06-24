@@ -16,6 +16,80 @@ namespace mirakana::ui {
 namespace {
 
 constexpr std::size_t kRequiredFeatureCount{9U};
+constexpr std::array<RuntimeUiPlatformAdapterGateRow, 16U> kRuntimeUiPlatformAdapterGateRows{{
+    {.id = "runtime_ui.adapter.windows.directwrite",
+     .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+     .status = RuntimeUiPlatformAdapterGateStatus::selected_proof,
+     .selected = true,
+     .ready = true},
+    {.id = "runtime_ui.adapter.windows.tsf",
+     .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+     .status = RuntimeUiPlatformAdapterGateStatus::selected_proof,
+     .selected = true,
+     .ready = true},
+    {.id = "runtime_ui.adapter.windows.uia",
+     .proof = RuntimeUiPlatformProductionProofKind::official_sdk_adapter,
+     .status = RuntimeUiPlatformAdapterGateStatus::selected_proof,
+     .selected = true,
+     .ready = true},
+    {.id = "runtime_ui.upload.windows.d3d12",
+     .proof = RuntimeUiPlatformProductionProofKind::selected_package_counter,
+     .status = RuntimeUiPlatformAdapterGateStatus::selected_proof,
+     .selected = true,
+     .ready = true},
+    {.id = "runtime_ui.adapter.macos.core_text",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected macOS Core Text runtime UI text/font adapter evidence on an Apple host"},
+    {.id = "runtime_ui.adapter.macos.input_method_kit",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected macOS InputMethodKit runtime UI IME session evidence on an Apple host"},
+    {.id = "runtime_ui.adapter.macos.nsaccessibility",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected macOS NSAccessibility runtime UI publication evidence on an Apple host"},
+    {.id = "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+     .proof = RuntimeUiPlatformProductionProofKind::dependency_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::dependency_gated,
+     .blocker =
+         "requires explicit non-default audited HarfBuzz/Fontconfig dependency selection, vcpkg feature, and legal "
+         "notices"},
+    {.id = "runtime_ui.adapter.linux.freetype",
+     .proof = RuntimeUiPlatformProductionProofKind::dependency_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::dependency_gated,
+     .blocker =
+         "requires explicit non-default audited FreeType dependency selection, vcpkg feature, and legal notices"},
+    {.id = "runtime_ui.adapter.linux.at_spi",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected Linux AT-SPI2 runtime UI accessibility publication evidence on a Linux host"},
+    {.id = "runtime_ui.adapter.android.text_input",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected Android text input runtime UI adapter evidence on an Android host/device lane"},
+    {.id = "runtime_ui.adapter.android.accessibility",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker =
+         "requires selected Android accessibility runtime UI publication evidence on an Android host/device lane"},
+    {.id = "runtime_ui.adapter.ios.uitextinput",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected iOS UITextInput runtime UI adapter evidence on an Apple iOS host lane"},
+    {.id = "runtime_ui.adapter.ios.uiaccessibility",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected iOS UIAccessibility runtime UI publication evidence on an Apple iOS host lane"},
+    {.id = "runtime_ui.upload.vulkan",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected Vulkan runtime UI atlas upload/readback execution evidence on a ready Vulkan host"},
+    {.id = "runtime_ui.upload.metal",
+     .proof = RuntimeUiPlatformProductionProofKind::host_gate,
+     .status = RuntimeUiPlatformAdapterGateStatus::host_gated,
+     .blocker = "requires selected Metal runtime UI atlas upload/readback execution evidence on an Apple host"},
+}};
 
 void append_diagnostic(std::vector<RuntimeUiPlatformProductionDiagnostic>& diagnostics,
                        RuntimeUiPlatformProductionDiagnosticCode code, std::string row_id, std::string message) {
@@ -236,6 +310,24 @@ std::string_view runtime_ui_platform_production_proof_name(RuntimeUiPlatformProd
         return "unsupported_non_claim";
     }
     return "unknown";
+}
+
+std::string_view runtime_ui_platform_adapter_gate_status_name(RuntimeUiPlatformAdapterGateStatus status) noexcept {
+    switch (status) {
+    case RuntimeUiPlatformAdapterGateStatus::selected_proof:
+        return "selected_proof";
+    case RuntimeUiPlatformAdapterGateStatus::host_gated:
+        return "host_gated";
+    case RuntimeUiPlatformAdapterGateStatus::dependency_gated:
+        return "dependency_gated";
+    case RuntimeUiPlatformAdapterGateStatus::unsupported:
+        return "unsupported";
+    }
+    return "unknown";
+}
+
+std::span<const RuntimeUiPlatformAdapterGateRow> runtime_ui_platform_adapter_gate_rows() noexcept {
+    return kRuntimeUiPlatformAdapterGateRows;
 }
 
 RuntimeUiPlatformProductionResult

@@ -7,6 +7,7 @@ $runtimeUiPlatformProductionPlanText = Get-AgentSurfaceText "docs/superpowers/pl
 $runtimeUiCleanRoomLedgerText = Get-AgentSurfaceText "docs/specs/2026-06-24-first-party-ui-clean-room-source-ledger-v1.md"
 $runtimeUiCleanRoomCheckText = Get-AgentSurfaceText "tools/check-first-party-ui-clean-room.ps1"
 $runtimeUiPlatformProductionHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/runtime_ui_platform_production.hpp"
+$runtimeUiPlatformProductionSourceText = Get-AgentSurfaceText "engine/ui/src/runtime_ui_platform_production.cpp"
 $runtimeUiPlatformProductionTestText = Get-AgentSurfaceText "tests/unit/runtime_ui_platform_production_tests.cpp"
 $runtimeUiWin32TextHeaderText = Get-AgentSurfaceText "engine/platform/win32/include/mirakana/platform/win32/win32_ui_text_font.hpp"
 $runtimeUiWin32TextSourceText = Get-AgentSurfaceText "engine/platform/win32/src/win32_ui_text_font.cpp"
@@ -43,8 +44,12 @@ foreach ($needle in @(
 foreach ($needle in @(
         "RuntimeUiPlatformProductionFeature",
         "RuntimeUiPlatformProductionProofKind",
+        "RuntimeUiPlatformAdapterGateStatus",
         "RuntimeUiPlatformProductionEvidenceRow",
+        "RuntimeUiPlatformAdapterGateRow",
         "RuntimeUiPlatformProductionResult",
+        "runtime_ui_platform_adapter_gate_status_name",
+        "runtime_ui_platform_adapter_gate_rows",
         "evaluate_runtime_ui_platform_production"
     )) {
     Assert-ContainsText $runtimeUiPlatformProductionHeaderText $needle "runtime UI platform production public header"
@@ -76,6 +81,43 @@ foreach ($needle in @(
         "unsupported_non_claim"
     )) {
     Assert-ContainsText $runtimeUiPlatformProductionHeaderText $needle "runtime UI platform production proof enum"
+}
+
+foreach ($needle in @(
+        "selected_proof",
+        "host_gated",
+        "dependency_gated",
+        "unsupported"
+    )) {
+    Assert-ContainsText $runtimeUiPlatformProductionHeaderText $needle "runtime UI platform adapter gate status enum"
+    Assert-ContainsText $runtimeUiPlatformProductionSourceText $needle "runtime UI platform adapter gate status names"
+    Assert-ContainsText $runtimeUiPlatformProductionTestText $needle "runtime UI platform adapter gate status tests"
+}
+
+foreach ($needle in @(
+        "runtime_ui.adapter.windows.directwrite",
+        "runtime_ui.adapter.windows.tsf",
+        "runtime_ui.adapter.windows.uia",
+        "runtime_ui.upload.windows.d3d12",
+        "runtime_ui.adapter.macos.core_text",
+        "runtime_ui.adapter.macos.input_method_kit",
+        "runtime_ui.adapter.macos.nsaccessibility",
+        "runtime_ui.adapter.linux.harfbuzz_fontconfig",
+        "runtime_ui.adapter.linux.freetype",
+        "runtime_ui.adapter.linux.at_spi",
+        "runtime_ui.adapter.android.text_input",
+        "runtime_ui.adapter.android.accessibility",
+        "runtime_ui.adapter.ios.uitextinput",
+        "runtime_ui.adapter.ios.uiaccessibility",
+        "runtime_ui.upload.vulkan",
+        "runtime_ui.upload.metal"
+    )) {
+    Assert-ContainsText $runtimeUiPlatformProductionSourceText $needle "runtime UI platform adapter gate source rows"
+    Assert-ContainsText $runtimeUiPlatformProductionTestText $needle "runtime UI platform adapter gate tests"
+    Assert-ContainsText $runtimeUiPlatformProductionPlanText $needle "runtime UI platform production plan Task 10"
+    Assert-ContainsText $runtimeBackendReadinessText $needle "runtime backend readiness runtime UI platform adapter gates"
+    Assert-ContainsText $validationRecipesText $needle "validation recipes runtime UI platform adapter gates"
+    Assert-ContainsText $currentCapabilitiesText $needle "docs/current-capabilities.md runtime UI platform adapter gates"
 }
 
 foreach ($needle in @(
