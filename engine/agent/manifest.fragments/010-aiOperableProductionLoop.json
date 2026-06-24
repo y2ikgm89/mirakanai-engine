@@ -2638,6 +2638,54 @@
         "followUpCapability": "Production UI rendering, text/font/IME/accessibility/image/platform adapters, visual designer/editor UX, and broad platform parity remain separate adapter or editor slices."
       },
       {
+        "id": "runtime-ui-binding",
+        "status": "ready",
+        "summary": "First-party Runtime UI Binding And Input Routing v1 recipe for typed text/enabled/visible binding rows, command availability, focus scopes, navigation edges, controller glyph refs, pointer capture review, and zero gameplay-command execution before renderer or platform adapters run.",
+        "requiredModules": [
+          "MK_core",
+          "MK_ui"
+        ],
+        "allowedTemplates": [
+          "Headless",
+          "DesktopRuntime2DPackage"
+        ],
+        "allowedPackagingTargets": [
+          "source-tree-default",
+          "desktop-game-runtime",
+          "desktop-runtime-release"
+        ],
+        "importerAssumptions": {
+          "sourceFormats": [],
+          "externalImportersRequired": false
+        },
+        "cookedRuntimeAssumptions": "The recipe is value-model and package-visible smoke evidence only. It applies caller-provided typed binding rows to first-party UiDocument text/enabled/visible state and validates command/focus/navigation/glyph/pointer rows; it does not execute gameplay commands, translate platform input, load fonts, decode images, upload renderer textures, or execute platform UI services.",
+        "rendererBackendAssumptions": {
+          "graphics": "UiDocument/value rows only",
+          "nativeWindow": false,
+          "visibleGpuOutput": false
+        },
+        "validationRecipes": [
+          "default",
+          "runtime-ui-binding-input-routing",
+          "desktop-runtime-2d-package-proof",
+          "installed-2d-runtime-ui-binding-smoke"
+        ],
+        "unsupportedClaims": [
+          "visible UI editor",
+          "gameplay command execution",
+          "platform input translation",
+          "Unity, Unreal Engine, or Godot compatibility or parity",
+          "third-party UI middleware adoption",
+          "production text shaping",
+          "font loading/rasterization",
+          "native IME",
+          "OS accessibility publication",
+          "renderer texture upload execution",
+          "broad platform UI parity"
+        ],
+        "followUpCapability": "Concrete platform input translation, production UI rendering, text/font/IME/accessibility/image/platform adapters, visual designer/editor UX, and broad platform parity remain separate adapter or editor slices."
+      },
+      {
         "id": "2d-playable-source-tree",
         "status": "ready",
         "summary": "Source-tree first-party 2D playable foundation recipe for input actions, orthographic scene camera, sprite renderer intent, HUD/menu renderer submission, gameplay audio cue/bus planning through plan_gameplay_audio_mix, device-independent audio cue rendering, and deterministic NullRenderer validation without native window or GPU handles.",
@@ -8317,6 +8365,15 @@
           "desktop-runtime-2d-package-proof",
           "installed-2d-runtime-ui-standard-widgets-smoke",
           "installed-3d-runtime-ui-standard-widgets-smoke"
+        ]
+      },
+      {
+        "recipeId": "runtime-ui-binding",
+        "validationRecipes": [
+          "default",
+          "runtime-ui-binding-input-routing",
+          "desktop-runtime-2d-package-proof",
+          "installed-2d-runtime-ui-binding-smoke"
         ]
       },
       {

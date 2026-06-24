@@ -511,6 +511,7 @@ $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-a
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresRuntimeUiStandardWidgets = @($SmokeArgs) -contains "--require-runtime-ui-standard-widgets"
+$requiresRuntimeUiBinding = @($SmokeArgs) -contains "--require-runtime-ui-binding"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
 $requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runtime-ui-renderer-atlas-handoff"
@@ -4877,6 +4878,40 @@ if ($requiresRuntimeUiStandardWidgets) {
         $expectedValue = $expectedRuntimeUiStandardWidgetFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove runtime UI standard widgets field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresRuntimeUiBinding) {
+    foreach ($field in @(
+            "runtime_ui_binding_status",
+            "runtime_ui_binding_ready",
+            "runtime_ui_binding_rows",
+            "runtime_ui_command_rows",
+            "runtime_ui_focus_scopes",
+            "runtime_ui_navigation_edges",
+            "runtime_ui_input_routing_ready",
+            "runtime_ui_binding_gameplay_commands_executed",
+            "runtime_ui_binding_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI binding field: $field"
+        }
+    }
+    $expectedRuntimeUiBindingFields = @{
+        "runtime_ui_binding_status" = "ready"
+        "runtime_ui_binding_ready" = "1"
+        "runtime_ui_binding_rows" = "3"
+        "runtime_ui_command_rows" = "2"
+        "runtime_ui_focus_scopes" = "2"
+        "runtime_ui_navigation_edges" = "3"
+        "runtime_ui_input_routing_ready" = "1"
+        "runtime_ui_binding_gameplay_commands_executed" = "0"
+        "runtime_ui_binding_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiBindingFields.Keys) {
+        $expectedValue = $expectedRuntimeUiBindingFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI binding field $field=$expectedValue."
         }
     }
 }

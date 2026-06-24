@@ -60,6 +60,7 @@
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/sandbox_world_authoring.hpp"
+#include "mirakana/ui/runtime_ui_binding.hpp"
 #include "mirakana/ui/runtime_ui_platform_production.hpp"
 #include "mirakana/ui/runtime_ui_production_stack.hpp"
 #include "mirakana/ui/runtime_ui_standard_widgets.hpp"
@@ -141,6 +142,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_menu_hud{false};
     bool require_runtime_ui_standard_widgets{false};
     bool require_runtime_ui_widgets{false};
+    bool require_runtime_ui_binding{false};
     bool require_runtime_ui_workbench{false};
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_platform_package{false};
@@ -1918,6 +1920,18 @@ struct RuntimeUiWidgetsProbeResult {
     std::size_t diagnostics{0U};
 };
 
+struct RuntimeUiBindingProbeResult {
+    mirakana::ui::RuntimeUiBindingPlanStatus status{mirakana::ui::RuntimeUiBindingPlanStatus::invalid_request};
+    bool ready{false};
+    std::size_t binding_rows{0U};
+    std::size_t command_rows{0U};
+    std::size_t focus_scopes{0U};
+    std::size_t navigation_edges{0U};
+    bool input_routing_ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t gameplay_commands_executed{0U};
+};
+
 struct RuntimeUiWorkbenchProbeResult {
     bool ready{false};
     mirakana::ui::RuntimeUiWorkbenchStatus status{mirakana::ui::RuntimeUiWorkbenchStatus::invalid_request};
@@ -3311,6 +3325,130 @@ validate_runtime_ui_standard_widgets_package_evidence(std::string_view sample_id
     };
     result.ready = plan.ready && result.widget_rows == 10U && result.command_rows == 2U &&
                    result.focusable_rows == 6U && result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] mirakana::ui::ElementId runtime_ui_binding_element_id(std::string_view id) {
+    return mirakana::ui::ElementId{.value = std::string{id}};
+}
+
+[[nodiscard]] bool add_runtime_ui_binding_element(mirakana::ui::UiDocument& document, std::string_view id,
+                                                  std::string_view parent, mirakana::ui::SemanticRole role) {
+    return document.try_add_element(mirakana::ui::ElementDesc{
+        .id = runtime_ui_binding_element_id(id),
+        .parent = runtime_ui_binding_element_id(parent),
+        .role = role,
+        .bounds = {.x = 0.0F, .y = 0.0F, .width = 160.0F, .height = 32.0F},
+        .visible = true,
+        .enabled = true,
+        .text = {.label = std::string{id}, .localization_key = {}, .font_family = "engine-default"},
+        .image = {},
+        .accessibility_label = std::string{id},
+        .style = {},
+    });
+}
+
+[[nodiscard]] RuntimeUiBindingProbeResult validate_runtime_ui_binding_package_evidence() {
+    using namespace mirakana::ui;
+
+    RuntimeUiBindingDocument desc;
+    if (!add_runtime_ui_binding_element(desc.document, "root", {}, SemanticRole::root) ||
+        !add_runtime_ui_binding_element(desc.document, "hud.hp", "root", SemanticRole::label) ||
+        !add_runtime_ui_binding_element(desc.document, "hud.prompt", "root", SemanticRole::label) ||
+        !add_runtime_ui_binding_element(desc.document, "pause.resume", "root", SemanticRole::button) ||
+        !add_runtime_ui_binding_element(desc.document, "settings.volume", "root", SemanticRole::slider) ||
+        !add_runtime_ui_binding_element(desc.document, "settings.apply", "root", SemanticRole::button) ||
+        !add_runtime_ui_binding_element(desc.document, "controller.accept", "root", SemanticRole::image) ||
+        !add_runtime_ui_binding_element(desc.document, "confirm.modal", "root", SemanticRole::dialog) ||
+        !add_runtime_ui_binding_element(desc.document, "confirm.ok", "confirm.modal", SemanticRole::button)) {
+        return RuntimeUiBindingProbeResult{.status = RuntimeUiBindingPlanStatus::diagnostics, .diagnostics = 1U};
+    }
+
+    desc.values = {
+        {.key = "hud.hp.text", .type = RuntimeUiBindingValueType::text, .text = "HP 90 / 100"},
+        {.key = "hud.prompt.visible", .type = RuntimeUiBindingValueType::boolean, .boolean = true},
+        {.key = "settings.apply.enabled", .type = RuntimeUiBindingValueType::boolean, .boolean = false},
+    };
+    desc.binding_rows = {
+        {.id = "bind.hp.text",
+         .element = runtime_ui_binding_element_id("hud.hp"),
+         .source_key = "hud.hp.text",
+         .target = RuntimeUiBindingTarget::text,
+         .expected_type = RuntimeUiBindingValueType::text},
+        {.id = "bind.prompt.visible",
+         .element = runtime_ui_binding_element_id("hud.prompt"),
+         .source_key = "hud.prompt.visible",
+         .target = RuntimeUiBindingTarget::visible,
+         .expected_type = RuntimeUiBindingValueType::boolean},
+        {.id = "bind.apply.enabled",
+         .element = runtime_ui_binding_element_id("settings.apply"),
+         .source_key = "settings.apply.enabled",
+         .target = RuntimeUiBindingTarget::enabled,
+         .expected_type = RuntimeUiBindingValueType::boolean},
+    };
+    desc.command_rows = {
+        {.id = "cmd.resume",
+         .command_id = "game.resume",
+         .element = runtime_ui_binding_element_id("pause.resume"),
+         .available = true},
+        {.id = "cmd.apply",
+         .command_id = "settings.apply",
+         .element = runtime_ui_binding_element_id("settings.apply"),
+         .available = false},
+    };
+    desc.focus_scopes = {
+        {.id = "main",
+         .root = runtime_ui_binding_element_id("root"),
+         .initial_focus = runtime_ui_binding_element_id("pause.resume"),
+         .modal = false},
+        {.id = "confirm",
+         .root = runtime_ui_binding_element_id("confirm.modal"),
+         .initial_focus = runtime_ui_binding_element_id("confirm.ok"),
+         .modal = true},
+    };
+    desc.navigation_edges = {
+        {.id = "nav.resume.volume",
+         .scope_id = "main",
+         .from = runtime_ui_binding_element_id("pause.resume"),
+         .to = runtime_ui_binding_element_id("settings.volume"),
+         .direction = NavigationDirection::down},
+        {.id = "nav.volume.apply",
+         .scope_id = "main",
+         .from = runtime_ui_binding_element_id("settings.volume"),
+         .to = runtime_ui_binding_element_id("settings.apply"),
+         .direction = NavigationDirection::down},
+        {.id = "nav.confirm.ok",
+         .scope_id = "confirm",
+         .from = runtime_ui_binding_element_id("confirm.ok"),
+         .to = runtime_ui_binding_element_id("confirm.ok"),
+         .direction = NavigationDirection::next},
+    };
+    desc.controller_glyph_refs = {
+        {.id = "glyph.accept",
+         .element = runtime_ui_binding_element_id("controller.accept"),
+         .glyph_id = "gamepad.south",
+         .input_source_id = "gamepad"},
+    };
+    desc.known_controller_glyph_ids = {"gamepad.south"};
+    desc.pointer_captures = {
+        {.id = "capture.mouse0", .element = runtime_ui_binding_element_id("pause.resume"), .pointer_id = 0U},
+    };
+
+    const auto plan = plan_runtime_ui_binding(std::move(desc));
+    RuntimeUiBindingProbeResult result{
+        .status = plan.status,
+        .ready = false,
+        .binding_rows = plan.binding_rows,
+        .command_rows = plan.command_rows,
+        .focus_scopes = plan.focus_scopes,
+        .navigation_edges = plan.navigation_edges,
+        .input_routing_ready = plan.input_routing_ready,
+        .diagnostics = plan.diagnostics.size(),
+        .gameplay_commands_executed = plan.gameplay_commands_executed,
+    };
+    result.ready = plan.ready && result.binding_rows == 3U && result.command_rows == 2U && result.focus_scopes == 2U &&
+                   result.navigation_edges == 3U && result.input_routing_ready && result.diagnostics == 0U &&
+                   result.gameplay_commands_executed == 0U;
     return result;
 }
 
@@ -11370,6 +11508,7 @@ void print_usage() {
                  "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-standard-widgets] [--require-runtime-ui-widgets] "
+                 "[--require-runtime-ui-binding] "
                  "[--require-runtime-ui-workbench] "
                  "[--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-font-rasterization] [--require-runtime-ui-tsf-session] "
@@ -11556,6 +11695,11 @@ void print_usage() {
             options.require_runtime_ui_widgets = true;
             continue;
         }
+        if (arg == "--require-runtime-ui-binding") {
+            options.require_runtime_ui_binding = true;
+            options.require_runtime_ui_widgets = true;
+            continue;
+        }
         if (arg == "--require-runtime-ui-workbench") {
             options.require_runtime_ui_workbench = true;
             continue;
@@ -11590,6 +11734,7 @@ void print_usage() {
             options.require_runtime_ui_platform_package = true;
             options.require_runtime_ui_standard_widgets = true;
             options.require_runtime_ui_widgets = true;
+            options.require_runtime_ui_binding = true;
             options.require_runtime_ui_font_rasterization = true;
             options.require_runtime_ui_tsf_session = true;
             options.require_runtime_ui_uia_publication = true;
@@ -12344,6 +12489,9 @@ int main(int argc, char** argv) {
     const auto runtime_ui_widgets_probe = options.require_runtime_ui_widgets
                                               ? validate_runtime_ui_widgets_package_evidence()
                                               : RuntimeUiWidgetsProbeResult{};
+    const auto runtime_ui_binding_probe = options.require_runtime_ui_binding
+                                              ? validate_runtime_ui_binding_package_evidence()
+                                              : RuntimeUiBindingProbeResult{};
     const auto runtime_ui_production_stack_probe = options.require_runtime_ui_production_stack
                                                        ? validate_runtime_ui_production_stack_package_evidence()
                                                        : RuntimeUiProductionStackProbeResult{};
@@ -13410,7 +13558,16 @@ int main(int argc, char** argv) {
         << " runtime_ui_widget_rows=" << runtime_ui_widgets_probe.widget_rows
         << " runtime_ui_widget_command_rows=" << runtime_ui_widgets_probe.command_rows
         << " runtime_ui_widget_focusable_rows=" << runtime_ui_widgets_probe.focusable_rows
-        << " runtime_ui_widget_diagnostics=" << runtime_ui_widgets_probe.diagnostics
+        << " runtime_ui_widget_diagnostics=" << runtime_ui_widgets_probe.diagnostics << " runtime_ui_binding_status="
+        << mirakana::ui::runtime_ui_binding_plan_status_name(runtime_ui_binding_probe.status)
+        << " runtime_ui_binding_ready=" << (runtime_ui_binding_probe.ready ? 1 : 0)
+        << " runtime_ui_binding_rows=" << runtime_ui_binding_probe.binding_rows
+        << " runtime_ui_command_rows=" << runtime_ui_binding_probe.command_rows
+        << " runtime_ui_focus_scopes=" << runtime_ui_binding_probe.focus_scopes
+        << " runtime_ui_navigation_edges=" << runtime_ui_binding_probe.navigation_edges
+        << " runtime_ui_input_routing_ready=" << (runtime_ui_binding_probe.input_routing_ready ? 1 : 0)
+        << " runtime_ui_binding_gameplay_commands_executed=" << runtime_ui_binding_probe.gameplay_commands_executed
+        << " runtime_ui_binding_diagnostics=" << runtime_ui_binding_probe.diagnostics
         << " runtime_ui_production_stack_status="
         << mirakana::ui::runtime_ui_production_stack_status_name(runtime_ui_production_stack_probe.status)
         << " runtime_ui_production_stack_reviewed=" << (runtime_ui_production_stack_probe.reviewed ? 1 : 0)
@@ -14883,6 +15040,22 @@ int main(int argc, char** argv) {
                   << " runtime_ui_widget_focusable_rows=" << runtime_ui_widgets_probe.focusable_rows
                   << " runtime_ui_widget_diagnostics=" << runtime_ui_widgets_probe.diagnostics << '\n';
         return 63;
+    }
+
+    if (options.require_runtime_ui_binding && !runtime_ui_binding_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_binding_unavailable"
+                  << " runtime_ui_binding_status="
+                  << mirakana::ui::runtime_ui_binding_plan_status_name(runtime_ui_binding_probe.status)
+                  << " runtime_ui_binding_ready=" << (runtime_ui_binding_probe.ready ? 1 : 0)
+                  << " runtime_ui_binding_rows=" << runtime_ui_binding_probe.binding_rows
+                  << " runtime_ui_command_rows=" << runtime_ui_binding_probe.command_rows
+                  << " runtime_ui_focus_scopes=" << runtime_ui_binding_probe.focus_scopes
+                  << " runtime_ui_navigation_edges=" << runtime_ui_binding_probe.navigation_edges
+                  << " runtime_ui_input_routing_ready=" << (runtime_ui_binding_probe.input_routing_ready ? 1 : 0)
+                  << " runtime_ui_binding_gameplay_commands_executed="
+                  << runtime_ui_binding_probe.gameplay_commands_executed
+                  << " runtime_ui_binding_diagnostics=" << runtime_ui_binding_probe.diagnostics << '\n';
+        return 64;
     }
 
     if (options.require_runtime_ui_production_stack && !runtime_ui_production_stack_probe.package_evidence_ready) {

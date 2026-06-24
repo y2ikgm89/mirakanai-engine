@@ -1298,6 +1298,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_ui_widgets_tests)
     add_test(NAME MK_runtime_ui_widgets_tests COMMAND MK_runtime_ui_widgets_tests)
 
+    add_executable(MK_runtime_ui_binding_tests
+        tests/unit/runtime_ui_binding_tests.cpp
+    )
+    target_link_libraries(MK_runtime_ui_binding_tests PRIVATE MK_ui)
+    target_include_directories(MK_runtime_ui_binding_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_ui_binding_tests)
+    add_test(NAME MK_runtime_ui_binding_tests COMMAND MK_runtime_ui_binding_tests)
+
     add_executable(MK_runtime_ui_production_stack_tests
         tests/unit/runtime_ui_production_stack_tests.cpp
     )
