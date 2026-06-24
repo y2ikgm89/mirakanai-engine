@@ -12,7 +12,7 @@
 
 **Plan ID:** `first-party-runtime-ui-and-editor-platform-production-v1`
 
-**Status:** Candidate implementation milestone. This plan does not change `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until an operator explicitly selects it.
+**Status:** Completed candidate milestone. The selected Windows/D3D12/editor proof is merged through PR #796, and `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` remains on the production-completion selection gate.
 
 **Date:** 2026-06-24
 
@@ -901,7 +901,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - [x] Run publication preflight:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/runtime-ui-validation-wrapper
 ```
 
 - [x] Stage only task-owned files.
@@ -922,14 +922,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1 -RequireReady` | PASS: selected package proof and visible editor smoke passed; wrapper emitted final `runtime_ui_platform_production_ready=1 runtime_ui_platform_runtime_package_ready=1 editor_runtime_ui_editor_panel_visible=1`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`; 154/154 CTest tests passed, static checks passed, diagnostic-only Apple/Metal host blockers remained non-blocking. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-runtime-ui-platform-production.ps1` | PASS: default wrapper mode passed with package proof and selected tests. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` before PR publication | PASS: `publication-preflight: ok`; branch `codex/runtime-ui-validation-wrapper`, `gh-auth=ok`, GitHub network reachable, no index lock blocker. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/runtime-ui-validation-wrapper` before PR publication | PASS: `publication-preflight: ok`; branch `codex/runtime-ui-validation-wrapper`, `gh-auth=ok`, GitHub network reachable, no index lock blocker. |
 | Commit `f0c66537863b7c6700422076c9cf2bb4baa9c747` | PASS: `Add runtime UI platform production wrapper`; task-owned files only. |
 | `git push origin codex/runtime-ui-validation-wrapper` | PASS: remote branch matched the validated commit. |
 | PR #796 | PASS: draft PR opened for `codex/runtime-ui-validation-wrapper` to `main` with local validation evidence. |
 | `gh pr checks 796 --watch --interval 30` | PASS: `PR Gate`, `Windows MSVC`, `Agent Static Guards`, Linux/macOS/iOS selected lanes, CodeQL, and selected static shards passed for head `f0c66537863b7c6700422076c9cf2bb4baa9c747`; skipped lanes were path/tier-selected skips. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 796` | PASS: PR became ready after selected hosted lanes and `PR Gate` passed. |
 | PR #796 merge | PASS: merged to `main` at merge commit `7c2022b4ffae4b2cdc28801c223cbae56805de9e` on 2026-06-24; local merge-base verification confirmed head `f0c66537863b7c6700422076c9cf2bb4baa9c747` reaches `origin/main`. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1 -WorktreePath .worktrees/runtime-ui-validation-wrapper -HeadRefOid f0c66537863b7c6700422076c9cf2bb4baa9c747` | PASS: post-merge cleanup removed the task worktree and fast-forwarded local `main` to `origin/main`. |
+| Post-merge cleanup state check | PASS: `runtime-ui-validation-wrapper` worktree was absent, local and remote task branches were absent, local `main` matched `origin/main`, and merge-base verification confirmed the PR head reaches `origin/main`. The guarded cleanup wrapper itself reported the target worktree path was already absent, so no wrapper success is claimed. |
 | `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` | PASS: still points at `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, so the completed dated plan is not left as active. |
 
 ## Explicit Non-Claims After This Plan
