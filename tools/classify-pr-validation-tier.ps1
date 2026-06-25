@@ -181,6 +181,26 @@ function Test-RendererCommercialQualityCloseoutPath {
     )
 }
 
+function Test-RendererCommercialReadinessEvidencePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "tools/validate-renderer-commercial-readiness-evidence.ps1" -or
+        $Path -eq "tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1" -or
+        $Path -eq "tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1" -or
+        $Path -eq "tools/run-validation-recipe-plans.ps1" -or
+        $Path -eq "tools/check-validation-recipe-runner.ps1" -or
+        $Path -eq "schemas/renderer-commercial-readiness-evidence.schema.json" -or
+        $Path -match "^tests/fixtures/renderer/commercial-readiness-evidence/" -or
+        $Path -eq "engine/agent/manifest.fragments/002-commands.json" -or
+        $Path -eq "engine/agent/manifest.fragments/009-validationRecipes.json" -or
+        $Path -eq "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" -or
+        $Path -eq "docs/current-capabilities.md" -or
+        $Path -eq "docs/superpowers/plans/README.md" -or
+        $Path -eq "docs/superpowers/plans/2026-06-25-renderer-commercial-readiness-evidence-promotion-v1.md"
+    )
+}
+
 function Test-SourceCodePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -334,6 +354,7 @@ function New-ValidationTierSelection {
     $linuxVulkanHostEvidence = $false
     $appleHostEvidence = $false
     $rendererCommercialQualityCloseout = $false
+    $rendererCommercialReadinessEvidence = $false
     $classificationReasons = [System.Collections.Generic.List[string]]::new()
 
     $expandedInputPath = foreach ($rawPath in $InputPath) {
@@ -410,6 +431,10 @@ function New-ValidationTierSelection {
             $rendererCommercialQualityCloseout = $true
             Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "renderer-commercial-quality-closeout"
         }
+        if (Test-RendererCommercialReadinessEvidencePath -Path $path) {
+            $rendererCommercialReadinessEvidence = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "renderer-commercial-readiness-evidence"
+        }
         if (Test-StaticPolicyPath -Path $path) {
             $staticPolicy = $true
             Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "static-policy"
@@ -418,20 +443,21 @@ function New-ValidationTierSelection {
 
     $fullValidationWorkflowLane = $validationWorkflow -or $otherCiWorkflow
     $heavyBuildLane = $fullValidationWorkflowLane -or $runtimeOrBuild
+    $rendererCommercialReadinessLane = $rendererCommercialQualityCloseout -or $rendererCommercialReadinessEvidence
 
     return New-ValidationTierSelectionObject -LaneSelection @{
-        windows_msvc = ($heavyBuildLane -or $rendererCommercialQualityCloseout)
+        windows_msvc = ($heavyBuildLane -or $rendererCommercialReadinessLane)
         windows_cpu_profiling_host = ($fullValidationWorkflowLane -or $windowsCpuProfilingHost)
         windows_asset_importers = ($fullValidationWorkflowLane -or $windowsAssetImporters)
         windows_desktop_editor = ($fullValidationWorkflowLane -or $windowsDesktopEditor)
         windows_network_enet = ($fullValidationWorkflowLane -or $windowsNetworkEnet)
         linux_cmake = $heavyBuildLane
-        linux_vulkan_host = ($fullValidationWorkflowLane -or $linuxVulkanHostEvidence -or $rendererCommercialQualityCloseout)
+        linux_vulkan_host = ($fullValidationWorkflowLane -or $linuxVulkanHostEvidence -or $rendererCommercialReadinessLane)
         linux_sanitizers = ($fullValidationWorkflowLane -or $sanitizerRelevant)
         linux_coverage = ($fullValidationWorkflowLane -or $coverageRelevant)
-        full_static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode -or $rendererCommercialQualityCloseout)
-        macos_metal_cmake = ($heavyBuildLane -or $rendererCommercialQualityCloseout)
-        metal_host_evidence = ($fullValidationWorkflowLane -or $appleHostEvidence -or $rendererCommercialQualityCloseout)
+        full_static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode -or $rendererCommercialReadinessLane)
+        macos_metal_cmake = ($heavyBuildLane -or $rendererCommercialReadinessLane)
+        metal_host_evidence = ($fullValidationWorkflowLane -or $appleHostEvidence -or $rendererCommercialReadinessLane)
         ios_metal_evidence = ($fullValidationWorkflowLane -or $iosValidationWorkflow -or $appleHostEvidence)
         windows_cpp23_release = ($fullValidationWorkflowLane -or $cpp23Relevant)
     } -Reason $classificationReasons.ToArray()

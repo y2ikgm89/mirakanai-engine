@@ -1,0 +1,45 @@
+{
+  "schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
+  "artifact_id": "runtime-ui-package",
+  "validation_recipe": "desktop-runtime-ui-package",
+  "fixture_only": true,
+  "ready": true,
+  "proof_rows": {
+    "ui_atlas_upload": {
+      "ready": true,
+      "atlas_texture_upload_row": true,
+      "atlas_texture_usage_sampled": true,
+      "upload_counter_rows": 1
+    },
+    "ui_atlas_readback": {
+      "ready": true,
+      "readback_counter_rows": 1,
+      "deterministic_hash_sha256": "8a6cf68c576f8f89bd1f2d7df9d35f7c80dbd6f5866222737345e222b7fb5c8d"
+    },
+    "renderer_handoff": {
+      "ready": true,
+      "retained_upload_handoff_row": true,
+      "renderer_consumed_ui_atlas_row": true
+    },
+    "manifest_binding": {
+      "ready": true,
+      "game_agent_manifest_row": true,
+      "validation_recipe_id": "desktop-runtime-ui-package",
+      "package_manifest_row": "sample_2d_desktop_runtime_package"
+    }
+  },
+  "validation_counters": {
+    "renderer_runtime_ui_atlas_upload_ready": true,
+    "renderer_runtime_ui_atlas_readback_ready": true,
+    "renderer_runtime_ui_handoff_ready": true,
+    "renderer_package_arbitrary_script_execution": false,
+    "renderer_package_script_execution": false
+  },
+  "non_claims": {
+    "arbitrary_script_execution": false,
+    "package_script_execution": false,
+    "native_handles_exposed": false,
+    "external_engine_parity": false,
+    "environment_ready": false
+  }
+}

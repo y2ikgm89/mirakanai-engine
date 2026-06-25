@@ -1,0 +1,34 @@
+{
+  "schema_version": "GameEngine.EnvironmentPackageEvidence.v1",
+  "artifact_id": "environment-package",
+  "validation_recipe": "environment-package",
+  "fixture_only": true,
+  "ready": true,
+  "proof_rows": {
+    "environment_renderer_package_consumption": {
+      "ready": true,
+      "environment_package_row_consumed": true,
+      "renderer_environment_rows_consumed_count": 4,
+      "environment_ready_promoted": false
+    },
+    "manifest_binding": {
+      "ready": true,
+      "game_agent_manifest_row": true,
+      "validation_recipe_id": "environment-package",
+      "package_manifest_row": "environment_renderer_package"
+    }
+  },
+  "validation_counters": {
+    "renderer_environment_package_consumption_ready": true,
+    "renderer_environment_ready_promoted": false,
+    "renderer_package_arbitrary_script_execution": false,
+    "renderer_package_script_execution": false
+  },
+  "non_claims": {
+    "arbitrary_script_execution": false,
+    "package_script_execution": false,
+    "native_handles_exposed": false,
+    "external_engine_parity": false,
+    "environment_ready": false
+  }
+}

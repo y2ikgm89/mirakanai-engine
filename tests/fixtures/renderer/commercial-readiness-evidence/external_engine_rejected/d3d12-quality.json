@@ -1,0 +1,70 @@
+{
+  "schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+  "artifact_id": "d3d12-quality",
+  "validation_recipe": "renderer-d3d12-quality-evidence",
+  "fixture_only": true,
+  "ready": true,
+  "proof_rows": {
+    "command_allocator_list_fence": {
+      "ready": true,
+      "command_allocator_reuse_fenced": true,
+      "command_list_closed_before_execute": true,
+      "fence_signal_wait_recorded": true,
+      "fence_api_name": "ID3D12Fence"
+    },
+    "resource_barriers": {
+      "ready": true,
+      "render_transition_explicit": true,
+      "copy_transition_explicit": true,
+      "unordered_access_barrier_explicit": true,
+      "readback_transition_explicit": true,
+      "resource_barrier_api_name": "D3D12_RESOURCE_BARRIER"
+    },
+    "timestamp": {
+      "ready": true,
+      "query_type": "D3D12_QUERY_TYPE_TIMESTAMP",
+      "resolved_query_data": true,
+      "queue_frequency_hz": 1000000000,
+      "clock_calibration": true
+    },
+    "debug_validation": {
+      "ready": true,
+      "debug_layer_or_gpu_based_validation_clean": true,
+      "debug_message_count": 0,
+      "gpu_based_validation_message_count": 0
+    },
+    "residency": {
+      "ready": true,
+      "video_memory_budget_queried": true,
+      "make_resident_or_budget_recorded": true,
+      "residency_api_name": "ID3D12Device3::EnqueueMakeResident",
+      "budget_api_name": "IDXGIAdapter3::QueryVideoMemoryInfo"
+    },
+    "package_visible_readback": {
+      "ready": true,
+      "deterministic_hash_sha256": "4c5d0a311d81e9fb91938f124890cb8456b744a6129da1b2ce2f6ff3954494f2",
+      "readback_counter_rows": 1,
+      "package_counter_id": "renderer_d3d12_package_visible_readback"
+    },
+    "native_handles": {
+      "ready": true,
+      "native_handles_exposed": false
+    }
+  },
+  "validation_counters": {
+    "renderer_d3d12_command_allocator_fence_ready": true,
+    "renderer_d3d12_resource_barrier_ready": true,
+    "renderer_d3d12_timestamp_ready": true,
+    "renderer_d3d12_debug_validation_ready": true,
+    "renderer_d3d12_residency_ready": true,
+    "renderer_d3d12_package_readback_ready": true
+  },
+  "non_claims": {
+    "vulkan_inferred": false,
+    "metal_inferred": false,
+    "broad_ui_parity": false,
+    "environment_ready": false,
+    "external_engine_parity": false,
+    "native_handles_exposed": false
+  }
+}
