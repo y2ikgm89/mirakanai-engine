@@ -28,6 +28,8 @@ $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-evidence.ps1"
+$fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
+$validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
@@ -246,6 +248,9 @@ foreach ($needle in @(
         'renderer_commercial_readiness',
         'renderer_environment_ready=0',
         'fixture_only=1',
+        'fixture_artifact_rejected',
+        'renderer_commercial_readiness_fixture_artifacts_rejected',
+        'Test-RendererCommercialReadinessArtifactFixtureFlag',
         'artifact_hash_mismatch',
         'missing_artifact',
         'external_engine_material_rejected',
@@ -267,6 +272,22 @@ foreach ($needle in @(
         'plan_renderer_commercial_readiness_promotion'
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator"
+}
+
+Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-fixture-guard.ps1' `
+    "renderer commercial readiness fixture guard validate task"
+Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
+    "renderer commercial readiness fixture guard check"
+
+foreach ($needle in @(
+        'artifacts/renderer/commercial-readiness-evidence/fixture-guard-self-test',
+        'tests/fixtures/renderer/commercial-readiness-evidence/ready',
+        'fixture_artifact_rejected',
+        'renderer_commercial_readiness_fixture_artifacts_rejected=11',
+        'renderer_commercial_readiness=0',
+        'Copied fixture artifacts unexpectedly promoted from a retained artifact root.'
+    )) {
+    Assert-ContainsText $fixtureGuardCheckText $needle "renderer commercial readiness fixture guard check"
 }
 
 foreach ($needle in @(

@@ -280,6 +280,34 @@ function Read-RendererCommercialReadinessJson {
     }
 }
 
+function Test-RendererCommercialReadinessArtifactFixtureFlag {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][bool]$FixtureArtifactsAllowed,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    $artifact = Read-RendererCommercialReadinessJson -Path $Path -Diagnostics $artifactDiagnostics
+    if ($null -eq $artifact) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_artifact_fixture_flag_json"
+        return $false
+    }
+
+    $fixtureOnlyValue = Get-JsonPropertyValue -JsonObject $artifact -Name "fixture_only"
+    if ($null -eq $fixtureOnlyValue -or $fixtureOnlyValue -isnot [bool]) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_artifact_fixture_flag"
+        return $false
+    }
+    if ($fixtureOnlyValue -and -not $FixtureArtifactsAllowed) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "fixture_artifact_rejected"
+        return $false
+    }
+    return $true
+}
+
 function Test-RendererReadinessFixtureContracts {
     param(
         [Parameter(Mandatory = $true)][string]$FixtureRoot,
@@ -1455,6 +1483,7 @@ $readyRows = 0
 $invalidRows = 0
 $missingArtifactRows = 0
 $hashMismatchRows = 0
+$fixtureArtifactRejectedRows = 0
 $forbiddenMaterialRejectedRows = 0
 $externalEngineDetectedRows = 0
 $externalEngineZeroMaterialReviewReady = $false
@@ -1604,6 +1633,17 @@ if ($null -ne $evidenceFile) {
             }
 
             $artifactSpecificReady = $true
+            if ($null -ne $resolvedArtifactPath -and
+                (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
+                $fixtureArtifactAllowed = Test-RendererCommercialReadinessArtifactFixtureFlag `
+                    -Path $resolvedArtifactPath `
+                    -FixtureArtifactsAllowed $fixtureOnly `
+                    -Diagnostics $evidenceDiagnostics
+                if (-not $fixtureArtifactAllowed) {
+                    $fixtureArtifactRejectedRows += 1
+                }
+                $artifactSpecificReady = $artifactSpecificReady -and $fixtureArtifactAllowed
+            }
             if ($rowSpec.Name -eq "d3d12") {
                 if ($null -eq $resolvedArtifactPath -or
                     -not (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
@@ -1611,10 +1651,11 @@ if ($null -ne $evidenceFile) {
                     Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
                         -Name "missing_d3d12_quality_artifact"
                 } else {
-                    $artifactSpecificReady = Test-RendererCommercialReadinessD3d12Artifact `
+                    $d3d12ArtifactReady = Test-RendererCommercialReadinessD3d12Artifact `
                         -Path $resolvedArtifactPath `
                         -D3d12ProofRows $d3d12ProofRows `
                         -Diagnostics $evidenceDiagnostics
+                    $artifactSpecificReady = $artifactSpecificReady -and $d3d12ArtifactReady
                 }
             }
             if ($rowSpec.Name -eq "vulkan_strict") {
@@ -1624,10 +1665,11 @@ if ($null -ne $evidenceFile) {
                     Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
                         -Name "missing_vulkan_strict_quality_artifact"
                 } else {
-                    $artifactSpecificReady = Test-RendererCommercialReadinessVulkanArtifact `
+                    $vulkanArtifactReady = Test-RendererCommercialReadinessVulkanArtifact `
                         -Path $resolvedArtifactPath `
                         -VulkanProofRows $vulkanProofRows `
                         -Diagnostics $evidenceDiagnostics
+                    $artifactSpecificReady = $artifactSpecificReady -and $vulkanArtifactReady
                 }
             }
 
@@ -1638,10 +1680,11 @@ if ($null -ne $evidenceFile) {
                     Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
                         -Name "missing_apple_metal_host_artifact"
                 } else {
-                    $artifactSpecificReady = Test-RendererCommercialReadinessAppleMetalArtifact `
+                    $appleMetalArtifactReady = Test-RendererCommercialReadinessAppleMetalArtifact `
                         -Path $resolvedArtifactPath `
                         -AppleMetalProofRows $appleMetalProofRows `
                         -Diagnostics $evidenceDiagnostics
+                    $artifactSpecificReady = $artifactSpecificReady -and $appleMetalArtifactReady
                 }
             }
             if (@("visible_3d", "runtime_ui", "environment", "generated_game") -contains $rowSpec.Name) {
@@ -1651,11 +1694,12 @@ if ($null -ne $evidenceFile) {
                     Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
                         -Name "missing_$($rowSpec.Name)_package_artifact"
                 } else {
-                    $artifactSpecificReady = Test-RendererCommercialReadinessPackageArtifact `
+                    $packageArtifactReady = Test-RendererCommercialReadinessPackageArtifact `
                         -Path $resolvedArtifactPath `
                         -RowName $rowSpec.Name `
                         -PackageProofRows $packageProofRows `
                         -Diagnostics $evidenceDiagnostics
+                    $artifactSpecificReady = $artifactSpecificReady -and $packageArtifactReady
                 }
             }
 
@@ -1874,6 +1918,7 @@ $lines.Add("renderer_commercial_readiness_evidence_ready_rows=$readyRows")
 $lines.Add("renderer_commercial_readiness_evidence_invalid_rows=$invalidRows")
 $lines.Add("renderer_commercial_readiness_evidence_missing_artifacts=$missingArtifactRows")
 $lines.Add("renderer_commercial_readiness_evidence_hash_mismatches=$hashMismatchRows")
+$lines.Add("renderer_commercial_readiness_fixture_artifacts_rejected=$fixtureArtifactRejectedRows")
 $lines.Add("renderer_external_engine_forbidden_material_detected_rows=$externalEngineDetectedRows")
 $lines.Add("renderer_external_engine_forbidden_material_rejected_rows=$forbiddenMaterialRejectedRows")
 $lines.Add("renderer_external_engine_zero_material_review_ready=$(ConvertTo-CounterBit $externalEngineZeroMaterialReviewReady)")

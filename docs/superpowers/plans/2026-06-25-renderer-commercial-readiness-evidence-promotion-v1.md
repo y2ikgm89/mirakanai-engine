@@ -225,8 +225,10 @@ Evidence captured 2026-06-25:
 **Files:**
 
 - Add: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Add: `tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1`
 - Add: `tests/fixtures/renderer/commercial-readiness-evidence/ready/*-*.json` fixture-only retained artifact files
 - Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
+- Modify: `tools/validate.ps1`
 - Modify: `tools/run-validation-recipe-plans.ps1`
 - Modify: `tools/check-validation-recipe-runner.ps1`
 - Modify: `tools/classify-pr-validation-tier.ps1`
@@ -280,6 +282,7 @@ Validation evidence:
 - `tools/validate-renderer-commercial-readiness-evidence.ps1`: passed with `renderer_commercial_readiness=0`, `renderer_environment_ready=0`, and `renderer_commercial_readiness_evidence_blocker=artifact_root_required`.
 - `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady`: failed as expected with `require_ready_without_artifact_root+artifact_root_required`.
 - `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `fixture_only=1`, 11 artifact rows, zero missing artifacts, zero hash mismatches, and final renderer readiness counters set for fixture validation only.
+- `tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1`: passed after proving copied fixture artifacts under temporary `artifacts/renderer/commercial-readiness-evidence/...` roots are blocked with `fixture_artifact_rejected`, `renderer_commercial_readiness_fixture_artifacts_rejected=11`, and `renderer_commercial_readiness=0`.
 - `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed through the artifact-ingestion wrapper with 12 selected evidence rows ready.
 - `tools/classify-pr-validation-tier.ps1 -ChangedPath tools/validate-renderer-commercial-readiness-evidence.ps1`: selected `windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence` and did not select iOS Metal.
 - `tools/check-validation-recipe-runner.ps1`: passed.
@@ -512,6 +515,7 @@ Steps:
 Current status:
 
 - Host-gated for real commercial promotion. This workspace has validated the retained artifact contract, fixture-ready path, and rejected external-engine path, but has not collected a non-fixture artifact root from the required selected Windows D3D12, strict Vulkan, Apple-host Metal, package, and legal/source-review lanes.
+- Retained artifact roots now fail closed when any child artifact still declares `fixture_only=true`; copied fixture artifacts cannot promote real commercial readiness.
 - `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
 - The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
 
@@ -523,7 +527,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
