@@ -100,6 +100,34 @@ class HiddenVulkanTestWindow final {
     return std::ranges::any_of(bytes, [](const auto byte) { return byte != 0U; });
 }
 
+[[nodiscard]] std::uint64_t fnv1a64(std::span<const std::uint8_t> bytes) noexcept {
+    std::uint64_t hash{1469598103934665603ULL};
+    for (const auto byte : bytes) {
+        hash ^= byte;
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+[[nodiscard]] mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceDesc
+ready_metal_visible_renderer_package_desc() {
+    return mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceDesc{
+        .host = mirakana::rhi::RhiHostPlatform::macos,
+        .apple_host_validation_available = true,
+        .runtime_ready = true,
+        .command_queue_ready = true,
+        .metallib_valid = true,
+        .visible_3d_scene_material_lighting_postprocess_ready = true,
+        .ui_atlas_upload_readback_ready = true,
+        .environment_renderer_package_row_consumed = true,
+        .generated_game_package_output_row_ready = true,
+        .visible_3d_readback_hash = 11U,
+        .ui_atlas_readback_hash = 22U,
+        .environment_package_replay_hash = 33U,
+        .generated_game_package_replay_hash = 44U,
+    };
+}
+
 [[nodiscard]] mirakana::rhi::vulkan::VulkanRhiDeviceMappingPlan ready_vulkan_rhi_mapping_plan() {
     mirakana::rhi::vulkan::VulkanRhiDeviceMappingDesc desc;
     desc.command_pool_ready = true;
@@ -8736,6 +8764,185 @@ MK_TEST("metal environment feature evidence requires synchronization proof and e
     MK_REQUIRE(status_line.find("metal_environment_volumetric_cloud_status=ready") != std::string::npos);
     MK_REQUIRE(status_line.find("metal_environment_lighting_ibl_status=ready") != std::string::npos);
     MK_REQUIRE(status_line.find("metal_environment_native_handle_access=0") != std::string::npos);
+}
+
+MK_TEST("metal visible renderer package evidence stays host gated off Apple host") {
+    const auto plan = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(
+        mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::windows,
+        });
+
+    MK_REQUIRE(plan.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(plan.required_row_count == 4U);
+    MK_REQUIRE(plan.host_gated_row_count == 4U);
+    MK_REQUIRE(plan.ready_row_count == 0U);
+    MK_REQUIRE(plan.blocked_row_count == 0U);
+    MK_REQUIRE(plan.native_handle_access_count == 0U);
+    MK_REQUIRE(plan.broad_claim_count == 0U);
+    for (const auto& row : plan.rows) {
+        MK_REQUIRE(row.status ==
+                   mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::host_evidence_required);
+        MK_REQUIRE(row.host_evidence_required);
+        MK_REQUIRE(!row.host_supported);
+        MK_REQUIRE(row.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+        MK_REQUIRE(!row.native_handle_access);
+    }
+
+    const auto status_line = mirakana::rhi::metal::metal_visible_renderer_package_evidence_status_line(plan);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_evidence_status=host_evidence_required") !=
+               std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_evidence_ready=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_evidence_host_gated_rows=4") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_3d_package_ready=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_backend_parity_ready=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_broad_readiness=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_broad_quality_ready=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_commercial_readiness=0") != std::string::npos);
+}
+
+MK_TEST("metal visible renderer package evidence requires all selected rows") {
+    auto desc = ready_metal_visible_renderer_package_desc();
+    auto ready = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(ready.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::ready);
+    MK_REQUIRE(ready.required_row_count == 4U);
+    MK_REQUIRE(ready.ready_row_count == 4U);
+    MK_REQUIRE(ready.host_gated_row_count == 0U);
+    MK_REQUIRE(ready.blocked_row_count == 0U);
+    MK_REQUIRE(ready.replay_hash != 0U);
+
+    desc.ui_atlas_readback_hash = 0U;
+    const auto missing_ui = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(missing_ui.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::blocked);
+    MK_REQUIRE(missing_ui.blocked_row_count == 1U);
+    MK_REQUIRE(missing_ui.rows[1].diagnostic ==
+               "Metal visible renderer package evidence missing selected row: ui_atlas_upload");
+
+    desc = ready_metal_visible_renderer_package_desc();
+    desc.host_validation_recipe_id = "renderer-metal-memory-profiling-host-evidence";
+    const auto wrong_recipe = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(wrong_recipe.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::blocked);
+    MK_REQUIRE(wrong_recipe.blocked_row_count == 4U);
+    MK_REQUIRE(wrong_recipe.rows[0].diagnostic ==
+               "Metal visible renderer package evidence requires renderer-metal-apple-host-evidence");
+}
+
+MK_TEST("metal visible renderer package evidence rejects native handles and broad claims") {
+    auto desc = ready_metal_visible_renderer_package_desc();
+    desc.native_handles_exposed = true;
+    const auto native_handle = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(native_handle.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::blocked);
+    MK_REQUIRE(native_handle.native_handle_access_count == 4U);
+    MK_REQUIRE(native_handle.rows[0].diagnostic ==
+               "Metal visible renderer package evidence must not expose native handles");
+
+    desc = ready_metal_visible_renderer_package_desc();
+    desc.broad_backend_parity_claimed = true;
+    const auto broad_backend = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(broad_backend.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::blocked);
+    MK_REQUIRE(broad_backend.broad_claim_count == 4U);
+    MK_REQUIRE(broad_backend.rows[0].diagnostic ==
+               "Metal visible renderer package evidence must not claim broad backend or Metal readiness");
+
+    desc = ready_metal_visible_renderer_package_desc();
+    desc.broad_metal_readiness_claimed = true;
+    const auto broad_metal = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(broad_metal.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::blocked);
+    MK_REQUIRE(broad_metal.broad_claim_count == 4U);
+}
+
+MK_TEST("metal visible renderer package evidence records deterministic selected package rows") {
+    const std::vector<std::uint8_t> visible_bytes{0x2d, 0x47, 0x6a, 0x91};
+    const std::vector<std::uint8_t> atlas_bytes{0x11, 0x29, 0x37, 0x4f};
+    auto desc = ready_metal_visible_renderer_package_desc();
+    desc.visible_3d_readback_hash = fnv1a64(std::span<const std::uint8_t>{visible_bytes.data(), visible_bytes.size()});
+    desc.ui_atlas_readback_hash = fnv1a64(std::span<const std::uint8_t>{atlas_bytes.data(), atlas_bytes.size()});
+    desc.environment_package_replay_hash = 0x4d4b45554e564d54ULL;
+    desc.generated_game_package_replay_hash = 0x47454e5041434b47ULL;
+
+    const auto plan = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(desc);
+    MK_REQUIRE(plan.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::ready);
+    MK_REQUIRE(plan.rows[0].package_counter_id == "renderer_metal_visible_3d_package_ready");
+    MK_REQUIRE(plan.rows[1].package_counter_id == "renderer_metal_visible_ui_atlas_package_ready");
+    MK_REQUIRE(plan.rows[2].package_counter_id == "renderer_metal_visible_environment_package_ready");
+    MK_REQUIRE(plan.rows[3].package_counter_id == "renderer_metal_visible_generated_game_package_ready");
+    MK_REQUIRE(plan.rows[0].evidence_hash == desc.visible_3d_readback_hash);
+    MK_REQUIRE(plan.rows[1].evidence_hash == desc.ui_atlas_readback_hash);
+    MK_REQUIRE(plan.rows[2].evidence_hash == desc.environment_package_replay_hash);
+    MK_REQUIRE(plan.rows[3].evidence_hash == desc.generated_game_package_replay_hash);
+
+    const auto status_line = mirakana::rhi::metal::metal_visible_renderer_package_evidence_status_line(plan);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_evidence_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_evidence_ready=1") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_evidence_ready_rows=4") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_3d_scene_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_3d_package_ready=1") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_ui_atlas_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_ui_atlas_package_ready=1") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_environment_package_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_environment_package_ready=1") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_generated_game_package_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_generated_game_package_ready=1") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_native_handle_access=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("renderer_metal_visible_package_broad_claims=0") != std::string::npos);
+}
+
+MK_TEST("metal visible renderer package native evidence promotes only on Apple host execution") {
+    const auto unsupported = mirakana::rhi::metal::create_native_visible_renderer_package_evidence(
+        mirakana::rhi::metal::MetalNativeVisibleRendererPackageEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::windows,
+            .metallib_path = "missing.metallib",
+            .environment_package_replay_hash = 0x4d4b45554e564d54ULL,
+            .generated_game_package_replay_hash = 0x47454e5041434b47ULL,
+        });
+    MK_REQUIRE(!unsupported.ready);
+    MK_REQUIRE(unsupported.diagnostic == "Metal visible renderer package native evidence requires an Apple host");
+
+#if defined(__APPLE__)
+    const auto metallib_path = environment_variable_value("MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB");
+    MK_REQUIRE(!metallib_path.empty());
+
+    const auto native = mirakana::rhi::metal::create_native_visible_renderer_package_evidence(
+        mirakana::rhi::metal::MetalNativeVisibleRendererPackageEvidenceDesc{
+            .host = mirakana::rhi::current_rhi_host_platform(),
+            .metallib_path = metallib_path,
+            .environment_package_replay_hash = 0x4d4b45554e564d54ULL,
+            .generated_game_package_replay_hash = 0x47454e5041434b47ULL,
+        });
+    MK_REQUIRE(native.ready);
+    MK_REQUIRE(native.runtime_ready);
+    MK_REQUIRE(native.command_queue_ready);
+    MK_REQUIRE(native.metallib_valid);
+    MK_REQUIRE(native.visible_3d_scene_material_lighting_postprocess_ready);
+    MK_REQUIRE(native.ui_atlas_upload_readback_ready);
+    MK_REQUIRE(native.environment_renderer_package_row_consumed);
+    MK_REQUIRE(native.generated_game_package_output_row_ready);
+    MK_REQUIRE(!native.native_handle_access);
+    MK_REQUIRE(native.visible_3d_readback_hash != 0U);
+    MK_REQUIRE(native.ui_atlas_readback_hash != 0U);
+
+    const auto plan = mirakana::rhi::metal::plan_metal_visible_renderer_package_evidence(
+        mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceDesc{
+            .host = mirakana::rhi::current_rhi_host_platform(),
+            .apple_host_validation_available = true,
+            .runtime_ready = native.runtime_ready,
+            .command_queue_ready = native.command_queue_ready,
+            .metallib_valid = native.metallib_valid,
+            .visible_3d_scene_material_lighting_postprocess_ready =
+                native.visible_3d_scene_material_lighting_postprocess_ready,
+            .ui_atlas_upload_readback_ready = native.ui_atlas_upload_readback_ready,
+            .environment_renderer_package_row_consumed = native.environment_renderer_package_row_consumed,
+            .generated_game_package_output_row_ready = native.generated_game_package_output_row_ready,
+            .native_handles_exposed = native.native_handle_access,
+            .visible_3d_readback_hash = native.visible_3d_readback_hash,
+            .ui_atlas_readback_hash = native.ui_atlas_readback_hash,
+            .environment_package_replay_hash = native.environment_package_replay_hash,
+            .generated_game_package_replay_hash = native.generated_game_package_replay_hash,
+        });
+    MK_REQUIRE(plan.status == mirakana::rhi::metal::MetalVisibleRendererPackageEvidenceStatus::ready);
+    MK_REQUIRE(plan.ready_row_count == 4U);
+    MK_REQUIRE(plan.native_handle_access_count == 0U);
+    MK_REQUIRE(plan.broad_claim_count == 0U);
+#endif
 }
 
 MK_TEST("metal environment native feature evidence promotes only on Apple host execution") {

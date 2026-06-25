@@ -49,6 +49,19 @@ enum class MetalEnvironmentFeatureEvidenceStatus : std::uint8_t {
     ready,
 };
 
+enum class MetalVisibleRendererPackageEvidenceStatus : std::uint8_t {
+    blocked,
+    host_evidence_required,
+    ready,
+};
+
+enum class MetalVisibleRendererPackageEvidenceKind : std::uint8_t {
+    visible_3d_scene,
+    ui_atlas_upload,
+    environment_package,
+    generated_game_package,
+};
+
 struct MetalShaderLibraryArtifactDesc {
     const void* bytecode{nullptr};
     std::uint64_t bytecode_size{0};
@@ -195,6 +208,81 @@ struct MetalNativeEnvironmentFeatureHostEvidenceResult {
     std::string diagnostic;
 };
 
+struct MetalVisibleRendererPackageEvidenceDesc {
+    RhiHostPlatform host{RhiHostPlatform::unknown};
+    std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
+    bool apple_host_validation_available{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool metallib_valid{false};
+    bool visible_3d_scene_material_lighting_postprocess_ready{false};
+    bool ui_atlas_upload_readback_ready{false};
+    bool environment_renderer_package_row_consumed{false};
+    bool generated_game_package_output_row_ready{false};
+    bool native_handles_exposed{false};
+    bool broad_backend_parity_claimed{false};
+    bool broad_metal_readiness_claimed{false};
+    std::uint64_t visible_3d_readback_hash{0U};
+    std::uint64_t ui_atlas_readback_hash{0U};
+    std::uint64_t environment_package_replay_hash{0U};
+    std::uint64_t generated_game_package_replay_hash{0U};
+};
+
+struct MetalVisibleRendererPackageEvidenceRow {
+    MetalVisibleRendererPackageEvidenceKind kind{MetalVisibleRendererPackageEvidenceKind::visible_3d_scene};
+    MetalVisibleRendererPackageEvidenceStatus status{MetalVisibleRendererPackageEvidenceStatus::blocked};
+    bool host_supported{false};
+    bool host_evidence_required{false};
+    bool host_evidence_available{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool metallib_valid{false};
+    bool package_counter_ready{false};
+    bool native_handle_access{false};
+    bool broad_claim{false};
+    std::uint64_t evidence_hash{0U};
+    std::string host_validation_recipe_id;
+    std::string package_counter_id;
+    std::string diagnostic;
+};
+
+struct MetalVisibleRendererPackageEvidencePlan {
+    MetalVisibleRendererPackageEvidenceStatus status{MetalVisibleRendererPackageEvidenceStatus::blocked};
+    std::vector<MetalVisibleRendererPackageEvidenceRow> rows;
+    std::size_t required_row_count{0U};
+    std::size_t ready_row_count{0U};
+    std::size_t host_gated_row_count{0U};
+    std::size_t blocked_row_count{0U};
+    std::size_t native_handle_access_count{0U};
+    std::size_t broad_claim_count{0U};
+    std::uint64_t replay_hash{0U};
+    std::string diagnostic;
+};
+
+struct MetalNativeVisibleRendererPackageEvidenceDesc {
+    RhiHostPlatform host{RhiHostPlatform::unknown};
+    std::string metallib_path;
+    std::uint64_t environment_package_replay_hash{0U};
+    std::uint64_t generated_game_package_replay_hash{0U};
+};
+
+struct MetalNativeVisibleRendererPackageEvidenceResult {
+    bool ready{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool metallib_valid{false};
+    bool visible_3d_scene_material_lighting_postprocess_ready{false};
+    bool ui_atlas_upload_readback_ready{false};
+    bool environment_renderer_package_row_consumed{false};
+    bool generated_game_package_output_row_ready{false};
+    bool native_handle_access{false};
+    std::uint64_t visible_3d_readback_hash{0U};
+    std::uint64_t ui_atlas_readback_hash{0U};
+    std::uint64_t environment_package_replay_hash{0U};
+    std::uint64_t generated_game_package_replay_hash{0U};
+    std::string diagnostic;
+};
+
 struct MetalNativeDeviceQueueDesc {
     RhiHostPlatform host{RhiHostPlatform::unknown};
 };
@@ -272,6 +360,8 @@ class MetalRuntimeDevice {
                                                                        MetalRuntimeTexture& texture);
     friend MetalNativeEnvironmentFeatureHostEvidenceResult
     create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc);
+    friend MetalNativeVisibleRendererPackageEvidenceResult
+    create_native_visible_renderer_package_evidence(const MetalNativeVisibleRendererPackageEvidenceDesc& desc);
     friend struct MetalRuntimeDevicePrivateAccess;
 };
 
@@ -515,6 +605,16 @@ build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEv
 metal_environment_feature_host_evidence_status_line(const MetalEnvironmentFeatureHostEvidencePlan& plan);
 [[nodiscard]] MetalNativeEnvironmentFeatureHostEvidenceResult
 create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc);
+[[nodiscard]] MetalNativeVisibleRendererPackageEvidenceResult
+create_native_visible_renderer_package_evidence(const MetalNativeVisibleRendererPackageEvidenceDesc& desc);
+[[nodiscard]] std::string_view
+metal_visible_renderer_package_evidence_kind_label(MetalVisibleRendererPackageEvidenceKind kind) noexcept;
+[[nodiscard]] std::string_view
+metal_visible_renderer_package_evidence_status_label(MetalVisibleRendererPackageEvidenceStatus status) noexcept;
+[[nodiscard]] MetalVisibleRendererPackageEvidencePlan
+plan_metal_visible_renderer_package_evidence(const MetalVisibleRendererPackageEvidenceDesc& desc);
+[[nodiscard]] std::string
+metal_visible_renderer_package_evidence_status_line(const MetalVisibleRendererPackageEvidencePlan& plan);
 [[nodiscard]] MetalRuntimeDeviceQueueCreateResult
 create_native_device_and_command_queue(const MetalNativeDeviceQueueDesc& desc = {});
 [[nodiscard]] MetalRuntimeCommandBufferCreateResult create_native_command_buffer(MetalRuntimeDevice& device);

@@ -108,6 +108,16 @@ router says the current task needs detailed API names, detailed validation lanes
   creation is rejected. Non-Apple/default validation stays host-gated, and broad backend parity, broad Metal readiness,
   commercial renderer readiness,
   broad renderer quality, external-engine parity, and broad `environment_ready` remain unclaimed.
+- For Renderer Commercial Quality Closeout Task 4 / selected Metal visible package evidence, use
+  `MetalVisibleRendererPackageEvidenceDesc`, `MetalVisibleRendererPackageEvidenceRow`,
+  `MetalVisibleRendererPackageEvidencePlan`, `plan_metal_visible_renderer_package_evidence`,
+  `metal_visible_renderer_package_evidence_status_line`, `MetalNativeVisibleRendererPackageEvidenceDesc`,
+  `MetalNativeVisibleRendererPackageEvidenceResult`, and Apple-only `create_native_visible_renderer_package_evidence`.
+  The reviewed `renderer-metal-apple-host-evidence` recipe must build `visible_renderer_package_evidence.metallib`, run private
+  Objective-C++ offscreen render/readback plus UI atlas upload/readback proof, consume only nonzero environment/generated package
+  hashes supplied by selected package rows, and emit `renderer_metal_visible_package_*` counters. It must not expose `MTL*`, infer
+  D3D12/Vulkan proof, or claim `renderer_backend_parity_ready`, `renderer_metal_broad_readiness`, `renderer_broad_quality_ready`, or
+  `renderer_commercial_readiness`.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and

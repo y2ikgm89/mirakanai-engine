@@ -1018,11 +1018,22 @@ if(BUILD_TESTING)
     target_include_directories(MK_backend_scaffold_tests PRIVATE tests)
     MK_apply_common_target_options(MK_backend_scaffold_tests)
     add_test(NAME MK_backend_scaffold_tests COMMAND MK_backend_scaffold_tests)
-    if(APPLE AND TARGET MK_metal_environment_evidence_metallib)
-        add_dependencies(MK_backend_scaffold_tests MK_metal_environment_evidence_metallib)
+    if(APPLE AND TARGET MK_metal_environment_evidence_metallib AND TARGET MK_metal_visible_renderer_package_evidence_metallib)
+        add_dependencies(MK_backend_scaffold_tests
+            MK_metal_environment_evidence_metallib
+            MK_metal_visible_renderer_package_evidence_metallib
+        )
         get_property(MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB GLOBAL PROPERTY MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB)
+        get_property(
+            MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB
+            GLOBAL PROPERTY MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB
+        )
+        set(MK_BACKEND_SCAFFOLD_TEST_ENVIRONMENT
+            "MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB=${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+            "MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB=${MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB}"
+        )
         set_tests_properties(MK_backend_scaffold_tests PROPERTIES
-            ENVIRONMENT "MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB=${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+            ENVIRONMENT "${MK_BACKEND_SCAFFOLD_TEST_ENVIRONMENT}"
         )
     endif()
 

@@ -264,6 +264,13 @@
           ]
         },
         {
+          "id": "renderer-metal-visible-package-evidence",
+          "evidence": "Apple-host Metal visible package evidence is host-gated by renderer-metal-apple-host-evidence and, only on a macOS Metal toolchain host, reports renderer_metal_visible_package_evidence_status=ready, four ready rows for selected 3D material/lighting/postprocess readback, UI atlas upload/readback, environment package row consumption, and generated-game package output row consumption, zero native-handle access, zero broad Metal/backend/renderer/commercial readiness claims, and renderer_backend_parity_ready=0, renderer_metal_broad_readiness=0, renderer_broad_quality_ready=0, and renderer_commercial_readiness=0.",
+          "recipeIds": [
+            "renderer-metal-apple-host-evidence"
+          ]
+        },
+        {
           "id": "runtime-menu-hud",
           "evidence": "Runtime menu HUD smoke reports deterministic display, command, dialogue, and input-binding prompt counters.",
           "recipeIds": [
@@ -2454,6 +2461,10 @@
     {
       "name": "desktop-runtime-release-target",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package"
+    },
+    {
+      "name": "renderer-metal-apple-host-evidence",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-metal-apple.ps1"
     },
     {
       "name": "installed-d3d12-3d-package-smoke",

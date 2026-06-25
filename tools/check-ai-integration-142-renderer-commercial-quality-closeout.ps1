@@ -18,6 +18,15 @@ $backendParitySourceText = Get-AgentSurfaceText "engine/renderer/src/backend_ren
 $rendererRhiTestsText = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
+$metalHeaderText = Get-AgentSurfaceText "engine/rhi/metal/include/mirakana/rhi/metal/metal_backend.hpp"
+$metalSourceText = Get-AgentSurfaceText "engine/rhi/metal/src/metal_backend.cpp"
+$metalNativeText = Get-AgentSurfaceText "engine/rhi/metal/src/metal_native.mm"
+$metalCMakeText = Get-AgentSurfaceText "engine/rhi/metal/CMakeLists.txt"
+$metalShaderText = Get-AgentSurfaceText "engine/rhi/metal/shaders/visible_renderer_package_evidence.metal"
+$backendScaffoldTestsText = Get-AgentSurfaceText "tests/unit/backend_scaffold_tests.cpp"
+$metalAppleValidatorText = Get-AgentSurfaceText "tools/validate-renderer-metal-apple.ps1"
+$recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
+$generated3dGameManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 
 foreach ($needle in @(
         "validation_recipe=renderer-commercial-quality-closeout",
@@ -154,6 +163,114 @@ foreach ($skillPath in @(
         )) {
         Assert-ContainsText $skillText $needle "$skillPath renderer Metal recipe family guidance"
     }
+}
+
+foreach ($needle in @(
+        "MetalVisibleRendererPackageEvidenceDesc",
+        "MetalVisibleRendererPackageEvidenceRow",
+        "MetalVisibleRendererPackageEvidencePlan",
+        "MetalNativeVisibleRendererPackageEvidenceDesc",
+        "MetalNativeVisibleRendererPackageEvidenceResult",
+        "plan_metal_visible_renderer_package_evidence",
+        "metal_visible_renderer_package_evidence_status_line",
+        "create_native_visible_renderer_package_evidence"
+    )) {
+    Assert-ContainsText $metalHeaderText $needle "Metal visible renderer package evidence public value API"
+}
+
+foreach ($needle in @(
+        "renderer_metal_visible_package_evidence_status=",
+        "renderer_metal_visible_3d_package_ready",
+        "renderer_metal_visible_ui_atlas_package_ready",
+        "renderer_metal_visible_environment_package_ready",
+        "renderer_metal_visible_generated_game_package_ready",
+        "renderer_backend_parity_ready=0 renderer_metal_broad_readiness=0 renderer_broad_quality_ready=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $metalSourceText $needle "Metal visible renderer package evidence status line"
+}
+
+foreach ($needle in @(
+        "mk_visible_renderer_package_vertex",
+        "mk_visible_renderer_package_fragment",
+        "create_native_visible_renderer_package_evidence",
+        "visible_3d_scene_material_lighting_postprocess_ready",
+        "ui_atlas_upload_readback_ready",
+        "environment_renderer_package_row_consumed",
+        "generated_game_package_output_row_ready",
+        "Metal visible renderer package native evidence ready"
+    )) {
+    Assert-ContainsText $metalNativeText $needle "Apple-private Metal visible renderer package native evidence"
+}
+
+foreach ($needle in @(
+        "visible_renderer_package_evidence.metal",
+        "MK_metal_visible_renderer_package_evidence_metallib",
+        "MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB"
+    )) {
+    Assert-ContainsText $metalCMakeText $needle "Metal visible renderer package evidence metallib target"
+}
+
+foreach ($needle in @(
+        "MK_metal_visible_renderer_package_evidence_metallib",
+        "MK_METAL_VISIBLE_RENDERER_PACKAGE_EVIDENCE_METALLIB"
+    )) {
+    Assert-ContainsText $rootCMakeText $needle "backend scaffold visible package metallib test dependency"
+}
+
+foreach ($needle in @(
+        "albedo",
+        "light_direction",
+        "postprocessed"
+    )) {
+    Assert-ContainsText $metalShaderText $needle "first-party Metal visible renderer package evidence shader"
+}
+
+foreach ($needle in @(
+        "metal visible renderer package evidence stays host gated off Apple host",
+        "metal visible renderer package evidence requires all selected rows",
+        "metal visible renderer package evidence rejects native handles and broad claims",
+        "metal visible renderer package evidence records deterministic selected package rows",
+        "metal visible renderer package native evidence promotes only on Apple host execution"
+    )) {
+    Assert-ContainsText $backendScaffoldTestsText $needle "Metal visible renderer package evidence backend scaffold tests"
+}
+
+foreach ($needle in @(
+        "MK_metal_visible_renderer_package_evidence_metallib",
+        "renderer_metal_visible_package_evidence_status=ready",
+        "renderer_metal_visible_3d_package_ready=1",
+        "renderer_metal_visible_ui_atlas_package_ready=1",
+        "renderer_metal_visible_environment_package_ready=1",
+        "renderer_metal_visible_generated_game_package_ready=1",
+        "renderer_metal_visible_package_native_handle_access=0",
+        "renderer_metal_visible_package_broad_claims=0",
+        "renderer_backend_parity_ready=0",
+        "renderer_metal_broad_readiness=0",
+        "renderer_broad_quality_ready=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $metalAppleValidatorText $needle "renderer Metal Apple visible package evidence validator counters"
+}
+
+foreach ($needle in @(
+        "visible_renderer_package_evidence.metallib",
+        "renderer_metal_visible_package_* counters",
+        "does not mark backend parity, broad Metal readiness, broad renderer quality, commercial renderer readiness"
+    )) {
+    Assert-ContainsText $recipePlansText $needle "renderer Metal Apple recipe plan visible package diagnostics"
+}
+
+foreach ($needle in @(
+        "renderer-metal-visible-package-evidence",
+        "renderer_metal_visible_package_evidence_status=ready",
+        "renderer-metal-apple-host-evidence",
+        "renderer_backend_parity_ready=0",
+        "renderer_metal_broad_readiness=0",
+        "renderer_broad_quality_ready=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $generated3dGameManifestText $needle "generated 3D package Metal visible evidence manifest row"
 }
 
 foreach ($surface in @(
