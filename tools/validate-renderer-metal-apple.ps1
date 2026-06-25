@@ -127,4 +127,20 @@ Write-Host (
     "renderer_commercial_readiness=0"
 )
 
+Write-Host (
+    "renderer-metal-apple: renderer_apple_metal_commercial_quality_host_source_status=ready " +
+    "renderer_apple_metal_commercial_quality_host_source_schema=GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1 " +
+    "renderer_apple_metal_commercial_quality_host_source_recipe=renderer-metal-apple-host-evidence " +
+    "renderer_apple_metal_commercial_quality_memory_source_schema=GameEngine.RendererMetalMemoryProfilingHostEvidence.v1 " +
+    "renderer_apple_metal_commercial_quality_memory_source_recipe=renderer-metal-memory-profiling-host-evidence " +
+    "renderer_apple_metal_commercial_quality_artifact_ready=0 " +
+    "renderer_apple_metal_commercial_quality_native_handles_exposed=0 " +
+    "renderer_apple_metal_commercial_quality_cross_backend_inference=0 " +
+    "renderer_backend_parity_ready=0 " +
+    "renderer_metal_broad_readiness=0 " +
+    "renderer_broad_quality_ready=0 " +
+    "renderer_commercial_readiness=0 " +
+    "renderer_environment_ready=0"
+)
+
 Write-Information "renderer-metal-apple-check: ok" -InformationAction Continue

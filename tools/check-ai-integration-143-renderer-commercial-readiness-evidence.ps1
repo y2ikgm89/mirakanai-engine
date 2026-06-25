@@ -33,6 +33,9 @@ $d3d12ArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-d3d12-
 $d3d12ArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-artifact.ps1"
 $vulkanStrictArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1"
 $vulkanStrictArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1"
+$appleMetalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1"
+$appleMetalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-apple-metal-commercial-quality-artifact.ps1"
+$rendererMetalAppleValidatorText = Get-AgentSurfaceText "tools/validate-renderer-metal-apple.ps1"
 $collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
 $metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
@@ -296,6 +299,8 @@ Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artif
     "renderer commercial readiness D3D12 artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
     "renderer commercial readiness strict Vulkan artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-apple-metal-commercial-quality-artifact.ps1' `
+    "renderer commercial readiness Apple Metal artifact producer validate task"
 Assert-ContainsText $collectorCheckText 'renderer-commercial-readiness-evidence-collector-check: ok' `
     "renderer commercial readiness evidence collector check"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
@@ -306,6 +311,8 @@ Assert-ContainsText $d3d12ArtifactProducerCheckText 'renderer-d3d12-commercial-q
     "renderer commercial readiness D3D12 artifact producer check"
 Assert-ContainsText $vulkanStrictArtifactProducerCheckText 'renderer-vulkan-strict-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness strict Vulkan artifact producer check"
+Assert-ContainsText $appleMetalArtifactProducerCheckText 'renderer-apple-metal-commercial-quality-artifact-check: ok' `
+    "renderer commercial readiness Apple Metal artifact producer check"
 
 foreach ($needle in @(
         'Mode',
@@ -450,6 +457,92 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $vulkanStrictArtifactProducerCheckText $needle `
         "renderer commercial readiness strict Vulkan artifact producer check"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'AppleMetalHostEvidenceRelative',
+        'MetalMemoryProfilingHostEvidenceRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'artifacts/renderer/apple-metal-commercial-quality-host-evidence/',
+        'artifacts/renderer/metal-memory-profiling-host-evidence/',
+        'GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1',
+        'GameEngine.RendererMetalMemoryProfilingHostEvidence.v1',
+        'GameEngine.RendererCommercialQualityCloseout.v1',
+        'renderer-apple-metal-commercial-quality-artifact-v1',
+        'Apple-Metal-Commercial-Host-Bridge-2026-06-25',
+        'renderer-metal-environment-aggregate-apple-host-evidence',
+        'Apple-Building-Shader-Library-Precompiling-Source-Files-2026-06-25',
+        'Apple-Metal-Shading-Language-Specification-2026-06-25',
+        'MTLHeap',
+        'MTLResidencySet',
+        'MTLCaptureManager',
+        'apple-metal-host.json',
+        'fixture_only = $false',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_apple_metal_commercial_quality_artifact_collector_mode=Assemble',
+        'renderer_apple_metal_commercial_quality_artifact_written=',
+        'renderer_apple_metal_commercial_quality_fixture_artifact=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'd3d12_inferred',
+        'vulkan_inferred',
+        'environment_ready',
+        'external_engine_parity',
+        'native_handles_exposed',
+        'metal_objects_public'
+    )) {
+    Assert-ContainsText $appleMetalArtifactProducerText $needle `
+        "renderer commercial readiness Apple Metal artifact producer"
+}
+
+foreach ($needle in @(
+        'tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1',
+        'GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1',
+        'GameEngine.RendererMetalMemoryProfilingHostEvidence.v1',
+        'renderer-apple-metal-commercial-quality-artifact-v1',
+        'Apple-Metal-Commercial-Host-Bridge-2026-06-25',
+        'renderer-metal-environment-aggregate-apple-host-evidence',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_apple_metal_commercial_quality_artifact_written=1',
+        'renderer_apple_metal_commercial_quality_fixture_artifact=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=10',
+        'renderer_apple_metal_renderer_quality_ready',
+        'MTLHeap',
+        'MTLResidencySet',
+        'MTLCaptureManager',
+        'metal_objects_public',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $appleMetalArtifactProducerCheckText $needle `
+        "renderer commercial readiness Apple Metal artifact producer check"
+}
+
+foreach ($needle in @(
+        'renderer_apple_metal_commercial_quality_host_source_status=ready',
+        'GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1',
+        'renderer-metal-apple-host-evidence',
+        'GameEngine.RendererMetalMemoryProfilingHostEvidence.v1',
+        'renderer-metal-memory-profiling-host-evidence',
+        'renderer_apple_metal_commercial_quality_artifact_ready=0',
+        'renderer_apple_metal_commercial_quality_native_handles_exposed=0',
+        'renderer_apple_metal_commercial_quality_cross_backend_inference=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $rendererMetalAppleValidatorText $needle `
+        "renderer Metal Apple host commercial quality source row"
 }
 
 foreach ($needle in @(
@@ -689,6 +782,10 @@ Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQuality
     "renderer commercial readiness strict Vulkan artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQualityArtifactCollector' `
     "renderer commercial readiness strict Vulkan artifact producer collector command surface"
+Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityArtifactCheck' `
+    "renderer commercial readiness Apple Metal artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityArtifactCollector' `
+    "renderer commercial readiness Apple Metal artifact producer collector command surface"
 
 foreach ($needle in @(
         'renderer-d3d12-commercial-quality-artifact',
@@ -720,6 +817,24 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness strict Vulkan artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-apple-metal-commercial-quality-artifact',
+        'tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1',
+        'AppleMetalHostEvidenceRelative',
+        'MetalMemoryProfilingHostEvidenceRelative',
+        'GameEngine.RendererMetalMemoryProfilingHostEvidence.v1',
+        'Metal Shading Language',
+        'MTLHeap',
+        'MTLResidencySet',
+        'MTLCaptureManager',
+        'cross_backend_inference=false',
+        'native_handles_exposed=false',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness Apple Metal artifact producer validation recipe"
 }
 
 foreach ($needle in @(

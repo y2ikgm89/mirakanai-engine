@@ -660,14 +660,22 @@ Validation evidence:
 - Modify: `docs/roadmap.md`
 - Modify: `engine/agent/manifest.fragments/002-commands.json`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Regenerate: `engine/agent/manifest.json`
 
 Steps:
 
-- [ ] Add a failing static check that proves Windows/Linux validation remains host-gated and cannot require Apple tools.
-- [ ] Implement the producer as an Apple-host bridge that shapes existing `renderer-metal-apple-host-evidence`, `renderer-metal-environment-aggregate-apple-host-evidence`, visible package, and full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` rows into `apple-metal-host.json`.
-- [ ] Require rows for full Xcode/`xcrun`, `metal`, `metallib`, MSL address-space/function-constant/resource-binding/stage restrictions, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, capture artifact hash, visible package readback, `cross_backend_inference=false`, and `native_handles_exposed=false`.
-- [ ] Treat missing `MTLResidencySet` or capture output as host-gated, not ready.
-- [ ] Keep Objective-C++ and `MTL*` objects backend-private; the artifact may record ids, counters, and hashes only.
+- [x] Add a failing static check that proves Windows/Linux validation remains host-gated and cannot require Apple tools.
+- [x] Implement the producer as an Apple-host bridge that shapes existing `renderer-metal-apple-host-evidence`, `renderer-metal-environment-aggregate-apple-host-evidence`, visible package, and full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` rows into `apple-metal-host.json`.
+- [x] Require rows for full Xcode/`xcrun`, `metal`, `metallib`, MSL address-space/function-constant/resource-binding/stage restrictions, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, capture artifact hash, visible package readback, `cross_backend_inference=false`, and `native_handles_exposed=false`.
+- [x] Treat missing `MTLResidencySet` or capture output as host-gated, not ready.
+- [x] Keep Objective-C++ and `MTL*` objects backend-private; the artifact records ids, counters, and hashes only.
+
+Task 10C implementation evidence:
+
+- `tools/check-renderer-apple-metal-commercial-quality-artifact.ps1` first failed because the producer did not exist, then proves the producer rejects fixture-only Apple-host evidence and unsafe paths, writes a non-fixture `apple-metal-host.json`, feeds that artifact through `tools/collect-renderer-commercial-readiness-evidence.ps1`, validates `renderer_apple_metal_renderer_quality_ready=1`, and keeps `renderer_commercial_readiness=0` because the other retained rows are still fixtures.
+- `tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1` accepts only approved retained Apple-host evidence paths and full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` paths, requires `renderer-metal-apple-host-evidence` plus `renderer-metal-environment-aggregate-apple-host-evidence` source rows, maps memory/profiling rows into `MTLHeap`, `MTLResidencySet`, and `MTLCaptureManager` proof rows, and leaves backend parity, broad Metal, broad quality, commercial readiness, and broad environment counters at zero.
+- `tools/validate-renderer-metal-apple.ps1` now emits a non-promoting Apple Metal commercial host-source row that identifies the Apple-host and Metal memory/profiling source schemas without exposing native handles or promoting commercial readiness.
+- `engine/agent/manifest.fragments/002-commands.json` exposes `rendererAppleMetalCommercialQualityArtifactCheck` and `rendererAppleMetalCommercialQualityArtifactCollector`; `engine/agent/manifest.fragments/009-validationRecipes.json` exposes `renderer-apple-metal-commercial-quality-artifact`.
 
 Validation:
 
@@ -675,9 +683,21 @@ Validation:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-apple-metal-commercial-quality-artifact.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120
 ```
+
+Validation evidence:
+
+- `tools/check-renderer-apple-metal-commercial-quality-artifact.ps1`: passed with `renderer_apple_metal_commercial_quality_artifact_written=1`, `renderer_apple_metal_renderer_quality_ready=1`, `renderer_commercial_readiness_evidence_collector_fixture_artifacts=10`, `renderer_metal_broad_readiness=0`, `renderer_commercial_readiness=0`, and `renderer_environment_ready=0`.
+- `tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1`: passed.
+- `tools/check-json-contracts.ps1`: passed.
+- `tools/check-format.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/check-ai-integration.ps1`: passed.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 35 static checks, including the new `check-renderer-apple-metal-commercial-quality-artifact.ps1` lane; Windows-host Metal/Apple checks remained diagnostic-only host gates.
 
 ### Task 10D: Package, Quality Matrix, And VFX/Profiling Artifact Producers
 
