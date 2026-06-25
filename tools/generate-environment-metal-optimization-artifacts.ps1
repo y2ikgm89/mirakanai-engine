@@ -17,6 +17,9 @@ param(
     [ValidatePattern('^\d+(ms|s|m|h)$')]
     [string]$XctraceTimeLimit = "10m",
 
+    [ValidateRange(1, 86400)]
+    [int]$XctraceRecordTimeoutSeconds = 900,
+
     [string[]]$ExpectedEvidenceCounters = @()
 )
 
@@ -139,8 +142,54 @@ function Invoke-CapturedTool {
         [Parameter(Mandatory = $true)][string]$FilePath,
         [Parameter(Mandatory = $true)][string[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$LogPath,
-        [Parameter(Mandatory = $true)][string]$Description
+        [Parameter(Mandatory = $true)][string]$Description,
+        [int]$TimeoutSeconds = 0
     )
+
+    if ($TimeoutSeconds -gt 0) {
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $FilePath
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        foreach ($argument in @($Arguments)) {
+            $null = $startInfo.ArgumentList.Add([string]$argument)
+        }
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        $null = $process.Start()
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $timedOut = -not $process.WaitForExit($TimeoutSeconds * 1000)
+        if ($timedOut) {
+            try {
+                $process.Kill($true)
+            } catch {
+                Write-Warning "$Description timed out after $TimeoutSeconds second(s), but process termination also failed: $($_.Exception.Message)"
+            }
+            $process.WaitForExit()
+        }
+
+        $stdoutText = $stdoutTask.GetAwaiter().GetResult()
+        $stderrText = $stderrTask.GetAwaiter().GetResult()
+        $outputParts = [System.Collections.Generic.List[string]]::new()
+        if (-not [string]::IsNullOrEmpty($stdoutText)) {
+            $outputParts.Add($stdoutText.TrimEnd("`r", "`n")) | Out-Null
+        }
+        if (-not [string]::IsNullOrEmpty($stderrText)) {
+            $outputParts.Add($stderrText.TrimEnd("`r", "`n")) | Out-Null
+        }
+        $text = [string]::Join("`n", @($outputParts))
+        Write-Utf8NoBomText -Path $LogPath -Text "$text`n"
+        if ($timedOut) {
+            Write-Error "$Description timed out after $TimeoutSeconds second(s); see $(Get-RelativeArtifactPath -FullPath $LogPath)."
+        }
+        if ($process.ExitCode -ne 0) {
+            Write-Error "$Description failed with exit code $($process.ExitCode); see $(Get-RelativeArtifactPath -FullPath $LogPath)."
+        }
+        return $text
+    }
 
     $output = @(& $FilePath @Arguments 2>&1)
     $exitCode = $LASTEXITCODE
@@ -328,7 +377,8 @@ $null = Invoke-CapturedTool `
     -FilePath $xcrun `
     -Arguments $recordArguments `
     -LogPath $recordLog `
-    -Description "xcrun xctrace Metal System Trace recording"
+    -Description "xcrun xctrace Metal System Trace recording" `
+    -TimeoutSeconds $XctraceRecordTimeoutSeconds
 
 if (-not (Test-Path -LiteralPath $tracePath)) {
     Write-Error "xctrace did not create the expected trace artifact: $tracePath"
@@ -504,6 +554,7 @@ $counterLine = [string]::Join(" ", @(
         "xcrun_xctrace_ready=1",
         "xctrace_template=$templateCounter",
         "xctrace_time_limit=$timeLimitCounter",
+        "xctrace_record_timeout_seconds=$XctraceRecordTimeoutSeconds",
         "environment_metal_host_optimization_artifacts_written=$generatedRows",
         "environment_metal_host_optimization_required_workloads=7",
         "environment_metal_host_optimization_profiler_artifacts=$generatedRows",

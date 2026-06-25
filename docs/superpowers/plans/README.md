@@ -59,7 +59,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 ## Current Renderer Commercial Readiness Work
 
-Renderer Commercial Readiness Evidence Promotion v1 remains active. Task 10I adds `tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1` and `tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1` as a non-promoting GitHub Actions artifacts intake layer for `renderer-commercial-readiness-final-retained-root`, host-gated summaries, and the seven explicit assembler inputs. The importer writes only an intake manifest and keeps `renderer_commercial_readiness=0` until real retained artifacts pass the final assembler and preflight.
+Renderer Commercial Readiness Evidence Promotion v1 remains active. Task 10I adds `tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1` and `tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1` as a non-promoting GitHub Actions artifacts intake layer for `renderer-commercial-readiness-final-retained-root`, saved GitHub Actions artifacts API JSON audits through `-ArtifactListJsonRelative`, host-gated summaries, and the seven explicit assembler inputs. The importer writes only an intake manifest with `workflow_artifact_list` rows and keeps `renderer_commercial_readiness=0` until real retained artifacts pass the final assembler and preflight.
 
 ## Recent Completed Runtime UI Work
 
