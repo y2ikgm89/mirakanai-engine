@@ -625,6 +625,26 @@ Assert-ValidationTierSelection `
     -ExpectedIosMetalEvidence $true
 
 Assert-ValidationTierSelection `
+    -Label "renderer commercial closeout validator PR" `
+    -ChangedPath @("tools/validate-renderer-commercial-quality-closeout.ps1") `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $true `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence" `
+    -ExpectedClassificationReasons "renderer-commercial-quality-closeout"
+
+Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
     -ExpectedWindowsMsvc $true `

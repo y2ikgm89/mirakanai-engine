@@ -29,26 +29,74 @@ $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $generated3dGameManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 
 foreach ($needle in @(
+        '[switch]$BackendParityReady',
+        '[switch]$D3d12Ready',
+        '[switch]$VulkanStrictReady',
+        '[switch]$AppleMetalReady',
+        '[switch]$RendererQualityMatrixReady',
+        '[switch]$ProductionVfxProfilingReady',
+        '[switch]$MetalMemoryProfilingReady',
+        '[switch]$Visible3dPackageReady',
+        '[switch]$RuntimeUiPackageReady',
+        '[switch]$EnvironmentPackageReady',
+        '[switch]$GeneratedGamePackageReady',
+        '[switch]$StaticGuardsReady',
+        '[switch]$IosMetalPackageEvidenceRequired',
+        '[switch]$ExternalEngineApproval',
+        '[switch]$BroadBackendParityClaim',
+        '[switch]$CommercialRendererReadinessClaim',
         "validation_recipe=renderer-commercial-quality-closeout",
-        "renderer_commercial_quality_closeout_status=host_evidence_required",
-        "renderer_commercial_quality_closeout_ready=0",
+        'renderer_commercial_quality_closeout_status=$status',
+        'renderer_commercial_quality_closeout_ready=$(ConvertTo-CounterBit $ready)',
         "renderer_commercial_quality_closeout_value_api_ready=1",
+        'renderer_selected_evidence_rows=$($coreEvidenceRows.Count)',
+        'renderer_selected_evidence_ready_rows=$readyRows',
+        'renderer_selected_evidence_missing_rows=$missingEvidenceRows',
+        'renderer_ios_metal_package_evidence_required=$(ConvertTo-CounterBit $IosMetalPackageEvidenceRequired)',
+        "renderer_backend_parity_evidence_ready",
+        "renderer_d3d12_renderer_quality_ready",
+        "renderer_vulkan_strict_renderer_quality_ready",
+        "renderer_apple_metal_renderer_quality_ready",
+        "renderer_quality_matrix_ready",
+        "renderer_production_vfx_profiling_ready",
+        "renderer_metal_memory_profiling_ready",
+        "renderer_visible_3d_package_ready",
+        "renderer_runtime_ui_package_ready",
+        "renderer_environment_package_ready",
+        "renderer_generated_game_package_ready",
+        "renderer_static_guards_ready",
         'renderer_clean_room_source_review_ready=$(ConvertTo-CounterBit $cleanRoomSourceReviewReady)',
-        'renderer_external_engine_code_used=$(ConvertTo-CounterBit $externalEngineCodeUsed)',
-        'renderer_external_engine_sample_used=$(ConvertTo-CounterBit $externalEngineSampleUsed)',
-        'renderer_external_engine_asset_used=$(ConvertTo-CounterBit $externalEngineAssetUsed)',
-        'renderer_external_engine_trademark_used=$(ConvertTo-CounterBit $externalEngineTrademarkUsed)',
-        'renderer_external_engine_compatibility_claims=$(ConvertTo-CounterBit $externalEngineCompatibilityClaims)',
         'renderer_third_party_notices_complete=$(ConvertTo-CounterBit $thirdPartyNoticesComplete)',
-        "renderer_native_handle_access=0",
-        "renderer_cross_backend_inference=0",
-        "renderer_external_engine_parity=0",
-        "renderer_backend_parity_ready=0",
-        "renderer_metal_broad_readiness=0",
-        "renderer_broad_quality_ready=0",
-        "renderer_commercial_readiness=0",
+        'renderer_clean_room_legal_ready=$(ConvertTo-CounterBit ($cleanRoomSourceReviewReady -and $thirdPartyNoticesComplete -and $externalEngineApprovalReady))',
+        'renderer_external_engine_approval_ready=$(ConvertTo-CounterBit $externalEngineApprovalReady)',
+        'renderer_external_engine_api_used=$(ConvertTo-CounterBit $ExternalEngineApiUsed)',
+        'renderer_external_engine_code_used=$(ConvertTo-CounterBit $ExternalEngineCodeUsed)',
+        'renderer_external_engine_sample_used=$(ConvertTo-CounterBit $ExternalEngineSampleUsed)',
+        'renderer_external_engine_asset_used=$(ConvertTo-CounterBit $ExternalEngineAssetUsed)',
+        'renderer_external_engine_trademark_used=$(ConvertTo-CounterBit $ExternalEngineTrademarkUsed)',
+        'renderer_external_engine_ui_expression_used=$(ConvertTo-CounterBit $ExternalEngineUiExpressionUsed)',
+        'renderer_external_engine_compatibility_claims=$(ConvertTo-CounterBit $ExternalEngineCompatibilityClaims)',
+        'renderer_external_engine_equivalence_claims=$(ConvertTo-CounterBit $ExternalEngineEquivalenceClaims)',
+        'renderer_native_handle_access=$(ConvertTo-CounterBit $NativeHandleAccess)',
+        'renderer_cross_backend_inference=$(ConvertTo-CounterBit $CrossBackendInference)',
+        'renderer_external_engine_parity=$(ConvertTo-CounterBit $ExternalEngineParity)',
+        'renderer_broad_backend_parity_claim=$(ConvertTo-CounterBit $BroadBackendParityClaim)',
+        'renderer_broad_metal_readiness_claim=$(ConvertTo-CounterBit $BroadMetalReadinessClaim)',
+        'renderer_broad_renderer_quality_claim=$(ConvertTo-CounterBit $BroadRendererQualityClaim)',
+        'renderer_commercial_renderer_readiness_claim=$(ConvertTo-CounterBit $CommercialRendererReadinessClaim)',
+        'renderer_third_party_notices_complete=$(ConvertTo-CounterBit $thirdPartyNoticesComplete)',
+        'renderer_backend_parity_ready=$(ConvertTo-CounterBit $ready)',
+        'renderer_metal_broad_readiness=$(ConvertTo-CounterBit $ready)',
+        'renderer_broad_quality_ready=$(ConvertTo-CounterBit $ready)',
+        'renderer_commercial_readiness=$(ConvertTo-CounterBit $ready)',
         "renderer_environment_ready=0",
-        "validator_integration_and_host_evidence_required"
+        "require_ready_not_selected",
+        "external_engine_material_without_approval",
+        "broad_backend_parity_claim_without_exact_evidence",
+        "broad_metal_readiness_claim_without_exact_evidence",
+        "broad_renderer_quality_claim_without_exact_evidence",
+        "commercial_renderer_readiness_claim_without_exact_evidence",
+        "Renderer Commercial Quality Closeout v1 is not ready:"
     )) {
     Assert-ContainsText $validatorText $needle "tools/validate-renderer-commercial-quality-closeout.ps1"
 }
@@ -100,8 +148,17 @@ foreach ($needle in @(
 Assert-ContainsText $rootCMakeText "MK_renderer_commercial_quality_closeout_tests" "renderer commercial quality aggregate CMake test target"
 
 Assert-ContainsText $commandsFragmentText "rendererCommercialQualityCloseoutCheck" "manifest commands renderer commercial quality closeout command"
+Assert-ContainsText $commandsFragmentText "rendererCommercialQualityCloseoutRequireReady" "manifest commands renderer commercial quality closeout require-ready command"
 Assert-ContainsText $recipesFragmentText "renderer-commercial-quality-closeout" "manifest validation recipe renderer commercial quality closeout"
 Assert-ContainsText $recipesFragmentText "validate-renderer-commercial-quality-closeout.ps1" "manifest validation recipe renderer commercial quality closeout"
+foreach ($needle in @(
+        "renderer-commercial-quality-closeout",
+        "renderer-commercial-closeout",
+        "final-aggregate-fail-closed",
+        "iOS Metal evidence is not selected by this recipe"
+    )) {
+    Assert-ContainsText $recipePlansText $needle "validation recipe runner renderer commercial quality closeout plan"
+}
 
 foreach ($needle in @(
         'std::string host_validation_recipe_id{"renderer-metal-memory-profiling-host-evidence"};',

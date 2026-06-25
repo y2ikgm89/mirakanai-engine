@@ -580,6 +580,7 @@ Assert-DryRunRecipe -Recipe "agent-contract" -ExpectedArgv @("-File", "check-ai-
 Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @("-File", "validate-renderer-metal-apple.ps1") | Out-Null
+Assert-DryRunRecipe -Recipe "renderer-commercial-quality-closeout" -ExpectedArgv @("-File", "validate-renderer-commercial-quality-closeout.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-environment-aggregate-apple-host-evidence" -ExpectedArgv @("-File", "validate-environment-metal-host-aggregate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "environment-weather-metal-solver-host-gate" -ExpectedArgv @("-File", "validate-environment-weather-metal-solver-host-gate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "network-enet" -ExpectedArgv @("-File", "validate-network-enet.ps1") | Out-Null

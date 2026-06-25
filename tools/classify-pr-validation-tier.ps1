@@ -165,6 +165,22 @@ function Test-AppleHostEvidencePath {
     )
 }
 
+function Test-RendererCommercialQualityCloseoutPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "tools/validate-renderer-commercial-quality-closeout.ps1" -or
+        $Path -eq "tools/check-ai-integration-142-renderer-commercial-quality-closeout.ps1" -or
+        $Path -eq "tools/run-validation-recipe-plans.ps1" -or
+        $Path -eq "engine/agent/manifest.fragments/002-commands.json" -or
+        $Path -eq "engine/agent/manifest.fragments/009-validationRecipes.json" -or
+        $Path -eq "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" -or
+        $Path -eq "docs/current-capabilities.md" -or
+        $Path -eq "docs/superpowers/plans/README.md" -or
+        $Path -eq "docs/superpowers/plans/2026-06-25-renderer-commercial-quality-closeout-v1.md"
+    )
+}
+
 function Test-SourceCodePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -317,6 +333,7 @@ function New-ValidationTierSelection {
     $windowsNetworkEnet = $false
     $linuxVulkanHostEvidence = $false
     $appleHostEvidence = $false
+    $rendererCommercialQualityCloseout = $false
     $classificationReasons = [System.Collections.Generic.List[string]]::new()
 
     $expandedInputPath = foreach ($rawPath in $InputPath) {
@@ -389,6 +406,10 @@ function New-ValidationTierSelection {
             $appleHostEvidence = $true
             Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "apple-host-evidence"
         }
+        if (Test-RendererCommercialQualityCloseoutPath -Path $path) {
+            $rendererCommercialQualityCloseout = $true
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "renderer-commercial-quality-closeout"
+        }
         if (Test-StaticPolicyPath -Path $path) {
             $staticPolicy = $true
             Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "static-policy"
@@ -399,18 +420,18 @@ function New-ValidationTierSelection {
     $heavyBuildLane = $fullValidationWorkflowLane -or $runtimeOrBuild
 
     return New-ValidationTierSelectionObject -LaneSelection @{
-        windows_msvc = $heavyBuildLane
+        windows_msvc = ($heavyBuildLane -or $rendererCommercialQualityCloseout)
         windows_cpu_profiling_host = ($fullValidationWorkflowLane -or $windowsCpuProfilingHost)
         windows_asset_importers = ($fullValidationWorkflowLane -or $windowsAssetImporters)
         windows_desktop_editor = ($fullValidationWorkflowLane -or $windowsDesktopEditor)
         windows_network_enet = ($fullValidationWorkflowLane -or $windowsNetworkEnet)
         linux_cmake = $heavyBuildLane
-        linux_vulkan_host = ($fullValidationWorkflowLane -or $linuxVulkanHostEvidence)
+        linux_vulkan_host = ($fullValidationWorkflowLane -or $linuxVulkanHostEvidence -or $rendererCommercialQualityCloseout)
         linux_sanitizers = ($fullValidationWorkflowLane -or $sanitizerRelevant)
         linux_coverage = ($fullValidationWorkflowLane -or $coverageRelevant)
-        full_static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode)
-        macos_metal_cmake = $heavyBuildLane
-        metal_host_evidence = ($fullValidationWorkflowLane -or $appleHostEvidence)
+        full_static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode -or $rendererCommercialQualityCloseout)
+        macos_metal_cmake = ($heavyBuildLane -or $rendererCommercialQualityCloseout)
+        metal_host_evidence = ($fullValidationWorkflowLane -or $appleHostEvidence -or $rendererCommercialQualityCloseout)
         ios_metal_evidence = ($fullValidationWorkflowLane -or $iosValidationWorkflow -or $appleHostEvidence)
         windows_cpp23_release = ($fullValidationWorkflowLane -or $cpp23Relevant)
     } -Reason $classificationReasons.ToArray()
