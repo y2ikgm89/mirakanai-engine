@@ -39,6 +39,8 @@ $packageArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-pack
 $packageArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-package-commercial-quality-artifacts.ps1"
 $qualityVfxArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-quality-vfx-commercial-artifacts.ps1"
 $qualityVfxArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-quality-vfx-commercial-artifacts.ps1"
+$cleanRoomLegalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-clean-room-legal-artifact.ps1"
+$cleanRoomLegalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-clean-room-legal-artifact.ps1"
 $rendererMetalAppleValidatorText = Get-AgentSurfaceText "tools/validate-renderer-metal-apple.ps1"
 $collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
@@ -287,6 +289,8 @@ foreach ($needle in @(
         'renderer_external_engine_compatibility_claim',
         'renderer_external_engine_equivalence_claim',
         'renderer_external_engine_parity_claim',
+        'renderer_clean_room_legal_ready',
+        'renderer_third_party_notices_complete',
         'require_ready_without_artifact_root',
         'plan_renderer_commercial_readiness_promotion'
     )) {
@@ -309,6 +313,8 @@ Assert-ContainsText $validateText 'check-renderer-package-commercial-quality-art
     "renderer commercial readiness package artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-quality-vfx-commercial-artifacts.ps1' `
     "renderer commercial readiness quality/VFX artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-clean-room-legal-artifact.ps1' `
+    "renderer commercial readiness clean-room legal artifact producer validate task"
 Assert-ContainsText $collectorCheckText 'renderer-commercial-readiness-evidence-collector-check: ok' `
     "renderer commercial readiness evidence collector check"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
@@ -325,6 +331,8 @@ Assert-ContainsText $packageArtifactProducerCheckText 'renderer-package-commerci
     "renderer commercial readiness package artifact producer check"
 Assert-ContainsText $qualityVfxArtifactProducerCheckText 'renderer-quality-vfx-commercial-artifacts-check: ok' `
     "renderer commercial readiness quality/VFX artifact producer check"
+Assert-ContainsText $cleanRoomLegalArtifactProducerCheckText 'renderer-clean-room-legal-artifact-check: ok' `
+    "renderer commercial readiness clean-room legal artifact producer check"
 
 foreach ($needle in @(
         'Mode',
@@ -341,6 +349,9 @@ foreach ($needle in @(
         'RendererQualityMatrixArtifactRelative',
         'ProductionVfxProfilingArtifactRelative',
         'MetalMemoryHostEvidenceRelative',
+        'CleanRoomLegalArtifactRelative',
+        'GameEngine.RendererCleanRoomLegalArtifact.v1',
+        'renderer_clean_room_legal_ready',
         'OfficialDocsOnlyReviewReady',
         'LegalReviewReady',
         'ExternalEngineZeroMaterialReviewReady',
@@ -672,6 +683,90 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'CleanRoomLegalReviewRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'artifacts/renderer/clean-room-legal-review/',
+        'GameEngine.RendererCleanRoomLegalReviewInput.v1',
+        'GameEngine.RendererCleanRoomLegalArtifact.v1',
+        'renderer-clean-room-legal-artifact-v1',
+        'renderer-clean-room-legal-artifact',
+        'Unity-Legal-Terms-2026-06-25',
+        'Unity-Trademark-Guidelines-2026-06-25',
+        'Epic-Unreal-Engine-EULA-Trademark-2026-06-25',
+        'Epic-Unreal-Engine-Release-Trademark-2026-06-25',
+        'Godot-License-2026-06-25',
+        'Godot-Trademark-Licensing-2026-06-25',
+        'THIRD_PARTY_NOTICES.md',
+        'fixture_only = $false',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'external_material_selected',
+        'legal_review_id',
+        'technical_review_id',
+        'external_material_approved',
+        'forbidden_material_rows',
+        'external_engine_code',
+        'external_engine_sample',
+        'external_engine_shader',
+        'external_engine_asset',
+        'external_engine_trademark',
+        'external_engine_ui_expression',
+        'external_engine_api',
+        'compatibility_claim',
+        'equivalence_claim',
+        'parity_claim',
+        'renderer_clean_room_legal_artifact_collector_mode=Assemble',
+        'renderer_clean_room_legal_ready=',
+        'renderer_clean_room_external_engine_zero_material_ready=',
+        'renderer_third_party_notices_complete=',
+        'renderer_external_engine_forbidden_material_detected_rows=',
+        'renderer_external_engine_forbidden_material_rejected_rows=',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $cleanRoomLegalArtifactProducerText $needle `
+        "renderer commercial readiness clean-room legal artifact producer"
+}
+
+foreach ($needle in @(
+        'tools/collect-renderer-clean-room-legal-artifact.ps1',
+        'GameEngine.RendererCleanRoomLegalReviewInput.v1',
+        'renderer-clean-room-legal-artifact-v1',
+        'Unity-Legal-Terms-2026-06-25',
+        'Unity-Trademark-Guidelines-2026-06-25',
+        'Epic-Unreal-Engine-EULA-Trademark-2026-06-25',
+        'Epic-Unreal-Engine-Release-Trademark-2026-06-25',
+        'Godot-License-2026-06-25',
+        'Godot-Trademark-Licensing-2026-06-25',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_clean_room_legal_artifact_written=1',
+        'renderer_external_engine_forbidden_material_detected_rows=10',
+        'renderer_external_engine_forbidden_material_rejected_rows=10',
+        'renderer_external_engine_shader_used=1',
+        'renderer_external_engine_api_used=1',
+        'renderer_external_engine_compatibility_claim=1',
+        'renderer_external_engine_equivalence_claim=1',
+        'renderer_external_engine_parity_claim=1',
+        'renderer_clean_room_legal_ready=1',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'CleanRoomLegalArtifactRelative',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=11'
+    )) {
+    Assert-ContainsText $cleanRoomLegalArtifactProducerCheckText $needle `
+        "renderer commercial readiness clean-room legal artifact producer check"
+}
+
+foreach ($needle in @(
         'renderer_apple_metal_commercial_quality_host_source_status=ready',
         'GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1',
         'renderer-metal-apple-host-evidence',
@@ -936,6 +1031,10 @@ Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialArtifacts
     "renderer commercial readiness quality/VFX artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialArtifactsCollector' `
     "renderer commercial readiness quality/VFX artifact producer collector command surface"
+Assert-ContainsText $commandsFragmentText 'rendererCleanRoomLegalArtifactCheck' `
+    "renderer commercial readiness clean-room legal artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererCleanRoomLegalArtifactCollector' `
+    "renderer commercial readiness clean-room legal artifact producer collector command surface"
 
 foreach ($needle in @(
         'renderer-d3d12-commercial-quality-artifact',
@@ -1017,6 +1116,36 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness quality/VFX artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-clean-room-legal-artifact',
+        'tools/collect-renderer-clean-room-legal-artifact.ps1',
+        'CleanRoomLegalReviewRelative',
+        'clean-room-legal.json',
+        'GameEngine.RendererCleanRoomLegalArtifact.v1',
+        'Unity terms/trademark guidance',
+        'Unreal Engine EULA/release trademark guidance',
+        'Godot license/trademark policy',
+        'THIRD_PARTY_NOTICES.md',
+        'no copied external engine source',
+        'sample code',
+        'shader code',
+        'UI expression',
+        'asset',
+        'trademark',
+        'project import',
+        'API',
+        'compatibility',
+        'equivalence',
+        'parity claim',
+        'legal plus technical review ids',
+        'renderer_clean_room_legal_ready=1',
+        'renderer_clean_room_legal_ready=0',
+        'renderer_commercial_readiness'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness clean-room legal artifact producer validation recipe"
 }
 
 foreach ($needle in @(

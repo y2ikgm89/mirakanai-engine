@@ -22,6 +22,7 @@ param(
     [string]$MetalMemoryHostEvidenceRelative = "",
     [string]$MetalMemoryResidencyArtifactRelative = "",
     [string]$MetalProfilingCaptureArtifactRelative = "",
+    [string]$CleanRoomLegalArtifactRelative = "",
 
     [switch]$OfficialDocsOnlyReviewReady,
     [switch]$LegalReviewReady,
@@ -217,6 +218,41 @@ function New-RendererEvidenceRow {
     }
 }
 
+function Test-CleanRoomLegalArtifact {
+    param(
+        [Parameter(Mandatory = $true)]$Artifact,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    Assert-JsonStringProperty -JsonObject $Artifact -Name "schema_version" `
+        -Expected "GameEngine.RendererCleanRoomLegalArtifact.v1" `
+        -Label "CleanRoomLegalArtifactRelative"
+    Assert-JsonStringProperty -JsonObject $Artifact -Name "artifact_id" `
+        -Expected "clean-room-legal" `
+        -Label "CleanRoomLegalArtifactRelative"
+    Assert-JsonStringProperty -JsonObject $Artifact -Name "validation_recipe" `
+        -Expected "renderer-clean-room-legal-artifact" `
+        -Label "CleanRoomLegalArtifactRelative"
+
+    $fixtureOnlyValue = Get-JsonPropertyValue -JsonObject $Artifact -Name "fixture_only"
+    if ([bool]$fixtureOnlyValue) {
+        if (-not $AllowFixtureArtifactsForSelfTest) {
+            Write-Error "fixture_artifact_input_rejected: $Path"
+        }
+    }
+
+    $cleanRoomRows = Get-JsonPropertyValue -JsonObject $Artifact -Name "clean_room_rows"
+    if ($null -eq $cleanRoomRows) {
+        Write-Error "CleanRoomLegalArtifactRelative must contain clean_room_rows."
+    }
+
+    return [pscustomobject]@{
+        CleanRoomRows = $cleanRoomRows
+        FixtureOnly = [bool]$fixtureOnlyValue
+        Ready = [bool](Get-JsonPropertyValue -JsonObject $Artifact -Name "ready")
+    }
+}
+
 if (-not (Test-SafeRepoRelativePath -RelativePath $OutputRootRelative)) {
     Write-Error "OutputRootRelative must be a safe repo-relative path."
 }
@@ -226,6 +262,7 @@ if (-not (Test-AllowedOutputRoot -RelativePath $OutputRootRelative)) {
 
 $requiredArtifactRows = 11
 $willWrite = $Mode -eq "Assemble" -and -not $NoWrite.IsPresent
+$usingCleanRoomLegalArtifact = -not [string]::IsNullOrWhiteSpace($CleanRoomLegalArtifactRelative)
 
 if ($Mode -eq "Plan") {
     Write-Output "renderer_commercial_readiness_evidence_collector_mode=Plan"
@@ -239,14 +276,16 @@ if ($Mode -eq "Plan") {
     return
 }
 
-foreach ($reviewSwitch in @(
-        @{ Ready = [bool]$OfficialDocsOnlyReviewReady; Name = "official_docs_review_required" },
-        @{ Ready = [bool]$LegalReviewReady; Name = "legal_review_required" },
-        @{ Ready = [bool]$ExternalEngineZeroMaterialReviewReady; Name = "external_engine_zero_material_review_required" },
-        @{ Ready = [bool]$ThirdPartyNoticesComplete; Name = "third_party_notices_required" }
-    )) {
-    if (-not [bool]$reviewSwitch.Ready) {
-        Write-Error $reviewSwitch.Name
+if (-not $usingCleanRoomLegalArtifact) {
+    foreach ($reviewSwitch in @(
+            @{ Ready = [bool]$OfficialDocsOnlyReviewReady; Name = "official_docs_review_required" },
+            @{ Ready = [bool]$LegalReviewReady; Name = "legal_review_required" },
+            @{ Ready = [bool]$ExternalEngineZeroMaterialReviewReady; Name = "external_engine_zero_material_review_required" },
+            @{ Ready = [bool]$ThirdPartyNoticesComplete; Name = "third_party_notices_required" }
+        )) {
+        if (-not [bool]$reviewSwitch.Ready) {
+            Write-Error $reviewSwitch.Name
+        }
     }
 }
 
@@ -478,6 +517,75 @@ if ($usingFullMetalHostEvidence) {
     }
 }
 
+$cleanRoomRows = [ordered]@{
+    official_docs_only = [ordered]@{
+        ready = $true
+        public_documentation_only = $true
+        context7_verified = $true
+        official_fallback_documented = $true
+        external_engine_source_review_complete = $true
+    }
+    legal_review = [ordered]@{
+        ready = $true
+        unity_terms_reviewed = $true
+        unreal_eula_trademark_reviewed = $true
+        godot_trademark_reviewed = $true
+        unity_compatibility = $false
+        unreal_compatibility = $false
+        godot_compatibility = $false
+        compatibility_claims = $false
+        equivalence_claims = $false
+        parity_claims = $false
+    }
+    external_engine_zero_material_review = [ordered]@{
+        ready = $true
+        external_engine_code_used = $false
+        external_engine_sample_used = $false
+        external_engine_shader_used = $false
+        external_engine_asset_used = $false
+        external_engine_trademark_used = $false
+        external_engine_ui_expression_used = $false
+        external_engine_project_import_used = $false
+        external_engine_api_used = $false
+        external_engine_compatibility_claim = $false
+        external_engine_equivalence_claim = $false
+        external_engine_parity_claim = $false
+    }
+    third_party_notices = [ordered]@{
+        ready = $true
+        complete = $true
+        notices_path = "THIRD_PARTY_NOTICES.md"
+    }
+    forbidden_material_rows = @()
+}
+$cleanRoomLegalReady = [bool]$OfficialDocsOnlyReviewReady -and
+    [bool]$LegalReviewReady -and
+    [bool]$ExternalEngineZeroMaterialReviewReady -and
+    [bool]$ThirdPartyNoticesComplete
+
+if ($usingCleanRoomLegalArtifact) {
+    $sourceFull = Resolve-RepoRelativePath `
+        -RelativePath $CleanRoomLegalArtifactRelative `
+        -Label "CleanRoomLegalArtifactRelative"
+    $json = Read-JsonFile -Path $sourceFull -Label "CleanRoomLegalArtifactRelative"
+    $cleanRoomSummary = Test-CleanRoomLegalArtifact `
+        -Artifact $json `
+        -Path $CleanRoomLegalArtifactRelative
+    if ($cleanRoomSummary.FixtureOnly) {
+        $fixtureArtifactCount += 1
+    }
+
+    $outputRelative = "$OutputRootRelative/clean-room-legal.json"
+    $destinationFull = $sourceFull
+    if ($willWrite) {
+        $destinationFull = Copy-ArtifactFile -SourceFull $sourceFull -DestinationRelative $outputRelative
+    }
+    $hash = (Get-FileHash -LiteralPath $destinationFull -Algorithm SHA256).Hash.ToLowerInvariant()
+    $cleanRoomRows = $cleanRoomSummary.CleanRoomRows
+    $cleanRoomLegalReady = [bool]$cleanRoomSummary.Ready
+    Write-Output "renderer_commercial_readiness_evidence_collector_clean_room_legal_hash=$hash"
+}
+
 $evidence = [ordered]@{
     schema_version = "GameEngine.RendererCommercialReadinessEvidence.v1"
     claim_id = "renderer-commercial-readiness-evidence-promotion-v1"
@@ -511,47 +619,7 @@ $evidence = [ordered]@{
         memory_residency = $metalRows["memory_residency"]
         profiling_capture = $metalRows["profiling_capture"]
     }
-    clean_room_rows = [ordered]@{
-        official_docs_only = [ordered]@{
-            ready = $true
-            public_documentation_only = $true
-            context7_verified = $true
-            official_fallback_documented = $true
-            external_engine_source_review_complete = $true
-        }
-        legal_review = [ordered]@{
-            ready = $true
-            unity_terms_reviewed = $true
-            unreal_eula_trademark_reviewed = $true
-            godot_trademark_reviewed = $true
-            unity_compatibility = $false
-            unreal_compatibility = $false
-            godot_compatibility = $false
-            compatibility_claims = $false
-            equivalence_claims = $false
-            parity_claims = $false
-        }
-        external_engine_zero_material_review = [ordered]@{
-            ready = $true
-            external_engine_code_used = $false
-            external_engine_sample_used = $false
-            external_engine_shader_used = $false
-            external_engine_asset_used = $false
-            external_engine_trademark_used = $false
-            external_engine_ui_expression_used = $false
-            external_engine_project_import_used = $false
-            external_engine_api_used = $false
-            external_engine_compatibility_claim = $false
-            external_engine_equivalence_claim = $false
-            external_engine_parity_claim = $false
-        }
-        third_party_notices = [ordered]@{
-            ready = $true
-            complete = $true
-            notices_path = "THIRD_PARTY_NOTICES.md"
-        }
-        forbidden_material_rows = @()
-    }
+    clean_room_rows = $cleanRoomRows
     expected_counters = [ordered]@{
         renderer_backend_parity_ready = $true
         renderer_metal_broad_readiness = $true
@@ -588,11 +656,7 @@ if ($willWrite) {
         -Value $evidenceJson
 }
 
-$realPromotionCandidate = $fixtureArtifactCount -eq 0 -and
-    [bool]$OfficialDocsOnlyReviewReady -and
-    [bool]$LegalReviewReady -and
-    [bool]$ExternalEngineZeroMaterialReviewReady -and
-    [bool]$ThirdPartyNoticesComplete
+$realPromotionCandidate = $fixtureArtifactCount -eq 0 -and [bool]$cleanRoomLegalReady
 
 Write-Output "renderer_commercial_readiness_evidence_collector_mode=Assemble"
 Write-Output "renderer_commercial_readiness_evidence_collector_output_root=$OutputRootRelative"
@@ -606,6 +670,7 @@ Write-Output "renderer_commercial_readiness_evidence_collector_native_handles_ex
 Write-Output "renderer_commercial_readiness_evidence_collector_cross_backend_inference=0"
 Write-Output "renderer_commercial_readiness_evidence_collector_external_engine_parity=0"
 Write-Output "renderer_commercial_readiness_evidence_collector_external_engine_material_rows=0"
+Write-Output "renderer_clean_room_legal_ready=$(ConvertTo-CounterBit $cleanRoomLegalReady)"
 Write-Output "renderer_commercial_readiness_evidence_collector_commercial_renderer=0"
 Write-Output "renderer_backend_parity_ready=0"
 Write-Output "renderer_metal_broad_readiness=0"

@@ -551,6 +551,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-renderer-apple-metal-commercial-quality-artifact.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-package-commercial-quality-artifacts.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-quality-vfx-commercial-artifacts.ps1"
+    Get-ValidateTask -ScriptFileName "check-renderer-clean-room-legal-artifact.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-evidence-metal-memory.ps1"
