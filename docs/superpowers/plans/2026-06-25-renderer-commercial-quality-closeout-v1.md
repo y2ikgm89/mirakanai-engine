@@ -6,7 +6,7 @@
 
 **Status:** Active.
 
-Task 0/1 selection and fail-closed guard work is in progress; no renderer readiness claim is changed by this status.
+Task 0/1 selection and fail-closed guard work is complete. Task 2 adds the value-only aggregate API and focused tests. No renderer readiness claim is changed by this status.
 
 **Date:** 2026-06-25
 
@@ -47,6 +47,14 @@ Local planning evidence collected on 2026-06-25:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1` | Windows host-gated as expected; all broad renderer counters stayed `0`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-profiling-host-evidence.ps1 -SkipFocusedRendererBuild -ExpectedEvidenceCounters renderer_metal_memory_profiling_status=host_evidence_required renderer_metal_memory_profiling_ready=0 renderer_backend_parity_ready=0 renderer_commercial_readiness=0 renderer_broad_quality_ready=0` | PASS: default host evidence remains fail-closed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` | D3D12 DXIL and Vulkan SPIR-V tools found; Apple `metal` and `metallib` missing on this Windows host as expected. |
+
+Task 2 implementation evidence collected on 2026-06-25:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | PASS: dev preset configured after adding `MK_renderer_commercial_quality_closeout_tests`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_commercial_quality_closeout_tests` | RED first failed on missing `renderer_commercial_quality_closeout.hpp`, then PASS after adding the value-only aggregate API. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_commercial_quality_closeout_tests"` | PASS: focused aggregate tests prove ready, host-gated, invalid, clean-room, notice, and replay-hash cases. |
 
 ## Official Source And Context7 Review
 
@@ -176,9 +184,9 @@ The final ready state is true only when all of these are true:
 - Modify: `vcpkg.json` only if new package-manager dependencies are introduced
 - Create or modify: renderer clean-room/static check in the Task 1 static guard
 
-- [ ] Record the exact official source set used by the implementation phase: Microsoft D3D12 docs, Khronos Vulkan docs, Apple Metal docs, and any official profiler/tool docs.
-- [ ] Record external engine docs used only for category research. Allowed engines for this plan are Unity, Unreal Engine, and Godot; allowed use is category taxonomy only.
-- [ ] Add static guard needles that reject final readiness if any implementation file, package manifest, or public docs introduce unapproved external-engine compatibility claims:
+- [x] Record the exact official source set used by the implementation phase: Microsoft D3D12 docs, Khronos Vulkan docs, Apple Metal docs, and any official profiler/tool docs.
+- [x] Record external engine docs used only for category research. Allowed engines for this plan are Unity, Unreal Engine, and Godot; allowed use is category taxonomy only.
+- [x] Add static guard needles that reject final readiness if any implementation file, package manifest, or public docs introduce unapproved external-engine compatibility claims:
 
 ```text
 Unity-compatible
@@ -193,7 +201,7 @@ Niagara-compatible
 powered by Unreal Engine
 ```
 
-- [ ] Add static guard needles requiring the positive clean-room counters in the final validator:
+- [x] Add static guard needles requiring the positive clean-room counters in the final validator:
 
 ```text
 renderer_clean_room_source_review_ready=1
@@ -205,8 +213,8 @@ renderer_external_engine_compatibility_claims=0
 renderer_third_party_notices_complete=1
 ```
 
-- [ ] If any new external material is proposed, stop the renderer implementation until `THIRD_PARTY_NOTICES.md`, `docs/legal-and-licensing.md`, `docs/dependencies.md`, and dependency manifests are updated and `tools/check-dependency-policy.ps1` passes.
-- [ ] Run the legal/static RED gate:
+- [x] If any new external material is proposed, stop the renderer implementation until `THIRD_PARTY_NOTICES.md`, `docs/legal-and-licensing.md`, `docs/dependencies.md`, and dependency manifests are updated and `tools/check-dependency-policy.ps1` passes.
+- [x] Run the legal/static RED gate:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
@@ -223,8 +231,8 @@ Expected: fail until the clean-room counters and no-claim needles are wired into
 - Create: `tools/check-ai-integration-142-renderer-commercial-quality-closeout.ps1`
 - Modify: `tools/check-ai-integration.ps1` or the static-contract ledger entry that owns check discovery
 
-- [ ] Select this plan as the active child plan only when implementation begins.
-- [ ] Add a failing static guard for the new aggregate literals:
+- [x] Select this plan as the active child plan only when implementation begins.
+- [x] Add a failing static guard for the new aggregate literals:
 
 ```text
 renderer-commercial-quality-closeout-v1
@@ -246,7 +254,7 @@ renderer_external_engine_compatibility_claims=0
 renderer_third_party_notices_complete=1
 ```
 
-- [ ] Require preserved default non-claims in the guard until the ready validator supplies exact evidence:
+- [x] Require preserved default non-claims in the guard until the ready validator supplies exact evidence:
 
 ```text
 renderer_commercial_readiness=0
@@ -254,7 +262,7 @@ renderer_broad_quality_ready=0
 renderer_metal_broad_readiness=0
 ```
 
-- [ ] Run RED:
+- [x] Run RED:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
@@ -272,7 +280,7 @@ Expected: fail on missing aggregate API, validator, docs, manifest fragments, an
 - Create or modify: `tests/unit/renderer_commercial_quality_closeout_tests.cpp`
 - Modify: top-level CMake test registration if needed
 
-- [ ] Add RED tests for:
+- [x] Add RED tests for:
   - all evidence ready emits final ready.
   - missing Metal backend parity keeps `host_evidence_required`.
   - missing Metal quality rows keeps `host_evidence_required`.
@@ -282,9 +290,9 @@ Expected: fail on missing aggregate API, validator, docs, manifest fragments, an
   - native-handle access, unreviewed recipe ids, crash handoffs, subjective-only claims, and external-engine parity claims keep readiness false.
   - external engine sample/code/asset/trademark/compatibility claim rows keep readiness false.
   - missing third-party notices keep readiness false when any approved external material row is present.
-- [ ] Implement the aggregate using only value rows and existing plans.
-- [ ] Keep row ids stable and package/manifest-friendly.
-- [ ] Run focused tests:
+- [x] Implement the aggregate using only value rows and existing plans.
+- [x] Keep row ids stable and package/manifest-friendly.
+- [x] Run focused tests:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
