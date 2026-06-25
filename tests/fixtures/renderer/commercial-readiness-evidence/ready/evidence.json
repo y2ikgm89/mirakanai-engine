@@ -31,7 +31,7 @@
       "host_validation_recipe_id": "renderer-vulkan-strict-quality-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json",
-      "artifact_hash_sha256": "c78b466cef426bb9ed60b55d8dc9286ce92a41ee28551220a9abe238f4805b6a",
+      "artifact_hash_sha256": "2489dc60e2923bc952d382bf018e635719b9e358df7c2aabc1eb27d9bc93d755",
       "validation_counter_id": "renderer_vulkan_strict_renderer_quality_ready",
       "diagnostic_code": "ready"
     },

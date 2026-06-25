@@ -3,5 +3,71 @@
   "artifact_id": "vulkan-strict-quality",
   "validation_recipe": "renderer-vulkan-strict-quality-evidence",
   "fixture_only": true,
-  "ready": true
+  "ready": true,
+  "proof_rows": {
+    "synchronization2": {
+      "ready": true,
+      "vk_cmd_pipeline_barrier2_recorded": true,
+      "vk_dependency_info_recorded": true,
+      "api_name": "vkCmdPipelineBarrier2",
+      "structure_name": "VkDependencyInfo"
+    },
+    "validation_layer": {
+      "ready": true,
+      "layer_name": "VK_LAYER_KHRONOS_validation",
+      "validation_log_clean": true,
+      "validation_error_count": 0
+    },
+    "synchronization_validation": {
+      "ready": true,
+      "sync_validation_enabled": true,
+      "sync_validation_error_count": 0
+    },
+    "memory_binding": {
+      "ready": true,
+      "buffer_memory_bound": true,
+      "image_memory_bound": true,
+      "vuid_constraints_checked": true,
+      "vuid_reference": "VUID-vkBindBufferMemory-memory-01030"
+    },
+    "timestamp_query": {
+      "ready": true,
+      "query_pool_timestamp": true,
+      "timestamps_resolved": true,
+      "timestamp_period_ns": 1
+    },
+    "spirv_shader_validation": {
+      "ready": true,
+      "spirv_val_ready": true,
+      "shader_modules_validated": true,
+      "validation_error_count": 0
+    },
+    "package_visible_readback": {
+      "ready": true,
+      "deterministic_hash_sha256": "7f86d7be87b48d9a93f56d4a2f072c435f96a8364eb88c1a91fa6bda38f8d94b",
+      "readback_counter_rows": 1,
+      "package_counter_id": "renderer_vulkan_package_visible_readback"
+    },
+    "native_handles": {
+      "ready": true,
+      "native_handles_exposed": false
+    }
+  },
+  "validation_counters": {
+    "renderer_vulkan_synchronization2_ready": true,
+    "renderer_vulkan_validation_layer_ready": true,
+    "renderer_vulkan_sync_validation_ready": true,
+    "renderer_vulkan_memory_binding_ready": true,
+    "renderer_vulkan_timestamp_ready": true,
+    "renderer_vulkan_shader_validation_ready": true,
+    "renderer_vulkan_package_readback_ready": true
+  },
+  "non_claims": {
+    "d3d12_inferred": false,
+    "metal_inferred": false,
+    "debugging_only_full_pipeline_barrier": false,
+    "environment_ready": false,
+    "external_engine_parity": false,
+    "native_handles_exposed": false
+  }
 }

@@ -518,6 +518,192 @@ function Test-RendererCommercialReadinessD3d12Artifact {
         $nativeHandleReady -and $nonClaimsReady
 }
 
+function Test-RendererCommercialReadinessVulkanArtifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$VulkanProofRows,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    $artifact = Read-RendererCommercialReadinessJson -Path $Path -Diagnostics $artifactDiagnostics
+    if ($null -eq $artifact) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_vulkan_artifact_json"
+        return $false
+    }
+
+    Assert-ExactJsonProperties -JsonObject $artifact -Label "vulkan_artifact" -Diagnostics $artifactDiagnostics `
+        -ExpectedNames @(
+            "schema_version",
+            "artifact_id",
+            "validation_recipe",
+            "fixture_only",
+            "ready",
+            "proof_rows",
+            "validation_counters",
+            "non_claims"
+        )
+
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "schema_version" `
+                -Diagnostics $artifactDiagnostics) -cne "GameEngine.RendererCommercialQualityCloseout.v1") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_artifact_schema"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "artifact_id" `
+                -Diagnostics $artifactDiagnostics) -cne "vulkan-strict-quality") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_artifact_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "validation_recipe" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-vulkan-strict-quality-evidence") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_artifact_recipe"
+    }
+    $null = Test-RequiredTrueProperty -JsonObject $artifact -Name "ready" -Diagnostics $artifactDiagnostics
+
+    $proofRows = Get-JsonPropertyValue -JsonObject $artifact -Name "proof_rows"
+    $synchronization2 = Get-JsonPropertyValue -JsonObject $proofRows -Name "synchronization2"
+    $validationLayer = Get-JsonPropertyValue -JsonObject $proofRows -Name "validation_layer"
+    $synchronizationValidation = Get-JsonPropertyValue -JsonObject $proofRows -Name "synchronization_validation"
+    $memoryBinding = Get-JsonPropertyValue -JsonObject $proofRows -Name "memory_binding"
+    $timestampQuery = Get-JsonPropertyValue -JsonObject $proofRows -Name "timestamp_query"
+    $spirvShaderValidation = Get-JsonPropertyValue -JsonObject $proofRows -Name "spirv_shader_validation"
+    $packageVisibleReadback = Get-JsonPropertyValue -JsonObject $proofRows -Name "package_visible_readback"
+    $nativeHandles = Get-JsonPropertyValue -JsonObject $proofRows -Name "native_handles"
+
+    $synchronization2Ready =
+        (Test-RequiredTrueProperty -JsonObject $synchronization2 -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $synchronization2 -Name "vk_cmd_pipeline_barrier2_recorded" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $synchronization2 -Name "vk_dependency_info_recorded" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $synchronization2 -Name "api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "vkCmdPipelineBarrier2") {
+        $synchronization2Ready = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_synchronization2_api"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $synchronization2 -Name "structure_name" `
+                -Diagnostics $artifactDiagnostics) -cne "VkDependencyInfo") {
+        $synchronization2Ready = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_dependency_info"
+    }
+    $VulkanProofRows["synchronization2"] = $synchronization2Ready
+
+    $validationLayerReady =
+        (Test-RequiredTrueProperty -JsonObject $validationLayer -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $validationLayer -Name "validation_log_clean" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $validationLayer -Name "layer_name" `
+                -Diagnostics $artifactDiagnostics) -cne "VK_LAYER_KHRONOS_validation") {
+        $validationLayerReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_validation_layer"
+    }
+    if ([long](Get-JsonPropertyValue -JsonObject $validationLayer -Name "validation_error_count") -ne 0) {
+        $validationLayerReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "dirty_vulkan_validation_log"
+    }
+    $VulkanProofRows["validation_layer"] = $validationLayerReady
+
+    $syncValidationReady =
+        (Test-RequiredTrueProperty -JsonObject $synchronizationValidation -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $synchronizationValidation -Name "sync_validation_enabled" `
+            -Diagnostics $artifactDiagnostics)
+    if ([long](Get-JsonPropertyValue -JsonObject $synchronizationValidation -Name "sync_validation_error_count") -ne 0) {
+        $syncValidationReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "dirty_vulkan_sync_validation"
+    }
+    $VulkanProofRows["sync_validation"] = $syncValidationReady
+
+    $memoryBindingReady =
+        (Test-RequiredTrueProperty -JsonObject $memoryBinding -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $memoryBinding -Name "buffer_memory_bound" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $memoryBinding -Name "image_memory_bound" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $memoryBinding -Name "vuid_constraints_checked" `
+            -Diagnostics $artifactDiagnostics)
+    if (-not (Get-RequiredStringProperty -JsonObject $memoryBinding -Name "vuid_reference" `
+                -Diagnostics $artifactDiagnostics).Contains("VUID")) {
+        $memoryBindingReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_vulkan_memory_binding_vuid"
+    }
+    $VulkanProofRows["memory_binding"] = $memoryBindingReady
+
+    $timestampReady =
+        (Test-RequiredTrueProperty -JsonObject $timestampQuery -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $timestampQuery -Name "query_pool_timestamp" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $timestampQuery -Name "timestamps_resolved" `
+            -Diagnostics $artifactDiagnostics)
+    if ([long](Get-JsonPropertyValue -JsonObject $timestampQuery -Name "timestamp_period_ns") -le 0) {
+        $timestampReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_vulkan_timestamp_period"
+    }
+    $VulkanProofRows["timestamp"] = $timestampReady
+
+    $shaderValidationReady =
+        (Test-RequiredTrueProperty -JsonObject $spirvShaderValidation -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $spirvShaderValidation -Name "spirv_val_ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $spirvShaderValidation -Name "shader_modules_validated" `
+            -Diagnostics $artifactDiagnostics)
+    if ([long](Get-JsonPropertyValue -JsonObject $spirvShaderValidation -Name "validation_error_count") -ne 0) {
+        $shaderValidationReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "dirty_vulkan_spirv_validation"
+    }
+    $VulkanProofRows["shader_validation"] = $shaderValidationReady
+
+    $packageReadbackReady =
+        (Test-RequiredTrueProperty -JsonObject $packageVisibleReadback -Name "ready" `
+            -Diagnostics $artifactDiagnostics)
+    $packageReadbackHash = Get-RequiredStringProperty -JsonObject $packageVisibleReadback `
+        -Name "deterministic_hash_sha256" -Diagnostics $artifactDiagnostics
+    if (-not (Test-LowerHexSha256Text -Value $packageReadbackHash)) {
+        $packageReadbackReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_vulkan_package_readback_hash"
+    }
+    if ([long](Get-JsonPropertyValue -JsonObject $packageVisibleReadback -Name "readback_counter_rows") -le 0) {
+        $packageReadbackReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_vulkan_package_readback_rows"
+    }
+    $VulkanProofRows["package_readback"] = $packageReadbackReady
+
+    $nativeHandleReady =
+        (Test-RequiredTrueProperty -JsonObject $nativeHandles -Name "ready" -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredFalseProperty -JsonObject $nativeHandles -Name "native_handles_exposed" `
+            -Diagnostics $artifactDiagnostics)
+    $VulkanProofRows["native_handles_exposed"] =
+        [bool](Get-JsonPropertyValue -JsonObject $nativeHandles -Name "native_handles_exposed")
+    $VulkanProofRows["native_handles"] = $nativeHandleReady
+
+    $nonClaims = Get-JsonPropertyValue -JsonObject $artifact -Name "non_claims"
+    $nonClaimsReady = $true
+    foreach ($requiredFalse in @(
+            "d3d12_inferred",
+            "metal_inferred",
+            "debugging_only_full_pipeline_barrier",
+            "environment_ready",
+            "external_engine_parity",
+            "native_handles_exposed"
+        )) {
+        $nonClaimsReady = (Test-RequiredFalseProperty -JsonObject $nonClaims -Name $requiredFalse `
+                -Diagnostics $artifactDiagnostics) -and $nonClaimsReady
+    }
+
+    foreach ($artifactDiagnostic in $artifactDiagnostics) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+    }
+
+    return $synchronization2Ready -and $validationLayerReady -and $syncValidationReady -and
+        $memoryBindingReady -and $timestampReady -and $shaderValidationReady -and
+        $packageReadbackReady -and $nativeHandleReady -and $nonClaimsReady
+}
+
 function Invoke-RendererCommercialQualityCloseoutFromEvidence {
     param(
         [Parameter(Mandatory = $true)]$RowReady,
@@ -650,6 +836,17 @@ $d3d12ProofRows = @{
     timestamp = $false
     debug_validation = $false
     residency = $false
+    package_readback = $false
+    native_handles = $false
+    native_handles_exposed = $false
+}
+$vulkanProofRows = @{
+    synchronization2 = $false
+    validation_layer = $false
+    sync_validation = $false
+    memory_binding = $false
+    timestamp = $false
+    shader_validation = $false
     package_readback = $false
     native_handles = $false
     native_handles_exposed = $false
@@ -812,6 +1009,19 @@ if ($null -ne $evidenceFile) {
                     $artifactSpecificReady = Test-RendererCommercialReadinessD3d12Artifact `
                         -Path $resolvedArtifactPath `
                         -D3d12ProofRows $d3d12ProofRows `
+                        -Diagnostics $evidenceDiagnostics
+                }
+            }
+            if ($rowSpec.Name -eq "vulkan_strict") {
+                if ($null -eq $resolvedArtifactPath -or
+                    -not (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
+                    $artifactSpecificReady = $false
+                    Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
+                        -Name "missing_vulkan_strict_quality_artifact"
+                } else {
+                    $artifactSpecificReady = Test-RendererCommercialReadinessVulkanArtifact `
+                        -Path $resolvedArtifactPath `
+                        -VulkanProofRows $vulkanProofRows `
                         -Diagnostics $evidenceDiagnostics
                 }
             }
@@ -993,6 +1203,14 @@ $lines.Add("renderer_d3d12_debug_validation_ready=$(ConvertTo-CounterBit $($d3d1
 $lines.Add("renderer_d3d12_residency_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["residency"]))")
 $lines.Add("renderer_d3d12_package_readback_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["package_readback"]))")
 $lines.Add("renderer_d3d12_native_handles_exposed=$(ConvertTo-CounterBit $($d3d12ProofRows["native_handles_exposed"]))")
+$lines.Add("renderer_vulkan_synchronization2_ready=$(ConvertTo-CounterBit $($vulkanProofRows["synchronization2"]))")
+$lines.Add("renderer_vulkan_validation_layer_ready=$(ConvertTo-CounterBit $($vulkanProofRows["validation_layer"]))")
+$lines.Add("renderer_vulkan_sync_validation_ready=$(ConvertTo-CounterBit $($vulkanProofRows["sync_validation"]))")
+$lines.Add("renderer_vulkan_memory_binding_ready=$(ConvertTo-CounterBit $($vulkanProofRows["memory_binding"]))")
+$lines.Add("renderer_vulkan_timestamp_ready=$(ConvertTo-CounterBit $($vulkanProofRows["timestamp"]))")
+$lines.Add("renderer_vulkan_shader_validation_ready=$(ConvertTo-CounterBit $($vulkanProofRows["shader_validation"]))")
+$lines.Add("renderer_vulkan_package_readback_ready=$(ConvertTo-CounterBit $($vulkanProofRows["package_readback"]))")
+$lines.Add("renderer_vulkan_native_handles_exposed=$(ConvertTo-CounterBit $($vulkanProofRows["native_handles_exposed"]))")
 $lines.Add("renderer_d3d12_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["d3d12"]))")
 $lines.Add("renderer_vulkan_strict_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["vulkan_strict"]))")
 $lines.Add("renderer_apple_metal_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["apple_metal"]))")

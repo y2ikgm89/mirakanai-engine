@@ -327,19 +327,27 @@ Validation evidence:
 - Modify: existing Vulkan renderer quality/package validation recipe files only inside backend-private RHI/test/tool boundaries.
 - Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
 - Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 
 Required strict Vulkan rows:
 
-- [ ] Synchronization2 row: selected workload uses `vkCmdPipelineBarrier2`/`VkDependencyInfo` semantics or Vulkan 1.3 equivalents.
-- [ ] Validation-layer row: `VK_LAYER_KHRONOS_validation` clean log for selected workload.
-- [ ] Synchronization validation row: no known sync validation errors for selected workload.
-- [ ] Memory binding row: buffer/image allocation and binding evidence follows Vulkan spec VUID constraints for the selected resources.
-- [ ] Timestamp/query row: query pool/timestamp evidence where selected.
-- [ ] SPIR-V/shader validation row: package shaders are validated for the selected environment.
-- [ ] Package-visible readback row: deterministic hash/counter for selected 3D/UI/environment/generated-game output.
-- [ ] Native handle row: `native_handles_exposed=0`.
+- [x] Synchronization2 row: selected workload uses `vkCmdPipelineBarrier2`/`VkDependencyInfo` semantics or Vulkan 1.3 equivalents.
+- [x] Validation-layer row: `VK_LAYER_KHRONOS_validation` clean log for selected workload.
+- [x] Synchronization validation row: no known sync validation errors for selected workload.
+- [x] Memory binding row: buffer/image allocation and binding evidence follows Vulkan spec VUID constraints for the selected resources.
+- [x] Timestamp/query row: query pool/timestamp evidence where selected.
+- [x] SPIR-V/shader validation row: package shaders are validated for the selected environment.
+- [x] Package-visible readback row: deterministic hash/counter for selected 3D/UI/environment/generated-game output.
+- [x] Native handle row: `native_handles_exposed=0`.
 
 No row may use a debugging-only full-pipeline barrier as release readiness evidence.
+
+Validation evidence:
+
+- `tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json` now carries fixture-only Vulkan proof rows for `vkCmdPipelineBarrier2`, `VkDependencyInfo`, `VK_LAYER_KHRONOS_validation`, synchronization validation, Vulkan memory binding VUID coverage, timestamp query resolution, SPIR-V validation, deterministic package readback, and native-handle non-exposure.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `renderer_vulkan_synchronization2_ready=1`, `renderer_vulkan_validation_layer_ready=1`, `renderer_vulkan_sync_validation_ready=1`, `renderer_vulkan_memory_binding_ready=1`, `renderer_vulkan_timestamp_ready=1`, `renderer_vulkan_shader_validation_ready=1`, `renderer_vulkan_package_readback_ready=1`, `renderer_vulkan_native_handles_exposed=0`, and `renderer_environment_ready=0`.
+- `tools/check-ai-integration.ps1`: passed after adding Vulkan proof-row static needles.
 
 ## Task 6: Bind Apple Metal Evidence
 

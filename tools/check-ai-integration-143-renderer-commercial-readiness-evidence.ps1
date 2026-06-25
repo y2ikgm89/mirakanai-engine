@@ -5,6 +5,7 @@
 $schemaText = Get-AgentSurfaceText "schemas/renderer-commercial-readiness-evidence.schema.json"
 $readyFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json"
 $d3d12ReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json"
+$vulkanReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json"
 $missingMetalFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json"
 $externalEngineRejectedFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json"
 $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -265,6 +266,29 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator D3D12 binding"
     Assert-ContainsText $d3d12ReadyArtifactText $needle "renderer commercial readiness D3D12 ready artifact"
+}
+
+foreach ($needle in @(
+        'synchronization2',
+        'vkCmdPipelineBarrier2',
+        'VkDependencyInfo',
+        'VK_LAYER_KHRONOS_validation',
+        'synchronization_validation',
+        'memory_binding',
+        'VUID',
+        'query_pool_timestamp',
+        'spirv_val_ready',
+        'debugging_only_full_pipeline_barrier',
+        'renderer_vulkan_synchronization2_ready',
+        'renderer_vulkan_validation_layer_ready',
+        'renderer_vulkan_sync_validation_ready',
+        'renderer_vulkan_memory_binding_ready',
+        'renderer_vulkan_timestamp_ready',
+        'renderer_vulkan_shader_validation_ready',
+        'renderer_vulkan_package_readback_ready'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator Vulkan binding"
+    Assert-ContainsText $vulkanReadyArtifactText $needle "renderer commercial readiness Vulkan ready artifact"
 }
 
 foreach ($needle in @(
