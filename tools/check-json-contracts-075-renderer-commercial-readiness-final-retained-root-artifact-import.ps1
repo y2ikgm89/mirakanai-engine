@@ -13,8 +13,12 @@ foreach ($needle in @(
         "GameEngine.RendererCommercialReadinessFinalRetainedRootArtifactImport.v1",
         "ArtifactListJsonRelative",
         "workflow_artifact_list",
+        "assembler_handoff",
+        "final_preflight_handoff",
         "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready",
         "gh run download",
         "https://cli.github.com/manual/gh_run_download",
         "https://docs.github.com/en/rest/actions/artifacts",
@@ -48,6 +52,8 @@ foreach ($needle in @(
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_reason=mtlresidencyset_unavailable",
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=0",
         "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
         "renderer_commercial_readiness=0"
     )) {
@@ -66,7 +72,9 @@ foreach ($needle in @(
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
         "GitHub Actions artifacts",
         "final retained root",
-        "seven explicit assembler inputs"
+        "seven explicit assembler inputs",
+        "assembler_handoff",
+        "final_preflight_handoff"
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle "renderer commercial readiness final retained-root artifact import validation recipe"
     Assert-ContainsText $productionLoopFragmentText $needle "renderer commercial readiness final retained-root artifact import production loop"

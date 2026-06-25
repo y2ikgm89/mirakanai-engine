@@ -9,6 +9,8 @@ $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/00
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+$recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
+$recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
@@ -21,6 +23,9 @@ foreach ($needle in @(
         "workflow_artifact_list",
         "workflow_artifact_list_present",
         "missing_workflow_artifact_names",
+        "assembler_handoff",
+        "final_preflight_handoff",
+        "assembler_handoff_ready",
         "gh run download",
         "GitHub CLI",
         "GitHub Actions artifacts",
@@ -48,6 +53,8 @@ foreach ($needle in @(
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-commercial-readiness-final-retained-root",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=0",
         "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
         "renderer_commercial_readiness=0"
     )) {
@@ -68,9 +75,32 @@ foreach ($needle in @(
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
         "GitHub Actions artifacts",
         "seven explicit assembler inputs",
+        "assembler_handoff",
+        "final_preflight_handoff",
         "renderer_commercial_readiness=0"
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle "renderer commercial readiness final retained-root artifact import validation recipe"
+}
+
+foreach ($needle in @(
+        "renderer-commercial-readiness-final-promotion-preflight",
+        "renderer-commercial-readiness-final-retained-root-assembler",
+        "renderer-commercial-readiness-final-retained-root-artifact-import",
+        "assemble-renderer-commercial-readiness-final-retained-root.ps1",
+        "import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
+        "artifact-intake-plan-only",
+        "final-retained-root-plan-only"
+    )) {
+    Assert-ContainsText $recipePlansText $needle "renderer commercial readiness final retained-root validation recipe runner plan"
+}
+
+foreach ($needle in @(
+        'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight"',
+        'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler"',
+        'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-artifact-import"',
+        'Assert-ArgvDoesNotContainText -Result $rendererFinalArtifactImportDryRun -Unexpected "-RunId"'
+    )) {
+    Assert-ContainsText $recipeRunnerCheckText $needle "renderer commercial readiness final retained-root validation recipe runner check"
 }
 
 foreach ($surface in @(

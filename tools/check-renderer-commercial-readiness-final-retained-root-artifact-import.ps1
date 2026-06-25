@@ -223,6 +223,10 @@ try {
     foreach ($expectedLine in @(
             "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_required_input_paths=7",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_output_root=$contractRootRelative/assembled-final-retained-root",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_writes_evidence=1",
             "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
             "renderer_backend_parity_ready=0",
@@ -235,6 +239,52 @@ try {
 
     if (-not (Test-Path -LiteralPath (ConvertTo-LocalPath "$contractRootRelative/intake-manifest.json") -PathType Leaf)) {
         Write-Error "GitHub artifact intake did not write intake-manifest.json."
+    }
+    $manifest = Get-Content -LiteralPath (ConvertTo-LocalPath "$contractRootRelative/intake-manifest.json") -Raw |
+        ConvertFrom-Json
+    if (-not [bool]$manifest.assembler_handoff.ready) {
+        Write-Error "GitHub artifact intake manifest must include a ready assembler handoff when all seven inputs are present."
+    }
+    if ([string]$manifest.assembler_handoff.script -cne "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1") {
+        Write-Error "GitHub artifact intake manifest must point at the final retained-root assembler script."
+    }
+    if ([string]$manifest.assembler_handoff.output_root -cne "$contractRootRelative/assembled-final-retained-root") {
+        Write-Error "GitHub artifact intake manifest must record the exact assembler output root."
+    }
+    if (@($manifest.assembler_handoff.input_paths.PSObject.Properties).Count -ne 7) {
+        Write-Error "GitHub artifact intake manifest must record exactly seven assembler input paths."
+    }
+    $assemblerArguments = @($manifest.assembler_handoff.command_arguments)
+    foreach ($expectedArgument in @(
+            "-Mode",
+            "Assemble",
+            "-OutputRootRelative",
+            "$contractRootRelative/assembled-final-retained-root",
+            "-D3d12HostEvidenceRelative",
+            "$contractRootRelative/input/d3d12/d3d12-host-evidence.json",
+            "-VulkanStrictHostEvidenceRelative",
+            "$contractRootRelative/input/vulkan/vulkan-host-evidence.json",
+            "-AppleMetalHostEvidenceRelative",
+            "$contractRootRelative/input/apple/apple-host-evidence.json",
+            "-MetalMemoryProfilingHostEvidenceRelative",
+            "$contractRootRelative/input/metal-memory/evidence.json",
+            "-PackageHostEvidenceRelative",
+            "$contractRootRelative/input/package/package-host-evidence.json",
+            "-QualityVfxHostEvidenceRelative",
+            "$contractRootRelative/input/quality-vfx/quality-vfx-host-evidence.json",
+            "-CleanRoomLegalReviewRelative",
+            "$contractRootRelative/input/legal/clean-room-legal-review.json"
+        )) {
+        if (-not $assemblerArguments.Contains($expectedArgument)) {
+            Write-Error "GitHub artifact intake assembler handoff missing command argument: $expectedArgument"
+        }
+    }
+    $requireReadyArguments = @($manifest.assembler_handoff.require_ready_command_arguments)
+    if (-not $requireReadyArguments.Contains("-RequireReady")) {
+        Write-Error "GitHub artifact intake assembler handoff must include a separate RequireReady command argument list."
+    }
+    if ([bool]$manifest.final_preflight_handoff.ready) {
+        Write-Error "GitHub artifact intake final preflight handoff must stay blocked when no final retained root exists."
     }
 }
 finally {
