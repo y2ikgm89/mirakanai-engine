@@ -750,6 +750,8 @@ Validation evidence:
 
 - Add: `tools/collect-renderer-clean-room-legal-artifact.ps1`
 - Add: `tools/check-renderer-clean-room-legal-artifact.ps1`
+- Modify: `tools/collect-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
 - Modify: `tools/validate.ps1`
 - Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 - Modify: `docs/current-capabilities.md`
@@ -763,15 +765,16 @@ Validation evidence:
 
 Steps:
 
-- [ ] Add a failing check that any Unity, Unreal Engine, or Godot source/sample/shader/UI/layout/asset/trademark/project/API/compatibility/equivalence/parity row keeps `renderer_clean_room_legal_ready=0`.
-- [ ] Implement a first-party clean-room artifact that records official-doc category research only, no external-engine material, no external-engine API adoption, no public trademark usage, no compatibility/equivalence/parity claim, and complete third-party notices for existing dependencies.
-- [ ] Require human legal-review placeholders to remain non-promoting unless explicit `legal_review_id` and `technical_review_id` are supplied for any future external material row.
-- [ ] Do not add dependencies or copy external material for this slice. If a future slice does, update `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, and `THIRD_PARTY_NOTICES.md` in the same PR and rerun dependency policy checks.
+- [x] Add a failing check that any Unity, Unreal Engine, or Godot source/sample/shader/UI/layout/asset/trademark/project/API/compatibility/equivalence/parity row keeps `renderer_clean_room_legal_ready=0`.
+- [x] Implement a first-party clean-room artifact that records official-doc category research only, no external-engine material, no external-engine API adoption, no public trademark usage, no compatibility/equivalence/parity claim, and complete third-party notices for existing dependencies.
+- [x] Require human legal-review placeholders to remain non-promoting unless explicit `legal_review_id` and `technical_review_id` are supplied for any future external material row.
+- [x] Do not add dependencies or copy external material for this slice. If a future slice does, update `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, and `THIRD_PARTY_NOTICES.md` in the same PR and rerun dependency policy checks.
 
 Validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-clean-room-legal-artifact.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-collector.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
@@ -784,6 +787,17 @@ If dependency or notice files change, also run:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
 ```
+
+Validation evidence:
+
+- `tools/check-renderer-clean-room-legal-artifact.ps1`: passed after proving unsafe path rejection, fixture-only review rejection, clean `clean-room-legal.json` production, rejected external-engine material rows for code, sample, shader, asset, trademark, UI expression, API, compatibility, equivalence, and parity, collector integration with 11 remaining fixture artifacts, `renderer_clean_room_legal_ready=1` for clean retained legal evidence, and `renderer_commercial_readiness=0`.
+- `tools/check-renderer-commercial-readiness-evidence-collector.ps1`: passed after adding retained `CleanRoomLegalArtifactRelative` integration and preserving the existing fixture/self-test assembly path.
+- `tools/check-ai-integration.ps1`: passed after adding Task 10E command, recipe, producer, check, validator counter, and static validation task needles.
+- `tools/check-json-contracts.ps1`: passed after manifest fragment composition.
+- `tools/check-agents.ps1`: passed.
+- `tools/check-format.ps1`: passed.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 38 static checks, including the new `check-renderer-clean-room-legal-artifact.ps1` lane; Windows-host Metal/Apple checks remained diagnostic-only host gates.
+- No `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, or `THIRD_PARTY_NOTICES.md` update is required because this slice adds no dependency, third-party code, or distributable external asset.
 
 ### Task 10F: Final Non-Fixture Retained Artifact Promotion
 

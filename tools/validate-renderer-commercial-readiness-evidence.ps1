@@ -1910,6 +1910,8 @@ $fixtureArtifactRejectedRows = 0
 $forbiddenMaterialRejectedRows = 0
 $externalEngineDetectedRows = 0
 $externalEngineZeroMaterialReviewReady = $false
+$cleanRoomReady = $false
+$thirdPartyNoticeReady = $false
 $externalEngineShaderUsed = $false
 $externalEngineProjectImportUsed = $false
 $externalEngineApiUsed = $false
@@ -2322,6 +2324,7 @@ $rendererBackendParityReady = ([string]$closeoutValues["renderer_backend_parity_
 $rendererMetalBroadReadiness = ([string]$closeoutValues["renderer_metal_broad_readiness"]) -eq "1"
 $rendererBroadQualityReady = ([string]$closeoutValues["renderer_broad_quality_ready"]) -eq "1"
 $qualityCloseoutReady = ([string]$closeoutValues["renderer_commercial_quality_closeout_ready"]) -eq "1"
+$rendererCleanRoomLegalReady = $cleanRoomReady -and $thirdPartyNoticeReady
 $rendererCommercialReadiness = $qualityCloseoutReady -and $rendererBackendParityReady -and
     $rendererMetalBroadReadiness -and $rendererBroadQualityReady -and
     ($forbiddenMaterialRejectedRows -eq 0) -and ($externalEngineDetectedRows -eq 0) -and
@@ -2361,6 +2364,8 @@ $lines.Add("renderer_commercial_readiness_fixture_artifacts_rejected=$fixtureArt
 $lines.Add("renderer_external_engine_forbidden_material_detected_rows=$externalEngineDetectedRows")
 $lines.Add("renderer_external_engine_forbidden_material_rejected_rows=$forbiddenMaterialRejectedRows")
 $lines.Add("renderer_external_engine_zero_material_review_ready=$(ConvertTo-CounterBit $externalEngineZeroMaterialReviewReady)")
+$lines.Add("renderer_clean_room_legal_ready=$(ConvertTo-CounterBit $rendererCleanRoomLegalReady)")
+$lines.Add("renderer_third_party_notices_complete=$(ConvertTo-CounterBit $thirdPartyNoticeReady)")
 $lines.Add("renderer_external_engine_shader_used=$(ConvertTo-CounterBit $externalEngineShaderUsed)")
 $lines.Add("renderer_external_engine_project_import_used=$(ConvertTo-CounterBit $externalEngineProjectImportUsed)")
 $lines.Add("renderer_external_engine_api_used=$(ConvertTo-CounterBit $externalEngineApiUsed)")
