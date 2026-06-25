@@ -12,7 +12,7 @@
 
 **Plan ID:** `renderer-metal-memory-profiling-host-evidence-v1`
 
-**Status:** Published in draft PR #807; hosted CI pending.
+**Status:** Completed through PR #807 / merge commit `79ce2668c149a6295a6d846559c82bca6f887fcc`.
 
 **Date:** 2026-06-24
 
@@ -125,7 +125,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-
 
 - [x] Run `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, and `git diff --check`.
 - [x] Run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after docs, manifest, schema, and static checks are green.
-- [ ] Run publication preflight, commit, push, open a draft PR, wait for hosted PR Gate, mark ready with `tools/ready-task-pr.ps1`, register auto-merge with the head SHA, verify `origin/main`, sync local `main`, clean up the worktree, and reread the production-completion selection gate.
+- [x] Run publication preflight, commit, push, open a draft PR, wait for hosted PR Gate, mark ready with `tools/ready-task-pr.ps1`, register auto-merge with the head SHA, verify `origin/main`, sync local `main`, clean up the worktree, and reread the production-completion selection gate.
 
 ## Validation Evidence
 
@@ -144,6 +144,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-
 | `git diff --check` | PASS. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: `validate: ok`; 157/157 CTest tests passed. Local Windows host lacks Apple Metal tools, and Apple host evidence remained diagnostic/host-gated as expected. |
 | `gh pr create --draft --base main --head codex/renderer-metal-memory-profiling-host-evidence` | PASS: opened draft PR #807. |
+| `gh pr view 807 --json state,isDraft,mergedAt,mergeCommit,headRefOid,statusCheckRollup` | PASS: PR #807 merged on 2026-06-24T13:53:01Z as merge commit `79ce2668c149a6295a6d846559c82bca6f887fcc`; hosted PR Gate, Windows MSVC, Linux CMake, full static shards, macOS Metal CMake, iOS Simulator smoke, and CodeQL checks passed. |
+| `git merge-base --is-ancestor 596853dc3300635e41f6c0e646791f8e4733e289 origin/main` | PASS: PR #807 head reaches `origin/main`. |
 
 ## Done When
 

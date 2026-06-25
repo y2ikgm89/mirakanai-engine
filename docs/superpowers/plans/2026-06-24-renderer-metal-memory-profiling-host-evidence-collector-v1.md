@@ -1,6 +1,6 @@
 # Renderer Metal Memory Profiling Host Evidence Collector Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for completed evidence.
 
 **Goal:** Add a first-party, host-owned collector/importer that shapes Apple-host Metal heap/residency/capture artifacts into the existing `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` `evidence.json` contract without claiming broad backend parity, broad Metal readiness, commercial renderer readiness, or broad renderer quality.
 
@@ -11,7 +11,7 @@
 ---
 
 Plan ID: `renderer-metal-memory-profiling-host-evidence-collector-v1`
-Status: Draft PR published; hosted validation pending.
+**Status:** Completed through PR #808 / merge commit `3259166d1ec6ed7a4113b3b2dafbf3b44890e2e8`.
 
 ## Official Source Checks
 
@@ -53,9 +53,9 @@ Status: Draft PR published; hosted validation pending.
 - Create: `tools/check-ai-integration-140-renderer-metal-memory-profiling-host-evidence-collector.ps1`
 - Modify: `docs/superpowers/plans/README.md`
 
-- [ ] Add this plan to the plan registry as an active implementation slice.
-- [ ] Add a static guard that fails until `tools/collect-renderer-metal-memory-profiling-host-evidence.ps1`, `tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1`, `tools/validate.ps1`, manifest fragments, docs, and rendering guidance all mention `renderer-metal-memory-profiling-host-evidence-collector-v1`.
-- [ ] Run:
+- [x] Add this plan to the plan registry as an active implementation slice.
+- [x] Add a static guard that fails until `tools/collect-renderer-metal-memory-profiling-host-evidence.ps1`, `tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1`, `tools/validate.ps1`, manifest fragments, docs, and rendering guidance all mention `renderer-metal-memory-profiling-host-evidence-collector-v1`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
@@ -68,13 +68,13 @@ Expected: FAIL on missing collector/self-test/docs needles.
 **Files:**
 - Create: `tools/collect-renderer-metal-memory-profiling-host-evidence.ps1`
 
-- [ ] Implement parameters:
+- [x] Implement parameters:
   - `-Mode Plan|Import`
   - `-EvidenceRoot artifacts/renderer/metal-memory-profiling-host-evidence`
   - required `-WorkloadId`, `-CaptureArtifactRelativePath`, `-MacosVersion`, `-XcodeVersion`, `-HeapResourceRows`, `-HeapAllocatedBytes`, `-ResidentBytes`, `-BudgetBytes`, `-ResidencySetAllocationRows`, `-MemoryPressureSampleRows`, `-MemoryPressureBudgetStatus within_budget|pressure_observed`, `-CaptureScopeLabel`, `-CaptureArtifactRows`
   - optional `-NoWrite`
-- [ ] Use `common.ps1` and `apple-host-helpers.ps1`; report host/tool availability using existing helpers plus `Find-CommandOnCombinedPath "xctrace"`.
-- [ ] In `Plan` mode, print deterministic counters and do not write files:
+- [x] Use `common.ps1` and `apple-host-helpers.ps1`; report host/tool availability using existing helpers plus `Find-CommandOnCombinedPath "xctrace"`.
+- [x] In `Plan` mode, print deterministic counters and do not write files:
 
 ```text
 validation_recipe=renderer-metal-memory-profiling-host-evidence
@@ -87,8 +87,8 @@ renderer_metal_memory_profiling_host_evidence_collector_commercial_renderer=0
 renderer_metal_memory_profiling_host_evidence_collector_broad_renderer_quality=0
 ```
 
-- [ ] In `Import` mode, require `CaptureArtifactRelativePath` to resolve under `EvidenceRoot`, compute SHA-256, create the parent directory, and write `evidence.json` in the same directory.
-- [ ] The written JSON must use the exact existing constants:
+- [x] In `Import` mode, require `CaptureArtifactRelativePath` to resolve under `EvidenceRoot`, compute SHA-256, create the parent directory, and write `evidence.json` in the same directory.
+- [x] The written JSON must use the exact existing constants:
   - `schema_version = GameEngine.RendererMetalMemoryProfilingHostEvidence.v1`
   - `claim_id = renderer-metal-memory-profiling-host-evidence-v1`
   - `host.platform = macos`
@@ -96,7 +96,7 @@ renderer_metal_memory_profiling_host_evidence_collector_broad_renderer_quality=0
   - `memory_residency_row.proof_row_id = memory_residency`
   - `profiling_capture_row.proof_row_id = profiling_capture`
   - all `non_claims` booleans false
-- [ ] In `Import` mode, emit:
+- [x] In `Import` mode, emit:
 
 ```text
 renderer_metal_memory_profiling_host_evidence_collector_mode=Import
@@ -111,11 +111,11 @@ renderer_metal_memory_profiling_host_evidence_collector_external_engine_api_pari
 **Files:**
 - Create: `tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1`
 
-- [ ] Create ignored synthetic artifacts under `out/renderer-metal-memory-profiling-host-evidence-collector-contract/$PID/sample_desktop_runtime_game/`.
-- [ ] Run collector `Plan` mode with `-NoWrite` and assert the expected no-write and no-broad-claim lines.
-- [ ] Run collector `Import` mode against a synthetic `capture-summary.txt` artifact and assert `written=1`, native handles `0`, external engine parity `0`, and a 64-character lower-case SHA-256.
-- [ ] Read the generated `evidence.json` and assert `schema_version`, `claim_id`, `memory_residency_row.proof_row_id`, `profiling_capture_row.proof_row_id`, `capture_artifact_path`, and `capture_artifact_hash_sha256`.
-- [ ] Run:
+- [x] Create ignored synthetic artifacts under `out/renderer-metal-memory-profiling-host-evidence-collector-contract/$PID/sample_desktop_runtime_game/`.
+- [x] Run collector `Plan` mode with `-NoWrite` and assert the expected no-write and no-broad-claim lines.
+- [x] Run collector `Import` mode against a synthetic `capture-summary.txt` artifact and assert `written=1`, native handles `0`, external engine parity `0`, and a 64-character lower-case SHA-256.
+- [x] Read the generated `evidence.json` and assert `schema_version`, `claim_id`, `memory_residency_row.proof_row_id`, `profiling_capture_row.proof_row_id`, `capture_artifact_path`, and `capture_artifact_hash_sha256`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-profiling-host-evidence.ps1 -ArtifactRootRelative out/renderer-metal-memory-profiling-host-evidence-collector-contract/<pid> -RequireReady -ExpectedEvidenceCounters renderer_metal_memory_profiling_status=ready renderer_metal_memory_profiling_ready=1 renderer_backend_parity_ready=0 renderer_metal_broad_readiness=0 renderer_commercial_readiness=0 renderer_broad_quality_ready=0
@@ -130,10 +130,10 @@ Expected: PASS.
 - Modify: `tools/classify-pr-validation-tier.ps1`
 - Modify: `tools/check-ci-matrix.ps1`
 
-- [ ] Add `check-renderer-metal-memory-profiling-host-evidence-collector.ps1` to static validation.
-- [ ] Add `collect-renderer-metal-memory-profiling-host-evidence`, `check-renderer-metal-memory-profiling-host-evidence`, and `check-renderer-metal-memory-profiling-host-evidence-collector` to the Apple host evidence classifier path list.
-- [ ] Extend `tools/check-ci-matrix.ps1` with a representative `ChangedPath @("tools/collect-renderer-metal-memory-profiling-host-evidence.ps1")` case that expects `metal_host_evidence=true` and `ios_metal_evidence=true`.
-- [ ] Run:
+- [x] Add `check-renderer-metal-memory-profiling-host-evidence-collector.ps1` to static validation.
+- [x] Add `collect-renderer-metal-memory-profiling-host-evidence`, `check-renderer-metal-memory-profiling-host-evidence`, and `check-renderer-metal-memory-profiling-host-evidence-collector` to the Apple host evidence classifier path list.
+- [x] Extend `tools/check-ci-matrix.ps1` with a representative `ChangedPath @("tools/collect-renderer-metal-memory-profiling-host-evidence.ps1")` case that expects `metal_host_evidence=true` and `ios_metal_evidence=true`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1
@@ -158,10 +158,10 @@ Expected: both PASS.
 - Modify: `.agents/skills/gameengine-rendering/references/full-guidance.md`
 - Modify: `.claude/skills/gameengine-rendering/references/full-guidance.md`
 
-- [ ] Add manifest command `rendererMetalMemoryProfilingHostEvidenceCollectorCheck`.
-- [ ] Document that the collector shapes host-owned Apple artifacts into validator-ready evidence; it does not run capture, infer readiness, or claim broad parity.
-- [ ] Record default validation behavior: no checked-in real artifacts means `renderer_metal_memory_profiling_status=host_evidence_required` and `renderer_metal_memory_profiling_ready=0`.
-- [ ] Run:
+- [x] Add manifest command `rendererMetalMemoryProfilingHostEvidenceCollectorCheck`.
+- [x] Document that the collector shapes host-owned Apple artifacts into validator-ready evidence; it does not run capture, infer readiness, or claim broad parity.
+- [x] Record default validation behavior: no checked-in real artifacts means `renderer_metal_memory_profiling_status=host_evidence_required` and `renderer_metal_memory_profiling_ready=0`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -177,7 +177,7 @@ Expected: all PASS.
 **Files:**
 - Modify this plan with final validation evidence and PR/merge evidence.
 
-- [ ] Run focused checks:
+- [x] Run focused checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-profiling-host-evidence-collector.ps1
@@ -188,19 +188,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 git diff --check
 ```
 
-- [ ] Run full slice gate:
+- [x] Run full slice gate:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit only task-owned files, push `codex/renderer-metal-memory-profiling-host-evidence-collector`, open a draft PR, wait for hosted checks, mark ready through `tools/ready-task-pr.ps1`, and merge only after required gates pass.
+- [x] Commit only task-owned files, push `codex/renderer-metal-memory-profiling-host-evidence-collector`, open a draft PR, wait for hosted checks, mark ready through `tools/ready-task-pr.ps1`, and merge only after required gates pass.
 
 ## Done When
 
@@ -231,3 +231,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 | `git commit -m "Add renderer Metal memory profiling collector"` | PASS: commit `8a99f219`. |
 | `git push -u origin codex/renderer-metal-memory-profiling-host-evidence-collector` | PASS. |
 | `gh pr create --draft --base main --head codex/renderer-metal-memory-profiling-host-evidence-collector` | PASS: opened draft PR #808. |
+| `gh pr view 808 --json state,isDraft,mergedAt,mergeCommit,headRefOid,statusCheckRollup` | PASS: PR #808 merged on 2026-06-24T14:40:54Z as merge commit `3259166d1ec6ed7a4113b3b2dafbf3b44890e2e8`; hosted PR Gate, Windows MSVC, Linux CMake, Linux Vulkan Host Evidence, full static shards, macOS Metal CMake, iOS Metal Evidence, iOS Simulator smoke, and CodeQL checks passed. |
+| `git merge-base --is-ancestor 6943699e8d8bfcbf1e37cefbf3c394880780c9ba origin/main` | PASS: PR #808 head reaches `origin/main`. |
