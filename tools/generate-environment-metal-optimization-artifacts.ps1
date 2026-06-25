@@ -14,6 +14,9 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$MetalTemplateName = "Metal System Trace",
 
+    [ValidatePattern('^\d+(ms|s|m|h)$')]
+    [string]$XctraceTimeLimit = "10m",
+
     [string[]]$ExpectedEvidenceCounters = @()
 )
 
@@ -307,6 +310,8 @@ $recordArguments = @(
     "record",
     "--template",
     $MetalTemplateName,
+    "--time-limit",
+    $XctraceTimeLimit,
     "--output",
     $tracePath,
     "--no-prompt",
@@ -356,6 +361,7 @@ if (-not (Test-Path -LiteralPath $tocPath -PathType Leaf)) {
 Write-Utf8NoBomText -Path $tocPath -Text (Get-Content -LiteralPath $tocPath -Raw)
 
 $templateCounter = ConvertTo-CounterValue -Value $MetalTemplateName
+$timeLimitCounter = ConvertTo-CounterValue -Value $XctraceTimeLimit
 $generatedRows = 0
 foreach ($metric in $metricRows) {
     $workload = [string]$metric.workload
@@ -497,6 +503,7 @@ $counterLine = [string]::Join(" ", @(
         "environment_metal_host_optimization_artifact_ready=$(ConvertTo-CounterBit $broadReady)",
         "xcrun_xctrace_ready=1",
         "xctrace_template=$templateCounter",
+        "xctrace_time_limit=$timeLimitCounter",
         "environment_metal_host_optimization_artifacts_written=$generatedRows",
         "environment_metal_host_optimization_required_workloads=7",
         "environment_metal_host_optimization_profiler_artifacts=$generatedRows",
