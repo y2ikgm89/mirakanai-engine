@@ -418,15 +418,29 @@ Validation evidence:
 - Modify: `docs/dependencies.md` only if dependencies change.
 - Modify: `THIRD_PARTY_NOTICES.md` only if external material or dependencies change.
 - Modify: `vcpkg.json` only if a dependency is explicitly approved.
-- Modify: `tools/check-ai-integration-142-renderer-commercial-quality-closeout.ps1` or a new numbered chapter.
+- Modify: `schemas/renderer-commercial-readiness-evidence.schema.json`
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 
 Steps:
 
-- [ ] Add a retained source-review row proving public-doc category research only.
-- [ ] Add explicit zero rows for Unity/Unreal/Godot code, samples, shaders, UI expression, assets, trademarks, project import, API compatibility, and equivalence claims.
-- [ ] Add a blocker for any nonzero external-engine material row unless `legal_review_id` and `technical_review_id` are present and notices are complete.
-- [ ] Verify no new third-party dependency or asset was introduced. If one was introduced, update all dependency/legal files in the same PR.
-- [ ] Add static-check needles for the legal constraints so future docs/manifest changes cannot silently weaken them.
+- [x] Add a retained source-review row proving public-doc category research only.
+- [x] Add explicit zero rows for Unity/Unreal/Godot code, samples, shaders, UI expression, assets, trademarks, project import, API compatibility, and equivalence claims.
+- [x] Add a blocker for any nonzero external-engine material row unless `legal_review_id` and `technical_review_id` are present and notices are complete.
+- [x] Verify no new third-party dependency or asset was introduced. If one was introduced, update all dependency/legal files in the same PR.
+- [x] Add static-check needles for the legal constraints so future docs/manifest changes cannot silently weaken them.
+
+Validation evidence:
+
+- Official Unity, Epic/Unreal, and Godot legal/trademark pages were checked as public documentation sources for legal category review only; no external-engine code, sample, shader, UI expression, asset, trademark, project import, API compatibility, equivalence, or parity claim is accepted.
+- `schemas/renderer-commercial-readiness-evidence.schema.json` now requires `clean_room_rows.external_engine_zero_material_review` and non-claims for `external_engine_shader_used`, `external_engine_project_import_used`, `external_engine_api_used`, `external_engine_compatibility_claim`, `external_engine_equivalence_claim`, and `external_engine_parity_claim`.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `renderer_external_engine_zero_material_review_ready=1`, `renderer_external_engine_shader_used=0`, `renderer_external_engine_project_import_used=0`, `renderer_external_engine_api_used=0`, `renderer_external_engine_compatibility_claim=0`, `renderer_external_engine_equivalence_claim=0`, `renderer_external_engine_parity_claim=0`, and `renderer_environment_ready=0`.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected`: failed as expected with all 11 artifacts present and valid, `renderer_external_engine_forbidden_material_detected_rows=1`, `renderer_external_engine_forbidden_material_rejected_rows=1`, and `renderer_commercial_readiness_evidence_blocker=external_engine_material_rejected`.
+- `tools/check-ai-integration.ps1`: passed after adding legal/source-review static needles.
+- No `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, or `THIRD_PARTY_NOTICES.md` update is required because this slice adds no dependency, third-party code, or distributable external asset.
 
 Validation:
 

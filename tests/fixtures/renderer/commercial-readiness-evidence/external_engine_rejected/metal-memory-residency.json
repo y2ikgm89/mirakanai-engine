@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
+  "artifact_id": "metal-memory-residency",
+  "validation_recipe": "renderer-metal-memory-profiling-host-evidence",
+  "fixture_only": true,
+  "ready": true
+}

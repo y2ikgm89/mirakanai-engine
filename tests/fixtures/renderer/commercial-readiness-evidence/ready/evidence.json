@@ -161,6 +161,20 @@
       "equivalence_claims": false,
       "parity_claims": false
     },
+    "external_engine_zero_material_review": {
+      "ready": true,
+      "external_engine_code_used": false,
+      "external_engine_sample_used": false,
+      "external_engine_shader_used": false,
+      "external_engine_asset_used": false,
+      "external_engine_trademark_used": false,
+      "external_engine_ui_expression_used": false,
+      "external_engine_project_import_used": false,
+      "external_engine_api_used": false,
+      "external_engine_compatibility_claim": false,
+      "external_engine_equivalence_claim": false,
+      "external_engine_parity_claim": false
+    },
     "third_party_notices": {
       "ready": true,
       "complete": true,
@@ -181,9 +195,15 @@
     "external_engine_parity": false,
     "external_engine_code_used": false,
     "external_engine_sample_used": false,
+    "external_engine_shader_used": false,
     "external_engine_asset_used": false,
     "external_engine_trademark_used": false,
     "external_engine_ui_expression_used": false,
+    "external_engine_project_import_used": false,
+    "external_engine_api_used": false,
+    "external_engine_compatibility_claim": false,
+    "external_engine_equivalence_claim": false,
+    "external_engine_parity_claim": false,
     "unity_compatibility": false,
     "unreal_compatibility": false,
     "godot_compatibility": false

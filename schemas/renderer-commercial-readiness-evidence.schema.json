@@ -145,6 +145,7 @@
       "required": [
         "official_docs_only",
         "legal_review",
+        "external_engine_zero_material_review",
         "third_party_notices",
         "forbidden_material_rows"
       ],
@@ -195,6 +196,38 @@
             "parity_claims": { "const": false }
           }
         },
+        "external_engine_zero_material_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ready",
+            "external_engine_code_used",
+            "external_engine_sample_used",
+            "external_engine_shader_used",
+            "external_engine_asset_used",
+            "external_engine_trademark_used",
+            "external_engine_ui_expression_used",
+            "external_engine_project_import_used",
+            "external_engine_api_used",
+            "external_engine_compatibility_claim",
+            "external_engine_equivalence_claim",
+            "external_engine_parity_claim"
+          ],
+          "properties": {
+            "ready": { "const": true },
+            "external_engine_code_used": { "const": false },
+            "external_engine_sample_used": { "const": false },
+            "external_engine_shader_used": { "const": false },
+            "external_engine_asset_used": { "const": false },
+            "external_engine_trademark_used": { "const": false },
+            "external_engine_ui_expression_used": { "const": false },
+            "external_engine_project_import_used": { "const": false },
+            "external_engine_api_used": { "const": false },
+            "external_engine_compatibility_claim": { "const": false },
+            "external_engine_equivalence_claim": { "const": false },
+            "external_engine_parity_claim": { "const": false }
+          }
+        },
         "third_party_notices": {
           "type": "object",
           "additionalProperties": false,
@@ -237,9 +270,15 @@
         "external_engine_parity",
         "external_engine_code_used",
         "external_engine_sample_used",
+        "external_engine_shader_used",
         "external_engine_asset_used",
         "external_engine_trademark_used",
         "external_engine_ui_expression_used",
+        "external_engine_project_import_used",
+        "external_engine_api_used",
+        "external_engine_compatibility_claim",
+        "external_engine_equivalence_claim",
+        "external_engine_parity_claim",
         "unity_compatibility",
         "unreal_compatibility",
         "godot_compatibility"
@@ -251,9 +290,15 @@
         "external_engine_parity": { "const": false },
         "external_engine_code_used": { "const": false },
         "external_engine_sample_used": { "const": false },
+        "external_engine_shader_used": { "const": false },
         "external_engine_asset_used": { "const": false },
         "external_engine_trademark_used": { "const": false },
         "external_engine_ui_expression_used": { "const": false },
+        "external_engine_project_import_used": { "const": false },
+        "external_engine_api_used": { "const": false },
+        "external_engine_compatibility_claim": { "const": false },
+        "external_engine_equivalence_claim": { "const": false },
+        "external_engine_parity_claim": { "const": false },
         "unity_compatibility": { "const": false },
         "unreal_compatibility": { "const": false },
         "godot_compatibility": { "const": false }

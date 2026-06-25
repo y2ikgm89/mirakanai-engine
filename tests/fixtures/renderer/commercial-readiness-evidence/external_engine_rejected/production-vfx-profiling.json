@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+  "artifact_id": "production-vfx-profiling",
+  "validation_recipe": "renderer-production-vfx-profiling",
+  "fixture_only": true,
+  "ready": true
+}

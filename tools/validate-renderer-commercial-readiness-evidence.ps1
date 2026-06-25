@@ -1457,6 +1457,13 @@ $missingArtifactRows = 0
 $hashMismatchRows = 0
 $forbiddenMaterialRejectedRows = 0
 $externalEngineDetectedRows = 0
+$externalEngineZeroMaterialReviewReady = $false
+$externalEngineShaderUsed = $false
+$externalEngineProjectImportUsed = $false
+$externalEngineApiUsed = $false
+$externalEngineCompatibilityClaim = $false
+$externalEngineEquivalenceClaim = $false
+$externalEngineParityClaim = $false
 $sourceRowCount = 0
 $closeoutValues = @{}
 
@@ -1671,6 +1678,8 @@ if ($null -ne $evidenceFile) {
         $cleanRoomRows = Get-JsonPropertyValue -JsonObject $evidence -Name "clean_room_rows"
         $officialDocs = Get-JsonPropertyValue -JsonObject $cleanRoomRows -Name "official_docs_only"
         $legalReview = Get-JsonPropertyValue -JsonObject $cleanRoomRows -Name "legal_review"
+        $externalEngineZeroReview = Get-JsonPropertyValue -JsonObject $cleanRoomRows `
+            -Name "external_engine_zero_material_review"
         $thirdPartyNotices = Get-JsonPropertyValue -JsonObject $cleanRoomRows -Name "third_party_notices"
         $forbiddenMaterialRows = @(Get-JsonPropertyValue -JsonObject $cleanRoomRows -Name "forbidden_material_rows")
 
@@ -1707,6 +1716,43 @@ if ($null -ne $evidenceFile) {
             $legalReviewReady = (Test-RequiredFalseProperty -JsonObject $legalReview -Name $requiredFalse `
                     -Diagnostics $evidenceDiagnostics) -and $legalReviewReady
         }
+
+        $externalEngineZeroMaterialReviewReady =
+            Test-RequiredTrueProperty -JsonObject $externalEngineZeroReview -Name "ready" `
+            -Diagnostics $evidenceDiagnostics
+        foreach ($requiredFalse in @(
+                "external_engine_code_used",
+                "external_engine_sample_used",
+                "external_engine_shader_used",
+                "external_engine_asset_used",
+                "external_engine_trademark_used",
+                "external_engine_ui_expression_used",
+                "external_engine_project_import_used",
+                "external_engine_api_used",
+                "external_engine_compatibility_claim",
+                "external_engine_equivalence_claim",
+                "external_engine_parity_claim"
+            )) {
+            $externalEngineZeroMaterialReviewReady =
+                (Test-RequiredFalseProperty -JsonObject $externalEngineZeroReview -Name $requiredFalse `
+                    -Diagnostics $evidenceDiagnostics) -and $externalEngineZeroMaterialReviewReady
+        }
+        $externalEngineShaderUsed =
+            [bool](Get-JsonPropertyValue -JsonObject $externalEngineZeroReview -Name "external_engine_shader_used")
+        $externalEngineProjectImportUsed =
+            [bool](Get-JsonPropertyValue -JsonObject $externalEngineZeroReview `
+                -Name "external_engine_project_import_used")
+        $externalEngineApiUsed =
+            [bool](Get-JsonPropertyValue -JsonObject $externalEngineZeroReview -Name "external_engine_api_used")
+        $externalEngineCompatibilityClaim =
+            [bool](Get-JsonPropertyValue -JsonObject $externalEngineZeroReview `
+                -Name "external_engine_compatibility_claim")
+        $externalEngineEquivalenceClaim =
+            [bool](Get-JsonPropertyValue -JsonObject $externalEngineZeroReview `
+                -Name "external_engine_equivalence_claim")
+        $externalEngineParityClaim =
+            [bool](Get-JsonPropertyValue -JsonObject $externalEngineZeroReview `
+                -Name "external_engine_parity_claim")
 
         $thirdPartyNoticeReady = $true
         foreach ($requiredTrue in @("ready", "complete")) {
@@ -1750,9 +1796,15 @@ if ($null -ne $evidenceFile) {
                 "external_engine_parity",
                 "external_engine_code_used",
                 "external_engine_sample_used",
+                "external_engine_shader_used",
                 "external_engine_asset_used",
                 "external_engine_trademark_used",
                 "external_engine_ui_expression_used",
+                "external_engine_project_import_used",
+                "external_engine_api_used",
+                "external_engine_compatibility_claim",
+                "external_engine_equivalence_claim",
+                "external_engine_parity_claim",
                 "unity_compatibility",
                 "unreal_compatibility",
                 "godot_compatibility"
@@ -1761,7 +1813,9 @@ if ($null -ne $evidenceFile) {
                     -Diagnostics $evidenceDiagnostics) -and $nonClaimsReady
         }
 
-        $cleanRoomReady = $officialDocsReady -and $legalReviewReady -and $nonClaimsReady
+        $cleanRoomReady =
+            $officialDocsReady -and $legalReviewReady -and
+            $externalEngineZeroMaterialReviewReady -and $nonClaimsReady
         $closeoutValues = Invoke-RendererCommercialQualityCloseoutFromEvidence `
             -RowReady $rowReady `
             -CleanRoomReady $cleanRoomReady `
@@ -1822,6 +1876,13 @@ $lines.Add("renderer_commercial_readiness_evidence_missing_artifacts=$missingArt
 $lines.Add("renderer_commercial_readiness_evidence_hash_mismatches=$hashMismatchRows")
 $lines.Add("renderer_external_engine_forbidden_material_detected_rows=$externalEngineDetectedRows")
 $lines.Add("renderer_external_engine_forbidden_material_rejected_rows=$forbiddenMaterialRejectedRows")
+$lines.Add("renderer_external_engine_zero_material_review_ready=$(ConvertTo-CounterBit $externalEngineZeroMaterialReviewReady)")
+$lines.Add("renderer_external_engine_shader_used=$(ConvertTo-CounterBit $externalEngineShaderUsed)")
+$lines.Add("renderer_external_engine_project_import_used=$(ConvertTo-CounterBit $externalEngineProjectImportUsed)")
+$lines.Add("renderer_external_engine_api_used=$(ConvertTo-CounterBit $externalEngineApiUsed)")
+$lines.Add("renderer_external_engine_compatibility_claim=$(ConvertTo-CounterBit $externalEngineCompatibilityClaim)")
+$lines.Add("renderer_external_engine_equivalence_claim=$(ConvertTo-CounterBit $externalEngineEquivalenceClaim)")
+$lines.Add("renderer_external_engine_parity_claim=$(ConvertTo-CounterBit $externalEngineParityClaim)")
 $lines.Add("renderer_d3d12_command_allocator_fence_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["command_allocator_fence"]))")
 $lines.Add("renderer_d3d12_resource_barrier_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["resource_barrier"]))")
 $lines.Add("renderer_d3d12_timestamp_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["timestamp"]))")

@@ -20,7 +20,7 @@
       "host_validation_recipe_id": "renderer-d3d12-quality-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/d3d12-quality.json",
-      "artifact_hash_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifact_hash_sha256": "a7e27cfe054b86aac92f99b2b6a3827e288b1197f11ac631d7addcdf8df3223b",
       "validation_counter_id": "renderer_d3d12_renderer_quality_ready",
       "diagnostic_code": "ready"
     },
@@ -31,7 +31,7 @@
       "host_validation_recipe_id": "renderer-vulkan-strict-quality-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/vulkan-strict-quality.json",
-      "artifact_hash_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "artifact_hash_sha256": "2489dc60e2923bc952d382bf018e635719b9e358df7c2aabc1eb27d9bc93d755",
       "validation_counter_id": "renderer_vulkan_strict_renderer_quality_ready",
       "diagnostic_code": "ready"
     },
@@ -42,7 +42,7 @@
       "host_validation_recipe_id": "renderer-metal-apple-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/apple-metal-host.json",
-      "artifact_hash_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "artifact_hash_sha256": "a1907ba4aa3729fa3dff484ccd7aa47612d8521dc96d24b393b0b8ef86df733c",
       "validation_counter_id": "renderer_apple_metal_renderer_quality_ready",
       "diagnostic_code": "ready"
     }
@@ -55,7 +55,7 @@
       "host_validation_recipe_id": "desktop-3d-package",
       "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/visible-3d-package.json",
-      "artifact_hash_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "artifact_hash_sha256": "d881e09176831f5af09efcf47927f921c3c7e7a080de016178d2346f7409e727",
       "validation_counter_id": "renderer_visible_3d_package_ready",
       "diagnostic_code": "ready"
     },
@@ -66,7 +66,7 @@
       "host_validation_recipe_id": "desktop-runtime-ui-package",
       "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/runtime-ui-package.json",
-      "artifact_hash_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "artifact_hash_sha256": "b6c62660f8ac0c90d8edc6e0d1b2405f395e23455a4c02be5ab86a27ecb1f5b6",
       "validation_counter_id": "renderer_runtime_ui_package_ready",
       "diagnostic_code": "ready"
     },
@@ -77,7 +77,7 @@
       "host_validation_recipe_id": "environment-package",
       "retained_artifact_schema_version": "GameEngine.EnvironmentPackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/environment-package.json",
-      "artifact_hash_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "artifact_hash_sha256": "a54a31ba858b2a3f702e37b34751707679979d47011381e31e441403385fbf9b",
       "validation_counter_id": "renderer_environment_package_ready",
       "diagnostic_code": "ready"
     },
@@ -88,7 +88,7 @@
       "host_validation_recipe_id": "generated-game-package",
       "retained_artifact_schema_version": "GameEngine.GeneratedGamePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/generated-game-package.json",
-      "artifact_hash_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "artifact_hash_sha256": "958c5916cfe1af58ae59d97580a4a0272ec5e18addd085f54e459df7eb59a38f",
       "validation_counter_id": "renderer_generated_game_package_ready",
       "diagnostic_code": "ready"
     }
@@ -101,7 +101,7 @@
       "host_validation_recipe_id": "renderer-quality-matrix",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/renderer-quality-matrix.json",
-      "artifact_hash_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "artifact_hash_sha256": "b58592d329dee81210302b6d2c50abc6282265f8ee51ad43d02596d2de408963",
       "validation_counter_id": "renderer_quality_matrix_ready",
       "diagnostic_code": "ready"
     },
@@ -112,7 +112,7 @@
       "host_validation_recipe_id": "renderer-production-vfx-profiling",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/production-vfx-profiling.json",
-      "artifact_hash_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "artifact_hash_sha256": "2b184ab8341180fb330291546b78077f25d1a4164246ad0a555f8e1231173e38",
       "validation_counter_id": "renderer_production_vfx_profiling_ready",
       "diagnostic_code": "ready"
     }
@@ -125,7 +125,7 @@
       "host_validation_recipe_id": "renderer-metal-memory-profiling-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/metal-memory-residency.json",
-      "artifact_hash_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "artifact_hash_sha256": "80bf96ba04837548935c443c42d08a0b9d539266ce12b6db9f9e2a7901a86357",
       "validation_counter_id": "renderer_metal_memory_profiling_ready",
       "diagnostic_code": "ready"
     },
@@ -136,7 +136,7 @@
       "host_validation_recipe_id": "renderer-metal-memory-profiling-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/metal-profiling-capture.json",
-      "artifact_hash_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "artifact_hash_sha256": "c5ea830138ed557f87300366e985de7b5dbcd6ee1dae24f072f4d3b1435263ab",
       "validation_counter_id": "renderer_metal_memory_profiling_ready",
       "diagnostic_code": "ready"
     }
@@ -160,6 +160,20 @@
       "compatibility_claims": false,
       "equivalence_claims": false,
       "parity_claims": false
+    },
+    "external_engine_zero_material_review": {
+      "ready": true,
+      "external_engine_code_used": false,
+      "external_engine_sample_used": false,
+      "external_engine_shader_used": false,
+      "external_engine_asset_used": false,
+      "external_engine_trademark_used": false,
+      "external_engine_ui_expression_used": false,
+      "external_engine_project_import_used": false,
+      "external_engine_api_used": false,
+      "external_engine_compatibility_claim": false,
+      "external_engine_equivalence_claim": false,
+      "external_engine_parity_claim": false
     },
     "third_party_notices": {
       "ready": true,
@@ -189,9 +203,15 @@
     "external_engine_parity": false,
     "external_engine_code_used": false,
     "external_engine_sample_used": false,
+    "external_engine_shader_used": false,
     "external_engine_asset_used": false,
     "external_engine_trademark_used": false,
     "external_engine_ui_expression_used": false,
+    "external_engine_project_import_used": false,
+    "external_engine_api_used": false,
+    "external_engine_compatibility_claim": false,
+    "external_engine_equivalence_claim": false,
+    "external_engine_parity_claim": false,
     "unity_compatibility": false,
     "unreal_compatibility": false,
     "godot_compatibility": false
