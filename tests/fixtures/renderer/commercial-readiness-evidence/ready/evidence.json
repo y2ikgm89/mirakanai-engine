@@ -1,0 +1,191 @@
+{
+  "schema_version": "GameEngine.RendererCommercialReadinessEvidence.v1",
+  "claim_id": "renderer-commercial-readiness-evidence-promotion-v1",
+  "source_rows": {
+    "d3d12_documentation_source_id": "Microsoft-D3D12-ResourceBarrier-Fence-Timestamp-GpuValidation-2026-06-25",
+    "vulkan_documentation_source_id": "Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25",
+    "metal_framework_source_id": "Apple-Metal-Framework-Memory-Capture-2026-06-25",
+    "metal_shading_language_source_id": "Apple-Metal-Shading-Language-Specification-2026-06-25",
+    "unity_legal_source_id": "Unity-Legal-Terms-2026-06-25",
+    "unreal_legal_source_id": "Epic-Unreal-Engine-EULA-Trademark-2026-06-25",
+    "godot_legal_source_id": "Godot-Trademark-Licensing-2026-06-25",
+    "json_schema_source_id": "JSON-Schema-Draft-2020-12-2026-06-25",
+    "context7_review_source_id": "Context7-Renderer-Commercial-Readiness-Docs-2026-06-25"
+  },
+  "backend_rows": {
+    "d3d12": {
+      "evidence_id": "d3d12",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-d3d12-quality-evidence",
+      "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json",
+      "artifact_hash_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "validation_counter_id": "renderer_d3d12_renderer_quality_ready",
+      "diagnostic_code": "ready"
+    },
+    "vulkan_strict": {
+      "evidence_id": "vulkan_strict",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-vulkan-strict-quality-evidence",
+      "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json",
+      "artifact_hash_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "validation_counter_id": "renderer_vulkan_strict_renderer_quality_ready",
+      "diagnostic_code": "ready"
+    },
+    "apple_metal": {
+      "evidence_id": "apple_metal",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-metal-apple-host-evidence",
+      "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json",
+      "artifact_hash_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "validation_counter_id": "renderer_apple_metal_renderer_quality_ready",
+      "diagnostic_code": "ready"
+    }
+  },
+  "package_rows": {
+    "visible_3d": {
+      "evidence_id": "visible_3d",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "desktop-3d-package",
+      "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/visible-3d-package.json",
+      "artifact_hash_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "validation_counter_id": "renderer_visible_3d_package_ready",
+      "diagnostic_code": "ready"
+    },
+    "runtime_ui": {
+      "evidence_id": "runtime_ui",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "desktop-runtime-ui-package",
+      "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/runtime-ui-package.json",
+      "artifact_hash_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "validation_counter_id": "renderer_runtime_ui_package_ready",
+      "diagnostic_code": "ready"
+    },
+    "environment": {
+      "evidence_id": "environment",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "environment-package",
+      "retained_artifact_schema_version": "GameEngine.EnvironmentPackageEvidence.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/environment-package.json",
+      "artifact_hash_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "validation_counter_id": "renderer_environment_package_ready",
+      "diagnostic_code": "ready"
+    },
+    "generated_game": {
+      "evidence_id": "generated_game",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "generated-game-package",
+      "retained_artifact_schema_version": "GameEngine.GeneratedGamePackageEvidence.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/generated-game-package.json",
+      "artifact_hash_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "validation_counter_id": "renderer_generated_game_package_ready",
+      "diagnostic_code": "ready"
+    }
+  },
+  "quality_rows": {
+    "renderer_quality_matrix": {
+      "evidence_id": "renderer_quality_matrix",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-quality-matrix",
+      "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/renderer-quality-matrix.json",
+      "artifact_hash_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "validation_counter_id": "renderer_quality_matrix_ready",
+      "diagnostic_code": "ready"
+    },
+    "production_vfx_profiling": {
+      "evidence_id": "production_vfx_profiling",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-production-vfx-profiling",
+      "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/production-vfx-profiling.json",
+      "artifact_hash_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "validation_counter_id": "renderer_production_vfx_profiling_ready",
+      "diagnostic_code": "ready"
+    }
+  },
+  "metal_memory_profiling_rows": {
+    "memory_residency": {
+      "evidence_id": "memory_residency",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-metal-memory-profiling-host-evidence",
+      "retained_artifact_schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/metal-memory-residency.json",
+      "artifact_hash_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "validation_counter_id": "renderer_metal_memory_profiling_ready",
+      "diagnostic_code": "ready"
+    },
+    "profiling_capture": {
+      "evidence_id": "profiling_capture",
+      "selected": true,
+      "ready": true,
+      "host_validation_recipe_id": "renderer-metal-memory-profiling-host-evidence",
+      "retained_artifact_schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
+      "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/metal-profiling-capture.json",
+      "artifact_hash_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "validation_counter_id": "renderer_metal_memory_profiling_ready",
+      "diagnostic_code": "ready"
+    }
+  },
+  "clean_room_rows": {
+    "official_docs_only": {
+      "ready": true,
+      "public_documentation_only": true,
+      "context7_verified": true,
+      "official_fallback_documented": true,
+      "external_engine_source_review_complete": true
+    },
+    "legal_review": {
+      "ready": true,
+      "unity_terms_reviewed": true,
+      "unreal_eula_trademark_reviewed": true,
+      "godot_trademark_reviewed": true,
+      "unity_compatibility": false,
+      "unreal_compatibility": false,
+      "godot_compatibility": false,
+      "compatibility_claims": false,
+      "equivalence_claims": false,
+      "parity_claims": false
+    },
+    "third_party_notices": {
+      "ready": true,
+      "complete": true,
+      "notices_path": "THIRD_PARTY_NOTICES.md"
+    },
+    "forbidden_material_rows": []
+  },
+  "expected_counters": {
+    "renderer_backend_parity_ready": true,
+    "renderer_metal_broad_readiness": true,
+    "renderer_broad_quality_ready": true,
+    "renderer_commercial_readiness": true
+  },
+  "non_claims": {
+    "environment_ready": false,
+    "native_handles_exposed": false,
+    "cross_backend_inference": false,
+    "external_engine_parity": false,
+    "external_engine_code_used": false,
+    "external_engine_sample_used": false,
+    "external_engine_asset_used": false,
+    "external_engine_trademark_used": false,
+    "external_engine_ui_expression_used": false,
+    "unity_compatibility": false,
+    "unreal_compatibility": false,
+    "godot_compatibility": false
+  }
+}

@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/renderer-commercial-readiness-evidence.schema.json",
+  "title": "GameEngine Renderer Commercial Readiness Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_id",
+    "source_rows",
+    "backend_rows",
+    "package_rows",
+    "quality_rows",
+    "metal_memory_profiling_rows",
+    "clean_room_rows",
+    "expected_counters",
+    "non_claims"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.RendererCommercialReadinessEvidence.v1" },
+    "claim_id": { "const": "renderer-commercial-readiness-evidence-promotion-v1" },
+    "source_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "d3d12_documentation_source_id",
+        "vulkan_documentation_source_id",
+        "metal_framework_source_id",
+        "metal_shading_language_source_id",
+        "unity_legal_source_id",
+        "unreal_legal_source_id",
+        "godot_legal_source_id",
+        "json_schema_source_id",
+        "context7_review_source_id"
+      ],
+      "properties": {
+        "d3d12_documentation_source_id": { "const": "Microsoft-D3D12-ResourceBarrier-Fence-Timestamp-GpuValidation-2026-06-25" },
+        "vulkan_documentation_source_id": { "const": "Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25" },
+        "metal_framework_source_id": { "const": "Apple-Metal-Framework-Memory-Capture-2026-06-25" },
+        "metal_shading_language_source_id": { "const": "Apple-Metal-Shading-Language-Specification-2026-06-25" },
+        "unity_legal_source_id": { "const": "Unity-Legal-Terms-2026-06-25" },
+        "unreal_legal_source_id": { "const": "Epic-Unreal-Engine-EULA-Trademark-2026-06-25" },
+        "godot_legal_source_id": { "const": "Godot-Trademark-Licensing-2026-06-25" },
+        "json_schema_source_id": { "const": "JSON-Schema-Draft-2020-12-2026-06-25" },
+        "context7_review_source_id": { "const": "Context7-Renderer-Commercial-Readiness-Docs-2026-06-25" }
+      }
+    },
+    "backend_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "d3d12", "vulkan_strict", "apple_metal" ],
+      "properties": {
+        "d3d12": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "d3d12" } } }
+          ]
+        },
+        "vulkan_strict": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "vulkan_strict" } } }
+          ]
+        },
+        "apple_metal": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "apple_metal" } } }
+          ]
+        }
+      }
+    },
+    "package_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "visible_3d", "runtime_ui", "environment", "generated_game" ],
+      "properties": {
+        "visible_3d": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "visible_3d" } } }
+          ]
+        },
+        "runtime_ui": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "runtime_ui" } } }
+          ]
+        },
+        "environment": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "environment" } } }
+          ]
+        },
+        "generated_game": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "generated_game" } } }
+          ]
+        }
+      }
+    },
+    "quality_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "renderer_quality_matrix", "production_vfx_profiling" ],
+      "properties": {
+        "renderer_quality_matrix": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "renderer_quality_matrix" } } }
+          ]
+        },
+        "production_vfx_profiling": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "production_vfx_profiling" } } }
+          ]
+        }
+      }
+    },
+    "metal_memory_profiling_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "memory_residency", "profiling_capture" ],
+      "properties": {
+        "memory_residency": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "memory_residency" } } }
+          ]
+        },
+        "profiling_capture": {
+          "allOf": [
+            { "$ref": "#/$defs/evidence_row" },
+            { "properties": { "evidence_id": { "const": "profiling_capture" } } }
+          ]
+        }
+      }
+    },
+    "clean_room_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "official_docs_only",
+        "legal_review",
+        "third_party_notices",
+        "forbidden_material_rows"
+      ],
+      "properties": {
+        "official_docs_only": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ready",
+            "public_documentation_only",
+            "context7_verified",
+            "official_fallback_documented",
+            "external_engine_source_review_complete"
+          ],
+          "properties": {
+            "ready": { "const": true },
+            "public_documentation_only": { "const": true },
+            "context7_verified": { "const": true },
+            "official_fallback_documented": { "const": true },
+            "external_engine_source_review_complete": { "const": true }
+          }
+        },
+        "legal_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ready",
+            "unity_terms_reviewed",
+            "unreal_eula_trademark_reviewed",
+            "godot_trademark_reviewed",
+            "unity_compatibility",
+            "unreal_compatibility",
+            "godot_compatibility",
+            "compatibility_claims",
+            "equivalence_claims",
+            "parity_claims"
+          ],
+          "properties": {
+            "ready": { "const": true },
+            "unity_terms_reviewed": { "const": true },
+            "unreal_eula_trademark_reviewed": { "const": true },
+            "godot_trademark_reviewed": { "const": true },
+            "unity_compatibility": { "const": false },
+            "unreal_compatibility": { "const": false },
+            "godot_compatibility": { "const": false },
+            "compatibility_claims": { "const": false },
+            "equivalence_claims": { "const": false },
+            "parity_claims": { "const": false }
+          }
+        },
+        "third_party_notices": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [ "ready", "complete", "notices_path" ],
+          "properties": {
+            "ready": { "const": true },
+            "complete": { "const": true },
+            "notices_path": { "const": "THIRD_PARTY_NOTICES.md" }
+          }
+        },
+        "forbidden_material_rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/forbidden_material_row" }
+        }
+      }
+    },
+    "expected_counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "renderer_backend_parity_ready",
+        "renderer_metal_broad_readiness",
+        "renderer_broad_quality_ready",
+        "renderer_commercial_readiness"
+      ],
+      "properties": {
+        "renderer_backend_parity_ready": { "type": "boolean" },
+        "renderer_metal_broad_readiness": { "type": "boolean" },
+        "renderer_broad_quality_ready": { "type": "boolean" },
+        "renderer_commercial_readiness": { "type": "boolean" }
+      }
+    },
+    "non_claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment_ready",
+        "native_handles_exposed",
+        "cross_backend_inference",
+        "external_engine_parity",
+        "external_engine_code_used",
+        "external_engine_sample_used",
+        "external_engine_asset_used",
+        "external_engine_trademark_used",
+        "external_engine_ui_expression_used",
+        "unity_compatibility",
+        "unreal_compatibility",
+        "godot_compatibility"
+      ],
+      "properties": {
+        "environment_ready": { "const": false },
+        "native_handles_exposed": { "const": false },
+        "cross_backend_inference": { "const": false },
+        "external_engine_parity": { "const": false },
+        "external_engine_code_used": { "const": false },
+        "external_engine_sample_used": { "const": false },
+        "external_engine_asset_used": { "const": false },
+        "external_engine_trademark_used": { "const": false },
+        "external_engine_ui_expression_used": { "const": false },
+        "unity_compatibility": { "const": false },
+        "unreal_compatibility": { "const": false },
+        "godot_compatibility": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "retained_artifact_path": {
+      "type": "string",
+      "pattern": "^(artifacts/renderer/commercial-readiness-evidence|tests/fixtures/renderer/commercial-readiness-evidence)/(?!.*\\.\\.)[a-z0-9_./-]+$"
+    },
+    "evidence_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "selected",
+        "ready",
+        "host_validation_recipe_id",
+        "retained_artifact_schema_version",
+        "artifact_path",
+        "artifact_hash_sha256",
+        "validation_counter_id",
+        "diagnostic_code"
+      ],
+      "properties": {
+        "evidence_id": {
+          "enum": [
+            "d3d12",
+            "vulkan_strict",
+            "apple_metal",
+            "visible_3d",
+            "runtime_ui",
+            "environment",
+            "generated_game",
+            "renderer_quality_matrix",
+            "production_vfx_profiling",
+            "memory_residency",
+            "profiling_capture"
+          ]
+        },
+        "selected": { "const": true },
+        "ready": { "type": "boolean" },
+        "host_validation_recipe_id": {
+          "enum": [
+            "renderer-d3d12-quality-evidence",
+            "renderer-vulkan-strict-quality-evidence",
+            "renderer-metal-apple-host-evidence",
+            "renderer-quality-matrix",
+            "renderer-production-vfx-profiling",
+            "renderer-metal-memory-profiling-host-evidence",
+            "desktop-3d-package",
+            "desktop-runtime-ui-package",
+            "environment-package",
+            "generated-game-package"
+          ]
+        },
+        "retained_artifact_schema_version": {
+          "enum": [
+            "GameEngine.RendererCommercialReadinessEvidence.v1",
+            "GameEngine.RendererCommercialQualityCloseout.v1",
+            "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
+            "GameEngine.DesktopRuntimePackageEvidence.v1",
+            "GameEngine.EnvironmentPackageEvidence.v1",
+            "GameEngine.GeneratedGamePackageEvidence.v1"
+          ]
+        },
+        "artifact_path": { "$ref": "#/$defs/retained_artifact_path" },
+        "artifact_hash_sha256": { "$ref": "#/$defs/sha256" },
+        "validation_counter_id": {
+          "enum": [
+            "renderer_backend_parity_ready",
+            "renderer_d3d12_renderer_quality_ready",
+            "renderer_vulkan_strict_renderer_quality_ready",
+            "renderer_apple_metal_renderer_quality_ready",
+            "renderer_quality_matrix_ready",
+            "renderer_production_vfx_profiling_ready",
+            "renderer_metal_memory_profiling_ready",
+            "renderer_visible_3d_package_ready",
+            "renderer_runtime_ui_package_ready",
+            "renderer_environment_package_ready",
+            "renderer_generated_game_package_ready"
+          ]
+        },
+        "diagnostic_code": {
+          "enum": [
+            "ready",
+            "missing_d3d12_quality",
+            "missing_vulkan_strict_quality",
+            "missing_metal_host_evidence",
+            "missing_metal_memory_profiling",
+            "missing_package_evidence",
+            "missing_quality_matrix",
+            "missing_vfx_profiling"
+          ]
+        }
+      }
+    },
+    "forbidden_material_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "material_kind",
+        "detected",
+        "rejected",
+        "used_in_engine",
+        "diagnostic_code"
+      ],
+      "properties": {
+        "material_kind": {
+          "enum": [
+            "external_engine_code",
+            "external_engine_sample",
+            "external_engine_shader",
+            "external_engine_asset",
+            "external_engine_trademark",
+            "external_engine_ui_expression",
+            "external_engine_api",
+            "compatibility_claim",
+            "equivalence_claim",
+            "parity_claim"
+          ]
+        },
+        "detected": { "type": "boolean" },
+        "rejected": { "const": true },
+        "used_in_engine": { "const": false },
+        "diagnostic_code": {
+          "enum": [
+            "no_forbidden_material",
+            "external_engine_material_rejected"
+          ]
+        }
+      }
+    }
+  }
+}

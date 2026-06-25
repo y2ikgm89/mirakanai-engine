@@ -37,7 +37,7 @@ Implementation must treat the following sources as the minimum authoritative bas
 | D3D12 command/resource correctness | Microsoft Learn Direct3D 12 Programming Guide, resource barriers, timing, `ID3D12Device3::EnqueueMakeResident`, `ID3D12Debug1` / debug layers | Use fences around allocator reuse, explicit resource state transitions, timestamp query/queue frequency conversion, residency evidence, and debug/validation output. |
 | Vulkan correctness | Khronos Vulkan spec, Khronos `Vulkan-ValidationLayers`, LunarG synchronization validation documentation | Use `VK_KHR_synchronization2`/Vulkan 1.3 synchronization2 semantics, validation-layer clean logs, strict memory binding/allocation evidence, timestamp/query evidence, and no release-path full-pipeline-barrier shortcuts. |
 | Metal correctness | Apple Developer `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, Metal resource fundamentals; Context7 Metal Shading Language documentation | Use Apple-host-only heap/residency/capture artifacts, `metal`/`metallib` toolchain evidence, MSL address-space/function-constant constraints, and backend-private Objective-C++ boundaries. |
-| Legal and independence | Unity trademark/brand/legal pages, Unreal Engine EULA and trademark approval docs, Godot license/compliance/trademark policy | Use public documentation only as category research. Do not copy external engine code, samples, shaders, UI expression, assets, project formats, trade dress, logos, marketplace content, API names, or compatibility/equivalence claims. |
+| Legal and independence | Unity trademark/brand/legal pages, Unreal Engine EULA and trademark approval docs, Godot license/compliance/trademark policy | Use public documentation only as category research. Do not copy external engine source, sample code, shader code, UI expression, assets, trademarks, project formats, trade dress, logos, marketplace content, API names, compatibility claims, equivalence claims, or parity claims. |
 
 Context7 checks performed for this plan:
 
@@ -49,7 +49,7 @@ Context7 checks performed for this plan:
 
 - Unity, Unreal Engine, and Godot may be named only in internal source-review/legal rows and documentation that explains non-use or nominative comparison constraints.
 - No public MIRAIKANAI API, package schema, command id, UI row id, shader function, sample asset, or marketing claim may use Unity, Unreal, UE, Godot, Nanite, Lumen, UXML, USS, Blueprint, SceneTree, or other external-engine product identifiers as a compatibility target.
-- Do not copy from external engine source, docs samples, starter templates, marketplace content, example shaders, UI layouts, or assets. Godot's MIT license does not make copying acceptable for this slice unless a separate explicit dependency/license decision updates `docs/legal-and-licensing.md`, `docs/dependencies.md`, `THIRD_PARTY_NOTICES.md`, and the source review rows.
+- Do not copy from external engine source, sample code, starter templates, marketplace content, shader code, UI expression/layouts, assets, trademarks, or trade dress. Godot's MIT license does not make copying acceptable for this slice unless a separate explicit dependency/license decision updates `docs/legal-and-licensing.md`, `docs/dependencies.md`, `THIRD_PARTY_NOTICES.md`, and the source review rows.
 - Do not claim "compatible with", "equivalent to", "drop-in", "parity with", or "better than" Unity, Unreal Engine, or Godot. The only allowed claim is a first-party readiness claim backed by MIRAIKANAI evidence rows.
 - Any external material row other than public-doc category research must make `renderer_clean_room_legal_ready=0` until explicit legal and technical approval is recorded.
 - This plan is an engineering compliance plan, not legal advice. Public release wording and trademark/commercial claims require human legal review before publication.
@@ -74,7 +74,7 @@ Context7 checks performed for this plan:
 - Missing, stale, cross-backend-inferred, unreviewed, host-gated, or legally unsafe evidence blocks the promotion with exact diagnostics.
 - Windows/D3D12, strict Vulkan, and Apple-host Metal evidence remain independent; no backend can promote another backend.
 - `engine/agent/manifest.fragments/`, composed manifest, docs, static checks, validation recipes, CI lane selection, and plan registry all state the same readiness truth.
-- Legal/dependency records remain complete for any third-party material; if no external material is used, source-review rows prove zero external engine code/sample/asset/UI/trademark usage.
+- Legal/dependency records remain complete for any third-party material; if no external material is used, source-review rows prove zero external engine source, sample code, shader code, UI expression, assets, trademarks, compatibility claims, equivalence claims, and parity claims.
 
 ## Task 0: Select The Plan Without Changing Readiness
 
@@ -122,8 +122,8 @@ Evidence captured 2026-06-25:
 - Add: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
 - Add: `tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json`
 - Add: `tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json`
-- Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
-- Modify: `tools/check-json-contracts-040-agent-surfaces.ps1`
+- Add: `tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1`
+- Add: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 
 Contract:
 
@@ -131,23 +131,32 @@ Contract:
 - `claim_id` is exactly `renderer-commercial-readiness-evidence-promotion-v1`.
 - `source_rows` contains dated official source ids for D3D12, Vulkan, Metal, MSL, Unity legal, Unreal legal, and Godot legal review.
 - `backend_rows` contains exactly selected rows for `d3d12`, `vulkan_strict`, and `apple_metal`.
-- `package_rows` contains exactly selected rows for `visible_3d`, `runtime_ui`, `environment`, and `generated_game`.
+- `package_rows` contains exactly selected 3D/UI/environment/generated-game package evidence rows for `visible_3d`, `runtime_ui`, `environment`, and `generated_game`.
 - `quality_rows` contains renderer quality matrix and production VFX/profiling rows.
 - `metal_memory_profiling_rows` references retained `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` artifacts.
-- `clean_room_rows` proves public-doc-only research and zero external engine code/sample/asset/UI/trademark/API use.
+- `clean_room_rows` proves public-doc-only research and zero external engine source, sample code, shader code, UI expression, assets, trademarks, compatibility claims, equivalence claims, parity claims, and API use.
 - `non_claims` contains `environment_ready=false`, `native_handles_exposed=false`, `cross_backend_inference=false`, `external_engine_parity=false`, `unity_compatibility=false`, `unreal_compatibility=false`, and `godot_compatibility=false`.
+- Manifest field `rendererCommercialReadinessEvidenceBundleContract` records `schemas/renderer-commercial-readiness-evidence.schema.json`, the ready/missing Metal/external-engine rejected fixtures, and `tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1` / `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`.
 
 Steps:
 
-- [ ] Follow the existing `schemas/renderer-metal-memory-profiling-host-evidence.schema.json` style: `additionalProperties=false`, const source ids, strict booleans, minimum positive row counts, SHA-256 patterns for retained artifacts.
-- [ ] Reject absolute paths, parent traversal, unapproved artifact locations, stale schema versions, unknown backend ids, unknown package ids, and unknown claim ids.
-- [ ] Keep fixtures small and deterministic; fixture files are proof of validator behavior, not real host proof.
+- [x] Follow the existing `schemas/renderer-metal-memory-profiling-host-evidence.schema.json` style: `additionalProperties=false`, const source ids, strict booleans, minimum positive row counts, SHA-256 patterns for retained artifacts.
+- [x] Reject absolute paths, parent traversal, unapproved artifact locations, stale schema versions, unknown backend ids, unknown package ids, and unknown claim ids.
+- [x] Keep fixtures small and deterministic; fixture files are proof of validator behavior, not real host proof.
 
 Validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
+
+Evidence captured 2026-06-25:
+
+- `tools/check-json-contracts.ps1`: `json-contract-check: ok`.
+- `tools/check-ai-integration.ps1`: `ai-integration-check: ok`.
+- `tools/check-format.ps1`: `format-check: ok`.
+- `tools/check-agents.ps1`: `agent-config-check: ok`.
+- `tools/compose-agent-manifest.ps1 -Write`: wrote `engine/agent/manifest.json` after adding `rendererCommercialReadinessEvidenceBundleContract`.
 
 ## Task 2: Add Value-Only Promotion API
 
