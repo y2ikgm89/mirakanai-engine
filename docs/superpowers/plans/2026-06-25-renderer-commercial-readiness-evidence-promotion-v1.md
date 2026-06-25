@@ -19,9 +19,9 @@
 
 Current repository audit on 2026-06-25 shows:
 
-- `main` is aligned with `origin/main` at merge commit `95d49539`.
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
-- `recommendedNextPlan.id = next-production-gap-selection`.
+- `main` is aligned with `origin/main` at merge commit `666d1a63` after PR #822.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this plan.
+- `recommendedNextPlan.id = renderer-commercial-readiness-evidence-promotion-v1`.
 - `unsupportedProductionGaps = []`.
 - `Renderer Commercial Quality Closeout v1` is completed as a fail-closed aggregate. Default `tools/validate-renderer-commercial-quality-closeout.ps1` emits `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`, `renderer_broad_quality_ready=0`, and `renderer_commercial_readiness=0`.
 - Direct `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady` can emit those four counters as `1` only when all current switches are supplied. This plan replaces that operator-supplied assertion path with retained artifact ingestion and row-level validation.
@@ -44,6 +44,31 @@ Context7 checks performed for this plan:
 - Direct3D 12 docs through `/websites/learn_microsoft_en-us_windows_win32_direct3d12`.
 - Vulkan docs through `/khronosgroup/vulkan-docs`.
 - Metal Shading Language docs through `/dogukanveziroglu/metal-shading-language-specification`; Apple API docs remain official-web-source gated.
+
+Official web checks performed for this plan on 2026-06-25:
+
+- Microsoft Learn Direct3D 12 resource barriers: https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12
+- Microsoft Learn Direct3D 12 timing/timestamp frequency: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
+- Microsoft Learn `ID3D12CommandAllocator::Reset`: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12commandallocator-reset
+- Microsoft Learn `ID3D12Device3::EnqueueMakeResident`: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device3-enqueuemakeresident
+- Microsoft Learn Direct3D 12 GPU-based validation: https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-d3d12-debug-layer-gpu-based-validation
+- Khronos Vulkan synchronization chapter: https://docs.vulkan.org/spec/latest/chapters/synchronization.html
+- Khronos `vkCmdPipelineBarrier2` reference: https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdPipelineBarrier2.html
+- Khronos `VK_KHR_synchronization2` reference: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_synchronization2.html
+- Khronos Vulkan queries chapter: https://docs.vulkan.org/spec/latest/chapters/queries.html
+- Khronos Vulkan SPIR-V environment: https://docs.vulkan.org/spec/latest/appendices/spirvenv.html
+- Khronos Vulkan Validation Layers: https://github.com/KhronosGroup/Vulkan-ValidationLayers
+- Apple `MTLHeap`: https://developer.apple.com/documentation/metal/mtlheap
+- Apple `MTLResidencySet`: https://developer.apple.com/documentation/metal/mtlresidencyset
+- Apple `MTLCaptureManager`: https://developer.apple.com/documentation/metal/mtlcapturemanager
+- Apple Metal workload capture: https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode
+- Apple Metal shader validation: https://developer.apple.com/documentation/xcode/validating-your-apps-metal-shader-usage
+- Unity trademarks: https://unity.com/legal/trademarks
+- Unity terms of service trademark terms: https://unity.com/legal/terms-of-service
+- Unreal Engine EULA: https://www.unrealengine.com/eula/unreal
+- Epic Unreal Engine trademark approval: https://dev.epicgames.com/docs/dev-portal/unreal-engine/ue-trademark-license
+- Godot license: https://godotengine.org/license/
+- Godot license compliance docs: https://docs.godotengine.org/en/stable/about/complying_with_licenses.html
 
 ## Legal And Clean-Room Rules
 
@@ -525,6 +550,209 @@ Current status:
 - `tools/collect-renderer-commercial-readiness-evidence.ps1` now assembles already-collected retained artifacts into `GameEngine.RendererCommercialReadinessEvidence.v1` under `artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root>`, computes SHA-256 rows, copies nested Metal capture artifacts for full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` input, requires explicit clean-room/legal/third-party notice switches, rejects fixture artifacts by default, and emits no final renderer readiness counters by itself. `tools/check-renderer-commercial-readiness-evidence-collector.ps1` proves the collector contract and copied-fixture rejection path.
 - `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
 - The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
+
+Remaining producer sequence:
+
+### Task 10A: D3D12 Retained Commercial Row Producer
+
+**Files:**
+
+- Add: `tools/collect-renderer-d3d12-commercial-quality-artifact.ps1`
+- Add: `tools/check-renderer-d3d12-commercial-quality-artifact.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+
+Steps:
+
+- [ ] Add a failing static check that requires the producer to reject fixtures, absolute paths, parent traversal, missing hashes, native handle exposure, cross-backend inference, and manual readiness switches.
+- [ ] Implement `collect-renderer-d3d12-commercial-quality-artifact.ps1` so it consumes only first-party D3D12 evidence from focused tests/package smoke output and emits `d3d12-quality.json` with `fixture_only=false` only when every row is backed by retained host output.
+- [ ] Require rows for `command_allocator_list_fence`, `command_allocator_reuse_fenced`, `D3D12_RESOURCE_BARRIER`, `D3D12_QUERY_TYPE_TIMESTAMP`, `resolved_query_data`, `queue_frequency_hz`, `debug_layer_or_gpu_based_validation_clean`, `ID3D12Device3::EnqueueMakeResident`, deterministic package readback hash, and `native_handles_exposed=false`.
+- [ ] Keep the producer value-shaping only: it may read retained logs/counter files and compute hashes, but it must not run arbitrary packages, capture tools, network, editor shell, or GPU work by itself.
+- [ ] Validate the produced artifact through `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>` only after the collector has assembled all other rows; Task 10A alone must leave `renderer_commercial_readiness=0`.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-d3d12-commercial-quality-artifact.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-collector.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+### Task 10B: Strict Vulkan Retained Commercial Row Producer
+
+**Files:**
+
+- Add: `tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1`
+- Add: `tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+
+Steps:
+
+- [ ] Add a failing static check that proves strict Vulkan cannot reuse D3D12, Linux-only environment, Android, or Metal rows as renderer commercial proof.
+- [ ] Implement the producer so it consumes retained strict Vulkan package/test evidence only when `VK_LAYER_KHRONOS_validation`, synchronization validation, DXC SPIR-V CodeGen, `spirv-val`, Vulkan runtime, selected package readback, and clean validation logs are present in the input.
+- [ ] Require rows for `vkCmdPipelineBarrier2`, `VkDependencyInfo`, `VK_KHR_synchronization2` or Vulkan 1.3 `synchronization2`, memory binding/allocation VUID coverage, timestamp query pool evidence, SPIR-V validation, deterministic package readback hash, `debugging_only_full_pipeline_barrier=false`, and `native_handles_exposed=false`.
+- [ ] Keep full-pipeline-barrier shortcuts as diagnostics only; they cannot count as release readiness evidence.
+- [ ] Keep Task 10B non-promoting until D3D12, Apple Metal, quality, package, and legal rows are also present.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-collector.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+### Task 10C: Apple Metal Retained Commercial Row Producer
+
+**Files:**
+
+- Add: `tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1`
+- Add: `tools/check-renderer-apple-metal-commercial-quality-artifact.ps1`
+- Modify: `tools/validate-renderer-metal-apple.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+
+Steps:
+
+- [ ] Add a failing static check that proves Windows/Linux validation remains host-gated and cannot require Apple tools.
+- [ ] Implement the producer as an Apple-host bridge that shapes existing `renderer-metal-apple-host-evidence`, `renderer-metal-environment-aggregate-apple-host-evidence`, visible package, and full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` rows into `apple-metal-host.json`.
+- [ ] Require rows for full Xcode/`xcrun`, `metal`, `metallib`, MSL address-space/function-constant/resource-binding/stage restrictions, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, capture artifact hash, visible package readback, `cross_backend_inference=false`, and `native_handles_exposed=false`.
+- [ ] Treat missing `MTLResidencySet` or capture output as host-gated, not ready.
+- [ ] Keep Objective-C++ and `MTL*` objects backend-private; the artifact may record ids, counters, and hashes only.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-apple-metal-commercial-quality-artifact.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+### Task 10D: Package, Quality Matrix, And VFX/Profiling Artifact Producers
+
+**Files:**
+
+- Add: `tools/collect-renderer-package-commercial-quality-artifacts.ps1`
+- Add: `tools/check-renderer-package-commercial-quality-artifacts.ps1`
+- Add: `tools/collect-renderer-quality-vfx-commercial-artifacts.ps1`
+- Add: `tools/check-renderer-quality-vfx-commercial-artifacts.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+
+Steps:
+
+- [ ] Add failing checks that require package artifacts to come from package-visible counters rather than fixture JSON.
+- [ ] Shape selected `desktop-3d-package`, `desktop-runtime-ui-package`, `environment-package`, and `generated-game-package` outputs into `visible-3d-package.json`, `runtime-ui-package.json`, `environment-package.json`, and `generated-game-package.json`.
+- [ ] Shape selected `renderer-quality-matrix` and `renderer-production-vfx-profiling` outputs into `renderer-quality-matrix.json` and `production-vfx-profiling.json`.
+- [ ] Require `renderer_quality_matrix_status=host_evidence_required`, D3D12 and strict Vulkan ready rows, Metal host evidence rows supplied by Task 10C, no general renderer quality claim, zero GPU command/native capture/crash-upload side effects from value-only matrix planning, deterministic replay hash, and clean diagnostics.
+- [ ] Require `rendering_vfx_profiling_reviewed=1`, D3D12 and strict Vulkan host evidence ready, Metal host evidence supplied by Task 10C, debug policy rows, memory policy rows, package counter rows, deterministic replay hash, and zero native capture/crash upload side effects unless a retained official profiler artifact row is explicitly selected.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-package-commercial-quality-artifacts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-quality-vfx-commercial-artifacts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-collector.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+### Task 10E: Legal/Source Review Artifact Producer
+
+**Files:**
+
+- Add: `tools/collect-renderer-clean-room-legal-artifact.ps1`
+- Add: `tools/check-renderer-clean-room-legal-artifact.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `docs/legal-and-licensing.md` only if a new dependency, source, or asset is introduced.
+- Modify: `docs/dependencies.md` only if a dependency changes.
+- Modify: `THIRD_PARTY_NOTICES.md` only if notices change.
+- Modify: `vcpkg.json` only if an approved dependency is added.
+
+Steps:
+
+- [ ] Add a failing check that any Unity, Unreal Engine, or Godot source/sample/shader/UI/layout/asset/trademark/project/API/compatibility/equivalence/parity row keeps `renderer_clean_room_legal_ready=0`.
+- [ ] Implement a first-party clean-room artifact that records official-doc category research only, no external-engine material, no external-engine API adoption, no public trademark usage, no compatibility/equivalence/parity claim, and complete third-party notices for existing dependencies.
+- [ ] Require human legal-review placeholders to remain non-promoting unless explicit `legal_review_id` and `technical_review_id` are supplied for any future external material row.
+- [ ] Do not add dependencies or copy external material for this slice. If a future slice does, update `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, and `THIRD_PARTY_NOTICES.md` in the same PR and rerun dependency policy checks.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-clean-room-legal-artifact.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+If dependency or notice files change, also run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+```
+
+### Task 10F: Final Non-Fixture Retained Artifact Promotion
+
+**Files:**
+
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+
+Steps:
+
+- [ ] Assemble all Task 10A-10E artifacts with `tools/collect-renderer-commercial-readiness-evidence.ps1 -Mode Assemble`.
+- [ ] Run `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>` and require every artifact to have `fixture_only=false`.
+- [ ] Run `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>`.
+- [ ] Accept `renderer_backend_parity_ready=1`, `renderer_metal_broad_readiness=1`, `renderer_broad_quality_ready=1`, and `renderer_commercial_readiness=1` only when all retained non-fixture row hashes, source ids, recipe ids, package counters, legal rows, and non-claims validate.
+- [ ] Record exact local/hosted validation evidence and PR head SHAs in this plan and the registry.
+- [ ] Return `currentActivePlan` to the production-completion master plan or select the next active dated plan after closeout.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
 
 Final local command sequence:
 
