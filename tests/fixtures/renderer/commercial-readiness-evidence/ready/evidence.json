@@ -20,7 +20,7 @@
       "host_validation_recipe_id": "renderer-d3d12-quality-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json",
-      "artifact_hash_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifact_hash_sha256": "a679d395e500f553a7156b496ca370ef8203836c2e8592e01b2ab592f3f9b02f",
       "validation_counter_id": "renderer_d3d12_renderer_quality_ready",
       "diagnostic_code": "ready"
     },
@@ -31,7 +31,7 @@
       "host_validation_recipe_id": "renderer-vulkan-strict-quality-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json",
-      "artifact_hash_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "artifact_hash_sha256": "c78b466cef426bb9ed60b55d8dc9286ce92a41ee28551220a9abe238f4805b6a",
       "validation_counter_id": "renderer_vulkan_strict_renderer_quality_ready",
       "diagnostic_code": "ready"
     },
@@ -42,7 +42,7 @@
       "host_validation_recipe_id": "renderer-metal-apple-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json",
-      "artifact_hash_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "artifact_hash_sha256": "6819bf623d8ec5e180a6e558ddc8aa067842069dc2563cb71b461f02e9af9ae3",
       "validation_counter_id": "renderer_apple_metal_renderer_quality_ready",
       "diagnostic_code": "ready"
     }
@@ -55,7 +55,7 @@
       "host_validation_recipe_id": "desktop-3d-package",
       "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/visible-3d-package.json",
-      "artifact_hash_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "artifact_hash_sha256": "6b61fb229af2c71f4bd60f63927bd3a890efbe3889b03f54d809cafba3aed6b9",
       "validation_counter_id": "renderer_visible_3d_package_ready",
       "diagnostic_code": "ready"
     },
@@ -66,7 +66,7 @@
       "host_validation_recipe_id": "desktop-runtime-ui-package",
       "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/runtime-ui-package.json",
-      "artifact_hash_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "artifact_hash_sha256": "b178b089afe7fcfb703ed71975103736cb9eadee96b5e13dc980dcf90f6faa32",
       "validation_counter_id": "renderer_runtime_ui_package_ready",
       "diagnostic_code": "ready"
     },
@@ -77,7 +77,7 @@
       "host_validation_recipe_id": "environment-package",
       "retained_artifact_schema_version": "GameEngine.EnvironmentPackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/environment-package.json",
-      "artifact_hash_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "artifact_hash_sha256": "9e99d6b8192127e8a820a959f1d6bd4a88de0bdf17f8f474c5a197ea608e092c",
       "validation_counter_id": "renderer_environment_package_ready",
       "diagnostic_code": "ready"
     },
@@ -88,7 +88,7 @@
       "host_validation_recipe_id": "generated-game-package",
       "retained_artifact_schema_version": "GameEngine.GeneratedGamePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/generated-game-package.json",
-      "artifact_hash_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "artifact_hash_sha256": "a5e8a5f35ee0c8e8404d345b4bacd4b483b77e62c18421828c6ab2be3c23f7fe",
       "validation_counter_id": "renderer_generated_game_package_ready",
       "diagnostic_code": "ready"
     }
@@ -101,7 +101,7 @@
       "host_validation_recipe_id": "renderer-quality-matrix",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/renderer-quality-matrix.json",
-      "artifact_hash_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "artifact_hash_sha256": "b58592d329dee81210302b6d2c50abc6282265f8ee51ad43d02596d2de408963",
       "validation_counter_id": "renderer_quality_matrix_ready",
       "diagnostic_code": "ready"
     },
@@ -112,7 +112,7 @@
       "host_validation_recipe_id": "renderer-production-vfx-profiling",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/production-vfx-profiling.json",
-      "artifact_hash_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "artifact_hash_sha256": "2b184ab8341180fb330291546b78077f25d1a4164246ad0a555f8e1231173e38",
       "validation_counter_id": "renderer_production_vfx_profiling_ready",
       "diagnostic_code": "ready"
     }
@@ -125,7 +125,7 @@
       "host_validation_recipe_id": "renderer-metal-memory-profiling-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/metal-memory-residency.json",
-      "artifact_hash_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "artifact_hash_sha256": "80bf96ba04837548935c443c42d08a0b9d539266ce12b6db9f9e2a7901a86357",
       "validation_counter_id": "renderer_metal_memory_profiling_ready",
       "diagnostic_code": "ready"
     },
@@ -136,7 +136,7 @@
       "host_validation_recipe_id": "renderer-metal-memory-profiling-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/metal-profiling-capture.json",
-      "artifact_hash_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "artifact_hash_sha256": "c5ea830138ed557f87300366e985de7b5dbcd6ee1dae24f072f4d3b1435263ab",
       "validation_counter_id": "renderer_metal_memory_profiling_ready",
       "diagnostic_code": "ready"
     }

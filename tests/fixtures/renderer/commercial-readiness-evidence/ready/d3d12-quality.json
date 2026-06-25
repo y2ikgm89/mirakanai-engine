@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+  "artifact_id": "d3d12-quality",
+  "validation_recipe": "renderer-d3d12-quality-evidence",
+  "fixture_only": true,
+  "ready": true
+}

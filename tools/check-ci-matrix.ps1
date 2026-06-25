@@ -645,6 +645,29 @@ Assert-ValidationTierSelection `
     -ExpectedClassificationReasons "renderer-commercial-quality-closeout"
 
 Assert-ValidationTierSelection `
+    -Label "renderer commercial readiness evidence validator PR" `
+    -ChangedPath @("tools/validate-renderer-commercial-readiness-evidence.ps1") `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $true `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $true `
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence" `
+    -ExpectedClassificationReasons "renderer-commercial-readiness-evidence"
+
+# Mirrors Test-RendererCommercialReadinessEvidencePath in tools/classify-pr-validation-tier.ps1.
+# The matcher also covers tests/fixtures/renderer/commercial-readiness-evidence fixture updates.
+
+Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
     -ExpectedWindowsMsvc $true `

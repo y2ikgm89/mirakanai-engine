@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
+  "artifact_id": "visible-3d-package",
+  "validation_recipe": "desktop-3d-package",
+  "fixture_only": true,
+  "ready": true
+}

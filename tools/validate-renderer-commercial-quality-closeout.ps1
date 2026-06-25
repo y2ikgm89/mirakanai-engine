@@ -4,6 +4,7 @@
 [CmdletBinding()]
 param(
     [switch]$RequireReady,
+    [string]$ReadinessEvidenceArtifactRootRelative = "",
     [switch]$BackendParityReady,
     [switch]$D3d12Ready,
     [switch]$VulkanStrictReady,
@@ -70,6 +71,99 @@ function Join-RendererCloseoutBlockerValue {
     }
 
     return ($usableValue -join "+")
+}
+
+function ConvertFrom-RendererCloseoutKeyValueLines {
+    param([string[]]$Lines = @())
+
+    $values = @{}
+    foreach ($line in @($Lines)) {
+        $text = [string]$line
+        $separator = $text.IndexOf("=")
+        if ($separator -le 0) {
+            continue
+        }
+        $values[$text.Substring(0, $separator)] = $text.Substring($separator + 1)
+    }
+    return $values
+}
+
+function Test-RendererCloseoutEvidenceCounter {
+    param(
+        [Parameter(Mandatory = $true)]$Values,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    return ([string]$Values[$Name]) -eq "1"
+}
+
+$readinessEvidenceValues = @{}
+$readinessEvidenceStatus = "not_selected"
+$readinessEvidenceReady = $false
+$readinessEvidenceBlocker = ""
+
+if (-not [string]::IsNullOrWhiteSpace($ReadinessEvidenceArtifactRootRelative)) {
+    $readinessEvidenceScript = Join-Path $PSScriptRoot "validate-renderer-commercial-readiness-evidence.ps1"
+    $readinessEvidenceArguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        $readinessEvidenceScript,
+        "-ArtifactRootRelative",
+        $ReadinessEvidenceArtifactRootRelative
+    )
+    if ($RequireReady.IsPresent) {
+        $readinessEvidenceArguments += "-RequireReady"
+    }
+
+    $readinessEvidenceOutput = @(& pwsh @readinessEvidenceArguments 2>&1)
+    $readinessEvidenceValues = ConvertFrom-RendererCloseoutKeyValueLines -Lines $readinessEvidenceOutput
+    $readinessEvidenceStatus = [string]$readinessEvidenceValues["renderer_commercial_readiness_evidence_status"]
+    $readinessEvidenceReady = Test-RendererCloseoutEvidenceCounter `
+        -Values $readinessEvidenceValues `
+        -Name "renderer_commercial_readiness_evidence_ready"
+
+    if ($LASTEXITCODE -ne 0 -or -not $readinessEvidenceReady) {
+        $readinessEvidenceBlocker = "readiness_evidence_required"
+    } else {
+        $BackendParityReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_backend_parity_ready"
+        $D3d12Ready = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_d3d12_renderer_quality_ready"
+        $VulkanStrictReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_vulkan_strict_renderer_quality_ready"
+        $AppleMetalReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_apple_metal_renderer_quality_ready"
+        $RendererQualityMatrixReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_quality_matrix_ready"
+        $ProductionVfxProfilingReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_production_vfx_profiling_ready"
+        $MetalMemoryProfilingReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_metal_memory_profiling_ready"
+        $Visible3dPackageReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_visible_3d_package_ready"
+        $RuntimeUiPackageReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_runtime_ui_package_ready"
+        $EnvironmentPackageReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_environment_package_ready"
+        $GeneratedGamePackageReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_generated_game_package_ready"
+        $StaticGuardsReady = Test-RendererCloseoutEvidenceCounter `
+            -Values $readinessEvidenceValues `
+            -Name "renderer_static_guards_ready"
+    }
 }
 
 $coreEvidenceRows = @(
@@ -143,6 +237,9 @@ if ($CrossBackendInference) {
 if ($ExternalEngineParity) {
     Add-RendererCloseoutBlocker -Blockers $blockers -Name "external_engine_parity_forbidden"
 }
+if (-not [string]::IsNullOrWhiteSpace($readinessEvidenceBlocker)) {
+    Add-RendererCloseoutBlocker -Blockers $blockers -Name $readinessEvidenceBlocker
+}
 
 $allCoreEvidenceReady = ($missingEvidenceRows -eq 0)
 $safetyReady = (
@@ -190,6 +287,8 @@ $lines.Add("renderer_commercial_quality_closeout_status=$status")
 $lines.Add("renderer_commercial_quality_closeout_ready=$(ConvertTo-CounterBit $ready)")
 $lines.Add("renderer_commercial_quality_closeout_value_api_ready=1")
 $lines.Add("renderer_commercial_quality_closeout_require_ready=$(ConvertTo-CounterBit $RequireReady)")
+$lines.Add("renderer_commercial_readiness_evidence_status=$readinessEvidenceStatus")
+$lines.Add("renderer_commercial_readiness_evidence_ready=$(ConvertTo-CounterBit $readinessEvidenceReady)")
 $lines.Add("renderer_selected_evidence_rows=$($coreEvidenceRows.Count)")
 $lines.Add("renderer_selected_evidence_ready_rows=$readyRows")
 $lines.Add("renderer_selected_evidence_missing_rows=$missingEvidenceRows")

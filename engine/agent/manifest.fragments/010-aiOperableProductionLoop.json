@@ -21,6 +21,7 @@
           "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json"
         ],
         "staticChecks": [
+          "tools/validate-renderer-commercial-readiness-evidence.ps1",
           "tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1",
           "tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1"
         ],

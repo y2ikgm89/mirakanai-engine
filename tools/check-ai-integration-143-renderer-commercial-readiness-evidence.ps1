@@ -18,6 +18,14 @@ $promotionTestsText = Get-AgentSurfaceText "tests/unit/renderer_commercial_readi
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $rendererCMakeText = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
+$commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
+$validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
+$readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-evidence.ps1"
+$qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
+$recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
+$recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
+$classifierText = Get-AgentSurfaceText "tools/classify-pr-validation-tier.ps1"
+$ciMatrixCheckText = Get-AgentSurfaceText "tools/check-ci-matrix.ps1"
 
 foreach ($surface in @(
         @{ Text = $schemaText; Label = "renderer commercial readiness evidence schema" },
@@ -205,4 +213,67 @@ foreach ($needle in @(
         "Unity/Unreal Engine/Godot compatibility"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "manifest MK_renderer commercial readiness promotion evidence"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        '[switch]$RequireReady',
+        '[string]$ArtifactRootRelative',
+        'GameEngine.RendererCommercialReadinessEvidence.v1',
+        'renderer-commercial-readiness-evidence-promotion-v1',
+        'renderer-commercial-quality-closeout',
+        'check-renderer-metal-memory-profiling-host-evidence.ps1',
+        'renderer_commercial_readiness_evidence_status',
+        'renderer_commercial_readiness_evidence_ready',
+        'renderer_backend_parity_ready',
+        'renderer_metal_broad_readiness',
+        'renderer_broad_quality_ready',
+        'renderer_commercial_readiness',
+        'renderer_environment_ready=0',
+        'fixture_only=1',
+        'artifact_hash_mismatch',
+        'missing_artifact',
+        'external_engine_material_rejected',
+        'require_ready_without_artifact_root',
+        'plan_renderer_commercial_readiness_promotion'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator"
+}
+
+foreach ($needle in @(
+        'rendererCommercialReadinessEvidenceCheck',
+        'rendererCommercialReadinessEvidenceRequireReady',
+        'tools/validate-renderer-commercial-readiness-evidence.ps1',
+        'renderer-commercial-readiness-evidence'
+    )) {
+    Assert-ContainsText $commandsFragmentText $needle "renderer commercial readiness evidence command surface"
+    Assert-ContainsText $validationRecipesFragmentText $needle "renderer commercial readiness evidence validation recipe"
+}
+
+foreach ($needle in @(
+        'ReadinessEvidenceArtifactRootRelative',
+        'validate-renderer-commercial-readiness-evidence.ps1',
+        'renderer_commercial_readiness_evidence_ready',
+        'renderer_commercial_readiness_evidence_status'
+    )) {
+    Assert-ContainsText $qualityCloseoutValidatorText $needle "renderer commercial quality closeout readiness evidence wrapper"
+}
+
+foreach ($needle in @(
+        'renderer-commercial-readiness-evidence',
+        'validate-renderer-commercial-readiness-evidence.ps1'
+    )) {
+    Assert-ContainsText $recipePlansText $needle "renderer commercial readiness evidence recipe plan"
+    Assert-ContainsText $recipeRunnerCheckText $needle "renderer commercial readiness evidence recipe runner check"
+}
+
+foreach ($needle in @(
+        'Test-RendererCommercialReadinessEvidencePath',
+        'renderer-commercial-readiness-evidence',
+        'validate-renderer-commercial-readiness-evidence.ps1',
+        'tests/fixtures/renderer/commercial-readiness-evidence'
+    )) {
+    Assert-ContainsText $classifierText $needle "renderer commercial readiness evidence CI classifier"
+    Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness evidence CI matrix check"
 }

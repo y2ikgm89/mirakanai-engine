@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+  "artifact_id": "apple-metal-host",
+  "validation_recipe": "renderer-metal-apple-host-evidence",
+  "fixture_only": true,
+  "ready": true
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.GeneratedGamePackageEvidence.v1",
+  "artifact_id": "generated-game-package",
+  "validation_recipe": "generated-game-package",
+  "fixture_only": true,
+  "ready": true
+}

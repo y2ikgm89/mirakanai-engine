@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
+  "artifact_id": "runtime-ui-package",
+  "validation_recipe": "desktop-runtime-ui-package",
+  "fixture_only": true,
+  "ready": true
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
+  "artifact_id": "renderer-quality-matrix",
+  "validation_recipe": "renderer-quality-matrix",
+  "fixture_only": true,
+  "ready": true
+}

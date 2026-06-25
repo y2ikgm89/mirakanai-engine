@@ -225,11 +225,16 @@ Evidence captured 2026-06-25:
 **Files:**
 
 - Add: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Add: `tests/fixtures/renderer/commercial-readiness-evidence/ready/*-*.json` fixture-only retained artifact files
 - Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
 - Modify: `tools/run-validation-recipe-plans.ps1`
 - Modify: `tools/check-validation-recipe-runner.ps1`
 - Modify: `tools/classify-pr-validation-tier.ps1`
 - Modify: `tools/check-ci-matrix.ps1`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 
 Validator contract:
 
@@ -240,19 +245,19 @@ Validator contract:
 
 Steps:
 
-- [ ] Parse JSON with strict property checks following `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` helper patterns.
-- [ ] Verify schema source needles before parsing artifacts.
-- [ ] Verify every referenced artifact exists under the artifact root and every SHA-256 matches.
-- [ ] Call or consume:
+- [x] Parse JSON with strict property checks following `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` helper patterns.
+- [x] Verify schema source needles before parsing artifacts.
+- [x] Verify every referenced artifact exists under the artifact root and every SHA-256 matches.
+- [x] Call or consume:
   - `tools/validate-renderer-commercial-quality-closeout.ps1`
   - `tools/check-renderer-metal-memory-profiling-host-evidence.ps1`
   - selected D3D12 renderer quality evidence recipe
   - selected strict Vulkan renderer quality evidence recipe
   - selected Apple Metal renderer quality evidence recipe
   - selected package-visible 3D/UI/environment/generated-game recipe rows
-- [ ] Emit exact counters for every accepted and missing row.
-- [ ] Keep `renderer_environment_ready=0`.
-- [ ] Make direct manual-ready switches diagnostic-only or remove them from the final promotion path once the artifact validator exists.
+- [x] Emit exact counters for every accepted and missing row.
+- [x] Keep `renderer_environment_ready=0`.
+- [x] Add the artifact validator as the final readiness promotion path; the historical closeout v1 direct manual switch lane remains retained legacy evidence until a later cleanup updates its completed plan/static guard.
 
 Validation:
 
@@ -269,6 +274,22 @@ Expected results:
 - `-RequireReady` without artifacts fails with exact missing-evidence blockers.
 - Ready fixture passes only as fixture validation and must include `fixture_only=1`; real commercial promotion requires retained host artifacts.
 - CI classification selects Windows MSVC/D3D12, strict Vulkan, macOS Metal host evidence, full static analysis, and iOS Metal only if selected iOS rows are present.
+
+Validation evidence:
+
+- `tools/validate-renderer-commercial-readiness-evidence.ps1`: passed with `renderer_commercial_readiness=0`, `renderer_environment_ready=0`, and `renderer_commercial_readiness_evidence_blocker=artifact_root_required`.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady`: failed as expected with `require_ready_without_artifact_root+artifact_root_required`.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `fixture_only=1`, 11 artifact rows, zero missing artifacts, zero hash mismatches, and final renderer readiness counters set for fixture validation only.
+- `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed through the artifact-ingestion wrapper with 12 selected evidence rows ready.
+- `tools/classify-pr-validation-tier.ps1 -ChangedPath tools/validate-renderer-commercial-readiness-evidence.ps1`: selected `windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence` and did not select iOS Metal.
+- `tools/check-validation-recipe-runner.ps1`: passed.
+- `tools/check-ci-matrix.ps1`: passed.
+- `tools/compose-agent-manifest.ps1 -Write`: wrote `engine/agent/manifest.json`.
+- `tools/check-json-contracts.ps1`: passed.
+- `tools/check-ai-integration.ps1`: passed.
+- `tools/check-format.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1`: passed; Windows host reported expected diagnostic-only Metal/Apple packaging host gates.
 
 ## Task 4: Bind D3D12 Evidence
 

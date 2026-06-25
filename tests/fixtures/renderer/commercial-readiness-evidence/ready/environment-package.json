@@ -1,0 +1,7 @@
+{
+  "schema_version": "GameEngine.EnvironmentPackageEvidence.v1",
+  "artifact_id": "environment-package",
+  "validation_recipe": "environment-package",
+  "fixture_only": true,
+  "ready": true
+}
