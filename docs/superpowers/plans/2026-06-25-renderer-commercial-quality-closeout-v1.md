@@ -4,9 +4,9 @@
 
 **Path:** `docs/superpowers/plans/2026-06-25-renderer-commercial-quality-closeout-v1.md`
 
-**Status:** Active.
+**Status:** Completed.
 
-Task 0/1 selection and fail-closed guard work is complete. Task 2 adds the value-only aggregate API and focused tests. Task 3 feature-binds the renderer Metal environment and memory/profiling recipe families. No renderer readiness claim is changed by this status.
+Tasks 0-7 are complete. The plan closes as retained fail-closed renderer commercial closeout evidence, live execution has returned to the production-completion selection gate, and default broad renderer counters remain `0` unless direct `-RequireReady` exact evidence is supplied.
 
 **Date:** 2026-06-25
 
@@ -442,14 +442,14 @@ Task 5 focused validation evidence:
 - Modify: `schemas/engine-agent.schema.json` only if new manifest shape is introduced
 - Modify: `.agents/skills/gameengine-rendering/*`, `.claude/skills/gameengine-rendering/*`, and Cursor pointers only if durable renderer workflow guidance changes
 
-- [ ] Update current capability truth before changing any public readiness text.
-- [ ] Compose the manifest:
+- [x] Update current capability truth before changing any public readiness text.
+- [x] Compose the manifest:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
 ```
 
-- [ ] Run agent-surface and JSON contract checks:
+- [x] Run agent-surface and JSON contract checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
@@ -459,27 +459,39 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 
 ## Task 7: Final Validation And Publication
 
-- [ ] Run focused renderer/RHI/package validators after each behavior phase.
-- [ ] Run text and format checks after docs/manifest/static checks settle.
-- [ ] Run full validation after code, tests, docs, manifest, and static checks agree:
+- [x] Run focused renderer/RHI/package validators after each behavior phase.
+- [x] Run text and format checks after docs/manifest/static checks settle.
+- [x] Run full validation after code, tests, docs, manifest, and static checks agree:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Run publication preflight before staging/push/PR:
+- [x] Run publication preflight before staging/push/PR:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Publish as a focused PR with evidence. Keep the PR draft until selected hosted lanes prove the ready aggregate or record a concrete host blocker.
+- [x] Publish as focused PRs with evidence. Keep each PR draft until selected hosted lanes prove the slice or record a concrete host blocker.
+
+Final closeout evidence collected on 2026-06-25:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | PASS: composed `engine/agent/manifest.json` after returning `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id` to `next-production-gap-selection`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS: manifest compose and JSON contracts accepted the completed plan status plus active selection-gate registry row. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS: renderer closeout retained evidence, clean-room/external-engine non-claims, docs, manifest, static checks, and plan registry all agree. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: all static checks, build, and 158/158 CTest tests passed; Metal tools remain diagnostic-only on this Windows host. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` | PASS: branch `codex/renderer-commercial-plan-closeout`, GitHub network/auth, remote, and index lock checks were ready for publication. |
 
 ## Review Checklist
 
-- [ ] Are the final ready counters emitted only by `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady`?
-- [ ] Can every package-visible row point to a selected validator, package manifest, or retained artifact?
-- [ ] Can a fresh reader tell why Metal is ready without looking at D3D12/Vulkan evidence?
-- [ ] Does the aggregate reject native handle exposure and external-engine parity claims?
-- [ ] Does Windows/Linux default validation still pass without Apple tools and keep broad counters at `0`?
-- [ ] Do docs, manifest fragments, static checks, CI selection, and package manifests state the same readiness truth?
+- [x] Are the final ready counters emitted only by `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady`?
+- [x] Can every package-visible row point to a selected validator, package manifest, or retained artifact?
+- [x] Can a fresh reader tell why Metal is ready without looking at D3D12/Vulkan evidence?
+- [x] Does the aggregate reject native handle exposure and external-engine parity claims?
+- [x] Does Windows/Linux default validation still pass without Apple tools and keep broad counters at `0`?
+- [x] Do docs, manifest fragments, static checks, CI selection, and package manifests state the same readiness truth?
