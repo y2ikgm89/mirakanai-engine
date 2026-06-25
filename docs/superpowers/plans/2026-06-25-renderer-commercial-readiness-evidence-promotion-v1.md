@@ -466,11 +466,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 
 Steps:
 
-- [ ] Add the new validation recipe and command surfaces.
-- [ ] Compose manifest after every manifest fragment edit.
-- [ ] Keep current capabilities honest: commercial readiness remains `0` until real host artifacts pass.
-- [ ] Add static checks for exact counters, legal non-claims, source ids, and backend independence.
-- [ ] Update CI lane classification for the new validator path.
+- [x] Add the new validation recipe and command surfaces.
+- [x] Compose manifest after every manifest fragment edit.
+- [x] Keep current capabilities honest: commercial readiness remains `0` until real host artifacts pass.
+- [x] Add static checks for exact counters, legal non-claims, source ids, and backend independence.
+- [x] Update CI lane classification for the new validator path.
+
+Validation evidence:
+
+- `engine/agent/manifest.fragments/002-commands.json` exposes `rendererCommercialReadinessEvidenceCheck` and `rendererCommercialReadinessEvidenceRequireReady`; `engine/agent/manifest.fragments/009-validationRecipes.json` exposes `renderer-commercial-readiness-evidence`; `tools/classify-pr-validation-tier.ps1` and `tools/check-ci-matrix.ps1` select the renderer commercial readiness evidence lane.
+- `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/testing.md`, and `docs/superpowers/plans/README.md` now distinguish fixture proof from real retained artifact promotion and keep default commercial readiness at `0`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`: passed and rewrote `engine/agent/manifest.json`.
+- `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1` covers exact counters, source ids, legal non-claims, package/script rejection, backend independence, and forbidden broad ready claims.
 
 Validation:
 
