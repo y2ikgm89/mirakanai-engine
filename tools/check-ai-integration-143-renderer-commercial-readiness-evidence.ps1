@@ -12,6 +12,12 @@ $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-25-renderer-commercial-readiness-evidence-promotion-v1.md"
+$promotionHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer_commercial_readiness_evidence.hpp"
+$promotionSourceText = Get-AgentSurfaceText "engine/renderer/src/renderer_commercial_readiness_evidence.cpp"
+$promotionTestsText = Get-AgentSurfaceText "tests/unit/renderer_commercial_readiness_evidence_tests.cpp"
+$rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
+$rendererCMakeText = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
+$modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 
 foreach ($surface in @(
         @{ Text = $schemaText; Label = "renderer commercial readiness evidence schema" },
@@ -109,4 +115,94 @@ foreach ($forbiddenNeedle in @(
     )) {
     Assert-DoesNotContainText $productionLoopFragmentText $forbiddenNeedle "renderer commercial readiness evidence promotion fragment forbidden broad ready claim"
     Assert-DoesNotContainText $manifestText $forbiddenNeedle "renderer commercial readiness evidence promotion manifest forbidden broad ready claim"
+}
+
+foreach ($needle in @(
+        "RendererCommercialReadinessSourceRow",
+        "RendererCommercialReadinessEvidenceRow",
+        "RendererCommercialReadinessPromotionDesc",
+        "RendererCommercialReadinessPromotionPlan",
+        "RendererCommercialReadinessEvidenceDiagnosticCode",
+        "RendererCommercialReadinessEvidenceKind",
+        "plan_renderer_commercial_readiness_promotion",
+        "renderer_backend_parity_ready",
+        "renderer_metal_broad_readiness",
+        "renderer_broad_quality_ready",
+        "renderer_commercial_readiness",
+        "request_native_handle_access",
+        "request_cross_backend_inference",
+        "external_engine_code_used",
+        "external_engine_sample_used",
+        "external_engine_asset_used",
+        "external_engine_trademark_used",
+        "external_engine_ui_expression_used",
+        "external_engine_api_used",
+        "external_engine_compatibility_claim",
+        "external_engine_equivalence_claim",
+        "external_engine_parity_claim"
+    )) {
+    Assert-ContainsText $promotionHeaderText $needle "renderer commercial readiness promotion public header"
+}
+
+foreach ($needle in @(
+        "kEvidenceRecipeId",
+        "renderer-commercial-readiness-evidence",
+        "kMetalMemoryProfilingRecipeId",
+        "renderer-metal-memory-profiling-host-evidence",
+        "Microsoft-D3D12-ResourceBarrier-Fence-Timestamp-GpuValidation-2026-06-25",
+        "Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25",
+        "Apple-Metal-Framework-Memory-Capture-2026-06-25",
+        "Unity-Legal-Terms-2026-06-25",
+        "Epic-Unreal-Engine-EULA-Trademark-2026-06-25",
+        "Godot-Trademark-Licensing-2026-06-25",
+        "source_ready",
+        "is_lower_hex_sha256",
+        "row_has_valid_artifact_schema",
+        "external_engine_material_used",
+        "external_engine_claim",
+        "forbidden_material_rejected",
+        "native_handle_access",
+        "cross_backend_inference",
+        "compute_replay_hash",
+        "RendererCommercialReadinessPromotionStatus::ready",
+        "RendererCommercialReadinessPromotionStatus::evidence_required",
+        "RendererCommercialReadinessPromotionStatus::invalid_request"
+    )) {
+    Assert-ContainsText $promotionSourceText $needle "renderer commercial readiness promotion source"
+}
+
+foreach ($needle in @(
+        "complete retained evidence rows",
+        "Apple-host Metal memory and profiling rows",
+        "missing strict Vulkan backend parity",
+        "stale source ids",
+        "cross-backend Metal inference and native handles",
+        "external engine material and compatibility claims",
+        "rejected forbidden-material diagnostics non-ready",
+        "replay hash changes with accepted artifact details"
+    )) {
+    Assert-ContainsText $promotionTestsText $needle "renderer commercial readiness promotion tests"
+}
+
+foreach ($needle in @(
+        "renderer_commercial_readiness_evidence.cpp",
+        "MK_renderer_commercial_readiness_evidence_tests",
+        "tests/unit/renderer_commercial_readiness_evidence_tests.cpp"
+    )) {
+    Assert-ContainsText ($rendererCMakeText + "`n" + $rootCMakeText) $needle "renderer commercial readiness promotion CMake"
+}
+
+foreach ($needle in @(
+        "engine/renderer/include/mirakana/renderer/renderer_commercial_readiness_evidence.hpp",
+        "RendererCommercialReadinessSourceRow",
+        "RendererCommercialReadinessEvidenceRow",
+        "RendererCommercialReadinessPromotionDesc",
+        "RendererCommercialReadinessPromotionPlan",
+        "plan_renderer_commercial_readiness_promotion",
+        "never executes GPU commands",
+        "never returns native handles",
+        "cross-backend Metal inference",
+        "Unity/Unreal Engine/Godot compatibility"
+    )) {
+    Assert-ContainsText $modulesFragmentText $needle "manifest MK_renderer commercial readiness promotion evidence"
 }

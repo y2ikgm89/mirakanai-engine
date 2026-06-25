@@ -166,7 +166,7 @@ Evidence captured 2026-06-25:
 - Add: `engine/renderer/src/renderer_commercial_readiness_evidence.cpp`
 - Modify: `engine/renderer/CMakeLists.txt`
 - Add: `tests/unit/renderer_commercial_readiness_evidence_tests.cpp`
-- Modify: `tests/unit/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
 
 Public API intent:
 
@@ -178,35 +178,47 @@ plan_renderer_commercial_readiness_promotion(
 
 Required behavior:
 
-- [ ] Consume only value rows, existing `RendererCommercialQualityCloseoutPlan` data, package counters, artifact hashes, validation recipe ids, and legal/source review booleans.
-- [ ] Never execute GPU commands, native captures, shell commands, package scripts, crash uploads, or network requests.
-- [ ] Never store or return native handles.
-- [ ] Require all selected backends before final promotion: D3D12, strict Vulkan, and Apple-host Metal.
-- [ ] Require Apple Metal memory/profiling rows to come from Apple-host Metal artifacts, not D3D12/Vulkan proof.
-- [ ] Require selected package evidence for visible 3D, runtime UI, environment, and generated game output.
-- [ ] Require clean-room/legal rows and complete third-party notices.
-- [ ] Reject external-engine code/sample/asset/trademark/UI/API/compatibility/equivalence rows unless the row is a forbidden-material diagnostic and the final ready counter stays `0`.
-- [ ] Produce a deterministic replay hash from accepted row ids, source ids, package counter ids, artifact hashes, backend ids, and readiness booleans.
+- [x] Consume only value rows, existing `RendererCommercialQualityCloseoutPlan` data, package counters, artifact hashes, validation recipe ids, and legal/source review booleans.
+- [x] Never execute GPU commands, native captures, shell commands, package scripts, crash uploads, or network requests.
+- [x] Never store or return native handles.
+- [x] Require all selected backends before final promotion: D3D12, strict Vulkan, and Apple-host Metal.
+- [x] Require Apple Metal memory/profiling rows to come from Apple-host Metal artifacts, not D3D12/Vulkan proof.
+- [x] Require selected package evidence for visible 3D, runtime UI, environment, and generated game output.
+- [x] Require clean-room/legal rows and complete third-party notices.
+- [x] Reject external-engine code/sample/asset/trademark/UI/API/compatibility/equivalence rows unless the row is a forbidden-material diagnostic and the final ready counter stays `0`.
+- [x] Produce a deterministic replay hash from accepted row ids, source ids, package counter ids, artifact hashes, backend ids, and readiness booleans.
 
 Minimum tests:
 
-- [ ] Ready fixture promotes all four final counters.
-- [ ] Missing Metal memory/profiling row keeps `renderer_metal_broad_readiness=false`.
-- [ ] Missing strict Vulkan clean validation row keeps `renderer_backend_parity_ready=false`.
-- [ ] Stale source id rejects the bundle.
-- [ ] Cross-backend Metal inference rejects the bundle.
-- [ ] Native handle exposure rejects the bundle.
-- [ ] Unity/Unreal/Godot compatibility or equivalence claim rejects the bundle.
-- [ ] External engine code/sample/asset/UI/trademark rows reject commercial readiness.
-- [ ] Replay hash changes when accepted evidence details change.
+- [x] Ready fixture promotes all four final counters.
+- [x] Missing Metal memory/profiling row keeps `renderer_metal_broad_readiness=false`.
+- [x] Missing strict Vulkan clean validation row keeps `renderer_backend_parity_ready=false`.
+- [x] Stale source id rejects the bundle.
+- [x] Cross-backend Metal inference rejects the bundle.
+- [x] Native handle exposure rejects the bundle.
+- [x] Unity/Unreal/Godot compatibility or equivalence claim rejects the bundle.
+- [x] External engine code/sample/asset/UI/trademark rows reject commercial readiness.
+- [x] Replay hash changes when accepted evidence details change.
 
 Validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_commercial_readiness_evidence_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_commercial_quality_closeout_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_commercial"
 ```
+
+Evidence captured 2026-06-25:
+
+- `tools/cmake.ps1 --preset dev`: configure succeeded.
+- `tools/cmake.ps1 --build --preset dev --target MK_renderer_commercial_readiness_evidence_tests`: build succeeded after RED compile failure proved the missing header first.
+- `tools/cmake.ps1 --build --preset dev --target MK_renderer_commercial_quality_closeout_tests`: build succeeded for the existing closeout companion target.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_commercial"`: 2/2 tests passed.
+- `tools/check-ai-integration.ps1`: `ai-integration-check: ok`.
+- `tools/check-json-contracts.ps1`: `json-contract-check: ok`.
+- `tools/check-format.ps1`: `format-check: ok`.
+- `tools/check-agents.ps1`: `agent-config-check: ok`.
 
 ## Task 3: Add Artifact Validator And Promotion Wrapper
 
