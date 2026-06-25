@@ -1182,6 +1182,12 @@ if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-can
 if ($productionLoop.recommendedNextPlan.id -eq "simulation-persistence-v1") {
     Write-Error "engine manifest aiOperableProductionLoop.recommendedNextPlan.id must not point at merged simulation-persistence-v1"
 }
+if ($productionLoop.recommendedNextPlan.id -eq "renderer-commercial-quality-closeout-v1") {
+    $rendererCommercialCloseoutRecommendedText = $productionLoop.recommendedNextPlan | ConvertTo-Json -Depth 8
+    foreach ($needle in @("Renderer Commercial Quality Closeout v1", "renderer-commercial-quality-closeout-v1", "renderer_backend_parity_ready=0", "renderer_metal_broad_readiness=0", "renderer_broad_quality_ready=0", "renderer_commercial_readiness=0", "D3D12", "strict Vulkan", "Apple-host Metal", "renderer quality matrix", "production VFX/profiling", "Metal memory/profiling", "selected 3D/UI/environment/generated-game package evidence", "complete third-party notices", "Unity", "Unreal Engine", "Godot", "external engine source", "sample code", "shader code", "UI expression", "assets", "trademarks", "compatibility claims", "parity claims", "unsupportedProductionGaps = []")) {
+        Assert-ContainsText $rendererCommercialCloseoutRecommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan renderer commercial quality closeout selection"
+    }
+}
 Assert-Properties $engine.gameCodeGuidance @("currentRuntimeSimulationPersistence") "engine manifest gameCodeGuidance"
 $runtimeSimulationPersistenceGuidance = [string]$engine.gameCodeGuidance.currentRuntimeSimulationPersistence
 foreach ($runtimeSimulationPersistenceGuidanceNeedle in @(
