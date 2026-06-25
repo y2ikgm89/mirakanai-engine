@@ -10,11 +10,16 @@ $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-25-renderer-commercial-quality-closeout-v1.md"
+$aggregateHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer_commercial_quality_closeout.hpp"
+$aggregateSourceText = Get-AgentSurfaceText "engine/renderer/src/renderer_commercial_quality_closeout.cpp"
+$aggregateTestsText = Get-AgentSurfaceText "tests/unit/renderer_commercial_quality_closeout_tests.cpp"
+$rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 
 foreach ($needle in @(
         "validation_recipe=renderer-commercial-quality-closeout",
         "renderer_commercial_quality_closeout_status=host_evidence_required",
         "renderer_commercial_quality_closeout_ready=0",
+        "renderer_commercial_quality_closeout_value_api_ready=1",
         'renderer_clean_room_source_review_ready=$(ConvertTo-CounterBit $cleanRoomSourceReviewReady)',
         'renderer_external_engine_code_used=$(ConvertTo-CounterBit $externalEngineCodeUsed)',
         'renderer_external_engine_sample_used=$(ConvertTo-CounterBit $externalEngineSampleUsed)',
@@ -30,10 +35,56 @@ foreach ($needle in @(
         "renderer_broad_quality_ready=0",
         "renderer_commercial_readiness=0",
         "renderer_environment_ready=0",
-        "aggregate_implementation_required"
+        "validator_integration_and_host_evidence_required"
     )) {
     Assert-ContainsText $validatorText $needle "tools/validate-renderer-commercial-quality-closeout.ps1"
 }
+
+foreach ($needle in @(
+        "RendererCommercialQualityCloseoutDesc",
+        "RendererCommercialQualityCloseoutPlan",
+        "RendererCommercialQualityEvidenceRow",
+        "plan_renderer_commercial_quality_closeout",
+        "metal_memory_profiling",
+        "visible_3d_package",
+        "runtime_ui_package",
+        "environment_package",
+        "generated_game_package",
+        "claim_control",
+        "clean_room",
+        "renderer_commercial_readiness",
+        "renderer_metal_broad_readiness",
+        "renderer_broad_quality_ready",
+        "renderer_backend_parity_ready",
+        "external_engine_compatibility_claim"
+    )) {
+    Assert-ContainsText $aggregateHeaderText $needle "renderer commercial quality aggregate public header"
+}
+
+foreach ($needle in @(
+        "kMetalMemoryProfilingRecipeId",
+        "renderer-metal-memory-profiling-host-evidence",
+        "renderer-commercial-quality-closeout",
+        "cross_backend_inference",
+        "external_engine_code_used",
+        "third_party_notices_complete",
+        "RendererCommercialQualityCloseoutStatus::host_evidence_required"
+    )) {
+    Assert-ContainsText $aggregateSourceText $needle "renderer commercial quality aggregate source"
+}
+
+foreach ($needle in @(
+        "missing Metal backend parity",
+        "missing Metal quality matrix",
+        "dedicated Metal memory profiling evidence",
+        "cross backend Metal memory proof transfer",
+        "external engine code assets trademarks",
+        "approved external material"
+    )) {
+    Assert-ContainsText $aggregateTestsText $needle "renderer commercial quality aggregate tests"
+}
+
+Assert-ContainsText $rootCMakeText "MK_renderer_commercial_quality_closeout_tests" "renderer commercial quality aggregate CMake test target"
 
 Assert-ContainsText $commandsFragmentText "rendererCommercialQualityCloseoutCheck" "manifest commands renderer commercial quality closeout command"
 Assert-ContainsText $recipesFragmentText "renderer-commercial-quality-closeout" "manifest validation recipe renderer commercial quality closeout"

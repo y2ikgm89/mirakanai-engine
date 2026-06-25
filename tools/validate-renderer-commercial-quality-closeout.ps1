@@ -25,6 +25,7 @@ $lines = [System.Collections.Generic.List[string]]::new()
 $lines.Add("validation_recipe=renderer-commercial-quality-closeout")
 $lines.Add("renderer_commercial_quality_closeout_status=host_evidence_required")
 $lines.Add("renderer_commercial_quality_closeout_ready=0")
+$lines.Add("renderer_commercial_quality_closeout_value_api_ready=1")
 $lines.Add("renderer_commercial_quality_closeout_require_ready=$(ConvertTo-CounterBit $RequireReady)")
 $lines.Add("renderer_clean_room_source_review_ready=$(ConvertTo-CounterBit $cleanRoomSourceReviewReady)")
 $lines.Add("renderer_external_engine_code_used=$(ConvertTo-CounterBit $externalEngineCodeUsed)")
@@ -41,12 +42,12 @@ $lines.Add("renderer_metal_broad_readiness=0")
 $lines.Add("renderer_broad_quality_ready=0")
 $lines.Add("renderer_commercial_readiness=0")
 $lines.Add("renderer_environment_ready=0")
-$lines.Add("renderer_commercial_quality_closeout_blocker=aggregate_implementation_required")
+$lines.Add("renderer_commercial_quality_closeout_blocker=validator_integration_and_host_evidence_required")
 
 foreach ($line in $lines) {
     Write-Output $line
 }
 
 if ($RequireReady) {
-    Write-Error "Renderer Commercial Quality Closeout v1 is not ready: aggregate implementation and selected backend/package/Metal host evidence are required before -RequireReady can pass."
+    Write-Error "Renderer Commercial Quality Closeout v1 is not ready: validator integration plus selected backend/package/Metal host evidence are required before -RequireReady can pass."
 }
