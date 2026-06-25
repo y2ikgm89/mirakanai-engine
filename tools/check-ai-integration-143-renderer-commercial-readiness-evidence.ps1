@@ -29,6 +29,8 @@ $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/00
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-evidence.ps1"
 $collectorText = Get-AgentSurfaceText "tools/collect-renderer-commercial-readiness-evidence.ps1"
+$d3d12ArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-d3d12-commercial-quality-artifact.ps1"
+$d3d12ArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-artifact.ps1"
 $collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
 $metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
@@ -288,12 +290,16 @@ Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-
     "renderer commercial readiness evidence collector validate task"
 Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-metal-memory.ps1' `
     "renderer commercial readiness Metal memory validate task"
+Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artifact.ps1' `
+    "renderer commercial readiness D3D12 artifact producer validate task"
 Assert-ContainsText $collectorCheckText 'renderer-commercial-readiness-evidence-collector-check: ok' `
     "renderer commercial readiness evidence collector check"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
     "renderer commercial readiness fixture guard check"
 Assert-ContainsText $metalMemoryCheckText 'renderer-commercial-readiness-evidence-metal-memory-check: ok' `
     "renderer commercial readiness Metal memory check"
+Assert-ContainsText $d3d12ArtifactProducerCheckText 'renderer-d3d12-commercial-quality-artifact-check: ok' `
+    "renderer commercial readiness D3D12 artifact producer check"
 
 foreach ($needle in @(
         'Mode',
@@ -329,6 +335,60 @@ foreach ($needle in @(
         'external_engine_parity = $false'
     )) {
     Assert-ContainsText $collectorText $needle "renderer commercial readiness evidence collector"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'D3d12HostEvidenceRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'artifacts/renderer/d3d12-commercial-quality-host-evidence/',
+        'GameEngine.RendererD3d12CommercialQualityHostEvidence.v1',
+        'GameEngine.RendererCommercialQualityCloseout.v1',
+        'renderer-d3d12-commercial-quality-artifact-v1',
+        'Microsoft-D3D12-ResourceBarrier-Fence-Timestamp-GpuValidation-2026-06-25',
+        'd3d12-quality.json',
+        'fixture_only = $false',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_d3d12_commercial_quality_artifact_collector_mode=Assemble',
+        'renderer_d3d12_commercial_quality_artifact_written=',
+        'renderer_d3d12_commercial_quality_fixture_artifact=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'vulkan_inferred',
+        'metal_inferred',
+        'broad_ui_parity',
+        'external_engine_parity',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $d3d12ArtifactProducerText $needle `
+        "renderer commercial readiness D3D12 artifact producer"
+}
+
+foreach ($needle in @(
+        'tools/collect-renderer-d3d12-commercial-quality-artifact.ps1',
+        'GameEngine.RendererD3d12CommercialQualityHostEvidence.v1',
+        'renderer-d3d12-commercial-quality-artifact-v1',
+        'Microsoft-D3D12-ResourceBarrier-Fence-Timestamp-GpuValidation-2026-06-25',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_d3d12_commercial_quality_artifact_written=1',
+        'renderer_d3d12_commercial_quality_fixture_artifact=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=10',
+        'renderer_d3d12_renderer_quality_ready',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $d3d12ArtifactProducerCheckText $needle `
+        "renderer commercial readiness D3D12 artifact producer check"
 }
 
 foreach ($needle in @(
@@ -404,6 +464,7 @@ foreach ($needle in @(
         'clock_calibration',
         'debug_layer_or_gpu_based_validation_clean',
         'ID3D12Device3::EnqueueMakeResident',
+        'IDXGIAdapter3::QueryVideoMemoryInfo',
         'package_visible_readback',
         'deterministic_hash_sha256',
         'native_handles_exposed',
@@ -416,6 +477,10 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator D3D12 binding"
     Assert-ContainsText $d3d12ReadyArtifactText $needle "renderer commercial readiness D3D12 ready artifact"
+    Assert-ContainsText $d3d12ArtifactProducerText $needle `
+        "renderer commercial readiness D3D12 artifact producer binding"
+    Assert-ContainsText $d3d12ArtifactProducerCheckText $needle `
+        "renderer commercial readiness D3D12 artifact producer check binding"
 }
 
 foreach ($needle in @(
@@ -551,6 +616,25 @@ Assert-ContainsText $commandsFragmentText 'rendererCommercialReadinessEvidenceCo
     "renderer commercial readiness evidence collector command surface"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-evidence-collector' `
     "renderer commercial readiness evidence collector validation recipe"
+Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCheck' `
+    "renderer commercial readiness D3D12 artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCollector' `
+    "renderer commercial readiness D3D12 artifact producer collector command surface"
+
+foreach ($needle in @(
+        'renderer-d3d12-commercial-quality-artifact',
+        'tools/collect-renderer-d3d12-commercial-quality-artifact.ps1',
+        'D3d12HostEvidenceRelative',
+        'ID3D12Fence',
+        'D3D12_RESOURCE_BARRIER',
+        'D3D12_QUERY_TYPE_TIMESTAMP',
+        'ID3D12Device3::EnqueueMakeResident',
+        'IDXGIAdapter3::QueryVideoMemoryInfo',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness D3D12 artifact producer validation recipe"
+}
 
 foreach ($needle in @(
         'ReadinessEvidenceArtifactRootRelative',

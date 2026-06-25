@@ -561,18 +561,23 @@ Remaining producer sequence:
 - Add: `tools/check-renderer-d3d12-commercial-quality-artifact.ps1`
 - Modify: `tools/validate.ps1`
 - Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
-- Modify: `docs/current-capabilities.md`
-- Modify: `docs/roadmap.md`
 - Modify: `engine/agent/manifest.fragments/002-commands.json`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Regenerate: `engine/agent/manifest.json`
 
 Steps:
 
-- [ ] Add a failing static check that requires the producer to reject fixtures, absolute paths, parent traversal, missing hashes, native handle exposure, cross-backend inference, and manual readiness switches.
-- [ ] Implement `collect-renderer-d3d12-commercial-quality-artifact.ps1` so it consumes only first-party D3D12 evidence from focused tests/package smoke output and emits `d3d12-quality.json` with `fixture_only=false` only when every row is backed by retained host output.
-- [ ] Require rows for `command_allocator_list_fence`, `command_allocator_reuse_fenced`, `D3D12_RESOURCE_BARRIER`, `D3D12_QUERY_TYPE_TIMESTAMP`, `resolved_query_data`, `queue_frequency_hz`, `debug_layer_or_gpu_based_validation_clean`, `ID3D12Device3::EnqueueMakeResident`, deterministic package readback hash, and `native_handles_exposed=false`.
-- [ ] Keep the producer value-shaping only: it may read retained logs/counter files and compute hashes, but it must not run arbitrary packages, capture tools, network, editor shell, or GPU work by itself.
-- [ ] Validate the produced artifact through `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>` only after the collector has assembled all other rows; Task 10A alone must leave `renderer_commercial_readiness=0`.
+- [x] Add a failing static check that requires the producer to reject fixtures, absolute paths, parent traversal, missing hashes, native handle exposure, cross-backend inference, and manual readiness switches.
+- [x] Implement `collect-renderer-d3d12-commercial-quality-artifact.ps1` so it consumes only first-party retained D3D12 host evidence and emits `d3d12-quality.json` with `fixture_only=false` only when every row is backed by retained host output.
+- [x] Require rows for `command_allocator_list_fence`, `command_allocator_reuse_fenced`, `D3D12_RESOURCE_BARRIER`, `D3D12_QUERY_TYPE_TIMESTAMP`, `resolved_query_data`, `queue_frequency_hz`, `debug_layer_or_gpu_based_validation_clean`, zero debug/GPU validation messages, `IDXGIAdapter3::QueryVideoMemoryInfo`, `ID3D12Device3::EnqueueMakeResident`, deterministic package readback hash, and `native_handles_exposed=false`.
+- [x] Keep the producer value-shaping only: it reads retained JSON evidence and computes hashes, but it does not run arbitrary packages, capture tools, network, editor shell, or GPU work by itself.
+- [x] Validate the produced artifact through the commercial readiness bundle self-test with the remaining fixture rows still rejected; Task 10A alone leaves `renderer_commercial_readiness=0`, and all-non-fixture `-RequireReady -ArtifactRootRelative <retained-artifact-root>` validation remains Task 10F.
+
+Task 10A implementation evidence:
+
+- `tools/check-renderer-d3d12-commercial-quality-artifact.ps1` now proves the producer rejects fixture-only host evidence and unsafe paths, writes a non-fixture `d3d12-quality.json`, feeds that artifact through `tools/collect-renderer-commercial-readiness-evidence.ps1`, validates `renderer_d3d12_renderer_quality_ready=1`, and keeps `renderer_commercial_readiness=0` because the other retained rows are still fixtures.
+- `engine/agent/manifest.fragments/002-commands.json` exposes `rendererD3d12CommercialQualityArtifactCheck` and `rendererD3d12CommercialQualityArtifactCollector`; `engine/agent/manifest.fragments/009-validationRecipes.json` exposes `renderer-d3d12-commercial-quality-artifact`.
+- `tools/validate.ps1` runs `check-renderer-d3d12-commercial-quality-artifact.ps1` as a separate static task, preserving the Task 10A producer boundary instead of folding it into the aggregate collector check.
 
 Validation:
 
@@ -583,6 +588,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 ```
+
+Validation evidence:
+
+- `tools/check-renderer-d3d12-commercial-quality-artifact.ps1`: passed with `renderer_d3d12_commercial_quality_artifact_written=1`, `renderer_d3d12_renderer_quality_ready=1`, `renderer_commercial_readiness_evidence_collector_fixture_artifacts=10`, `renderer_commercial_readiness=0`, and `renderer_environment_ready=0`.
+- `tools/check-renderer-commercial-readiness-evidence-collector.ps1`, `tools/check-json-contracts.ps1`, `tools/check-format.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1`: passed.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 33 static checks, including the new `check-renderer-d3d12-commercial-quality-artifact.ps1` lane; Windows-host Metal/Apple checks remained diagnostic-only host gates.
 
 ### Task 10B: Strict Vulkan Retained Commercial Row Producer
 
