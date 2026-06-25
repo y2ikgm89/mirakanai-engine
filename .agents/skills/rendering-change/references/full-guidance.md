@@ -77,7 +77,9 @@ router says the current task needs detailed API names, detailed validation lanes
   memory-residency, profiling, and package-evidence proof rows; keep Metal Apple-host-gated and reject public native-handle or
   inferred-parity claims.
 - For Backend Renderer Parity host recipe work, every Metal `BackendRendererParityProofRow` must set `host_validation_recipe_id` to a
-  reviewed Apple validation lane: `shader-toolchain`, `mobile-packaging`, `renderer-metal-apple-host-evidence`, or `ios-simulator-smoke`.
+  reviewed Apple validation lane: `shader-toolchain`, `mobile-packaging`, `renderer-metal-apple-host-evidence`,
+  `renderer-metal-memory-profiling-host-evidence`, or `ios-simulator-smoke`; the renderer Apple environment and memory/profiling recipes
+  are feature-bound and must not be swapped across proof families.
   `plan_backend_renderer_parity_policy` must fail closed with `missing_host_validation_recipe` when Metal evidence omits the recipe id and
   `unreviewed_host_validation_recipe` when an arbitrary valid id is supplied, include the recipe id in replay hashes, keep `metal-apple`
   host-gated until Apple-host proof exists, and keep D3D12/Vulkan evidence backend-local.
@@ -85,7 +87,8 @@ router says the current task needs detailed API names, detailed validation lanes
   selected Apple-host `renderer-metal-apple-host-evidence` counters only into backend-local `synchronization`, `shader_validation`, and
   `package_evidence` proof rows. Use `BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc` and
   `make_backend_renderer_parity_apple_metal_memory_profiling_proofs` for the separate `memory_residency` and
-  `profiling_capture` proof rows; missing heap/residency-set/capture evidence keeps those rows host-gated.
+  `profiling_capture` proof rows through dedicated `renderer-metal-memory-profiling-host-evidence`; missing heap/residency-set/capture
+  evidence keeps those rows host-gated.
   Use `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` / `renderer-metal-memory-profiling-host-evidence-v1` only for retained
   `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` rows proving exact `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`,
   `MTLCaptureScope`, `memory_residency`, `profiling_capture`, and capture artifact evidence. Default validation remains

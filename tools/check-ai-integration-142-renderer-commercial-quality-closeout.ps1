@@ -13,7 +13,11 @@ $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-25-renderer-com
 $aggregateHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer_commercial_quality_closeout.hpp"
 $aggregateSourceText = Get-AgentSurfaceText "engine/renderer/src/renderer_commercial_quality_closeout.cpp"
 $aggregateTestsText = Get-AgentSurfaceText "tests/unit/renderer_commercial_quality_closeout_tests.cpp"
+$backendParityHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/backend_renderer_parity_policy.hpp"
+$backendParitySourceText = Get-AgentSurfaceText "engine/renderer/src/backend_renderer_parity_policy.cpp"
+$rendererRhiTestsText = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
+$modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 
 foreach ($needle in @(
         "validation_recipe=renderer-commercial-quality-closeout",
@@ -89,6 +93,68 @@ Assert-ContainsText $rootCMakeText "MK_renderer_commercial_quality_closeout_test
 Assert-ContainsText $commandsFragmentText "rendererCommercialQualityCloseoutCheck" "manifest commands renderer commercial quality closeout command"
 Assert-ContainsText $recipesFragmentText "renderer-commercial-quality-closeout" "manifest validation recipe renderer commercial quality closeout"
 Assert-ContainsText $recipesFragmentText "validate-renderer-commercial-quality-closeout.ps1" "manifest validation recipe renderer commercial quality closeout"
+
+foreach ($needle in @(
+        'std::string host_validation_recipe_id{"renderer-metal-memory-profiling-host-evidence"};',
+        "BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc"
+    )) {
+    Assert-ContainsText $backendParityHeaderText $needle "backend renderer parity Metal memory/profiling recipe header"
+}
+
+foreach ($needle in @(
+        "kAppleMetalMemoryProfilingHostValidationRecipeId",
+        "renderer-metal-memory-profiling-host-evidence",
+        "metal_host_validation_recipe_feature_compatible",
+        "metal_host_validation_recipe_feature_mismatch",
+        "BackendRendererParityFeatureKind::memory_residency",
+        "BackendRendererParityFeatureKind::profiling_capture"
+    )) {
+    Assert-ContainsText $backendParitySourceText $needle "backend renderer parity Metal memory/profiling recipe source"
+}
+
+foreach ($needle in @(
+        "rejects Apple Metal environment recipe on memory profiling proof rows",
+        "rejects Apple Metal memory profiling recipe on environment proof rows",
+        "keeps Metal parity false when memory profiling recipe family is host gated",
+        "keeps Metal parity false when environment recipe family is host gated",
+        "renderer-metal-memory-profiling-host-evidence"
+    )) {
+    Assert-ContainsText $rendererRhiTestsText $needle "backend renderer parity Metal recipe alignment tests"
+}
+
+foreach ($needle in @(
+        "renderer-metal-memory-profiling-host-evidence",
+        "check-renderer-metal-memory-profiling-host-evidence.ps1",
+        "BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc",
+        "make_backend_renderer_parity_apple_metal_memory_profiling_proofs",
+        "only for memory_residency and profiling_capture",
+        "does not satisfy synchronization"
+    )) {
+    Assert-ContainsText $recipesFragmentText $needle "manifest validation recipe renderer Metal memory/profiling proof recipe"
+}
+
+foreach ($needle in @(
+        "renderer-metal-memory-profiling-host-evidence heap/residency-set/capture evidence",
+        "feature-bound",
+        "feature-family checked"
+    )) {
+    Assert-ContainsText $modulesFragmentText $needle "manifest MK_renderer Metal recipe family guidance"
+}
+
+foreach ($skillPath in @(
+        ".agents/skills/rendering-change/references/full-guidance.md",
+        ".agents/skills/gameengine-rendering/references/full-guidance.md",
+        ".claude/skills/gameengine-rendering/references/full-guidance.md"
+    )) {
+    $skillText = Get-AgentSurfaceText $skillPath
+    foreach ($needle in @(
+            "renderer-metal-memory-profiling-host-evidence",
+            "feature-bound",
+            "must not be swapped across proof families"
+        )) {
+        Assert-ContainsText $skillText $needle "$skillPath renderer Metal recipe family guidance"
+    }
+}
 
 foreach ($surface in @(
         @{ Text = $productionLoopFragmentText; Label = "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" },

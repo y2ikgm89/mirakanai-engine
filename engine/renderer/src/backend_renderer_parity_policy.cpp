@@ -15,6 +15,8 @@ namespace mirakana {
 namespace {
 
 constexpr std::string_view kAppleMetalEnvironmentHostValidationRecipeId{"renderer-metal-apple-host-evidence"};
+constexpr std::string_view kAppleMetalMemoryProfilingHostValidationRecipeId{
+    "renderer-metal-memory-profiling-host-evidence"};
 
 struct AppleMetalEnvironmentProofMapping {
     BackendRendererParityFeatureKind feature{BackendRendererParityFeatureKind::synchronization};
@@ -113,7 +115,7 @@ apple_metal_environment_evidence_complete(const BackendRendererParityAppleMetalE
 [[nodiscard]] bool apple_metal_memory_profiling_common_evidence_complete(
     const BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc& desc) noexcept {
     return desc.runtime_ready && desc.command_queue_ready &&
-           desc.host_validation_recipe_id == kAppleMetalEnvironmentHostValidationRecipeId;
+           desc.host_validation_recipe_id == kAppleMetalMemoryProfilingHostValidationRecipeId;
 }
 
 [[nodiscard]] bool apple_metal_memory_residency_evidence_complete(
@@ -157,7 +159,7 @@ make_apple_metal_memory_profiling_proof_row(const AppleMetalMemoryProfilingProof
         .reviewed = true,
         .host_validated = ready,
         .host_gate_required = !ready,
-        .host_validation_recipe_id = std::string{kAppleMetalEnvironmentHostValidationRecipeId},
+        .host_validation_recipe_id = std::string{kAppleMetalMemoryProfilingHostValidationRecipeId},
         .request_native_handle_access = false,
         .package_counter_id = ready ? std::string{mapping.package_counter_id} : std::string{},
         .source_index = source_index,
@@ -177,10 +179,33 @@ make_apple_metal_memory_profiling_proof_row(const AppleMetalMemoryProfilingProof
         "shader-toolchain",
         "mobile-packaging",
         kAppleMetalEnvironmentHostValidationRecipeId,
+        kAppleMetalMemoryProfilingHostValidationRecipeId,
         "ios-simulator-smoke",
     };
     return std::ranges::any_of(kReviewedMetalHostValidationRecipes,
                                [&recipe_id](const auto reviewed_id) { return recipe_id == reviewed_id; });
+}
+
+[[nodiscard]] bool
+metal_host_validation_recipe_feature_compatible(const std::string& recipe_id,
+                                                const BackendRendererParityFeatureKind feature) noexcept {
+    if (recipe_id == kAppleMetalEnvironmentHostValidationRecipeId) {
+        return feature == BackendRendererParityFeatureKind::synchronization ||
+               feature == BackendRendererParityFeatureKind::shader_validation ||
+               feature == BackendRendererParityFeatureKind::package_evidence;
+    }
+    if (recipe_id == kAppleMetalMemoryProfilingHostValidationRecipeId) {
+        return feature == BackendRendererParityFeatureKind::memory_residency ||
+               feature == BackendRendererParityFeatureKind::profiling_capture;
+    }
+    return true;
+}
+
+[[nodiscard]] bool metal_host_validation_recipe_feature_mismatch(const BackendRendererParityProofRow& row) noexcept {
+    return row.selected_backend == rhi::BackendKind::metal && !row.host_validation_recipe_id.empty() &&
+           is_valid_id(row.host_validation_recipe_id) && !has_native_token(row.host_validation_recipe_id) &&
+           is_reviewed_metal_host_validation_recipe(row.host_validation_recipe_id) &&
+           !metal_host_validation_recipe_feature_compatible(row.host_validation_recipe_id, row.feature);
 }
 
 void hash_mix(std::uint64_t& hash, const std::uint64_t value) noexcept {
@@ -277,7 +302,8 @@ void sort_diagnostics(BackendRendererParityPolicyPlan& plan) {
     return row.selected_backend != rhi::BackendKind::metal ||
            (!row.host_validation_recipe_id.empty() && is_valid_id(row.host_validation_recipe_id) &&
             !has_native_token(row.host_validation_recipe_id) &&
-            is_reviewed_metal_host_validation_recipe(row.host_validation_recipe_id));
+            is_reviewed_metal_host_validation_recipe(row.host_validation_recipe_id) &&
+            metal_host_validation_recipe_feature_compatible(row.host_validation_recipe_id, row.feature));
 }
 
 [[nodiscard]] bool is_host_gate_row(const BackendRendererParityProofRow& row) noexcept {
@@ -394,13 +420,15 @@ void validate_proof_rows(BackendRendererParityPolicyPlan& plan, const BackendRen
                            "backend renderer parity proof backend must be required and supported", row.source_index);
         }
         if (!row_feature_allowed(request, row.feature) || !row.reviewed || !proof_ids_valid(row) ||
+            metal_host_validation_recipe_feature_mismatch(row) ||
             (row.host_gate_required && row.selected_backend != rhi::BackendKind::metal) ||
             (row.host_gate_required && row.host_validated)) {
-            add_diagnostic(plan, BackendRendererParityDiagnosticCode::invalid_proof, row.selected_backend, row.feature,
-                           row.proof_id,
-                           "backend renderer parity proof rows require reviewed ids, counters, and explicit Metal host "
-                           "gates",
-                           row.source_index);
+            add_diagnostic(
+                plan, BackendRendererParityDiagnosticCode::invalid_proof, row.selected_backend, row.feature,
+                row.proof_id,
+                "backend renderer parity proof rows require reviewed ids, counters, feature-compatible Metal "
+                "host recipes, and explicit Metal host gates",
+                row.source_index);
         }
         if (!backend_renderer_parity_proof_matches_selected_backend(BackendRendererParityProofDesc{
                 .selected_backend = row.selected_backend,
