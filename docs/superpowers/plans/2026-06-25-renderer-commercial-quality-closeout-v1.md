@@ -371,20 +371,59 @@ Task 4 implementation evidence:
 
 **Files:**
 
-- Create: `tools/validate-renderer-commercial-quality-closeout.ps1`
-- Modify: `tools/validate.ps1`
+- Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
 - Modify: `tools/classify-pr-validation-tier.ps1`
 - Modify: `tools/check-ci-matrix.ps1`
-- Modify: `.github/workflows/validate.yml`
-- Modify: package validators that own selected package counters
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
+- Modify: `tools/check-ai-integration-142-renderer-commercial-quality-closeout.ps1`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/superpowers/plans/README.md`
 
-- [ ] Default invocation runs focused non-ready checks and emits exact host-gated counters without requiring Apple tools.
-- [ ] `-RequireReady` requires selected D3D12, strict Vulkan, Apple-host Metal, quality matrix, VFX/profiling, memory/profiling, package, and static guard evidence.
-- [ ] `-RequireReady` requires clean-room source review counters and complete third-party notice counters.
-- [ ] CI lane selection requires Windows MSVC/D3D12, Linux or Windows strict Vulkan, macOS Metal host evidence, and iOS Metal only where the selected claim explicitly consumes iOS package evidence.
-- [ ] The validator emits the final four ready counters only at the last aggregate gate.
-- [ ] The validator fails if any broad claim is present without exact evidence.
-- [ ] The validator fails if any external engine API, sample, asset, trademark, UI expression, or compatibility/equivalence claim appears without explicit legal and technical approval.
+- [x] Default invocation runs focused non-ready checks and emits exact host-gated counters without requiring Apple tools.
+- [x] `-RequireReady` requires selected D3D12, strict Vulkan, Apple-host Metal, quality matrix, VFX/profiling, memory/profiling, package, and static guard evidence.
+- [x] `-RequireReady` requires clean-room source review counters and complete third-party notice counters.
+- [x] CI lane selection requires Windows MSVC/D3D12, Linux or Windows strict Vulkan, macOS Metal host evidence, and iOS Metal only where the selected claim explicitly consumes iOS package evidence.
+- [x] The validator emits the final four ready counters only at the last aggregate gate.
+- [x] The validator fails if any broad claim is present without exact evidence.
+- [x] The validator fails if any external engine API, sample, asset, trademark, UI expression, or compatibility/equivalence claim appears without explicit legal and technical approval.
+
+Task 5 implementation evidence:
+
+- `tools/validate-renderer-commercial-quality-closeout.ps1` now has explicit evidence switches for
+  backend parity, D3D12, strict Vulkan, Apple-host Metal, renderer quality matrix,
+  production VFX/profiling, Metal memory/profiling, visible 3D/runtime UI/environment/generated-game
+  package rows, static guards, optional iOS Metal package evidence, clean-room/legal state, unsafe broad
+  claims, and external-engine approval.
+- Default validation emits selected evidence row counts and keeps
+  `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`,
+  `renderer_broad_quality_ready=0`, and `renderer_commercial_readiness=0`.
+- Direct `-RequireReady` fails with concrete blocker counters until every selected evidence row is
+  supplied; with all required flags supplied it can emit the final four ready counters.
+- `tools/classify-pr-validation-tier.ps1` and `tools/check-ci-matrix.ps1` pin closeout validator PRs
+  to Windows MSVC/D3D12, strict Vulkan host, macOS Metal CMake/host evidence, and full static analysis
+  while keeping iOS Metal unselected unless an iOS evidence surface is explicitly touched.
+- `tools/run-validation-recipe-plans.ps1` exposes the default closeout validator through the reviewed
+  recipe runner without making `-RequireReady` a default validation path.
+
+Task 5 focused validation evidence:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1` | PASS: default emits `renderer_commercial_quality_closeout_status=host_evidence_required`, 12 selected evidence rows, 12 missing rows, clean-room/legal counters ready, and all final renderer ready counters at `0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady` | Expected FAIL: emits concrete missing evidence blockers for backend parity, D3D12, strict Vulkan, Apple Metal, quality matrix, VFX/profiling, Metal memory/profiling, selected packages, and static guards. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -BackendParityReady -D3d12Ready -VulkanStrictReady -AppleMetalReady -RendererQualityMatrixReady -ProductionVfxProfilingReady -MetalMemoryProfilingReady -Visible3dPackageReady -RuntimeUiPackageReady -EnvironmentPackageReady -GeneratedGamePackageReady -StaticGuardsReady` | PASS: emits `renderer_commercial_quality_closeout_status=ready`, 12 ready rows, zero blockers, and `renderer_backend_parity_ready=1`, `renderer_metal_broad_readiness=1`, `renderer_broad_quality_ready=1`, `renderer_commercial_readiness=1`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -BroadRendererQualityClaim` | Expected FAIL: broad renderer quality claim is blocked until exact evidence rows are supplied. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/classify-pr-validation-tier.ps1 -ChangedPath tools/validate-renderer-commercial-quality-closeout.ps1` | PASS: selected lanes are `windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence`, with `ios_metal_evidence=false`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe renderer-commercial-quality-closeout` | PASS: reviewed runner plans the default closeout validator and reports host gates `d3d12-windows-primary`, `vulkan-strict`, `metal-apple`, and `renderer-commercial-closeout`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS after manifest composition. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS after preserving renderer Metal recipe guidance needles. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: static checks, build, and 158/158 CTest tests passed; Metal toolchain remains diagnostic-only on this Windows host. |
 
 ## Task 6: Synchronize Docs, Manifest, Schemas, And Agent Surfaces
 
