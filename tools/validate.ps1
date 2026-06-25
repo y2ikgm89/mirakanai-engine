@@ -546,6 +546,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-cpu-profiling-matrix-host-gate-closeout.ps1"
     Get-ValidateTask -ScriptFileName "check-cpu-profiling-host-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-metal-memory-profiling-host-evidence-collector.ps1"
+    Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-evidence-metal-memory.ps1"
     # renderer-metal-memory-profiling-apple-host-artifacts-v1 fail-closed host-gated check.
