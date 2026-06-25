@@ -124,6 +124,28 @@ function Get-RequiredStringProperty {
     return [string]$value
 }
 
+function Get-RequiredInt64Property {
+    param(
+        [Parameter(Mandatory = $true)]$JsonObject,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $value = Get-JsonPropertyValue -JsonObject $JsonObject -Name $Name
+    if ($null -eq $value) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "missing_$Name"
+        return 0
+    }
+    try {
+        return [long]$value
+    } catch {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_$Name"
+        return 0
+    }
+}
+
 function Test-RequiredTrueProperty {
     param(
         [Parameter(Mandatory = $true)]$JsonObject,
@@ -248,6 +270,34 @@ function Resolve-RendererCommercialReadinessArtifactPath {
     return $fullPath
 }
 
+function Resolve-RendererCommercialReadinessNestedArtifactPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$EvidenceDirectory,
+        [Parameter(Mandatory = $true)][string]$ArtifactRootFull,
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $normalizedPath = $RelativePath.Replace("\", "/")
+    if ([System.IO.Path]::IsPathRooted($RelativePath) -or $normalizedPath.Contains("..") -or
+        $normalizedPath.Contains(":")) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "unsafe_capture_artifact_path"
+        return $null
+    }
+
+    $fullPath = [System.IO.Path]::GetFullPath((Join-Path $EvidenceDirectory $RelativePath))
+    $artifactRootWithSeparator = $ArtifactRootFull.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+        [System.IO.Path]::DirectorySeparatorChar
+    if (-not ($fullPath -eq $ArtifactRootFull -or
+            $fullPath.StartsWith($artifactRootWithSeparator, [System.StringComparison]::OrdinalIgnoreCase))) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "capture_artifact_path_escape"
+        return $null
+    }
+    return $fullPath
+}
+
 function Assert-SourceRow {
     param(
         [Parameter(Mandatory = $true)]$SourceRows,
@@ -297,7 +347,17 @@ function Test-RendererCommercialReadinessArtifactFixtureFlag {
     }
 
     $fixtureOnlyValue = Get-JsonPropertyValue -JsonObject $artifact -Name "fixture_only"
-    if ($null -eq $fixtureOnlyValue -or $fixtureOnlyValue -isnot [bool]) {
+    if ($null -eq $fixtureOnlyValue) {
+        $schemaVersion = Get-JsonPropertyValue -JsonObject $artifact -Name "schema_version"
+        $claimId = Get-JsonPropertyValue -JsonObject $artifact -Name "claim_id"
+        if ($schemaVersion -ceq "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1" -and
+            $claimId -ceq "renderer-metal-memory-profiling-host-evidence-v1") {
+            return $true
+        }
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_artifact_fixture_flag"
+        return $false
+    }
+    if ($fixtureOnlyValue -isnot [bool]) {
         Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_artifact_fixture_flag"
         return $false
     }
@@ -1301,6 +1361,362 @@ function Test-RendererCommercialReadinessPackageArtifact {
     return $artifactReady -and $rowReady -and $nonClaimsReady
 }
 
+function Test-RendererCommercialReadinessMetalMemoryHostEvidence {
+    param(
+        [Parameter(Mandatory = $true)]$Evidence,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$RowName,
+        [Parameter(Mandatory = $true)][string]$ArtifactRootFull,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    Assert-ExactJsonProperties -JsonObject $Evidence -Label "metal_memory_host_artifact" `
+        -Diagnostics $artifactDiagnostics `
+        -ExpectedNames @(
+            "schema_version",
+            "claim_id",
+            "host",
+            "source_rows",
+            "memory_residency_row",
+            "profiling_capture_row",
+            "non_claims"
+        )
+
+    if ((Get-RequiredStringProperty -JsonObject $Evidence -Name "schema_version" `
+                -Diagnostics $artifactDiagnostics) -cne "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_host_artifact_schema"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $Evidence -Name "claim_id" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-metal-memory-profiling-host-evidence-v1") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_host_artifact_claim"
+    }
+
+    $hostRow = Get-JsonPropertyValue -JsonObject $Evidence -Name "host"
+    $hostReady = $true
+    if ((Get-RequiredStringProperty -JsonObject $hostRow -Name "platform" `
+                -Diagnostics $artifactDiagnostics) -cne "macos") {
+        $hostReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_host_platform"
+    }
+    $macosVersion = Get-RequiredStringProperty -JsonObject $hostRow -Name "macos_version" `
+        -Diagnostics $artifactDiagnostics
+    $xcodeVersion = Get-RequiredStringProperty -JsonObject $hostRow -Name "xcode_version" `
+        -Diagnostics $artifactDiagnostics
+    if ([string]::IsNullOrWhiteSpace($macosVersion) -or [string]::IsNullOrWhiteSpace($xcodeVersion)) {
+        $hostReady = $false
+    }
+    foreach ($requiredTrue in @("full_xcode_selected", "metal_tool_ready", "metallib_tool_ready")) {
+        $hostReady = (Test-RequiredTrueProperty -JsonObject $hostRow -Name $requiredTrue `
+                -Diagnostics $artifactDiagnostics) -and $hostReady
+    }
+
+    $sourceRows = Get-JsonPropertyValue -JsonObject $Evidence -Name "source_rows"
+    Assert-SourceRow -SourceRows $sourceRows -Name "heap_documentation_source_id" `
+        -Expected "Apple-Metal-MTLHeap-2026-06-24" -Diagnostics $artifactDiagnostics
+    Assert-SourceRow -SourceRows $sourceRows -Name "residency_set_documentation_source_id" `
+        -Expected "Apple-Metal-MTLResidencySet-2026-06-24" -Diagnostics $artifactDiagnostics
+    Assert-SourceRow -SourceRows $sourceRows -Name "residency_request_documentation_source_id" `
+        -Expected "Apple-Metal-MTLResidencySet-requestResidency-2026-06-24" `
+        -Diagnostics $artifactDiagnostics
+    Assert-SourceRow -SourceRows $sourceRows -Name "command_queue_residency_documentation_source_id" `
+        -Expected "Apple-Metal-MTLCommandQueue-addResidencySet-2026-06-24" `
+        -Diagnostics $artifactDiagnostics
+    Assert-SourceRow -SourceRows $sourceRows -Name "capture_manager_documentation_source_id" `
+        -Expected "Apple-Metal-MTLCaptureManager-2026-06-24" -Diagnostics $artifactDiagnostics
+    Assert-SourceRow -SourceRows $sourceRows -Name "programmatic_capture_documentation_source_id" `
+        -Expected "Apple-Metal-ProgrammaticCapture-2026-06-24" -Diagnostics $artifactDiagnostics
+
+    $memoryRow = Get-JsonPropertyValue -JsonObject $Evidence -Name "memory_residency_row"
+    $memoryReady = $true
+    if ((Get-RequiredStringProperty -JsonObject $memoryRow -Name "proof_row_id" `
+                -Diagnostics $artifactDiagnostics) -cne "memory_residency") {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_proof_row_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $memoryRow -Name "host_validation_recipe_id" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-metal-memory-profiling-host-evidence") {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_recipe"
+    }
+    $workloadId = Get-RequiredStringProperty -JsonObject $memoryRow -Name "first_party_workload_id" `
+        -Diagnostics $artifactDiagnostics
+    if ([string]::IsNullOrWhiteSpace($workloadId)) {
+        $memoryReady = $false
+    }
+    foreach ($requiredTrue in @(
+            "runtime_ready",
+            "command_queue_ready",
+            "heap_allocation_ready",
+            "heap_resource_allocation_ready",
+            "residency_set_ready",
+            "residency_request_ready",
+            "residency_commit_ready",
+            "command_queue_residency_set_committed",
+            "residency_pressure_evidence_ready"
+        )) {
+        $memoryReady = (Test-RequiredTrueProperty -JsonObject $memoryRow -Name $requiredTrue `
+                -Diagnostics $artifactDiagnostics) -and $memoryReady
+    }
+    if ((Get-RequiredStringProperty -JsonObject $memoryRow -Name "heap_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "MTLHeap") {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_heap_api"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $memoryRow -Name "residency_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "MTLResidencySet") {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_residency_api"
+    }
+    $heapResourceRows = Get-RequiredInt64Property -JsonObject $memoryRow -Name "heap_resource_rows" `
+        -Diagnostics $artifactDiagnostics
+    $heapAllocatedBytes = Get-RequiredInt64Property -JsonObject $memoryRow -Name "heap_allocated_bytes" `
+        -Diagnostics $artifactDiagnostics
+    $residentBytes = Get-RequiredInt64Property -JsonObject $memoryRow -Name "resident_bytes" `
+        -Diagnostics $artifactDiagnostics
+    $budgetBytes = Get-RequiredInt64Property -JsonObject $memoryRow -Name "budget_bytes" `
+        -Diagnostics $artifactDiagnostics
+    $residencySetRows = Get-RequiredInt64Property -JsonObject $memoryRow `
+        -Name "residency_set_allocation_rows" -Diagnostics $artifactDiagnostics
+    $pressureRows = Get-RequiredInt64Property -JsonObject $memoryRow -Name "memory_pressure_sample_rows" `
+        -Diagnostics $artifactDiagnostics
+    $budgetStatus = Get-RequiredStringProperty -JsonObject $memoryRow -Name "memory_pressure_budget_status" `
+        -Diagnostics $artifactDiagnostics
+    if ($heapResourceRows -lt 1) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_heap_rows"
+    }
+    if ($heapAllocatedBytes -lt 1) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_heap_bytes"
+    }
+    if ($residentBytes -lt 1) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_resident_bytes"
+    }
+    if ($budgetBytes -lt 1 -or $budgetBytes -lt $residentBytes) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_budget_bytes"
+    }
+    if ($residencySetRows -lt 1) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_residency_rows"
+    }
+    if ($pressureRows -lt 1) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_pressure_rows"
+    }
+    if ($budgetStatus -notin @("within_budget", "pressure_observed")) {
+        $memoryReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_memory_budget_status"
+    }
+
+    $captureRow = Get-JsonPropertyValue -JsonObject $Evidence -Name "profiling_capture_row"
+    $captureReady = $true
+    if ((Get-RequiredStringProperty -JsonObject $captureRow -Name "proof_row_id" `
+                -Diagnostics $artifactDiagnostics) -cne "profiling_capture") {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_capture_proof_row_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $captureRow -Name "host_validation_recipe_id" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-metal-memory-profiling-host-evidence") {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_capture_recipe"
+    }
+    $captureWorkloadId = Get-RequiredStringProperty -JsonObject $captureRow -Name "first_party_workload_id" `
+        -Diagnostics $artifactDiagnostics
+    if ([string]::IsNullOrWhiteSpace($captureWorkloadId)) {
+        $captureReady = $false
+    }
+    foreach ($requiredTrue in @(
+            "runtime_ready",
+            "command_queue_ready",
+            "capture_manager_ready",
+            "capture_descriptor_ready",
+            "capture_object_ready",
+            "capture_scope_ready",
+            "capture_boundary_ready",
+            "capture_started",
+            "capture_stopped",
+            "command_buffer_captured"
+        )) {
+        $captureReady = (Test-RequiredTrueProperty -JsonObject $captureRow -Name $requiredTrue `
+                -Diagnostics $artifactDiagnostics) -and $captureReady
+    }
+    if ((Get-RequiredStringProperty -JsonObject $captureRow -Name "capture_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "MTLCaptureManager") {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_capture_api"
+    }
+    $captureScopeLabel = Get-RequiredStringProperty -JsonObject $captureRow -Name "capture_scope_label" `
+        -Diagnostics $artifactDiagnostics
+    if ([string]::IsNullOrWhiteSpace($captureScopeLabel)) {
+        $captureReady = $false
+    }
+    $capturePath = Get-RequiredStringProperty -JsonObject $captureRow -Name "capture_artifact_path" `
+        -Diagnostics $artifactDiagnostics
+    $captureHash = Get-RequiredStringProperty -JsonObject $captureRow -Name "capture_artifact_hash_sha256" `
+        -Diagnostics $artifactDiagnostics
+    $deterministicHash = Get-RequiredStringProperty -JsonObject $captureRow `
+        -Name "deterministic_capture_hash_sha256" -Diagnostics $artifactDiagnostics
+    $captureArtifactRows = Get-RequiredInt64Property -JsonObject $captureRow -Name "capture_artifact_rows" `
+        -Diagnostics $artifactDiagnostics
+    if (-not (Test-LowerHexSha256Text -Value $captureHash) -or
+        -not (Test-LowerHexSha256Text -Value $deterministicHash) -or
+        $captureHash -cne $deterministicHash) {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_capture_hash"
+    }
+    if ($captureArtifactRows -lt 1) {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_metal_capture_artifact_rows"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($capturePath)) {
+        $captureArtifactPath = Resolve-RendererCommercialReadinessNestedArtifactPath `
+            -EvidenceDirectory (Split-Path -Parent $Path) `
+            -ArtifactRootFull $ArtifactRootFull `
+            -RelativePath $capturePath `
+            -Diagnostics $artifactDiagnostics
+        if ($null -eq $captureArtifactPath -or
+            -not (Test-Path -LiteralPath $captureArtifactPath -PathType Leaf)) {
+            $captureReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_metal_capture_artifact"
+        } else {
+            $actualCaptureHash = (Get-FileHash -LiteralPath $captureArtifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actualCaptureHash -cne $captureHash) {
+                $captureReady = $false
+                Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                    -Name "metal_capture_artifact_hash_mismatch"
+            }
+        }
+    }
+
+    $nonClaims = Get-JsonPropertyValue -JsonObject $Evidence -Name "non_claims"
+    $nonClaimsReady = $true
+    foreach ($requiredFalse in @(
+            "simulator_only_evidence",
+            "cross_backend_inference",
+            "native_handles_exposed",
+            "broad_backend_parity_ready",
+            "broad_metal_readiness",
+            "commercial_renderer_readiness",
+            "broad_renderer_quality",
+            "environment_ready",
+            "external_engine_api_parity"
+        )) {
+        $nonClaimsReady = (Test-RequiredFalseProperty -JsonObject $nonClaims -Name $requiredFalse `
+                -Diagnostics $artifactDiagnostics) -and $nonClaimsReady
+    }
+
+    foreach ($artifactDiagnostic in $artifactDiagnostics) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+    }
+
+    $fullEvidenceReady = $hostReady -and $nonClaimsReady
+    if ($RowName -eq "memory_residency") {
+        return $fullEvidenceReady -and $memoryReady
+    }
+    if ($RowName -eq "profiling_capture") {
+        return $fullEvidenceReady -and $captureReady
+    }
+
+    Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "unknown_metal_memory_row"
+    return $false
+}
+
+function Test-RendererCommercialReadinessMetalMemoryArtifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$RowName,
+        [Parameter(Mandatory = $true)][string]$ArtifactRootFull,
+        [Parameter(Mandatory = $true)][bool]$FixtureArtifactsAllowed,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    $artifact = Read-RendererCommercialReadinessJson -Path $Path -Diagnostics $artifactDiagnostics
+    if ($null -eq $artifact) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_metal_memory_artifact_json"
+        return $false
+    }
+
+    $claimId = Get-JsonPropertyValue -JsonObject $artifact -Name "claim_id"
+    if ($claimId -ceq "renderer-metal-memory-profiling-host-evidence-v1") {
+        foreach ($artifactDiagnostic in $artifactDiagnostics) {
+            Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+        }
+        return Test-RendererCommercialReadinessMetalMemoryHostEvidence `
+            -Evidence $artifact `
+            -Path $Path `
+            -RowName $RowName `
+            -ArtifactRootFull $ArtifactRootFull `
+            -Diagnostics $Diagnostics
+    }
+
+    if (-not $FixtureArtifactsAllowed) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics `
+            -Name "metal_memory_full_host_evidence_required"
+        foreach ($artifactDiagnostic in $artifactDiagnostics) {
+            Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+        }
+        return $false
+    }
+
+    $expectedArtifactId = switch ($RowName) {
+        "memory_residency" { "metal-memory-residency" }
+        "profiling_capture" { "metal-profiling-capture" }
+        default {
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "unknown_metal_memory_row"
+            ""
+        }
+    }
+
+    Assert-ExactJsonProperties -JsonObject $artifact -Label "metal_memory_fixture_artifact" `
+        -Diagnostics $artifactDiagnostics `
+        -ExpectedNames @(
+            "schema_version",
+            "artifact_id",
+            "validation_recipe",
+            "fixture_only",
+            "ready"
+        )
+
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "schema_version" `
+                -Diagnostics $artifactDiagnostics) -cne "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_fixture_schema"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "artifact_id" `
+                -Diagnostics $artifactDiagnostics) -cne $expectedArtifactId) {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_fixture_artifact_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "validation_recipe" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-metal-memory-profiling-host-evidence") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_metal_memory_fixture_recipe"
+    }
+    $artifactReady = Test-RequiredTrueProperty -JsonObject $artifact -Name "ready" `
+        -Diagnostics $artifactDiagnostics
+
+    foreach ($artifactDiagnostic in $artifactDiagnostics) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+    }
+
+    return $artifactReady -and ($artifactDiagnostics.Count -eq 0)
+}
+
 function Invoke-RendererCommercialQualityCloseoutFromEvidence {
     param(
         [Parameter(Mandatory = $true)]$RowReady,
@@ -1700,6 +2116,22 @@ if ($null -ne $evidenceFile) {
                         -PackageProofRows $packageProofRows `
                         -Diagnostics $evidenceDiagnostics
                     $artifactSpecificReady = $artifactSpecificReady -and $packageArtifactReady
+                }
+            }
+            if (@("memory_residency", "profiling_capture") -contains $rowSpec.Name) {
+                if ($null -eq $resolvedArtifactPath -or
+                    -not (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
+                    $artifactSpecificReady = $false
+                    Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
+                        -Name "missing_$($rowSpec.Name)_metal_memory_artifact"
+                } else {
+                    $metalMemoryArtifactReady = Test-RendererCommercialReadinessMetalMemoryArtifact `
+                        -Path $resolvedArtifactPath `
+                        -RowName $rowSpec.Name `
+                        -ArtifactRootFull $artifactRootFull `
+                        -FixtureArtifactsAllowed $fixtureOnly `
+                        -Diagnostics $evidenceDiagnostics
+                    $artifactSpecificReady = $artifactSpecificReady -and $metalMemoryArtifactReady
                 }
             }
 

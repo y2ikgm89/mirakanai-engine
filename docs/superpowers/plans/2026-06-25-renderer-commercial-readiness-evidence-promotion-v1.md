@@ -497,6 +497,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 **Files:**
 
 - Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Add: `tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 - Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
@@ -516,6 +519,7 @@ Current status:
 
 - Host-gated for real commercial promotion. This workspace has validated the retained artifact contract, fixture-ready path, and rejected external-engine path, but has not collected a non-fixture artifact root from the required selected Windows D3D12, strict Vulkan, Apple-host Metal, package, and legal/source-review lanes.
 - Retained artifact roots now fail closed when any child artifact still declares `fixture_only=true`; copied fixture artifacts cannot promote real commercial readiness.
+- Full retained `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` artifacts now promote only the `memory_residency` and `profiling_capture` rows when their Apple source ids, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, capture artifact hash, macOS/Xcode tool rows, and broad-readiness non-claims validate. `tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1` proves this row import while keeping `renderer_metal_broad_readiness=0` and `renderer_commercial_readiness=0` until the other retained rows are supplied.
 - `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
 - The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
 
@@ -528,6 +532,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```

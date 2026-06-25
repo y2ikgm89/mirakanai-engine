@@ -29,6 +29,7 @@ $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/00
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-evidence.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
+$metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
@@ -276,8 +277,12 @@ foreach ($needle in @(
 
 Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-fixture-guard.ps1' `
     "renderer commercial readiness fixture guard validate task"
+Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-metal-memory.ps1' `
+    "renderer commercial readiness Metal memory validate task"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
     "renderer commercial readiness fixture guard check"
+Assert-ContainsText $metalMemoryCheckText 'renderer-commercial-readiness-evidence-metal-memory-check: ok' `
+    "renderer commercial readiness Metal memory check"
 
 foreach ($needle in @(
         'artifacts/renderer/commercial-readiness-evidence/fixture-guard-self-test',
@@ -288,6 +293,46 @@ foreach ($needle in @(
         'Copied fixture artifacts unexpectedly promoted from a retained artifact root.'
     )) {
     Assert-ContainsText $fixtureGuardCheckText $needle "renderer commercial readiness fixture guard check"
+}
+
+foreach ($needle in @(
+        'artifacts/renderer/commercial-readiness-evidence/metal-memory-full-self-test',
+        'GameEngine.RendererMetalMemoryProfilingHostEvidence.v1',
+        'renderer-metal-memory-profiling-host-evidence-v1',
+        'Apple-Metal-MTLHeap-2026-06-24',
+        'Apple-Metal-MTLResidencySet-2026-06-24',
+        'Apple-Metal-MTLCommandQueue-addResidencySet-2026-06-24',
+        'Apple-Metal-MTLCaptureManager-2026-06-24',
+        'Apple-Metal-ProgrammaticCapture-2026-06-24',
+        'capture-summary.txt',
+        'renderer_metal_memory_profiling_ready=1',
+        'renderer_metal_broad_readiness=0',
+        'renderer_commercial_readiness=0',
+        'invalid_artifact_fixture_flag',
+        'metal_memory_full_host_evidence_required'
+    )) {
+    Assert-ContainsText $metalMemoryCheckText $needle "renderer commercial readiness Metal memory check"
+}
+
+foreach ($needle in @(
+        'Test-RendererCommercialReadinessMetalMemoryArtifact',
+        'Test-RendererCommercialReadinessMetalMemoryHostEvidence',
+        'metal_memory_full_host_evidence_required',
+        'renderer-metal-memory-profiling-host-evidence-v1',
+        'Apple-Metal-MTLHeap-2026-06-24',
+        'Apple-Metal-MTLResidencySet-2026-06-24',
+        'Apple-Metal-MTLResidencySet-requestResidency-2026-06-24',
+        'Apple-Metal-MTLCommandQueue-addResidencySet-2026-06-24',
+        'Apple-Metal-MTLCaptureManager-2026-06-24',
+        'Apple-Metal-ProgrammaticCapture-2026-06-24',
+        'capture_artifact_hash_sha256',
+        'deterministic_capture_hash_sha256',
+        'broad_backend_parity_ready',
+        'commercial_renderer_readiness',
+        'external_engine_api_parity'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle `
+        "renderer commercial readiness Metal memory host evidence binding"
 }
 
 foreach ($needle in @(
