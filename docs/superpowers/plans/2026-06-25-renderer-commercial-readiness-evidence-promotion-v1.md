@@ -509,6 +509,12 @@ Steps:
 - [ ] Record real host validation evidence in the plan before marking the plan completed.
 - [ ] Return `currentActivePlan` to the master plan or select the next dated plan after closeout.
 
+Current status:
+
+- Host-gated for real commercial promotion. This workspace has validated the retained artifact contract, fixture-ready path, and rejected external-engine path, but has not collected a non-fixture artifact root from the required selected Windows D3D12, strict Vulkan, Apple-host Metal, package, and legal/source-review lanes.
+- `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
+- The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
+
 Final local command sequence:
 
 ```powershell
