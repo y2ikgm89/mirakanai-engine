@@ -45,6 +45,8 @@ $rendererMetalAppleValidatorText = Get-AgentSurfaceText "tools/validate-renderer
 $collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
 $metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
+$finalPreflightText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1"
+$finalPreflightCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
@@ -144,6 +146,8 @@ foreach ($surface in @(
             "tools/check-renderer-commercial-readiness-evidence-collector.ps1",
             "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1",
             "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1",
+            "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1",
+            "tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1",
             "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
             "tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1",
             "tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1"
@@ -303,6 +307,8 @@ Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-
     "renderer commercial readiness evidence collector validate task"
 Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-metal-memory.ps1' `
     "renderer commercial readiness Metal memory validate task"
+Assert-ContainsText $validateText 'check-renderer-commercial-readiness-final-promotion-preflight.ps1' `
+    "renderer commercial readiness final promotion preflight validate task"
 Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artifact.ps1' `
     "renderer commercial readiness D3D12 artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
@@ -999,8 +1005,10 @@ foreach ($needle in @(
 foreach ($needle in @(
         'rendererCommercialReadinessEvidenceCheck',
         'rendererCommercialReadinessEvidenceRequireReady',
+        'rendererCommercialReadinessFinalPromotionPreflight',
         'tools/collect-renderer-commercial-readiness-evidence.ps1',
         'tools/validate-renderer-commercial-readiness-evidence.ps1',
+        'tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1',
         'renderer-commercial-readiness-evidence'
     )) {
     Assert-ContainsText $commandsFragmentText $needle "renderer commercial readiness evidence command surface"
@@ -1011,6 +1019,30 @@ Assert-ContainsText $commandsFragmentText 'rendererCommercialReadinessEvidenceCo
     "renderer commercial readiness evidence collector command surface"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-evidence-collector' `
     "renderer commercial readiness evidence collector validation recipe"
+Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-promotion-preflight' `
+    "renderer commercial readiness final promotion preflight validation recipe"
+foreach ($needle in @(
+        'renderer_commercial_readiness_final_preflight_required_files=',
+        'renderer_commercial_readiness_final_preflight_missing_files',
+        'metal_memory_profiling_host_evidence_required',
+        'clean_room_legal_artifact_required',
+        'fixture_artifact_rejected_',
+        'require_ready_without_complete_retained_artifacts',
+        'renderer_commercial_readiness='
+    )) {
+    Assert-ContainsText $finalPreflightText $needle "renderer commercial readiness final preflight validator"
+}
+foreach ($needle in @(
+        'renderer_commercial_readiness_final_preflight_required_files=12',
+        'renderer_commercial_readiness_final_preflight_missing_files',
+        'metal_memory_profiling_host_evidence_required',
+        'clean_room_legal_artifact_required',
+        'fixture_artifact_rejected_d3d12_quality',
+        'require_ready_without_complete_retained_artifacts',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $finalPreflightCheckText $needle "renderer commercial readiness final preflight check"
+}
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCheck' `
     "renderer commercial readiness D3D12 artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCollector' `

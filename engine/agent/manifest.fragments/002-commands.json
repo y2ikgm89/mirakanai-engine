@@ -42,6 +42,7 @@
     "rendererQualityVfxCommercialArtifactsCollector": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/collect-renderer-quality-vfx-commercial-artifacts.ps1 -Mode Assemble -OutputRootRelative artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root> -QualityVfxHostEvidenceRelative <path>",
     "rendererCleanRoomLegalArtifactCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-clean-room-legal-artifact.ps1",
     "rendererCleanRoomLegalArtifactCollector": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/collect-renderer-clean-room-legal-artifact.ps1 -Mode Assemble -OutputRootRelative artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root> -CleanRoomLegalReviewRelative <path>",
+    "rendererCommercialReadinessFinalPromotionPreflight": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1 -ArtifactRootRelative artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root>",
     "rendererCommercialReadinessEvidenceRequireReady": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root>",
     "mavgBroadOptimizationCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-broad-optimization.ps1",
     "mavgNaniteComparisonCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-nanite-comparison.ps1",
