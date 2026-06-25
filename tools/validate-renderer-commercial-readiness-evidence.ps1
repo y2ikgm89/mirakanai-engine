@@ -334,6 +334,190 @@ function ConvertFrom-RendererReadinessKeyValueLines {
     return $values
 }
 
+function Test-RendererCommercialReadinessD3d12Artifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$D3d12ProofRows,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    $artifact = Read-RendererCommercialReadinessJson -Path $Path -Diagnostics $artifactDiagnostics
+    if ($null -eq $artifact) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_d3d12_artifact_json"
+        return $false
+    }
+
+    Assert-ExactJsonProperties -JsonObject $artifact -Label "d3d12_artifact" -Diagnostics $artifactDiagnostics `
+        -ExpectedNames @(
+            "schema_version",
+            "artifact_id",
+            "validation_recipe",
+            "fixture_only",
+            "ready",
+            "proof_rows",
+            "validation_counters",
+            "non_claims"
+        )
+
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "schema_version" `
+                -Diagnostics $artifactDiagnostics) -cne "GameEngine.RendererCommercialQualityCloseout.v1") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_artifact_schema"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "artifact_id" `
+                -Diagnostics $artifactDiagnostics) -cne "d3d12-quality") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_artifact_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "validation_recipe" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-d3d12-quality-evidence") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_artifact_recipe"
+    }
+    $null = Test-RequiredTrueProperty -JsonObject $artifact -Name "ready" -Diagnostics $artifactDiagnostics
+
+    $proofRows = Get-JsonPropertyValue -JsonObject $artifact -Name "proof_rows"
+    $commandAllocatorListFence = Get-JsonPropertyValue -JsonObject $proofRows -Name "command_allocator_list_fence"
+    $resourceBarriers = Get-JsonPropertyValue -JsonObject $proofRows -Name "resource_barriers"
+    $timestamp = Get-JsonPropertyValue -JsonObject $proofRows -Name "timestamp"
+    $debugValidation = Get-JsonPropertyValue -JsonObject $proofRows -Name "debug_validation"
+    $residency = Get-JsonPropertyValue -JsonObject $proofRows -Name "residency"
+    $packageVisibleReadback = Get-JsonPropertyValue -JsonObject $proofRows -Name "package_visible_readback"
+    $nativeHandles = Get-JsonPropertyValue -JsonObject $proofRows -Name "native_handles"
+
+    $commandAllocatorFenceReady =
+        (Test-RequiredTrueProperty -JsonObject $commandAllocatorListFence -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $commandAllocatorListFence -Name "command_allocator_reuse_fenced" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $commandAllocatorListFence -Name "command_list_closed_before_execute" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $commandAllocatorListFence -Name "fence_signal_wait_recorded" `
+            -Diagnostics $artifactDiagnostics) -and
+        ((Get-RequiredStringProperty -JsonObject $commandAllocatorListFence -Name "fence_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "")
+    if ((Get-RequiredStringProperty -JsonObject $commandAllocatorListFence -Name "fence_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "ID3D12Fence") {
+        $commandAllocatorFenceReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_fence_api"
+    }
+    $D3d12ProofRows["command_allocator_fence"] = $commandAllocatorFenceReady
+
+    $resourceBarrierReady =
+        (Test-RequiredTrueProperty -JsonObject $resourceBarriers -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $resourceBarriers -Name "render_transition_explicit" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $resourceBarriers -Name "copy_transition_explicit" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $resourceBarriers -Name "unordered_access_barrier_explicit" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $resourceBarriers -Name "readback_transition_explicit" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $resourceBarriers -Name "resource_barrier_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "D3D12_RESOURCE_BARRIER") {
+        $resourceBarrierReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_resource_barrier_api"
+    }
+    $D3d12ProofRows["resource_barrier"] = $resourceBarrierReady
+
+    $timestampReady =
+        (Test-RequiredTrueProperty -JsonObject $timestamp -Name "ready" -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $timestamp -Name "resolved_query_data" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $timestamp -Name "clock_calibration" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $timestamp -Name "query_type" `
+                -Diagnostics $artifactDiagnostics) -cne "D3D12_QUERY_TYPE_TIMESTAMP") {
+        $timestampReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_timestamp_query"
+    }
+    $queueFrequency = Get-JsonPropertyValue -JsonObject $timestamp -Name "queue_frequency_hz"
+    if ($null -eq $queueFrequency -or [long]$queueFrequency -le 0) {
+        $timestampReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_d3d12_queue_frequency"
+    }
+    $D3d12ProofRows["timestamp"] = $timestampReady
+
+    $debugValidationReady =
+        (Test-RequiredTrueProperty -JsonObject $debugValidation -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $debugValidation -Name "debug_layer_or_gpu_based_validation_clean" `
+            -Diagnostics $artifactDiagnostics)
+    foreach ($zeroField in @("debug_message_count", "gpu_based_validation_message_count")) {
+        $value = Get-JsonPropertyValue -JsonObject $debugValidation -Name $zeroField
+        if ($null -eq $value -or [long]$value -ne 0) {
+            $debugValidationReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "dirty_d3d12_$zeroField"
+        }
+    }
+    $D3d12ProofRows["debug_validation"] = $debugValidationReady
+
+    $residencyReady =
+        (Test-RequiredTrueProperty -JsonObject $residency -Name "ready" -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $residency -Name "video_memory_budget_queried" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $residency -Name "make_resident_or_budget_recorded" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $residency -Name "residency_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "ID3D12Device3::EnqueueMakeResident") {
+        $residencyReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_residency_api"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $residency -Name "budget_api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "IDXGIAdapter3::QueryVideoMemoryInfo") {
+        $residencyReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_budget_api"
+    }
+    $D3d12ProofRows["residency"] = $residencyReady
+
+    $packageReadbackReady =
+        (Test-RequiredTrueProperty -JsonObject $packageVisibleReadback -Name "ready" `
+            -Diagnostics $artifactDiagnostics)
+    $packageReadbackHash = Get-RequiredStringProperty -JsonObject $packageVisibleReadback `
+        -Name "deterministic_hash_sha256" -Diagnostics $artifactDiagnostics
+    if (-not (Test-LowerHexSha256Text -Value $packageReadbackHash)) {
+        $packageReadbackReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_d3d12_package_readback_hash"
+    }
+    $readbackCounterRows = Get-JsonPropertyValue -JsonObject $packageVisibleReadback -Name "readback_counter_rows"
+    if ($null -eq $readbackCounterRows -or [long]$readbackCounterRows -le 0) {
+        $packageReadbackReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_d3d12_package_readback_rows"
+    }
+    $D3d12ProofRows["package_readback"] = $packageReadbackReady
+
+    $nativeHandleReady =
+        (Test-RequiredTrueProperty -JsonObject $nativeHandles -Name "ready" -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredFalseProperty -JsonObject $nativeHandles -Name "native_handles_exposed" `
+            -Diagnostics $artifactDiagnostics)
+    $D3d12ProofRows["native_handles_exposed"] =
+        [bool](Get-JsonPropertyValue -JsonObject $nativeHandles -Name "native_handles_exposed")
+    $D3d12ProofRows["native_handles"] = $nativeHandleReady
+
+    $nonClaims = Get-JsonPropertyValue -JsonObject $artifact -Name "non_claims"
+    $nonClaimsReady = $true
+    foreach ($requiredFalse in @(
+            "vulkan_inferred",
+            "metal_inferred",
+            "broad_ui_parity",
+            "environment_ready",
+            "external_engine_parity",
+            "native_handles_exposed"
+        )) {
+        $nonClaimsReady = (Test-RequiredFalseProperty -JsonObject $nonClaims -Name $requiredFalse `
+                -Diagnostics $artifactDiagnostics) -and $nonClaimsReady
+    }
+
+    foreach ($artifactDiagnostic in $artifactDiagnostics) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+    }
+
+    return $commandAllocatorFenceReady -and $resourceBarrierReady -and $timestampReady -and
+        $debugValidationReady -and $residencyReady -and $packageReadbackReady -and
+        $nativeHandleReady -and $nonClaimsReady
+}
+
 function Invoke-RendererCommercialQualityCloseoutFromEvidence {
     param(
         [Parameter(Mandatory = $true)]$RowReady,
@@ -459,6 +643,16 @@ $rowReady = @{
     memory_residency = $false
     profiling_capture = $false
     metal_memory_profiling = $false
+}
+$d3d12ProofRows = @{
+    command_allocator_fence = $false
+    resource_barrier = $false
+    timestamp = $false
+    debug_validation = $false
+    residency = $false
+    package_readback = $false
+    native_handles = $false
+    native_handles_exposed = $false
 }
 
 $artifactRows = 0
@@ -588,6 +782,7 @@ if ($null -ne $evidenceFile) {
                 Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics -Name "invalid_$($rowSpec.Name)_hash"
             }
 
+            $resolvedArtifactPath = $null
             if (-not [string]::IsNullOrWhiteSpace($artifactPath)) {
                 $resolvedArtifactPath = Resolve-RendererCommercialReadinessArtifactPath `
                     -ArtifactRootFull $artifactRootFull `
@@ -606,12 +801,27 @@ if ($null -ne $evidenceFile) {
                 }
             }
 
+            $artifactSpecificReady = $true
+            if ($rowSpec.Name -eq "d3d12") {
+                if ($null -eq $resolvedArtifactPath -or
+                    -not (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
+                    $artifactSpecificReady = $false
+                    Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
+                        -Name "missing_d3d12_quality_artifact"
+                } else {
+                    $artifactSpecificReady = Test-RendererCommercialReadinessD3d12Artifact `
+                        -Path $resolvedArtifactPath `
+                        -D3d12ProofRows $d3d12ProofRows `
+                        -Diagnostics $evidenceDiagnostics
+                }
+            }
+
             $diagnosticCode = Get-RequiredStringProperty -JsonObject $row -Name "diagnostic_code" `
                 -Diagnostics $evidenceDiagnostics
             if ($rowIsReady -and $diagnosticCode -cne "ready") {
                 Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics -Name "ready_row_without_ready_diagnostic"
             }
-            if ($rowIsReady) {
+            if ($rowIsReady -and $artifactSpecificReady) {
                 $readyRows += 1
                 $rowReady[$rowSpec.Name] = $true
             } else {
@@ -776,6 +986,13 @@ $lines.Add("renderer_commercial_readiness_evidence_missing_artifacts=$missingArt
 $lines.Add("renderer_commercial_readiness_evidence_hash_mismatches=$hashMismatchRows")
 $lines.Add("renderer_external_engine_forbidden_material_detected_rows=$externalEngineDetectedRows")
 $lines.Add("renderer_external_engine_forbidden_material_rejected_rows=$forbiddenMaterialRejectedRows")
+$lines.Add("renderer_d3d12_command_allocator_fence_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["command_allocator_fence"]))")
+$lines.Add("renderer_d3d12_resource_barrier_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["resource_barrier"]))")
+$lines.Add("renderer_d3d12_timestamp_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["timestamp"]))")
+$lines.Add("renderer_d3d12_debug_validation_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["debug_validation"]))")
+$lines.Add("renderer_d3d12_residency_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["residency"]))")
+$lines.Add("renderer_d3d12_package_readback_ready=$(ConvertTo-CounterBit $($d3d12ProofRows["package_readback"]))")
+$lines.Add("renderer_d3d12_native_handles_exposed=$(ConvertTo-CounterBit $($d3d12ProofRows["native_handles_exposed"]))")
 $lines.Add("renderer_d3d12_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["d3d12"]))")
 $lines.Add("renderer_vulkan_strict_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["vulkan_strict"]))")
 $lines.Add("renderer_apple_metal_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["apple_metal"]))")

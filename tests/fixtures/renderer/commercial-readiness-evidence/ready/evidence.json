@@ -20,7 +20,7 @@
       "host_validation_recipe_id": "renderer-d3d12-quality-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json",
-      "artifact_hash_sha256": "a679d395e500f553a7156b496ca370ef8203836c2e8592e01b2ab592f3f9b02f",
+      "artifact_hash_sha256": "a7e27cfe054b86aac92f99b2b6a3827e288b1197f11ac631d7addcdf8df3223b",
       "validation_counter_id": "renderer_d3d12_renderer_quality_ready",
       "diagnostic_code": "ready"
     },

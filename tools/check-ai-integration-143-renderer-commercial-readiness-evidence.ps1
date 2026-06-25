@@ -4,6 +4,7 @@
 
 $schemaText = Get-AgentSurfaceText "schemas/renderer-commercial-readiness-evidence.schema.json"
 $readyFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json"
+$d3d12ReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json"
 $missingMetalFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json"
 $externalEngineRejectedFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json"
 $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -239,6 +240,31 @@ foreach ($needle in @(
         'plan_renderer_commercial_readiness_promotion'
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator"
+}
+
+foreach ($needle in @(
+        'command_allocator_list_fence',
+        'command_allocator_reuse_fenced',
+        'resource_barriers',
+        'D3D12_RESOURCE_BARRIER',
+        'D3D12_QUERY_TYPE_TIMESTAMP',
+        'resolved_query_data',
+        'queue_frequency_hz',
+        'clock_calibration',
+        'debug_layer_or_gpu_based_validation_clean',
+        'ID3D12Device3::EnqueueMakeResident',
+        'package_visible_readback',
+        'deterministic_hash_sha256',
+        'native_handles_exposed',
+        'renderer_d3d12_command_allocator_fence_ready',
+        'renderer_d3d12_resource_barrier_ready',
+        'renderer_d3d12_timestamp_ready',
+        'renderer_d3d12_debug_validation_ready',
+        'renderer_d3d12_residency_ready',
+        'renderer_d3d12_package_readback_ready'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator D3D12 binding"
+    Assert-ContainsText $d3d12ReadyArtifactText $needle "renderer commercial readiness D3D12 ready artifact"
 }
 
 foreach ($needle in @(

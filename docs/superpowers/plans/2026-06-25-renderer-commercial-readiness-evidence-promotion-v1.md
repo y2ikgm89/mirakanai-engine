@@ -301,15 +301,24 @@ Validation evidence:
 
 Required D3D12 rows:
 
-- [ ] Command allocator/list fence row: allocator reuse is fenced.
-- [ ] Resource barrier row: render, copy, unordered-access, and readback transitions are explicit.
-- [ ] Timestamp row: `D3D12_QUERY_TYPE_TIMESTAMP`, resolved query data, queue frequency, and CPU/GPU clock calibration evidence.
-- [ ] Debug validation row: D3D12 debug layer or GPU-based validation clean output for the selected workload.
-- [ ] Residency row: explicit memory budget/residency evidence using official D3D12 residency APIs where selected by the workload.
-- [ ] Package-visible readback row: deterministic hash/counter for selected 3D/UI/environment/generated-game output.
-- [ ] Native handle row: `native_handles_exposed=0`.
+- [x] Command allocator/list fence row: allocator reuse is fenced.
+- [x] Resource barrier row: render, copy, unordered-access, and readback transitions are explicit.
+- [x] Timestamp row: `D3D12_QUERY_TYPE_TIMESTAMP`, resolved query data, queue frequency, and CPU/GPU clock calibration evidence.
+- [x] Debug validation row: D3D12 debug layer or GPU-based validation clean output for the selected workload.
+- [x] Residency row: explicit memory budget/residency evidence using official D3D12 residency APIs where selected by the workload.
+- [x] Package-visible readback row: deterministic hash/counter for selected 3D/UI/environment/generated-game output.
+- [x] Native handle row: `native_handles_exposed=0`.
 
 No row may infer Vulkan, Metal, broad UI parity, environment readiness, or external-engine parity.
+
+Validation evidence:
+
+- `tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json` now carries fixture-only D3D12 proof rows for `ID3D12Fence`, `D3D12_RESOURCE_BARRIER`, `D3D12_QUERY_TYPE_TIMESTAMP`, debug/GPU validation clean output, `ID3D12Device3::EnqueueMakeResident`, `IDXGIAdapter3::QueryVideoMemoryInfo`, deterministic package readback, and native-handle non-exposure.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `renderer_d3d12_command_allocator_fence_ready=1`, `renderer_d3d12_resource_barrier_ready=1`, `renderer_d3d12_timestamp_ready=1`, `renderer_d3d12_debug_validation_ready=1`, `renderer_d3d12_residency_ready=1`, `renderer_d3d12_package_readback_ready=1`, `renderer_d3d12_native_handles_exposed=0`, and `renderer_environment_ready=0`.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1`: passed with default fail-closed D3D12 counters at `0` and `renderer_environment_ready=0`.
+- `tools/check-ai-integration.ps1`: passed after adding D3D12 proof-row static needles.
+- `tools/check-format.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
 
 ## Task 5: Bind Strict Vulkan Evidence
 
