@@ -727,7 +727,14 @@ function Test-RendererCommercialReadinessVulkanArtifact {
             -Diagnostics $artifactDiagnostics) -and
         (Test-RequiredTrueProperty -JsonObject $timestampQuery -Name "timestamps_resolved" `
             -Diagnostics $artifactDiagnostics)
-    if ([long](Get-JsonPropertyValue -JsonObject $timestampQuery -Name "timestamp_period_ns") -le 0) {
+    $timestampPeriodNs = 0.0
+    try {
+        $timestampPeriodNs = [double](Get-JsonPropertyValue -JsonObject $timestampQuery -Name "timestamp_period_ns")
+    }
+    catch {
+        $timestampPeriodNs = 0.0
+    }
+    if (-not [double]::IsFinite($timestampPeriodNs) -or $timestampPeriodNs -le 0) {
         $timestampReady = $false
         Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_vulkan_timestamp_period"
     }

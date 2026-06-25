@@ -31,6 +31,8 @@ $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commerci
 $collectorText = Get-AgentSurfaceText "tools/collect-renderer-commercial-readiness-evidence.ps1"
 $d3d12ArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-d3d12-commercial-quality-artifact.ps1"
 $d3d12ArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-artifact.ps1"
+$vulkanStrictArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1"
+$vulkanStrictArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1"
 $collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
 $metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
@@ -292,6 +294,8 @@ Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-
     "renderer commercial readiness Metal memory validate task"
 Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artifact.ps1' `
     "renderer commercial readiness D3D12 artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
+    "renderer commercial readiness strict Vulkan artifact producer validate task"
 Assert-ContainsText $collectorCheckText 'renderer-commercial-readiness-evidence-collector-check: ok' `
     "renderer commercial readiness evidence collector check"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
@@ -300,6 +304,8 @@ Assert-ContainsText $metalMemoryCheckText 'renderer-commercial-readiness-evidenc
     "renderer commercial readiness Metal memory check"
 Assert-ContainsText $d3d12ArtifactProducerCheckText 'renderer-d3d12-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness D3D12 artifact producer check"
+Assert-ContainsText $vulkanStrictArtifactProducerCheckText 'renderer-vulkan-strict-commercial-quality-artifact-check: ok' `
+    "renderer commercial readiness strict Vulkan artifact producer check"
 
 foreach ($needle in @(
         'Mode',
@@ -389,6 +395,61 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $d3d12ArtifactProducerCheckText $needle `
         "renderer commercial readiness D3D12 artifact producer check"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'VulkanStrictHostEvidenceRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1',
+        'GameEngine.RendererCommercialQualityCloseout.v1',
+        'renderer-vulkan-strict-commercial-quality-artifact-v1',
+        'Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25',
+        'vulkan-strict-quality.json',
+        'fixture_only = $false',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_vulkan_strict_commercial_quality_artifact_collector_mode=Assemble',
+        'renderer_vulkan_strict_commercial_quality_artifact_written=',
+        'renderer_vulkan_strict_commercial_quality_fixture_artifact=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'd3d12_inferred',
+        'metal_inferred',
+        'debugging_only_full_pipeline_barrier',
+        'external_engine_parity',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $vulkanStrictArtifactProducerText $needle `
+        "renderer commercial readiness strict Vulkan artifact producer"
+}
+
+foreach ($needle in @(
+        'tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1',
+        'renderer-vulkan-strict-commercial-quality-artifact-v1',
+        'Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_vulkan_strict_commercial_quality_artifact_written=1',
+        'renderer_vulkan_strict_commercial_quality_fixture_artifact=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=10',
+        'renderer_vulkan_strict_renderer_quality_ready',
+        'debugging_only_full_pipeline_barrier',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $vulkanStrictArtifactProducerCheckText $needle `
+        "renderer commercial readiness strict Vulkan artifact producer check"
 }
 
 foreach ($needle in @(
@@ -504,6 +565,10 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator Vulkan binding"
     Assert-ContainsText $vulkanReadyArtifactText $needle "renderer commercial readiness Vulkan ready artifact"
+    Assert-ContainsText $vulkanStrictArtifactProducerText $needle `
+        "renderer commercial readiness strict Vulkan artifact producer binding"
+    Assert-ContainsText $vulkanStrictArtifactProducerCheckText $needle `
+        "renderer commercial readiness strict Vulkan artifact producer check binding"
 }
 
 foreach ($needle in @(
@@ -620,6 +685,10 @@ Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifac
     "renderer commercial readiness D3D12 artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCollector' `
     "renderer commercial readiness D3D12 artifact producer collector command surface"
+Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQualityArtifactCheck' `
+    "renderer commercial readiness strict Vulkan artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQualityArtifactCollector' `
+    "renderer commercial readiness strict Vulkan artifact producer collector command surface"
 
 foreach ($needle in @(
         'renderer-d3d12-commercial-quality-artifact',
@@ -634,6 +703,23 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness D3D12 artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-vulkan-strict-commercial-quality-artifact',
+        'tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1',
+        'VulkanStrictHostEvidenceRelative',
+        'vkCmdPipelineBarrier2',
+        'VkDependencyInfo',
+        'VK_LAYER_KHRONOS_validation',
+        'synchronization validation clean logs',
+        'memory binding VUID',
+        'spirv-val',
+        'debugging_only_full_pipeline_barrier=false',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness strict Vulkan artifact producer validation recipe"
 }
 
 foreach ($needle in @(

@@ -601,20 +601,29 @@ Validation evidence:
 
 - Add: `tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1`
 - Add: `tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1`
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
 - Modify: `tools/validate.ps1`
 - Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `engine/agent/manifest.fragments/002-commands.json`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Regenerate: `engine/agent/manifest.json`
 
 Steps:
 
-- [ ] Add a failing static check that proves strict Vulkan cannot reuse D3D12, Linux-only environment, Android, or Metal rows as renderer commercial proof.
-- [ ] Implement the producer so it consumes retained strict Vulkan package/test evidence only when `VK_LAYER_KHRONOS_validation`, synchronization validation, DXC SPIR-V CodeGen, `spirv-val`, Vulkan runtime, selected package readback, and clean validation logs are present in the input.
-- [ ] Require rows for `vkCmdPipelineBarrier2`, `VkDependencyInfo`, `VK_KHR_synchronization2` or Vulkan 1.3 `synchronization2`, memory binding/allocation VUID coverage, timestamp query pool evidence, SPIR-V validation, deterministic package readback hash, `debugging_only_full_pipeline_barrier=false`, and `native_handles_exposed=false`.
-- [ ] Keep full-pipeline-barrier shortcuts as diagnostics only; they cannot count as release readiness evidence.
-- [ ] Keep Task 10B non-promoting until D3D12, Apple Metal, quality, package, and legal rows are also present.
+- [x] Add a failing static check that proves strict Vulkan cannot reuse D3D12, environment, Android, or Metal rows as renderer commercial proof.
+- [x] Implement the producer so it consumes only retained strict Vulkan host evidence when `VK_LAYER_KHRONOS_validation`, synchronization validation, memory binding VUID coverage, timestamp query evidence, `spirv-val` shader validation, selected package readback, and clean validation logs are present in the input.
+- [x] Require rows for `vkCmdPipelineBarrier2`, `VkDependencyInfo`, Vulkan synchronization2 semantics, memory binding/allocation VUID coverage, timestamp query pool evidence, SPIR-V validation, deterministic package readback hash, `debugging_only_full_pipeline_barrier=false`, and `native_handles_exposed=false`.
+- [x] Keep full-pipeline-barrier shortcuts rejected as a non-claim; they cannot count as release readiness evidence.
+- [x] Keep Task 10B non-promoting until D3D12, Apple Metal, quality, package, and legal rows are also present.
+
+Task 10B implementation evidence:
+
+- `tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1` now proves the producer rejects fixture-only host evidence and unsafe paths, writes a non-fixture `vulkan-strict-quality.json`, feeds that artifact through `tools/collect-renderer-commercial-readiness-evidence.ps1`, validates `renderer_vulkan_strict_renderer_quality_ready=1`, and keeps `renderer_commercial_readiness=0` because the other retained rows are still fixtures.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1` accepts strict Vulkan `timestamp_period_ns` as a positive finite numeric value, matching Khronos `VkPhysicalDeviceLimits::timestampPeriod` being a float nanoseconds-per-tick limit instead of an integer counter.
+- `engine/agent/manifest.fragments/002-commands.json` exposes `rendererVulkanStrictCommercialQualityArtifactCheck` and `rendererVulkanStrictCommercialQualityArtifactCollector`; `engine/agent/manifest.fragments/009-validationRecipes.json` exposes `renderer-vulkan-strict-commercial-quality-artifact`.
+- `tools/validate.ps1` runs `check-renderer-vulkan-strict-commercial-quality-artifact.ps1` as a separate static task, preserving the Task 10B producer boundary instead of folding it into the aggregate collector check.
 
 Validation:
 
@@ -622,9 +631,21 @@ Validation:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-collector.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120
 ```
+
+Validation evidence:
+
+- `tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1`: passed with `renderer_vulkan_strict_commercial_quality_artifact_written=1`, `renderer_vulkan_strict_renderer_quality_ready=1`, `renderer_commercial_readiness_evidence_collector_fixture_artifacts=10`, `renderer_commercial_readiness=0`, and `renderer_environment_ready=0`.
+- `tools/check-renderer-commercial-readiness-evidence-collector.ps1`: passed.
+- `tools/check-json-contracts.ps1`: passed.
+- `tools/check-format.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/check-ai-integration.ps1`: passed.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 34 static checks, including the new `check-renderer-vulkan-strict-commercial-quality-artifact.ps1` lane; Windows-host Metal/Apple checks remained diagnostic-only host gates.
 
 ### Task 10C: Apple Metal Retained Commercial Row Producer
 
