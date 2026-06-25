@@ -525,6 +525,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 - Add: `tools/collect-renderer-commercial-readiness-evidence.ps1`
 - Add: `tools/check-renderer-commercial-readiness-evidence-collector.ps1`
 - Add: `tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1`
+- Add: `tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1`
+- Add: `tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1`
 - Modify: `tools/validate.ps1`
 - Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 - Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
@@ -548,6 +550,7 @@ Current status:
 - Retained artifact roots now fail closed when any child artifact still declares `fixture_only=true`; copied fixture artifacts cannot promote real commercial readiness.
 - Full retained `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` artifacts now promote only the `memory_residency` and `profiling_capture` rows when their Apple source ids, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, capture artifact hash, macOS/Xcode tool rows, and broad-readiness non-claims validate. `tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1` proves this row import while keeping `renderer_metal_broad_readiness=0` and `renderer_commercial_readiness=0` until the other retained rows are supplied.
 - `tools/collect-renderer-commercial-readiness-evidence.ps1` now assembles already-collected retained artifacts into `GameEngine.RendererCommercialReadinessEvidence.v1` under `artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root>`, computes SHA-256 rows, copies nested Metal capture artifacts for full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` input, requires explicit clean-room/legal/third-party notice switches, rejects fixture artifacts by default, and emits no final renderer readiness counters by itself. `tools/check-renderer-commercial-readiness-evidence-collector.ps1` proves the collector contract and copied-fixture rejection path.
+- Task 10I adds `tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1` and `tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1` for GitHub Actions artifacts intake. The importer follows GitHub CLI `gh run download`, detects the `renderer-commercial-readiness-final-retained-root` artifact or the seven explicit assembler inputs, records `host-gate-summary.json` states such as `mtlresidencyset_unavailable`, and writes only an intake manifest while keeping `renderer_commercial_readiness=0`.
 - `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
 - The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
 
