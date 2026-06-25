@@ -1,0 +1,447 @@
+# Renderer Commercial Readiness Evidence Promotion v1 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Promote `renderer_commercial_readiness=1` from retained, exact, legally reviewed renderer evidence bundles instead of manual switch assertions, while keeping D3D12, strict Vulkan, Apple-host Metal, package-visible quality, generated-game output, and clean-room/legal gates independently verifiable.
+
+**Architecture:** Add a first-party, value-only renderer commercial readiness evidence promotion layer on top of the completed `RendererCommercialQualityCloseoutPlan`. The promotion layer consumes strict JSON artifacts and existing package/validator counters, maps them to reviewed evidence rows, rejects native handles, cross-backend inference, subjective quality claims, and external-engine material, then feeds `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady` only after every selected evidence family is present. GPU/API work remains behind backend-private adapters; public engine contracts expose counters, hashes, row ids, diagnostics, and package-visible readiness only.
+
+**Tech Stack:** C++23 `MK_renderer` value APIs, existing D3D12/strict Vulkan/Metal RHI backend validators, PowerShell 7 repository tools, JSON Schema draft 2020-12 schema files, existing test fixtures under `tests/fixtures/`, existing `tools/check-*` static contract chapters, and official vendor documentation. No new third-party runtime dependency is selected by this plan.
+
+---
+
+**Plan ID:** `renderer-commercial-readiness-evidence-promotion-v1`
+**Date:** 2026-06-25
+**Status:** Active. Implementation started with Task 0 selection on 2026-06-25.
+**Owner surface:** `engine/renderer`, backend-private RHI validators, renderer package validation recipes, legal/dependency records, agent manifest fragments.
+
+## Context
+
+Current repository audit on 2026-06-25 shows:
+
+- `main` is aligned with `origin/main` at merge commit `95d49539`.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
+- `recommendedNextPlan.id = next-production-gap-selection`.
+- `unsupportedProductionGaps = []`.
+- `Renderer Commercial Quality Closeout v1` is completed as a fail-closed aggregate. Default `tools/validate-renderer-commercial-quality-closeout.ps1` emits `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`, `renderer_broad_quality_ready=0`, and `renderer_commercial_readiness=0`.
+- Direct `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady` can emit those four counters as `1` only when all current switches are supplied. This plan replaces that operator-supplied assertion path with retained artifact ingestion and row-level validation.
+
+The target is not "make the renderer look like Unity, Unreal Engine, or Godot." The target is a first-party MIRAIKANAI evidence system that proves selected commercial renderer readiness through official API behavior, deterministic output, validation logs, package counters, profiler artifacts, legal/source review, and reproducible automation.
+
+## Official Source Baseline
+
+Implementation must treat the following sources as the minimum authoritative baseline. If a source changes or becomes unavailable, record the replacement source id in this plan or the implementation PR before changing behavior.
+
+| Area | Required source ids | Required implementation meaning |
+| --- | --- | --- |
+| D3D12 command/resource correctness | Microsoft Learn Direct3D 12 Programming Guide, resource barriers, timing, `ID3D12Device3::EnqueueMakeResident`, `ID3D12Debug1` / debug layers | Use fences around allocator reuse, explicit resource state transitions, timestamp query/queue frequency conversion, residency evidence, and debug/validation output. |
+| Vulkan correctness | Khronos Vulkan spec, Khronos `Vulkan-ValidationLayers`, LunarG synchronization validation documentation | Use `VK_KHR_synchronization2`/Vulkan 1.3 synchronization2 semantics, validation-layer clean logs, strict memory binding/allocation evidence, timestamp/query evidence, and no release-path full-pipeline-barrier shortcuts. |
+| Metal correctness | Apple Developer `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, Metal resource fundamentals; Context7 Metal Shading Language documentation | Use Apple-host-only heap/residency/capture artifacts, `metal`/`metallib` toolchain evidence, MSL address-space/function-constant constraints, and backend-private Objective-C++ boundaries. |
+| Legal and independence | Unity trademark/brand/legal pages, Unreal Engine EULA and trademark approval docs, Godot license/compliance/trademark policy | Use public documentation only as category research. Do not copy external engine code, samples, shaders, UI expression, assets, project formats, trade dress, logos, marketplace content, API names, or compatibility/equivalence claims. |
+
+Context7 checks performed for this plan:
+
+- Direct3D 12 docs through `/websites/learn_microsoft_en-us_windows_win32_direct3d12`.
+- Vulkan docs through `/khronosgroup/vulkan-docs`.
+- Metal Shading Language docs through `/dogukanveziroglu/metal-shading-language-specification`; Apple API docs remain official-web-source gated.
+
+## Legal And Clean-Room Rules
+
+- Unity, Unreal Engine, and Godot may be named only in internal source-review/legal rows and documentation that explains non-use or nominative comparison constraints.
+- No public MIRAIKANAI API, package schema, command id, UI row id, shader function, sample asset, or marketing claim may use Unity, Unreal, UE, Godot, Nanite, Lumen, UXML, USS, Blueprint, SceneTree, or other external-engine product identifiers as a compatibility target.
+- Do not copy from external engine source, docs samples, starter templates, marketplace content, example shaders, UI layouts, or assets. Godot's MIT license does not make copying acceptable for this slice unless a separate explicit dependency/license decision updates `docs/legal-and-licensing.md`, `docs/dependencies.md`, `THIRD_PARTY_NOTICES.md`, and the source review rows.
+- Do not claim "compatible with", "equivalent to", "drop-in", "parity with", or "better than" Unity, Unreal Engine, or Godot. The only allowed claim is a first-party readiness claim backed by MIRAIKANAI evidence rows.
+- Any external material row other than public-doc category research must make `renderer_clean_room_legal_ready=0` until explicit legal and technical approval is recorded.
+- This plan is an engineering compliance plan, not legal advice. Public release wording and trademark/commercial claims require human legal review before publication.
+
+## Non-Goals
+
+- Do not rewrite the renderer architecture.
+- Do not expose `ID3D12*`, `Vk*`, `MTL*`, `CAMetalLayer`, or platform-native handles through public gameplay/editor APIs.
+- Do not add Dear ImGui, Qt, Slint, RmlUi, SDL3 UI, or another UI middleware dependency.
+- Do not import Unity/Unreal/Godot projects, packages, assets, materials, shaders, scripts, editor workflows, or UI systems.
+- Do not make `environment_ready`, all-platform UI parity, broad MAVG optimization, crash upload production readiness, or unselected iOS/Android readiness claims.
+- Do not make subjective visual-quality claims without deterministic package-visible evidence and approved review rows.
+
+## Done When
+
+- Default validation still reports the four final readiness counters at `0`.
+- A retained evidence bundle can drive `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady` to emit:
+  - `renderer_backend_parity_ready=1`
+  - `renderer_metal_broad_readiness=1`
+  - `renderer_broad_quality_ready=1`
+  - `renderer_commercial_readiness=1`
+- Missing, stale, cross-backend-inferred, unreviewed, host-gated, or legally unsafe evidence blocks the promotion with exact diagnostics.
+- Windows/D3D12, strict Vulkan, and Apple-host Metal evidence remain independent; no backend can promote another backend.
+- `engine/agent/manifest.fragments/`, composed manifest, docs, static checks, validation recipes, CI lane selection, and plan registry all state the same readiness truth.
+- Legal/dependency records remain complete for any third-party material; if no external material is used, source-review rows prove zero external engine code/sample/asset/UI/trademark usage.
+
+## Task 0: Select The Plan Without Changing Readiness
+
+**Files:**
+
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+
+Steps:
+
+- [x] Change `currentActivePlan` to this plan only when implementation starts.
+- [x] Set `recommendedNextPlan.id = renderer-commercial-readiness-evidence-promotion-v1`.
+- [x] Preserve `unsupportedProductionGaps = []`.
+- [x] Preserve default non-ready text for `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`, `renderer_broad_quality_ready=0`, and `renderer_commercial_readiness=0`.
+- [x] Compose the manifest:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+```
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+```
+
+Evidence captured 2026-06-25:
+
+- `tools/compose-agent-manifest.ps1 -Write`: wrote `engine/agent/manifest.json`.
+- `tools/check-json-contracts.ps1`: `json-contract-check: ok`.
+- `tools/check-ai-integration.ps1`: `ai-integration-check: ok`.
+- `tools/check-format.ps1`: `format-check: ok`.
+- `tools/check-agents.ps1`: `agent-config-check: ok`.
+- `tools/validate-renderer-commercial-quality-closeout.ps1`: default remains `renderer_commercial_quality_closeout_status=host_evidence_required`, final counters remain `0`, and `-RequireReady` remains blocked until all selected renderer evidence rows exist.
+
+## Task 1: Add Evidence Bundle Contract
+
+**Files:**
+
+- Add: `schemas/renderer-commercial-readiness-evidence.schema.json`
+- Add: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+- Add: `tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json`
+- Add: `tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json`
+- Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
+- Modify: `tools/check-json-contracts-040-agent-surfaces.ps1`
+
+Contract:
+
+- `schema_version` is exactly `GameEngine.RendererCommercialReadinessEvidence.v1`.
+- `claim_id` is exactly `renderer-commercial-readiness-evidence-promotion-v1`.
+- `source_rows` contains dated official source ids for D3D12, Vulkan, Metal, MSL, Unity legal, Unreal legal, and Godot legal review.
+- `backend_rows` contains exactly selected rows for `d3d12`, `vulkan_strict`, and `apple_metal`.
+- `package_rows` contains exactly selected rows for `visible_3d`, `runtime_ui`, `environment`, and `generated_game`.
+- `quality_rows` contains renderer quality matrix and production VFX/profiling rows.
+- `metal_memory_profiling_rows` references retained `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` artifacts.
+- `clean_room_rows` proves public-doc-only research and zero external engine code/sample/asset/UI/trademark/API use.
+- `non_claims` contains `environment_ready=false`, `native_handles_exposed=false`, `cross_backend_inference=false`, `external_engine_parity=false`, `unity_compatibility=false`, `unreal_compatibility=false`, and `godot_compatibility=false`.
+
+Steps:
+
+- [ ] Follow the existing `schemas/renderer-metal-memory-profiling-host-evidence.schema.json` style: `additionalProperties=false`, const source ids, strict booleans, minimum positive row counts, SHA-256 patterns for retained artifacts.
+- [ ] Reject absolute paths, parent traversal, unapproved artifact locations, stale schema versions, unknown backend ids, unknown package ids, and unknown claim ids.
+- [ ] Keep fixtures small and deterministic; fixture files are proof of validator behavior, not real host proof.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+```
+
+## Task 2: Add Value-Only Promotion API
+
+**Files:**
+
+- Add: `engine/renderer/include/mirakana/renderer/renderer_commercial_readiness_evidence.hpp`
+- Add: `engine/renderer/src/renderer_commercial_readiness_evidence.cpp`
+- Modify: `engine/renderer/CMakeLists.txt`
+- Add: `tests/unit/renderer_commercial_readiness_evidence_tests.cpp`
+- Modify: `tests/unit/CMakeLists.txt`
+
+Public API intent:
+
+```cpp
+RendererCommercialReadinessPromotionPlan
+plan_renderer_commercial_readiness_promotion(
+    const RendererCommercialReadinessPromotionDesc& desc);
+```
+
+Required behavior:
+
+- [ ] Consume only value rows, existing `RendererCommercialQualityCloseoutPlan` data, package counters, artifact hashes, validation recipe ids, and legal/source review booleans.
+- [ ] Never execute GPU commands, native captures, shell commands, package scripts, crash uploads, or network requests.
+- [ ] Never store or return native handles.
+- [ ] Require all selected backends before final promotion: D3D12, strict Vulkan, and Apple-host Metal.
+- [ ] Require Apple Metal memory/profiling rows to come from Apple-host Metal artifacts, not D3D12/Vulkan proof.
+- [ ] Require selected package evidence for visible 3D, runtime UI, environment, and generated game output.
+- [ ] Require clean-room/legal rows and complete third-party notices.
+- [ ] Reject external-engine code/sample/asset/trademark/UI/API/compatibility/equivalence rows unless the row is a forbidden-material diagnostic and the final ready counter stays `0`.
+- [ ] Produce a deterministic replay hash from accepted row ids, source ids, package counter ids, artifact hashes, backend ids, and readiness booleans.
+
+Minimum tests:
+
+- [ ] Ready fixture promotes all four final counters.
+- [ ] Missing Metal memory/profiling row keeps `renderer_metal_broad_readiness=false`.
+- [ ] Missing strict Vulkan clean validation row keeps `renderer_backend_parity_ready=false`.
+- [ ] Stale source id rejects the bundle.
+- [ ] Cross-backend Metal inference rejects the bundle.
+- [ ] Native handle exposure rejects the bundle.
+- [ ] Unity/Unreal/Godot compatibility or equivalence claim rejects the bundle.
+- [ ] External engine code/sample/asset/UI/trademark rows reject commercial readiness.
+- [ ] Replay hash changes when accepted evidence details change.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_commercial"
+```
+
+## Task 3: Add Artifact Validator And Promotion Wrapper
+
+**Files:**
+
+- Add: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
+- Modify: `tools/classify-pr-validation-tier.ps1`
+- Modify: `tools/check-ci-matrix.ps1`
+
+Validator contract:
+
+- Default invocation validates schema/fixtures and emits `renderer_commercial_readiness=0`.
+- `-ArtifactRootRelative <path>` points to retained evidence under the repository root or approved artifact root.
+- `-RequireReady` fails unless the artifact bundle is present and complete.
+- The wrapper calls existing focused validators or consumes their retained output; it must not synthesize ready rows from command-line switches alone.
+
+Steps:
+
+- [ ] Parse JSON with strict property checks following `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` helper patterns.
+- [ ] Verify schema source needles before parsing artifacts.
+- [ ] Verify every referenced artifact exists under the artifact root and every SHA-256 matches.
+- [ ] Call or consume:
+  - `tools/validate-renderer-commercial-quality-closeout.ps1`
+  - `tools/check-renderer-metal-memory-profiling-host-evidence.ps1`
+  - selected D3D12 renderer quality evidence recipe
+  - selected strict Vulkan renderer quality evidence recipe
+  - selected Apple Metal renderer quality evidence recipe
+  - selected package-visible 3D/UI/environment/generated-game recipe rows
+- [ ] Emit exact counters for every accepted and missing row.
+- [ ] Keep `renderer_environment_ready=0`.
+- [ ] Make direct manual-ready switches diagnostic-only or remove them from the final promotion path once the artifact validator exists.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/classify-pr-validation-tier.ps1 -ChangedPath tools/validate-renderer-commercial-readiness-evidence.ps1
+```
+
+Expected results:
+
+- Default passes with `renderer_commercial_readiness=0`.
+- `-RequireReady` without artifacts fails with exact missing-evidence blockers.
+- Ready fixture passes only as fixture validation and must include `fixture_only=1`; real commercial promotion requires retained host artifacts.
+- CI classification selects Windows MSVC/D3D12, strict Vulkan, macOS Metal host evidence, full static analysis, and iOS Metal only if selected iOS rows are present.
+
+## Task 4: Bind D3D12 Evidence
+
+**Files:**
+
+- Modify: existing D3D12 renderer quality/package validation recipe files only inside backend-private RHI/test/tool boundaries.
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+
+Required D3D12 rows:
+
+- [ ] Command allocator/list fence row: allocator reuse is fenced.
+- [ ] Resource barrier row: render, copy, unordered-access, and readback transitions are explicit.
+- [ ] Timestamp row: `D3D12_QUERY_TYPE_TIMESTAMP`, resolved query data, queue frequency, and CPU/GPU clock calibration evidence.
+- [ ] Debug validation row: D3D12 debug layer or GPU-based validation clean output for the selected workload.
+- [ ] Residency row: explicit memory budget/residency evidence using official D3D12 residency APIs where selected by the workload.
+- [ ] Package-visible readback row: deterministic hash/counter for selected 3D/UI/environment/generated-game output.
+- [ ] Native handle row: `native_handles_exposed=0`.
+
+No row may infer Vulkan, Metal, broad UI parity, environment readiness, or external-engine parity.
+
+## Task 5: Bind Strict Vulkan Evidence
+
+**Files:**
+
+- Modify: existing Vulkan renderer quality/package validation recipe files only inside backend-private RHI/test/tool boundaries.
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+
+Required strict Vulkan rows:
+
+- [ ] Synchronization2 row: selected workload uses `vkCmdPipelineBarrier2`/`VkDependencyInfo` semantics or Vulkan 1.3 equivalents.
+- [ ] Validation-layer row: `VK_LAYER_KHRONOS_validation` clean log for selected workload.
+- [ ] Synchronization validation row: no known sync validation errors for selected workload.
+- [ ] Memory binding row: buffer/image allocation and binding evidence follows Vulkan spec VUID constraints for the selected resources.
+- [ ] Timestamp/query row: query pool/timestamp evidence where selected.
+- [ ] SPIR-V/shader validation row: package shaders are validated for the selected environment.
+- [ ] Package-visible readback row: deterministic hash/counter for selected 3D/UI/environment/generated-game output.
+- [ ] Native handle row: `native_handles_exposed=0`.
+
+No row may use a debugging-only full-pipeline barrier as release readiness evidence.
+
+## Task 6: Bind Apple Metal Evidence
+
+**Files:**
+
+- Modify: existing Metal host evidence generator/checker files only inside Apple-private implementation/test/tool boundaries.
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+
+Required Apple-host Metal rows:
+
+- [ ] Full Xcode host row: `metal` and `metallib` tools are available.
+- [ ] MSL shader row: address spaces, function constants, resource bindings, and stage restrictions are compliant with the queried MSL documentation.
+- [ ] `MTLHeap` row: heap-backed selected resources are created and budgeted.
+- [ ] `MTLResidencySet` row: residency set creation/request/commit evidence is present when available on the selected host.
+- [ ] `MTLCaptureManager` row: capture scope/artifact evidence is produced for the selected workload.
+- [ ] Visible package row: selected 3D material/lighting/postprocess, runtime UI atlas, environment package consumption, and generated-game package output rows are present.
+- [ ] Native handle row: `MTL*` objects remain private to Objective-C++ boundaries.
+- [ ] Cross-backend inference row: D3D12/Vulkan proof cannot promote Metal readiness.
+
+Default Windows/Linux validation remains host-gated and must not require Apple tools.
+
+## Task 7: Package-Visible Renderer Quality Closeout
+
+**Files:**
+
+- Modify: selected `games/*/game.agent.json` only for existing sample/generated packages that actually emit the rows.
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
+
+Required package rows:
+
+- [ ] `visible_3d`: material, lighting, shadow/postprocess, and readback/hash evidence.
+- [ ] `runtime_ui`: UI atlas upload/readback or retained upload handoff evidence.
+- [ ] `environment`: environment renderer package row consumption without promoting `environment_ready`.
+- [ ] `generated_game`: generated-game package output row consumption.
+- [ ] Every package row points to a reviewed validation recipe id and package manifest row.
+- [ ] No package script execution or arbitrary shell execution is introduced.
+
+## Task 8: Legal, Dependency, And Source Review Closeout
+
+**Files:**
+
+- Modify: `docs/legal-and-licensing.md` only if external material or dependencies change.
+- Modify: `docs/dependencies.md` only if dependencies change.
+- Modify: `THIRD_PARTY_NOTICES.md` only if external material or dependencies change.
+- Modify: `vcpkg.json` only if a dependency is explicitly approved.
+- Modify: `tools/check-ai-integration-142-renderer-commercial-quality-closeout.ps1` or a new numbered chapter.
+
+Steps:
+
+- [ ] Add a retained source-review row proving public-doc category research only.
+- [ ] Add explicit zero rows for Unity/Unreal/Godot code, samples, shaders, UI expression, assets, trademarks, project import, API compatibility, and equivalence claims.
+- [ ] Add a blocker for any nonzero external-engine material row unless `legal_review_id` and `technical_review_id` are present and notices are complete.
+- [ ] Verify no new third-party dependency or asset was introduced. If one was introduced, update all dependency/legal files in the same PR.
+- [ ] Add static-check needles for the legal constraints so future docs/manifest changes cannot silently weaken them.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+```
+
+## Task 9: Manifest, Docs, CI, And Static Contracts
+
+**Files:**
+
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `schemas/engine-agent.schema.json` only if manifest shape changes.
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/testing.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: relevant `tools/check-json-contracts-*.ps1`
+- Modify: relevant `tools/check-ai-integration-*.ps1`
+
+Steps:
+
+- [ ] Add the new validation recipe and command surfaces.
+- [ ] Compose manifest after every manifest fragment edit.
+- [ ] Keep current capabilities honest: commercial readiness remains `0` until real host artifacts pass.
+- [ ] Add static checks for exact counters, legal non-claims, source ids, and backend independence.
+- [ ] Update CI lane classification for the new validator path.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+## Task 10: Final Commercial Promotion Gate
+
+**Files:**
+
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+
+Steps:
+
+- [ ] Run focused renderer/RHI/package validators on the required hosts.
+- [ ] Collect retained artifacts into the selected artifact root.
+- [ ] Run the promotion validator with the retained artifact root.
+- [ ] Feed the accepted row set into the existing closeout gate.
+- [ ] Emit final four ready counters only when every accepted row is complete and clean.
+- [ ] Record real host validation evidence in the plan before marking the plan completed.
+- [ ] Return `currentActivePlan` to the master plan or select the next dated plan after closeout.
+
+Final local command sequence:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+Publication command:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
+```
+
+## Host Evidence Matrix
+
+| Host lane | Required proof | Promotion rule |
+| --- | --- | --- |
+| Windows D3D12 | WARP or hardware D3D12 validation, barriers, timestamps, residency/debug rows, package readback | Can promote only D3D12 rows. |
+| Linux or Windows strict Vulkan | Vulkan validation/synchronization clean logs, synchronization2 barriers, memory binding, SPIR-V validation, package readback | Can promote only strict Vulkan rows. |
+| macOS full Xcode Metal | `metal`/`metallib`, MSL compliance, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, visible package readback | Can promote only Apple Metal rows. |
+| iOS Metal | Optional selected package evidence only when explicitly required | Cannot promote macOS Metal rows unless the plan selects iOS rows. |
+| Docs/legal static | public-doc source register, no external-engine material rows, notices complete | Blocks every final readiness counter when unsafe. |
+
+## Review Checklist
+
+- [ ] Does the plan promote `renderer_commercial_readiness=1` only from retained artifacts, not manual switches?
+- [ ] Can a fresh reviewer trace every ready counter to an exact file, row, source id, package counter, host recipe, and hash?
+- [ ] Is every backend independently proven without inference?
+- [ ] Are native handles absent from public APIs?
+- [ ] Are Unity, Unreal Engine, and Godot used only as public-doc category/legal research?
+- [ ] Are external-engine code/sample/asset/UI/trademark/API/compatibility/equivalence claims impossible without explicit blocker rows?
+- [ ] Does default validation still pass without Apple tools and keep all broad renderer counters at `0`?
+- [ ] Do docs, manifest, schemas, static checks, CI lane selection, and plan registry agree?
