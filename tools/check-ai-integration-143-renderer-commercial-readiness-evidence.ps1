@@ -28,6 +28,8 @@ $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-evidence.ps1"
+$collectorText = Get-AgentSurfaceText "tools/collect-renderer-commercial-readiness-evidence.ps1"
+$collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
 $metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
@@ -125,6 +127,8 @@ foreach ($surface in @(
             "tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json",
             "tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json",
             "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json",
+            "tools/collect-renderer-commercial-readiness-evidence.ps1",
+            "tools/check-renderer-commercial-readiness-evidence-collector.ps1",
             "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1",
             "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1",
             "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
@@ -280,12 +284,63 @@ foreach ($needle in @(
 
 Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-fixture-guard.ps1' `
     "renderer commercial readiness fixture guard validate task"
+Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-collector.ps1' `
+    "renderer commercial readiness evidence collector validate task"
 Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-metal-memory.ps1' `
     "renderer commercial readiness Metal memory validate task"
+Assert-ContainsText $collectorCheckText 'renderer-commercial-readiness-evidence-collector-check: ok' `
+    "renderer commercial readiness evidence collector check"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
     "renderer commercial readiness fixture guard check"
 Assert-ContainsText $metalMemoryCheckText 'renderer-commercial-readiness-evidence-metal-memory-check: ok' `
     "renderer commercial readiness Metal memory check"
+
+foreach ($needle in @(
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'D3d12ArtifactRelative',
+        'VulkanStrictArtifactRelative',
+        'AppleMetalArtifactRelative',
+        'Visible3dPackageArtifactRelative',
+        'RuntimeUiPackageArtifactRelative',
+        'EnvironmentPackageArtifactRelative',
+        'GeneratedGamePackageArtifactRelative',
+        'RendererQualityMatrixArtifactRelative',
+        'ProductionVfxProfilingArtifactRelative',
+        'MetalMemoryHostEvidenceRelative',
+        'OfficialDocsOnlyReviewReady',
+        'LegalReviewReady',
+        'ExternalEngineZeroMaterialReviewReady',
+        'ThirdPartyNoticesComplete',
+        'AllowFixtureArtifactsForSelfTest',
+        'fixture_artifact_input_rejected',
+        'metal_memory_host_evidence_required',
+        'GameEngine.RendererCommercialReadinessEvidence.v1',
+        'GameEngine.RendererMetalMemoryProfilingHostEvidence.v1',
+        'renderer_commercial_readiness_evidence_collector_real_promotion_candidate',
+        'renderer_commercial_readiness=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'native_handles_exposed = $false',
+        'cross_backend_inference = $false',
+        'external_engine_parity = $false'
+    )) {
+    Assert-ContainsText $collectorText $needle "renderer commercial readiness evidence collector"
+}
+
+foreach ($needle in @(
+        'fixture_artifact_input_rejected',
+        'renderer_commercial_readiness_evidence_collector_artifact_rows=11',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=11',
+        'renderer_commercial_readiness_evidence_collector_real_promotion_candidate=0',
+        'renderer_commercial_readiness_fixture_artifacts_rejected',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $collectorCheckText $needle "renderer commercial readiness evidence collector check"
+}
 
 foreach ($needle in @(
         'artifacts/renderer/commercial-readiness-evidence/fixture-guard-self-test',
@@ -484,12 +539,18 @@ foreach ($needle in @(
 foreach ($needle in @(
         'rendererCommercialReadinessEvidenceCheck',
         'rendererCommercialReadinessEvidenceRequireReady',
+        'tools/collect-renderer-commercial-readiness-evidence.ps1',
         'tools/validate-renderer-commercial-readiness-evidence.ps1',
         'renderer-commercial-readiness-evidence'
     )) {
     Assert-ContainsText $commandsFragmentText $needle "renderer commercial readiness evidence command surface"
     Assert-ContainsText $validationRecipesFragmentText $needle "renderer commercial readiness evidence validation recipe"
 }
+
+Assert-ContainsText $commandsFragmentText 'rendererCommercialReadinessEvidenceCollector' `
+    "renderer commercial readiness evidence collector command surface"
+Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-evidence-collector' `
+    "renderer commercial readiness evidence collector validation recipe"
 
 foreach ($needle in @(
         'ReadinessEvidenceArtifactRootRelative',
