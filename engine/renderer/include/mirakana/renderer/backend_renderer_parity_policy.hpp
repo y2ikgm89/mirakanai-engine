@@ -92,7 +92,7 @@ struct BackendRendererParityAppleMetalMemoryProfilingEvidenceDesc {
     bool capture_boundary_ready{false};
     bool capture_artifact_ready{false};
     bool native_handle_access{false};
-    std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
+    std::string host_validation_recipe_id{"renderer-metal-memory-profiling-host-evidence"};
 };
 
 struct BackendRendererParityPolicyRequest {

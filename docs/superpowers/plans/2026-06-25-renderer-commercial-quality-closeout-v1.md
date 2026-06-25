@@ -6,7 +6,7 @@
 
 **Status:** Active.
 
-Task 0/1 selection and fail-closed guard work is complete. Task 2 adds the value-only aggregate API and focused tests. No renderer readiness claim is changed by this status.
+Task 0/1 selection and fail-closed guard work is complete. Task 2 adds the value-only aggregate API and focused tests. Task 3 feature-binds the renderer Metal environment and memory/profiling recipe families. No renderer readiness claim is changed by this status.
 
 **Date:** 2026-06-25
 
@@ -55,6 +55,18 @@ Task 2 implementation evidence collected on 2026-06-25:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | PASS: dev preset configured after adding `MK_renderer_commercial_quality_closeout_tests`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_commercial_quality_closeout_tests` | RED first failed on missing `renderer_commercial_quality_closeout.hpp`, then PASS after adding the value-only aggregate API. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_commercial_quality_closeout_tests"` | PASS: focused aggregate tests prove ready, host-gated, invalid, clean-room, notice, and replay-hash cases. |
+
+Task 3 implementation evidence collected on 2026-06-25:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | PASS: dev preset configured for the recipe-alignment worktree. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` | PASS after formatting: focused renderer test target rebuilt with feature-bound Metal recipe checks. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_tests"` | PASS: renderer parity tests prove environment recipe rows only cover `synchronization`, `shader_validation`, and `package_evidence`; memory/profiling recipe rows only cover `memory_residency` and `profiling_capture`; swapped recipe families are rejected; partial Metal family evidence keeps `metal_parity_ready=false`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-metal-memory-profiling-host-evidence.ps1 -SkipFocusedRendererBuild -ExpectedEvidenceCounters renderer_metal_memory_profiling_status=host_evidence_required renderer_metal_memory_profiling_ready=0 renderer_backend_parity_ready=0 renderer_commercial_readiness=0 renderer_broad_quality_ready=0` | PASS: default Windows host evidence remains fail-closed with all broad renderer counters at `0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1` | PASS: closeout validator still reports `renderer_commercial_quality_closeout_status=host_evidence_required`, `renderer_commercial_quality_closeout_value_api_ready=1`, and all broad renderer counters at `0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady` | Expected FAIL: still blocks on `validator_integration_and_host_evidence_required`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: all static checks, build, and 158 CTest tests passed; Apple Metal toolchain remains diagnostic-only on this Windows host. |
 
 ## Official Source And Context7 Review
 
@@ -310,11 +322,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Modify: `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` only if the validator contract must expose the reviewed recipe id
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 
-- [ ] Add or review the dedicated `renderer-metal-memory-profiling-host-evidence` recipe id for `memory_residency` and `profiling_capture`.
-- [ ] Prove environment evidence can satisfy only `synchronization`, `shader_validation`, and `package_evidence`.
-- [ ] Prove memory/profiling evidence can satisfy only `memory_residency` and `profiling_capture`.
-- [ ] Prove broad Metal/backend readiness remains false when either recipe family is missing.
-- [ ] Run focused renderer parity tests and host-evidence validator defaults.
+- [x] Add or review the dedicated `renderer-metal-memory-profiling-host-evidence` recipe id for `memory_residency` and `profiling_capture`.
+- [x] Prove environment evidence can satisfy only `synchronization`, `shader_validation`, and `package_evidence`.
+- [x] Prove memory/profiling evidence can satisfy only `memory_residency` and `profiling_capture`.
+- [x] Prove broad Metal/backend readiness remains false when either recipe family is missing.
+- [x] Run focused renderer parity tests and host-evidence validator defaults.
 
 ## Task 4: Add Selected Metal Visible Renderer Package Evidence
 
