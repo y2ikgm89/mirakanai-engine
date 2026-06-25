@@ -27,6 +27,7 @@ $rendererCMakeText = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
+$validateWorkflowText = Get-AgentSurfaceText ".github/workflows/validate.yml"
 $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-evidence.ps1"
 $collectorText = Get-AgentSurfaceText "tools/collect-renderer-commercial-readiness-evidence.ps1"
 $d3d12ArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-d3d12-commercial-quality-artifact.ps1"
@@ -152,6 +153,7 @@ foreach ($surface in @(
             "tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1",
             "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1",
             "tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1",
+            "tools/check-ci-matrix.ps1",
             "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
             "tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1",
             "tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1"
@@ -1032,6 +1034,17 @@ Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readines
     "renderer commercial readiness final promotion preflight validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-retained-root-assembler' `
     "renderer commercial readiness final retained-root assembler validation recipe"
+foreach ($needle in @(
+        'Upload renderer commercial readiness retained root (Metal host)',
+        'renderer-commercial-readiness-final-retained-root',
+        'artifacts/renderer/commercial-readiness-evidence/final-retained/**',
+        'if-no-files-found: warn',
+        'include-hidden-files: false',
+        'compression-level: 0'
+    )) {
+    Assert-ContainsText $validateWorkflowText $needle "renderer commercial readiness final retained-root CI retention"
+    Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness final retained-root CI retention check"
+}
 foreach ($needle in @(
         'renderer_commercial_readiness_final_preflight_required_files=',
         'renderer_commercial_readiness_final_preflight_missing_files',

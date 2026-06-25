@@ -1570,6 +1570,17 @@ jobs:
           path: artifacts/renderer/metal-memory-profiling-host-evidence/**
           if-no-files-found: warn
 
+      - name: Upload renderer commercial readiness retained root (Metal host)
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-commercial-readiness-final-retained-root
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/commercial-readiness-evidence/final-retained/**
+          if-no-files-found: warn
+
       - name: Validate Metal weather solver host gate
         shell: pwsh
         run: ./tools/validate-environment-weather-metal-solver-host-gate.ps1
