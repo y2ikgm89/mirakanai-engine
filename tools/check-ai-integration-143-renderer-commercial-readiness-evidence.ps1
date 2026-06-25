@@ -125,6 +125,9 @@ foreach ($surface in @(
             "tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json",
             "tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json",
             "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json",
+            "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1",
+            "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1",
+            "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
             "tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1",
             "tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1"
         )) {
