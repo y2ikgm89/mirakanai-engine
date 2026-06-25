@@ -4,7 +4,7 @@
 **Status:** Completed.
 **Closeout:** Completed through PR #710 / merge commit `e74841d47489db8948cdda05b10fb231dd1606c7`; `currentActivePlan` returned to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for completed evidence.
 
 **Goal:** Select and implement the next clean-break Apple/Metal evidence step for `renderer-backend-parity-v1` by connecting Apple-host Metal feature evidence to backend-local parity proof rows without promoting broad renderer, Metal, or native-handle readiness by inference.
 
@@ -53,7 +53,7 @@ The implementation must keep these source facts visible in code review evidence:
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md`
 
-- [ ] **Step 1: Select the plan in the manifest fragment**
+- [x] **Step 1: Select the plan in the manifest fragment**
 
 Set:
 
@@ -77,11 +77,11 @@ native handles remain hidden
 unsupportedProductionGaps = []
 ```
 
-- [ ] **Step 2: Add the static guard branch**
+- [x] **Step 2: Add the static guard branch**
 
 In `tools/check-ai-integration-030-runtime-rendering.ps1`, add `renderer-backend-parity-apple-evidence-closeout-v1` to the `recommendedNextPlan.id` allowlist and add an `elseif` branch that asserts the Step 1 needles from the combined `latestCloseoutEvidence`, `completedContext`, and `reason` strings.
 
-- [ ] **Step 3: Compose the manifest**
+- [x] **Step 3: Compose the manifest**
 
 Run:
 
@@ -91,7 +91,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -
 
 Expected: command exits 0 and updates `engine/agent/manifest.json` only from fragments.
 
-- [ ] **Step 4: Run focused static checks**
+- [x] **Step 4: Run focused static checks**
 
 Run:
 
@@ -110,7 +110,7 @@ Expected: each command exits 0 with `json-contract-check: ok`, `ai-integration-c
 - Modify: `engine/renderer/src/backend_renderer_parity_policy.cpp`
 - Test: `tests/unit/renderer_rhi_tests.cpp`
 
-- [ ] **Step 1: Add failing test for selected Metal proof rows**
+- [x] **Step 1: Add failing test for selected Metal proof rows**
 
 Add a test named:
 
@@ -159,7 +159,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 
 Expected before implementation: compile fails because the new descriptor/helper does not exist.
 
-- [ ] **Step 2: Add backend-neutral helper**
+- [x] **Step 2: Add backend-neutral helper**
 
 Add:
 
@@ -187,7 +187,7 @@ make_backend_renderer_parity_apple_metal_environment_proofs(
 
 The helper returns exactly three proof rows only when all required booleans are ready and the recipe id is `renderer-metal-apple-host-evidence`; otherwise it returns host-gated Metal rows for the same three feature kinds or an empty vector when native handles are requested.
 
-- [ ] **Step 3: Run focused renderer tests**
+- [x] **Step 3: Run focused renderer tests**
 
 Run:
 
@@ -208,7 +208,7 @@ Expected after implementation: `MK_renderer_tests` passes.
 - Modify: `.agents/skills/rendering-change/references/full-guidance.md`
 - Modify: `.claude/skills/gameengine-rendering/references/full-guidance.md`
 
-- [ ] **Step 1: Keep recipe counters exact**
+- [x] **Step 1: Keep recipe counters exact**
 
 Ensure `tools/validate-renderer-metal-apple.ps1` still emits these counters:
 
@@ -222,11 +222,11 @@ metal_environment_broad_environment_ready_claimed=0
 
 Add no broad `metal_ready`, `backend_parity_ready`, `renderer_quality_ready`, or public native-handle counter.
 
-- [ ] **Step 2: Update docs and skills**
+- [x] **Step 2: Update docs and skills**
 
 Add a short paragraph to docs/skills saying selected Apple-host `renderer-metal-apple-host-evidence` can feed backend-local `synchronization`, `shader_validation`, and `package_evidence` proof rows through the new helper, while `memory_residency` and `profiling_capture` remain separate proof rows.
 
-- [ ] **Step 3: Run agent-surface validation**
+- [x] **Step 3: Run agent-surface validation**
 
 Run:
 
@@ -248,7 +248,7 @@ Expected: all checks pass, and production readiness still reports `unsupported_g
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 
-- [ ] **Step 1: Run full validation for C++/runtime/public contract changes**
+- [x] **Step 1: Run full validation for C++/runtime/public contract changes**
 
 Run:
 
@@ -258,7 +258,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: full validation exits 0. If an Apple-host lane cannot execute locally, record the local blocker and rely only on hosted `macOS Metal CMake` checks for Apple proof.
 
-- [ ] **Step 2: Publish through GitHub Flow**
+- [x] **Step 2: Publish through GitHub Flow**
 
 Run before staging, push, PR creation, ready conversion, and auto-merge:
 
@@ -268,7 +268,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 
 Expected: `publication-preflight: ok`.
 
-- [ ] **Step 3: Close active pointer after merge**
+- [x] **Step 3: Close active pointer after merge**
 
 After hosted checks pass and the PR merges, return:
 
