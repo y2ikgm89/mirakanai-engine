@@ -583,6 +583,12 @@ Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-s
 Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @("-File", "validate-renderer-metal-apple.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-quality-closeout" -ExpectedArgv @("-File", "validate-renderer-commercial-quality-closeout.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-evidence" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-evidence.ps1") | Out-Null
+$rendererFinalPreflightDryRun = Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-final-promotion-preflight.ps1")
+Assert-ArgvDoesNotContainText -Result $rendererFinalPreflightDryRun -Unexpected "-RequireReady" -Label "dry-run argv for renderer commercial final preflight"
+$rendererFinalAssemblerDryRun = Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler" -ExpectedArgv @("-File", "assemble-renderer-commercial-readiness-final-retained-root.ps1", "-Mode", "Plan")
+Assert-ArgvDoesNotContainText -Result $rendererFinalAssemblerDryRun -Unexpected "-RequireReady" -Label "dry-run argv for renderer commercial final assembler"
+$rendererFinalArtifactImportDryRun = Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-artifact-import" -ExpectedArgv @("-File", "import-renderer-commercial-readiness-final-retained-root-artifacts.ps1", "-Mode", "Plan")
+Assert-ArgvDoesNotContainText -Result $rendererFinalArtifactImportDryRun -Unexpected "-RunId" -Label "dry-run argv for renderer commercial final artifact import"
 Assert-DryRunRecipe -Recipe "renderer-metal-environment-aggregate-apple-host-evidence" -ExpectedArgv @("-File", "validate-environment-metal-host-aggregate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "environment-weather-metal-solver-host-gate" -ExpectedArgv @("-File", "validate-environment-weather-metal-solver-host-gate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "network-enet" -ExpectedArgv @("-File", "validate-network-enet.ps1") | Out-Null

@@ -418,6 +418,35 @@ $finalRootPresent = Test-Path -LiteralPath $finalRootEvidencePath -PathType Leaf
 $metalHostGateSummary = Find-HostGateSummary -SearchRootFull $outputRootFull
 $metalHostGateSummaryPresent = $null -ne $metalHostGateSummary
 $intakeReady = $presentInputs -eq $requiredAssemblerInputs.Count -or $finalRootPresent
+$assemblerOutputRootRelative = "$OutputRootRelative/assembled-final-retained-root"
+$assemblerHandoffReady = $presentInputs -eq $requiredAssemblerInputs.Count
+$assemblerInputPaths = [ordered]@{}
+foreach ($inputSpec in $requiredAssemblerInputs) {
+    $inputName = [string]$inputSpec.Name
+    $assemblerInputPaths[$inputName] = [string]$inputRows[$inputName].path
+}
+$assemblerCommandArguments = @()
+if ($assemblerHandoffReady) {
+    $assemblerCommandArguments = @(
+        "-Mode", "Assemble",
+        "-OutputRootRelative", $assemblerOutputRootRelative,
+        "-D3d12HostEvidenceRelative", [string]$assemblerInputPaths["d3d12_host_evidence"],
+        "-VulkanStrictHostEvidenceRelative", [string]$assemblerInputPaths["vulkan_strict_host_evidence"],
+        "-AppleMetalHostEvidenceRelative", [string]$assemblerInputPaths["apple_metal_host_evidence"],
+        "-MetalMemoryProfilingHostEvidenceRelative", [string]$assemblerInputPaths["metal_memory_profiling_host_evidence"],
+        "-PackageHostEvidenceRelative", [string]$assemblerInputPaths["package_host_evidence"],
+        "-QualityVfxHostEvidenceRelative", [string]$assemblerInputPaths["quality_vfx_host_evidence"],
+        "-CleanRoomLegalReviewRelative", [string]$assemblerInputPaths["clean_room_legal_review"]
+    )
+}
+$assemblerRequireReadyArguments = @($assemblerCommandArguments)
+if ($assemblerHandoffReady) {
+    $assemblerRequireReadyArguments += "-RequireReady"
+}
+$finalPreflightArguments = @()
+if ($finalRootPresent) {
+    $finalPreflightArguments = @("-ArtifactRootRelative", $finalRetainedRootRelative)
+}
 $manifestRelative = "$OutputRootRelative/intake-manifest.json"
 $manifestFull = Resolve-RepoRelativePath -RelativePath $manifestRelative -Label "intake manifest"
 $willWriteManifest = -not $NoWrite.IsPresent
@@ -437,6 +466,20 @@ $manifest = [ordered]@{
         path = if ($finalRootPresent) { "$finalRetainedRootRelative/evidence.json" } else { "" }
     }
     assembler_inputs = $inputRows
+    assembler_handoff = [ordered]@{
+        ready = $assemblerHandoffReady
+        script = "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1"
+        output_root = $assemblerOutputRootRelative
+        input_paths = $assemblerInputPaths
+        command_arguments = @($assemblerCommandArguments)
+        require_ready_command_arguments = @($assemblerRequireReadyArguments)
+    }
+    final_preflight_handoff = [ordered]@{
+        ready = $finalRootPresent
+        script = "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1"
+        artifact_root = if ($finalRootPresent) { $finalRetainedRootRelative } else { "" }
+        command_arguments = @($finalPreflightArguments)
+    }
     metal_host_gate_summary = [ordered]@{
         present = $metalHostGateSummaryPresent
         path = if ($metalHostGateSummaryPresent) { $metalHostGateSummary.Path } else { "" }
@@ -456,6 +499,10 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=$presentInputs"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=$($requiredAssemblerInputs.Count - $presentInputs)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_final_retained_root_present=$(ConvertTo-CounterBit $finalRootPresent)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=$(ConvertTo-CounterBit $assemblerHandoffReady)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_required_input_paths=$($requiredAssemblerInputs.Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_output_root=$assemblerOutputRootRelative"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=$(ConvertTo-CounterBit $finalRootPresent)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=$(ConvertTo-CounterBit $metalHostGateSummaryPresent)"
 if ($metalHostGateSummaryPresent) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_status=$(ConvertTo-CounterValue -Value $metalHostGateSummary.Status)"
