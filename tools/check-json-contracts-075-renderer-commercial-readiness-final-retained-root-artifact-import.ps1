@@ -22,6 +22,7 @@ foreach ($needle in @(
         "gh run download",
         "https://cli.github.com/manual/gh_run_download",
         "https://docs.github.com/en/rest/actions/artifacts",
+        "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
         "renderer-metal-memory-profiling-host-artifacts",
         "metal-host-optimization-artifacts",
@@ -44,11 +45,11 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=5",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=6",
         "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
         "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-commercial-readiness-final-retained-root",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_reason=mtlresidencyset_unavailable",
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
@@ -69,8 +70,11 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import",
+        "renderer-clean-room-legal-review-input",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
+        "tools/generate-renderer-clean-room-legal-review-input.ps1",
         "GitHub Actions artifacts",
+        "renderer-clean-room-legal-review-artifacts",
         "final retained root",
         "seven explicit assembler inputs",
         "assembler_handoff",

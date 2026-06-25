@@ -18,6 +18,7 @@ param(
     [string]$OutputRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import",
 
     [string[]]$ArtifactNames = @(
+        "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
         "renderer-metal-memory-profiling-host-artifacts",
         "metal-host-optimization-artifacts",

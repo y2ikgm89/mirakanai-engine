@@ -40,6 +40,7 @@ $packageArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-pack
 $packageArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-package-commercial-quality-artifacts.ps1"
 $qualityVfxArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-quality-vfx-commercial-artifacts.ps1"
 $qualityVfxArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-quality-vfx-commercial-artifacts.ps1"
+$cleanRoomLegalReviewInputGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-clean-room-legal-review-input.ps1"
 $cleanRoomLegalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-clean-room-legal-artifact.ps1"
 $cleanRoomLegalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-clean-room-legal-artifact.ps1"
 $rendererMetalAppleValidatorText = Get-AgentSurfaceText "tools/validate-renderer-metal-apple.ps1"
@@ -385,6 +386,36 @@ foreach ($needle in @(
         'external_engine_parity = $false'
     )) {
     Assert-ContainsText $collectorText $needle "renderer commercial readiness evidence collector"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Generate',
+        'artifacts/renderer/clean-room-legal-review/renderer-commercial-readiness',
+        'GameEngine.RendererCleanRoomLegalReviewInput.v1',
+        'GameEngine.RendererCleanRoomLegalReviewSourceSummary.v1',
+        'renderer-clean-room-legal-review-input',
+        'renderer-clean-room-legal-artifact-v1',
+        'renderer-clean-room-legal-review-artifacts',
+        'https://unity.com/legal/terms-of-service',
+        'https://unity.com/legal/branding-trademarks',
+        'https://www.unrealengine.com/eula/unreal',
+        'https://dev.epicgames.com/docs/dev-portal/unreal-engine/ue-trademark-license',
+        'https://godotengine.org/license/',
+        'https://docs.godotengine.org/en/stable/about/complying_with_licenses.html',
+        'THIRD_PARTY_NOTICES.md',
+        'legal_advice = $false',
+        'external_engine_material_selected = $false',
+        'renderer_clean_room_legal_review_input_written=',
+        'renderer_clean_room_legal_review_input_ready=',
+        'renderer_clean_room_public_docs_only=1',
+        'renderer_external_engine_forbidden_material_detected_rows=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $cleanRoomLegalReviewInputGeneratorText $needle `
+        "renderer commercial readiness clean-room legal review input generator"
 }
 
 foreach ($needle in @(
@@ -1020,6 +1051,7 @@ foreach ($needle in @(
         'tools/validate-renderer-commercial-readiness-evidence.ps1',
         'tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1',
         'tools/assemble-renderer-commercial-readiness-final-retained-root.ps1',
+        'tools/generate-renderer-clean-room-legal-review-input.ps1',
         'renderer-commercial-readiness-evidence'
     )) {
     Assert-ContainsText $commandsFragmentText $needle "renderer commercial readiness evidence command surface"
@@ -1034,7 +1066,16 @@ Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readines
     "renderer commercial readiness final promotion preflight validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-retained-root-assembler' `
     "renderer commercial readiness final retained-root assembler validation recipe"
+Assert-ContainsText $commandsFragmentText 'rendererCleanRoomLegalReviewInputGenerator' `
+    "renderer commercial readiness clean-room legal review input generator command"
+Assert-ContainsText $validationRecipesFragmentText 'renderer-clean-room-legal-review-input' `
+    "renderer commercial readiness clean-room legal review input validation recipe"
 foreach ($needle in @(
+        'Generate renderer clean-room legal review input',
+        'Upload renderer clean-room legal review artifacts',
+        'renderer-clean-room-legal-review-artifacts',
+        'artifacts/renderer/clean-room-legal-review/renderer-commercial-readiness/**',
+        'if-no-files-found: error',
         'Upload renderer commercial readiness retained root (Metal host)',
         'renderer-commercial-readiness-final-retained-root',
         'artifacts/renderer/commercial-readiness-evidence/final-retained/**',
