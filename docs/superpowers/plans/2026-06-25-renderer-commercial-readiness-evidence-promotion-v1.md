@@ -387,15 +387,28 @@ Validation evidence:
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 - Modify: `tools/run-validation-recipe-plans.ps1`
 - Modify: `tools/check-validation-recipe-runner.ps1`
+- Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/visible-3d-package.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/runtime-ui-package.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/environment-package.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/generated-game-package.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 
 Required package rows:
 
-- [ ] `visible_3d`: material, lighting, shadow/postprocess, and readback/hash evidence.
-- [ ] `runtime_ui`: UI atlas upload/readback or retained upload handoff evidence.
-- [ ] `environment`: environment renderer package row consumption without promoting `environment_ready`.
-- [ ] `generated_game`: generated-game package output row consumption.
-- [ ] Every package row points to a reviewed validation recipe id and package manifest row.
-- [ ] No package script execution or arbitrary shell execution is introduced.
+- [x] `visible_3d`: material, lighting, shadow/postprocess, and readback/hash evidence.
+- [x] `runtime_ui`: UI atlas upload/readback or retained upload handoff evidence.
+- [x] `environment`: environment renderer package row consumption without promoting `environment_ready`.
+- [x] `generated_game`: generated-game package output row consumption.
+- [x] Every package row points to a reviewed validation recipe id and package manifest row.
+- [x] No package script execution or arbitrary shell execution is introduced.
+
+Validation evidence:
+
+- Package-visible fixture artifacts now carry detailed rows for `material_render`, `lighting_row`, `shadow_postprocess`, `package_visible_readback`, `ui_atlas_upload`, `ui_atlas_readback`, `renderer_handoff`, `environment_renderer_package_consumption`, and `generated_game_output`, plus manifest binding rows and script-execution zero counters.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `renderer_visible_3d_material_ready=1`, `renderer_visible_3d_lighting_ready=1`, `renderer_visible_3d_shadow_postprocess_ready=1`, `renderer_visible_3d_readback_hash_ready=1`, `renderer_runtime_ui_atlas_upload_ready=1`, `renderer_runtime_ui_atlas_readback_ready=1`, `renderer_runtime_ui_handoff_ready=1`, `renderer_environment_package_consumption_ready=1`, `renderer_environment_ready_promoted=0`, `renderer_generated_game_package_output_ready=1`, `renderer_generated_game_manifest_ready=1`, `renderer_package_arbitrary_script_execution=0`, `renderer_package_script_execution=0`, and `renderer_environment_ready=0`.
+- `tools/check-ai-integration.ps1`: passed after adding package-visible proof-row static needles.
 
 ## Task 8: Legal, Dependency, And Source Review Closeout
 

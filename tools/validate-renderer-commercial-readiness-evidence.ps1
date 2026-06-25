@@ -947,6 +947,332 @@ function Test-RendererCommercialReadinessAppleMetalArtifact {
         $crossBackendReady -and $nonClaimsReady
 }
 
+function Test-RendererCommercialReadinessPackageArtifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$RowName,
+        [Parameter(Mandatory = $true)]$PackageProofRows,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    $artifact = Read-RendererCommercialReadinessJson -Path $Path -Diagnostics $artifactDiagnostics
+    if ($null -eq $artifact) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_package_artifact_json"
+        return $false
+    }
+
+    $expectedSchema = ""
+    $expectedArtifactId = ""
+    $expectedRecipe = ""
+    switch ($RowName) {
+        "visible_3d" {
+            $expectedSchema = "GameEngine.DesktopRuntimePackageEvidence.v1"
+            $expectedArtifactId = "visible-3d-package"
+            $expectedRecipe = "desktop-3d-package"
+        }
+        "runtime_ui" {
+            $expectedSchema = "GameEngine.DesktopRuntimePackageEvidence.v1"
+            $expectedArtifactId = "runtime-ui-package"
+            $expectedRecipe = "desktop-runtime-ui-package"
+        }
+        "environment" {
+            $expectedSchema = "GameEngine.EnvironmentPackageEvidence.v1"
+            $expectedArtifactId = "environment-package"
+            $expectedRecipe = "environment-package"
+        }
+        "generated_game" {
+            $expectedSchema = "GameEngine.GeneratedGamePackageEvidence.v1"
+            $expectedArtifactId = "generated-game-package"
+            $expectedRecipe = "generated-game-package"
+        }
+        default {
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "unknown_package_row"
+        }
+    }
+
+    Assert-ExactJsonProperties -JsonObject $artifact -Label "$RowName`_package_artifact" `
+        -Diagnostics $artifactDiagnostics `
+        -ExpectedNames @(
+            "schema_version",
+            "artifact_id",
+            "validation_recipe",
+            "fixture_only",
+            "ready",
+            "proof_rows",
+            "validation_counters",
+            "non_claims"
+        )
+
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "schema_version" `
+                -Diagnostics $artifactDiagnostics) -cne $expectedSchema) {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_$RowName`_package_schema"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "artifact_id" `
+                -Diagnostics $artifactDiagnostics) -cne $expectedArtifactId) {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_$RowName`_package_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "validation_recipe" `
+                -Diagnostics $artifactDiagnostics) -cne $expectedRecipe) {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_$RowName`_package_recipe"
+    }
+    $artifactReady = Test-RequiredTrueProperty -JsonObject $artifact -Name "ready" `
+        -Diagnostics $artifactDiagnostics
+
+    $proofRows = Get-JsonPropertyValue -JsonObject $artifact -Name "proof_rows"
+    $rowReady = $false
+    if ($RowName -eq "visible_3d") {
+        $materialRender = Get-JsonPropertyValue -JsonObject $proofRows -Name "material_render"
+        $lightingRow = Get-JsonPropertyValue -JsonObject $proofRows -Name "lighting_row"
+        $shadowPostprocess = Get-JsonPropertyValue -JsonObject $proofRows -Name "shadow_postprocess"
+        $packageVisibleReadback = Get-JsonPropertyValue -JsonObject $proofRows -Name "package_visible_readback"
+        $manifestBinding = Get-JsonPropertyValue -JsonObject $proofRows -Name "manifest_binding"
+
+        $materialReady =
+            (Test-RequiredTrueProperty -JsonObject $materialRender -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $materialRender -Name "pbr_material_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $materialRender -Name "texture_binding_row" `
+                -Diagnostics $artifactDiagnostics)
+        if ([long](Get-JsonPropertyValue -JsonObject $materialRender -Name "material_variant_rows") -le 0) {
+            $materialReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_visible_3d_material_variant_rows"
+        }
+        $PackageProofRows["visible_3d_material"] = $materialReady
+
+        $lightingReady =
+            (Test-RequiredTrueProperty -JsonObject $lightingRow -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $lightingRow -Name "direct_light_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $lightingRow -Name "ambient_light_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $lightingRow -Name "lighting_readback_nonzero" `
+                -Diagnostics $artifactDiagnostics)
+        $PackageProofRows["visible_3d_lighting"] = $lightingReady
+
+        $shadowPostprocessReady =
+            (Test-RequiredTrueProperty -JsonObject $shadowPostprocess -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $shadowPostprocess -Name "shadow_or_depth_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $shadowPostprocess -Name "postprocess_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $shadowPostprocess -Name "tone_mapping_row" `
+                -Diagnostics $artifactDiagnostics)
+        $PackageProofRows["visible_3d_shadow_postprocess"] = $shadowPostprocessReady
+
+        $readbackReady = Test-RequiredTrueProperty -JsonObject $packageVisibleReadback -Name "ready" `
+            -Diagnostics $artifactDiagnostics
+        $readbackHash = Get-RequiredStringProperty -JsonObject $packageVisibleReadback `
+            -Name "deterministic_hash_sha256" -Diagnostics $artifactDiagnostics
+        if (-not (Test-LowerHexSha256Text -Value $readbackHash)) {
+            $readbackReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_visible_3d_readback_hash"
+        }
+        if ([long](Get-JsonPropertyValue -JsonObject $packageVisibleReadback -Name "readback_counter_rows") -le 0) {
+            $readbackReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_visible_3d_readback_rows"
+        }
+        $PackageProofRows["visible_3d_readback_hash"] = $readbackReady
+
+        $manifestReady =
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "game_agent_manifest_row" `
+                -Diagnostics $artifactDiagnostics)
+        if ((Get-RequiredStringProperty -JsonObject $manifestBinding -Name "validation_recipe_id" `
+                    -Diagnostics $artifactDiagnostics) -cne $expectedRecipe) {
+            $manifestReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_visible_3d_manifest_recipe"
+        }
+        if ([string]::IsNullOrWhiteSpace((Get-RequiredStringProperty -JsonObject $manifestBinding `
+                        -Name "package_manifest_row" -Diagnostics $artifactDiagnostics))) {
+            $manifestReady = $false
+        }
+        $PackageProofRows["visible_3d_manifest"] = $manifestReady
+        $rowReady = $materialReady -and $lightingReady -and $shadowPostprocessReady -and
+            $readbackReady -and $manifestReady
+    } elseif ($RowName -eq "runtime_ui") {
+        $uiAtlasUpload = Get-JsonPropertyValue -JsonObject $proofRows -Name "ui_atlas_upload"
+        $uiAtlasReadback = Get-JsonPropertyValue -JsonObject $proofRows -Name "ui_atlas_readback"
+        $rendererHandoff = Get-JsonPropertyValue -JsonObject $proofRows -Name "renderer_handoff"
+        $manifestBinding = Get-JsonPropertyValue -JsonObject $proofRows -Name "manifest_binding"
+
+        $uploadReady =
+            (Test-RequiredTrueProperty -JsonObject $uiAtlasUpload -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $uiAtlasUpload -Name "atlas_texture_upload_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $uiAtlasUpload -Name "atlas_texture_usage_sampled" `
+                -Diagnostics $artifactDiagnostics)
+        if ([long](Get-JsonPropertyValue -JsonObject $uiAtlasUpload -Name "upload_counter_rows") -le 0) {
+            $uploadReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_runtime_ui_upload_rows"
+        }
+        $PackageProofRows["runtime_ui_atlas_upload"] = $uploadReady
+
+        $readbackReady = Test-RequiredTrueProperty -JsonObject $uiAtlasReadback -Name "ready" `
+            -Diagnostics $artifactDiagnostics
+        $readbackHash = Get-RequiredStringProperty -JsonObject $uiAtlasReadback `
+            -Name "deterministic_hash_sha256" -Diagnostics $artifactDiagnostics
+        if (-not (Test-LowerHexSha256Text -Value $readbackHash)) {
+            $readbackReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_runtime_ui_readback_hash"
+        }
+        if ([long](Get-JsonPropertyValue -JsonObject $uiAtlasReadback -Name "readback_counter_rows") -le 0) {
+            $readbackReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_runtime_ui_readback_rows"
+        }
+        $PackageProofRows["runtime_ui_atlas_readback"] = $readbackReady
+
+        $handoffReady =
+            (Test-RequiredTrueProperty -JsonObject $rendererHandoff -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $rendererHandoff -Name "retained_upload_handoff_row" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $rendererHandoff -Name "renderer_consumed_ui_atlas_row" `
+                -Diagnostics $artifactDiagnostics)
+        $PackageProofRows["runtime_ui_handoff"] = $handoffReady
+
+        $manifestReady =
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "game_agent_manifest_row" `
+                -Diagnostics $artifactDiagnostics)
+        if ((Get-RequiredStringProperty -JsonObject $manifestBinding -Name "validation_recipe_id" `
+                    -Diagnostics $artifactDiagnostics) -cne $expectedRecipe) {
+            $manifestReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_runtime_ui_manifest_recipe"
+        }
+        if ([string]::IsNullOrWhiteSpace((Get-RequiredStringProperty -JsonObject $manifestBinding `
+                        -Name "package_manifest_row" -Diagnostics $artifactDiagnostics))) {
+            $manifestReady = $false
+        }
+        $PackageProofRows["runtime_ui_manifest"] = $manifestReady
+        $rowReady = $uploadReady -and $readbackReady -and $handoffReady -and $manifestReady
+    } elseif ($RowName -eq "environment") {
+        $environmentConsumption = Get-JsonPropertyValue -JsonObject $proofRows `
+            -Name "environment_renderer_package_consumption"
+        $manifestBinding = Get-JsonPropertyValue -JsonObject $proofRows -Name "manifest_binding"
+
+        $consumptionReady =
+            (Test-RequiredTrueProperty -JsonObject $environmentConsumption -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $environmentConsumption -Name "environment_package_row_consumed" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredFalseProperty -JsonObject $environmentConsumption -Name "environment_ready_promoted" `
+                -Diagnostics $artifactDiagnostics)
+        if ([long](Get-JsonPropertyValue -JsonObject $environmentConsumption `
+                    -Name "renderer_environment_rows_consumed_count") -le 0) {
+            $consumptionReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_environment_renderer_consumed_rows"
+        }
+        $PackageProofRows["environment_consumption"] = $consumptionReady
+        $PackageProofRows["environment_ready_promoted"] =
+            [bool](Get-JsonPropertyValue -JsonObject $environmentConsumption -Name "environment_ready_promoted")
+
+        $manifestReady =
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "game_agent_manifest_row" `
+                -Diagnostics $artifactDiagnostics)
+        if ((Get-RequiredStringProperty -JsonObject $manifestBinding -Name "validation_recipe_id" `
+                    -Diagnostics $artifactDiagnostics) -cne $expectedRecipe) {
+            $manifestReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_environment_manifest_recipe"
+        }
+        if ([string]::IsNullOrWhiteSpace((Get-RequiredStringProperty -JsonObject $manifestBinding `
+                        -Name "package_manifest_row" -Diagnostics $artifactDiagnostics))) {
+            $manifestReady = $false
+        }
+        $PackageProofRows["environment_manifest"] = $manifestReady
+        $rowReady = $consumptionReady -and $manifestReady
+    } elseif ($RowName -eq "generated_game") {
+        $generatedGameOutput = Get-JsonPropertyValue -JsonObject $proofRows -Name "generated_game_output"
+        $manifestBinding = Get-JsonPropertyValue -JsonObject $proofRows -Name "manifest_binding"
+
+        $outputReady =
+            (Test-RequiredTrueProperty -JsonObject $generatedGameOutput -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $generatedGameOutput -Name "generated_game_package_written" `
+                -Diagnostics $artifactDiagnostics)
+        if ([long](Get-JsonPropertyValue -JsonObject $generatedGameOutput -Name "output_manifest_rows") -le 0) {
+            $outputReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_generated_game_output_manifest_rows"
+        }
+        $outputHash = Get-RequiredStringProperty -JsonObject $generatedGameOutput `
+            -Name "deterministic_hash_sha256" -Diagnostics $artifactDiagnostics
+        if (-not (Test-LowerHexSha256Text -Value $outputHash)) {
+            $outputReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_generated_game_output_hash"
+        }
+        $PackageProofRows["generated_game_output"] = $outputReady
+
+        $manifestReady =
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "ready" `
+                -Diagnostics $artifactDiagnostics) -and
+            (Test-RequiredTrueProperty -JsonObject $manifestBinding -Name "game_agent_manifest_row" `
+                -Diagnostics $artifactDiagnostics)
+        if ((Get-RequiredStringProperty -JsonObject $manifestBinding -Name "validation_recipe_id" `
+                    -Diagnostics $artifactDiagnostics) -cne $expectedRecipe) {
+            $manifestReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "invalid_generated_game_manifest_recipe"
+        }
+        if ([string]::IsNullOrWhiteSpace((Get-RequiredStringProperty -JsonObject $manifestBinding `
+                        -Name "generated_game_manifest_id" -Diagnostics $artifactDiagnostics))) {
+            $manifestReady = $false
+        }
+        if ([string]::IsNullOrWhiteSpace((Get-RequiredStringProperty -JsonObject $manifestBinding `
+                        -Name "package_manifest_row" -Diagnostics $artifactDiagnostics))) {
+            $manifestReady = $false
+        }
+        $PackageProofRows["generated_game_manifest"] = $manifestReady
+        $rowReady = $outputReady -and $manifestReady
+    }
+
+    $nonClaims = Get-JsonPropertyValue -JsonObject $artifact -Name "non_claims"
+    $nonClaimsReady = $true
+    foreach ($requiredFalse in @(
+            "arbitrary_script_execution",
+            "package_script_execution",
+            "native_handles_exposed",
+            "external_engine_parity",
+            "environment_ready"
+        )) {
+        $nonClaimsReady = (Test-RequiredFalseProperty -JsonObject $nonClaims -Name $requiredFalse `
+                -Diagnostics $artifactDiagnostics) -and $nonClaimsReady
+    }
+    $PackageProofRows["arbitrary_script_execution"] =
+        [bool]$PackageProofRows["arbitrary_script_execution"] -or
+        [bool](Get-JsonPropertyValue -JsonObject $nonClaims -Name "arbitrary_script_execution")
+    $PackageProofRows["package_script_execution"] =
+        [bool]$PackageProofRows["package_script_execution"] -or
+        [bool](Get-JsonPropertyValue -JsonObject $nonClaims -Name "package_script_execution")
+
+    foreach ($artifactDiagnostic in $artifactDiagnostics) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+    }
+
+    return $artifactReady -and $rowReady -and $nonClaimsReady
+}
+
 function Invoke-RendererCommercialQualityCloseoutFromEvidence {
     param(
         [Parameter(Mandatory = $true)]$RowReady,
@@ -1104,6 +1430,24 @@ $appleMetalProofRows = @{
     native_handles = $false
     native_handles_exposed = $false
     cross_backend_inference = $false
+}
+$packageProofRows = @{
+    visible_3d_material = $false
+    visible_3d_lighting = $false
+    visible_3d_shadow_postprocess = $false
+    visible_3d_readback_hash = $false
+    visible_3d_manifest = $false
+    runtime_ui_atlas_upload = $false
+    runtime_ui_atlas_readback = $false
+    runtime_ui_handoff = $false
+    runtime_ui_manifest = $false
+    environment_consumption = $false
+    environment_manifest = $false
+    environment_ready_promoted = $false
+    generated_game_output = $false
+    generated_game_manifest = $false
+    arbitrary_script_execution = $false
+    package_script_execution = $false
 }
 
 $artifactRows = 0
@@ -1290,6 +1634,20 @@ if ($null -ne $evidenceFile) {
                     $artifactSpecificReady = Test-RendererCommercialReadinessAppleMetalArtifact `
                         -Path $resolvedArtifactPath `
                         -AppleMetalProofRows $appleMetalProofRows `
+                        -Diagnostics $evidenceDiagnostics
+                }
+            }
+            if (@("visible_3d", "runtime_ui", "environment", "generated_game") -contains $rowSpec.Name) {
+                if ($null -eq $resolvedArtifactPath -or
+                    -not (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
+                    $artifactSpecificReady = $false
+                    Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
+                        -Name "missing_$($rowSpec.Name)_package_artifact"
+                } else {
+                    $artifactSpecificReady = Test-RendererCommercialReadinessPackageArtifact `
+                        -Path $resolvedArtifactPath `
+                        -RowName $rowSpec.Name `
+                        -PackageProofRows $packageProofRows `
                         -Diagnostics $evidenceDiagnostics
                 }
             }
@@ -1487,6 +1845,19 @@ $lines.Add("renderer_apple_metal_capture_ready=$(ConvertTo-CounterBit $($appleMe
 $lines.Add("renderer_apple_metal_visible_package_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["visible_package"]))")
 $lines.Add("renderer_apple_metal_native_handles_exposed=$(ConvertTo-CounterBit $($appleMetalProofRows["native_handles_exposed"]))")
 $lines.Add("renderer_apple_metal_cross_backend_inference=$(ConvertTo-CounterBit $($appleMetalProofRows["cross_backend_inference"]))")
+$lines.Add("renderer_visible_3d_material_ready=$(ConvertTo-CounterBit $($packageProofRows["visible_3d_material"]))")
+$lines.Add("renderer_visible_3d_lighting_ready=$(ConvertTo-CounterBit $($packageProofRows["visible_3d_lighting"]))")
+$lines.Add("renderer_visible_3d_shadow_postprocess_ready=$(ConvertTo-CounterBit $($packageProofRows["visible_3d_shadow_postprocess"]))")
+$lines.Add("renderer_visible_3d_readback_hash_ready=$(ConvertTo-CounterBit $($packageProofRows["visible_3d_readback_hash"]))")
+$lines.Add("renderer_runtime_ui_atlas_upload_ready=$(ConvertTo-CounterBit $($packageProofRows["runtime_ui_atlas_upload"]))")
+$lines.Add("renderer_runtime_ui_atlas_readback_ready=$(ConvertTo-CounterBit $($packageProofRows["runtime_ui_atlas_readback"]))")
+$lines.Add("renderer_runtime_ui_handoff_ready=$(ConvertTo-CounterBit $($packageProofRows["runtime_ui_handoff"]))")
+$lines.Add("renderer_environment_package_consumption_ready=$(ConvertTo-CounterBit $($packageProofRows["environment_consumption"]))")
+$lines.Add("renderer_environment_ready_promoted=$(ConvertTo-CounterBit $($packageProofRows["environment_ready_promoted"]))")
+$lines.Add("renderer_generated_game_package_output_ready=$(ConvertTo-CounterBit $($packageProofRows["generated_game_output"]))")
+$lines.Add("renderer_generated_game_manifest_ready=$(ConvertTo-CounterBit $($packageProofRows["generated_game_manifest"]))")
+$lines.Add("renderer_package_arbitrary_script_execution=$(ConvertTo-CounterBit $($packageProofRows["arbitrary_script_execution"]))")
+$lines.Add("renderer_package_script_execution=$(ConvertTo-CounterBit $($packageProofRows["package_script_execution"]))")
 $lines.Add("renderer_d3d12_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["d3d12"]))")
 $lines.Add("renderer_vulkan_strict_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["vulkan_strict"]))")
 $lines.Add("renderer_apple_metal_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["apple_metal"]))")

@@ -3,5 +3,33 @@
   "artifact_id": "generated-game-package",
   "validation_recipe": "generated-game-package",
   "fixture_only": true,
-  "ready": true
+  "ready": true,
+  "proof_rows": {
+    "generated_game_output": {
+      "ready": true,
+      "generated_game_package_written": true,
+      "output_manifest_rows": 1,
+      "deterministic_hash_sha256": "b8ec9f6e45f0c36bbf4c5b9bfd31e2c8ad4754e6f2e53f4419bd116080e24f3a"
+    },
+    "manifest_binding": {
+      "ready": true,
+      "game_agent_manifest_row": true,
+      "validation_recipe_id": "generated-game-package",
+      "generated_game_manifest_id": "generated_game_studio_v1_package",
+      "package_manifest_row": "generated_game_package_output"
+    }
+  },
+  "validation_counters": {
+    "renderer_generated_game_package_output_ready": true,
+    "renderer_generated_game_manifest_ready": true,
+    "renderer_package_arbitrary_script_execution": false,
+    "renderer_package_script_execution": false
+  },
+  "non_claims": {
+    "arbitrary_script_execution": false,
+    "package_script_execution": false,
+    "native_handles_exposed": false,
+    "external_engine_parity": false,
+    "environment_ready": false
+  }
 }

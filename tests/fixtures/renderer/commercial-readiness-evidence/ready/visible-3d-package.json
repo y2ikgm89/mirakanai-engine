@@ -3,5 +3,51 @@
   "artifact_id": "visible-3d-package",
   "validation_recipe": "desktop-3d-package",
   "fixture_only": true,
-  "ready": true
+  "ready": true,
+  "proof_rows": {
+    "material_render": {
+      "ready": true,
+      "pbr_material_row": true,
+      "texture_binding_row": true,
+      "material_variant_rows": 1
+    },
+    "lighting_row": {
+      "ready": true,
+      "direct_light_row": true,
+      "ambient_light_row": true,
+      "lighting_readback_nonzero": true
+    },
+    "shadow_postprocess": {
+      "ready": true,
+      "shadow_or_depth_row": true,
+      "postprocess_row": true,
+      "tone_mapping_row": true
+    },
+    "package_visible_readback": {
+      "ready": true,
+      "deterministic_hash_sha256": "e55076775a63e556bece9ce3bb2dfe4f74641c4bbb48e5606f3323e9813a25b7",
+      "readback_counter_rows": 1
+    },
+    "manifest_binding": {
+      "ready": true,
+      "game_agent_manifest_row": true,
+      "validation_recipe_id": "desktop-3d-package",
+      "package_manifest_row": "sample_generated_desktop_runtime_3d_package"
+    }
+  },
+  "validation_counters": {
+    "renderer_visible_3d_material_ready": true,
+    "renderer_visible_3d_lighting_ready": true,
+    "renderer_visible_3d_shadow_postprocess_ready": true,
+    "renderer_visible_3d_readback_hash_ready": true,
+    "renderer_package_arbitrary_script_execution": false,
+    "renderer_package_script_execution": false
+  },
+  "non_claims": {
+    "arbitrary_script_execution": false,
+    "package_script_execution": false,
+    "native_handles_exposed": false,
+    "external_engine_parity": false,
+    "environment_ready": false
+  }
 }

@@ -55,7 +55,7 @@
       "host_validation_recipe_id": "desktop-3d-package",
       "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/visible-3d-package.json",
-      "artifact_hash_sha256": "6b61fb229af2c71f4bd60f63927bd3a890efbe3889b03f54d809cafba3aed6b9",
+      "artifact_hash_sha256": "d881e09176831f5af09efcf47927f921c3c7e7a080de016178d2346f7409e727",
       "validation_counter_id": "renderer_visible_3d_package_ready",
       "diagnostic_code": "ready"
     },
@@ -66,7 +66,7 @@
       "host_validation_recipe_id": "desktop-runtime-ui-package",
       "retained_artifact_schema_version": "GameEngine.DesktopRuntimePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/runtime-ui-package.json",
-      "artifact_hash_sha256": "b178b089afe7fcfb703ed71975103736cb9eadee96b5e13dc980dcf90f6faa32",
+      "artifact_hash_sha256": "b6c62660f8ac0c90d8edc6e0d1b2405f395e23455a4c02be5ab86a27ecb1f5b6",
       "validation_counter_id": "renderer_runtime_ui_package_ready",
       "diagnostic_code": "ready"
     },
@@ -77,7 +77,7 @@
       "host_validation_recipe_id": "environment-package",
       "retained_artifact_schema_version": "GameEngine.EnvironmentPackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/environment-package.json",
-      "artifact_hash_sha256": "9e99d6b8192127e8a820a959f1d6bd4a88de0bdf17f8f474c5a197ea608e092c",
+      "artifact_hash_sha256": "a54a31ba858b2a3f702e37b34751707679979d47011381e31e441403385fbf9b",
       "validation_counter_id": "renderer_environment_package_ready",
       "diagnostic_code": "ready"
     },
@@ -88,7 +88,7 @@
       "host_validation_recipe_id": "generated-game-package",
       "retained_artifact_schema_version": "GameEngine.GeneratedGamePackageEvidence.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/generated-game-package.json",
-      "artifact_hash_sha256": "a5e8a5f35ee0c8e8404d345b4bacd4b483b77e62c18421828c6ab2be3c23f7fe",
+      "artifact_hash_sha256": "958c5916cfe1af58ae59d97580a4a0272ec5e18addd085f54e459df7eb59a38f",
       "validation_counter_id": "renderer_generated_game_package_ready",
       "diagnostic_code": "ready"
     }

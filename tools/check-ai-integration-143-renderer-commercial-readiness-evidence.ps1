@@ -7,6 +7,10 @@ $readyFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-rea
 $d3d12ReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json"
 $vulkanReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json"
 $appleMetalReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json"
+$visible3dPackageArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/visible-3d-package.json"
+$runtimeUiPackageArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/runtime-ui-package.json"
+$environmentPackageArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/environment-package.json"
+$generatedGamePackageArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/generated-game-package.json"
 $missingMetalFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json"
 $externalEngineRejectedFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json"
 $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -322,6 +326,69 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator Apple Metal binding"
     Assert-ContainsText $appleMetalReadyArtifactText $needle "renderer commercial readiness Apple Metal ready artifact"
+}
+
+foreach ($needle in @(
+        'material_render',
+        'lighting_row',
+        'shadow_postprocess',
+        'package_visible_readback',
+        'game_agent_manifest_row',
+        'validation_recipe_id',
+        'renderer_visible_3d_material_ready',
+        'renderer_visible_3d_lighting_ready',
+        'renderer_visible_3d_shadow_postprocess_ready',
+        'renderer_visible_3d_readback_hash_ready'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness visible 3D package binding"
+    Assert-ContainsText $visible3dPackageArtifactText $needle "renderer commercial readiness visible 3D package artifact"
+}
+
+foreach ($needle in @(
+        'ui_atlas_upload',
+        'ui_atlas_readback',
+        'renderer_handoff',
+        'renderer_runtime_ui_atlas_upload_ready',
+        'renderer_runtime_ui_atlas_readback_ready',
+        'renderer_runtime_ui_handoff_ready'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness runtime UI package binding"
+    Assert-ContainsText $runtimeUiPackageArtifactText $needle "renderer commercial readiness runtime UI package artifact"
+}
+
+foreach ($needle in @(
+        'environment_renderer_package_consumption',
+        'environment_package_row_consumed',
+        'environment_ready_promoted',
+        'renderer_environment_package_consumption_ready',
+        'renderer_environment_ready_promoted'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness environment package binding"
+    Assert-ContainsText $environmentPackageArtifactText $needle "renderer commercial readiness environment package artifact"
+}
+
+foreach ($needle in @(
+        'generated_game_output',
+        'generated_game_package_written',
+        'generated_game_manifest_id',
+        'renderer_generated_game_package_output_ready',
+        'renderer_generated_game_manifest_ready'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness generated game package binding"
+    Assert-ContainsText $generatedGamePackageArtifactText $needle "renderer commercial readiness generated game package artifact"
+}
+
+foreach ($needle in @(
+        'arbitrary_script_execution',
+        'package_script_execution',
+        'renderer_package_arbitrary_script_execution',
+        'renderer_package_script_execution'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness package script rejection"
+    Assert-ContainsText $visible3dPackageArtifactText $needle "renderer commercial readiness visible 3D package script rejection"
+    Assert-ContainsText $runtimeUiPackageArtifactText $needle "renderer commercial readiness runtime UI package script rejection"
+    Assert-ContainsText $environmentPackageArtifactText $needle "renderer commercial readiness environment package script rejection"
+    Assert-ContainsText $generatedGamePackageArtifactText $needle "renderer commercial readiness generated game package script rejection"
 }
 
 foreach ($needle in @(
