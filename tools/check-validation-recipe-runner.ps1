@@ -309,6 +309,7 @@ function Assert-EnvironmentMetalOptimizationProducerDryRun {
             "environment_metal_host_optimization_artifact_ready=1",
             "xcrun_xctrace_ready=1",
             "xctrace_template=Metal_System_Trace",
+            "xctrace_record_timeout_seconds=900",
             "environment_metal_host_optimization_artifacts_written=7",
             "environment_metal_host_optimization_profiler_artifacts=7",
             "environment_metal_host_optimization_trace_event_json=7",

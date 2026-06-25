@@ -17,6 +17,10 @@ $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-25-renderer-com
 foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "RendererCommercialReadinessFinalRetainedRootArtifactImport",
+        "ArtifactListJsonRelative",
+        "workflow_artifact_list",
+        "workflow_artifact_list_present",
+        "missing_workflow_artifact_names",
         "gh run download",
         "GitHub CLI",
         "GitHub Actions artifacts",
@@ -39,6 +43,9 @@ foreach ($needle in @(
 foreach ($needle in @(
         "check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1",
         "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-commercial-readiness-final-retained-root",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",

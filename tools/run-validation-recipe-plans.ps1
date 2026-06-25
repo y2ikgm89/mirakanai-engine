@@ -730,6 +730,7 @@ function Get-ValidationRecipeCommandPlan {
             'environment_metal_host_optimization_artifact_ready=1',
             'xcrun_xctrace_ready=1',
             'xctrace_template=Metal_System_Trace',
+            'xctrace_record_timeout_seconds=900',
             'environment_metal_host_optimization_artifacts_written=7',
             'environment_metal_host_optimization_profiler_artifacts=7',
             'environment_metal_host_optimization_trace_event_json=7',
@@ -742,7 +743,7 @@ function Get-ValidationRecipeCommandPlan {
         $pwEntry = Get-PwshScriptCommandPlan `
             -ScriptPath 'tools/generate-environment-metal-optimization-artifacts.ps1' `
             -ScriptArguments $scriptArguments
-        $diagEnvironmentMetalOptimizationProducer = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Environment Metal host optimization artifact producer requires macOS with full Xcode, xcrun, and xctrace Metal System Trace. It profiles validate-environment-metal-host-aggregate.ps1, writes seven metal_apple_host evidence.json / trace-events.json / xctrace TOC profiler artifacts under artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/<workload>/, then runs the fail-closed cross-backend optimization artifact validator before broad optimization can become ready. It does not infer Linux Vulkan, Android Vulkan, all-platform readiness, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        $diagEnvironmentMetalOptimizationProducer = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Environment Metal host optimization artifact producer requires macOS with full Xcode, xcrun, and xctrace Metal System Trace. It profiles validate-environment-metal-host-aggregate.ps1 with xctrace --time-limit plus a host-level 900 second recorder watchdog, writes seven metal_apple_host evidence.json / trace-events.json / xctrace TOC profiler artifacts under artifacts/environment/optimization/2026-06-19-metal-host-xctrace-smoke/metal_apple_host/<workload>/, then runs the fail-closed cross-backend optimization artifact validator before broad optimization can become ready. It does not infer Linux Vulkan, Android Vulkan, all-platform readiness, commercial readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagEnvironmentMetalOptimizationProducer)
     }
     elseif ($RecipeName -eq 'environment-asset-pipeline-openexr-ktx-basis-full') {
