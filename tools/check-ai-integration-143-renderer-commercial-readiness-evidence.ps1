@@ -35,6 +35,10 @@ $vulkanStrictArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer
 $vulkanStrictArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1"
 $appleMetalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1"
 $appleMetalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-apple-metal-commercial-quality-artifact.ps1"
+$packageArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-package-commercial-quality-artifacts.ps1"
+$packageArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-package-commercial-quality-artifacts.ps1"
+$qualityVfxArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-quality-vfx-commercial-artifacts.ps1"
+$qualityVfxArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-quality-vfx-commercial-artifacts.ps1"
 $rendererMetalAppleValidatorText = Get-AgentSurfaceText "tools/validate-renderer-metal-apple.ps1"
 $collectorCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-collector.ps1"
 $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-fixture-guard.ps1"
@@ -301,6 +305,10 @@ Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quali
     "renderer commercial readiness strict Vulkan artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-apple-metal-commercial-quality-artifact.ps1' `
     "renderer commercial readiness Apple Metal artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-package-commercial-quality-artifacts.ps1' `
+    "renderer commercial readiness package artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-quality-vfx-commercial-artifacts.ps1' `
+    "renderer commercial readiness quality/VFX artifact producer validate task"
 Assert-ContainsText $collectorCheckText 'renderer-commercial-readiness-evidence-collector-check: ok' `
     "renderer commercial readiness evidence collector check"
 Assert-ContainsText $fixtureGuardCheckText 'renderer-commercial-readiness-evidence-fixture-guard-check: ok' `
@@ -313,6 +321,10 @@ Assert-ContainsText $vulkanStrictArtifactProducerCheckText 'renderer-vulkan-stri
     "renderer commercial readiness strict Vulkan artifact producer check"
 Assert-ContainsText $appleMetalArtifactProducerCheckText 'renderer-apple-metal-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness Apple Metal artifact producer check"
+Assert-ContainsText $packageArtifactProducerCheckText 'renderer-package-commercial-quality-artifacts-check: ok' `
+    "renderer commercial readiness package artifact producer check"
+Assert-ContainsText $qualityVfxArtifactProducerCheckText 'renderer-quality-vfx-commercial-artifacts-check: ok' `
+    "renderer commercial readiness quality/VFX artifact producer check"
 
 foreach ($needle in @(
         'Mode',
@@ -527,6 +539,136 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $appleMetalArtifactProducerCheckText $needle `
         "renderer commercial readiness Apple Metal artifact producer check"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'PackageHostEvidenceRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'artifacts/renderer/package-commercial-quality-host-evidence/',
+        'GameEngine.RendererPackageCommercialQualityHostEvidence.v1',
+        'renderer-package-commercial-quality-artifacts-v1',
+        'GameEngine-Renderer-Package-Commercial-Quality-2026-06-25',
+        'visible-3d-package.json',
+        'runtime-ui-package.json',
+        'environment-package.json',
+        'generated-game-package.json',
+        'fixture_only = $false',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_package_commercial_quality_artifacts_collector_mode=Assemble',
+        'renderer_package_commercial_quality_artifacts_written=',
+        'renderer_package_commercial_quality_fixture_artifact=0',
+        'renderer_visible_3d_package_ready=1',
+        'renderer_runtime_ui_package_ready=1',
+        'renderer_environment_package_ready=1',
+        'renderer_generated_game_package_ready=1',
+        'renderer_package_arbitrary_script_execution=0',
+        'renderer_package_script_execution=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'external_engine_parity',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $packageArtifactProducerText $needle `
+        "renderer commercial readiness package artifact producer"
+}
+
+foreach ($needle in @(
+        'tools/collect-renderer-package-commercial-quality-artifacts.ps1',
+        'GameEngine.RendererPackageCommercialQualityHostEvidence.v1',
+        'renderer-package-commercial-quality-artifacts-v1',
+        'GameEngine-Renderer-Package-Commercial-Quality-2026-06-25',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_package_commercial_quality_artifacts_written=4',
+        'renderer_package_commercial_quality_fixture_artifact=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=7',
+        'renderer_visible_3d_package_ready',
+        'renderer_runtime_ui_package_ready',
+        'renderer_environment_package_ready',
+        'renderer_generated_game_package_ready',
+        'external_engine_parity',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $packageArtifactProducerCheckText $needle `
+        "renderer commercial readiness package artifact producer check"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Assemble',
+        'OutputRootRelative',
+        'QualityVfxHostEvidenceRelative',
+        'artifacts/renderer/commercial-readiness-evidence/',
+        'artifacts/renderer/quality-vfx-commercial-host-evidence/',
+        'GameEngine.RendererQualityVfxCommercialHostEvidence.v1',
+        'GameEngine.RendererCommercialQualityCloseout.v1',
+        'renderer-quality-vfx-commercial-artifacts-v1',
+        'GameEngine-Renderer-Quality-Vfx-Profiling-2026-06-25',
+        'renderer-quality-matrix.json',
+        'production-vfx-profiling.json',
+        'renderer_quality_matrix_status',
+        'host_evidence_required',
+        'rendering_vfx_profiling_reviewed',
+        'deterministic_replay_hash_sha256',
+        'fixture_only = $false',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_quality_vfx_commercial_artifacts_collector_mode=Assemble',
+        'renderer_quality_vfx_commercial_artifacts_written=',
+        'renderer_quality_vfx_commercial_fixture_artifact=0',
+        'renderer_quality_matrix_ready=1',
+        'renderer_production_vfx_profiling_ready=1',
+        'renderer_quality_matrix_gpu_command_side_effects=0',
+        'renderer_quality_matrix_native_capture_side_effects=0',
+        'renderer_quality_matrix_crash_upload_side_effects=0',
+        'renderer_production_vfx_native_capture_side_effects=0',
+        'renderer_production_vfx_crash_upload_side_effects=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'external_engine_parity',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $qualityVfxArtifactProducerText $needle `
+        "renderer commercial readiness quality/VFX artifact producer"
+}
+
+foreach ($needle in @(
+        'tools/collect-renderer-quality-vfx-commercial-artifacts.ps1',
+        'GameEngine.RendererQualityVfxCommercialHostEvidence.v1',
+        'renderer-quality-vfx-commercial-artifacts-v1',
+        'GameEngine-Renderer-Quality-Vfx-Profiling-2026-06-25',
+        'fixture_artifact_input_rejected',
+        'unsafe_relative_path',
+        'renderer_quality_vfx_commercial_artifacts_written=2',
+        'renderer_quality_vfx_commercial_fixture_artifact=0',
+        'renderer_quality_matrix_status=host_evidence_required',
+        'rendering_vfx_profiling_reviewed=1',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'renderer_commercial_readiness_evidence_collector_fixture_artifacts=9',
+        'renderer_quality_matrix_ready',
+        'renderer_production_vfx_profiling_ready',
+        'renderer_broad_quality_ready',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $qualityVfxArtifactProducerCheckText $needle `
+        "renderer commercial readiness quality/VFX artifact producer check"
 }
 
 foreach ($needle in @(
@@ -786,6 +928,14 @@ Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityAr
     "renderer commercial readiness Apple Metal artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityArtifactCollector' `
     "renderer commercial readiness Apple Metal artifact producer collector command surface"
+Assert-ContainsText $commandsFragmentText 'rendererPackageCommercialQualityArtifactsCheck' `
+    "renderer commercial readiness package artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererPackageCommercialQualityArtifactsCollector' `
+    "renderer commercial readiness package artifact producer collector command surface"
+Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialArtifactsCheck' `
+    "renderer commercial readiness quality/VFX artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialArtifactsCollector' `
+    "renderer commercial readiness quality/VFX artifact producer collector command surface"
 
 foreach ($needle in @(
         'renderer-d3d12-commercial-quality-artifact',
@@ -835,6 +985,38 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness Apple Metal artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-package-commercial-quality-artifacts',
+        'tools/collect-renderer-package-commercial-quality-artifacts.ps1',
+        'PackageHostEvidenceRelative',
+        'visible-3d-package.json',
+        'runtime-ui-package.json',
+        'environment-package.json',
+        'generated-game-package.json',
+        'package script or arbitrary script execution',
+        'environment_ready promotion',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness package artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-quality-vfx-commercial-artifacts',
+        'tools/collect-renderer-quality-vfx-commercial-artifacts.ps1',
+        'QualityVfxHostEvidenceRelative',
+        'renderer-quality-matrix.json',
+        'production-vfx-profiling.json',
+        'renderer_quality_matrix_status=host_evidence_required',
+        'rendering_vfx_profiling_reviewed=true',
+        'zero GPU command/native capture/crash-upload side effects',
+        'deterministic replay hashes',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness quality/VFX artifact producer validation recipe"
 }
 
 foreach ($needle in @(

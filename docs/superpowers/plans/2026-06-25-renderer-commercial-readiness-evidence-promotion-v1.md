@@ -716,11 +716,11 @@ Validation evidence:
 
 Steps:
 
-- [ ] Add failing checks that require package artifacts to come from package-visible counters rather than fixture JSON.
-- [ ] Shape selected `desktop-3d-package`, `desktop-runtime-ui-package`, `environment-package`, and `generated-game-package` outputs into `visible-3d-package.json`, `runtime-ui-package.json`, `environment-package.json`, and `generated-game-package.json`.
-- [ ] Shape selected `renderer-quality-matrix` and `renderer-production-vfx-profiling` outputs into `renderer-quality-matrix.json` and `production-vfx-profiling.json`.
-- [ ] Require `renderer_quality_matrix_status=host_evidence_required`, D3D12 and strict Vulkan ready rows, Metal host evidence rows supplied by Task 10C, no general renderer quality claim, zero GPU command/native capture/crash-upload side effects from value-only matrix planning, deterministic replay hash, and clean diagnostics.
-- [ ] Require `rendering_vfx_profiling_reviewed=1`, D3D12 and strict Vulkan host evidence ready, Metal host evidence supplied by Task 10C, debug policy rows, memory policy rows, package counter rows, deterministic replay hash, and zero native capture/crash upload side effects unless a retained official profiler artifact row is explicitly selected.
+- [x] Add failing checks that require package artifacts to come from package-visible counters rather than fixture JSON.
+- [x] Shape selected `desktop-3d-package`, `desktop-runtime-ui-package`, `environment-package`, and `generated-game-package` outputs into `visible-3d-package.json`, `runtime-ui-package.json`, `environment-package.json`, and `generated-game-package.json`.
+- [x] Shape selected `renderer-quality-matrix` and `renderer-production-vfx-profiling` outputs into `renderer-quality-matrix.json` and `production-vfx-profiling.json`.
+- [x] Require `renderer_quality_matrix_status=host_evidence_required`, D3D12 and strict Vulkan ready rows, Metal host evidence rows supplied by Task 10C, no general renderer quality claim, zero GPU command/native capture/crash-upload side effects from value-only matrix planning, deterministic replay hash, and clean diagnostics.
+- [x] Require `rendering_vfx_profiling_reviewed=1`, D3D12 and strict Vulkan host evidence ready, Metal host evidence supplied by Task 10C, debug policy rows, memory policy rows, package counter rows, deterministic replay hash, and zero native capture/crash upload side effects unless a retained official profiler artifact row is explicitly selected.
 
 Validation:
 
@@ -732,6 +732,17 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 ```
+
+Validation evidence:
+
+- `tools/check-renderer-package-commercial-quality-artifacts.ps1`: passed after proving unsafe path rejection, fixture-only input rejection, four non-fixture package artifact writes, collector integration with seven remaining fixture artifacts, package counters ready, and `renderer_commercial_readiness=0`.
+- `tools/check-renderer-quality-vfx-commercial-artifacts.ps1`: passed after proving unsafe path rejection, fixture-only input rejection, two non-fixture quality/VFX artifact writes, collector integration with nine remaining fixture artifacts, quality/VFX counters ready, `renderer_broad_quality_ready=0`, and `renderer_commercial_readiness=0`.
+- `tools/check-ai-integration.ps1`: passed after adding Task 10D command, recipe, producer, check, and validation task needles.
+- `tools/check-json-contracts.ps1`: passed after manifest fragment composition.
+- `tools/check-renderer-commercial-readiness-evidence-collector.ps1`: passed after Task 10D producer registration.
+- `tools/check-format.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 37 static checks, including both new Task 10D checks; Windows-host Metal/Apple packaging checks remained diagnostic-only host gates.
 
 ### Task 10E: Legal/Source Review Artifact Producer
 
