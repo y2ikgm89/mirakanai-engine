@@ -3,5 +3,92 @@
   "artifact_id": "apple-metal-host",
   "validation_recipe": "renderer-metal-apple-host-evidence",
   "fixture_only": true,
-  "ready": true
+  "ready": true,
+  "proof_rows": {
+    "host_toolchain": {
+      "ready": true,
+      "xcode_host_ready": true,
+      "metal_tool_ready": true,
+      "metallib_tool_ready": true,
+      "command_line_metal_tools": true,
+      "toolchain_source_id": "Apple-Building-Shader-Library-Precompiling-Source-Files-2026-06-25"
+    },
+    "msl_shader": {
+      "ready": true,
+      "address_spaces": [
+        "device",
+        "constant",
+        "threadgroup"
+      ],
+      "function_constant_attribute": "[[function_constant]]",
+      "resource_binding_attributes": [
+        "[[buffer]]",
+        "[[texture]]",
+        "[[sampler]]"
+      ],
+      "stage_attributes": [
+        "[[vertex]]",
+        "[[fragment]]",
+        "[[kernel]]"
+      ],
+      "msl_source_id": "Apple-Metal-Shading-Language-Specification-2026-06-25"
+    },
+    "heap_resources": {
+      "ready": true,
+      "api_name": "MTLHeap",
+      "heap_descriptor_configured": true,
+      "heap_backed_resources_created": true,
+      "budgeted_size_bytes": 4096
+    },
+    "residency_set": {
+      "ready": true,
+      "api_name": "MTLResidencySet",
+      "residency_set_created": true,
+      "resources_added": true,
+      "residency_commit_recorded": true
+    },
+    "capture_manager": {
+      "ready": true,
+      "api_name": "MTLCaptureManager",
+      "capture_scope": "renderer-commercial-readiness-visible-package",
+      "capture_started": true,
+      "capture_stopped": true,
+      "capture_artifact_sha256": "60b725f10c9c85c70d97880dfe8191b3a9b5813d033ed4a55c5228512c6501de"
+    },
+    "visible_package": {
+      "ready": true,
+      "selected_3d_package": true,
+      "runtime_ui_package": true,
+      "environment_package": true,
+      "generated_game_package": true,
+      "visible_package_rows": 4,
+      "deterministic_hash_sha256": "0d4d4e443582ab659a52bfb21fcab6f9aed7f1fcd29882a595c9f5a4f6b8b77a"
+    },
+    "native_handles": {
+      "ready": true,
+      "native_handles_exposed": false,
+      "objective_cxx_boundary_private": true
+    },
+    "cross_backend_inference": {
+      "ready": true,
+      "d3d12_inferred": false,
+      "vulkan_inferred": false
+    }
+  },
+  "validation_counters": {
+    "renderer_apple_metal_xcode_tools_ready": true,
+    "renderer_apple_metal_msl_shader_ready": true,
+    "renderer_apple_metal_heap_ready": true,
+    "renderer_apple_metal_residency_set_ready": true,
+    "renderer_apple_metal_capture_ready": true,
+    "renderer_apple_metal_visible_package_ready": true
+  },
+  "non_claims": {
+    "d3d12_inferred": false,
+    "vulkan_inferred": false,
+    "environment_ready": false,
+    "external_engine_parity": false,
+    "native_handles_exposed": false,
+    "metal_objects_public": false
+  }
 }

@@ -704,6 +704,249 @@ function Test-RendererCommercialReadinessVulkanArtifact {
         $packageReadbackReady -and $nativeHandleReady -and $nonClaimsReady
 }
 
+function Test-RendererCommercialReadinessAppleMetalArtifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$AppleMetalProofRows,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[string]]$Diagnostics
+    )
+
+    $artifactDiagnostics = [System.Collections.Generic.List[string]]::new()
+    $artifact = Read-RendererCommercialReadinessJson -Path $Path -Diagnostics $artifactDiagnostics
+    if ($null -eq $artifact) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name "invalid_apple_metal_artifact_json"
+        return $false
+    }
+
+    Assert-ExactJsonProperties -JsonObject $artifact -Label "apple_metal_artifact" `
+        -Diagnostics $artifactDiagnostics `
+        -ExpectedNames @(
+            "schema_version",
+            "artifact_id",
+            "validation_recipe",
+            "fixture_only",
+            "ready",
+            "proof_rows",
+            "validation_counters",
+            "non_claims"
+        )
+
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "schema_version" `
+                -Diagnostics $artifactDiagnostics) -cne "GameEngine.RendererCommercialQualityCloseout.v1") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_apple_metal_artifact_schema"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "artifact_id" `
+                -Diagnostics $artifactDiagnostics) -cne "apple-metal-host") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_apple_metal_artifact_id"
+    }
+    if ((Get-RequiredStringProperty -JsonObject $artifact -Name "validation_recipe" `
+                -Diagnostics $artifactDiagnostics) -cne "renderer-metal-apple-host-evidence") {
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_apple_metal_artifact_recipe"
+    }
+    $null = Test-RequiredTrueProperty -JsonObject $artifact -Name "ready" -Diagnostics $artifactDiagnostics
+
+    $proofRows = Get-JsonPropertyValue -JsonObject $artifact -Name "proof_rows"
+    $hostToolchain = Get-JsonPropertyValue -JsonObject $proofRows -Name "host_toolchain"
+    $mslShader = Get-JsonPropertyValue -JsonObject $proofRows -Name "msl_shader"
+    $heapResources = Get-JsonPropertyValue -JsonObject $proofRows -Name "heap_resources"
+    $residencySet = Get-JsonPropertyValue -JsonObject $proofRows -Name "residency_set"
+    $captureManager = Get-JsonPropertyValue -JsonObject $proofRows -Name "capture_manager"
+    $visiblePackage = Get-JsonPropertyValue -JsonObject $proofRows -Name "visible_package"
+    $nativeHandles = Get-JsonPropertyValue -JsonObject $proofRows -Name "native_handles"
+    $crossBackendInference = Get-JsonPropertyValue -JsonObject $proofRows -Name "cross_backend_inference"
+
+    $hostToolchainReady =
+        (Test-RequiredTrueProperty -JsonObject $hostToolchain -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $hostToolchain -Name "xcode_host_ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $hostToolchain -Name "metal_tool_ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $hostToolchain -Name "metallib_tool_ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $hostToolchain -Name "command_line_metal_tools" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $hostToolchain -Name "toolchain_source_id" `
+                -Diagnostics $artifactDiagnostics) -cne
+        "Apple-Building-Shader-Library-Precompiling-Source-Files-2026-06-25") {
+        $hostToolchainReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_apple_metal_toolchain_source"
+    }
+    $AppleMetalProofRows["xcode_tools"] = $hostToolchainReady
+
+    $mslShaderReady = Test-RequiredTrueProperty -JsonObject $mslShader -Name "ready" `
+        -Diagnostics $artifactDiagnostics
+    $addressSpaces = @(Get-JsonPropertyValue -JsonObject $mslShader -Name "address_spaces")
+    foreach ($requiredAddressSpace in @("device", "constant", "threadgroup")) {
+        if ($addressSpaces -cnotcontains $requiredAddressSpace) {
+            $mslShaderReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_msl_address_space_$requiredAddressSpace"
+        }
+    }
+    if ((Get-RequiredStringProperty -JsonObject $mslShader -Name "function_constant_attribute" `
+                -Diagnostics $artifactDiagnostics) -cne "[[function_constant]]") {
+        $mslShaderReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_msl_function_constant"
+    }
+    $resourceBindingAttributes = @(Get-JsonPropertyValue -JsonObject $mslShader `
+            -Name "resource_binding_attributes")
+    foreach ($requiredBinding in @("[[buffer]]", "[[texture]]", "[[sampler]]")) {
+        if ($resourceBindingAttributes -cnotcontains $requiredBinding) {
+            $mslShaderReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_msl_resource_binding_$requiredBinding"
+        }
+    }
+    $stageAttributes = @(Get-JsonPropertyValue -JsonObject $mslShader -Name "stage_attributes")
+    foreach ($requiredStage in @("[[vertex]]", "[[fragment]]", "[[kernel]]")) {
+        if ($stageAttributes -cnotcontains $requiredStage) {
+            $mslShaderReady = $false
+            Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+                -Name "missing_msl_stage_attribute_$requiredStage"
+        }
+    }
+    if ((Get-RequiredStringProperty -JsonObject $mslShader -Name "msl_source_id" `
+                -Diagnostics $artifactDiagnostics) -cne
+        "Apple-Metal-Shading-Language-Specification-2026-06-25") {
+        $mslShaderReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_msl_source_id"
+    }
+    $AppleMetalProofRows["msl_shader"] = $mslShaderReady
+
+    $heapReady =
+        (Test-RequiredTrueProperty -JsonObject $heapResources -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $heapResources -Name "heap_descriptor_configured" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $heapResources -Name "heap_backed_resources_created" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $heapResources -Name "api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "MTLHeap") {
+        $heapReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_apple_metal_heap_api"
+    }
+    if ([long](Get-JsonPropertyValue -JsonObject $heapResources -Name "budgeted_size_bytes") -le 0) {
+        $heapReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_apple_metal_heap_budget"
+    }
+    $AppleMetalProofRows["heap"] = $heapReady
+
+    $residencyReady =
+        (Test-RequiredTrueProperty -JsonObject $residencySet -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $residencySet -Name "residency_set_created" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $residencySet -Name "resources_added" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $residencySet -Name "residency_commit_recorded" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $residencySet -Name "api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "MTLResidencySet") {
+        $residencyReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_apple_metal_residency_set_api"
+    }
+    $AppleMetalProofRows["residency_set"] = $residencyReady
+
+    $captureReady =
+        (Test-RequiredTrueProperty -JsonObject $captureManager -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $captureManager -Name "capture_started" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $captureManager -Name "capture_stopped" `
+            -Diagnostics $artifactDiagnostics)
+    if ((Get-RequiredStringProperty -JsonObject $captureManager -Name "api_name" `
+                -Diagnostics $artifactDiagnostics) -cne "MTLCaptureManager") {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_apple_metal_capture_manager_api"
+    }
+    if ([string]::IsNullOrWhiteSpace((Get-RequiredStringProperty -JsonObject $captureManager `
+                    -Name "capture_scope" -Diagnostics $artifactDiagnostics))) {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "missing_apple_metal_capture_scope"
+    }
+    $captureHash = Get-RequiredStringProperty -JsonObject $captureManager `
+        -Name "capture_artifact_sha256" -Diagnostics $artifactDiagnostics
+    if (-not (Test-LowerHexSha256Text -Value $captureHash)) {
+        $captureReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics -Name "invalid_apple_metal_capture_hash"
+    }
+    $AppleMetalProofRows["capture"] = $captureReady
+
+    $visiblePackageReady =
+        (Test-RequiredTrueProperty -JsonObject $visiblePackage -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $visiblePackage -Name "selected_3d_package" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $visiblePackage -Name "runtime_ui_package" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $visiblePackage -Name "environment_package" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $visiblePackage -Name "generated_game_package" `
+            -Diagnostics $artifactDiagnostics)
+    if ([long](Get-JsonPropertyValue -JsonObject $visiblePackage -Name "visible_package_rows") -lt 4) {
+        $visiblePackageReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "missing_apple_metal_visible_package_rows"
+    }
+    $visibleHash = Get-RequiredStringProperty -JsonObject $visiblePackage `
+        -Name "deterministic_hash_sha256" -Diagnostics $artifactDiagnostics
+    if (-not (Test-LowerHexSha256Text -Value $visibleHash)) {
+        $visiblePackageReady = $false
+        Add-RendererReadinessDiagnostic -Diagnostics $artifactDiagnostics `
+            -Name "invalid_apple_metal_visible_package_hash"
+    }
+    $AppleMetalProofRows["visible_package"] = $visiblePackageReady
+
+    $nativeHandleReady =
+        (Test-RequiredTrueProperty -JsonObject $nativeHandles -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredTrueProperty -JsonObject $nativeHandles -Name "objective_cxx_boundary_private" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredFalseProperty -JsonObject $nativeHandles -Name "native_handles_exposed" `
+            -Diagnostics $artifactDiagnostics)
+    $AppleMetalProofRows["native_handles_exposed"] =
+        [bool](Get-JsonPropertyValue -JsonObject $nativeHandles -Name "native_handles_exposed")
+    $AppleMetalProofRows["native_handles"] = $nativeHandleReady
+
+    $crossBackendReady =
+        (Test-RequiredTrueProperty -JsonObject $crossBackendInference -Name "ready" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredFalseProperty -JsonObject $crossBackendInference -Name "d3d12_inferred" `
+            -Diagnostics $artifactDiagnostics) -and
+        (Test-RequiredFalseProperty -JsonObject $crossBackendInference -Name "vulkan_inferred" `
+            -Diagnostics $artifactDiagnostics)
+    $AppleMetalProofRows["cross_backend_inference"] =
+        [bool](Get-JsonPropertyValue -JsonObject $crossBackendInference -Name "d3d12_inferred") -or
+        [bool](Get-JsonPropertyValue -JsonObject $crossBackendInference -Name "vulkan_inferred")
+
+    $nonClaims = Get-JsonPropertyValue -JsonObject $artifact -Name "non_claims"
+    $nonClaimsReady = $true
+    foreach ($requiredFalse in @(
+            "d3d12_inferred",
+            "vulkan_inferred",
+            "environment_ready",
+            "external_engine_parity",
+            "native_handles_exposed",
+            "metal_objects_public"
+        )) {
+        $nonClaimsReady = (Test-RequiredFalseProperty -JsonObject $nonClaims -Name $requiredFalse `
+                -Diagnostics $artifactDiagnostics) -and $nonClaimsReady
+    }
+
+    foreach ($artifactDiagnostic in $artifactDiagnostics) {
+        Add-RendererReadinessDiagnostic -Diagnostics $Diagnostics -Name $artifactDiagnostic
+    }
+
+    return $hostToolchainReady -and $mslShaderReady -and $heapReady -and $residencyReady -and
+        $captureReady -and $visiblePackageReady -and $nativeHandleReady -and
+        $crossBackendReady -and $nonClaimsReady
+}
+
 function Invoke-RendererCommercialQualityCloseoutFromEvidence {
     param(
         [Parameter(Mandatory = $true)]$RowReady,
@@ -850,6 +1093,17 @@ $vulkanProofRows = @{
     package_readback = $false
     native_handles = $false
     native_handles_exposed = $false
+}
+$appleMetalProofRows = @{
+    xcode_tools = $false
+    msl_shader = $false
+    heap = $false
+    residency_set = $false
+    capture = $false
+    visible_package = $false
+    native_handles = $false
+    native_handles_exposed = $false
+    cross_backend_inference = $false
 }
 
 $artifactRows = 0
@@ -1022,6 +1276,20 @@ if ($null -ne $evidenceFile) {
                     $artifactSpecificReady = Test-RendererCommercialReadinessVulkanArtifact `
                         -Path $resolvedArtifactPath `
                         -VulkanProofRows $vulkanProofRows `
+                        -Diagnostics $evidenceDiagnostics
+                }
+            }
+
+            if ($rowSpec.Name -eq "apple_metal") {
+                if ($null -eq $resolvedArtifactPath -or
+                    -not (Test-Path -LiteralPath $resolvedArtifactPath -PathType Leaf)) {
+                    $artifactSpecificReady = $false
+                    Add-RendererReadinessDiagnostic -Diagnostics $evidenceDiagnostics `
+                        -Name "missing_apple_metal_host_artifact"
+                } else {
+                    $artifactSpecificReady = Test-RendererCommercialReadinessAppleMetalArtifact `
+                        -Path $resolvedArtifactPath `
+                        -AppleMetalProofRows $appleMetalProofRows `
                         -Diagnostics $evidenceDiagnostics
                 }
             }
@@ -1211,6 +1479,14 @@ $lines.Add("renderer_vulkan_timestamp_ready=$(ConvertTo-CounterBit $($vulkanProo
 $lines.Add("renderer_vulkan_shader_validation_ready=$(ConvertTo-CounterBit $($vulkanProofRows["shader_validation"]))")
 $lines.Add("renderer_vulkan_package_readback_ready=$(ConvertTo-CounterBit $($vulkanProofRows["package_readback"]))")
 $lines.Add("renderer_vulkan_native_handles_exposed=$(ConvertTo-CounterBit $($vulkanProofRows["native_handles_exposed"]))")
+$lines.Add("renderer_apple_metal_xcode_tools_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["xcode_tools"]))")
+$lines.Add("renderer_apple_metal_msl_shader_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["msl_shader"]))")
+$lines.Add("renderer_apple_metal_heap_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["heap"]))")
+$lines.Add("renderer_apple_metal_residency_set_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["residency_set"]))")
+$lines.Add("renderer_apple_metal_capture_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["capture"]))")
+$lines.Add("renderer_apple_metal_visible_package_ready=$(ConvertTo-CounterBit $($appleMetalProofRows["visible_package"]))")
+$lines.Add("renderer_apple_metal_native_handles_exposed=$(ConvertTo-CounterBit $($appleMetalProofRows["native_handles_exposed"]))")
+$lines.Add("renderer_apple_metal_cross_backend_inference=$(ConvertTo-CounterBit $($appleMetalProofRows["cross_backend_inference"]))")
 $lines.Add("renderer_d3d12_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["d3d12"]))")
 $lines.Add("renderer_vulkan_strict_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["vulkan_strict"]))")
 $lines.Add("renderer_apple_metal_renderer_quality_ready=$(ConvertTo-CounterBit $($rowReady["apple_metal"]))")

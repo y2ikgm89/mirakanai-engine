@@ -356,19 +356,28 @@ Validation evidence:
 - Modify: existing Metal host evidence generator/checker files only inside Apple-private implementation/test/tool boundaries.
 - Modify: `tools/validate-renderer-commercial-readiness-evidence.ps1`
 - Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json`
+- Modify: `tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
 
 Required Apple-host Metal rows:
 
-- [ ] Full Xcode host row: `metal` and `metallib` tools are available.
-- [ ] MSL shader row: address spaces, function constants, resource bindings, and stage restrictions are compliant with the queried MSL documentation.
-- [ ] `MTLHeap` row: heap-backed selected resources are created and budgeted.
-- [ ] `MTLResidencySet` row: residency set creation/request/commit evidence is present when available on the selected host.
-- [ ] `MTLCaptureManager` row: capture scope/artifact evidence is produced for the selected workload.
-- [ ] Visible package row: selected 3D material/lighting/postprocess, runtime UI atlas, environment package consumption, and generated-game package output rows are present.
-- [ ] Native handle row: `MTL*` objects remain private to Objective-C++ boundaries.
-- [ ] Cross-backend inference row: D3D12/Vulkan proof cannot promote Metal readiness.
+- [x] Full Xcode host row: `metal` and `metallib` tools are available.
+- [x] MSL shader row: address spaces, function constants, resource bindings, and stage restrictions are compliant with the queried MSL documentation.
+- [x] `MTLHeap` row: heap-backed selected resources are created and budgeted.
+- [x] `MTLResidencySet` row: residency set creation/request/commit evidence is present when available on the selected host.
+- [x] `MTLCaptureManager` row: capture scope/artifact evidence is produced for the selected workload.
+- [x] Visible package row: selected 3D material/lighting/postprocess, runtime UI atlas, environment package consumption, and generated-game package output rows are present.
+- [x] Native handle row: `MTL*` objects remain private to Objective-C++ boundaries.
+- [x] Cross-backend inference row: D3D12/Vulkan proof cannot promote Metal readiness.
 
 Default Windows/Linux validation remains host-gated and must not require Apple tools.
+
+Validation evidence:
+
+- Context7 selected `/dogukanveziroglu/metal-shading-language-specification` for MSL and confirmed `device`, `constant`, `threadgroup`, `[[function_constant]]`, `[[buffer]]`, `[[texture]]`, `[[sampler]]`, `[[vertex]]`, `[[fragment]]`, and `[[kernel]]` terminology for the proof rows. Apple Developer documentation was checked for `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, and `metal`/`metallib` command-line shader library workflows.
+- `tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json` now carries fixture-only Apple Metal proof rows for Xcode/Metal tools, MSL shader constraints, `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, visible package coverage, private Objective-C++ native boundaries, and D3D12/Vulkan non-inference.
+- `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative tests/fixtures/renderer/commercial-readiness-evidence/ready`: passed with `renderer_apple_metal_xcode_tools_ready=1`, `renderer_apple_metal_msl_shader_ready=1`, `renderer_apple_metal_heap_ready=1`, `renderer_apple_metal_residency_set_ready=1`, `renderer_apple_metal_capture_ready=1`, `renderer_apple_metal_visible_package_ready=1`, `renderer_apple_metal_native_handles_exposed=0`, `renderer_apple_metal_cross_backend_inference=0`, and `renderer_environment_ready=0`.
+- `tools/check-ai-integration.ps1`: passed after adding Apple Metal proof-row static needles.
 
 ## Task 7: Package-Visible Renderer Quality Closeout
 

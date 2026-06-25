@@ -6,6 +6,7 @@ $schemaText = Get-AgentSurfaceText "schemas/renderer-commercial-readiness-eviden
 $readyFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/evidence.json"
 $d3d12ReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/d3d12-quality.json"
 $vulkanReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/vulkan-strict-quality.json"
+$appleMetalReadyArtifactText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json"
 $missingMetalFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/missing_metal/evidence.json"
 $externalEngineRejectedFixtureText = Get-AgentSurfaceText "tests/fixtures/renderer/commercial-readiness-evidence/external_engine_rejected/evidence.json"
 $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -289,6 +290,38 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator Vulkan binding"
     Assert-ContainsText $vulkanReadyArtifactText $needle "renderer commercial readiness Vulkan ready artifact"
+}
+
+foreach ($needle in @(
+        'host_toolchain',
+        'metal_tool_ready',
+        'metallib_tool_ready',
+        'msl_shader',
+        'device',
+        'constant',
+        'threadgroup',
+        '[[function_constant]]',
+        '[[buffer]]',
+        '[[texture]]',
+        '[[sampler]]',
+        '[[vertex]]',
+        '[[fragment]]',
+        '[[kernel]]',
+        'MTLHeap',
+        'MTLResidencySet',
+        'MTLCaptureManager',
+        'capture_scope',
+        'visible_package',
+        'cross_backend_inference',
+        'renderer_apple_metal_xcode_tools_ready',
+        'renderer_apple_metal_msl_shader_ready',
+        'renderer_apple_metal_heap_ready',
+        'renderer_apple_metal_residency_set_ready',
+        'renderer_apple_metal_capture_ready',
+        'renderer_apple_metal_visible_package_ready'
+    )) {
+    Assert-ContainsText $readinessValidatorText $needle "renderer commercial readiness evidence validator Apple Metal binding"
+    Assert-ContainsText $appleMetalReadyArtifactText $needle "renderer commercial readiness Apple Metal ready artifact"
 }
 
 foreach ($needle in @(

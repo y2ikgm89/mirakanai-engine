@@ -42,7 +42,7 @@
       "host_validation_recipe_id": "renderer-metal-apple-host-evidence",
       "retained_artifact_schema_version": "GameEngine.RendererCommercialQualityCloseout.v1",
       "artifact_path": "tests/fixtures/renderer/commercial-readiness-evidence/ready/apple-metal-host.json",
-      "artifact_hash_sha256": "6819bf623d8ec5e180a6e558ddc8aa067842069dc2563cb71b461f02e9af9ae3",
+      "artifact_hash_sha256": "a1907ba4aa3729fa3dff484ccd7aa47612d8521dc96d24b393b0b8ef86df733c",
       "validation_counter_id": "renderer_apple_metal_renderer_quality_ready",
       "diagnostic_code": "ready"
     }
