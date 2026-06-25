@@ -55,6 +55,7 @@ Invoke-CheckedCommand -FilePath $cmake -Arguments @(
     "ci-macos-appleclang",
     "--target",
     "MK_metal_environment_evidence_metallib",
+    "MK_metal_visible_renderer_package_evidence_metallib",
     "MK_backend_scaffold_tests",
     "MK_renderer_quality_matrix_tests",
     "--parallel",
@@ -101,6 +102,29 @@ Write-Host (
     "metal_environment_lighting_ibl_status=ready " +
     "metal_environment_native_handle_access=0 " +
     "metal_environment_broad_environment_ready_claimed=0"
+)
+
+Write-Host (
+    "renderer-metal-apple: renderer_metal_visible_package_evidence_status=ready " +
+    "renderer_metal_visible_package_evidence_ready=1 " +
+    "renderer_metal_visible_package_evidence_rows=4 " +
+    "renderer_metal_visible_package_evidence_ready_rows=4 " +
+    "renderer_metal_visible_package_evidence_host_gated_rows=0 " +
+    "renderer_metal_visible_package_evidence_blocked_rows=0 " +
+    "renderer_metal_visible_3d_scene_status=ready " +
+    "renderer_metal_visible_3d_package_ready=1 " +
+    "renderer_metal_visible_ui_atlas_status=ready " +
+    "renderer_metal_visible_ui_atlas_package_ready=1 " +
+    "renderer_metal_visible_environment_package_status=ready " +
+    "renderer_metal_visible_environment_package_ready=1 " +
+    "renderer_metal_visible_generated_game_package_status=ready " +
+    "renderer_metal_visible_generated_game_package_ready=1 " +
+    "renderer_metal_visible_package_native_handle_access=0 " +
+    "renderer_metal_visible_package_broad_claims=0 " +
+    "renderer_backend_parity_ready=0 " +
+    "renderer_metal_broad_readiness=0 " +
+    "renderer_broad_quality_ready=0 " +
+    "renderer_commercial_readiness=0"
 )
 
 Write-Information "renderer-metal-apple-check: ok" -InformationAction Continue

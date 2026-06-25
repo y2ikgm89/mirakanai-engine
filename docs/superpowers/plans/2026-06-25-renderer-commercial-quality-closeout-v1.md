@@ -339,15 +339,33 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Modify: `games/sample_generated_desktop_runtime_3d_package/game.agent.json`
 - Modify: selected UI/runtime/environment package manifests only for evidence counters they actually emit
 
-- [ ] Define exact Apple-host visible rows for:
+- [x] Define exact Apple-host visible rows for:
   - 3D scene material/lighting/postprocess output.
   - UI renderer atlas/upload/readback or package-visible upload evidence.
   - environment renderer package row consumption.
   - generated-game package output row.
-- [ ] Use Apple Metal shader/toolchain evidence only from real `metal`/`metallib` capable hosts.
-- [ ] Keep Objective-C++ and `MTL*` objects private to Apple implementation/test boundaries.
-- [ ] Emit deterministic readback/hash or package counters; do not rely on screenshots or subjective review alone.
-- [ ] Keep non-Apple hosts diagnostic/host-gated by default.
+- [x] Use Apple Metal shader/toolchain evidence only from real `metal`/`metallib` capable hosts.
+- [x] Keep Objective-C++ and `MTL*` objects private to Apple implementation/test boundaries.
+- [x] Emit deterministic readback/hash or package counters; do not rely on screenshots or subjective review alone.
+- [x] Keep non-Apple hosts diagnostic/host-gated by default.
+
+Task 4 implementation evidence:
+
+- `MetalVisibleRendererPackageEvidenceDesc`, `MetalVisibleRendererPackageEvidenceRow`,
+  `MetalVisibleRendererPackageEvidencePlan`, `plan_metal_visible_renderer_package_evidence`, and
+  `metal_visible_renderer_package_evidence_status_line` model four selected rows and keep
+  `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`,
+  `renderer_broad_quality_ready=0`, and `renderer_commercial_readiness=0`.
+- `create_native_visible_renderer_package_evidence` and
+  `engine/rhi/metal/shaders/visible_renderer_package_evidence.metal` run only on Apple hosts through
+  `visible_renderer_package_evidence.metallib`, offscreen Metal render/readback, UI atlas
+  upload/readback, and caller-supplied environment/generated package hashes. Public APIs return only
+  booleans, diagnostics, and hashes, never `MTL*`.
+- `tools/validate-renderer-metal-apple.ps1` builds
+  `MK_metal_visible_renderer_package_evidence_metallib` and emits
+  `renderer_metal_visible_package_*` counters only after the Apple-host CTest path passes.
+- `sample_generated_desktop_runtime_3d_package` records the host-gated
+  `renderer-metal-visible-package-evidence` row under `renderer-metal-apple-host-evidence`.
 
 ## Task 5: Add Final Validator And CI Selection
 

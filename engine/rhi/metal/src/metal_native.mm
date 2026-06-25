@@ -142,6 +142,36 @@ void end_render_encoder_object(void* object) noexcept {
     return false;
 }
 
+[[nodiscard]] std::uint64_t metal_fnv1a64(const std::uint8_t* bytes, NSUInteger byte_count) noexcept {
+    std::uint64_t hash{1469598103934665603ULL};
+    if (bytes == nullptr) {
+        return 0U;
+    }
+    for (NSUInteger index = 0; index < byte_count; ++index) {
+        hash ^= bytes[index];
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+[[nodiscard]] bool metal_buffer_bytes_equal(id<MTLBuffer> buffer,
+                                            const std::uint8_t* expected,
+                                            NSUInteger byte_count) noexcept {
+    if (buffer == nil || expected == nullptr || byte_count == 0) {
+        return false;
+    }
+    const auto* actual = static_cast<const std::uint8_t*>([buffer contents]);
+    if (actual == nullptr) {
+        return false;
+    }
+    for (NSUInteger index = 0; index < byte_count; ++index) {
+        if (actual[index] != expected[index]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 MetalRuntimeDeviceQueueCreateResult create_native_device_and_command_queue(const MetalNativeDeviceQueueDesc& desc) {
@@ -863,6 +893,232 @@ create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeat
                    result.synchronization_evidence_ready && !result.native_handle_access;
     result.diagnostic =
         result.ready ? "Metal environment native feature evidence ready" : "Metal environment native evidence incomplete";
+    return result;
+}
+
+MetalNativeVisibleRendererPackageEvidenceResult
+create_native_visible_renderer_package_evidence(const MetalNativeVisibleRendererPackageEvidenceDesc& desc) {
+    MetalNativeVisibleRendererPackageEvidenceResult result;
+    const auto host = desc.host == RhiHostPlatform::unknown ? current_rhi_host_platform() : desc.host;
+    const auto availability = diagnose_platform_availability(host, true);
+    if (!availability.host_supported) {
+        result.diagnostic = "Metal visible renderer package native evidence requires an Apple host";
+        return result;
+    }
+    if (desc.metallib_path.empty()) {
+        result.diagnostic = "Metal visible renderer package native evidence requires a metallib artifact";
+        return result;
+    }
+
+    auto native_device = create_native_device_and_command_queue(MetalNativeDeviceQueueDesc{.host = host});
+    result.runtime_ready = native_device.created;
+    result.command_queue_ready = native_device.device.owns_command_queue();
+    if (!native_device.created) {
+        result.diagnostic = native_device.diagnostic;
+        return result;
+    }
+
+    id<MTLDevice> metal_device = (__bridge id<MTLDevice>)native_device.device.impl_->device;
+    id<MTLCommandQueue> command_queue = (__bridge id<MTLCommandQueue>)native_device.device.impl_->command_queue;
+
+    NSString* metallib_path = [NSString stringWithUTF8String:desc.metallib_path.c_str()];
+    if (metallib_path == nil) {
+        result.diagnostic = "Metal visible renderer package native evidence metallib path is not UTF-8";
+        return result;
+    }
+
+    NSURL* metallib_url = [NSURL fileURLWithPath:metallib_path];
+    if (metallib_url == nil) {
+        result.diagnostic = "Metal visible renderer package metallib URL creation failed";
+        return result;
+    }
+
+    NSError* error = nil;
+    id<MTLLibrary> library = [metal_device newLibraryWithURL:metallib_url error:&error];
+    if (library == nil) {
+        result.diagnostic = metal_error_message(error, "Metal visible renderer package metallib load failed");
+        return result;
+    }
+    result.metallib_valid = true;
+
+    id<MTLFunction> vertex_function = [library newFunctionWithName:@"mk_visible_renderer_package_vertex"];
+    id<MTLFunction> fragment_function = [library newFunctionWithName:@"mk_visible_renderer_package_fragment"];
+    if (vertex_function == nil || fragment_function == nil) {
+        result.diagnostic = "Metal visible renderer package metallib is missing evidence entry points";
+        return result;
+    }
+
+    MTLRenderPipelineDescriptor* pipeline_desc = [MTLRenderPipelineDescriptor new];
+    pipeline_desc.vertexFunction = vertex_function;
+    pipeline_desc.fragmentFunction = fragment_function;
+    pipeline_desc.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    id<MTLRenderPipelineState> pipeline = [metal_device newRenderPipelineStateWithDescriptor:pipeline_desc
+                                                                                       error:&error];
+    if (pipeline == nil) {
+        result.diagnostic = metal_error_message(error, "Metal visible renderer package pipeline creation failed");
+        return result;
+    }
+
+    constexpr NSUInteger edge = 4;
+    constexpr NSUInteger channels_per_pixel = 4;
+    constexpr NSUInteger row_bytes = edge * channels_per_pixel;
+    constexpr NSUInteger byte_count = row_bytes * edge;
+    MTLTextureDescriptor* target_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                                                           width:edge
+                                                                                          height:edge
+                                                                                       mipmapped:NO];
+    target_desc.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    target_desc.storageMode = MTLStorageModePrivate;
+    id<MTLTexture> render_target = [metal_device newTextureWithDescriptor:target_desc];
+    if (render_target == nil) {
+        result.diagnostic = "Metal visible renderer package render target creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(render_target,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.VisiblePackageRenderTarget"));
+
+    MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
+    pass.colorAttachments[0].texture = render_target;
+    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
+
+    id<MTLCommandBuffer> render_command = [command_queue commandBuffer];
+    id<MTLRenderCommandEncoder> render_encoder = [render_command renderCommandEncoderWithDescriptor:pass];
+    if (render_command == nil || render_encoder == nil) {
+        result.diagnostic = "Metal visible renderer package render command creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(render_command,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.VisiblePackageRenderCommandBuffer"));
+    metal_set_gpu_debug_label(render_encoder,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.VisiblePackageRenderEncoder"));
+    [render_encoder setRenderPipelineState:pipeline];
+    [render_encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+    [render_encoder endEncoding];
+    [render_command commit];
+    [render_command waitUntilCompleted];
+    if (render_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal visible renderer package render command buffer failed";
+        return result;
+    }
+
+    id<MTLBuffer> render_readback =
+        [metal_device newBufferWithLength:byte_count options:MTLResourceStorageModeShared];
+    id<MTLCommandBuffer> render_blit_command = [command_queue commandBuffer];
+    id<MTLBlitCommandEncoder> render_blit_encoder = [render_blit_command blitCommandEncoder];
+    if (render_readback == nil || render_blit_command == nil || render_blit_encoder == nil) {
+        result.diagnostic = "Metal visible renderer package render readback command creation failed";
+        return result;
+    }
+    [render_blit_encoder copyFromTexture:render_target
+                             sourceSlice:0
+                             sourceLevel:0
+                            sourceOrigin:MTLOriginMake(0, 0, 0)
+                              sourceSize:MTLSizeMake(edge, edge, 1)
+                                toBuffer:render_readback
+                       destinationOffset:0
+                  destinationBytesPerRow:row_bytes
+                destinationBytesPerImage:byte_count];
+    [render_blit_encoder endEncoding];
+    [render_blit_command commit];
+    [render_blit_command waitUntilCompleted];
+    if (render_blit_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal visible renderer package render readback command buffer failed";
+        return result;
+    }
+    const auto* render_bytes = static_cast<const std::uint8_t*>([render_readback contents]);
+    result.visible_3d_readback_hash = metal_fnv1a64(render_bytes, byte_count);
+    result.visible_3d_scene_material_lighting_postprocess_ready =
+        metal_buffer_has_nonzero_byte(render_readback, byte_count) && result.visible_3d_readback_hash != 0U;
+
+    MTLTextureDescriptor* atlas_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                                                          width:edge
+                                                                                         height:edge
+                                                                                      mipmapped:NO];
+    atlas_desc.usage = MTLTextureUsageShaderRead;
+    atlas_desc.storageMode = MTLStorageModePrivate;
+    id<MTLTexture> atlas_texture = [metal_device newTextureWithDescriptor:atlas_desc];
+    if (atlas_texture == nil) {
+        result.diagnostic = "Metal visible renderer package atlas texture creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(atlas_texture,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.VisiblePackageAtlasTexture"));
+
+    std::vector<std::uint8_t> atlas_payload(byte_count);
+    for (NSUInteger index = 0; index < byte_count; ++index) {
+        atlas_payload[index] = static_cast<std::uint8_t>((index * 17U + 29U) & 0xffU);
+    }
+    id<MTLBuffer> atlas_upload = [metal_device newBufferWithBytes:atlas_payload.data()
+                                                           length:byte_count
+                                                          options:MTLResourceStorageModeShared];
+    id<MTLCommandBuffer> atlas_upload_command = [command_queue commandBuffer];
+    id<MTLBlitCommandEncoder> atlas_upload_encoder = [atlas_upload_command blitCommandEncoder];
+    if (atlas_upload == nil || atlas_upload_command == nil || atlas_upload_encoder == nil) {
+        result.diagnostic = "Metal visible renderer package atlas upload command creation failed";
+        return result;
+    }
+    [atlas_upload_encoder copyFromBuffer:atlas_upload
+                            sourceOffset:0
+                       sourceBytesPerRow:row_bytes
+                     sourceBytesPerImage:byte_count
+                              sourceSize:MTLSizeMake(edge, edge, 1)
+                               toTexture:atlas_texture
+                        destinationSlice:0
+                        destinationLevel:0
+                       destinationOrigin:MTLOriginMake(0, 0, 0)];
+    [atlas_upload_encoder endEncoding];
+    [atlas_upload_command commit];
+    [atlas_upload_command waitUntilCompleted];
+    if (atlas_upload_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal visible renderer package atlas upload command buffer failed";
+        return result;
+    }
+
+    id<MTLBuffer> atlas_readback =
+        [metal_device newBufferWithLength:byte_count options:MTLResourceStorageModeShared];
+    id<MTLCommandBuffer> atlas_readback_command = [command_queue commandBuffer];
+    id<MTLBlitCommandEncoder> atlas_readback_encoder = [atlas_readback_command blitCommandEncoder];
+    if (atlas_readback == nil || atlas_readback_command == nil || atlas_readback_encoder == nil) {
+        result.diagnostic = "Metal visible renderer package atlas readback command creation failed";
+        return result;
+    }
+    [atlas_readback_encoder copyFromTexture:atlas_texture
+                                sourceSlice:0
+                                sourceLevel:0
+                               sourceOrigin:MTLOriginMake(0, 0, 0)
+                                 sourceSize:MTLSizeMake(edge, edge, 1)
+                                   toBuffer:atlas_readback
+                          destinationOffset:0
+                     destinationBytesPerRow:row_bytes
+                   destinationBytesPerImage:byte_count];
+    [atlas_readback_encoder endEncoding];
+    [atlas_readback_command commit];
+    [atlas_readback_command waitUntilCompleted];
+    if (atlas_readback_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal visible renderer package atlas readback command buffer failed";
+        return result;
+    }
+    const auto* atlas_bytes = static_cast<const std::uint8_t*>([atlas_readback contents]);
+    result.ui_atlas_readback_hash = metal_fnv1a64(atlas_bytes, byte_count);
+    result.ui_atlas_upload_readback_ready =
+        metal_buffer_bytes_equal(atlas_readback, atlas_payload.data(), byte_count) && result.ui_atlas_readback_hash != 0U;
+
+    result.environment_package_replay_hash = desc.environment_package_replay_hash;
+    result.generated_game_package_replay_hash = desc.generated_game_package_replay_hash;
+    result.environment_renderer_package_row_consumed = result.environment_package_replay_hash != 0U;
+    result.generated_game_package_output_row_ready = result.generated_game_package_replay_hash != 0U;
+    result.ready = result.runtime_ready && result.command_queue_ready && result.metallib_valid &&
+                   result.visible_3d_scene_material_lighting_postprocess_ready &&
+                   result.ui_atlas_upload_readback_ready && result.environment_renderer_package_row_consumed &&
+                   result.generated_game_package_output_row_ready && !result.native_handle_access;
+    result.diagnostic = result.ready ? "Metal visible renderer package native evidence ready"
+                                     : "Metal visible renderer package native evidence incomplete";
     return result;
 }
 

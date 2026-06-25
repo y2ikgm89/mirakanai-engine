@@ -5,6 +5,8 @@
 
 #include "metal_native_private.hpp"
 
+#include <iterator>
+#include <string>
 #include <utility>
 
 namespace mirakana::rhi::metal {
@@ -34,6 +36,8 @@ BackendProbeResult make_probe_result(RhiHostPlatform host, BackendProbeStatus st
 }
 
 namespace {
+
+constexpr std::string_view kRendererMetalAppleHostEvidenceRecipeId{"renderer-metal-apple-host-evidence"};
 
 [[nodiscard]] MetalResourceUsage resource_usage_for_state(ResourceState state) noexcept {
     switch (state) {
@@ -88,6 +92,137 @@ namespace {
 [[nodiscard]] bool is_write_state(ResourceState state) noexcept {
     return state == ResourceState::render_target || state == ResourceState::depth_write ||
            state == ResourceState::copy_destination;
+}
+
+[[nodiscard]] bool is_reviewed_visible_renderer_host_recipe(const std::string_view recipe_id) noexcept {
+    return recipe_id == kRendererMetalAppleHostEvidenceRecipeId;
+}
+
+[[nodiscard]] std::string_view
+visible_renderer_package_counter_id(const MetalVisibleRendererPackageEvidenceKind kind) noexcept {
+    switch (kind) {
+    case MetalVisibleRendererPackageEvidenceKind::visible_3d_scene:
+        return "renderer_metal_visible_3d_package_ready";
+    case MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload:
+        return "renderer_metal_visible_ui_atlas_package_ready";
+    case MetalVisibleRendererPackageEvidenceKind::environment_package:
+        return "renderer_metal_visible_environment_package_ready";
+    case MetalVisibleRendererPackageEvidenceKind::generated_game_package:
+        return "renderer_metal_visible_generated_game_package_ready";
+    }
+    return {};
+}
+
+[[nodiscard]] bool visible_renderer_package_row_ready(const MetalVisibleRendererPackageEvidenceDesc& desc,
+                                                      const MetalVisibleRendererPackageEvidenceKind kind) noexcept {
+    switch (kind) {
+    case MetalVisibleRendererPackageEvidenceKind::visible_3d_scene:
+        return desc.visible_3d_scene_material_lighting_postprocess_ready && desc.visible_3d_readback_hash != 0U;
+    case MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload:
+        return desc.ui_atlas_upload_readback_ready && desc.ui_atlas_readback_hash != 0U;
+    case MetalVisibleRendererPackageEvidenceKind::environment_package:
+        return desc.environment_renderer_package_row_consumed && desc.environment_package_replay_hash != 0U;
+    case MetalVisibleRendererPackageEvidenceKind::generated_game_package:
+        return desc.generated_game_package_output_row_ready && desc.generated_game_package_replay_hash != 0U;
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint64_t
+visible_renderer_package_row_hash(const MetalVisibleRendererPackageEvidenceDesc& desc,
+                                  const MetalVisibleRendererPackageEvidenceKind kind) noexcept {
+    switch (kind) {
+    case MetalVisibleRendererPackageEvidenceKind::visible_3d_scene:
+        return desc.visible_3d_readback_hash;
+    case MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload:
+        return desc.ui_atlas_readback_hash;
+    case MetalVisibleRendererPackageEvidenceKind::environment_package:
+        return desc.environment_package_replay_hash;
+    case MetalVisibleRendererPackageEvidenceKind::generated_game_package:
+        return desc.generated_game_package_replay_hash;
+    }
+    return 0U;
+}
+
+void hash_mix(std::uint64_t& hash, const std::uint64_t value) noexcept {
+    hash ^= value + 0x9e3779b97f4a7c15ULL + (hash << 6U) + (hash >> 2U);
+}
+
+void hash_mix_string(std::uint64_t& hash, const std::string& value) noexcept {
+    for (const auto c : value) {
+        hash_mix(hash, static_cast<unsigned char>(c));
+    }
+}
+
+[[nodiscard]] MetalVisibleRendererPackageEvidenceRow
+make_visible_renderer_package_evidence_row(const MetalVisibleRendererPackageEvidenceDesc& desc,
+                                           const MetalVisibleRendererPackageEvidenceKind kind) {
+    MetalVisibleRendererPackageEvidenceRow row;
+    const auto host = desc.host == RhiHostPlatform::unknown ? current_rhi_host_platform() : desc.host;
+    row.kind = kind;
+    row.host_supported = supports_host(host);
+    row.host_evidence_required = !row.host_supported || !desc.apple_host_validation_available;
+    row.host_evidence_available = desc.apple_host_validation_available;
+    row.runtime_ready = desc.runtime_ready;
+    row.command_queue_ready = desc.command_queue_ready;
+    row.metallib_valid = desc.metallib_valid;
+    row.package_counter_ready = visible_renderer_package_row_ready(desc, kind);
+    row.native_handle_access = desc.native_handles_exposed;
+    row.broad_claim = desc.broad_backend_parity_claimed || desc.broad_metal_readiness_claimed;
+    row.evidence_hash = visible_renderer_package_row_hash(desc, kind);
+    row.host_validation_recipe_id = desc.host_validation_recipe_id;
+    row.package_counter_id = std::string{visible_renderer_package_counter_id(kind)};
+
+    if (row.host_evidence_required) {
+        row.status = MetalVisibleRendererPackageEvidenceStatus::host_evidence_required;
+        row.diagnostic = "Metal visible renderer package evidence requires Apple host validation";
+        return row;
+    }
+    if (!is_reviewed_visible_renderer_host_recipe(desc.host_validation_recipe_id)) {
+        row.status = MetalVisibleRendererPackageEvidenceStatus::blocked;
+        row.diagnostic = "Metal visible renderer package evidence requires renderer-metal-apple-host-evidence";
+        return row;
+    }
+    if (row.native_handle_access) {
+        row.status = MetalVisibleRendererPackageEvidenceStatus::blocked;
+        row.diagnostic = "Metal visible renderer package evidence must not expose native handles";
+        return row;
+    }
+    if (row.broad_claim) {
+        row.status = MetalVisibleRendererPackageEvidenceStatus::blocked;
+        row.diagnostic = "Metal visible renderer package evidence must not claim broad backend or Metal readiness";
+        return row;
+    }
+    if (!row.runtime_ready || !row.command_queue_ready || !row.metallib_valid) {
+        row.status = MetalVisibleRendererPackageEvidenceStatus::blocked;
+        row.diagnostic = "Metal visible renderer package evidence requires runtime, command queue, and metallib";
+        return row;
+    }
+    if (!row.package_counter_ready) {
+        row.status = MetalVisibleRendererPackageEvidenceStatus::blocked;
+        row.diagnostic = std::string{"Metal visible renderer package evidence missing selected row: "} +
+                         std::string{metal_visible_renderer_package_evidence_kind_label(kind)};
+        return row;
+    }
+
+    row.status = MetalVisibleRendererPackageEvidenceStatus::ready;
+    row.diagnostic = "Metal visible renderer package evidence row ready";
+    return row;
+}
+
+void compute_visible_renderer_package_replay_hash(MetalVisibleRendererPackageEvidencePlan& plan) noexcept {
+    if (plan.status != MetalVisibleRendererPackageEvidenceStatus::ready) {
+        return;
+    }
+
+    std::uint64_t hash = 1469598103934665603ULL;
+    for (const auto& row : plan.rows) {
+        hash_mix(hash, static_cast<std::uint8_t>(row.kind));
+        hash_mix(hash, row.evidence_hash);
+        hash_mix_string(hash, row.host_validation_recipe_id);
+        hash_mix_string(hash, row.package_counter_id);
+    }
+    plan.replay_hash = hash;
 }
 
 } // namespace
@@ -325,6 +460,135 @@ metal_environment_feature_evidence_status_label(MetalEnvironmentFeatureEvidenceS
     return "unknown";
 }
 
+std::string_view
+metal_visible_renderer_package_evidence_kind_label(MetalVisibleRendererPackageEvidenceKind kind) noexcept {
+    switch (kind) {
+    case MetalVisibleRendererPackageEvidenceKind::visible_3d_scene:
+        return "visible_3d_scene";
+    case MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload:
+        return "ui_atlas_upload";
+    case MetalVisibleRendererPackageEvidenceKind::environment_package:
+        return "environment_package";
+    case MetalVisibleRendererPackageEvidenceKind::generated_game_package:
+        return "generated_game_package";
+    }
+
+    return "unknown";
+}
+
+std::string_view
+metal_visible_renderer_package_evidence_status_label(MetalVisibleRendererPackageEvidenceStatus status) noexcept {
+    switch (status) {
+    case MetalVisibleRendererPackageEvidenceStatus::blocked:
+        return "blocked";
+    case MetalVisibleRendererPackageEvidenceStatus::host_evidence_required:
+        return "host_evidence_required";
+    case MetalVisibleRendererPackageEvidenceStatus::ready:
+        return "ready";
+    }
+
+    return "unknown";
+}
+
+MetalVisibleRendererPackageEvidencePlan
+plan_metal_visible_renderer_package_evidence(const MetalVisibleRendererPackageEvidenceDesc& desc) {
+    MetalVisibleRendererPackageEvidencePlan plan;
+    constexpr MetalVisibleRendererPackageEvidenceKind kRows[] = {
+        MetalVisibleRendererPackageEvidenceKind::visible_3d_scene,
+        MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload,
+        MetalVisibleRendererPackageEvidenceKind::environment_package,
+        MetalVisibleRendererPackageEvidenceKind::generated_game_package,
+    };
+
+    plan.rows.reserve(std::size(kRows));
+    for (const auto kind : kRows) {
+        auto row = make_visible_renderer_package_evidence_row(desc, kind);
+        switch (row.status) {
+        case MetalVisibleRendererPackageEvidenceStatus::ready:
+            ++plan.ready_row_count;
+            break;
+        case MetalVisibleRendererPackageEvidenceStatus::host_evidence_required:
+            ++plan.host_gated_row_count;
+            break;
+        case MetalVisibleRendererPackageEvidenceStatus::blocked:
+            ++plan.blocked_row_count;
+            break;
+        }
+        if (row.native_handle_access) {
+            ++plan.native_handle_access_count;
+        }
+        if (row.broad_claim) {
+            ++plan.broad_claim_count;
+        }
+        plan.rows.push_back(std::move(row));
+    }
+
+    plan.required_row_count = plan.rows.size();
+    if (plan.blocked_row_count > 0U) {
+        plan.status = MetalVisibleRendererPackageEvidenceStatus::blocked;
+        plan.diagnostic = "Metal visible renderer package evidence is incomplete";
+    } else if (plan.host_gated_row_count > 0U) {
+        plan.status = MetalVisibleRendererPackageEvidenceStatus::host_evidence_required;
+        plan.diagnostic = "Metal visible renderer package evidence requires Apple host validation";
+    } else {
+        plan.status = MetalVisibleRendererPackageEvidenceStatus::ready;
+        plan.diagnostic = "Metal visible renderer package evidence ready";
+    }
+
+    compute_visible_renderer_package_replay_hash(plan);
+    return plan;
+}
+
+std::string metal_visible_renderer_package_evidence_status_line(const MetalVisibleRendererPackageEvidencePlan& plan) {
+    auto row_status = [&plan](MetalVisibleRendererPackageEvidenceKind kind) {
+        for (const auto& row : plan.rows) {
+            if (row.kind == kind) {
+                return metal_visible_renderer_package_evidence_status_label(row.status);
+            }
+        }
+        return std::string_view{"unknown"};
+    };
+    auto row_ready = [&plan](MetalVisibleRendererPackageEvidenceKind kind) {
+        for (const auto& row : plan.rows) {
+            if (row.kind == kind) {
+                return row.status == MetalVisibleRendererPackageEvidenceStatus::ready ? 1 : 0;
+            }
+        }
+        return 0;
+    };
+
+    std::string line{"renderer_metal_visible_package_evidence_status="};
+    line += metal_visible_renderer_package_evidence_status_label(plan.status);
+    line += " renderer_metal_visible_package_evidence_ready=";
+    line += plan.status == MetalVisibleRendererPackageEvidenceStatus::ready ? "1" : "0";
+    line += " renderer_metal_visible_package_evidence_rows=" + std::to_string(plan.required_row_count);
+    line += " renderer_metal_visible_package_evidence_ready_rows=" + std::to_string(plan.ready_row_count);
+    line += " renderer_metal_visible_package_evidence_host_gated_rows=" + std::to_string(plan.host_gated_row_count);
+    line += " renderer_metal_visible_package_evidence_blocked_rows=" + std::to_string(plan.blocked_row_count);
+    line += " renderer_metal_visible_3d_scene_status=";
+    line += row_status(MetalVisibleRendererPackageEvidenceKind::visible_3d_scene);
+    line += " renderer_metal_visible_3d_package_ready=";
+    line += std::to_string(row_ready(MetalVisibleRendererPackageEvidenceKind::visible_3d_scene));
+    line += " renderer_metal_visible_ui_atlas_status=";
+    line += row_status(MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload);
+    line += " renderer_metal_visible_ui_atlas_package_ready=";
+    line += std::to_string(row_ready(MetalVisibleRendererPackageEvidenceKind::ui_atlas_upload));
+    line += " renderer_metal_visible_environment_package_status=";
+    line += row_status(MetalVisibleRendererPackageEvidenceKind::environment_package);
+    line += " renderer_metal_visible_environment_package_ready=";
+    line += std::to_string(row_ready(MetalVisibleRendererPackageEvidenceKind::environment_package));
+    line += " renderer_metal_visible_generated_game_package_status=";
+    line += row_status(MetalVisibleRendererPackageEvidenceKind::generated_game_package);
+    line += " renderer_metal_visible_generated_game_package_ready=";
+    line += std::to_string(row_ready(MetalVisibleRendererPackageEvidenceKind::generated_game_package));
+    line += " renderer_metal_visible_package_native_handle_access=" + std::to_string(plan.native_handle_access_count);
+    line += " renderer_metal_visible_package_broad_claims=" + std::to_string(plan.broad_claim_count);
+    line += " renderer_metal_visible_package_replay_hash=" + std::to_string(plan.replay_hash);
+    line += " renderer_backend_parity_ready=0 renderer_metal_broad_readiness=0 renderer_broad_quality_ready=0";
+    line += " renderer_commercial_readiness=0";
+    return line;
+}
+
 namespace {
 
 [[nodiscard]] bool is_reviewed_metal_environment_host_recipe(std::string_view recipe_id) noexcept {
@@ -508,6 +772,21 @@ create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeat
     }
 
     result.diagnostic = "Metal environment native feature evidence is unavailable without Objective-C++";
+    return result;
+}
+
+MetalNativeVisibleRendererPackageEvidenceResult
+create_native_visible_renderer_package_evidence(const MetalNativeVisibleRendererPackageEvidenceDesc& desc) {
+    MetalNativeVisibleRendererPackageEvidenceResult result;
+    const auto host = desc.host == RhiHostPlatform::unknown ? current_rhi_host_platform() : desc.host;
+    if (!supports_host(host)) {
+        result.diagnostic = "Metal visible renderer package native evidence requires an Apple host";
+        return result;
+    }
+
+    result.environment_package_replay_hash = desc.environment_package_replay_hash;
+    result.generated_game_package_replay_hash = desc.generated_game_package_replay_hash;
+    result.diagnostic = "Metal visible renderer package native evidence is unavailable without Objective-C++";
     return result;
 }
 #endif
