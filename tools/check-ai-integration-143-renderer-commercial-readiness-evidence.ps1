@@ -47,6 +47,8 @@ $fixtureGuardCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-r
 $metalMemoryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1"
 $finalPreflightText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1"
 $finalPreflightCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1"
+$finalAssemblerText = Get-AgentSurfaceText "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1"
+$finalAssemblerCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
@@ -148,6 +150,8 @@ foreach ($surface in @(
             "tools/check-renderer-commercial-readiness-evidence-metal-memory.ps1",
             "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1",
             "tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1",
+            "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1",
+            "tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1",
             "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1",
             "tools/check-json-contracts-074-renderer-commercial-readiness-evidence.ps1",
             "tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1"
@@ -309,6 +313,8 @@ Assert-ContainsText $validateText 'check-renderer-commercial-readiness-evidence-
     "renderer commercial readiness Metal memory validate task"
 Assert-ContainsText $validateText 'check-renderer-commercial-readiness-final-promotion-preflight.ps1' `
     "renderer commercial readiness final promotion preflight validate task"
+Assert-ContainsText $validateText 'check-renderer-commercial-readiness-final-retained-root-assembler.ps1' `
+    "renderer commercial readiness final retained-root assembler validate task"
 Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artifact.ps1' `
     "renderer commercial readiness D3D12 artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
@@ -1006,9 +1012,12 @@ foreach ($needle in @(
         'rendererCommercialReadinessEvidenceCheck',
         'rendererCommercialReadinessEvidenceRequireReady',
         'rendererCommercialReadinessFinalPromotionPreflight',
+        'rendererCommercialReadinessFinalRetainedRootAssembler',
+        'rendererCommercialReadinessFinalRetainedRootAssemblerRequireReady',
         'tools/collect-renderer-commercial-readiness-evidence.ps1',
         'tools/validate-renderer-commercial-readiness-evidence.ps1',
         'tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1',
+        'tools/assemble-renderer-commercial-readiness-final-retained-root.ps1',
         'renderer-commercial-readiness-evidence'
     )) {
     Assert-ContainsText $commandsFragmentText $needle "renderer commercial readiness evidence command surface"
@@ -1021,6 +1030,8 @@ Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readines
     "renderer commercial readiness evidence collector validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-promotion-preflight' `
     "renderer commercial readiness final promotion preflight validation recipe"
+Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-retained-root-assembler' `
+    "renderer commercial readiness final retained-root assembler validation recipe"
 foreach ($needle in @(
         'renderer_commercial_readiness_final_preflight_required_files=',
         'renderer_commercial_readiness_final_preflight_missing_files',
@@ -1042,6 +1053,37 @@ foreach ($needle in @(
         'renderer_commercial_readiness=0'
     )) {
     Assert-ContainsText $finalPreflightCheckText $needle "renderer commercial readiness final preflight check"
+}
+foreach ($needle in @(
+        'renderer-commercial-readiness-final-retained-root-assembler',
+        'D3d12HostEvidenceRelative',
+        'VulkanStrictHostEvidenceRelative',
+        'AppleMetalHostEvidenceRelative',
+        'MetalMemoryProfilingHostEvidenceRelative',
+        'PackageHostEvidenceRelative',
+        'QualityVfxHostEvidenceRelative',
+        'CleanRoomLegalReviewRelative',
+        '_producer-artifacts',
+        'collect-renderer-commercial-readiness-evidence.ps1',
+        'validate-renderer-commercial-readiness-final-promotion-preflight.ps1',
+        'renderer_commercial_readiness_final_assembler_ready',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $finalAssemblerText $needle "renderer commercial readiness final retained-root assembler"
+}
+foreach ($needle in @(
+        'renderer-commercial-readiness-final-retained-root-assembler-check: ok',
+        'renderer_commercial_readiness_final_assembler_status=ready',
+        'renderer_commercial_readiness_final_assembler_ready=1',
+        'renderer_commercial_readiness_final_preflight_ready=1',
+        'renderer_commercial_readiness_final_preflight_missing_files=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $finalAssemblerCheckText $needle "renderer commercial readiness final retained-root assembler check"
 }
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCheck' `
     "renderer commercial readiness D3D12 artifact producer check command surface"

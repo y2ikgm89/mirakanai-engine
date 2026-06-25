@@ -190,7 +190,7 @@ function Copy-NestedMetalCaptureArtifact {
         Write-Error "Metal capture artifact does not exist: $sourceCaptureFull"
     }
 
-    $outputEvidenceDirectory = Split-Path -Parent $OutputEvidenceRelative
+    $outputEvidenceDirectory = (Split-Path -Parent $OutputEvidenceRelative) -replace "\\", "/"
     $destinationRelative = "$outputEvidenceDirectory/$captureRelative"
     $null = Copy-ArtifactFile -SourceFull $sourceCaptureFull -DestinationRelative $destinationRelative
 }

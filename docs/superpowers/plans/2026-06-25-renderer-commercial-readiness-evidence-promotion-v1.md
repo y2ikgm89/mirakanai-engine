@@ -807,6 +807,8 @@ Validation evidence:
 - Modify: `tools/validate-renderer-commercial-quality-closeout.ps1`
 - Add: `tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1`
 - Add: `tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1`
+- Add: `tools/assemble-renderer-commercial-readiness-final-retained-root.ps1`
+- Add: `tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
@@ -816,6 +818,7 @@ Steps:
 
 - [ ] Assemble all Task 10A-10E artifacts with `tools/collect-renderer-commercial-readiness-evidence.ps1 -Mode Assemble`.
 - [x] Add a final retained-root preflight that reports the exact 12 required final files, copied-fixture blockers, missing full Metal host evidence, missing clean-room legal evidence, schema/claim/recipe mismatch blockers, and downstream validator readiness without promoting broad renderer counters.
+- [x] Add a final retained-root assembler that requires seven explicit D3D12, strict Vulkan, Apple-host Metal, Metal memory/profiling, package, quality/VFX, and clean-room/legal inputs, stages producer outputs under `_producer-artifacts`, assembles the final root, and runs preflight without executing GPU workloads or promoting readiness by itself.
 - [ ] Run `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>` and require every fixture-flagged artifact to have `fixture_only=false`; the full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` input is accepted by schema/claim id and downstream validator because that host-evidence schema does not carry `fixture_only`.
 - [ ] Run `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>`.
 - [ ] Accept `renderer_backend_parity_ready=1`, `renderer_metal_broad_readiness=1`, `renderer_broad_quality_ready=1`, and `renderer_commercial_readiness=1` only when all retained non-fixture row hashes, source ids, recipe ids, package counters, legal rows, and non-claims validate.
@@ -827,6 +830,8 @@ Validation:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1 -ArtifactRootRelative <retained-artifact-root> -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/assemble-renderer-commercial-readiness-final-retained-root.ps1 -Mode Assemble -OutputRootRelative artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root> -D3d12HostEvidenceRelative <path> -VulkanStrictHostEvidenceRelative <path> -AppleMetalHostEvidenceRelative <path> -MetalMemoryProfilingHostEvidenceRelative <path> -PackageHostEvidenceRelative <path> -QualityVfxHostEvidenceRelative <path> -CleanRoomLegalReviewRelative <path> -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
@@ -843,6 +848,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/assemble-renderer-commercial-readiness-final-retained-root.ps1 -Mode Assemble -OutputRootRelative artifacts/renderer/commercial-readiness-evidence/<retained-artifact-root> -D3d12HostEvidenceRelative <path> -VulkanStrictHostEvidenceRelative <path> -AppleMetalHostEvidenceRelative <path> -MetalMemoryProfilingHostEvidenceRelative <path> -PackageHostEvidenceRelative <path> -QualityVfxHostEvidenceRelative <path> -CleanRoomLegalReviewRelative <path> -RequireReady
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1 -ArtifactRootRelative <retained-artifact-root> -RequireReady
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-commercial-readiness-evidence-collector.ps1
@@ -863,11 +870,13 @@ Task 10F preflight candidate validation evidence:
 - Current retained artifact availability audit: `artifacts/renderer/commercial-readiness-evidence/final-retained` is absent, and recent completed `main` GitHub Actions runs inspected through the GitHub Actions artifacts API exposed `total_count=0`; final promotion remains impossible without host-supplied retained artifacts.
 - `tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1`: passed. It proves missing-root reporting (`required_files=12`, `present_files=0`, `missing_files=12`), unsafe-root rejection, `-RequireReady` failure with `require_ready_without_complete_retained_artifacts`, copied fixture rejection, missing full Metal host evidence, missing clean-room legal evidence, and `renderer_commercial_readiness=0`.
 - `tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1`: passed in diagnostic mode with `renderer_commercial_readiness_final_preflight_status=blocked`, `renderer_commercial_readiness_final_preflight_ready=0`, `renderer_commercial_readiness_final_preflight_present_files=0`, `renderer_commercial_readiness_final_preflight_missing_files=12`, `renderer_commercial_readiness=0`, and blockers for every required final artifact plus `readiness_validator_not_run`.
-- `tools/check-ai-integration.ps1`: passed after adding the preflight command, recipe, static check, docs, manifest, and composed-manifest needles.
+- `tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1`: passed. It proves plan mode remains non-promoting, missing seven required host/package/legal inputs fail `-RequireReady`, unsafe output roots are rejected, the assembler stages child outputs under `_producer-artifacts`, and the complete self-test-only retained root reaches `renderer_commercial_readiness_final_preflight_ready=1`, `renderer_commercial_readiness_final_preflight_missing_files=0`, and `renderer_environment_ready=0`. This is a static contract self-test, not production retained host evidence.
+- `tools/assemble-renderer-commercial-readiness-final-retained-root.ps1`: passed in default Plan mode with seven required inputs, 12 required final files, `renderer_commercial_readiness_final_assembler_ready=0`, and all broad renderer counters at `0`.
+- `tools/check-ai-integration.ps1`: passed after adding the final preflight and final retained-root assembler command, recipe, static check, docs, manifest, and composed-manifest needles.
 - `tools/check-json-contracts.ps1`: passed after manifest composition.
 - `tools/check-agents.ps1`: passed.
 - `tools/check-format.ps1`: passed.
-- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 39 static checks, including `check-renderer-commercial-readiness-final-promotion-preflight.ps1`; Windows-host Apple/Metal tooling remained diagnostic-only host gates.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 40 static checks, including `check-renderer-commercial-readiness-final-promotion-preflight.ps1` and `check-renderer-commercial-readiness-final-retained-root-assembler.ps1`; Windows-host Apple/Metal tooling remained diagnostic-only host gates.
 
 ## Host Evidence Matrix
 
