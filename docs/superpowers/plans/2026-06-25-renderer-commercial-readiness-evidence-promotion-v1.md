@@ -809,6 +809,8 @@ Validation evidence:
 - Add: `tools/check-renderer-commercial-readiness-final-promotion-preflight.ps1`
 - Add: `tools/assemble-renderer-commercial-readiness-final-retained-root.ps1`
 - Add: `tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1`
+- Modify: `.github/workflows/validate.yml`
+- Modify: `tools/check-ci-matrix.ps1`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
@@ -819,6 +821,7 @@ Steps:
 - [ ] Assemble all Task 10A-10E artifacts with `tools/collect-renderer-commercial-readiness-evidence.ps1 -Mode Assemble`.
 - [x] Add a final retained-root preflight that reports the exact 12 required final files, copied-fixture blockers, missing full Metal host evidence, missing clean-room legal evidence, schema/claim/recipe mismatch blockers, and downstream validator readiness without promoting broad renderer counters.
 - [x] Add a final retained-root assembler that requires seven explicit D3D12, strict Vulkan, Apple-host Metal, Metal memory/profiling, package, quality/VFX, and clean-room/legal inputs, stages producer outputs under `_producer-artifacts`, assembles the final root, and runs preflight without executing GPU workloads or promoting readiness by itself.
+- [x] Retain any existing final `artifacts/renderer/commercial-readiness-evidence/final-retained/**` output from the Metal host CI lane as `renderer-commercial-readiness-final-retained-root` with `compression-level: 0`, `include-hidden-files: false`, and `if-no-files-found: warn`, without generating evidence or promoting readiness.
 - [ ] Run `tools/validate-renderer-commercial-readiness-evidence.ps1 -RequireReady -ArtifactRootRelative <retained-artifact-root>` and require every fixture-flagged artifact to have `fixture_only=false`; the full `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` input is accepted by schema/claim id and downstream validator because that host-evidence schema does not carry `fixture_only`.
 - [ ] Run `tools/validate-renderer-commercial-quality-closeout.ps1 -RequireReady -ReadinessEvidenceArtifactRootRelative <retained-artifact-root>`.
 - [ ] Accept `renderer_backend_parity_ready=1`, `renderer_metal_broad_readiness=1`, `renderer_broad_quality_ready=1`, and `renderer_commercial_readiness=1` only when all retained non-fixture row hashes, source ids, recipe ids, package counters, legal rows, and non-claims validate.
@@ -872,6 +875,9 @@ Task 10F preflight candidate validation evidence:
 - `tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1`: passed in diagnostic mode with `renderer_commercial_readiness_final_preflight_status=blocked`, `renderer_commercial_readiness_final_preflight_ready=0`, `renderer_commercial_readiness_final_preflight_present_files=0`, `renderer_commercial_readiness_final_preflight_missing_files=12`, `renderer_commercial_readiness=0`, and blockers for every required final artifact plus `readiness_validator_not_run`.
 - `tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1`: passed. It proves plan mode remains non-promoting, missing seven required host/package/legal inputs fail `-RequireReady`, unsafe output roots are rejected, the assembler stages child outputs under `_producer-artifacts`, and the complete self-test-only retained root reaches `renderer_commercial_readiness_final_preflight_ready=1`, `renderer_commercial_readiness_final_preflight_missing_files=0`, and `renderer_environment_ready=0`. This is a static contract self-test, not production retained host evidence.
 - `tools/assemble-renderer-commercial-readiness-final-retained-root.ps1`: passed in default Plan mode with seven required inputs, 12 required final files, `renderer_commercial_readiness_final_assembler_ready=0`, and all broad renderer counters at `0`.
+- `.github/workflows/validate.yml`: retains any existing `artifacts/renderer/commercial-readiness-evidence/final-retained/**` output from the Metal host lane as `renderer-commercial-readiness-final-retained-root`. The upload step is retention-only and uses `if-no-files-found: warn`; it does not assemble artifacts or change readiness counters.
+- Context7 `/actions/upload-artifact` and the official `actions/upload-artifact` README confirm `if-no-files-found: warn`, `retention-days`, `compression-level`, and `include-hidden-files` are supported inputs; this slice keeps `include-hidden-files: false`, `compression-level: 0`, and job-local retention only.
+- `tools/generate-environment-metal-optimization-artifacts.ps1`: now bounds hosted `xcrun xctrace record` with the official `--time-limit` option through default `XctraceTimeLimit=10m` and emits `xctrace_time_limit=10m`; this keeps the existing Metal host evidence lane fail-closed while preventing one hung recorder from consuming the full macOS job timeout before surfacing.
 - `tools/check-ai-integration.ps1`: passed after adding the final preflight and final retained-root assembler command, recipe, static check, docs, manifest, and composed-manifest needles.
 - `tools/check-json-contracts.ps1`: passed after manifest composition.
 - `tools/check-agents.ps1`: passed.
