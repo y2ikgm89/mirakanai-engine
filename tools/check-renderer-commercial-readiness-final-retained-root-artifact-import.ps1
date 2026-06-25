@@ -88,6 +88,8 @@ try {
             "renderer_commercial_readiness_final_retained_root_artifact_import_mode=Plan",
             "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=5",
             "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=7",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_downloads_artifacts=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_ready=0",
             "renderer_commercial_readiness=0"
@@ -106,6 +108,18 @@ try {
         Write-Error "GitHub artifact intake must reject unsafe output roots."
     }
 
+    $artifactListUnsafeRejected = $false
+    try {
+        $null = & $importerScript -Mode Inspect -OutputRootRelative $contractRootRelative `
+            -ArtifactListJsonRelative "../unsafe.json" 2>&1
+    }
+    catch {
+        $artifactListUnsafeRejected = [string]$_.Exception.Message -like "*unsafe_relative_path*"
+    }
+    if (-not $artifactListUnsafeRejected) {
+        Write-Error "GitHub artifact intake must reject unsafe artifact list paths."
+    }
+
     $missingLines = @(& $importerScript -Mode Inspect -OutputRootRelative $contractRootRelative -NoWrite)
     foreach ($expectedLine in @(
             "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=0",
@@ -116,6 +130,32 @@ try {
             "renderer_commercial_readiness_final_retained_root_artifact_import_ready=0"
         )) {
         Assert-LinePresent $missingLines $expectedLine "GitHub artifact intake missing Inspect mode"
+    }
+
+    $artifactListPath = "$contractRootRelative/github-artifacts.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $artifactListPath) -Value ([ordered]@{
+            total_count = 4
+            artifacts = @(
+                [ordered]@{ name = "windows-packages"; expired = $false },
+                [ordered]@{ name = "linux-vulkan-host-evidence"; expired = $false },
+                [ordered]@{ name = "renderer-metal-memory-profiling-host-artifacts"; expired = $false },
+                [ordered]@{ name = "metal-host-optimization-artifacts"; expired = $false }
+            )
+        })
+    $artifactListLines = @(& $importerScript -Mode Inspect `
+            -OutputRootRelative $contractRootRelative `
+            -ArtifactListJsonRelative $artifactListPath `
+            -NoWrite)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-commercial-readiness-final-retained-root",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifacts=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_ready=0",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $artifactListLines $expectedLine "GitHub artifact intake artifact-list Inspect mode"
     }
 
     $hostGatePath = ConvertTo-LocalPath "$contractRootRelative/renderer-metal-memory-profiling-host-artifacts/host-gate-summary.json"

@@ -25,6 +25,8 @@ param(
         "windows-packages"
     ),
 
+    [string]$ArtifactListJsonRelative = "",
+
     [switch]$NoWrite,
     [switch]$RequireReady
 )
@@ -195,6 +197,75 @@ function Find-HostGateSummary {
     }
 }
 
+function Get-WorkflowArtifactListSummary {
+    param(
+        [string]$ArtifactListRelativePath,
+        [Parameter(Mandatory = $true)][string[]]$RequiredArtifactNames
+    )
+
+    $summary = [ordered]@{
+        present = $false
+        path = ""
+        available_artifacts = 0
+        missing_artifacts = @()
+        expired_artifacts = @()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ArtifactListRelativePath)) {
+        return $summary
+    }
+
+    $artifactListFull = Resolve-RepoRelativePath `
+        -RelativePath $ArtifactListRelativePath `
+        -Label "ArtifactListJsonRelative"
+    if (-not (Test-Path -LiteralPath $artifactListFull -PathType Leaf)) {
+        Write-Error "artifact_list_json_missing: ArtifactListJsonRelative must point to a GitHub Actions artifacts API JSON file."
+    }
+
+    $artifactListJson = Read-JsonFileOrNull -Path $artifactListFull
+    if ($null -eq $artifactListJson) {
+        Write-Error "artifact_list_json_invalid: ArtifactListJsonRelative must be valid JSON."
+    }
+
+    $artifactRows = Get-JsonPropertyValue -JsonObject $artifactListJson -Name "artifacts"
+    if ($null -eq $artifactRows) {
+        Write-Error "artifact_list_json_invalid: ArtifactListJsonRelative must contain an artifacts array."
+    }
+
+    $availableNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $expiredNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($artifactRow in @($artifactRows)) {
+        $name = [string](Get-JsonPropertyValue -JsonObject $artifactRow -Name "name")
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            continue
+        }
+        $expiredValue = Get-JsonPropertyValue -JsonObject $artifactRow -Name "expired"
+        $expired = $false
+        if ($null -ne $expiredValue) {
+            $expired = [bool]$expiredValue
+        }
+        if ($expired) {
+            $null = $expiredNames.Add($name)
+            continue
+        }
+        $null = $availableNames.Add($name)
+    }
+
+    $missingArtifacts = [System.Collections.Generic.List[string]]::new()
+    foreach ($artifactName in @($RequiredArtifactNames)) {
+        if (-not $availableNames.Contains($artifactName)) {
+            $missingArtifacts.Add($artifactName) | Out-Null
+        }
+    }
+
+    $summary.present = $true
+    $summary.path = $ArtifactListRelativePath
+    $summary.available_artifacts = $availableNames.Count
+    $summary.missing_artifacts = @($missingArtifacts)
+    $summary.expired_artifacts = @($expiredNames | Sort-Object)
+    return $summary
+}
+
 function Write-Utf8NoBomJson {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -215,6 +286,10 @@ if (-not (Test-SafeRepoRelativePath -RelativePath $OutputRootRelative)) {
 if (-not (Test-AllowedOutputRoot -RelativePath $OutputRootRelative)) {
     Write-Error "OutputRootRelative must be under artifacts/renderer/commercial-readiness-evidence/."
 }
+
+$workflowArtifactListSummary = Get-WorkflowArtifactListSummary `
+    -ArtifactListRelativePath $ArtifactListJsonRelative `
+    -RequiredArtifactNames ([string[]]$ArtifactNames)
 
 $requiredAssemblerInputs = @(
     @{
@@ -260,6 +335,16 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_output_root=$OutputRootRelative"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=$($ArtifactNames.Count)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=$($requiredAssemblerInputs.Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=$(ConvertTo-CounterBit ([bool]$workflowArtifactListSummary.present))"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=$($workflowArtifactListSummary.available_artifacts)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=$(@($workflowArtifactListSummary.missing_artifacts).Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifacts=$(@($workflowArtifactListSummary.expired_artifacts).Count)"
+if (@($workflowArtifactListSummary.missing_artifacts).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=$((@($workflowArtifactListSummary.missing_artifacts) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
+}
+if (@($workflowArtifactListSummary.expired_artifacts).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifact_names=$((@($workflowArtifactListSummary.expired_artifacts) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
+}
 Write-Output "renderer_backend_parity_ready=0"
 Write-Output "renderer_metal_broad_readiness=0"
 Write-Output "renderer_broad_quality_ready=0"
@@ -344,6 +429,7 @@ $manifest = [ordered]@{
     run_id = $RunId
     output_root = $OutputRootRelative
     requested_artifacts = @($ArtifactNames)
+    workflow_artifact_list = $workflowArtifactListSummary
     downloaded_artifacts = $downloadedArtifacts
     download_failures = @($downloadFailures)
     final_retained_root = [ordered]@{
