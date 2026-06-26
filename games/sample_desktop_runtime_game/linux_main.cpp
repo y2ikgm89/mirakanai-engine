@@ -52,7 +52,9 @@ void print_usage() {
     std::cout << "sample_desktop_runtime_game --smoke [--require-config <path>] "
                  "[--require-scene-package <path>] [--require-linux-vulkan-presentation-smoke] "
                  "[--require-linux-vulkan-readback] [--require-linux-vulkan-validation-log] "
-                 "[--emit-vulkan-strict-commercial-host-gate]\n";
+                 "[--emit-vulkan-strict-commercial-host-gate] "
+                 "[--require-environment-vulkan-strict-aggregate] [--require-vulkan-gpu-memory-evidence] "
+                 "[--require-debug-profiling-policy] [--require-vulkan-debug-profiling-evidence]\n";
 }
 
 bool consume_path_argument(const std::vector<std::string_view>& args, std::size_t& index, std::string& output,
@@ -363,6 +365,7 @@ int main(int argc, char** argv) {
             .extent = mirakana::WindowExtent{.width = 64, .height = 64},
             .display_name = nullptr,
             .execute_runtime_smoke = true,
+            .collect_strict_commercial_evidence = options.should_emit_strict_vulkan_commercial_host_gate(),
         });
 
     std::cout << "sample_desktop_runtime_game status="
@@ -396,9 +399,25 @@ int main(int argc, char** argv) {
     if (options.require_linux_vulkan_validation_log && !presentation.linux_vulkan_validation_log_clean) {
         return 1;
     }
-    if (options.strict_vulkan_commercial_requirements_requested()) {
-        std::cerr << "sample_desktop_runtime_game diagnostic: Linux strict Vulkan commercial evidence requires "
-                     "aggregate, GPU memory, and debug profiling execution rows that are not implemented yet\n";
+    if (options.require_environment_vulkan_strict_aggregate &&
+        !presentation.environment_vulkan_strict_aggregate_ready) {
+        return 1;
+    }
+    if ((options.require_gpu_memory_policy || options.require_memory_diagnostics ||
+         options.require_vulkan_gpu_memory_evidence) &&
+        !presentation.vulkan_gpu_memory_execution_ready) {
+        return 1;
+    }
+    if (options.require_debug_profiling_policy && !presentation.debug_profiling_policy_ready) {
+        return 1;
+    }
+    if (options.require_vulkan_debug_profiling_evidence && !presentation.vulkan_debug_profiling_execution_ready) {
+        return 1;
+    }
+    if (options.require_vulkan_renderer || options.require_scene_gpu_bindings || options.require_postprocess ||
+        options.require_postprocess_depth_input || options.require_vulkan_postprocess_evidence) {
+        std::cerr << "sample_desktop_runtime_game diagnostic: Linux strict Vulkan renderer, scene GPU binding, "
+                     "and postprocess evidence require a dedicated Linux renderer evidence slice\n";
         return 1;
     }
     return 0;

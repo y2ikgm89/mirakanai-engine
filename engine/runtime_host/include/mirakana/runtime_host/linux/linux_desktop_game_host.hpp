@@ -111,11 +111,32 @@ struct LinuxDesktopVulkanPresentationRequest {
     bool native_handle_access{false};
 };
 
+struct LinuxDesktopVulkanStrictCommercialEvidence {
+    bool selected_strict_aggregate_counters_ready{false};
+    bool vulkan_sdk_tools_ready{false};
+    bool dxc_spirv_codegen_ready{false};
+    bool spirv_validation_ready{false};
+    bool device_features_ready{false};
+    bool committed_byte_estimate_available{false};
+    std::uint64_t committed_resources_byte_estimate{0};
+    std::uint64_t upload_bytes_written{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    bool memory_budget_ok{false};
+    bool transient_heap_ok{false};
+    std::uint64_t gpu_timestamp_ticks_per_second{0};
+    std::uint64_t gpu_timestamp_query_writes{0};
+    std::uint64_t gpu_timestamp_query_results_read{0};
+    std::uint64_t gpu_timestamp_query_failures{0};
+    bool gpu_debug_markers_ok{false};
+    std::uint64_t framegraph_render_passes_recorded{0};
+};
+
 struct LinuxDesktopVulkanPresentationProbeDesc {
     std::string title{"MIRAIKANAI Linux Vulkan Smoke"};
     WindowExtent extent{.width = 64, .height = 64};
     const char* display_name{nullptr};
     bool execute_runtime_smoke{true};
+    bool collect_strict_commercial_evidence{false};
 };
 
 struct LinuxDesktopHostReadinessReport {
@@ -232,6 +253,8 @@ linux_desktop_vulkan_strict_execution_status_name(LinuxDesktopVulkanStrictExecut
 evaluate_linux_desktop_host_request(const LinuxDesktopHostRequest& request);
 [[nodiscard]] LinuxDesktopVulkanPresentationReport
 evaluate_linux_desktop_vulkan_presentation_request(const LinuxDesktopVulkanPresentationRequest& request);
+[[nodiscard]] LinuxDesktopVulkanPresentationRequest with_linux_desktop_vulkan_strict_commercial_evidence(
+    LinuxDesktopVulkanPresentationRequest request, const LinuxDesktopVulkanStrictCommercialEvidence& evidence) noexcept;
 [[nodiscard]] LinuxDesktopVulkanPresentationReport
 probe_linux_desktop_vulkan_presentation(const LinuxDesktopVulkanPresentationProbeDesc& desc = {});
 [[nodiscard]] LinuxDesktopHostReadinessReport probe_linux_desktop_host(const LinuxDesktopGameHostDesc& desc = {});

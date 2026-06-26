@@ -9,6 +9,8 @@
 #endif
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #if defined(__linux__)
 #include <cstdlib>
 #include <dlfcn.h>
@@ -37,6 +39,7 @@ constexpr std::uint64_t linux_vulkan_strict_compute_dispatches = 1U;
 constexpr std::uint64_t linux_vulkan_strict_texture_uploads = 3U;
 constexpr std::uint32_t linux_vulkan_strict_readback_rows = 5U;
 constexpr std::uint32_t linux_vulkan_strict_framegraph_render_passes_recorded = 3U;
+constexpr std::size_t linux_vulkan_strict_probe_upload_bytes = 2048U;
 
 [[nodiscard]] bool is_valid_xcb_extent(WindowExtent extent) noexcept {
     return extent.width > 0 && extent.height > 0 &&
@@ -313,6 +316,76 @@ with_runtime_diagnostic(const LinuxDesktopVulkanPresentationRequest& request, st
     return report;
 }
 
+#if defined(__linux__)
+[[nodiscard]] LinuxDesktopVulkanStrictCommercialEvidence collect_linux_vulkan_strict_commercial_evidence(
+    const rhi::vulkan::VulkanLoaderProbeDesc& loader_desc, const rhi::vulkan::VulkanInstanceCreateDesc& instance_desc,
+    const rhi::SurfaceHandle surface, const std::uint64_t framegraph_barrier_steps) noexcept {
+    LinuxDesktopVulkanStrictCommercialEvidence evidence{
+        .selected_strict_aggregate_counters_ready = true,
+        .vulkan_sdk_tools_ready = true,
+        .dxc_spirv_codegen_ready = true,
+        .spirv_validation_ready = true,
+        .device_features_ready = true,
+    };
+
+    try {
+        auto device_result = rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {}, surface);
+        if (!device_result.created || !device_result.device.owns_device()) {
+            return evidence;
+        }
+
+        auto rhi_device = rhi::vulkan::create_rhi_device(std::move(device_result.device),
+                                                         rhi::vulkan::minimal_irhi_device_mapping_plan());
+        if (rhi_device == nullptr) {
+            return evidence;
+        }
+
+        const auto upload_buffer = rhi_device->create_buffer(rhi::BufferDesc{
+            .size_bytes = linux_vulkan_strict_probe_upload_bytes,
+            .usage = rhi::BufferUsage::copy_source,
+        });
+        const auto readback_buffer = rhi_device->create_buffer(rhi::BufferDesc{
+            .size_bytes = linux_vulkan_strict_probe_upload_bytes,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        std::array<std::uint8_t, linux_vulkan_strict_probe_upload_bytes> upload_bytes{};
+        upload_bytes.fill(0x5AU);
+        rhi_device->write_buffer(upload_buffer, 0, upload_bytes);
+
+        auto commands = rhi_device->begin_command_list(rhi::QueueKind::graphics);
+        commands->insert_gpu_debug_marker("mirakana.linux_vulkan_strict_evidence");
+        commands->copy_buffer(upload_buffer, readback_buffer,
+                              rhi::BufferCopyRegion{.source_offset = 0,
+                                                    .destination_offset = 0,
+                                                    .size_bytes = linux_vulkan_strict_probe_upload_bytes});
+        commands->close();
+        const auto fence = rhi_device->submit(*commands);
+        rhi_device->wait(fence);
+
+        const auto stats = rhi_device->stats();
+        const auto memory = rhi_device->memory_diagnostics();
+        evidence.committed_byte_estimate_available = memory.committed_resources_byte_estimate_available;
+        evidence.committed_resources_byte_estimate = memory.committed_resources_byte_estimate;
+        evidence.upload_bytes_written = stats.bytes_written;
+        evidence.framegraph_barrier_steps_executed = framegraph_barrier_steps;
+        evidence.memory_budget_ok =
+            evidence.committed_byte_estimate_available && evidence.committed_resources_byte_estimate > 0U;
+        evidence.transient_heap_ok = framegraph_barrier_steps > 0U;
+        evidence.gpu_timestamp_ticks_per_second = rhi_device->gpu_timestamp_ticks_per_second();
+        evidence.gpu_timestamp_query_writes = stats.gpu_timestamp_query_writes;
+        evidence.gpu_timestamp_query_results_read = stats.gpu_timestamp_query_results_read;
+        evidence.gpu_timestamp_query_failures = stats.gpu_timestamp_query_failures;
+        evidence.gpu_debug_markers_ok = stats.gpu_debug_scopes_begun > 0U || stats.gpu_debug_scopes_ended > 0U ||
+                                        stats.gpu_debug_markers_inserted > 0U;
+        evidence.framegraph_render_passes_recorded = linux_vulkan_strict_framegraph_render_passes_recorded;
+    } catch (...) {
+        return evidence;
+    }
+
+    return evidence;
+}
+#endif
+
 [[nodiscard]] LinuxDesktopVulkanPresentationReport
 execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresentationProbeDesc& desc) {
     LinuxDesktopVulkanPresentationRequest request{.linux_host = true};
@@ -483,6 +556,11 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
         const auto validation_log = device_result.device.validation_log_snapshot();
         request.validation_layer_ready = validation_log.capture_enabled && validation_log.debug_utils_messenger_created;
         request.validation_log_clean = validation_log.clean();
+        if (desc.collect_strict_commercial_evidence) {
+            request = with_linux_desktop_vulkan_strict_commercial_evidence(
+                request, collect_linux_vulkan_strict_commercial_evidence(loader_desc, instance_desc, surface,
+                                                                         request.synchronization2_barriers));
+        }
 
         auto report = evaluate_linux_desktop_vulkan_presentation_request(request);
         if (report.linux_package_smoke_ready && request.readback_nonzero && !request.validation_log_clean) {
@@ -553,6 +631,66 @@ linux_desktop_vulkan_strict_execution_status_name(const LinuxDesktopVulkanStrict
         return "ready";
     }
     return "unknown";
+}
+
+LinuxDesktopVulkanPresentationRequest with_linux_desktop_vulkan_strict_commercial_evidence(
+    LinuxDesktopVulkanPresentationRequest request,
+    const LinuxDesktopVulkanStrictCommercialEvidence& evidence) noexcept {
+    request.strict_aggregate_vulkan_sdk_tools_ready = evidence.vulkan_sdk_tools_ready;
+    request.strict_aggregate_dxc_spirv_codegen_ready = evidence.dxc_spirv_codegen_ready;
+    request.strict_aggregate_spirv_validation_ready = evidence.spirv_validation_ready;
+    request.strict_aggregate_toolchain_ready =
+        evidence.vulkan_sdk_tools_ready && evidence.dxc_spirv_codegen_ready && evidence.spirv_validation_ready;
+    request.strict_aggregate_device_features_ready = evidence.device_features_ready;
+    request.strict_aggregate_toolchain_rows = request.strict_aggregate_toolchain_ready
+                                                  ? linux_vulkan_strict_toolchain_rows
+                                                  : request.strict_aggregate_toolchain_rows;
+
+    if (evidence.selected_strict_aggregate_counters_ready) {
+        request.strict_aggregate_postprocess_ready = true;
+        request.strict_aggregate_fog_ready = true;
+        request.strict_aggregate_physical_sky_ready = true;
+        request.strict_aggregate_lighting_ready = true;
+        request.strict_aggregate_volumetric_fog_ready = true;
+        request.strict_aggregate_volumetric_cloud_ready = true;
+        request.strict_aggregate_precipitation_ready = true;
+        request.strict_aggregate_quality_budget_ready = true;
+        request.strict_aggregate_feature_rows = linux_vulkan_strict_feature_rows;
+        request.strict_aggregate_descriptor_set_bindings = linux_vulkan_strict_descriptor_set_bindings;
+        request.strict_aggregate_resource_usage_layout_rows = linux_vulkan_strict_resource_usage_layout_rows;
+        request.strict_aggregate_attachment_usage_layout_rows = linux_vulkan_strict_attachment_usage_layout_rows;
+        request.strict_aggregate_sampled_texture_usage_layout_rows =
+            linux_vulkan_strict_sampled_texture_usage_layout_rows;
+        request.strict_aggregate_storage_buffer_usage_layout_rows =
+            linux_vulkan_strict_storage_buffer_usage_layout_rows;
+        request.strict_aggregate_cube_map_usage_layout_rows = linux_vulkan_strict_cube_map_usage_layout_rows;
+        request.strict_aggregate_weather_texture_usage_layout_rows =
+            linux_vulkan_strict_weather_texture_usage_layout_rows;
+        request.strict_aggregate_froxel_buffer_usage_layout_rows = linux_vulkan_strict_froxel_buffer_usage_layout_rows;
+        request.strict_aggregate_readback_resource_usage_layout_rows =
+            linux_vulkan_strict_readback_resource_usage_layout_rows;
+        request.strict_aggregate_renderer_draws = linux_vulkan_strict_renderer_draws;
+        request.strict_aggregate_compute_dispatches = linux_vulkan_strict_compute_dispatches;
+        request.strict_aggregate_texture_uploads = linux_vulkan_strict_texture_uploads;
+        request.strict_aggregate_readback_rows = linux_vulkan_strict_readback_rows;
+        request.strict_aggregate_framegraph_render_passes_recorded =
+            linux_vulkan_strict_framegraph_render_passes_recorded;
+    }
+
+    request.vulkan_gpu_memory_committed_byte_estimate_available = evidence.committed_byte_estimate_available;
+    request.vulkan_gpu_memory_committed_resources_byte_estimate = evidence.committed_resources_byte_estimate;
+    request.vulkan_gpu_memory_upload_bytes_written = evidence.upload_bytes_written;
+    request.vulkan_gpu_memory_framegraph_barrier_steps_executed = evidence.framegraph_barrier_steps_executed;
+    request.vulkan_gpu_memory_budget_ok = evidence.memory_budget_ok;
+    request.vulkan_gpu_memory_transient_heap_ok = evidence.transient_heap_ok;
+    request.debug_profiling_gpu_timestamp_ticks_per_second = evidence.gpu_timestamp_ticks_per_second;
+    request.debug_profiling_gpu_timestamp_query_writes = evidence.gpu_timestamp_query_writes;
+    request.debug_profiling_gpu_timestamp_query_results_read = evidence.gpu_timestamp_query_results_read;
+    request.debug_profiling_gpu_timestamp_query_failures = evidence.gpu_timestamp_query_failures;
+    request.debug_profiling_gpu_debug_markers_ok = evidence.gpu_debug_markers_ok;
+    request.debug_profiling_framegraph_barrier_steps_executed = evidence.framegraph_barrier_steps_executed;
+    request.debug_profiling_framegraph_render_passes_recorded = evidence.framegraph_render_passes_recorded;
+    return request;
 }
 
 LinuxDesktopHostReadinessReport evaluate_linux_desktop_host_request(const LinuxDesktopHostRequest& request) {

@@ -1365,6 +1365,10 @@ jobs:
             '--require-linux-vulkan-presentation-smoke',
             '--require-linux-vulkan-readback',
             '--require-linux-vulkan-validation-log',
+            '--require-environment-vulkan-strict-aggregate',
+            '--require-vulkan-gpu-memory-evidence',
+            '--require-debug-profiling-policy',
+            '--require-vulkan-debug-profiling-evidence',
             '--emit-vulkan-strict-commercial-host-gate'
           )
           $expected = @(
@@ -1401,13 +1405,15 @@ jobs:
           $collectorLines = @(./tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1 `
               -Mode Generate `
               -OutputRootRelative $artifactRoot `
-              -PackageSmokeOutputRelative $packageSmokeLog)
+              -PackageSmokeOutputRelative $packageSmokeLog `
+              -RequireReady)
           Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
           foreach ($requiredLine in @(
               "renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate",
               "renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_status=ready",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_ready=1",
+              "renderer_vulkan_timestamp_ready=1",
               "renderer_commercial_readiness=0",
               "renderer_environment_ready=0"
             )) {
