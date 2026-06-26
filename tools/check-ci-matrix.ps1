@@ -1227,6 +1227,7 @@ Assert-ContainsAll $linuxVulkanJob @(
     "--require-linux-vulkan-presentation-smoke",
     "--require-linux-vulkan-readback",
     "--require-linux-vulkan-validation-log",
+    "--emit-vulkan-strict-commercial-host-gate",
     "./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters `$expected",
     '-SmokeArgs $linuxSmokeArgs',
     "validation_recipe=environment-platform-linux-vulkan-package",

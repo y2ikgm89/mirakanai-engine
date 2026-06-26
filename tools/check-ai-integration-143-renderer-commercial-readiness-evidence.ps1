@@ -64,6 +64,7 @@ $finalPreflightCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial
 $finalAssemblerText = Get-AgentSurfaceText "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1"
 $finalAssemblerCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
+$linuxSampleGameText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/linux_main.cpp"
 $qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
@@ -1391,6 +1392,7 @@ foreach ($needle in @(
         '--require-linux-vulkan-presentation-smoke',
         '--require-linux-vulkan-readback',
         '--require-linux-vulkan-validation-log',
+        '--emit-vulkan-strict-commercial-host-gate',
         'tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1',
         'renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate',
         'renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1',
@@ -1405,6 +1407,17 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validateWorkflowText $needle "renderer commercial readiness strict Vulkan host evidence CI retention"
     Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness strict Vulkan host evidence CI retention check"
+}
+foreach ($needle in @(
+        '--emit-vulkan-strict-commercial-host-gate',
+        '--require-environment-vulkan-strict-aggregate',
+        '--require-vulkan-gpu-memory-evidence',
+        '--require-vulkan-debug-profiling-evidence',
+        'environment_vulkan_strict_aggregate_status=host_evidence_required',
+        'vulkan_gpu_memory_execution_status=host_evidence_required',
+        'vulkan_debug_profiling_execution_status=host_evidence_required'
+    )) {
+    Assert-ContainsText $linuxSampleGameText $needle "renderer commercial readiness strict Vulkan Linux sample host-gated counter surface"
 }
 foreach ($needle in @(
         'Collect renderer Apple Metal commercial quality host evidence',
