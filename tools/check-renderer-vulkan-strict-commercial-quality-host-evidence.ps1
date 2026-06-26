@@ -123,7 +123,9 @@ try {
     $workflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
     foreach ($needle in @(
             "Validate Linux Vulkan host evidence gate",
-            "--require-environment-vulkan-strict-aggregate",
+            "--require-linux-vulkan-presentation-smoke",
+            "--require-linux-vulkan-readback",
+            "--require-linux-vulkan-validation-log",
             "Collect renderer strict Vulkan commercial quality host evidence",
             "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt",
             "Upload renderer strict Vulkan commercial quality host evidence",

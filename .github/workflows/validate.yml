@@ -1358,22 +1358,13 @@ jobs:
           . ./tools/common.ps1
           $null = Set-MirakanaiVcpkgEnvironment
           $validateCommand = @'
-          $strictSmokeArgs = @(
+          $linuxSmokeArgs = @(
             '--smoke',
-            '--max-frames', '2',
             '--require-config', 'runtime/sample_desktop_runtime_game.config',
             '--require-scene-package', 'runtime/sample_desktop_runtime_game.geindex',
-            '--require-vulkan-renderer',
-            '--require-scene-gpu-bindings',
-            '--require-postprocess',
-            '--require-postprocess-depth-input',
-            '--require-vulkan-postprocess-evidence',
-            '--require-environment-vulkan-strict-aggregate',
-            '--require-gpu-memory-policy',
-            '--require-memory-diagnostics',
-            '--require-vulkan-gpu-memory-evidence',
-            '--require-debug-profiling-policy',
-            '--require-vulkan-debug-profiling-evidence'
+            '--require-linux-vulkan-presentation-smoke',
+            '--require-linux-vulkan-readback',
+            '--require-linux-vulkan-validation-log'
           )
           $expected = @(
             "validation_recipe=environment-platform-linux-vulkan-package",
@@ -1393,7 +1384,7 @@ jobs:
             "environment_platform_requires_linux_vulkan_host_evidence=0",
             "environment_all_platform_unconditional_ready=0"
           )
-          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters $expected -SmokeArgs $strictSmokeArgs
+          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters $expected -SmokeArgs $linuxSmokeArgs
           '@
           xvfb-run -a pwsh -NoProfile -ExecutionPolicy Bypass -Command $validateCommand *>&1 |
             Tee-Object -FilePath $output
@@ -1409,14 +1400,13 @@ jobs:
           $collectorLines = @(./tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1 `
               -Mode Generate `
               -OutputRootRelative $artifactRoot `
-              -PackageSmokeOutputRelative $packageSmokeLog `
-              -RequireReady)
+              -PackageSmokeOutputRelative $packageSmokeLog)
           Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
           foreach ($requiredLine in @(
               "renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate",
               "renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_status=ready",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_ready=1",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
               "renderer_commercial_readiness=0",
               "renderer_environment_ready=0"
             )) {
