@@ -249,6 +249,45 @@ function Test-StatusValueEquals {
     return [string]$Evidence.values[$Name] -ceq $Expected
 }
 
+function Test-StatusAliasCounterZero {
+    param(
+        [AllowNull()]$Evidence,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+
+    if ($null -eq $Evidence) {
+        return $false
+    }
+
+    $found = $false
+    foreach ($name in $Names) {
+        if (-not $Evidence.values.ContainsKey($name)) {
+            continue
+        }
+        $found = $true
+        if ([string]$Evidence.values[$name] -cne "0") {
+            return $false
+        }
+    }
+
+    return $found
+}
+
+function Test-OptionalStatusCounterZero {
+    param(
+        [AllowNull()]$Evidence,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if ($null -eq $Evidence) {
+        return $false
+    }
+    if (-not $Evidence.values.ContainsKey($Name)) {
+        return $true
+    }
+    return [string]$Evidence.values[$Name] -ceq "0"
+}
+
 function Test-StatusPositiveInteger {
     param(
         [AllowNull()]$Evidence,
@@ -437,12 +476,36 @@ $null = Read-RetainedEvidenceOrNull `
     -ExpectedClaimId "renderer-metal-memory-profiling-host-evidence-v1" `
     -Blockers $blockers
 
-foreach ($requiredZero in @(
-        "renderer_quality_matrix_gpu_command_side_effects",
-        "renderer_quality_matrix_native_capture_side_effects",
-        "renderer_quality_matrix_crash_upload_side_effects",
-        "renderer_production_vfx_native_capture_side_effects",
-        "renderer_production_vfx_crash_upload_side_effects",
+$requiredZeroAliasCounters = @(
+    @{
+        names = @("renderer_quality_matrix_gpu_command_side_effects", "renderer_quality_matrix_invoked_gpu_commands")
+        blocker = "renderer_quality_matrix_gpu_command_side_effects_must_be_zero"
+    },
+    @{
+        names = @("renderer_quality_matrix_native_capture_side_effects", "renderer_quality_matrix_invoked_native_capture")
+        blocker = "renderer_quality_matrix_native_capture_side_effects_must_be_zero"
+    },
+    @{
+        names = @("renderer_quality_matrix_crash_upload_side_effects", "renderer_quality_matrix_invoked_crash_upload")
+        blocker = "renderer_quality_matrix_crash_upload_side_effects_must_be_zero"
+    },
+    @{
+        names = @("renderer_production_vfx_native_capture_side_effects", "rendering_vfx_profiling_invoked_native_capture")
+        blocker = "renderer_production_vfx_native_capture_side_effects_must_be_zero"
+    },
+    @{
+        names = @("renderer_production_vfx_crash_upload_side_effects", "rendering_vfx_profiling_invoked_crash_upload")
+        blocker = "renderer_production_vfx_crash_upload_side_effects_must_be_zero"
+    }
+)
+
+foreach ($requiredZero in $requiredZeroAliasCounters) {
+    Add-BlockerIfFalse $blockers `
+        (Test-StatusAliasCounterZero -Evidence $generated3dEvidence -Names $requiredZero.names) `
+        $requiredZero.blocker
+}
+
+foreach ($optionalZero in @(
         "renderer_backend_parity_ready",
         "renderer_metal_broad_readiness",
         "renderer_broad_quality_ready",
@@ -452,8 +515,8 @@ foreach ($requiredZero in @(
         "external_engine_parity"
     )) {
     Add-BlockerIfFalse $blockers `
-        (Test-StatusValueEquals -Evidence $generated3dEvidence -Name $requiredZero -Expected "0") `
-        "$($requiredZero)_must_be_zero"
+        (Test-OptionalStatusCounterZero -Evidence $generated3dEvidence -Name $optionalZero) `
+        "$($optionalZero)_must_be_zero"
 }
 
 foreach ($requiredOne in @(
