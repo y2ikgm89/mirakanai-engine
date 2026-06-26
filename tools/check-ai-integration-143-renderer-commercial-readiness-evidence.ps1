@@ -32,6 +32,11 @@ $readinessValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commerci
 $collectorText = Get-AgentSurfaceText "tools/collect-renderer-commercial-readiness-evidence.ps1"
 $d3d12HostEvidenceGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1"
 $d3d12HostEvidenceCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1"
+$d3d12HostSupplementGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1"
+$d3d12HostSupplementCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-host-supplement.ps1"
+$d3d12HostSupplementProbeText = Get-AgentSurfaceText "tests/fixtures/d3d12_commercial_quality_host_supplement_probe.cpp"
+$d3d12BackendSourceText = Get-AgentSurfaceText "engine/rhi/d3d12/src/d3d12_backend.cpp"
+$d3d12BackendHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp"
 $d3d12ArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-d3d12-commercial-quality-artifact.ps1"
 $d3d12ArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-artifact.ps1"
 $vulkanStrictArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1"
@@ -322,6 +327,8 @@ Assert-ContainsText $validateText 'check-renderer-commercial-readiness-final-ret
     "renderer commercial readiness final retained-root assembler validate task"
 Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-host-evidence.ps1' `
     "renderer commercial readiness D3D12 host evidence generator validate task"
+Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-host-supplement.ps1' `
+    "renderer commercial readiness D3D12 host supplement validate task"
 Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artifact.ps1' `
     "renderer commercial readiness D3D12 artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
@@ -342,6 +349,8 @@ Assert-ContainsText $metalMemoryCheckText 'renderer-commercial-readiness-evidenc
     "renderer commercial readiness Metal memory check"
 Assert-ContainsText $d3d12HostEvidenceCheckText 'renderer-d3d12-commercial-quality-host-evidence-check: ok' `
     "renderer commercial readiness D3D12 host evidence generator check"
+Assert-ContainsText $d3d12HostSupplementCheckText 'renderer-d3d12-commercial-quality-host-supplement-check: ok' `
+    "renderer commercial readiness D3D12 host supplement check"
 Assert-ContainsText $d3d12ArtifactProducerCheckText 'renderer-d3d12-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness D3D12 artifact producer check"
 Assert-ContainsText $vulkanStrictArtifactProducerCheckText 'renderer-vulkan-strict-commercial-quality-artifact-check: ok' `
@@ -461,6 +470,105 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $d3d12HostEvidenceCheckText $needle `
         "renderer commercial readiness D3D12 host evidence generator check"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(SupportsShouldProcess = $true)]',
+        'Mode',
+        'Generate',
+        'OutputRootRelative',
+        'BuildPreset',
+        'BuildConfig',
+        'NoBuild',
+        'RequireReady',
+        'ExpectedEvidenceCounters',
+        'artifacts/renderer/d3d12-commercial-quality-host-evidence/',
+        'renderer-d3d12-commercial-quality-host-supplement',
+        'MK_d3d12_commercial_quality_host_supplement_probe',
+        'd3d12-host-supplement.json',
+        'host-gate-summary.json',
+        'probe-summary.json',
+        'renderer_d3d12_commercial_quality_host_supplement_status=ready',
+        'renderer_d3d12_commercial_quality_host_supplement_status=host_evidence_required',
+        'renderer_d3d12_commercial_quality_host_supplement_written=',
+        'renderer_d3d12_commercial_quality_host_supplement_ready=1',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $d3d12HostSupplementGeneratorText $needle `
+        "renderer commercial readiness D3D12 host supplement generator"
+}
+
+foreach ($needle in @(
+        'tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1',
+        'tests/fixtures/d3d12_commercial_quality_host_supplement_probe.cpp',
+        'MK_d3d12_commercial_quality_host_supplement_probe',
+        'collect_commercial_quality_host_supplement',
+        'ID3D12CommandQueue::GetClockCalibration',
+        'ID3D12Device3::EnqueueMakeResident',
+        'IDXGIAdapter3::QueryVideoMemoryInfo',
+        'debug_message_count',
+        'gpu_based_validation_message_count',
+        'D3D12_RESOURCE_BARRIER',
+        'native_handles_exposed',
+        'renderer_d3d12_commercial_quality_host_supplement_written=0'
+    )) {
+    Assert-ContainsText $d3d12HostSupplementCheckText $needle `
+        "renderer commercial readiness D3D12 host supplement check"
+}
+
+foreach ($needle in @(
+        'GameEngine.RendererD3d12CommercialQualityHostSupplement.v1',
+        'GameEngine.RendererD3d12CommercialQualityHostSupplementProbe.v1',
+        'GameEngine.RendererD3d12CommercialQualityHostSupplementGate.v1',
+        'Microsoft-D3D12-ResourceBarrier-Fence-Timestamp-GpuValidation-2026-06-25',
+        'ID3D12CommandQueue::GetClockCalibration',
+        'ID3D12Device3::EnqueueMakeResident',
+        'IDXGIAdapter3::QueryVideoMemoryInfo',
+        'D3D12_RESOURCE_BARRIER',
+        'debug_message_count',
+        'gpu_based_validation_message_count',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $d3d12HostSupplementProbeText $needle `
+        "renderer commercial readiness D3D12 host supplement probe"
+}
+
+foreach ($needle in @(
+        'collect_commercial_quality_host_supplement',
+        'CommercialQualityHostSupplementDesc',
+        'CommercialQualityHostSupplementResult'
+    )) {
+    Assert-ContainsText $d3d12BackendHeaderText $needle `
+        "renderer commercial readiness D3D12 host supplement backend header"
+}
+
+foreach ($needle in @(
+        'collect_commercial_quality_host_supplement',
+        'ID3D12Debug1',
+        'SetEnableGPUBasedValidation',
+        'ID3D12InfoQueue',
+        'GetNumStoredMessagesAllowedByRetrievalFilter',
+        'GetClockCalibration',
+        'ID3D12Device3',
+        'EnqueueMakeResident',
+        'IDXGIFactory6',
+        'EnumAdapterByLuid',
+        'IDXGIAdapter3',
+        'QueryVideoMemoryInfo',
+        'D3D12_RESOURCE_BARRIER_TYPE_UAV',
+        'result.native_handles_exposed = false'
+    )) {
+    Assert-ContainsText $d3d12BackendSourceText $needle `
+        "renderer commercial readiness D3D12 host supplement backend source"
 }
 
 foreach ($needle in @(
@@ -1220,6 +1328,10 @@ Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityHostEvi
     "renderer commercial readiness D3D12 host evidence generator check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityHostEvidenceGenerator' `
     "renderer commercial readiness D3D12 host evidence generator command surface"
+Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityHostSupplementCheck' `
+    "renderer commercial readiness D3D12 host supplement check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityHostSupplementGenerator' `
+    "renderer commercial readiness D3D12 host supplement generator command surface"
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCheck' `
     "renderer commercial readiness D3D12 artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererD3d12CommercialQualityArtifactCollector' `
@@ -1263,6 +1375,26 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness D3D12 host evidence generator validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-d3d12-commercial-quality-host-supplement',
+        'tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1',
+        'MK_d3d12_commercial_quality_host_supplement_probe',
+        'ID3D12InfoQueue',
+        'D3D12 debug layer',
+        'GPU-based validation',
+        'ID3D12CommandQueue::GetClockCalibration',
+        'ID3D12Device3::EnqueueMakeResident',
+        'IDXGIAdapter3::QueryVideoMemoryInfo',
+        'D3D12_RESOURCE_BARRIER unordered-access coverage',
+        'native_handles_exposed=false',
+        'host-gate-summary.json',
+        'renderer_commercial_readiness=0',
+        'never infer Vulkan, Metal, package, environment, generated-game, or external-engine parity readiness'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness D3D12 host supplement validation recipe"
 }
 
 foreach ($needle in @(

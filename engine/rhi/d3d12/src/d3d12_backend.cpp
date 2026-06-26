@@ -17,6 +17,7 @@
 #include <windows.h>
 
 #include <d3d12.h>
+#include <d3d12sdklayers.h>
 #include <d3dcommon.h>
 #include <dxgi1_4.h>
 #include <dxgi1_6.h>
@@ -51,6 +52,36 @@ namespace {
     }
     debug->EnableDebugLayer();
     return true;
+}
+
+struct D3d12DebugLayerEnableResult {
+    bool debug_layer_available{false};
+    bool debug_layer_enabled{false};
+    bool gpu_based_validation_enabled{false};
+};
+
+[[nodiscard]] D3d12DebugLayerEnableResult
+enable_debug_layer_for_commercial_quality(bool enable_gpu_based_validation) noexcept {
+    D3d12DebugLayerEnableResult result;
+
+    Microsoft::WRL::ComPtr<ID3D12Debug> debug;
+    if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
+        return result;
+    }
+
+    result.debug_layer_available = true;
+    debug->EnableDebugLayer();
+    result.debug_layer_enabled = true;
+
+    if (enable_gpu_based_validation) {
+        Microsoft::WRL::ComPtr<ID3D12Debug1> debug1;
+        if (SUCCEEDED(debug.As(&debug1))) {
+            debug1->SetEnableGPUBasedValidation(TRUE);
+            result.gpu_based_validation_enabled = true;
+        }
+    }
+
+    return result;
 }
 
 [[nodiscard]] bool find_hardware_adapter(IDXGIFactory6* factory,
@@ -1229,6 +1260,21 @@ class Win32Event final {
   private:
     HANDLE handle_{nullptr};
 };
+
+[[nodiscard]] bool wait_for_d3d12_fence_signal(ID3D12Fence* fence, std::uint64_t value, DWORD timeout_ms) noexcept {
+    if (fence == nullptr) {
+        return false;
+    }
+    if (fence->GetCompletedValue() >= value) {
+        return true;
+    }
+
+    Win32Event event;
+    if (event.get() == nullptr || FAILED(fence->SetEventOnCompletion(value, event.get()))) {
+        return false;
+    }
+    return WaitForSingleObject(event.get(), timeout_ms) == WAIT_OBJECT_0;
+}
 
 } // namespace
 
@@ -8781,6 +8827,158 @@ ResourceOwnershipResult bootstrap_resource_ownership(const ResourceOwnershipDesc
     result.default_texture_created = true;
     d3d12_set_object_name(default_texture.Get(), L"GameEngine.RHI.D3D12.Bootstrap.DefaultTexture");
     result.succeeded = true;
+    return result;
+}
+
+CommercialQualityHostSupplementResult
+collect_commercial_quality_host_supplement(const CommercialQualityHostSupplementDesc& desc) noexcept {
+    CommercialQualityHostSupplementResult result;
+    result.windows_sdk_available = compiled_with_windows_sdk();
+    result.native_handles_exposed = false;
+
+    if (desc.device.enable_debug_layer || desc.enable_gpu_based_validation) {
+        const auto debug_layer = enable_debug_layer_for_commercial_quality(desc.enable_gpu_based_validation);
+        result.debug_layer_available = debug_layer.debug_layer_available;
+        result.debug_layer_enabled = debug_layer.debug_layer_enabled;
+        result.gpu_based_validation_enabled = debug_layer.gpu_based_validation_enabled;
+    }
+
+    Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+    if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory)))) {
+        result.diagnostic = "d3d12 commercial quality supplement dxgi factory unavailable";
+        return result;
+    }
+    result.dxgi_factory_created = true;
+
+    Microsoft::WRL::ComPtr<IDXGIAdapter1> hardware_adapter;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> warp_adapter;
+    IUnknown* selected_adapter =
+        select_adapter(factory.Get(), desc.device.prefer_warp, hardware_adapter, warp_adapter, result.used_warp);
+    if (selected_adapter == nullptr) {
+        result.diagnostic = "d3d12 commercial quality supplement adapter unavailable";
+        return result;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Device> device;
+    if (FAILED(D3D12CreateDevice(selected_adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)))) {
+        result.diagnostic = "d3d12 commercial quality supplement device creation failed";
+        return result;
+    }
+    result.device_created = true;
+
+    Microsoft::WRL::ComPtr<ID3D12InfoQueue> info_queue;
+    if (SUCCEEDED(device.As(&info_queue))) {
+        result.info_queue_available = true;
+        info_queue->ClearStoredMessages();
+    }
+
+    D3D12_COMMAND_QUEUE_DESC queue_desc{};
+    queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    queue_desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    queue_desc.NodeMask = 0;
+
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> command_queue;
+    if (FAILED(device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&command_queue)))) {
+        result.diagnostic = "d3d12 commercial quality supplement command queue unavailable";
+        return result;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+    if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)))) {
+        result.diagnostic = "d3d12 commercial quality supplement fence unavailable";
+        return result;
+    }
+
+    std::uint64_t frequency = 0;
+    std::uint64_t gpu_timestamp = 0;
+    std::uint64_t cpu_timestamp = 0;
+    if (SUCCEEDED(command_queue->GetTimestampFrequency(&frequency)) && frequency > 0 &&
+        SUCCEEDED(command_queue->GetClockCalibration(&gpu_timestamp, &cpu_timestamp)) && cpu_timestamp > 0) {
+        result.clock_calibration_ready = true;
+        result.queue_frequency_hz = frequency;
+        result.clock_calibration_gpu_timestamp = gpu_timestamp;
+        result.clock_calibration_cpu_qpc_sample = cpu_timestamp;
+    }
+
+    Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter3;
+    const LUID adapter_luid = device->GetAdapterLuid();
+    if (SUCCEEDED(factory->EnumAdapterByLuid(adapter_luid, IID_PPV_ARGS(&adapter3)))) {
+        DXGI_QUERY_VIDEO_MEMORY_INFO local_info{};
+        if (SUCCEEDED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &local_info))) {
+            result.query_video_memory_info_ready = true;
+            result.local_video_memory_budget_bytes = local_info.Budget;
+            result.local_video_memory_usage_bytes = local_info.CurrentUsage;
+        }
+    }
+
+    const auto default_heap = heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    const auto resident_buffer_desc = buffer_resource_desc(4096, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+    Microsoft::WRL::ComPtr<ID3D12Resource> resident_buffer;
+    if (FAILED(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &resident_buffer_desc,
+                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                                               IID_PPV_ARGS(&resident_buffer)))) {
+        result.diagnostic = "d3d12 commercial quality supplement resident buffer unavailable";
+        return result;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Device3> device3;
+    if (SUCCEEDED(device.As(&device3))) {
+        ID3D12Pageable* resident_objects[] = {resident_buffer.Get()};
+        result.residency_fence_value = 1;
+        if (SUCCEEDED(device3->EnqueueMakeResident(D3D12_RESIDENCY_FLAG_NONE, 1, resident_objects, fence.Get(),
+                                                   result.residency_fence_value))) {
+            result.enqueue_make_resident_ready = true;
+            result.enqueue_make_resident_fence_signaled =
+                wait_for_d3d12_fence_signal(fence.Get(), result.residency_fence_value, 5000);
+        }
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list;
+    if (SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator))) &&
+        SUCCEEDED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator.Get(), nullptr,
+                                            IID_PPV_ARGS(&command_list)))) {
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.UAV.pResource = resident_buffer.Get();
+        command_list->ResourceBarrier(1, &barrier);
+        if (SUCCEEDED(command_list->Close())) {
+            ID3D12CommandList* command_lists[] = {command_list.Get()};
+            command_queue->ExecuteCommandLists(1, command_lists);
+            const std::uint64_t barrier_fence_value = result.residency_fence_value + 1;
+            if (SUCCEEDED(command_queue->Signal(fence.Get(), barrier_fence_value)) &&
+                wait_for_d3d12_fence_signal(fence.Get(), barrier_fence_value, 5000)) {
+                result.unordered_access_barrier_ready = true;
+                result.unordered_access_barriers_recorded = 1;
+            }
+        }
+    }
+
+    if (result.info_queue_available) {
+        D3D12_MESSAGE_SEVERITY severe_messages[] = {
+            D3D12_MESSAGE_SEVERITY_CORRUPTION,
+            D3D12_MESSAGE_SEVERITY_ERROR,
+            D3D12_MESSAGE_SEVERITY_WARNING,
+        };
+        D3D12_INFO_QUEUE_FILTER retrieval_filter{};
+        retrieval_filter.AllowList.NumSeverities = 3;
+        retrieval_filter.AllowList.pSeverityList = severe_messages;
+        (void)info_queue->PushRetrievalFilter(&retrieval_filter);
+        const auto messages = info_queue->GetNumStoredMessagesAllowedByRetrievalFilter();
+        result.debug_message_count = messages;
+        result.gpu_based_validation_message_count = result.gpu_based_validation_enabled ? messages : 0;
+    }
+
+    result.ready = result.device_created && result.debug_layer_available && result.debug_layer_enabled &&
+                   result.gpu_based_validation_enabled && result.info_queue_available &&
+                   result.debug_message_count == 0 && result.gpu_based_validation_message_count == 0 &&
+                   result.clock_calibration_ready && result.query_video_memory_info_ready &&
+                   result.enqueue_make_resident_ready && result.enqueue_make_resident_fence_signaled &&
+                   result.unordered_access_barrier_ready && !result.native_handles_exposed;
+    result.diagnostic = result.ready ? "d3d12 commercial quality host supplement ready"
+                                     : "d3d12 commercial quality host supplement requires complete host evidence";
     return result;
 }
 

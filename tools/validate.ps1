@@ -547,6 +547,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-cpu-profiling-host-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-metal-memory-profiling-host-evidence-collector.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-d3d12-commercial-quality-host-evidence.ps1"
+    Get-ValidateTask -ScriptFileName "check-renderer-d3d12-commercial-quality-host-supplement.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-d3d12-commercial-quality-artifact.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-vulkan-strict-commercial-quality-artifact.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-apple-metal-commercial-quality-artifact.ps1"

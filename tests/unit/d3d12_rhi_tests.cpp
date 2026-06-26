@@ -1071,6 +1071,28 @@ MK_TEST("d3d12 backend scaffold reports windows sdk availability") {
     MK_REQUIRE(mirakana::rhi::d3d12::compiled_with_windows_sdk());
 }
 
+MK_TEST("d3d12 commercial quality host supplement probes residency and timing without debug state") {
+    const auto result = mirakana::rhi::d3d12::collect_commercial_quality_host_supplement(
+        mirakana::rhi::d3d12::CommercialQualityHostSupplementDesc{
+            .device = d3d12_test_device_desc(),
+            .enable_gpu_based_validation = false,
+        });
+
+    MK_REQUIRE(result.windows_sdk_available);
+    MK_REQUIRE(result.device_created);
+    MK_REQUIRE(result.used_warp);
+    MK_REQUIRE(result.clock_calibration_ready);
+    MK_REQUIRE(result.clock_calibration_cpu_qpc_sample > 0U);
+    MK_REQUIRE(result.query_video_memory_info_ready);
+    MK_REQUIRE(result.enqueue_make_resident_ready);
+    MK_REQUIRE(result.enqueue_make_resident_fence_signaled);
+    MK_REQUIRE(result.unordered_access_barrier_ready);
+    MK_REQUIRE(!result.native_handles_exposed);
+    MK_REQUIRE(!result.debug_layer_enabled);
+    MK_REQUIRE(!result.gpu_based_validation_enabled);
+    MK_REQUIRE(!result.ready);
+}
+
 MK_TEST("d3d12 backend probes dxgi and device support") {
     const auto probe = mirakana::rhi::d3d12::probe_runtime();
 

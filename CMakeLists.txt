@@ -1472,6 +1472,12 @@ if(BUILD_TESTING)
         add_test(NAME MK_d3d12_rhi_tests COMMAND MK_d3d12_rhi_tests)
         set_tests_properties(MK_d3d12_rhi_tests PROPERTIES RUN_SERIAL TRUE)
 
+        add_executable(MK_d3d12_commercial_quality_host_supplement_probe
+            tests/fixtures/d3d12_commercial_quality_host_supplement_probe.cpp
+        )
+        target_link_libraries(MK_d3d12_commercial_quality_host_supplement_probe PRIVATE MK_rhi_d3d12)
+        MK_apply_common_target_options(MK_d3d12_commercial_quality_host_supplement_probe)
+
         add_executable(MK_mavg_gpu_culling_dispatch_tests
             tests/unit/mavg_gpu_culling_dispatch_tests.cpp
         )
