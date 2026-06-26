@@ -43,6 +43,8 @@ $vulkanStrictArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer
 $vulkanStrictArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1"
 $vulkanStrictHostEvidenceGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1"
 $vulkanStrictHostEvidenceCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1"
+$appleMetalHostEvidenceGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-apple-metal-commercial-quality-host-evidence.ps1"
+$appleMetalHostEvidenceCheckText = Get-AgentSurfaceText "tools/check-renderer-apple-metal-commercial-quality-host-evidence.ps1"
 $appleMetalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1"
 $appleMetalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-apple-metal-commercial-quality-artifact.ps1"
 $packageArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-package-commercial-quality-artifacts.ps1"
@@ -337,6 +339,8 @@ Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quali
     "renderer commercial readiness strict Vulkan host evidence generator validate task"
 Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
     "renderer commercial readiness strict Vulkan artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-apple-metal-commercial-quality-host-evidence.ps1' `
+    "renderer commercial readiness Apple Metal host evidence generator validate task"
 Assert-ContainsText $validateText 'check-renderer-apple-metal-commercial-quality-artifact.ps1' `
     "renderer commercial readiness Apple Metal artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-package-commercial-quality-artifacts.ps1' `
@@ -361,6 +365,8 @@ Assert-ContainsText $vulkanStrictHostEvidenceCheckText 'renderer-vulkan-strict-c
     "renderer commercial readiness strict Vulkan host evidence generator check"
 Assert-ContainsText $vulkanStrictArtifactProducerCheckText 'renderer-vulkan-strict-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness strict Vulkan artifact producer check"
+Assert-ContainsText $appleMetalHostEvidenceCheckText 'renderer-apple-metal-commercial-quality-host-evidence-check: ok' `
+    "renderer commercial readiness Apple Metal host evidence generator check"
 Assert-ContainsText $appleMetalArtifactProducerCheckText 'renderer-apple-metal-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness Apple Metal artifact producer check"
 Assert-ContainsText $packageArtifactProducerCheckText 'renderer-package-commercial-quality-artifacts-check: ok' `
@@ -1318,6 +1324,8 @@ Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQuality
     "renderer commercial readiness strict Vulkan host evidence generator command"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-vulkan-strict-commercial-quality-host-evidence' `
     "renderer commercial readiness strict Vulkan host evidence validation recipe"
+Assert-ContainsText $validationRecipesFragmentText 'renderer-apple-metal-commercial-quality-host-evidence' `
+    "renderer commercial readiness Apple Metal host evidence validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-promotion-preflight' `
     "renderer commercial readiness final promotion preflight validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-retained-root-assembler' `
@@ -1363,6 +1371,23 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validateWorkflowText $needle "renderer commercial readiness strict Vulkan host evidence CI retention"
     Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness strict Vulkan host evidence CI retention check"
+}
+foreach ($needle in @(
+        'Collect renderer Apple Metal commercial quality host evidence',
+        'artifacts/renderer/apple-metal-commercial-quality-host-evidence/current-run',
+        'tools/validate-renderer-metal-apple.ps1',
+        'tools/generate-renderer-apple-metal-commercial-quality-host-evidence.ps1',
+        'renderer_apple_metal_commercial_quality_host_evidence_generator_mode=Generate',
+        'renderer_apple_metal_commercial_quality_host_evidence_writes_evidence=1',
+        'renderer_apple_metal_commercial_quality_host_evidence_status=host_evidence_required',
+        'Upload renderer Apple Metal commercial quality host evidence',
+        'renderer-apple-metal-commercial-quality-host-evidence',
+        'artifacts/renderer/apple-metal-commercial-quality-host-evidence/current-run/**',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $validateWorkflowText $needle "renderer commercial readiness Apple Metal host evidence CI retention"
+    Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness Apple Metal host evidence CI retention check"
 }
 foreach ($needle in @(
         'renderer_commercial_readiness_final_preflight_required_files=',
@@ -1433,6 +1458,10 @@ Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQuality
     "renderer commercial readiness strict Vulkan artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQualityArtifactCollector' `
     "renderer commercial readiness strict Vulkan artifact producer collector command surface"
+Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityHostEvidenceCheck' `
+    "renderer commercial readiness Apple Metal host evidence generator check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityHostEvidenceGenerator' `
+    "renderer commercial readiness Apple Metal host evidence generator command surface"
 Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityArtifactCheck' `
     "renderer commercial readiness Apple Metal artifact producer check command surface"
 Assert-ContainsText $commandsFragmentText 'rendererAppleMetalCommercialQualityArtifactCollector' `
@@ -1540,6 +1569,25 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness strict Vulkan artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-apple-metal-commercial-quality-host-evidence',
+        'tools/generate-renderer-apple-metal-commercial-quality-host-evidence.ps1',
+        'AppleMetalStatusLogRelative',
+        'GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1',
+        'GameEngine.RendererAppleMetalCommercialQualityHostGate.v1',
+        'Metal Shading Language',
+        '[[function_constant]]',
+        '[[buffer]]',
+        '[[texture]]',
+        '[[sampler]]',
+        'host-gate-summary.json',
+        'native_handles_exposed=false',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness Apple Metal host evidence generator validation recipe"
 }
 
 foreach ($needle in @(

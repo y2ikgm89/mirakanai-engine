@@ -1816,6 +1816,49 @@ jobs:
           # Keep -RequireReady for a physical/self-hosted Apple proof host; this lane records host-gated diagnostics.
           ./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs $jobs
 
+      - name: Collect renderer Apple Metal commercial quality host evidence
+        if: needs.changes.outputs.metal_host_evidence == 'true'
+        shell: pwsh
+        run: |
+          $jobs = [int](& sysctl -n hw.logicalcpu)
+          $artifactRoot = "artifacts/renderer/apple-metal-commercial-quality-host-evidence/current-run"
+          New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+          $appleMetalStatusLog = "$artifactRoot/apple-metal-status.log"
+          $collectorLog = "$artifactRoot/collector-output.log"
+
+          $statusLines = @()
+          try {
+            $statusLines = @(./tools/validate-renderer-metal-apple.ps1 -Jobs $jobs *>&1)
+          }
+          catch {
+            $statusLines += [string]$_
+          }
+          if ($global:LASTEXITCODE -ne 0) {
+            $statusLines += "renderer_apple_metal_commercial_quality_status_exit_code=$global:LASTEXITCODE"
+            $global:LASTEXITCODE = 0
+          }
+          Set-Content -LiteralPath $appleMetalStatusLog -Encoding utf8NoBOM -Value ($statusLines | ForEach-Object { [string]$_ })
+
+          $collectorLines = @(./tools/generate-renderer-apple-metal-commercial-quality-host-evidence.ps1 `
+              -Mode Generate `
+              -OutputRootRelative $artifactRoot `
+              -AppleMetalStatusLogRelative $appleMetalStatusLog)
+          Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
+          foreach ($requiredLine in @(
+              "renderer_apple_metal_commercial_quality_host_evidence_generator_mode=Generate",
+              "renderer_apple_metal_commercial_quality_host_evidence_writes_evidence=1",
+              "renderer_commercial_readiness=0",
+              "renderer_environment_ready=0"
+            )) {
+            if (-not $collectorLines.Contains($requiredLine)) {
+              Write-Error "renderer Apple Metal commercial quality host evidence missing expected line: $requiredLine"
+            }
+          }
+          if (-not ($collectorLines.Contains("renderer_apple_metal_commercial_quality_host_evidence_status=ready") -or
+              $collectorLines.Contains("renderer_apple_metal_commercial_quality_host_evidence_status=host_evidence_required"))) {
+            Write-Error "renderer Apple Metal commercial quality host evidence did not report ready or host_evidence_required status."
+          }
+
       - name: Upload Metal optimization artifacts
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -1836,6 +1879,17 @@ jobs:
           compression-level: 0
           include-hidden-files: false
           path: artifacts/renderer/metal-memory-profiling-host-evidence/**
+          if-no-files-found: warn
+
+      - name: Upload renderer Apple Metal commercial quality host evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-apple-metal-commercial-quality-host-evidence
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/apple-metal-commercial-quality-host-evidence/current-run/**
           if-no-files-found: warn
 
       - name: Upload renderer commercial readiness retained root (Metal host)
