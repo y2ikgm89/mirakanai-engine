@@ -52,6 +52,7 @@ foreach ($needle in @(
         "IDXGIAdapter3::QueryVideoMemoryInfo",
         "debug_message_count",
         "gpu_based_validation_message_count",
+        "first_debug_message_description",
         "D3D12_RESOURCE_BARRIER",
         "native_handles_exposed"
     )) {
@@ -62,6 +63,16 @@ foreach ($needle in @(
 
 $planLines = @(& $producerScript -Mode Plan `
         -OutputRootRelative "artifacts/renderer/d3d12-commercial-quality-host-evidence/supplement-contract-$PID")
+$producerText = Get-Content -LiteralPath $producerScript -Raw
+foreach ($needle in @(
+        "Resolve-CMakeBuildDirectory",
+        "probeCandidates",
+        "Join-Path `$buildDirectory `$BuildConfig"
+    )) {
+    if (-not $producerText.Contains($needle)) {
+        Write-Error "D3D12 host supplement producer must resolve probe paths from the CMake build preset binary directory: $needle"
+    }
+}
 foreach ($expectedLine in @(
         "validation_recipe=renderer-d3d12-commercial-quality-host-supplement",
         "renderer_d3d12_commercial_quality_host_supplement_mode=Plan",

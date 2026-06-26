@@ -8938,8 +8938,7 @@ collect_commercial_quality_host_supplement(const CommercialQualityHostSupplement
     const auto resident_buffer_desc = buffer_resource_desc(4096, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
     Microsoft::WRL::ComPtr<ID3D12Resource> resident_buffer;
     if (FAILED(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &resident_buffer_desc,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                                               IID_PPV_ARGS(&resident_buffer)))) {
+                                               D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&resident_buffer)))) {
         result.diagnostic = "d3d12 commercial quality supplement resident buffer unavailable";
         return result;
     }
@@ -8961,11 +8960,17 @@ collect_commercial_quality_host_supplement(const CommercialQualityHostSupplement
     if (SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator))) &&
         SUCCEEDED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator.Get(), nullptr,
                                             IID_PPV_ARGS(&command_list)))) {
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.UAV.pResource = resident_buffer.Get();
-        command_list->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_BARRIER barriers[2]{};
+        barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[0].Transition.pResource = resident_buffer.Get();
+        barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+        barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[1].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[1].UAV.pResource = resident_buffer.Get();
+        command_list->ResourceBarrier(2, barriers);
         if (SUCCEEDED(command_list->Close())) {
             ID3D12CommandList* command_lists[] = {command_list.Get()};
             command_queue->ExecuteCommandLists(1, command_lists);
@@ -8991,6 +8996,17 @@ collect_commercial_quality_host_supplement(const CommercialQualityHostSupplement
         const auto messages = info_queue->GetNumStoredMessagesAllowedByRetrievalFilter();
         result.debug_message_count = messages;
         result.gpu_based_validation_message_count = result.gpu_based_validation_enabled ? messages : 0;
+        if (messages > 0) {
+            std::size_t message_size = 0;
+            if (SUCCEEDED(info_queue->GetMessage(0, nullptr, &message_size)) && message_size > 0) {
+                std::vector<std::byte> message_bytes(message_size);
+                auto* message = reinterpret_cast<D3D12_MESSAGE*>(message_bytes.data());
+                if (SUCCEEDED(info_queue->GetMessage(0, message, &message_size)) && message->pDescription != nullptr) {
+                    result.first_debug_message_id = static_cast<std::uint64_t>(message->ID);
+                    result.first_debug_message_description = message->pDescription;
+                }
+            }
+        }
     }
 
     result.ready = result.device_created && result.debug_layer_available && result.debug_layer_enabled &&

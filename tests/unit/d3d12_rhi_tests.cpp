@@ -10801,6 +10801,28 @@ MK_TEST("d3d12 rhi memory diagnostics reports committed resource bytes and optio
     MK_REQUIRE(mem.committed_resources_byte_estimate >= 2048U);
 }
 
+MK_TEST("d3d12 commercial quality host supplement is clean with debug validation enabled when available") {
+    const auto result = mirakana::rhi::d3d12::collect_commercial_quality_host_supplement(
+        mirakana::rhi::d3d12::CommercialQualityHostSupplementDesc{
+            .device = mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true, .enable_debug_layer = true},
+            .enable_gpu_based_validation = true,
+        });
+
+    MK_REQUIRE(result.windows_sdk_available);
+    MK_REQUIRE(result.device_created);
+    MK_REQUIRE(result.used_warp);
+    if (!result.debug_layer_enabled || !result.gpu_based_validation_enabled || !result.info_queue_available) {
+        MK_REQUIRE(!result.ready);
+        return;
+    }
+
+    MK_REQUIRE(result.debug_message_count == 0U);
+    MK_REQUIRE(result.gpu_based_validation_message_count == 0U);
+    MK_REQUIRE(result.first_debug_message_id == 0U);
+    MK_REQUIRE(result.first_debug_message_description.empty());
+    MK_REQUIRE(result.ready);
+}
+
 int main() {
     return mirakana::test::run_all();
 }

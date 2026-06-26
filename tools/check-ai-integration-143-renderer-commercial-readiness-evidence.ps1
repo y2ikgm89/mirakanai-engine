@@ -483,6 +483,7 @@ foreach ($needle in @(
         'NoBuild',
         'RequireReady',
         'ExpectedEvidenceCounters',
+        'Resolve-CMakeBuildDirectory',
         'artifacts/renderer/d3d12-commercial-quality-host-evidence/',
         'renderer-d3d12-commercial-quality-host-supplement',
         'MK_d3d12_commercial_quality_host_supplement_probe',
@@ -513,6 +514,7 @@ foreach ($needle in @(
         'IDXGIAdapter3::QueryVideoMemoryInfo',
         'debug_message_count',
         'gpu_based_validation_message_count',
+        'first_debug_message_description',
         'D3D12_RESOURCE_BARRIER',
         'native_handles_exposed',
         'renderer_d3d12_commercial_quality_host_supplement_written=0'

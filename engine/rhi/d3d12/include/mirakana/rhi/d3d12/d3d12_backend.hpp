@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -76,6 +77,8 @@ struct CommercialQualityHostSupplementResult {
     bool info_queue_available{false};
     std::uint64_t debug_message_count{0};
     std::uint64_t gpu_based_validation_message_count{0};
+    std::uint64_t first_debug_message_id{0};
+    std::string first_debug_message_description;
     bool clock_calibration_ready{false};
     std::uint64_t queue_frequency_hz{0};
     std::uint64_t clock_calibration_gpu_timestamp{0};
