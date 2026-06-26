@@ -96,6 +96,10 @@ Assert-FileContainsText "tools/smoke-ios-package.ps1" @(
     "ios_metal_command_buffer_ready=1",
     "ios_metal_readback_ready=1"
 )
+$iosSmokeText = Get-Content -LiteralPath (Join-Path $root "tools/smoke-ios-package.ps1") -Raw
+if ($iosSmokeText.Contains('Write-Host "ios-smoke:')) {
+    Write-Error "tools/smoke-ios-package.ps1 must emit machine-readable ios-smoke counters through the success output stream, not Write-Host."
+}
 
 Assert-FileContainsText ".github/workflows/ios-validate.yml" @(
     "runs-on: macos-26",
