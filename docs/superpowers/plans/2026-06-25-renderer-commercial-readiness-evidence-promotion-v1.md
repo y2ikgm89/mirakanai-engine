@@ -1066,6 +1066,11 @@ Task 10T quality/VFX host evidence current-run retention:
 - `.github/workflows/validate.yml` now has `renderer-commercial-artifact-intake` download upstream renderer host artifacts, run the quality/VFX host evidence producer, upload `renderer-quality-vfx-commercial-artifacts`, then capture the current workflow artifact list and run the non-promoting importer. The new upload is an assembler source artifact name, not a readiness claim; hosted runs can retain a host-gated summary until all retained source artifacts are present.
 - `tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1` now counts `renderer-quality-vfx-commercial-artifacts` in its default workflow artifact inventory. The importer still requires the actual `GameEngine.RendererQualityVfxCommercialHostEvidence.v1` JSON before `quality_vfx_host_evidence` becomes present, and still keeps `renderer_commercial_readiness=0`.
 
+Task 10U quality/VFX real generated-log counter alignment:
+
+- PR #846 hosted intake proved the current generated 3D package log uses `renderer_quality_matrix_invoked_gpu_commands`, `renderer_quality_matrix_invoked_native_capture`, `renderer_quality_matrix_invoked_crash_upload`, `rendering_vfx_profiling_invoked_native_capture`, and `rendering_vfx_profiling_invoked_crash_upload` as the real side-effect/non-claim counters. `tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1` now accepts those real counters as aliases for the host-evidence side-effect checks, treats broad readiness/native-handle/external-engine counters as fail-closed only when present and non-zero, and continues to emit explicit `renderer_*_ready=0` non-claims itself.
+- `tools/check-renderer-quality-vfx-commercial-artifacts.ps1` now uses the real generated-log counter names so future CI artifact intake cannot regress back to test-only side-effect counter names.
+
 ## Host Evidence Matrix
 
 | Host lane | Required proof | Promotion rule |
