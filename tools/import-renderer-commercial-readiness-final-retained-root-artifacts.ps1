@@ -25,6 +25,7 @@ param(
         "renderer-apple-metal-commercial-quality-host-evidence",
         "renderer-metal-memory-profiling-host-artifacts",
         "renderer-package-commercial-quality-host-evidence",
+        "renderer-quality-vfx-commercial-artifacts",
         "metal-host-optimization-artifacts",
         "linux-vulkan-host-evidence",
         "windows-packages"

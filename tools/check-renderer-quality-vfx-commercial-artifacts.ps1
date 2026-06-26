@@ -179,6 +179,24 @@ function New-QualityVfxHostEvidence {
     }
 }
 
+function New-EvidenceStub {
+    param(
+        [Parameter(Mandatory = $true)][string]$SchemaVersion,
+        [Parameter(Mandatory = $true)][string]$ClaimId
+    )
+
+    return [ordered]@{
+        schema_version = $SchemaVersion
+        claim_id = $ClaimId
+        fixture_only = $false
+    }
+}
+
+$hostProducerScript = Join-Path $root "tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1"
+if (-not (Test-Path -LiteralPath $hostProducerScript -PathType Leaf)) {
+    Write-Error "tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1 must exist for current-run quality/VFX host evidence retention."
+}
+
 $producerScript = Join-Path $root "tools/collect-renderer-quality-vfx-commercial-artifacts.ps1"
 if (-not (Test-Path -LiteralPath $producerScript -PathType Leaf)) {
     Write-Error "tools/collect-renderer-quality-vfx-commercial-artifacts.ps1 must exist for Task 10D quality/VFX artifact production."
@@ -191,22 +209,135 @@ if (-not (Test-Path -LiteralPath $collectorScript -PathType Leaf)) {
 
 $fixtureRoot = "tests/fixtures/renderer/commercial-readiness-evidence/ready"
 $evidenceRootRelative = "artifacts/renderer/commercial-readiness-evidence/quality-vfx-commercial-contract-$PID"
+$hostEvidenceRootRelative = "artifacts/renderer/quality-vfx-commercial-host-evidence/contract-$PID"
+$hostInputRootRelative = "$hostEvidenceRootRelative/input"
+$hostOutputRootRelative = "$hostEvidenceRootRelative/output"
 $inputRootRelative = "$evidenceRootRelative/input"
 $producerOutputRootRelative = "$evidenceRootRelative/producer-output"
 $collectorOutputRootRelative = "$evidenceRootRelative/collector-output"
-$realInputRelative = "$inputRootRelative/quality-vfx-host-evidence.json"
+$realInputRelative = "$hostOutputRootRelative/quality-vfx-host-evidence.json"
 $fixtureInputRelative = "$inputRootRelative/quality-vfx-fixture-evidence.json"
 $evidenceRootPath = ConvertTo-LocalPath $evidenceRootRelative
+$hostEvidenceRootPath = ConvertTo-LocalPath $hostEvidenceRootRelative
+$generated3dLogRelative = "$hostInputRootRelative/generated-3d-quality-vfx.log"
+$packageHostEvidenceRelative = "$hostInputRootRelative/package-host-evidence.json"
+$d3d12HostEvidenceRelative = "$hostInputRootRelative/d3d12-host-evidence.json"
+$vulkanHostEvidenceRelative = "$hostInputRootRelative/vulkan-host-evidence.json"
+$appleHostEvidenceRelative = "$hostInputRootRelative/apple-host-evidence.json"
+$metalMemoryEvidenceRelative = "$hostInputRootRelative/metal-memory-evidence.json"
 
 try {
-    if (Test-Path -LiteralPath $evidenceRootPath) {
-        Remove-Item -LiteralPath $evidenceRootPath -Recurse -Force
+    foreach ($path in @($evidenceRootPath, $hostEvidenceRootPath)) {
+        if (Test-Path -LiteralPath $path) {
+            Remove-Item -LiteralPath $path -Recurse -Force
+        }
     }
 
-    Write-JsonObject -Path (ConvertTo-LocalPath $realInputRelative) `
-        -Value (New-QualityVfxHostEvidence -FixtureOnly $false)
+    Write-JsonObject -Path (ConvertTo-LocalPath $packageHostEvidenceRelative) `
+        -Value (New-EvidenceStub `
+            -SchemaVersion "GameEngine.RendererPackageCommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-package-commercial-quality-artifacts-v1")
+    Write-JsonObject -Path (ConvertTo-LocalPath $d3d12HostEvidenceRelative) `
+        -Value (New-EvidenceStub `
+            -SchemaVersion "GameEngine.RendererD3d12CommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-d3d12-commercial-quality-artifact-v1")
+    Write-JsonObject -Path (ConvertTo-LocalPath $vulkanHostEvidenceRelative) `
+        -Value (New-EvidenceStub `
+            -SchemaVersion "GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-vulkan-strict-commercial-quality-artifact-v1")
+    Write-JsonObject -Path (ConvertTo-LocalPath $appleHostEvidenceRelative) `
+        -Value (New-EvidenceStub `
+            -SchemaVersion "GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-apple-metal-commercial-quality-artifact-v1")
+    Write-JsonObject -Path (ConvertTo-LocalPath $metalMemoryEvidenceRelative) `
+        -Value (New-EvidenceStub `
+            -SchemaVersion "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1" `
+            -ClaimId "renderer-metal-memory-profiling-host-evidence-v1")
+    Set-Content -LiteralPath (ConvertTo-LocalPath $generated3dLogRelative) -Encoding utf8NoBOM -Value @"
+sample_generated_desktop_runtime_3d_package status=completed renderer_quality_matrix_status=host_evidence_required renderer_quality_matrix_reviewed=1 renderer_quality_matrix_ready=0 renderer_quality_matrix_rows=21 renderer_quality_matrix_ready_rows=14 renderer_quality_matrix_host_gated_rows=7 renderer_quality_matrix_dependency_gated_rows=0 renderer_quality_matrix_unsupported_rows=0 renderer_quality_matrix_d3d12_ready=1 renderer_quality_matrix_vulkan_strict_ready=1 renderer_quality_matrix_metal_ready=0 renderer_quality_matrix_general_renderer_quality_ready=0 renderer_quality_matrix_gpu_command_side_effects=0 renderer_quality_matrix_native_capture_side_effects=0 renderer_quality_matrix_crash_upload_side_effects=0 renderer_quality_matrix_replay_hash=12953007953522728565 renderer_quality_matrix_diagnostics=0 rendering_vfx_profiling_reviewed=1 rendering_vfx_profiling_ready=0 rendering_vfx_profiling_d3d12_host_evidence_ready=1 rendering_vfx_profiling_vulkan_strict_host_evidence_ready=1 rendering_vfx_profiling_metal_host_evidence_ready=0 rendering_vfx_profiling_debug_policy_ready=1 rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready=1 rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready=1 rendering_vfx_profiling_debug_package_counter_evidence_ready=1 rendering_vfx_profiling_memory_policy_ready=1 rendering_vfx_profiling_memory_budget_evidence_ready=1 rendering_vfx_profiling_memory_residency_pressure_evidence_ready=1 rendering_vfx_profiling_memory_package_counter_evidence_ready=1 rendering_vfx_profiling_replay_hash=5030402595252288520 rendering_vfx_profiling_diagnostics=0 renderer_production_vfx_native_capture_side_effects=0 renderer_production_vfx_crash_upload_side_effects=0 renderer_backend_parity_ready=0 renderer_metal_broad_readiness=0 renderer_broad_quality_ready=0 renderer_commercial_readiness=0 environment_ready=0 native_handles_exposed=0 external_engine_parity=0
+"@
     Write-JsonObject -Path (ConvertTo-LocalPath $fixtureInputRelative) `
         -Value (New-QualityVfxHostEvidence -FixtureOnly $true)
+
+    $hostPlanLines = @(& $hostProducerScript -Mode Plan -OutputRootRelative $hostOutputRootRelative)
+    foreach ($expectedLine in @(
+            "renderer_quality_vfx_commercial_host_evidence_mode=Plan",
+            "renderer_quality_vfx_commercial_host_evidence_written=0",
+            "renderer_quality_vfx_commercial_host_evidence_ready=0",
+            "renderer_commercial_readiness=0",
+            "renderer_environment_ready=0"
+        )) {
+        Assert-LinePresent $hostPlanLines $expectedLine "quality/VFX host evidence producer Plan mode"
+    }
+
+    $hostUnsafeRejected = $false
+    try {
+        $null = & $hostProducerScript `
+            -Mode Collect `
+            -OutputRootRelative $hostOutputRootRelative `
+            -Generated3dStatusLogRelative "../unsafe.log" `
+            -PackageHostEvidenceRelative $packageHostEvidenceRelative `
+            -D3d12HostEvidenceRelative $d3d12HostEvidenceRelative `
+            -VulkanStrictHostEvidenceRelative $vulkanHostEvidenceRelative `
+            -AppleMetalHostEvidenceRelative $appleHostEvidenceRelative `
+            -MetalMemoryProfilingHostEvidenceRelative $metalMemoryEvidenceRelative 2>&1
+    }
+    catch {
+        $hostUnsafeRejected = [string]$_.Exception.Message -like "*unsafe_relative_path*"
+    }
+    if (-not $hostUnsafeRejected) {
+        Write-Error "quality/VFX host evidence producer must reject unsafe status-log paths."
+    }
+
+    $hostGateRejected = $false
+    try {
+        $null = & $hostProducerScript `
+            -Mode Collect `
+            -OutputRootRelative $hostOutputRootRelative `
+            -Generated3dStatusLogRelative $generated3dLogRelative `
+            -PackageHostEvidenceRelative $packageHostEvidenceRelative `
+            -D3d12HostEvidenceRelative $d3d12HostEvidenceRelative `
+            -VulkanStrictHostEvidenceRelative $vulkanHostEvidenceRelative `
+            -RequireReady 2>&1
+    }
+    catch {
+        $hostGateRejected = [string]$_.Exception.Message -like "*quality_vfx_host_evidence_not_ready*"
+    }
+    if (-not $hostGateRejected) {
+        Write-Error "quality/VFX host evidence producer must fail closed without Apple Metal and Metal memory/profiling retained evidence."
+    }
+
+    $hostCollectLines = @(& $hostProducerScript `
+            -Mode Collect `
+            -OutputRootRelative $hostOutputRootRelative `
+            -Generated3dStatusLogRelative $generated3dLogRelative `
+            -PackageHostEvidenceRelative $packageHostEvidenceRelative `
+            -D3d12HostEvidenceRelative $d3d12HostEvidenceRelative `
+            -VulkanStrictHostEvidenceRelative $vulkanHostEvidenceRelative `
+            -AppleMetalHostEvidenceRelative $appleHostEvidenceRelative `
+            -MetalMemoryProfilingHostEvidenceRelative $metalMemoryEvidenceRelative `
+            -RequireReady)
+    foreach ($expectedLine in @(
+            "renderer_quality_vfx_commercial_host_evidence_mode=Collect",
+            "renderer_quality_vfx_commercial_host_evidence_status=ready",
+            "renderer_quality_vfx_commercial_host_evidence_written=1",
+            "renderer_quality_vfx_commercial_host_evidence_ready=1",
+            "renderer_quality_matrix_ready=1",
+            "rendering_vfx_profiling_reviewed=1",
+            "renderer_production_vfx_profiling_ready=1",
+            "renderer_quality_matrix_gpu_command_side_effects=0",
+            "renderer_quality_matrix_native_capture_side_effects=0",
+            "renderer_quality_matrix_crash_upload_side_effects=0",
+            "renderer_production_vfx_native_capture_side_effects=0",
+            "renderer_production_vfx_crash_upload_side_effects=0",
+            "renderer_backend_parity_ready=0",
+            "renderer_metal_broad_readiness=0",
+            "renderer_broad_quality_ready=0",
+            "renderer_commercial_readiness=0",
+            "renderer_environment_ready=0"
+        )) {
+        Assert-LinePresent $hostCollectLines $expectedLine "quality/VFX host evidence producer Collect mode"
+    }
 
     $planLines = @(& $producerScript -Mode Plan -OutputRootRelative $producerOutputRootRelative)
     foreach ($expectedLine in @(
@@ -349,8 +480,10 @@ try {
     }
 }
 finally {
-    if (Test-Path -LiteralPath $evidenceRootPath) {
-        Remove-Item -LiteralPath $evidenceRootPath -Recurse -Force
+    foreach ($path in @($evidenceRootPath, $hostEvidenceRootPath)) {
+        if (Test-Path -LiteralPath $path) {
+            Remove-Item -LiteralPath $path -Recurse -Force
+        }
     }
 }
 

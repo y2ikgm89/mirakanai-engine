@@ -2034,6 +2034,158 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Collect renderer quality/VFX commercial host evidence
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $artifactRoot = "artifacts/renderer/quality-vfx-commercial-host-evidence/current-run"
+          $sourceRoot = "$artifactRoot/source-artifacts"
+          New-Item -ItemType Directory -Force -Path $sourceRoot | Out-Null
+
+          function ConvertTo-RepoRelativePath {
+            param([Parameter(Mandatory = $true)][string]$FullPath)
+
+            $root = (Get-Location).Path
+            return ([System.IO.Path]::GetRelativePath($root, [System.IO.Path]::GetFullPath($FullPath)) -replace "\\", "/")
+          }
+
+          function Read-JsonFileOrNull {
+            param([Parameter(Mandatory = $true)][string]$Path)
+
+            try {
+              return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+            } catch {
+              return $null
+            }
+          }
+
+          function Get-JsonPropertyValue {
+            param(
+              [AllowNull()]$JsonObject,
+              [Parameter(Mandatory = $true)][string]$Name
+            )
+
+            if ($null -eq $JsonObject) {
+              return $null
+            }
+            $property = $JsonObject.PSObject.Properties[$Name]
+            if ($null -eq $property) {
+              return $null
+            }
+            return $property.Value
+          }
+
+          function Find-FirstFileRelative {
+            param(
+              [Parameter(Mandatory = $true)][string]$SearchRoot,
+              [Parameter(Mandatory = $true)][string]$FileName
+            )
+
+            if (-not (Test-Path -LiteralPath $SearchRoot -PathType Container)) {
+              return ""
+            }
+            $match = Get-ChildItem -LiteralPath $SearchRoot -Recurse -File -Filter $FileName |
+              Sort-Object FullName |
+              Select-Object -First 1
+            if ($null -eq $match) {
+              return ""
+            }
+            return ConvertTo-RepoRelativePath -FullPath $match.FullName
+          }
+
+          function Find-JsonEvidenceRelative {
+            param(
+              [Parameter(Mandatory = $true)][string]$SearchRoot,
+              [Parameter(Mandatory = $true)][string]$SchemaVersion,
+              [Parameter(Mandatory = $true)][string]$ClaimId
+            )
+
+            if (-not (Test-Path -LiteralPath $SearchRoot -PathType Container)) {
+              return ""
+            }
+            foreach ($jsonFile in @(Get-ChildItem -LiteralPath $SearchRoot -Recurse -File -Filter "*.json" | Sort-Object FullName)) {
+              $json = Read-JsonFileOrNull -Path $jsonFile.FullName
+              if ($null -eq $json) {
+                continue
+              }
+              if ([string](Get-JsonPropertyValue -JsonObject $json -Name "schema_version") -cne $SchemaVersion) {
+                continue
+              }
+              if ([string](Get-JsonPropertyValue -JsonObject $json -Name "claim_id") -cne $ClaimId) {
+                continue
+              }
+              return ConvertTo-RepoRelativePath -FullPath $jsonFile.FullName
+            }
+            return ""
+          }
+
+          foreach ($sourceArtifact in @(
+              "renderer-package-commercial-quality-host-evidence",
+              "renderer-d3d12-commercial-quality-host-evidence",
+              "renderer-vulkan-strict-commercial-quality-host-evidence",
+              "renderer-apple-metal-commercial-quality-host-evidence",
+              "renderer-metal-memory-profiling-host-artifacts"
+            )) {
+            $destination = Join-Path $sourceRoot $sourceArtifact
+            New-Item -ItemType Directory -Force -Path $destination | Out-Null
+            $downloadOutput = @(gh run download "${{ github.run_id }}" -R "${{ github.repository }}" -n $sourceArtifact -D $destination 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+              Set-Content -LiteralPath (Join-Path $destination "download-failed.log") -Encoding utf8NoBOM -Value ([string]::Join("`n", $downloadOutput))
+              $global:LASTEXITCODE = 0
+            } else {
+              Set-Content -LiteralPath (Join-Path $destination "download-output.log") -Encoding utf8NoBOM -Value ([string]::Join("`n", $downloadOutput))
+            }
+          }
+
+          $packageRoot = "$sourceRoot/renderer-package-commercial-quality-host-evidence"
+          $d3d12Root = "$sourceRoot/renderer-d3d12-commercial-quality-host-evidence"
+          $vulkanRoot = "$sourceRoot/renderer-vulkan-strict-commercial-quality-host-evidence"
+          $appleRoot = "$sourceRoot/renderer-apple-metal-commercial-quality-host-evidence"
+          $metalMemoryRoot = "$sourceRoot/renderer-metal-memory-profiling-host-artifacts"
+          $generated3dLog = Find-FirstFileRelative -SearchRoot $packageRoot -FileName "generated-3d-package.log"
+          $packageHostEvidence = Find-JsonEvidenceRelative -SearchRoot $packageRoot -SchemaVersion "GameEngine.RendererPackageCommercialQualityHostEvidence.v1" -ClaimId "renderer-package-commercial-quality-artifacts-v1"
+          $d3d12HostEvidence = Find-JsonEvidenceRelative -SearchRoot $d3d12Root -SchemaVersion "GameEngine.RendererD3d12CommercialQualityHostEvidence.v1" -ClaimId "renderer-d3d12-commercial-quality-artifact-v1"
+          $vulkanHostEvidence = Find-JsonEvidenceRelative -SearchRoot $vulkanRoot -SchemaVersion "GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1" -ClaimId "renderer-vulkan-strict-commercial-quality-artifact-v1"
+          $appleHostEvidence = Find-JsonEvidenceRelative -SearchRoot $appleRoot -SchemaVersion "GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1" -ClaimId "renderer-apple-metal-commercial-quality-artifact-v1"
+          $metalMemoryEvidence = Find-JsonEvidenceRelative -SearchRoot $metalMemoryRoot -SchemaVersion "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1" -ClaimId "renderer-metal-memory-profiling-host-evidence-v1"
+
+          $collectorLines = @(./tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1 `
+              -Mode Collect `
+              -OutputRootRelative $artifactRoot `
+              -Generated3dStatusLogRelative $generated3dLog `
+              -PackageHostEvidenceRelative $packageHostEvidence `
+              -D3d12HostEvidenceRelative $d3d12HostEvidence `
+              -VulkanStrictHostEvidenceRelative $vulkanHostEvidence `
+              -AppleMetalHostEvidenceRelative $appleHostEvidence `
+              -MetalMemoryProfilingHostEvidenceRelative $metalMemoryEvidence)
+          Set-Content -LiteralPath "$artifactRoot/collector-output.log" -Encoding utf8NoBOM -Value $collectorLines
+          foreach ($requiredLine in @(
+              "renderer_quality_vfx_commercial_host_evidence_mode=Collect",
+              "renderer_quality_vfx_commercial_host_evidence_writes_evidence=1",
+              "renderer_commercial_readiness=0",
+              "renderer_environment_ready=0"
+            )) {
+            if (-not $collectorLines.Contains($requiredLine)) {
+              Write-Error "renderer quality/VFX commercial host evidence missing expected line: $requiredLine"
+            }
+          }
+          if (-not ($collectorLines.Contains("renderer_quality_vfx_commercial_host_evidence_status=ready") -or
+              $collectorLines.Contains("renderer_quality_vfx_commercial_host_evidence_status=host_evidence_required"))) {
+            Write-Error "renderer quality/VFX commercial host evidence did not report ready or host_evidence_required status."
+          }
+
+      - name: Upload renderer quality/VFX commercial artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-quality-vfx-commercial-artifacts
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/quality-vfx-commercial-host-evidence/current-run/**
+          if-no-files-found: error
+
       - name: Capture current workflow artifact list
         shell: pwsh
         env:
