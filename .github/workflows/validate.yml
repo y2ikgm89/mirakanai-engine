@@ -1004,6 +1004,85 @@ jobs:
           path: artifacts/renderer/package-commercial-quality-host-evidence/current-run/**
           if-no-files-found: error
 
+      - name: Collect renderer D3D12 commercial quality host evidence
+        shell: pwsh
+        run: |
+          $artifactRoot = "artifacts/renderer/d3d12-commercial-quality-host-evidence/current-run"
+          $supplementRoot = "$artifactRoot/supplement"
+          New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+          $packageSmokeLog = "$artifactRoot/package-smoke.log"
+          $supplementLog = "$artifactRoot/supplement-output.log"
+          $collectorLog = "$artifactRoot/collector-output.log"
+
+          $packageSmokeLines = @(& ./tools/package-desktop-runtime.ps1 `
+              -GameTarget sample_desktop_runtime_game `
+              -RequireD3d12Shaders `
+              -SmokeArgs @(
+                '--smoke',
+                '--max-frames', '2',
+                '--require-config', 'runtime/sample_desktop_runtime_game.config',
+                '--require-scene-package', 'runtime/sample_desktop_runtime_game.geindex',
+                '--require-d3d12-renderer',
+                '--require-scene-gpu-bindings',
+                '--require-postprocess',
+                '--require-postprocess-depth-input',
+                '--require-d3d12-postprocess-evidence',
+                '--require-renderer-quality-gates',
+                '--require-gpu-memory-policy',
+                '--require-memory-diagnostics',
+                '--require-d3d12-gpu-memory-evidence',
+                '--require-debug-profiling-policy',
+                '--require-d3d12-debug-profiling-evidence',
+                '--require-framegraph-multiqueue-evidence'
+              ) *>&1)
+          Set-Content -LiteralPath $packageSmokeLog -Encoding utf8NoBOM -Value ($packageSmokeLines | ForEach-Object { [string]$_ })
+
+          $supplementLines = @(./tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1 `
+              -Mode Generate `
+              -OutputRootRelative $supplementRoot `
+              -BuildPreset cpp23-release-preset-eval `
+              -BuildConfig Release `
+              -RequireReady)
+          Set-Content -LiteralPath $supplementLog -Encoding utf8NoBOM -Value $supplementLines
+
+          $collectorLines = @(./tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1 `
+              -Mode Generate `
+              -OutputRootRelative $artifactRoot `
+              -PackageSmokeOutputRelative $packageSmokeLog `
+              -SupplementalHostEvidenceRelative "$supplementRoot/d3d12-host-supplement.json" `
+              -RequireReady)
+          Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
+          foreach ($requiredLine in @(
+              "renderer_d3d12_commercial_quality_host_evidence_written=1",
+              "renderer_d3d12_commercial_quality_host_evidence_ready=1",
+              "renderer_d3d12_command_allocator_fence_ready=1",
+              "renderer_d3d12_resource_barrier_ready=1",
+              "renderer_d3d12_timestamp_ready=1",
+              "renderer_d3d12_debug_validation_ready=1",
+              "renderer_d3d12_residency_ready=1",
+              "renderer_d3d12_package_readback_ready=1",
+              "renderer_commercial_readiness=0",
+              "renderer_environment_ready=0"
+            )) {
+            if (-not $collectorLines.Contains($requiredLine)) {
+              Write-Error "renderer D3D12 commercial quality host evidence missing expected line: $requiredLine"
+            }
+          }
+          if (-not $supplementLines.Contains("renderer_d3d12_commercial_quality_host_supplement_ready=1")) {
+            Write-Error "renderer D3D12 commercial quality host supplement did not report ready evidence."
+          }
+
+      - name: Upload renderer D3D12 commercial quality host evidence
+        if: ${{ success() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-d3d12-commercial-quality-host-evidence
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/d3d12-commercial-quality-host-evidence/current-run/**
+          if-no-files-found: error
+
       - name: Save vcpkg tool checkout cache
         if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
         continue-on-error: true
