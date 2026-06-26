@@ -451,6 +451,11 @@ struct Win32DesktopPresentationReport {
     std::uint64_t rhi_gpu_debug_scopes_begun{0};
     std::uint64_t rhi_gpu_debug_scopes_ended{0};
     std::uint64_t rhi_gpu_debug_markers_inserted{0};
+    std::uint64_t rhi_gpu_timestamp_query_writes{0};
+    std::uint64_t rhi_gpu_timestamp_query_results_read{0};
+    std::uint64_t rhi_gpu_timestamp_query_failures{0};
+    std::uint64_t rhi_last_gpu_timestamp_begin{0};
+    std::uint64_t rhi_last_gpu_timestamp_end{0};
     std::size_t framegraph_passes{0};
     RendererStats renderer_stats;
     rhi::RhiStats rhi_stats;
@@ -1196,6 +1201,11 @@ struct Win32DesktopPresentationVulkanDebugProfilingExecutionReport {
     std::uint64_t gpu_debug_scopes_begun{0};
     std::uint64_t gpu_debug_scopes_ended{0};
     std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t gpu_timestamp_query_writes{0};
+    std::uint64_t gpu_timestamp_query_results_read{0};
+    std::uint64_t gpu_timestamp_query_failures{0};
+    std::uint64_t last_gpu_timestamp_begin{0};
+    std::uint64_t last_gpu_timestamp_end{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     std::uint64_t framegraph_render_passes_recorded{0};
     bool gpu_timestamps_current{false};

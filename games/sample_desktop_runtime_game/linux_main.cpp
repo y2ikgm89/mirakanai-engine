@@ -285,6 +285,11 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
               << " vulkan_debug_profiling_execution_ready=0"
               << " vulkan_debug_profiling_execution_selected=" << bit(linux_vulkan_platform_ready)
               << " vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=0"
+              << " vulkan_debug_profiling_execution_gpu_timestamp_query_writes=0"
+              << " vulkan_debug_profiling_execution_gpu_timestamp_query_results_read=0"
+              << " vulkan_debug_profiling_execution_gpu_timestamp_query_failures=0"
+              << " vulkan_debug_profiling_execution_last_gpu_timestamp_begin=0"
+              << " vulkan_debug_profiling_execution_last_gpu_timestamp_end=0"
               << " vulkan_debug_profiling_execution_gpu_timestamps_ok=0"
               << " vulkan_debug_profiling_execution_gpu_debug_markers_ok=0"
               << " vulkan_debug_profiling_execution_frame_diagnostics_ok=0"

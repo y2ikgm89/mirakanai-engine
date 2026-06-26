@@ -63,6 +63,7 @@ enum class VulkanCommandScope : std::uint8_t {
 struct VulkanQueueFamilyCandidate {
     std::uint32_t index{invalid_vulkan_queue_family};
     std::uint32_t queue_count{0};
+    std::uint32_t timestamp_valid_bits{0};
     VulkanQueueCapability capabilities{VulkanQueueCapability::none};
     bool supports_present{false};
 };
@@ -71,6 +72,8 @@ struct VulkanPhysicalDeviceCandidate {
     std::string name;
     VulkanPhysicalDeviceType type{VulkanPhysicalDeviceType::other};
     VulkanApiVersion api_version{};
+    bool timestamp_compute_and_graphics{false};
+    float timestamp_period_nanoseconds{0.0F};
     bool supports_swapchain_extension{false};
     bool supports_dynamic_rendering{false};
     bool supports_synchronization2{false};
@@ -509,6 +512,7 @@ struct VulkanRuntimeBufferTextureCopyResult;
 struct VulkanRuntimeTextureBufferCopyDesc;
 struct VulkanRuntimeTextureBufferCopyResult;
 class VulkanRuntimeCommandPool;
+class VulkanRhiDevice;
 class VulkanRuntimeBuffer;
 class VulkanRuntimeTexture;
 class VulkanRuntimeSampler;
@@ -572,6 +576,8 @@ struct VulkanRuntimePhysicalDeviceSnapshot {
     std::uint32_t driver_version{0};
     std::uint32_t vendor_id{0};
     std::uint32_t device_id{0};
+    bool timestamp_compute_and_graphics{false};
+    float timestamp_period_nanoseconds{0.0F};
     std::vector<VulkanQueueFamilyCandidate> queue_families;
     std::vector<std::string> device_extensions;
     bool supports_swapchain_extension{false};
@@ -703,6 +709,7 @@ class VulkanRuntimeDevice {
     friend void vulkan_label_runtime_object(void* impl_opaque, std::int32_t object_type, std::uint64_t handle,
                                             const char* stable_prefix) noexcept;
     friend void vulkan_apply_debug_utils_names_for_device_and_queues(void* impl_opaque) noexcept;
+    friend class VulkanRhiDevice;
 
     friend VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDesc& loader_desc,
                                                                  const VulkanInstanceCreateDesc& instance_desc,

@@ -854,6 +854,11 @@ MK_TEST("vulkan command resolution plan accepts required loader global instance 
     bool has_swapchain = false;
     bool has_dynamic_rendering = false;
     bool has_synchronization2 = false;
+    bool has_create_query_pool = false;
+    bool has_destroy_query_pool = false;
+    bool has_cmd_reset_query_pool = false;
+    bool has_cmd_write_timestamp2 = false;
+    bool has_get_query_pool_results = false;
     bool has_compute_pipeline = false;
     bool has_compute_dispatch = false;
 
@@ -881,6 +886,21 @@ MK_TEST("vulkan command resolution plan accepts required loader global instance 
             (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
              request.name == "vkCmdPipelineBarrier2") ||
             (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device && request.name == "vkQueueSubmit2");
+        has_create_query_pool =
+            has_create_query_pool ||
+            (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device && request.name == "vkCreateQueryPool");
+        has_destroy_query_pool =
+            has_destroy_query_pool || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
+                                       request.name == "vkDestroyQueryPool");
+        has_cmd_reset_query_pool =
+            has_cmd_reset_query_pool || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
+                                         request.name == "vkCmdResetQueryPool");
+        has_cmd_write_timestamp2 =
+            has_cmd_write_timestamp2 || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
+                                         request.name == "vkCmdWriteTimestamp2");
+        has_get_query_pool_results =
+            has_get_query_pool_results || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
+                                           request.name == "vkGetQueryPoolResults");
         has_compute_pipeline =
             has_compute_pipeline || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
                                      request.name == "vkCreateComputePipelines");
@@ -897,6 +917,11 @@ MK_TEST("vulkan command resolution plan accepts required loader global instance 
     MK_REQUIRE(has_swapchain);
     MK_REQUIRE(has_dynamic_rendering);
     MK_REQUIRE(has_synchronization2);
+    MK_REQUIRE(has_create_query_pool);
+    MK_REQUIRE(has_destroy_query_pool);
+    MK_REQUIRE(has_cmd_reset_query_pool);
+    MK_REQUIRE(has_cmd_write_timestamp2);
+    MK_REQUIRE(has_get_query_pool_results);
     MK_REQUIRE(has_compute_pipeline);
     MK_REQUIRE(has_compute_dispatch);
     MK_REQUIRE(plan.supported);
@@ -915,23 +940,53 @@ MK_TEST("vulkan device command requests gate synchronization2 commands on enable
     const auto without_synchronization2 = mirakana::rhi::vulkan::vulkan_device_command_requests(plan);
     bool has_pipeline_barrier2 = false;
     bool has_queue_submit2 = false;
+    bool has_create_query_pool = false;
+    bool has_destroy_query_pool = false;
+    bool has_cmd_reset_query_pool = false;
+    bool has_cmd_write_timestamp2 = false;
+    bool has_get_query_pool_results = false;
     for (const auto& request : without_synchronization2) {
         has_pipeline_barrier2 = has_pipeline_barrier2 || request.name == "vkCmdPipelineBarrier2";
         has_queue_submit2 = has_queue_submit2 || request.name == "vkQueueSubmit2";
+        has_create_query_pool = has_create_query_pool || request.name == "vkCreateQueryPool";
+        has_destroy_query_pool = has_destroy_query_pool || request.name == "vkDestroyQueryPool";
+        has_cmd_reset_query_pool = has_cmd_reset_query_pool || request.name == "vkCmdResetQueryPool";
+        has_cmd_write_timestamp2 = has_cmd_write_timestamp2 || request.name == "vkCmdWriteTimestamp2";
+        has_get_query_pool_results = has_get_query_pool_results || request.name == "vkGetQueryPoolResults";
     }
 
     MK_REQUIRE(!has_pipeline_barrier2);
     MK_REQUIRE(!has_queue_submit2);
+    MK_REQUIRE(!has_create_query_pool);
+    MK_REQUIRE(!has_destroy_query_pool);
+    MK_REQUIRE(!has_cmd_reset_query_pool);
+    MK_REQUIRE(!has_cmd_write_timestamp2);
+    MK_REQUIRE(!has_get_query_pool_results);
 
     plan.synchronization2_enabled = true;
     const auto with_synchronization2 = mirakana::rhi::vulkan::vulkan_device_command_requests(plan);
+    has_create_query_pool = false;
+    has_destroy_query_pool = false;
+    has_cmd_reset_query_pool = false;
+    has_cmd_write_timestamp2 = false;
+    has_get_query_pool_results = false;
     for (const auto& request : with_synchronization2) {
         has_pipeline_barrier2 = has_pipeline_barrier2 || request.name == "vkCmdPipelineBarrier2";
         has_queue_submit2 = has_queue_submit2 || request.name == "vkQueueSubmit2";
+        has_create_query_pool = has_create_query_pool || request.name == "vkCreateQueryPool";
+        has_destroy_query_pool = has_destroy_query_pool || request.name == "vkDestroyQueryPool";
+        has_cmd_reset_query_pool = has_cmd_reset_query_pool || request.name == "vkCmdResetQueryPool";
+        has_cmd_write_timestamp2 = has_cmd_write_timestamp2 || request.name == "vkCmdWriteTimestamp2";
+        has_get_query_pool_results = has_get_query_pool_results || request.name == "vkGetQueryPoolResults";
     }
 
     MK_REQUIRE(has_pipeline_barrier2);
     MK_REQUIRE(has_queue_submit2);
+    MK_REQUIRE(has_create_query_pool);
+    MK_REQUIRE(has_destroy_query_pool);
+    MK_REQUIRE(has_cmd_reset_query_pool);
+    MK_REQUIRE(has_cmd_write_timestamp2);
+    MK_REQUIRE(has_get_query_pool_results);
 }
 
 MK_TEST("vulkan command resolution plan rejects missing required commands but tolerates missing optional commands") {
@@ -4261,6 +4316,13 @@ MK_TEST("vulkan rhi device bridge records standalone texture copy commands when 
     MK_REQUIRE(stats.buffer_texture_copies == 1);
     MK_REQUIRE(stats.texture_buffer_copies == 1);
     MK_REQUIRE(stats.command_lists_submitted == 1);
+    if (rhi->gpu_timestamp_ticks_per_second() > 0) {
+        MK_REQUIRE(stats.gpu_timestamp_query_pools_created >= 1);
+        MK_REQUIRE(stats.gpu_timestamp_query_pools_destroyed >= 1);
+        MK_REQUIRE(stats.gpu_timestamp_query_writes >= 2);
+        MK_REQUIRE(stats.gpu_timestamp_query_results_read >= 1);
+        MK_REQUIRE(stats.gpu_timestamp_query_failures == 0);
+    }
 #endif
 }
 
