@@ -92,7 +92,7 @@ try {
     foreach ($expectedLine in @(
             "validation_recipe=renderer-commercial-readiness-final-retained-root-artifact-import",
             "renderer_commercial_readiness_final_retained_root_artifact_import_mode=Plan",
-            "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=6",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=7",
             "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=7",
             "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=0",
@@ -141,11 +141,12 @@ try {
 
     $artifactListPath = "$contractRootRelative/github-artifacts.json"
     Write-JsonObject -Path (ConvertTo-LocalPath $artifactListPath) -Value ([ordered]@{
-            total_count = 4
+            total_count = 5
             artifacts = @(
                 [ordered]@{ name = "windows-packages"; expired = $false },
                 [ordered]@{ name = "linux-vulkan-host-evidence"; expired = $false },
                 [ordered]@{ name = "renderer-metal-memory-profiling-host-artifacts"; expired = $false },
+                [ordered]@{ name = "renderer-package-commercial-quality-host-evidence"; expired = $false },
                 [ordered]@{ name = "metal-host-optimization-artifacts"; expired = $false }
             )
         })
@@ -155,11 +156,11 @@ try {
             -NoWrite)
     foreach ($expectedLine in @(
             "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
-            "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=5",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=2",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
             "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available=0",
-            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_source_workflow_artifacts=4",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_source_workflow_artifacts=5",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifacts=1",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifact_names=renderer-clean-room-legal-review-artifacts",
             "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifacts=0",
