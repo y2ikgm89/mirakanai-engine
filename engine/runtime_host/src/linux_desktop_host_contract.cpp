@@ -438,6 +438,8 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
                                            : (!copy_result.diagnostic.empty() ? copy_result.diagnostic
                                                                               : present_barrier.diagnostic))));
         }
+        request.synchronization2_barriers =
+            render_barrier.barrier_count + readback_barrier.barrier_count + present_barrier.barrier_count;
 
         const auto submit_result = rhi::vulkan::submit_runtime_command_buffer(
             device_result.device, pool_result.pool, sync_result.sync,
@@ -454,6 +456,7 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
                                                       rhi::vulkan::VulkanRuntimeReadbackBufferReadDesc{
                                                           .byte_offset = 0, .byte_count = copy_result.required_bytes});
         request.readback_nonzero = read_result.read && has_nonzero_byte(read_result.bytes);
+        request.readback_bytes = request.readback_nonzero ? static_cast<std::uint64_t>(read_result.bytes.size()) : 0U;
 
         const auto present_result = rhi::vulkan::present_runtime_swapchain_image(
             device_result.device, swapchain_result.swapchain, sync_result.sync,
@@ -461,6 +464,7 @@ execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresenta
                                                            .wait_render_finished_semaphore = true});
         request.frame_presented = present_result.presented;
         const auto validation_log = device_result.device.validation_log_snapshot();
+        request.validation_layer_ready = validation_log.capture_enabled && validation_log.debug_utils_messenger_created;
         request.validation_log_clean = validation_log.clean();
 
         auto report = evaluate_linux_desktop_vulkan_presentation_request(request);
@@ -551,10 +555,14 @@ evaluate_linux_desktop_vulkan_presentation_request(const LinuxDesktopVulkanPrese
     LinuxDesktopVulkanPresentationReport report;
     report.native_handle_access = request.native_handle_access;
     report.environment_platform_windows_vulkan_inferred = false;
+    report.vulkan_validation_layer_ready = request.validation_layer_ready && request.validation_log_clean;
+    report.vulkan_synchronization2_barriers = request.synchronization2_barriers;
+    report.vulkan_readback_bytes = request.readback_nonzero ? request.readback_bytes : 0U;
 
     if (request.native_handle_access) {
         report.status = LinuxDesktopVulkanPresentationStatus::native_handle_access;
         report.diagnostic = "Linux Vulkan presentation evidence must not expose native handles";
+        report.linux_vulkan_strict_counter_evidence_ready = false;
         return report;
     }
 
@@ -598,6 +606,9 @@ evaluate_linux_desktop_vulkan_presentation_request(const LinuxDesktopVulkanPrese
     report.status = LinuxDesktopVulkanPresentationStatus::ready;
     report.linux_vulkan_validation_log_clean = true;
     report.environment_platform_linux_vulkan_ready = true;
+    report.linux_vulkan_strict_counter_evidence_ready = report.vulkan_validation_layer_ready &&
+                                                        report.vulkan_synchronization2_barriers > 0U &&
+                                                        report.vulkan_readback_bytes > 0U;
     report.diagnostic = "Linux Vulkan presentation package smoke, readback, and validation logs are ready";
     return report;
 }

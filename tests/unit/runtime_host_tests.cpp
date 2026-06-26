@@ -645,6 +645,10 @@ MK_TEST("linux desktop vulkan presentation report requires package smoke readbac
     MK_REQUIRE(!missing.linux_vulkan_validation_log_clean);
     MK_REQUIRE(!missing.environment_platform_linux_vulkan_ready);
     MK_REQUIRE(!missing.native_handle_access);
+    MK_REQUIRE(!missing.linux_vulkan_strict_counter_evidence_ready);
+    MK_REQUIRE(!missing.vulkan_validation_layer_ready);
+    MK_REQUIRE(missing.vulkan_synchronization2_barriers == 0U);
+    MK_REQUIRE(missing.vulkan_readback_bytes == 0U);
 
     auto ready_request = mirakana::LinuxDesktopVulkanPresentationRequest{
         .linux_host = true,
@@ -657,6 +661,9 @@ MK_TEST("linux desktop vulkan presentation report requires package smoke readbac
         .frame_presented = true,
         .readback_nonzero = true,
         .validation_log_clean = true,
+        .validation_layer_ready = true,
+        .synchronization2_barriers = 3U,
+        .readback_bytes = 64U * 64U * 4U,
     };
     const auto ready = mirakana::evaluate_linux_desktop_vulkan_presentation_request(ready_request);
     MK_REQUIRE(ready.ready());
@@ -667,6 +674,10 @@ MK_TEST("linux desktop vulkan presentation report requires package smoke readbac
     MK_REQUIRE(ready.environment_platform_linux_vulkan_ready);
     MK_REQUIRE(!ready.environment_platform_windows_vulkan_inferred);
     MK_REQUIRE(!ready.native_handle_access);
+    MK_REQUIRE(ready.linux_vulkan_strict_counter_evidence_ready);
+    MK_REQUIRE(ready.vulkan_validation_layer_ready);
+    MK_REQUIRE(ready.vulkan_synchronization2_barriers == 3U);
+    MK_REQUIRE(ready.vulkan_readback_bytes == 64U * 64U * 4U);
 
     ready_request.native_handle_access = true;
     const auto leaked = mirakana::evaluate_linux_desktop_vulkan_presentation_request(ready_request);
@@ -674,6 +685,7 @@ MK_TEST("linux desktop vulkan presentation report requires package smoke readbac
     MK_REQUIRE(leaked.status == mirakana::LinuxDesktopVulkanPresentationStatus::native_handle_access);
     MK_REQUIRE(leaked.native_handle_access);
     MK_REQUIRE(!leaked.environment_platform_linux_vulkan_ready);
+    MK_REQUIRE(!leaked.linux_vulkan_strict_counter_evidence_ready);
 }
 
 MK_TEST("linux desktop vulkan presentation probe is fail closed before host runtime execution") {
@@ -689,6 +701,9 @@ MK_TEST("linux desktop vulkan presentation probe is fail closed before host runt
     MK_REQUIRE(!report.environment_platform_linux_vulkan_ready);
     MK_REQUIRE(!report.environment_platform_windows_vulkan_inferred);
     MK_REQUIRE(!report.native_handle_access);
+    MK_REQUIRE(!report.linux_vulkan_strict_counter_evidence_ready);
+    MK_REQUIRE(report.vulkan_synchronization2_barriers == 0U);
+    MK_REQUIRE(report.vulkan_readback_bytes == 0U);
 }
 
 int main() {

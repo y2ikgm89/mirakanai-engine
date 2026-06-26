@@ -42,12 +42,18 @@ int main() {
             .frame_presented = true,
             .readback_nonzero = true,
             .validation_log_clean = true,
+            .validation_layer_ready = true,
+            .synchronization2_barriers = 3U,
+            .readback_bytes = 64U,
         });
 
     return request_report.linux_host && !request_report.native_handle_access && !probe.native_handle_access &&
                    !mirakana::linux_desktop_host_status_name(probe.status).empty() && manual.ready() &&
                    mirakana::linux_desktop_host_status_name(manual.status) == std::string_view{"ready"} &&
                    presentation.ready() && !presentation.environment_platform_windows_vulkan_inferred &&
+                   presentation.linux_vulkan_strict_counter_evidence_ready &&
+                   presentation.vulkan_validation_layer_ready && presentation.vulkan_synchronization2_barriers == 3U &&
+                   presentation.vulkan_readback_bytes == 64U &&
                    mirakana::linux_desktop_vulkan_presentation_status_name(presentation.status) ==
                        std::string_view{"ready"}
                ? 0
