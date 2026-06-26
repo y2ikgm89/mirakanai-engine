@@ -316,7 +316,6 @@ with_runtime_diagnostic(const LinuxDesktopVulkanPresentationRequest& request, st
     return report;
 }
 
-#if defined(__linux__)
 [[nodiscard]] LinuxDesktopVulkanStrictCommercialEvidence collect_linux_vulkan_strict_commercial_evidence(
     const rhi::vulkan::VulkanLoaderProbeDesc& loader_desc, const rhi::vulkan::VulkanInstanceCreateDesc& instance_desc,
     const rhi::SurfaceHandle surface, const std::uint64_t framegraph_barrier_steps) noexcept {
@@ -384,7 +383,6 @@ with_runtime_diagnostic(const LinuxDesktopVulkanPresentationRequest& request, st
 
     return evidence;
 }
-#endif
 
 [[nodiscard]] LinuxDesktopVulkanPresentationReport
 execute_linux_desktop_vulkan_presentation_probe(const LinuxDesktopVulkanPresentationProbeDesc& desc) {
