@@ -76,6 +76,10 @@ $importerScript = Join-Path $root "tools/import-renderer-commercial-readiness-fi
 if (-not (Test-Path -LiteralPath $importerScript -PathType Leaf)) {
     Write-Error "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1 must exist."
 }
+$importerText = Get-Content -LiteralPath $importerScript -Raw
+if (-not $importerText.Contains('$global:LASTEXITCODE = 0')) {
+    Write-Error "GitHub artifact intake must clear handled native gh download failures before returning from non-RequireReady import."
+}
 
 $contractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-contract-$PID"
 $finalRootOnlyContractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-final-root-only-contract-$PID"
