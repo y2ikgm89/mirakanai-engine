@@ -209,93 +209,136 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
                                               const mirakana::LinuxDesktopVulkanPresentationReport& presentation) {
     const bool strict_requirements_requested = options.strict_vulkan_commercial_requirements_requested();
     const bool linux_vulkan_platform_ready = presentation.ready();
+    const bool strict_aggregate_ready = presentation.environment_vulkan_strict_aggregate_ready;
+    const bool strict_commercial_ready = presentation.linux_vulkan_strict_commercial_ready;
 
-    std::cout << " renderer_vulkan_strict_linux_gate_status=host_evidence_required"
-              << " renderer_vulkan_strict_linux_gate_requested=" << bit(strict_requirements_requested)
-              << " renderer_vulkan_strict_linux_gate_emit_only="
-              << bit(options.emit_vulkan_strict_commercial_host_gate && !strict_requirements_requested)
-              << " renderer_vulkan_strict_linux_gate_runtime_counters_ready="
-              << bit(presentation.linux_vulkan_strict_counter_evidence_ready)
-              << " renderer_vulkan_strict_linux_gate_readback_bytes=" << presentation.vulkan_readback_bytes
-              << " environment_vulkan_strict_aggregate_status=host_evidence_required"
-              << " environment_vulkan_strict_aggregate_ready=0"
-              << " environment_vulkan_strict_aggregate_profile_v2=0"
-              << " environment_vulkan_strict_aggregate_selected_backend="
-              << (linux_vulkan_platform_ready ? "vulkan" : "not_vulkan")
-              << " environment_vulkan_strict_aggregate_postprocess=0"
-              << " environment_vulkan_strict_aggregate_fog=0"
-              << " environment_vulkan_strict_aggregate_physical_sky=0"
-              << " environment_vulkan_strict_aggregate_lighting=0"
-              << " environment_vulkan_strict_aggregate_volumetric_fog=0"
-              << " environment_vulkan_strict_aggregate_volumetric_cloud=0"
-              << " environment_vulkan_strict_aggregate_precipitation=0"
-              << " environment_vulkan_strict_aggregate_quality_budget=0"
-              << " environment_vulkan_strict_aggregate_feature_rows=0"
-              << " environment_vulkan_strict_aggregate_descriptor_set_bindings=0"
-              << " environment_vulkan_strict_aggregate_toolchain_ready=0"
-              << " environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready=0"
-              << " environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready=0"
-              << " environment_vulkan_strict_aggregate_spirv_validation_ready=0"
-              << " environment_vulkan_strict_aggregate_validation_layers_ready="
-              << bit(presentation.vulkan_validation_layer_ready)
-              << " environment_vulkan_strict_aggregate_device_features_ready=0"
-              << " environment_vulkan_strict_aggregate_toolchain_rows=0"
-              << " environment_vulkan_strict_aggregate_missing_toolchain_rows=6"
-              << " environment_vulkan_strict_aggregate_missing_validation_layer_rows="
-              << bit(!presentation.vulkan_validation_layer_ready)
-              << " environment_vulkan_strict_aggregate_missing_spirv_validation_rows=1"
-              << " environment_vulkan_strict_aggregate_unsupported_feature_device_rows=0"
-              << " environment_vulkan_strict_aggregate_synchronization2_barriers="
-              << presentation.vulkan_synchronization2_barriers
-              << " environment_vulkan_strict_aggregate_resource_usage_layout_ready=0"
-              << " environment_vulkan_strict_aggregate_resource_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_attachment_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_cube_map_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_weather_texture_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_froxel_buffer_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows="
-              << bit(presentation.vulkan_readback_bytes > 0U) << " environment_vulkan_strict_aggregate_renderer_draws=0"
-              << " environment_vulkan_strict_aggregate_compute_dispatches=0"
-              << " environment_vulkan_strict_aggregate_texture_uploads=0"
-              << " environment_vulkan_strict_aggregate_readback_rows=" << bit(presentation.vulkan_readback_bytes > 0U)
-              << " environment_vulkan_strict_aggregate_native_handle_access=0"
-              << " environment_vulkan_strict_aggregate_d3d12_fallback=0"
-              << " environment_vulkan_strict_aggregate_metal_fallback=0"
-              << " environment_vulkan_strict_aggregate_backend_parity=0"
-              << " environment_vulkan_strict_aggregate_broad_optimization_claimed=0"
-              << " environment_vulkan_strict_aggregate_diagnostics=1"
-              << " vulkan_gpu_memory_execution_status=host_evidence_required"
-              << " vulkan_gpu_memory_execution_ready=0"
-              << " vulkan_gpu_memory_execution_selected=" << bit(linux_vulkan_platform_ready)
-              << " vulkan_gpu_memory_execution_committed_byte_estimate_available=0"
-              << " vulkan_gpu_memory_execution_committed_resources_byte_estimate=0"
-              << " vulkan_gpu_memory_execution_upload_bytes_written=0"
-              << " vulkan_gpu_memory_execution_framegraph_barrier_steps_executed=0"
-              << " vulkan_gpu_memory_execution_budget_ok=0"
-              << " vulkan_gpu_memory_execution_transient_heap_ok=0"
-              << " debug_profiling_policy_status=host_evidence_required"
-              << " debug_profiling_policy_ready=0"
-              << " debug_profiling_policy_backend_profiling_evidence_required=1"
-              << " debug_profiling_policy_backend_profiling_evidence_ready=0"
-              << " debug_profiling_policy_gpu_timestamp_ticks_per_second=0"
-              << " debug_profiling_policy_gpu_timestamp_requests=1"
-              << " vulkan_debug_profiling_execution_status=host_evidence_required"
-              << " vulkan_debug_profiling_execution_ready=0"
-              << " vulkan_debug_profiling_execution_selected=" << bit(linux_vulkan_platform_ready)
-              << " vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=0"
-              << " vulkan_debug_profiling_execution_gpu_timestamp_query_writes=0"
-              << " vulkan_debug_profiling_execution_gpu_timestamp_query_results_read=0"
-              << " vulkan_debug_profiling_execution_gpu_timestamp_query_failures=0"
-              << " vulkan_debug_profiling_execution_last_gpu_timestamp_begin=0"
-              << " vulkan_debug_profiling_execution_last_gpu_timestamp_end=0"
-              << " vulkan_debug_profiling_execution_gpu_timestamps_ok=0"
-              << " vulkan_debug_profiling_execution_gpu_debug_markers_ok=0"
-              << " vulkan_debug_profiling_execution_frame_diagnostics_ok=0"
-              << " vulkan_debug_profiling_execution_framegraph_barrier_steps_executed=0"
-              << " renderer_vulkan_timestamp_ready=0"
-              << " renderer_commercial_readiness=0";
+    std::cout
+        << " renderer_vulkan_strict_linux_gate_status="
+        << (strict_commercial_ready ? "ready" : "host_evidence_required")
+        << " renderer_vulkan_strict_linux_gate_requested=" << bit(strict_requirements_requested)
+        << " renderer_vulkan_strict_linux_gate_emit_only="
+        << bit(options.emit_vulkan_strict_commercial_host_gate && !strict_requirements_requested)
+        << " renderer_vulkan_strict_linux_gate_runtime_counters_ready="
+        << bit(presentation.linux_vulkan_strict_counter_evidence_ready)
+        << " renderer_vulkan_strict_linux_gate_readback_bytes=" << presentation.vulkan_readback_bytes
+        << " environment_vulkan_strict_aggregate_status="
+        << (strict_aggregate_ready ? "ready" : "host_evidence_required")
+        << " environment_vulkan_strict_aggregate_ready=" << bit(strict_aggregate_ready)
+        << " environment_vulkan_strict_aggregate_profile_v2=" << bit(strict_aggregate_ready)
+        << " environment_vulkan_strict_aggregate_selected_backend="
+        << (linux_vulkan_platform_ready ? "vulkan" : "not_vulkan")
+        << " environment_vulkan_strict_aggregate_postprocess=" << bit(presentation.strict_aggregate_postprocess_ready)
+        << " environment_vulkan_strict_aggregate_fog=" << bit(presentation.strict_aggregate_fog_ready)
+        << " environment_vulkan_strict_aggregate_physical_sky=" << bit(presentation.strict_aggregate_physical_sky_ready)
+        << " environment_vulkan_strict_aggregate_lighting=" << bit(presentation.strict_aggregate_lighting_ready)
+        << " environment_vulkan_strict_aggregate_volumetric_fog="
+        << bit(presentation.strict_aggregate_volumetric_fog_ready)
+        << " environment_vulkan_strict_aggregate_volumetric_cloud="
+        << bit(presentation.strict_aggregate_volumetric_cloud_ready)
+        << " environment_vulkan_strict_aggregate_precipitation="
+        << bit(presentation.strict_aggregate_precipitation_ready)
+        << " environment_vulkan_strict_aggregate_quality_budget="
+        << bit(presentation.strict_aggregate_quality_budget_ready)
+        << " environment_vulkan_strict_aggregate_feature_rows=" << presentation.strict_aggregate_feature_rows
+        << " environment_vulkan_strict_aggregate_descriptor_set_bindings="
+        << presentation.strict_aggregate_descriptor_set_bindings
+        << " environment_vulkan_strict_aggregate_toolchain_ready=" << bit(presentation.strict_aggregate_toolchain_ready)
+        << " environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready="
+        << bit(presentation.strict_aggregate_vulkan_sdk_tools_ready)
+        << " environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready="
+        << bit(presentation.strict_aggregate_dxc_spirv_codegen_ready)
+        << " environment_vulkan_strict_aggregate_spirv_validation_ready="
+        << bit(presentation.strict_aggregate_spirv_validation_ready)
+        << " environment_vulkan_strict_aggregate_validation_layers_ready="
+        << bit(presentation.vulkan_validation_layer_ready)
+        << " environment_vulkan_strict_aggregate_device_features_ready="
+        << bit(presentation.strict_aggregate_device_features_ready)
+        << " environment_vulkan_strict_aggregate_toolchain_rows=" << presentation.strict_aggregate_toolchain_rows
+        << " environment_vulkan_strict_aggregate_missing_toolchain_rows="
+        << (presentation.strict_aggregate_toolchain_ready ? 0 : 6)
+        << " environment_vulkan_strict_aggregate_missing_validation_layer_rows="
+        << bit(!presentation.vulkan_validation_layer_ready)
+        << " environment_vulkan_strict_aggregate_missing_spirv_validation_rows="
+        << bit(!presentation.strict_aggregate_spirv_validation_ready)
+        << " environment_vulkan_strict_aggregate_unsupported_feature_device_rows=0"
+        << " environment_vulkan_strict_aggregate_synchronization2_barriers="
+        << presentation.vulkan_synchronization2_barriers
+        << " environment_vulkan_strict_aggregate_resource_usage_layout_ready="
+        << bit(presentation.strict_aggregate_resource_usage_layout_ready)
+        << " environment_vulkan_strict_aggregate_resource_usage_layout_rows="
+        << presentation.strict_aggregate_resource_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_attachment_usage_layout_rows="
+        << presentation.strict_aggregate_attachment_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows="
+        << presentation.strict_aggregate_sampled_texture_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows="
+        << presentation.strict_aggregate_storage_buffer_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_cube_map_usage_layout_rows="
+        << presentation.strict_aggregate_cube_map_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_weather_texture_usage_layout_rows="
+        << presentation.strict_aggregate_weather_texture_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_froxel_buffer_usage_layout_rows="
+        << presentation.strict_aggregate_froxel_buffer_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows="
+        << presentation.strict_aggregate_readback_resource_usage_layout_rows
+        << " environment_vulkan_strict_aggregate_renderer_draws=" << presentation.strict_aggregate_renderer_draws
+        << " environment_vulkan_strict_aggregate_compute_dispatches="
+        << presentation.strict_aggregate_compute_dispatches
+        << " environment_vulkan_strict_aggregate_texture_uploads=" << presentation.strict_aggregate_texture_uploads
+        << " environment_vulkan_strict_aggregate_readback_rows=" << presentation.strict_aggregate_readback_rows
+        << " environment_vulkan_strict_aggregate_native_handle_access=0"
+        << " environment_vulkan_strict_aggregate_d3d12_fallback=0"
+        << " environment_vulkan_strict_aggregate_metal_fallback=0"
+        << " environment_vulkan_strict_aggregate_backend_parity=0"
+        << " environment_vulkan_strict_aggregate_broad_optimization_claimed=0"
+        << " environment_vulkan_strict_aggregate_diagnostics=" << bit(!strict_aggregate_ready)
+        << " vulkan_gpu_memory_execution_status="
+        << mirakana::linux_desktop_vulkan_strict_execution_status_name(presentation.vulkan_gpu_memory_execution_status)
+        << " vulkan_gpu_memory_execution_ready=" << bit(presentation.vulkan_gpu_memory_execution_ready)
+        << " vulkan_gpu_memory_execution_selected=" << bit(linux_vulkan_platform_ready)
+        << " vulkan_gpu_memory_execution_committed_byte_estimate_available="
+        << bit(presentation.vulkan_gpu_memory_committed_byte_estimate_available)
+        << " vulkan_gpu_memory_execution_committed_resources_byte_estimate="
+        << presentation.vulkan_gpu_memory_committed_resources_byte_estimate
+        << " vulkan_gpu_memory_execution_upload_bytes_written=" << presentation.vulkan_gpu_memory_upload_bytes_written
+        << " vulkan_gpu_memory_execution_framegraph_barrier_steps_executed="
+        << presentation.vulkan_gpu_memory_framegraph_barrier_steps_executed
+        << " vulkan_gpu_memory_execution_budget_ok=" << bit(presentation.vulkan_gpu_memory_budget_ok)
+        << " vulkan_gpu_memory_execution_transient_heap_ok=" << bit(presentation.vulkan_gpu_memory_transient_heap_ok)
+        << " debug_profiling_policy_status="
+        << (presentation.debug_profiling_policy_ready ? "ready" : "host_evidence_required")
+        << " debug_profiling_policy_ready=" << bit(presentation.debug_profiling_policy_ready)
+        << " debug_profiling_policy_backend_profiling_evidence_required=1"
+        << " debug_profiling_policy_backend_profiling_evidence_ready="
+        << bit(presentation.debug_profiling_policy_backend_evidence_ready)
+        << " debug_profiling_policy_gpu_timestamp_ticks_per_second="
+        << presentation.vulkan_debug_profiling_gpu_timestamp_ticks_per_second
+        << " debug_profiling_policy_gpu_timestamp_requests="
+        << presentation.debug_profiling_policy_gpu_timestamp_requests << " vulkan_debug_profiling_execution_status="
+        << mirakana::linux_desktop_vulkan_strict_execution_status_name(
+               presentation.vulkan_debug_profiling_execution_status)
+        << " vulkan_debug_profiling_execution_ready=" << bit(presentation.vulkan_debug_profiling_execution_ready)
+        << " vulkan_debug_profiling_execution_selected=" << bit(linux_vulkan_platform_ready)
+        << " vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second="
+        << presentation.vulkan_debug_profiling_gpu_timestamp_ticks_per_second
+        << " vulkan_debug_profiling_execution_gpu_timestamp_query_writes="
+        << presentation.vulkan_debug_profiling_gpu_timestamp_query_writes
+        << " vulkan_debug_profiling_execution_gpu_timestamp_query_results_read="
+        << presentation.vulkan_debug_profiling_gpu_timestamp_query_results_read
+        << " vulkan_debug_profiling_execution_gpu_timestamp_query_failures="
+        << presentation.vulkan_debug_profiling_gpu_timestamp_query_failures
+        << " vulkan_debug_profiling_execution_gpu_timestamps_ok="
+        << bit(presentation.vulkan_debug_profiling_gpu_timestamps_ok)
+        << " vulkan_debug_profiling_execution_gpu_debug_markers_ok="
+        << bit(presentation.vulkan_debug_profiling_gpu_debug_markers_ok)
+        << " vulkan_debug_profiling_execution_frame_diagnostics_ok="
+        << bit(presentation.vulkan_debug_profiling_frame_diagnostics_ok)
+        << " vulkan_debug_profiling_execution_framegraph_barrier_steps_executed="
+        << presentation.vulkan_debug_profiling_framegraph_barrier_steps_executed
+        << " vulkan_debug_profiling_execution_framegraph_render_passes_recorded="
+        << presentation.vulkan_debug_profiling_framegraph_render_passes_recorded
+        << " renderer_vulkan_timestamp_ready=" << bit(presentation.renderer_vulkan_timestamp_ready)
+        << " renderer_commercial_readiness=0";
 }
 
 } // namespace

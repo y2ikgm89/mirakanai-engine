@@ -26,6 +26,24 @@ Set-Location $root
 $expectedSourceId = "Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25"
 $artifactRelative = "$OutputRootRelative/vulkan-strict-host-evidence.json"
 $summaryRelative = "$OutputRootRelative/host-gate-summary.json"
+$expectedStrictToolchainRows = "6"
+$expectedStrictFeatureRows = "6"
+$expectedStrictDescriptorSetBindings = "15"
+$expectedStrictResourceUsageLayoutRows = "20"
+$expectedStrictAttachmentUsageLayoutRows = "2"
+$expectedStrictSampledTextureUsageLayoutRows = "6"
+$expectedStrictStorageBufferUsageLayoutRows = "2"
+$expectedStrictCubeMapUsageLayoutRows = "1"
+$expectedStrictWeatherTextureUsageLayoutRows = "3"
+$expectedStrictFroxelBufferUsageLayoutRows = "1"
+$expectedStrictReadbackResourceUsageLayoutRows = "5"
+$expectedStrictRendererDraws = "2"
+$expectedStrictComputeDispatches = "1"
+$expectedStrictTextureUploads = "3"
+$expectedStrictReadbackRows = "5"
+$expectedStrictTimestampQueryWrites = "2"
+$expectedStrictTimestampQueryResultsRead = "1"
+$expectedStrictFramegraphRenderPassesRecorded = "3"
 
 function ConvertTo-CounterBit {
     param([bool]$Value)
@@ -327,11 +345,29 @@ Add-BlockerIfFalse $blockers $validationLayerReady "vulkan_validation_layer_pack
 $syncValidationReady = $validationLayerReady -and $synchronization2Ready
 Add-BlockerIfFalse $blockers $syncValidationReady "vulkan_sync_validation_package_counters_required"
 
+$featureRowsReady =
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_postprocess" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_fog" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_physical_sky" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_lighting" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_volumetric_fog" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_volumetric_cloud" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_precipitation" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_quality_budget" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_feature_rows" -Expected $expectedStrictFeatureRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_descriptor_set_bindings" -Expected $expectedStrictDescriptorSetBindings)
+Add-BlockerIfFalse $blockers $featureRowsReady "vulkan_strict_aggregate_feature_counters_required"
+
 $memoryBindingReady =
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_resource_usage_layout_ready" -Expected "1") -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows" -Minimum 1) -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows" -Minimum 1) -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_cube_map_usage_layout_rows" -Minimum 1) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_resource_usage_layout_rows" -Expected $expectedStrictResourceUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_attachment_usage_layout_rows" -Expected $expectedStrictAttachmentUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows" -Expected $expectedStrictStorageBufferUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows" -Expected $expectedStrictSampledTextureUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_cube_map_usage_layout_rows" -Expected $expectedStrictCubeMapUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_weather_texture_usage_layout_rows" -Expected $expectedStrictWeatherTextureUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_froxel_buffer_usage_layout_rows" -Expected $expectedStrictFroxelBufferUsageLayoutRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows" -Expected $expectedStrictReadbackResourceUsageLayoutRows) -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_gpu_memory_execution_ready" -Expected "1") -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_gpu_memory_execution_selected" -Expected "1") -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_gpu_memory_execution_committed_byte_estimate_available" -Expected "1") -and
@@ -353,9 +389,13 @@ $timestampReady =
     (Test-CounterPositiveInteger -Counters $counters -Name "debug_profiling_policy_gpu_timestamp_requests") -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_ready" -Expected "1") -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_selected" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_gpu_timestamp_query_writes" -Expected $expectedStrictTimestampQueryWrites) -and
+    (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_gpu_timestamp_query_results_read" -Expected $expectedStrictTimestampQueryResultsRead) -and
+    (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_gpu_timestamp_query_failures" -Expected "0") -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_gpu_timestamps_ok" -Expected "1") -and
     (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_frame_diagnostics_ok" -Expected "1") -and
-    (Test-CounterPositiveInteger -Counters $counters -Name "vulkan_debug_profiling_execution_framegraph_barrier_steps_executed")
+    (Test-CounterPositiveInteger -Counters $counters -Name "vulkan_debug_profiling_execution_framegraph_barrier_steps_executed") -and
+    (Test-CounterEquals -Counters $counters -Name "vulkan_debug_profiling_execution_framegraph_render_passes_recorded" -Expected $expectedStrictFramegraphRenderPassesRecorded)
 Add-BlockerIfFalse $blockers $timestampReady "vulkan_timestamp_query_package_counters_required"
 
 $shaderValidationReady =
@@ -363,17 +403,18 @@ $shaderValidationReady =
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready" -Expected "1") -and
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready" -Expected "1") -and
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_spirv_validation_ready" -Expected "1") -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_toolchain_rows" -Expected $expectedStrictToolchainRows) -and
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_missing_toolchain_rows" -Expected "0") -and
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_missing_spirv_validation_rows" -Expected "0") -and
     (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_unsupported_feature_device_rows" -Expected "0")
 Add-BlockerIfFalse $blockers $shaderValidationReady "vulkan_spirv_shader_validation_package_counters_required"
 
 $packageReadbackReady =
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_renderer_draws" -Minimum 1) -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_compute_dispatches" -Minimum 1) -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_texture_uploads" -Minimum 1) -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_readback_rows" -Minimum 1) -and
-    (Test-CounterIntegerAtLeast -Counters $counters -Name "environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows" -Minimum 1)
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_renderer_draws" -Expected $expectedStrictRendererDraws) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_compute_dispatches" -Expected $expectedStrictComputeDispatches) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_texture_uploads" -Expected $expectedStrictTextureUploads) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_readback_rows" -Expected $expectedStrictReadbackRows) -and
+    (Test-CounterEquals -Counters $counters -Name "environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows" -Expected $expectedStrictReadbackResourceUsageLayoutRows)
 Add-BlockerIfFalse $blockers $packageReadbackReady "vulkan_package_visible_readback_counters_required"
 
 $nativeHandlesReady =

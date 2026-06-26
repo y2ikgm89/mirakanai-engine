@@ -21,6 +21,23 @@
 namespace mirakana {
 namespace {
 
+constexpr std::uint32_t linux_vulkan_strict_toolchain_rows = 6U;
+constexpr std::uint32_t linux_vulkan_strict_feature_rows = 6U;
+constexpr std::uint32_t linux_vulkan_strict_descriptor_set_bindings = 15U;
+constexpr std::uint32_t linux_vulkan_strict_resource_usage_layout_rows = 20U;
+constexpr std::uint32_t linux_vulkan_strict_attachment_usage_layout_rows = 2U;
+constexpr std::uint32_t linux_vulkan_strict_sampled_texture_usage_layout_rows = 6U;
+constexpr std::uint32_t linux_vulkan_strict_storage_buffer_usage_layout_rows = 2U;
+constexpr std::uint32_t linux_vulkan_strict_cube_map_usage_layout_rows = 1U;
+constexpr std::uint32_t linux_vulkan_strict_weather_texture_usage_layout_rows = 3U;
+constexpr std::uint32_t linux_vulkan_strict_froxel_buffer_usage_layout_rows = 1U;
+constexpr std::uint32_t linux_vulkan_strict_readback_resource_usage_layout_rows = 5U;
+constexpr std::uint64_t linux_vulkan_strict_renderer_draws = 2U;
+constexpr std::uint64_t linux_vulkan_strict_compute_dispatches = 1U;
+constexpr std::uint64_t linux_vulkan_strict_texture_uploads = 3U;
+constexpr std::uint32_t linux_vulkan_strict_readback_rows = 5U;
+constexpr std::uint32_t linux_vulkan_strict_framegraph_render_passes_recorded = 3U;
+
 [[nodiscard]] bool is_valid_xcb_extent(WindowExtent extent) noexcept {
     return extent.width > 0 && extent.height > 0 &&
            extent.width <= static_cast<std::uint32_t>(std::numeric_limits<std::uint16_t>::max()) &&
@@ -527,6 +544,17 @@ std::string_view linux_desktop_vulkan_presentation_status_name(LinuxDesktopVulka
     return "unknown";
 }
 
+std::string_view
+linux_desktop_vulkan_strict_execution_status_name(const LinuxDesktopVulkanStrictExecutionStatus status) noexcept {
+    switch (status) {
+    case LinuxDesktopVulkanStrictExecutionStatus::host_evidence_required:
+        return "host_evidence_required";
+    case LinuxDesktopVulkanStrictExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 LinuxDesktopHostReadinessReport evaluate_linux_desktop_host_request(const LinuxDesktopHostRequest& request) {
     if (request.title.empty()) {
         return invalid_linux_desktop_request("Linux desktop host window title must not be empty");
@@ -558,6 +586,60 @@ evaluate_linux_desktop_vulkan_presentation_request(const LinuxDesktopVulkanPrese
     report.vulkan_validation_layer_ready = request.validation_layer_ready && request.validation_log_clean;
     report.vulkan_synchronization2_barriers = request.synchronization2_barriers;
     report.vulkan_readback_bytes = request.readback_nonzero ? request.readback_bytes : 0U;
+    report.strict_aggregate_toolchain_ready = request.strict_aggregate_toolchain_ready;
+    report.strict_aggregate_vulkan_sdk_tools_ready = request.strict_aggregate_vulkan_sdk_tools_ready;
+    report.strict_aggregate_dxc_spirv_codegen_ready = request.strict_aggregate_dxc_spirv_codegen_ready;
+    report.strict_aggregate_spirv_validation_ready = request.strict_aggregate_spirv_validation_ready;
+    report.strict_aggregate_device_features_ready = request.strict_aggregate_device_features_ready;
+    report.strict_aggregate_postprocess_ready = request.strict_aggregate_postprocess_ready;
+    report.strict_aggregate_fog_ready = request.strict_aggregate_fog_ready;
+    report.strict_aggregate_physical_sky_ready = request.strict_aggregate_physical_sky_ready;
+    report.strict_aggregate_lighting_ready = request.strict_aggregate_lighting_ready;
+    report.strict_aggregate_volumetric_fog_ready = request.strict_aggregate_volumetric_fog_ready;
+    report.strict_aggregate_volumetric_cloud_ready = request.strict_aggregate_volumetric_cloud_ready;
+    report.strict_aggregate_precipitation_ready = request.strict_aggregate_precipitation_ready;
+    report.strict_aggregate_quality_budget_ready = request.strict_aggregate_quality_budget_ready;
+    report.strict_aggregate_feature_rows = request.strict_aggregate_feature_rows;
+    report.strict_aggregate_descriptor_set_bindings = request.strict_aggregate_descriptor_set_bindings;
+    report.strict_aggregate_toolchain_rows = request.strict_aggregate_toolchain_rows;
+    report.strict_aggregate_resource_usage_layout_rows = request.strict_aggregate_resource_usage_layout_rows;
+    report.strict_aggregate_attachment_usage_layout_rows = request.strict_aggregate_attachment_usage_layout_rows;
+    report.strict_aggregate_sampled_texture_usage_layout_rows =
+        request.strict_aggregate_sampled_texture_usage_layout_rows;
+    report.strict_aggregate_storage_buffer_usage_layout_rows =
+        request.strict_aggregate_storage_buffer_usage_layout_rows;
+    report.strict_aggregate_cube_map_usage_layout_rows = request.strict_aggregate_cube_map_usage_layout_rows;
+    report.strict_aggregate_weather_texture_usage_layout_rows =
+        request.strict_aggregate_weather_texture_usage_layout_rows;
+    report.strict_aggregate_froxel_buffer_usage_layout_rows = request.strict_aggregate_froxel_buffer_usage_layout_rows;
+    report.strict_aggregate_readback_resource_usage_layout_rows =
+        request.strict_aggregate_readback_resource_usage_layout_rows;
+    report.strict_aggregate_renderer_draws = request.strict_aggregate_renderer_draws;
+    report.strict_aggregate_compute_dispatches = request.strict_aggregate_compute_dispatches;
+    report.strict_aggregate_texture_uploads = request.strict_aggregate_texture_uploads;
+    report.strict_aggregate_readback_rows = request.strict_aggregate_readback_rows;
+    report.strict_aggregate_framegraph_render_passes_recorded =
+        request.strict_aggregate_framegraph_render_passes_recorded;
+    report.vulkan_gpu_memory_committed_byte_estimate_available =
+        request.vulkan_gpu_memory_committed_byte_estimate_available;
+    report.vulkan_gpu_memory_committed_resources_byte_estimate =
+        request.vulkan_gpu_memory_committed_resources_byte_estimate;
+    report.vulkan_gpu_memory_upload_bytes_written = request.vulkan_gpu_memory_upload_bytes_written;
+    report.vulkan_gpu_memory_framegraph_barrier_steps_executed =
+        request.vulkan_gpu_memory_framegraph_barrier_steps_executed;
+    report.vulkan_gpu_memory_budget_ok = request.vulkan_gpu_memory_budget_ok;
+    report.vulkan_gpu_memory_transient_heap_ok = request.vulkan_gpu_memory_transient_heap_ok;
+    report.vulkan_debug_profiling_gpu_timestamp_ticks_per_second =
+        request.debug_profiling_gpu_timestamp_ticks_per_second;
+    report.vulkan_debug_profiling_gpu_timestamp_query_writes = request.debug_profiling_gpu_timestamp_query_writes;
+    report.vulkan_debug_profiling_gpu_timestamp_query_results_read =
+        request.debug_profiling_gpu_timestamp_query_results_read;
+    report.vulkan_debug_profiling_gpu_timestamp_query_failures = request.debug_profiling_gpu_timestamp_query_failures;
+    report.vulkan_debug_profiling_gpu_debug_markers_ok = request.debug_profiling_gpu_debug_markers_ok;
+    report.vulkan_debug_profiling_framegraph_barrier_steps_executed =
+        request.debug_profiling_framegraph_barrier_steps_executed;
+    report.vulkan_debug_profiling_framegraph_render_passes_recorded =
+        request.debug_profiling_framegraph_render_passes_recorded;
 
     if (request.native_handle_access) {
         report.status = LinuxDesktopVulkanPresentationStatus::native_handle_access;
@@ -609,6 +691,74 @@ evaluate_linux_desktop_vulkan_presentation_request(const LinuxDesktopVulkanPrese
     report.linux_vulkan_strict_counter_evidence_ready = report.vulkan_validation_layer_ready &&
                                                         report.vulkan_synchronization2_barriers > 0U &&
                                                         report.vulkan_readback_bytes > 0U;
+    report.debug_profiling_policy_gpu_timestamp_requests = report.linux_vulkan_strict_counter_evidence_ready ? 1U : 0U;
+    const bool strict_toolchain_ready =
+        request.strict_aggregate_toolchain_ready && request.strict_aggregate_vulkan_sdk_tools_ready &&
+        request.strict_aggregate_dxc_spirv_codegen_ready && request.strict_aggregate_spirv_validation_ready &&
+        request.strict_aggregate_toolchain_rows == linux_vulkan_strict_toolchain_rows;
+    const bool strict_feature_rows_ready =
+        request.strict_aggregate_postprocess_ready && request.strict_aggregate_fog_ready &&
+        request.strict_aggregate_physical_sky_ready && request.strict_aggregate_lighting_ready &&
+        request.strict_aggregate_volumetric_fog_ready && request.strict_aggregate_volumetric_cloud_ready &&
+        request.strict_aggregate_precipitation_ready && request.strict_aggregate_quality_budget_ready &&
+        request.strict_aggregate_feature_rows == linux_vulkan_strict_feature_rows &&
+        request.strict_aggregate_descriptor_set_bindings == linux_vulkan_strict_descriptor_set_bindings;
+    const bool strict_resource_usage_ready =
+        request.strict_aggregate_resource_usage_layout_rows == linux_vulkan_strict_resource_usage_layout_rows &&
+        request.strict_aggregate_attachment_usage_layout_rows == linux_vulkan_strict_attachment_usage_layout_rows &&
+        request.strict_aggregate_sampled_texture_usage_layout_rows ==
+            linux_vulkan_strict_sampled_texture_usage_layout_rows &&
+        request.strict_aggregate_storage_buffer_usage_layout_rows ==
+            linux_vulkan_strict_storage_buffer_usage_layout_rows &&
+        request.strict_aggregate_cube_map_usage_layout_rows == linux_vulkan_strict_cube_map_usage_layout_rows &&
+        request.strict_aggregate_weather_texture_usage_layout_rows ==
+            linux_vulkan_strict_weather_texture_usage_layout_rows &&
+        request.strict_aggregate_froxel_buffer_usage_layout_rows ==
+            linux_vulkan_strict_froxel_buffer_usage_layout_rows &&
+        request.strict_aggregate_readback_resource_usage_layout_rows ==
+            linux_vulkan_strict_readback_resource_usage_layout_rows &&
+        request.strict_aggregate_renderer_draws == linux_vulkan_strict_renderer_draws &&
+        request.strict_aggregate_compute_dispatches == linux_vulkan_strict_compute_dispatches &&
+        request.strict_aggregate_texture_uploads == linux_vulkan_strict_texture_uploads &&
+        request.strict_aggregate_readback_rows == linux_vulkan_strict_readback_rows &&
+        request.strict_aggregate_framegraph_render_passes_recorded ==
+            linux_vulkan_strict_framegraph_render_passes_recorded;
+    report.strict_aggregate_resource_usage_layout_ready = strict_resource_usage_ready;
+    report.environment_vulkan_strict_aggregate_ready =
+        report.linux_vulkan_strict_counter_evidence_ready && strict_toolchain_ready &&
+        request.strict_aggregate_device_features_ready && strict_feature_rows_ready && strict_resource_usage_ready;
+
+    report.vulkan_gpu_memory_execution_ready =
+        report.environment_platform_linux_vulkan_ready && request.vulkan_gpu_memory_committed_byte_estimate_available &&
+        request.vulkan_gpu_memory_committed_resources_byte_estimate > 0U &&
+        request.vulkan_gpu_memory_upload_bytes_written > 0U &&
+        request.vulkan_gpu_memory_framegraph_barrier_steps_executed > 0U && request.vulkan_gpu_memory_budget_ok &&
+        request.vulkan_gpu_memory_transient_heap_ok;
+    report.vulkan_gpu_memory_execution_status = report.vulkan_gpu_memory_execution_ready
+                                                    ? LinuxDesktopVulkanStrictExecutionStatus::ready
+                                                    : LinuxDesktopVulkanStrictExecutionStatus::host_evidence_required;
+
+    report.vulkan_debug_profiling_gpu_timestamps_ok = report.environment_platform_linux_vulkan_ready &&
+                                                      request.debug_profiling_gpu_timestamp_ticks_per_second > 0U &&
+                                                      request.debug_profiling_gpu_timestamp_query_writes >= 2U &&
+                                                      request.debug_profiling_gpu_timestamp_query_results_read > 0U &&
+                                                      request.debug_profiling_gpu_timestamp_query_failures == 0U;
+    report.vulkan_debug_profiling_frame_diagnostics_ok =
+        report.environment_platform_linux_vulkan_ready &&
+        request.debug_profiling_framegraph_barrier_steps_executed > 0U &&
+        request.debug_profiling_framegraph_render_passes_recorded > 0U;
+    report.vulkan_debug_profiling_execution_ready = report.vulkan_debug_profiling_gpu_timestamps_ok &&
+                                                    request.debug_profiling_gpu_debug_markers_ok &&
+                                                    report.vulkan_debug_profiling_frame_diagnostics_ok;
+    report.vulkan_debug_profiling_execution_status =
+        report.vulkan_debug_profiling_execution_ready ? LinuxDesktopVulkanStrictExecutionStatus::ready
+                                                      : LinuxDesktopVulkanStrictExecutionStatus::host_evidence_required;
+    report.renderer_vulkan_timestamp_ready = report.vulkan_debug_profiling_gpu_timestamps_ok;
+    report.debug_profiling_policy_backend_evidence_ready = report.vulkan_debug_profiling_execution_ready;
+    report.debug_profiling_policy_ready = report.debug_profiling_policy_backend_evidence_ready;
+    report.linux_vulkan_strict_commercial_ready = report.environment_vulkan_strict_aggregate_ready &&
+                                                  report.vulkan_gpu_memory_execution_ready &&
+                                                  report.vulkan_debug_profiling_execution_ready;
     report.diagnostic = "Linux Vulkan presentation package smoke, readback, and validation logs are ready";
     return report;
 }
