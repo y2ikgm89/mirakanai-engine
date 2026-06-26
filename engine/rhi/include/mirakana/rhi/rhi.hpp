@@ -543,6 +543,13 @@ struct RhiStats {
     std::uint64_t gpu_debug_scopes_begun{0};
     std::uint64_t gpu_debug_scopes_ended{0};
     std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t gpu_timestamp_query_pools_created{0};
+    std::uint64_t gpu_timestamp_query_pools_destroyed{0};
+    std::uint64_t gpu_timestamp_query_writes{0};
+    std::uint64_t gpu_timestamp_query_results_read{0};
+    std::uint64_t gpu_timestamp_query_failures{0};
+    std::uint64_t last_gpu_timestamp_begin{0};
+    std::uint64_t last_gpu_timestamp_end{0};
 };
 
 enum class RhiAsyncOverlapReadinessStatus : std::uint8_t {

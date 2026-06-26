@@ -7715,6 +7715,11 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .rhi_gpu_debug_scopes_begun = rhi_stats.gpu_debug_scopes_begun,
         .rhi_gpu_debug_scopes_ended = rhi_stats.gpu_debug_scopes_ended,
         .rhi_gpu_debug_markers_inserted = rhi_stats.gpu_debug_markers_inserted,
+        .rhi_gpu_timestamp_query_writes = rhi_stats.gpu_timestamp_query_writes,
+        .rhi_gpu_timestamp_query_results_read = rhi_stats.gpu_timestamp_query_results_read,
+        .rhi_gpu_timestamp_query_failures = rhi_stats.gpu_timestamp_query_failures,
+        .rhi_last_gpu_timestamp_begin = rhi_stats.last_gpu_timestamp_begin,
+        .rhi_last_gpu_timestamp_end = rhi_stats.last_gpu_timestamp_end,
         .framegraph_passes = impl_->framegraph_passes,
         .renderer_stats = renderer_stats,
         .rhi_stats = rhi_stats,
@@ -9956,6 +9961,11 @@ evaluate_win32_desktop_presentation_vulkan_debug_profiling_execution(const Win32
     result.gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun;
     result.gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended;
     result.gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted;
+    result.gpu_timestamp_query_writes = report.rhi_gpu_timestamp_query_writes;
+    result.gpu_timestamp_query_results_read = report.rhi_gpu_timestamp_query_results_read;
+    result.gpu_timestamp_query_failures = report.rhi_gpu_timestamp_query_failures;
+    result.last_gpu_timestamp_begin = report.rhi_last_gpu_timestamp_begin;
+    result.last_gpu_timestamp_end = report.rhi_last_gpu_timestamp_end;
     result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
     result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
 
@@ -9964,15 +9974,19 @@ evaluate_win32_desktop_presentation_vulkan_debug_profiling_execution(const Win32
     }
 
     result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
-    result.gpu_timestamps_current = result.vulkan_backend_selected && result.gpu_timestamp_ticks_per_second > 0;
+    result.gpu_timestamps_current = result.vulkan_backend_selected && result.gpu_timestamp_ticks_per_second > 0 &&
+                                    result.gpu_timestamp_query_writes >= 2 &&
+                                    result.gpu_timestamp_query_results_read > 0 &&
+                                    result.gpu_timestamp_query_failures == 0;
     result.gpu_debug_markers_current =
         result.vulkan_backend_selected && (result.gpu_debug_scopes_begun > 0 || result.gpu_debug_scopes_ended > 0 ||
                                            result.gpu_debug_markers_inserted > 0);
     result.frame_diagnostics_current = result.vulkan_backend_selected && result.framegraph_barrier_steps_executed > 0 &&
                                        result.framegraph_render_passes_recorded > 0;
-    result.status = result.gpu_debug_markers_current && result.frame_diagnostics_current
-                        ? Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::ready
-                        : Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::blocked;
+    result.status =
+        result.gpu_timestamps_current && result.gpu_debug_markers_current && result.frame_diagnostics_current
+            ? Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::ready
+            : Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::blocked;
     result.ready = result.status == Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::ready;
     return result;
 }

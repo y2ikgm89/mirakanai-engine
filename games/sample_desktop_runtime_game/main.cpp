@@ -9998,6 +9998,16 @@ int main(int argc, char** argv) {
         << (vulkan_debug_profiling_execution.vulkan_backend_selected ? 1 : 0)
         << " vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second="
         << vulkan_debug_profiling_execution.gpu_timestamp_ticks_per_second
+        << " vulkan_debug_profiling_execution_gpu_timestamp_query_writes="
+        << vulkan_debug_profiling_execution.gpu_timestamp_query_writes
+        << " vulkan_debug_profiling_execution_gpu_timestamp_query_results_read="
+        << vulkan_debug_profiling_execution.gpu_timestamp_query_results_read
+        << " vulkan_debug_profiling_execution_gpu_timestamp_query_failures="
+        << vulkan_debug_profiling_execution.gpu_timestamp_query_failures
+        << " vulkan_debug_profiling_execution_last_gpu_timestamp_begin="
+        << vulkan_debug_profiling_execution.last_gpu_timestamp_begin
+        << " vulkan_debug_profiling_execution_last_gpu_timestamp_end="
+        << vulkan_debug_profiling_execution.last_gpu_timestamp_end
         << " vulkan_debug_profiling_execution_gpu_debug_scopes_begun="
         << vulkan_debug_profiling_execution.gpu_debug_scopes_begun
         << " vulkan_debug_profiling_execution_gpu_debug_scopes_ended="

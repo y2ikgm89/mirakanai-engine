@@ -2115,6 +2115,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "vulkan_debug_profiling_execution_status" = "ready"
             "vulkan_debug_profiling_execution_ready" = "1"
             "vulkan_debug_profiling_execution_selected" = "1"
+            "vulkan_debug_profiling_execution_gpu_timestamps_ok" = "1"
+            "vulkan_debug_profiling_execution_gpu_timestamp_query_failures" = "0"
             "vulkan_debug_profiling_execution_gpu_debug_markers_ok" = "1"
             "vulkan_debug_profiling_execution_frame_diagnostics_ok" = "1"
         }
@@ -2125,6 +2127,9 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             }
         }
         foreach ($field in @(
+                "vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second",
+                "vulkan_debug_profiling_execution_gpu_timestamp_query_writes",
+                "vulkan_debug_profiling_execution_gpu_timestamp_query_results_read",
                 "vulkan_debug_profiling_execution_gpu_debug_markers_inserted",
                 "vulkan_debug_profiling_execution_framegraph_barrier_steps_executed",
                 "vulkan_debug_profiling_execution_framegraph_render_passes_recorded"

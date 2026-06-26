@@ -124,6 +124,7 @@ inline constexpr std::uint32_t vulkan_structure_type_device_create_info = 3;
 inline constexpr std::uint32_t vulkan_structure_type_memory_allocate_info = 5;
 inline constexpr std::uint32_t vulkan_structure_type_fence_create_info = 8;
 inline constexpr std::uint32_t vulkan_structure_type_semaphore_create_info = 9;
+inline constexpr std::uint32_t vulkan_structure_type_query_pool_create_info = 11;
 inline constexpr std::uint32_t vulkan_structure_type_buffer_create_info = 12;
 inline constexpr std::uint32_t vulkan_structure_type_image_view_create_info = 15;
 inline constexpr std::uint32_t vulkan_structure_type_sampler_create_info = 31;
@@ -296,6 +297,7 @@ inline constexpr std::uint32_t vulkan_image_layout_transfer_src_optimal = 6;
 inline constexpr std::uint32_t vulkan_image_layout_transfer_dst_optimal = 7;
 inline constexpr std::uint32_t vulkan_image_layout_present_src = 1000001002;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_none = 0;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_top_of_pipe_bit = 0x0000000000000001ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_early_fragment_tests_bit = 0x0000000000000100ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_late_fragment_tests_bit = 0x0000000000000200ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_fragment_shader_bit = 0x0000000000000080ULL;
@@ -307,6 +309,7 @@ inline constexpr std::uint64_t vulkan_pipeline_stage2_host_bit = 0x0000000000004
 inline constexpr std::uint64_t vulkan_pipeline_stage2_task_shader_bit_ext = 0x0000000000080000ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_mesh_shader_bit_ext = 0x0000000000100000ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_all_commands_bit = 0x0000000000010000ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_bottom_of_pipe_bit = 0x0000000000002000ULL;
 inline constexpr std::uint64_t vulkan_access2_none = 0;
 inline constexpr std::uint64_t vulkan_access2_indirect_command_read_bit = 0x0000000000000001ULL;
 inline constexpr std::uint64_t vulkan_access2_shader_read_bit = 0x0000000000000020ULL;
@@ -323,6 +326,9 @@ inline constexpr std::uint32_t spirv_magic_word = 0x07230203U;
 inline constexpr std::uint32_t spirv_header_word_count = 5;
 inline constexpr std::size_t vulkan_max_memory_types = 32;
 inline constexpr std::size_t vulkan_max_memory_heaps = 16;
+inline constexpr std::uint32_t vulkan_query_type_timestamp = 2;
+inline constexpr std::uint32_t vulkan_query_result_64_bit = 0x00000001U;
+inline constexpr std::uint32_t vulkan_query_result_with_availability_bit = 0x00000004U;
 
 using NativeVulkanInstance = void*;
 using NativeVulkanPhysicalDevice = void*;
@@ -335,6 +341,7 @@ using NativeVulkanImageView = std::uint64_t;
 using NativeVulkanSemaphore = std::uint64_t;
 using NativeVulkanFence = std::uint64_t;
 using NativeVulkanCommandPool = std::uint64_t;
+using NativeVulkanQueryPool = std::uint64_t;
 using NativeVulkanShaderModule = std::uint64_t;
 using NativeVulkanPipelineLayout = std::uint64_t;
 using NativeVulkanPipeline = std::uint64_t;
@@ -525,6 +532,105 @@ struct NativeVulkanPhysicalDeviceProperties2 {
     NativeVulkanPhysicalDeviceProperties properties;
 };
 
+struct NativeVulkanPhysicalDeviceLimitsTimestampPrefix {
+    std::uint32_t max_image_dimension_1d;
+    std::uint32_t max_image_dimension_2d;
+    std::uint32_t max_image_dimension_3d;
+    std::uint32_t max_image_dimension_cube;
+    std::uint32_t max_image_array_layers;
+    std::uint32_t max_texel_buffer_elements;
+    std::uint32_t max_uniform_buffer_range;
+    std::uint32_t max_storage_buffer_range;
+    std::uint32_t max_push_constants_size;
+    std::uint32_t max_memory_allocation_count;
+    std::uint32_t max_sampler_allocation_count;
+    std::uint64_t buffer_image_granularity;
+    std::uint64_t sparse_address_space_size;
+    std::uint32_t max_bound_descriptor_sets;
+    std::uint32_t max_per_stage_descriptor_samplers;
+    std::uint32_t max_per_stage_descriptor_uniform_buffers;
+    std::uint32_t max_per_stage_descriptor_storage_buffers;
+    std::uint32_t max_per_stage_descriptor_sampled_images;
+    std::uint32_t max_per_stage_descriptor_storage_images;
+    std::uint32_t max_per_stage_descriptor_input_attachments;
+    std::uint32_t max_per_stage_resources;
+    std::uint32_t max_descriptor_set_samplers;
+    std::uint32_t max_descriptor_set_uniform_buffers;
+    std::uint32_t max_descriptor_set_uniform_buffers_dynamic;
+    std::uint32_t max_descriptor_set_storage_buffers;
+    std::uint32_t max_descriptor_set_storage_buffers_dynamic;
+    std::uint32_t max_descriptor_set_sampled_images;
+    std::uint32_t max_descriptor_set_storage_images;
+    std::uint32_t max_descriptor_set_input_attachments;
+    std::uint32_t max_vertex_input_attributes;
+    std::uint32_t max_vertex_input_bindings;
+    std::uint32_t max_vertex_input_attribute_offset;
+    std::uint32_t max_vertex_input_binding_stride;
+    std::uint32_t max_vertex_output_components;
+    std::uint32_t max_tessellation_generation_level;
+    std::uint32_t max_tessellation_patch_size;
+    std::uint32_t max_tessellation_control_per_vertex_input_components;
+    std::uint32_t max_tessellation_control_per_vertex_output_components;
+    std::uint32_t max_tessellation_control_per_patch_output_components;
+    std::uint32_t max_tessellation_control_total_output_components;
+    std::uint32_t max_tessellation_evaluation_input_components;
+    std::uint32_t max_tessellation_evaluation_output_components;
+    std::uint32_t max_geometry_shader_invocations;
+    std::uint32_t max_geometry_input_components;
+    std::uint32_t max_geometry_output_components;
+    std::uint32_t max_geometry_output_vertices;
+    std::uint32_t max_geometry_total_output_components;
+    std::uint32_t max_fragment_input_components;
+    std::uint32_t max_fragment_output_attachments;
+    std::uint32_t max_fragment_dual_src_attachments;
+    std::uint32_t max_fragment_combined_output_resources;
+    std::uint32_t max_compute_shared_memory_size;
+    std::uint32_t max_compute_work_group_count[3];
+    std::uint32_t max_compute_work_group_invocations;
+    std::uint32_t max_compute_work_group_size[3];
+    std::uint32_t sub_pixel_precision_bits;
+    std::uint32_t sub_texel_precision_bits;
+    std::uint32_t mipmap_precision_bits;
+    std::uint32_t max_draw_indexed_index_value;
+    std::uint32_t max_draw_indirect_count;
+    float max_sampler_lod_bias;
+    float max_sampler_anisotropy;
+    std::uint32_t max_viewports;
+    std::uint32_t max_viewport_dimensions[2];
+    float viewport_bounds_range[2];
+    std::uint32_t viewport_sub_pixel_bits;
+    std::size_t min_memory_map_alignment;
+    std::uint64_t min_texel_buffer_offset_alignment;
+    std::uint64_t min_uniform_buffer_offset_alignment;
+    std::uint64_t min_storage_buffer_offset_alignment;
+    std::int32_t min_texel_offset;
+    std::uint32_t max_texel_offset;
+    std::int32_t min_texel_gather_offset;
+    std::uint32_t max_texel_gather_offset;
+    float min_interpolation_offset;
+    float max_interpolation_offset;
+    std::uint32_t sub_pixel_interpolation_offset_bits;
+    std::uint32_t max_framebuffer_width;
+    std::uint32_t max_framebuffer_height;
+    std::uint32_t max_framebuffer_layers;
+    std::uint32_t framebuffer_color_sample_counts;
+    std::uint32_t framebuffer_depth_sample_counts;
+    std::uint32_t framebuffer_stencil_sample_counts;
+    std::uint32_t framebuffer_no_attachments_sample_counts;
+    std::uint32_t max_color_attachments;
+    std::uint32_t sampled_image_color_sample_counts;
+    std::uint32_t sampled_image_integer_sample_counts;
+    std::uint32_t sampled_image_depth_sample_counts;
+    std::uint32_t sampled_image_stencil_sample_counts;
+    std::uint32_t storage_image_sample_counts;
+    std::uint32_t max_sample_mask_words;
+    std::uint32_t timestamp_compute_and_graphics;
+    float timestamp_period;
+};
+
+static_assert(sizeof(NativeVulkanPhysicalDeviceLimitsTimestampPrefix) <=
+              vulkan_physical_device_properties_tail_storage_size);
+
 struct NativeVulkanWin32SurfaceCreateInfo {
     std::uint32_t s_type;
     const void* next;
@@ -677,6 +783,15 @@ struct NativeVulkanCommandPoolCreateInfo {
     const void* next;
     std::uint32_t flags;
     std::uint32_t queue_family_index;
+};
+
+struct NativeVulkanQueryPoolCreateInfo {
+    std::uint32_t s_type;
+    const void* next;
+    std::uint32_t flags;
+    std::uint32_t query_type;
+    std::uint32_t query_count;
+    std::uint32_t pipeline_statistics;
 };
 
 struct NativeVulkanCommandBufferAllocateInfo {
@@ -1255,6 +1370,9 @@ using VulkanCreateCommandPool = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice
                                                               const NativeVulkanCommandPoolCreateInfo*, const void*,
                                                               NativeVulkanCommandPool*);
 using VulkanDestroyCommandPool = void(MK_VULKAN_CALL*)(NativeVulkanDevice, NativeVulkanCommandPool, const void*);
+using VulkanCreateQueryPool = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice, const NativeVulkanQueryPoolCreateInfo*,
+                                                            const void*, NativeVulkanQueryPool*);
+using VulkanDestroyQueryPool = void(MK_VULKAN_CALL*)(NativeVulkanDevice, NativeVulkanQueryPool, const void*);
 using VulkanAllocateCommandBuffers = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice,
                                                                    const NativeVulkanCommandBufferAllocateInfo*,
                                                                    NativeVulkanCommandBuffer*);
@@ -1292,6 +1410,13 @@ using VulkanCmdDrawMeshTasksIndirectCount = void(MK_VULKAN_CALL*)(NativeVulkanCo
                                                                   std::uint32_t, std::uint32_t);
 using VulkanCmdDispatch = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, std::uint32_t, std::uint32_t, std::uint32_t);
 using VulkanCmdPipelineBarrier2 = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, const NativeVulkanDependencyInfo*);
+using VulkanCmdResetQueryPool = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, NativeVulkanQueryPool, std::uint32_t,
+                                                      std::uint32_t);
+using VulkanCmdWriteTimestamp2 = void(MK_VULKAN_CALL*)(NativeVulkanCommandBuffer, std::uint64_t, NativeVulkanQueryPool,
+                                                       std::uint32_t);
+using VulkanGetQueryPoolResults = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanDevice, NativeVulkanQueryPool,
+                                                                std::uint32_t, std::uint32_t, std::size_t, void*,
+                                                                std::uint64_t, std::uint32_t);
 using VulkanQueueSubmit2 = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanQueue, std::uint32_t,
                                                          const NativeVulkanSubmitInfo2*, NativeVulkanFence);
 using VulkanQueueWaitIdle = VulkanResult(MK_VULKAN_CALL*)(NativeVulkanQueue);
@@ -1397,6 +1522,8 @@ struct RuntimePhysicalDeviceProperties {
     std::uint32_t driver_version{0};
     std::uint32_t vendor_id{0};
     std::uint32_t device_id{0};
+    bool timestamp_compute_and_graphics{false};
+    float timestamp_period_nanoseconds{0.0F};
 };
 
 struct Vulkan12FeatureSupport {
@@ -1643,6 +1770,7 @@ enumerate_queue_families(VulkanGetPhysicalDeviceQueueFamilyProperties get_queue_
         queue_families.push_back(VulkanQueueFamilyCandidate{
             .index = index,
             .queue_count = property.queue_count,
+            .timestamp_valid_bits = property.timestamp_valid_bits,
             .capabilities = queue_capabilities_from_flags(property.queue_flags),
             .supports_present = false,
         });
@@ -1794,6 +1922,13 @@ query_mesh_shader_feature_support(VulkanGetPhysicalDeviceFeatures2 get_physical_
     return support;
 }
 
+[[nodiscard]] NativeVulkanPhysicalDeviceLimitsTimestampPrefix
+read_timestamp_limits_prefix(const NativeVulkanPhysicalDeviceProperties& properties) noexcept {
+    NativeVulkanPhysicalDeviceLimitsTimestampPrefix limits{};
+    std::memcpy(&limits, properties.limits_and_sparse_properties.data(), sizeof(limits));
+    return limits;
+}
+
 [[nodiscard]] RuntimePhysicalDeviceProperties
 query_physical_device_properties(VulkanGetPhysicalDeviceProperties2 get_physical_device_properties2,
                                  NativeVulkanPhysicalDevice physical_device) {
@@ -1813,6 +1948,9 @@ query_physical_device_properties(VulkanGetPhysicalDeviceProperties2 get_physical
     result.driver_version = properties.properties.driver_version;
     result.vendor_id = properties.properties.vendor_id;
     result.device_id = properties.properties.device_id;
+    const auto limits = read_timestamp_limits_prefix(properties.properties);
+    result.timestamp_compute_and_graphics = limits.timestamp_compute_and_graphics != 0U;
+    result.timestamp_period_nanoseconds = limits.timestamp_period;
     return result;
 }
 
@@ -1842,6 +1980,8 @@ make_runtime_physical_device_snapshot(std::size_t device_index, NativeVulkanPhys
         .driver_version = properties.driver_version,
         .vendor_id = properties.vendor_id,
         .device_id = properties.device_id,
+        .timestamp_compute_and_graphics = properties.timestamp_compute_and_graphics,
+        .timestamp_period_nanoseconds = properties.timestamp_period_nanoseconds,
         .queue_families = enumerate_queue_families(get_queue_family_properties, physical_device),
         .device_extensions = std::move(device_extensions),
         .supports_swapchain_extension = supports_swapchain_extension,
@@ -2201,6 +2341,28 @@ template <typename Devices>
     }
 
     return best;
+}
+
+[[nodiscard]] const VulkanQueueFamilyCandidate* find_queue_family(const VulkanPhysicalDeviceCandidate& device,
+                                                                  std::uint32_t queue_family) noexcept {
+    const auto iter = std::ranges::find_if(
+        device.queue_families, [queue_family](const auto& candidate) { return candidate.index == queue_family; });
+    return iter != device.queue_families.end() ? std::addressof(*iter) : nullptr;
+}
+
+[[nodiscard]] std::uint64_t gpu_timestamp_ticks_per_second_for_queue(const VulkanPhysicalDeviceCandidate& device,
+                                                                     std::uint32_t queue_family) noexcept {
+    const auto* const queue = find_queue_family(device, queue_family);
+    if (queue == nullptr || queue->timestamp_valid_bits == 0U || device.timestamp_period_nanoseconds <= 0.0F ||
+        !std::isfinite(device.timestamp_period_nanoseconds)) {
+        return 0;
+    }
+
+    const auto ticks_per_second = 1'000'000'000.0 / static_cast<double>(device.timestamp_period_nanoseconds);
+    if (ticks_per_second <= 0.0 || ticks_per_second > static_cast<double>(std::numeric_limits<std::uint64_t>::max())) {
+        return 0;
+    }
+    return static_cast<std::uint64_t>(ticks_per_second);
 }
 
 [[nodiscard]] bool extension_is_enabled(const std::vector<std::string>& enabled_extensions,
@@ -3513,6 +3675,8 @@ struct VulkanRuntimeDevice::Impl {
     VulkanDeviceWaitIdle device_wait_idle{nullptr};
     VulkanCreateCommandPool create_command_pool{nullptr};
     VulkanDestroyCommandPool destroy_command_pool{nullptr};
+    VulkanCreateQueryPool create_query_pool{nullptr};
+    VulkanDestroyQueryPool destroy_query_pool{nullptr};
     VulkanAllocateCommandBuffers allocate_command_buffers{nullptr};
     VulkanFreeCommandBuffers free_command_buffers{nullptr};
     VulkanBeginCommandBuffer begin_command_buffer{nullptr};
@@ -3532,6 +3696,9 @@ struct VulkanRuntimeDevice::Impl {
     VulkanCmdDrawMeshTasksIndirect cmd_draw_mesh_tasks_indirect{nullptr};
     VulkanCmdDrawMeshTasksIndirectCount cmd_draw_mesh_tasks_indirect_count{nullptr};
     VulkanCmdPipelineBarrier2 cmd_pipeline_barrier2{nullptr};
+    VulkanCmdResetQueryPool cmd_reset_query_pool{nullptr};
+    VulkanCmdWriteTimestamp2 cmd_write_timestamp2{nullptr};
+    VulkanGetQueryPoolResults get_query_pool_results{nullptr};
     VulkanQueueSubmit2 queue_submit2{nullptr};
     VulkanQueueWaitIdle queue_wait_idle{nullptr};
     VulkanCreateBuffer create_buffer{nullptr};
@@ -3580,6 +3747,7 @@ struct VulkanRuntimeDevice::Impl {
     VulkanCmdDispatch cmd_dispatch{nullptr};
     std::uint32_t graphics_queue_family{invalid_vulkan_queue_family};
     std::uint32_t present_queue_family{invalid_vulkan_queue_family};
+    std::uint64_t gpu_timestamp_ticks_per_second{0};
     RhiHostPlatform host{RhiHostPlatform::unknown};
     VulkanLogicalDeviceCreatePlan logical_device_plan;
     VulkanCommandResolutionPlan command_plan;
@@ -4227,7 +4395,7 @@ class VulkanRhiDevice final : public IRhiDevice {
     }
 
     [[nodiscard]] std::uint64_t gpu_timestamp_ticks_per_second() const noexcept override {
-        return 0;
+        return device_.owns_device() ? device_.impl_->gpu_timestamp_ticks_per_second : 0;
     }
 
     [[nodiscard]] RhiDeviceMemoryDiagnostics memory_diagnostics() const override {
@@ -4901,6 +5069,99 @@ class VulkanRhiDevice final : public IRhiDevice {
         return device_.impl_ != nullptr && device_.impl_->cmd_draw_indexed_indirect_count != nullptr;
     }
 
+    [[nodiscard]] bool supports_timestamp_queries() const noexcept {
+        return device_.impl_ != nullptr && device_.impl_->gpu_timestamp_ticks_per_second > 0 &&
+               device_.impl_->create_query_pool != nullptr && device_.impl_->destroy_query_pool != nullptr &&
+               device_.impl_->cmd_reset_query_pool != nullptr && device_.impl_->cmd_write_timestamp2 != nullptr &&
+               device_.impl_->get_query_pool_results != nullptr;
+    }
+
+    [[nodiscard]] NativeVulkanQueryPool create_timestamp_query_pool() noexcept {
+        if (!supports_timestamp_queries()) {
+            return 0;
+        }
+
+        NativeVulkanQueryPool query_pool = 0;
+        const NativeVulkanQueryPoolCreateInfo create_info{
+            .s_type = vulkan_structure_type_query_pool_create_info,
+            .next = nullptr,
+            .flags = 0,
+            .query_type = vulkan_query_type_timestamp,
+            .query_count = 2,
+            .pipeline_statistics = 0,
+        };
+        const auto result = device_.impl_->create_query_pool(device_.impl_->device, &create_info, nullptr, &query_pool);
+        if (result != vulkan_success || query_pool == 0) {
+            ++stats_.gpu_timestamp_query_failures;
+            return 0;
+        }
+
+        ++stats_.gpu_timestamp_query_pools_created;
+        return query_pool;
+    }
+
+    void destroy_timestamp_query_pool(NativeVulkanQueryPool query_pool) noexcept {
+        if (query_pool == 0 || device_.impl_ == nullptr || device_.impl_->destroy_query_pool == nullptr) {
+            return;
+        }
+        device_.impl_->destroy_query_pool(device_.impl_->device, query_pool, nullptr);
+        ++stats_.gpu_timestamp_query_pools_destroyed;
+    }
+
+    [[nodiscard]] bool record_timestamp_query_begin(VulkanRuntimeCommandPool& pool,
+                                                    NativeVulkanQueryPool query_pool) noexcept {
+        if (!supports_timestamp_queries() || query_pool == 0 || !pool.recording()) {
+            return false;
+        }
+
+        auto* const command_buffer = pool.native_primary_command_buffer();
+        if (command_buffer == nullptr) {
+            return false;
+        }
+
+        device_.impl_->cmd_reset_query_pool(command_buffer, query_pool, 0, 2);
+        device_.impl_->cmd_write_timestamp2(command_buffer, vulkan_pipeline_stage2_top_of_pipe_bit, query_pool, 0);
+        ++stats_.gpu_timestamp_query_writes;
+        return true;
+    }
+
+    [[nodiscard]] bool record_timestamp_query_end(VulkanRuntimeCommandPool& pool,
+                                                  NativeVulkanQueryPool query_pool) noexcept {
+        if (!supports_timestamp_queries() || query_pool == 0 || !pool.recording()) {
+            return false;
+        }
+
+        auto* const command_buffer = pool.native_primary_command_buffer();
+        if (command_buffer == nullptr) {
+            return false;
+        }
+
+        device_.impl_->cmd_write_timestamp2(command_buffer, vulkan_pipeline_stage2_bottom_of_pipe_bit, query_pool, 1);
+        ++stats_.gpu_timestamp_query_writes;
+        return true;
+    }
+
+    [[nodiscard]] bool read_timestamp_query_results(NativeVulkanQueryPool query_pool) noexcept {
+        if (!supports_timestamp_queries() || query_pool == 0) {
+            return false;
+        }
+
+        std::array<std::uint64_t, 4> results{};
+        constexpr std::uint64_t stride = sizeof(std::uint64_t) * 2ULL;
+        const auto result = device_.impl_->get_query_pool_results(
+            device_.impl_->device, query_pool, 0, 2, sizeof(results), results.data(), stride,
+            vulkan_query_result_64_bit | vulkan_query_result_with_availability_bit);
+        if (result != vulkan_success || results[1] == 0 || results[3] == 0) {
+            ++stats_.gpu_timestamp_query_failures;
+            return false;
+        }
+
+        stats_.last_gpu_timestamp_begin = results[0];
+        stats_.last_gpu_timestamp_end = results[2];
+        ++stats_.gpu_timestamp_query_results_read;
+        return true;
+    }
+
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
@@ -5223,10 +5484,20 @@ class VulkanRhiCommandList final : public IRhiCommandList {
   public:
     VulkanRhiCommandList(VulkanRhiDevice& device, VulkanRuntimeCommandPool pool, QueueKind queue) noexcept
         : device_(&device), pool_(std::move(pool)), queue_(queue), texture_states_(device.texture_states_),
-          initial_texture_states_(device.texture_states_) {}
+          initial_texture_states_(device.texture_states_) {
+        timestamp_query_pool_ = device.create_timestamp_query_pool();
+        if (timestamp_query_pool_ != 0) {
+            timestamp_begin_recorded_ = device.record_timestamp_query_begin(pool_, timestamp_query_pool_);
+            if (!timestamp_begin_recorded_) {
+                ++device.stats_.gpu_timestamp_query_failures;
+                release_timestamp_query_pool();
+            }
+        }
+    }
 
     ~VulkanRhiCommandList() override {
         release_unsubmitted_swapchain_frames();
+        release_timestamp_query_pool();
     }
 
     [[nodiscard]] QueueKind queue_kind() const noexcept override {
@@ -6205,6 +6476,12 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (has_unpresented_swapchain_frame()) {
             throw std::logic_error("vulkan rhi command list cannot close with an unpresented swapchain frame");
         }
+        if (timestamp_begin_recorded_) {
+            timestamp_end_recorded_ = device_->record_timestamp_query_end(pool_, timestamp_query_pool_);
+            if (!timestamp_end_recorded_) {
+                ++device_->stats_.gpu_timestamp_query_failures;
+            }
+        }
         if (!pool_.end_primary_command_buffer()) {
             throw std::logic_error("vulkan rhi command list close failed");
         }
@@ -6237,6 +6514,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         reserved_swapchain_frames_.clear();
         presentable_swapchain_frames_.clear();
         pending_present_frames_.clear();
+    }
+
+    void collect_timestamp_query_results() noexcept {
+        if (device_ == nullptr || timestamp_query_pool_ == 0 || !timestamp_end_recorded_) {
+            release_timestamp_query_pool();
+            return;
+        }
+        static_cast<void>(device_->read_timestamp_query_results(timestamp_query_pool_));
+        release_timestamp_query_pool();
     }
 
     void commit_texture_states(std::vector<ResourceState>& destination) const {
@@ -6273,6 +6559,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (render_pass_active_) {
             throw std::logic_error("vulkan rhi copy and transition commands must be recorded outside a render pass");
         }
+    }
+
+    void release_timestamp_query_pool() noexcept {
+        if (device_ != nullptr && timestamp_query_pool_ != 0) {
+            device_->destroy_timestamp_query_pool(timestamp_query_pool_);
+        }
+        timestamp_query_pool_ = 0;
+        timestamp_begin_recorded_ = false;
+        timestamp_end_recorded_ = false;
     }
 
     [[nodiscard]] static bool contains_frame(const std::vector<SwapchainFrameHandle>& frames,
@@ -6509,6 +6804,9 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     std::vector<ResourceState> initial_texture_states_;
     std::vector<TextureHandle> observed_textures_;
     std::uint32_t gpu_debug_scope_depth_{0};
+    NativeVulkanQueryPool timestamp_query_pool_{0};
+    bool timestamp_begin_recorded_{false};
+    bool timestamp_end_recorded_{false};
 };
 
 void VulkanRhiDevice::retire_deferred_native_resources(RhiResourceLifetimeFence completed_fence) noexcept {
@@ -7012,6 +7310,7 @@ FenceValue VulkanRhiDevice::submit(IRhiCommandList& commands) {
         if (!submit_result.submitted) {
             throw std::logic_error("vulkan rhi command list submission failed: " + submit_result.diagnostic);
         }
+        vulkan_commands->collect_timestamp_query_results();
 
         const auto timeline = next_fence_value_++;
         const FenceValue fence{.value = timeline, .queue = vulkan_commands->queue_kind()};
@@ -7045,6 +7344,7 @@ FenceValue VulkanRhiDevice::submit(IRhiCommandList& commands) {
     if (!submit_result.submitted) {
         throw std::logic_error("vulkan rhi command list submission failed: " + submit_result.diagnostic);
     }
+    vulkan_commands->collect_timestamp_query_results();
 
     vulkan_commands->commit_texture_states(texture_states_);
     const auto present_result = present_runtime_swapchain_image(
@@ -8300,6 +8600,8 @@ VulkanPhysicalDeviceCandidate make_physical_device_candidate(const VulkanRuntime
         .name = snapshot.name,
         .type = snapshot.type,
         .api_version = snapshot.api_version,
+        .timestamp_compute_and_graphics = snapshot.timestamp_compute_and_graphics,
+        .timestamp_period_nanoseconds = snapshot.timestamp_period_nanoseconds,
         .supports_swapchain_extension = snapshot.supports_swapchain_extension,
         .supports_dynamic_rendering = snapshot.supports_dynamic_rendering,
         .supports_synchronization2 = snapshot.supports_synchronization2,
@@ -8334,11 +8636,16 @@ std::vector<VulkanCommandRequest> vulkan_backend_command_requests() {
         {.name = "vkDeviceWaitIdle", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCreateCommandPool", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkDestroyCommandPool", .scope = VulkanCommandScope::device, .required = true},
+        {.name = "vkCreateQueryPool", .scope = VulkanCommandScope::device, .required = false},
+        {.name = "vkDestroyQueryPool", .scope = VulkanCommandScope::device, .required = false},
         {.name = "vkAllocateCommandBuffers", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkFreeCommandBuffers", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkBeginCommandBuffer", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkEndCommandBuffer", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkCmdPipelineBarrier2", .scope = VulkanCommandScope::device, .required = true},
+        {.name = "vkCmdResetQueryPool", .scope = VulkanCommandScope::device, .required = false},
+        {.name = "vkCmdWriteTimestamp2", .scope = VulkanCommandScope::device, .required = false},
+        {.name = "vkGetQueryPoolResults", .scope = VulkanCommandScope::device, .required = false},
         {.name = "vkQueueSubmit", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkQueueSubmit2", .scope = VulkanCommandScope::device, .required = true},
         {.name = "vkQueueWaitIdle", .scope = VulkanCommandScope::device, .required = true},
@@ -8449,7 +8756,10 @@ std::vector<VulkanCommandRequest> vulkan_device_command_requests(const VulkanLog
             continue;
         }
         const auto is_synchronization2_command =
-            request.name == "vkCmdPipelineBarrier2" || request.name == "vkQueueSubmit2";
+            request.name == "vkCmdPipelineBarrier2" || request.name == "vkQueueSubmit2" ||
+            request.name == "vkCreateQueryPool" || request.name == "vkDestroyQueryPool" ||
+            request.name == "vkCmdResetQueryPool" || request.name == "vkCmdWriteTimestamp2" ||
+            request.name == "vkGetQueryPoolResults";
         if (is_synchronization2_command && !plan.synchronization2_enabled) {
             continue;
         }
@@ -9844,6 +10154,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCreateCommandPool>(get_device_proc_addr(device, "vkCreateCommandPool"));
     const auto destroy_command_pool =
         reinterpret_cast<VulkanDestroyCommandPool>(get_device_proc_addr(device, "vkDestroyCommandPool"));
+    const auto create_query_pool =
+        reinterpret_cast<VulkanCreateQueryPool>(get_device_proc_addr(device, "vkCreateQueryPool"));
+    const auto destroy_query_pool =
+        reinterpret_cast<VulkanDestroyQueryPool>(get_device_proc_addr(device, "vkDestroyQueryPool"));
     const auto allocate_command_buffers =
         reinterpret_cast<VulkanAllocateCommandBuffers>(get_device_proc_addr(device, "vkAllocateCommandBuffers"));
     const auto free_command_buffers =
@@ -9880,6 +10194,12 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectCountEXT"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
+    const auto cmd_reset_query_pool =
+        reinterpret_cast<VulkanCmdResetQueryPool>(get_device_proc_addr(device, "vkCmdResetQueryPool"));
+    const auto cmd_write_timestamp2 =
+        reinterpret_cast<VulkanCmdWriteTimestamp2>(get_device_proc_addr(device, "vkCmdWriteTimestamp2"));
+    const auto get_query_pool_results =
+        reinterpret_cast<VulkanGetQueryPoolResults>(get_device_proc_addr(device, "vkGetQueryPoolResults"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
     const auto queue_wait_idle = reinterpret_cast<VulkanQueueWaitIdle>(get_device_proc_addr(device, "vkQueueWaitIdle"));
     const auto create_buffer = reinterpret_cast<VulkanCreateBuffer>(get_device_proc_addr(device, "vkCreateBuffer"));
@@ -10066,6 +10386,15 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         }
     }
 
+    const auto timestamp_query_commands_available =
+        synchronization2_enabled && create_query_pool != nullptr && destroy_query_pool != nullptr &&
+        cmd_reset_query_pool != nullptr && cmd_write_timestamp2 != nullptr && get_query_pool_results != nullptr;
+    const auto gpu_timestamp_ticks_per_second =
+        timestamp_query_commands_available
+            ? gpu_timestamp_ticks_per_second_for_queue(selected_candidate,
+                                                       result.selection_probe.selection.graphics_queue_family)
+            : 0;
+
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
     impl->library = library;
     impl->instance = instance;
@@ -10085,6 +10414,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->device_wait_idle = device_wait_idle;
     impl->create_command_pool = create_command_pool;
     impl->destroy_command_pool = destroy_command_pool;
+    impl->create_query_pool = timestamp_query_commands_available ? create_query_pool : nullptr;
+    impl->destroy_query_pool = timestamp_query_commands_available ? destroy_query_pool : nullptr;
     impl->allocate_command_buffers = allocate_command_buffers;
     impl->free_command_buffers = free_command_buffers;
     impl->begin_command_buffer = begin_command_buffer;
@@ -10105,6 +10436,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_draw_mesh_tasks_indirect_count =
         mesh_shader_enabled && draw_indirect_count_enabled ? cmd_draw_mesh_tasks_indirect_count : nullptr;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
+    impl->cmd_reset_query_pool = timestamp_query_commands_available ? cmd_reset_query_pool : nullptr;
+    impl->cmd_write_timestamp2 = timestamp_query_commands_available ? cmd_write_timestamp2 : nullptr;
+    impl->get_query_pool_results = timestamp_query_commands_available ? get_query_pool_results : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
     impl->create_buffer = create_buffer;
@@ -10157,6 +10491,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
+    impl->gpu_timestamp_ticks_per_second = gpu_timestamp_ticks_per_second;
     impl->host = host;
     impl->logical_device_plan = result.logical_device_plan;
     impl->command_plan = device_command_plan;
@@ -10297,6 +10632,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCreateCommandPool>(get_device_proc_addr(device, "vkCreateCommandPool"));
     const auto destroy_command_pool =
         reinterpret_cast<VulkanDestroyCommandPool>(get_device_proc_addr(device, "vkDestroyCommandPool"));
+    const auto create_query_pool =
+        reinterpret_cast<VulkanCreateQueryPool>(get_device_proc_addr(device, "vkCreateQueryPool"));
+    const auto destroy_query_pool =
+        reinterpret_cast<VulkanDestroyQueryPool>(get_device_proc_addr(device, "vkDestroyQueryPool"));
     const auto allocate_command_buffers =
         reinterpret_cast<VulkanAllocateCommandBuffers>(get_device_proc_addr(device, "vkAllocateCommandBuffers"));
     const auto free_command_buffers =
@@ -10333,6 +10672,12 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectCountEXT"));
     const auto cmd_pipeline_barrier2 =
         reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
+    const auto cmd_reset_query_pool =
+        reinterpret_cast<VulkanCmdResetQueryPool>(get_device_proc_addr(device, "vkCmdResetQueryPool"));
+    const auto cmd_write_timestamp2 =
+        reinterpret_cast<VulkanCmdWriteTimestamp2>(get_device_proc_addr(device, "vkCmdWriteTimestamp2"));
+    const auto get_query_pool_results =
+        reinterpret_cast<VulkanGetQueryPoolResults>(get_device_proc_addr(device, "vkGetQueryPoolResults"));
     const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
     const auto queue_wait_idle = reinterpret_cast<VulkanQueueWaitIdle>(get_device_proc_addr(device, "vkQueueWaitIdle"));
     const auto create_buffer = reinterpret_cast<VulkanCreateBuffer>(get_device_proc_addr(device, "vkCreateBuffer"));
@@ -10518,6 +10863,15 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         }
     }
 
+    const auto timestamp_query_commands_available =
+        synchronization2_enabled && create_query_pool != nullptr && destroy_query_pool != nullptr &&
+        cmd_reset_query_pool != nullptr && cmd_write_timestamp2 != nullptr && get_query_pool_results != nullptr;
+    const auto gpu_timestamp_ticks_per_second =
+        timestamp_query_commands_available
+            ? gpu_timestamp_ticks_per_second_for_queue(selected_candidate,
+                                                       result.selection_probe.selection.graphics_queue_family)
+            : 0;
+
     auto impl = std::make_shared<VulkanRuntimeDevice::Impl>();
     impl->library = library;
     impl->instance = instance;
@@ -10537,6 +10891,8 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->device_wait_idle = device_wait_idle;
     impl->create_command_pool = create_command_pool;
     impl->destroy_command_pool = destroy_command_pool;
+    impl->create_query_pool = timestamp_query_commands_available ? create_query_pool : nullptr;
+    impl->destroy_query_pool = timestamp_query_commands_available ? destroy_query_pool : nullptr;
     impl->allocate_command_buffers = allocate_command_buffers;
     impl->free_command_buffers = free_command_buffers;
     impl->begin_command_buffer = begin_command_buffer;
@@ -10557,6 +10913,9 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->cmd_draw_mesh_tasks_indirect_count =
         mesh_shader_enabled && draw_indirect_count_enabled ? cmd_draw_mesh_tasks_indirect_count : nullptr;
     impl->cmd_pipeline_barrier2 = synchronization2_enabled ? cmd_pipeline_barrier2 : nullptr;
+    impl->cmd_reset_query_pool = timestamp_query_commands_available ? cmd_reset_query_pool : nullptr;
+    impl->cmd_write_timestamp2 = timestamp_query_commands_available ? cmd_write_timestamp2 : nullptr;
+    impl->get_query_pool_results = timestamp_query_commands_available ? get_query_pool_results : nullptr;
     impl->queue_submit2 = synchronization2_enabled ? queue_submit2 : nullptr;
     impl->queue_wait_idle = queue_wait_idle;
     impl->create_buffer = create_buffer;
@@ -10609,6 +10968,7 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
     impl->validation_log = std::move(validation_log);
     impl->graphics_queue_family = result.selection_probe.selection.graphics_queue_family;
     impl->present_queue_family = result.selection_probe.selection.present_queue_family;
+    impl->gpu_timestamp_ticks_per_second = gpu_timestamp_ticks_per_second;
     impl->host = host;
     impl->logical_device_plan = result.logical_device_plan;
     impl->command_plan = device_command_plan;

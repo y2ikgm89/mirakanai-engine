@@ -187,6 +187,40 @@ MK_TEST("win32 desktop presentation public compute morph rows stay backend neutr
     MK_REQUIRE(stats.compute_morph_async_last_graphics_submitted_fence_value == graphics_fence.value);
 }
 
+MK_TEST("win32 vulkan debug profiling execution requires timestamp query readback") {
+    mirakana::Win32DesktopPresentationReport report;
+    report.selected_backend = mirakana::Win32DesktopPresentationBackend::vulkan;
+    report.rhi_gpu_timestamp_ticks_per_second = 1'000'000'000;
+    report.rhi_gpu_debug_scopes_begun = 1;
+    report.rhi_gpu_debug_scopes_ended = 1;
+    report.rhi_gpu_debug_markers_inserted = 1;
+    report.renderer_stats.framegraph_barrier_steps_executed = 1;
+    report.renderer_stats.framegraph_render_passes_recorded = 1;
+
+    const auto missing_readback =
+        mirakana::evaluate_win32_desktop_presentation_vulkan_debug_profiling_execution(report, true);
+
+    MK_REQUIRE(missing_readback.vulkan_backend_selected);
+    MK_REQUIRE(!missing_readback.gpu_timestamps_current);
+    MK_REQUIRE(missing_readback.gpu_debug_markers_current);
+    MK_REQUIRE(missing_readback.frame_diagnostics_current);
+    MK_REQUIRE(!missing_readback.ready);
+    MK_REQUIRE(missing_readback.status ==
+               mirakana::Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::blocked);
+
+    report.rhi_gpu_timestamp_query_writes = 2;
+    report.rhi_gpu_timestamp_query_results_read = 1;
+    report.rhi_gpu_timestamp_query_failures = 0;
+    report.rhi_last_gpu_timestamp_begin = 10;
+    report.rhi_last_gpu_timestamp_end = 20;
+
+    const auto ready = mirakana::evaluate_win32_desktop_presentation_vulkan_debug_profiling_execution(report, true);
+
+    MK_REQUIRE(ready.gpu_timestamps_current);
+    MK_REQUIRE(ready.ready);
+    MK_REQUIRE(ready.status == mirakana::Win32DesktopPresentationVulkanDebugProfilingExecutionStatus::ready);
+}
+
 MK_TEST("win32 desktop presentation can create d3d12 rhi frame renderer when shader bytecode is supplied") {
     if (!d3d12_presentation_test_enabled()) {
         return;
