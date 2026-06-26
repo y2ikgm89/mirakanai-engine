@@ -259,7 +259,7 @@ bool debug_profiling_policy_backend_evidence_ready(const DebugProfilingBackendEv
     case rhi::BackendKind::d3d12:
         return desc.gpu_timestamp_ticks_per_second > 0 && gpu_debug_ready && frame_diagnostics_ready;
     case rhi::BackendKind::vulkan:
-        return gpu_debug_ready && frame_diagnostics_ready;
+        return desc.gpu_timestamp_ticks_per_second > 0 && gpu_debug_ready && frame_diagnostics_ready;
     case rhi::BackendKind::null:
     case rhi::BackendKind::metal:
         return false;

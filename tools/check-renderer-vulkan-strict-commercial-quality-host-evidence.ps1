@@ -134,7 +134,12 @@ try {
             "presentation.vulkan_readback_bytes",
             "environment_vulkan_strict_aggregate_status=host_evidence_required",
             "vulkan_gpu_memory_execution_status=host_evidence_required",
-            "vulkan_debug_profiling_execution_status=host_evidence_required"
+            "debug_profiling_policy_gpu_timestamp_requests=1",
+            "vulkan_debug_profiling_execution_status=host_evidence_required",
+            "vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=0",
+            "vulkan_debug_profiling_execution_gpu_timestamps_ok=0",
+            "renderer_vulkan_timestamp_ready=0",
+            "renderer_commercial_readiness=0"
         )) {
         if (-not $linuxMainText.Contains($needle)) {
             Write-Error "Linux sample_desktop_runtime_game must accept strict Vulkan commercial smoke flags and emit fail-closed host-gated counters: $needle"

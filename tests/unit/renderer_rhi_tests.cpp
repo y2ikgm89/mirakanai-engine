@@ -6874,7 +6874,7 @@ MK_TEST("scene scale backend instancing evidence requires rhi instanced counters
         }));
 }
 
-MK_TEST("debug profiling backend evidence requires timestamps on d3d12 and markers on vulkan") {
+MK_TEST("debug profiling backend evidence requires timestamps markers and frame diagnostics per backend") {
     MK_REQUIRE(mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
         .backend = mirakana::rhi::BackendKind::d3d12,
         .gpu_timestamp_ticks_per_second = 10'000'000,
@@ -6883,6 +6883,13 @@ MK_TEST("debug profiling backend evidence requires timestamps on d3d12 and marke
         .framegraph_render_passes_recorded = 2,
     }));
     MK_REQUIRE(mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .gpu_timestamp_ticks_per_second = 10'000'000,
+        .gpu_debug_markers_inserted = 2,
+        .framegraph_barrier_steps_executed = 4,
+        .framegraph_render_passes_recorded = 2,
+    }));
+    MK_REQUIRE(!mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
         .backend = mirakana::rhi::BackendKind::vulkan,
         .gpu_debug_markers_inserted = 2,
         .framegraph_barrier_steps_executed = 4,
