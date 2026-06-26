@@ -1702,6 +1702,7 @@ jobs:
       - changes
       - agent-static
       - windows
+      - windows-cpp23
       - linux-vulkan
       - macos
     if: ${{ always() && !cancelled() }}

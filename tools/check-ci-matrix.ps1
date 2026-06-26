@@ -637,11 +637,11 @@ Assert-ValidationTierSelection `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
     -ExpectedFullStaticAnalysis $true `
-    -ExpectedWindowsCpp23Release $false `
+    -ExpectedWindowsCpp23Release $true `
     -ExpectedMacosMetalCmake $true `
     -ExpectedMetalHostEvidence $true `
     -ExpectedIosMetalEvidence $false `
-    -ExpectedSelectedLanes "windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence" `
+    -ExpectedSelectedLanes "windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence,windows_cpp23_release" `
     -ExpectedClassificationReasons "renderer-commercial-quality-closeout"
 
 Assert-ValidationTierSelection `
@@ -657,11 +657,11 @@ Assert-ValidationTierSelection `
     -ExpectedLinuxSanitizers $false `
     -ExpectedLinuxCoverage $false `
     -ExpectedFullStaticAnalysis $true `
-    -ExpectedWindowsCpp23Release $false `
+    -ExpectedWindowsCpp23Release $true `
     -ExpectedMacosMetalCmake $true `
     -ExpectedMetalHostEvidence $true `
     -ExpectedIosMetalEvidence $false `
-    -ExpectedSelectedLanes "windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence" `
+    -ExpectedSelectedLanes "windows_msvc,linux_vulkan_host,full_static_analysis,macos_metal_cmake,metal_host_evidence,windows_cpp23_release" `
     -ExpectedClassificationReasons "renderer-commercial-readiness-evidence"
 
 # Mirrors Test-RendererCommercialReadinessEvidencePath in tools/classify-pr-validation-tier.ps1.
@@ -1410,6 +1410,7 @@ Assert-ContainsAll $rendererCommercialArtifactIntakeJob @(
     "- changes",
     "- agent-static",
     "- windows",
+    "- windows-cpp23",
     "- linux-vulkan",
     "- macos",
     'if: ${{ always() && !cancelled() }}',
