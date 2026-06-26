@@ -78,9 +78,11 @@ if (-not (Test-Path -LiteralPath $importerScript -PathType Leaf)) {
 }
 
 $contractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-contract-$PID"
+$finalRootOnlyContractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-final-root-only-contract-$PID"
 
 try {
     Remove-TestRoot -RelativePath $contractRootRelative
+    Remove-TestRoot -RelativePath $finalRootOnlyContractRootRelative
 
     $planLines = @(& $importerScript -Mode Plan -OutputRootRelative $contractRootRelative)
     foreach ($expectedLine in @(
@@ -174,6 +176,39 @@ try {
             "renderer_commercial_readiness=0"
         )) {
         Assert-LinePresent $hostGateLines $expectedLine "GitHub artifact intake host-gated Inspect mode"
+    }
+
+    Write-JsonObject `
+        -Path (ConvertTo-LocalPath "$finalRootOnlyContractRootRelative/renderer-commercial-readiness-final-retained-root/evidence.json") `
+        -Value ([ordered]@{
+            schema_version = "GameEngine.RendererCommercialReadinessEvidenceBundle.v1"
+            fixture_only = $false
+        })
+    $finalRootOnlyLines = @(& $importerScript -Mode Inspect -OutputRootRelative $finalRootOnlyContractRootRelative)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_final_retained_root_present=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $finalRootOnlyLines $expectedLine "GitHub artifact intake final-root-only Inspect mode"
+    }
+    $finalRootOnlyManifest = Get-Content -LiteralPath (ConvertTo-LocalPath "$finalRootOnlyContractRootRelative/intake-manifest.json") -Raw |
+        ConvertFrom-Json
+    if (-not [bool]$finalRootOnlyManifest.final_preflight_handoff.ready) {
+        Write-Error "GitHub artifact intake final preflight handoff must be ready when a final retained root exists."
+    }
+    if ([string]$finalRootOnlyManifest.final_preflight_handoff.script -cne "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1") {
+        Write-Error "GitHub artifact intake final preflight handoff must point at the final promotion preflight script."
+    }
+    if ([string]$finalRootOnlyManifest.final_preflight_handoff.artifact_root -cne "$finalRootOnlyContractRootRelative/renderer-commercial-readiness-final-retained-root") {
+        Write-Error "GitHub artifact intake final preflight handoff must record the exact final retained-root artifact path."
+    }
+    if ([bool]$finalRootOnlyManifest.assembler_handoff.ready) {
+        Write-Error "GitHub artifact intake assembler handoff must stay blocked when only a final retained root exists."
     }
 
     $inputSpecs = @(
@@ -289,6 +324,7 @@ try {
 }
 finally {
     Remove-TestRoot -RelativePath $contractRootRelative
+    Remove-TestRoot -RelativePath $finalRootOnlyContractRootRelative
 }
 
 Write-Information "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok" -InformationAction Continue

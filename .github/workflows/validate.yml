@@ -1696,6 +1696,78 @@ jobs:
             out/build/ios-Simulator-sample_headless-Debug/**/*.log
           if-no-files-found: warn
 
+  renderer-commercial-artifact-intake:
+    name: Renderer Commercial Artifact Intake
+    needs:
+      - changes
+      - agent-static
+      - windows
+      - linux-vulkan
+      - macos
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Capture current workflow artifact list
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $intakeRoot = "artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake"
+          New-Item -ItemType Directory -Force -Path $intakeRoot | Out-Null
+          $artifactListPath = Join-Path $intakeRoot "workflow-artifacts.json"
+          $artifactList = @(gh api --repo "${{ github.repository }}" -H "Accept: application/vnd.github+json" "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?per_page=100" 2>&1)
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "failed to list workflow run artifacts: $([string]::Join("`n", $artifactList))"
+          }
+          Set-Content -LiteralPath $artifactListPath -Encoding utf8NoBOM -Value ([string]::Join("`n", $artifactList))
+
+      - name: Import current workflow renderer commercial artifacts
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $importLines = @(./tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1 -Mode Import -RepoFullName "${{ github.repository }}" -RunId "${{ github.run_id }}" -OutputRootRelative artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake -ArtifactListJsonRelative artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/workflow-artifacts.json)
+          $logPath = "artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/import-output.log"
+          Set-Content -LiteralPath $logPath -Encoding utf8NoBOM -Value $importLines
+          foreach ($requiredLine in @(
+              "renderer_commercial_readiness=0",
+              "renderer_commercial_readiness_final_retained_root_artifact_import_manifest=artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/intake-manifest.json"
+            )) {
+            if (-not $importLines.Contains($requiredLine)) {
+              Write-Error "renderer commercial artifact intake missing expected non-promoting line: $requiredLine"
+            }
+          }
+
+      - name: Upload renderer commercial readiness current-run artifact intake
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-commercial-readiness-current-run-artifact-intake
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/**
+          if-no-files-found: error
+
   pr-gate:
     name: PR Gate
     needs:
@@ -1714,6 +1786,7 @@ jobs:
       - static-analysis
       - macos
       - ios-metal
+      - renderer-commercial-artifact-intake
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

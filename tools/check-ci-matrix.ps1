@@ -1403,6 +1403,45 @@ Assert-ContainsAll $iosMetalJob @(
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml ios-metal job"
 
+$rendererCommercialArtifactIntakeJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "renderer-commercial-artifact-intake" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $rendererCommercialArtifactIntakeJob @(
+    "name: Renderer Commercial Artifact Intake",
+    "needs:",
+    "- changes",
+    "- agent-static",
+    "- windows",
+    "- linux-vulkan",
+    "- macos",
+    'if: ${{ always() && !cancelled() }}',
+    "runs-on: ubuntu-latest",
+    "timeout-minutes: 15",
+    "permissions:",
+    "contents: read",
+    "actions: read",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Capture current workflow artifact list",
+    'GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}',
+    'gh api --repo "${{ github.repository }}" -H "Accept: application/vnd.github+json" "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts?per_page=100"',
+    "workflow-artifacts.json",
+    "Import current workflow renderer commercial artifacts",
+    "./tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1 -Mode Import",
+    '-RepoFullName "${{ github.repository }}"',
+    '-RunId "${{ github.run_id }}"',
+    "-OutputRootRelative artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake",
+    "-ArtifactListJsonRelative artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/workflow-artifacts.json",
+    "renderer_commercial_readiness=0",
+    "renderer_commercial_readiness_final_retained_root_artifact_import_manifest=artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/intake-manifest.json",
+    "Upload renderer commercial readiness current-run artifact intake",
+    $uploadArtifactActionRef,
+    "name: renderer-commercial-readiness-current-run-artifact-intake",
+    "retention-days: 14",
+    "compression-level: 0",
+    "include-hidden-files: false",
+    "artifacts/renderer/commercial-readiness-evidence/current-run-artifact-intake/**",
+    "if-no-files-found: error"
+) ".github/workflows/validate.yml renderer-commercial-artifact-intake job"
+
 $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "static-analysis" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $staticAnalysisJob @(
     "name: Full Repository Static Analysis",
@@ -1474,6 +1513,7 @@ Assert-ContainsAll $prGateJob @(
     "- static-analysis",
     "- macos",
     "- ios-metal",
+    "- renderer-commercial-artifact-intake",
     'if: ${{ always() && !cancelled() }}',
     "timeout-minutes: 10",
     "`$laneJobs = [ordered]@{",
@@ -1575,6 +1615,7 @@ Assert-CheckoutRetryContract -Text $sanitizerJob -Label ".github/workflows/valid
 Assert-CheckoutRetryContract -Text $staticAnalysisJob -Label ".github/workflows/validate.yml static-analysis checkout retry"
 Assert-CheckoutRetryContract -Text $macosJob -Label ".github/workflows/validate.yml macos checkout retry"
 Assert-CheckoutRetryContract -Text $iosMetalJob -Label ".github/workflows/validate.yml ios-metal checkout retry"
+Assert-CheckoutRetryContract -Text $rendererCommercialArtifactIntakeJob -Label ".github/workflows/validate.yml renderer-commercial-artifact-intake checkout retry" -RequiresFetchDepthZero
 Assert-CheckoutRetryContract -Text $iosJob -Label ".github/workflows/ios-validate.yml simulator-smoke checkout retry"
 
 Assert-CcacheStatsGuard -Text $linuxJob -Label ".github/workflows/validate.yml linux ccache stats guard"
@@ -1599,6 +1640,7 @@ Assert-DoesNotContainText $validateWorkflow "brew install ninja ccache" ".github
 Assert-MatchesText $validateWorkflow "^  static-analysis:\s*$" ".github/workflows/validate.yml static-analysis job id"
 Assert-MatchesText $validateWorkflow "^  macos:\s*$" ".github/workflows/validate.yml macos job id"
 Assert-MatchesText $validateWorkflow "^  ios-metal:\s*$" ".github/workflows/validate.yml ios-metal job id"
+Assert-MatchesText $validateWorkflow "^  renderer-commercial-artifact-intake:\s*$" ".github/workflows/validate.yml renderer-commercial-artifact-intake job id"
 Assert-MatchesText $validateWorkflow "^  pr-gate:\s*$" ".github/workflows/validate.yml pr-gate job id"
 Assert-MatchesText $iosWorkflow "^  simulator-smoke:\s*$" ".github/workflows/ios-validate.yml simulator-smoke job id"
 

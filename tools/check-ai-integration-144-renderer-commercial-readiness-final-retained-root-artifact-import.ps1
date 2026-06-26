@@ -11,6 +11,8 @@ $productionLoopFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragme
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
+$validateWorkflowText = Get-AgentSurfaceText ".github/workflows/validate.yml"
+$ciMatrixCheckText = Get-AgentSurfaceText "tools/check-ci-matrix.ps1"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
@@ -124,5 +126,23 @@ foreach ($surface in @(
             "renderer_commercial_readiness=0"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) final retained-root artifact import"
+    }
+}
+
+foreach ($surface in @(
+        @{ Text = $validateWorkflowText; Label = ".github/workflows/validate.yml" },
+        @{ Text = $ciMatrixCheckText; Label = "tools/check-ci-matrix.ps1" }
+    )) {
+    foreach ($needle in @(
+            "renderer-commercial-artifact-intake",
+            "Renderer Commercial Artifact Intake",
+            "gh api --repo",
+            'actions/runs/${{ github.run_id }}/artifacts?per_page=100',
+            "current-run-artifact-intake",
+            "renderer-commercial-readiness-current-run-artifact-intake",
+            "actions: read",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) current-run artifact intake"
     }
 }

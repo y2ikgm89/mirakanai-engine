@@ -7,6 +7,8 @@ $importerCheckText = Get-JsonContractSurfaceText "tools/check-renderer-commercia
 $commandsFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $productionLoopFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
+$validateWorkflowText = Get-JsonContractSurfaceText ".github/workflows/validate.yml"
+$ciMatrixCheckText = Get-JsonContractSurfaceText "tools/check-ci-matrix.ps1"
 
 foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import",
@@ -82,4 +84,22 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle "renderer commercial readiness final retained-root artifact import validation recipe"
     Assert-ContainsText $productionLoopFragmentText $needle "renderer commercial readiness final retained-root artifact import production loop"
+}
+
+foreach ($surface in @(
+        @{ Text = $validateWorkflowText; Label = ".github/workflows/validate.yml" },
+        @{ Text = $ciMatrixCheckText; Label = "tools/check-ci-matrix.ps1" }
+    )) {
+    foreach ($needle in @(
+            "renderer-commercial-artifact-intake",
+            "Renderer Commercial Artifact Intake",
+            "gh api --repo",
+            'actions/runs/${{ github.run_id }}/artifacts?per_page=100',
+            "current-run-artifact-intake",
+            "renderer-commercial-readiness-current-run-artifact-intake",
+            "actions: read",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) current-run artifact intake"
+    }
 }
