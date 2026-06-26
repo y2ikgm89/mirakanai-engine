@@ -1087,6 +1087,13 @@ Task 10W Linux strict Vulkan runtime counter evidence:
 - `sample_desktop_runtime_game --emit-vulkan-strict-commercial-host-gate` now emits `renderer_vulkan_strict_linux_gate_runtime_counters_ready`, `renderer_vulkan_strict_linux_gate_readback_bytes`, `environment_vulkan_strict_aggregate_validation_layers_ready`, `environment_vulkan_strict_aggregate_synchronization2_barriers`, and readback row counters from the Linux presentation report while keeping `environment_vulkan_strict_aggregate_ready=0`, `vulkan_gpu_memory_execution_ready=0`, `vulkan_debug_profiling_execution_ready=0`, `renderer_commercial_readiness=0`, and broad renderer/environment counters unclaimed.
 - `MK_runtime_host_tests`, `runtime_host_linux_public_api_compile.cpp`, `tools/check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1`, manifest notes, and static integration needles lock this as a retained Linux package counter surface, not broad strict Vulkan commercial readiness.
 
+Task 10X strict Vulkan debug profiling timestamp fail-closed contract:
+
+- Context7 `/khronosgroup/vulkan-docs` was checked before selecting this slice. The official timestamp model still requires backend-local timestamp query support, positive queue timestamp capability, finite positive timestamp period conversion, completed query readback, and no public native handle leakage before `renderer_vulkan_timestamp_ready=1` can be claimed.
+- `debug_profiling_policy_backend_evidence_ready` now requires positive `gpu_timestamp_ticks_per_second`, GPU debug marker/scope evidence, and frame diagnostics for Vulkan, matching D3D12's existing timestamp requirement and preventing marker/frame rows from promoting backend profiling evidence without timestamp execution.
+- `sample_desktop_runtime_game --emit-vulkan-strict-commercial-host-gate` now emits `debug_profiling_policy_gpu_timestamp_requests=1` together with `renderer_vulkan_timestamp_ready=0`, `vulkan_debug_profiling_execution_ready=0`, `vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=0`, `vulkan_debug_profiling_execution_gpu_timestamps_ok=0`, and `renderer_commercial_readiness=0`, so the strict package log is visibly "requested but unsupported" instead of "not requested".
+- `tools/check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1`, `MK_renderer_tests`, docs, and manifest guidance lock this as a fail-closed public/package contract. The next implementation step remains real Vulkan query-pool timestamp execution and package readback evidence; this slice does not claim strict Vulkan timestamp readiness, broad backend parity, broad Metal readiness, broad renderer quality, or commercial renderer readiness.
+
 ## Host Evidence Matrix
 
 | Host lane | Required proof | Promotion rule |

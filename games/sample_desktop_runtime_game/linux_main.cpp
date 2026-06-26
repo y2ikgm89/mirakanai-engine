@@ -280,7 +280,7 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
               << " debug_profiling_policy_backend_profiling_evidence_required=1"
               << " debug_profiling_policy_backend_profiling_evidence_ready=0"
               << " debug_profiling_policy_gpu_timestamp_ticks_per_second=0"
-              << " debug_profiling_policy_gpu_timestamp_requests=0"
+              << " debug_profiling_policy_gpu_timestamp_requests=1"
               << " vulkan_debug_profiling_execution_status=host_evidence_required"
               << " vulkan_debug_profiling_execution_ready=0"
               << " vulkan_debug_profiling_execution_selected=" << bit(linux_vulkan_platform_ready)
@@ -288,7 +288,9 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
               << " vulkan_debug_profiling_execution_gpu_timestamps_ok=0"
               << " vulkan_debug_profiling_execution_gpu_debug_markers_ok=0"
               << " vulkan_debug_profiling_execution_frame_diagnostics_ok=0"
-              << " vulkan_debug_profiling_execution_framegraph_barrier_steps_executed=0";
+              << " vulkan_debug_profiling_execution_framegraph_barrier_steps_executed=0"
+              << " renderer_vulkan_timestamp_ready=0"
+              << " renderer_commercial_readiness=0";
 }
 
 } // namespace
