@@ -208,6 +208,7 @@ function Get-WorkflowArtifactListSummary {
         present = $false
         path = ""
         available_artifacts = 0
+        available_artifact_names = @()
         missing_artifacts = @()
         expired_artifacts = @()
     }
@@ -262,6 +263,7 @@ function Get-WorkflowArtifactListSummary {
     $summary.present = $true
     $summary.path = $ArtifactListRelativePath
     $summary.available_artifacts = $availableNames.Count
+    $summary.available_artifact_names = @($availableNames | Sort-Object)
     $summary.missing_artifacts = @($missingArtifacts)
     $summary.expired_artifacts = @($expiredNames | Sort-Object)
     return $summary
@@ -291,6 +293,30 @@ if (-not (Test-AllowedOutputRoot -RelativePath $OutputRootRelative)) {
 $workflowArtifactListSummary = Get-WorkflowArtifactListSummary `
     -ArtifactListRelativePath $ArtifactListJsonRelative `
     -RequiredArtifactNames ([string[]]$ArtifactNames)
+
+$finalRetainedRootArtifactName = "renderer-commercial-readiness-final-retained-root"
+$assemblerSourceArtifactNames = @($ArtifactNames | Where-Object {
+        [string]$_ -cne $finalRetainedRootArtifactName
+    })
+$availableWorkflowArtifactNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+foreach ($artifactName in @($workflowArtifactListSummary.available_artifact_names)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$artifactName)) {
+        $null = $availableWorkflowArtifactNames.Add([string]$artifactName)
+    }
+}
+$finalRootWorkflowArtifactAvailable = [bool]$workflowArtifactListSummary.present -and
+    $availableWorkflowArtifactNames.Contains($finalRetainedRootArtifactName)
+$availableAssemblerSourceArtifacts = [System.Collections.Generic.List[string]]::new()
+$missingAssemblerSourceArtifacts = [System.Collections.Generic.List[string]]::new()
+if ([bool]$workflowArtifactListSummary.present) {
+    foreach ($artifactName in @($assemblerSourceArtifactNames)) {
+        if ($availableWorkflowArtifactNames.Contains([string]$artifactName)) {
+            $availableAssemblerSourceArtifacts.Add([string]$artifactName) | Out-Null
+        } else {
+            $missingAssemblerSourceArtifacts.Add([string]$artifactName) | Out-Null
+        }
+    }
+}
 
 $requiredAssemblerInputs = @(
     @{
@@ -340,8 +366,14 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=$($workflowArtifactListSummary.available_artifacts)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=$(@($workflowArtifactListSummary.missing_artifacts).Count)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifacts=$(@($workflowArtifactListSummary.expired_artifacts).Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available=$(ConvertTo-CounterBit $finalRootWorkflowArtifactAvailable)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_source_workflow_artifacts=$(@($availableAssemblerSourceArtifacts).Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifacts=$(@($missingAssemblerSourceArtifacts).Count)"
 if (@($workflowArtifactListSummary.missing_artifacts).Count -gt 0) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=$((@($workflowArtifactListSummary.missing_artifacts) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
+}
+if (@($missingAssemblerSourceArtifacts).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifact_names=$((@($missingAssemblerSourceArtifacts) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
 }
 if (@($workflowArtifactListSummary.expired_artifacts).Count -gt 0) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifact_names=$((@($workflowArtifactListSummary.expired_artifacts) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
@@ -391,6 +423,7 @@ if ($Mode -eq "Import") {
 
 $presentInputs = 0
 $inputRows = [ordered]@{}
+$missingAssemblerInputNames = [System.Collections.Generic.List[string]]::new()
 foreach ($inputSpec in $requiredAssemblerInputs) {
     $relativePath = Find-JsonEvidencePath `
         -SearchRootFull $outputRootFull `
@@ -399,6 +432,8 @@ foreach ($inputSpec in $requiredAssemblerInputs) {
     $present = -not [string]::IsNullOrWhiteSpace($relativePath)
     if ($present) {
         $presentInputs += 1
+    } else {
+        $missingAssemblerInputNames.Add([string]$inputSpec.Name) | Out-Null
     }
     $inputRows[[string]$inputSpec.Name] = [ordered]@{
         present = $present
@@ -460,6 +495,17 @@ $manifest = [ordered]@{
     output_root = $OutputRootRelative
     requested_artifacts = @($ArtifactNames)
     workflow_artifact_list = $workflowArtifactListSummary
+    artifact_handoff_strategy = [ordered]@{
+        final_retained_root_artifact = [ordered]@{
+            name = $finalRetainedRootArtifactName
+            available = $finalRootWorkflowArtifactAvailable
+        }
+        assembler_source_artifacts = [ordered]@{
+            required_artifacts = @($assemblerSourceArtifactNames)
+            available_artifacts = @($availableAssemblerSourceArtifacts)
+            missing_artifacts = @($missingAssemblerSourceArtifacts)
+        }
+    }
     downloaded_artifacts = $downloadedArtifacts
     download_failures = @($downloadFailures)
     final_retained_root = [ordered]@{
@@ -467,6 +513,7 @@ $manifest = [ordered]@{
         path = if ($finalRootPresent) { "$finalRetainedRootRelative/evidence.json" } else { "" }
     }
     assembler_inputs = $inputRows
+    missing_assembler_inputs = @($missingAssemblerInputNames)
     assembler_handoff = [ordered]@{
         ready = $assemblerHandoffReady
         script = "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1"
@@ -499,6 +546,9 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_download_failures=$($downloadFailures.Count)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=$presentInputs"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=$($requiredAssemblerInputs.Count - $presentInputs)"
+if (@($missingAssemblerInputNames).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names=$((@($missingAssemblerInputNames) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
+}
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_final_retained_root_present=$(ConvertTo-CounterBit $finalRootPresent)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=$(ConvertTo-CounterBit $assemblerHandoffReady)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_required_input_paths=$($requiredAssemblerInputs.Count)"

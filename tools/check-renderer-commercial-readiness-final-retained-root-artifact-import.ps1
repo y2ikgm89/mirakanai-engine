@@ -130,6 +130,7 @@ try {
     foreach ($expectedLine in @(
             "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names=d3d12_host_evidence,vulkan_strict_host_evidence,apple_metal_host_evidence,metal_memory_profiling_host_evidence,package_host_evidence,quality_vfx_host_evidence,clean_room_legal_review",
             "renderer_commercial_readiness_final_retained_root_artifact_import_final_retained_root_present=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_writes_evidence=0",
@@ -157,6 +158,10 @@ try {
             "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=2",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_source_workflow_artifacts=4",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifacts=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifact_names=renderer-clean-room-legal-review-artifacts",
             "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifacts=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_ready=0",
             "renderer_commercial_readiness=0"
@@ -192,6 +197,7 @@ try {
     foreach ($expectedLine in @(
             "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names=d3d12_host_evidence,vulkan_strict_host_evidence,apple_metal_host_evidence,metal_memory_profiling_host_evidence,package_host_evidence,quality_vfx_host_evidence,clean_room_legal_review",
             "renderer_commercial_readiness_final_retained_root_artifact_import_final_retained_root_present=1",
             "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=1",
@@ -283,6 +289,12 @@ try {
         ConvertFrom-Json
     if (-not [bool]$manifest.assembler_handoff.ready) {
         Write-Error "GitHub artifact intake manifest must include a ready assembler handoff when all seven inputs are present."
+    }
+    if (@($manifest.artifact_handoff_strategy.assembler_source_artifacts.missing_artifacts).Count -ne 0) {
+        Write-Error "GitHub artifact intake manifest must expose zero missing assembler source artifacts when the complete source artifact set is available."
+    }
+    if (@($manifest.missing_assembler_inputs).Count -ne 0) {
+        Write-Error "GitHub artifact intake manifest must expose zero missing assembler inputs when all seven inputs are present."
     }
     if ([string]$manifest.assembler_handoff.script -cne "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1") {
         Write-Error "GitHub artifact intake manifest must point at the final retained-root assembler script."
