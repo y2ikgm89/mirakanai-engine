@@ -1055,6 +1055,7 @@ Assert-ContainsAll $windowsCpp23Job @(
     "--require-directional-shadow-filtering",
     "--require-framegraph-multiqueue-evidence",
     "./tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1",
+    "-BuildPreset cpp23-release-eval",
     "./tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1",
     "renderer_d3d12_commercial_quality_host_supplement_ready=1",
     "renderer_d3d12_commercial_quality_host_evidence_written=1",

@@ -1042,7 +1042,7 @@ jobs:
           $supplementLines = @(./tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1 `
               -Mode Generate `
               -OutputRootRelative $supplementRoot `
-              -BuildPreset cpp23-release-preset-eval `
+              -BuildPreset cpp23-release-eval `
               -BuildConfig Release `
               -RequireReady)
           Set-Content -LiteralPath $supplementLog -Encoding utf8NoBOM -Value $supplementLines
