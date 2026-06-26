@@ -121,8 +121,23 @@ try {
     }
 
     $workflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
+    $linuxMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_game/linux_main.cpp") -Raw
+    foreach ($needle in @(
+            "--emit-vulkan-strict-commercial-host-gate",
+            "--require-environment-vulkan-strict-aggregate",
+            "--require-vulkan-gpu-memory-evidence",
+            "--require-vulkan-debug-profiling-evidence",
+            "environment_vulkan_strict_aggregate_status=host_evidence_required",
+            "vulkan_gpu_memory_execution_status=host_evidence_required",
+            "vulkan_debug_profiling_execution_status=host_evidence_required"
+        )) {
+        if (-not $linuxMainText.Contains($needle)) {
+            Write-Error "Linux sample_desktop_runtime_game must accept strict Vulkan commercial smoke flags and emit fail-closed host-gated counters: $needle"
+        }
+    }
     foreach ($needle in @(
             "Validate Linux Vulkan host evidence gate",
+            "--emit-vulkan-strict-commercial-host-gate",
             "--require-linux-vulkan-presentation-smoke",
             "--require-linux-vulkan-readback",
             "--require-linux-vulkan-validation-log",

@@ -1364,7 +1364,8 @@ jobs:
             '--require-scene-package', 'runtime/sample_desktop_runtime_game.geindex',
             '--require-linux-vulkan-presentation-smoke',
             '--require-linux-vulkan-readback',
-            '--require-linux-vulkan-validation-log'
+            '--require-linux-vulkan-validation-log',
+            '--emit-vulkan-strict-commercial-host-gate'
           )
           $expected = @(
             "validation_recipe=environment-platform-linux-vulkan-package",
