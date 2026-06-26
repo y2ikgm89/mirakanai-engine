@@ -65,6 +65,7 @@ $finalAssemblerText = Get-AgentSurfaceText "tools/assemble-renderer-commercial-r
 $finalAssemblerCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-assembler.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $linuxSampleGameText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/linux_main.cpp"
+$linuxRuntimeHostHeaderText = Get-AgentSurfaceText "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp"
 $qualityCloseoutValidatorText = Get-AgentSurfaceText "tools/validate-renderer-commercial-quality-closeout.ps1"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
@@ -1418,14 +1419,53 @@ foreach ($needle in @(
         'presentation.vulkan_synchronization2_barriers',
         'presentation.vulkan_validation_layer_ready',
         'presentation.vulkan_readback_bytes',
-        'environment_vulkan_strict_aggregate_status=host_evidence_required',
+        'const bool strict_aggregate_ready = presentation.environment_vulkan_strict_aggregate_ready;',
+        'const bool strict_commercial_ready = presentation.linux_vulkan_strict_commercial_ready;',
+        'presentation.strict_aggregate_toolchain_ready',
+        'presentation.strict_aggregate_device_features_ready',
+        'presentation.strict_aggregate_postprocess_ready',
+        'presentation.strict_aggregate_fog_ready',
+        'presentation.strict_aggregate_physical_sky_ready',
+        'presentation.strict_aggregate_lighting_ready',
+        'presentation.strict_aggregate_volumetric_fog_ready',
+        'presentation.strict_aggregate_volumetric_cloud_ready',
+        'presentation.strict_aggregate_precipitation_ready',
+        'presentation.strict_aggregate_quality_budget_ready',
+        'presentation.strict_aggregate_feature_rows',
+        'presentation.strict_aggregate_descriptor_set_bindings',
+        'presentation.strict_aggregate_resource_usage_layout_ready',
+        'presentation.strict_aggregate_attachment_usage_layout_rows',
+        'presentation.strict_aggregate_weather_texture_usage_layout_rows',
+        'presentation.strict_aggregate_froxel_buffer_usage_layout_rows',
+        'presentation.strict_aggregate_renderer_draws',
+        'presentation.strict_aggregate_compute_dispatches',
+        'presentation.strict_aggregate_texture_uploads',
+        'presentation.strict_aggregate_readback_rows',
         'environment_vulkan_strict_aggregate_validation_layers_ready=',
         'environment_vulkan_strict_aggregate_synchronization2_barriers=',
         'environment_vulkan_strict_aggregate_readback_rows=',
-        'vulkan_gpu_memory_execution_status=host_evidence_required',
-        'vulkan_debug_profiling_execution_status=host_evidence_required'
+        'presentation.vulkan_gpu_memory_execution_status',
+        'presentation.vulkan_gpu_memory_execution_ready',
+        'presentation.vulkan_gpu_memory_committed_resources_byte_estimate',
+        'presentation.debug_profiling_policy_gpu_timestamp_requests',
+        'presentation.vulkan_debug_profiling_execution_status',
+        'presentation.vulkan_debug_profiling_gpu_timestamp_ticks_per_second',
+        'presentation.vulkan_debug_profiling_gpu_timestamp_query_writes',
+        'presentation.vulkan_debug_profiling_gpu_timestamp_query_results_read',
+        'presentation.vulkan_debug_profiling_gpu_timestamp_query_failures',
+        'presentation.vulkan_debug_profiling_gpu_timestamps_ok',
+        'presentation.renderer_vulkan_timestamp_ready',
+        'mirakana::linux_desktop_vulkan_strict_execution_status_name',
+        'renderer_commercial_readiness=0'
     )) {
     Assert-ContainsText $linuxSampleGameText $needle "renderer commercial readiness strict Vulkan Linux sample host-gated counter surface"
+}
+foreach ($forbiddenNeedle in @(
+        'last_gpu_timestamp_begin',
+        'last_gpu_timestamp_end'
+    )) {
+    Assert-DoesNotContainText $linuxSampleGameText $forbiddenNeedle "renderer commercial readiness Linux package raw timestamp values"
+    Assert-DoesNotContainText $linuxRuntimeHostHeaderText $forbiddenNeedle "renderer commercial readiness Linux runtime host raw timestamp values"
 }
 foreach ($needle in @(
         'Collect renderer Apple Metal commercial quality host evidence',

@@ -81,6 +81,7 @@ $artifactOutputRootRelative = "artifacts/renderer/commercial-readiness-evidence/
 $collectorOutputRootRelative = "artifacts/renderer/commercial-readiness-evidence/vulkan-strict-host-evidence-contract-$PID/readiness"
 $platformOnlySmokeRelative = "$sourceRootRelative/linux-platform-only.log"
 $packageSmokeRelative = "$sourceRootRelative/vulkan-strict-package.log"
+$nonExactPackageSmokeRelative = "$sourceRootRelative/vulkan-strict-package-non-exact.log"
 $linuxHostStrictSmokeRelative = "artifacts/environment/platform/linux-vulkan-host/strict-contract-$PID/validate-linux-vulkan-runtime-host.txt"
 $evidenceRootPath = ConvertTo-LocalPath $evidenceRootRelative
 $commercialRootPath = ConvertTo-LocalPath "artifacts/renderer/commercial-readiness-evidence/vulkan-strict-host-evidence-contract-$PID"
@@ -91,7 +92,23 @@ sample_desktop_runtime_game status=ready validation_recipe=environment-platform-
 "@
 
 $packageSmokeText = @"
-sample_desktop_runtime_game status=ready environment_vulkan_strict_aggregate_status=ready environment_vulkan_strict_aggregate_ready=1 environment_vulkan_strict_aggregate_selected_backend=vulkan environment_vulkan_strict_aggregate_toolchain_ready=1 environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready=1 environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready=1 environment_vulkan_strict_aggregate_spirv_validation_ready=1 environment_vulkan_strict_aggregate_validation_layers_ready=1 environment_vulkan_strict_aggregate_device_features_ready=1 environment_vulkan_strict_aggregate_toolchain_rows=6 environment_vulkan_strict_aggregate_missing_toolchain_rows=0 environment_vulkan_strict_aggregate_missing_validation_layer_rows=0 environment_vulkan_strict_aggregate_missing_spirv_validation_rows=0 environment_vulkan_strict_aggregate_unsupported_feature_device_rows=0 environment_vulkan_strict_aggregate_synchronization2_barriers=7 environment_vulkan_strict_aggregate_resource_usage_layout_ready=1 environment_vulkan_strict_aggregate_resource_usage_layout_rows=20 environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows=6 environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows=2 environment_vulkan_strict_aggregate_cube_map_usage_layout_rows=1 environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows=5 environment_vulkan_strict_aggregate_renderer_draws=2 environment_vulkan_strict_aggregate_compute_dispatches=1 environment_vulkan_strict_aggregate_texture_uploads=3 environment_vulkan_strict_aggregate_readback_rows=5 environment_vulkan_strict_aggregate_native_handle_access=0 environment_vulkan_strict_aggregate_d3d12_fallback=0 environment_vulkan_strict_aggregate_metal_fallback=0 environment_vulkan_strict_aggregate_backend_parity=0 environment_vulkan_strict_aggregate_broad_optimization_claimed=0 environment_vulkan_strict_aggregate_diagnostics=0 vulkan_gpu_memory_execution_status=ready vulkan_gpu_memory_execution_ready=1 vulkan_gpu_memory_execution_selected=1 vulkan_gpu_memory_execution_committed_byte_estimate_available=1 vulkan_gpu_memory_execution_committed_resources_byte_estimate=4096 vulkan_gpu_memory_execution_upload_bytes_written=2048 vulkan_gpu_memory_execution_framegraph_barrier_steps_executed=7 vulkan_gpu_memory_execution_budget_ok=1 vulkan_gpu_memory_execution_transient_heap_ok=1 debug_profiling_policy_status=ready debug_profiling_policy_ready=1 debug_profiling_policy_diagnostics=0 debug_profiling_policy_backend_profiling_evidence_required=1 debug_profiling_policy_backend_profiling_evidence_ready=1 debug_profiling_policy_gpu_timestamp_ticks_per_second=1000000000 debug_profiling_policy_gpu_timestamp_requests=1 vulkan_debug_profiling_execution_status=ready vulkan_debug_profiling_execution_ready=1 vulkan_debug_profiling_execution_selected=1 vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=1000000000 vulkan_debug_profiling_execution_gpu_timestamp_query_writes=2 vulkan_debug_profiling_execution_gpu_timestamp_query_results_read=1 vulkan_debug_profiling_execution_gpu_timestamp_query_failures=0 vulkan_debug_profiling_execution_last_gpu_timestamp_begin=10 vulkan_debug_profiling_execution_last_gpu_timestamp_end=20 vulkan_debug_profiling_execution_gpu_timestamps_ok=1 vulkan_debug_profiling_execution_gpu_debug_markers_ok=1 vulkan_debug_profiling_execution_frame_diagnostics_ok=1 vulkan_debug_profiling_execution_framegraph_barrier_steps_executed=7 vulkan_debug_profiling_execution_framegraph_render_passes_recorded=3
+sample_desktop_runtime_game status=ready
+environment_vulkan_strict_aggregate_status=ready environment_vulkan_strict_aggregate_ready=1 environment_vulkan_strict_aggregate_selected_backend=vulkan
+environment_vulkan_strict_aggregate_postprocess=1 environment_vulkan_strict_aggregate_fog=1 environment_vulkan_strict_aggregate_physical_sky=1 environment_vulkan_strict_aggregate_lighting=1
+environment_vulkan_strict_aggregate_volumetric_fog=1 environment_vulkan_strict_aggregate_volumetric_cloud=1 environment_vulkan_strict_aggregate_precipitation=1 environment_vulkan_strict_aggregate_quality_budget=1
+environment_vulkan_strict_aggregate_feature_rows=6 environment_vulkan_strict_aggregate_descriptor_set_bindings=15
+environment_vulkan_strict_aggregate_toolchain_ready=1 environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready=1 environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready=1 environment_vulkan_strict_aggregate_spirv_validation_ready=1
+environment_vulkan_strict_aggregate_validation_layers_ready=1 environment_vulkan_strict_aggregate_device_features_ready=1 environment_vulkan_strict_aggregate_toolchain_rows=6
+environment_vulkan_strict_aggregate_missing_toolchain_rows=0 environment_vulkan_strict_aggregate_missing_validation_layer_rows=0 environment_vulkan_strict_aggregate_missing_spirv_validation_rows=0 environment_vulkan_strict_aggregate_unsupported_feature_device_rows=0
+environment_vulkan_strict_aggregate_synchronization2_barriers=7
+environment_vulkan_strict_aggregate_resource_usage_layout_ready=1 environment_vulkan_strict_aggregate_resource_usage_layout_rows=20
+environment_vulkan_strict_aggregate_attachment_usage_layout_rows=2 environment_vulkan_strict_aggregate_sampled_texture_usage_layout_rows=6 environment_vulkan_strict_aggregate_storage_buffer_usage_layout_rows=2
+environment_vulkan_strict_aggregate_cube_map_usage_layout_rows=1 environment_vulkan_strict_aggregate_weather_texture_usage_layout_rows=3 environment_vulkan_strict_aggregate_froxel_buffer_usage_layout_rows=1 environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows=5
+environment_vulkan_strict_aggregate_renderer_draws=2 environment_vulkan_strict_aggregate_compute_dispatches=1 environment_vulkan_strict_aggregate_texture_uploads=3 environment_vulkan_strict_aggregate_readback_rows=5
+environment_vulkan_strict_aggregate_native_handle_access=0 environment_vulkan_strict_aggregate_d3d12_fallback=0 environment_vulkan_strict_aggregate_metal_fallback=0 environment_vulkan_strict_aggregate_backend_parity=0 environment_vulkan_strict_aggregate_broad_optimization_claimed=0 environment_vulkan_strict_aggregate_diagnostics=0
+vulkan_gpu_memory_execution_status=ready vulkan_gpu_memory_execution_ready=1 vulkan_gpu_memory_execution_selected=1 vulkan_gpu_memory_execution_committed_byte_estimate_available=1 vulkan_gpu_memory_execution_committed_resources_byte_estimate=4096 vulkan_gpu_memory_execution_upload_bytes_written=2048 vulkan_gpu_memory_execution_framegraph_barrier_steps_executed=7 vulkan_gpu_memory_execution_budget_ok=1 vulkan_gpu_memory_execution_transient_heap_ok=1
+debug_profiling_policy_status=ready debug_profiling_policy_ready=1 debug_profiling_policy_diagnostics=0 debug_profiling_policy_backend_profiling_evidence_required=1 debug_profiling_policy_backend_profiling_evidence_ready=1 debug_profiling_policy_gpu_timestamp_ticks_per_second=1000000000 debug_profiling_policy_gpu_timestamp_requests=1
+vulkan_debug_profiling_execution_status=ready vulkan_debug_profiling_execution_ready=1 vulkan_debug_profiling_execution_selected=1 vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=1000000000 vulkan_debug_profiling_execution_gpu_timestamp_query_writes=2 vulkan_debug_profiling_execution_gpu_timestamp_query_results_read=1 vulkan_debug_profiling_execution_gpu_timestamp_query_failures=0 vulkan_debug_profiling_execution_gpu_timestamps_ok=1 vulkan_debug_profiling_execution_gpu_debug_markers_ok=1 vulkan_debug_profiling_execution_frame_diagnostics_ok=1 vulkan_debug_profiling_execution_framegraph_barrier_steps_executed=7 vulkan_debug_profiling_execution_framegraph_render_passes_recorded=3
 "@
 
 try {
@@ -103,6 +120,10 @@ try {
 
     Write-TextFile -Path (ConvertTo-LocalPath $platformOnlySmokeRelative) -Value $platformOnlySmokeText
     Write-TextFile -Path (ConvertTo-LocalPath $packageSmokeRelative) -Value $packageSmokeText
+    Write-TextFile -Path (ConvertTo-LocalPath $nonExactPackageSmokeRelative) -Value (
+        $packageSmokeText.Replace(
+            "environment_vulkan_strict_aggregate_descriptor_set_bindings=15",
+            "environment_vulkan_strict_aggregate_descriptor_set_bindings=16"))
     Write-TextFile -Path $linuxHostStrictSmokePath -Value $packageSmokeText
 
     $linuxHostGateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate-linux-vulkan-runtime-host.ps1") -Raw
@@ -122,6 +143,7 @@ try {
 
     $workflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
     $linuxMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_game/linux_main.cpp") -Raw
+    $linuxHostHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp") -Raw
     foreach ($needle in @(
             "--emit-vulkan-strict-commercial-host-gate",
             "--require-environment-vulkan-strict-aggregate",
@@ -129,23 +151,55 @@ try {
             "--require-vulkan-debug-profiling-evidence",
             "renderer_vulkan_strict_linux_gate_runtime_counters_ready=",
             "renderer_vulkan_strict_linux_gate_readback_bytes=",
+            "const bool strict_aggregate_ready = presentation.environment_vulkan_strict_aggregate_ready;",
+            "const bool strict_commercial_ready = presentation.linux_vulkan_strict_commercial_ready;",
             "presentation.vulkan_synchronization2_barriers",
             "presentation.vulkan_validation_layer_ready",
             "presentation.vulkan_readback_bytes",
-            "environment_vulkan_strict_aggregate_status=host_evidence_required",
-            "vulkan_gpu_memory_execution_status=host_evidence_required",
-            "debug_profiling_policy_gpu_timestamp_requests=1",
-            "vulkan_debug_profiling_execution_status=host_evidence_required",
-            "vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second=0",
-            "vulkan_debug_profiling_execution_gpu_timestamp_query_writes=0",
-            "vulkan_debug_profiling_execution_gpu_timestamp_query_results_read=0",
-            "vulkan_debug_profiling_execution_gpu_timestamp_query_failures=0",
-            "vulkan_debug_profiling_execution_gpu_timestamps_ok=0",
-            "renderer_vulkan_timestamp_ready=0",
+            "presentation.strict_aggregate_toolchain_ready",
+            "presentation.strict_aggregate_device_features_ready",
+            "presentation.strict_aggregate_postprocess_ready",
+            "presentation.strict_aggregate_fog_ready",
+            "presentation.strict_aggregate_physical_sky_ready",
+            "presentation.strict_aggregate_lighting_ready",
+            "presentation.strict_aggregate_volumetric_fog_ready",
+            "presentation.strict_aggregate_volumetric_cloud_ready",
+            "presentation.strict_aggregate_precipitation_ready",
+            "presentation.strict_aggregate_quality_budget_ready",
+            "presentation.strict_aggregate_feature_rows",
+            "presentation.strict_aggregate_descriptor_set_bindings",
+            "presentation.strict_aggregate_resource_usage_layout_ready",
+            "presentation.strict_aggregate_attachment_usage_layout_rows",
+            "presentation.strict_aggregate_weather_texture_usage_layout_rows",
+            "presentation.strict_aggregate_froxel_buffer_usage_layout_rows",
+            "presentation.strict_aggregate_renderer_draws",
+            "presentation.strict_aggregate_compute_dispatches",
+            "presentation.strict_aggregate_texture_uploads",
+            "presentation.strict_aggregate_readback_rows",
+            "presentation.vulkan_gpu_memory_execution_status",
+            "presentation.vulkan_gpu_memory_execution_ready",
+            "presentation.vulkan_gpu_memory_committed_resources_byte_estimate",
+            "presentation.debug_profiling_policy_gpu_timestamp_requests",
+            "presentation.vulkan_debug_profiling_execution_status",
+            "presentation.vulkan_debug_profiling_gpu_timestamp_ticks_per_second",
+            "presentation.vulkan_debug_profiling_gpu_timestamp_query_writes",
+            "presentation.vulkan_debug_profiling_gpu_timestamp_query_results_read",
+            "presentation.vulkan_debug_profiling_gpu_timestamp_query_failures",
+            "presentation.vulkan_debug_profiling_gpu_timestamps_ok",
+            "presentation.renderer_vulkan_timestamp_ready",
+            "mirakana::linux_desktop_vulkan_strict_execution_status_name",
             "renderer_commercial_readiness=0"
         )) {
         if (-not $linuxMainText.Contains($needle)) {
-            Write-Error "Linux sample_desktop_runtime_game must accept strict Vulkan commercial smoke flags and emit fail-closed host-gated counters: $needle"
+            Write-Error "Linux sample_desktop_runtime_game must accept strict Vulkan commercial smoke flags and emit report-driven strict host evidence counters while keeping renderer commercial readiness non-promoted: $needle"
+        }
+    }
+    foreach ($forbiddenNeedle in @(
+            "last_gpu_timestamp_begin",
+            "last_gpu_timestamp_end"
+        )) {
+        if ($linuxMainText.Contains($forbiddenNeedle) -or $linuxHostHeaderText.Contains($forbiddenNeedle)) {
+            Write-Error "Linux strict Vulkan commercial evidence must not expose raw GPU timestamp values through public runtime-host or package output: $forbiddenNeedle"
         }
     }
     foreach ($needle in @(
@@ -209,6 +263,35 @@ try {
     $platformHostEvidencePath = ConvertTo-LocalPath "$producerOutputRootRelative/vulkan-strict-host-evidence.json"
     if (Test-Path -LiteralPath $platformHostEvidencePath -PathType Leaf) {
         Write-Error "platform-only Vulkan smoke must not write strict Vulkan host evidence JSON."
+    }
+
+    $nonExactRejected = $false
+    try {
+        $null = & $producerScript `
+            -Mode Generate `
+            -OutputRootRelative $producerOutputRootRelative `
+            -PackageSmokeOutputRelative $nonExactPackageSmokeRelative `
+            -RequireReady 2>&1
+    }
+    catch {
+        $nonExactRejected = [string]$_.Exception.Message -like "*vulkan_strict_host_evidence_not_ready*"
+    }
+    if (-not $nonExactRejected) {
+        Write-Error "strict Vulkan host evidence generator must fail closed for non-exact retained aggregate row counts."
+    }
+    $nonExactLines = @(& $producerScript `
+            -Mode Generate `
+            -OutputRootRelative $producerOutputRootRelative `
+            -PackageSmokeOutputRelative $nonExactPackageSmokeRelative)
+    foreach ($expectedLine in @(
+            "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
+            "renderer_vulkan_memory_binding_ready=0"
+        )) {
+        Assert-LinePresent $nonExactLines $expectedLine "strict Vulkan host evidence generator non-exact retained aggregate input"
+    }
+    if (-not ($nonExactLines -match "renderer_vulkan_strict_commercial_quality_host_evidence_missing_row_names=.*vulkan_strict_aggregate_feature_counters_required")) {
+        Write-Error "strict Vulkan host evidence generator must report feature counter blockers for non-exact descriptor rows."
     }
 
     $linuxHostGenerateLines = @(& $producerScript `
