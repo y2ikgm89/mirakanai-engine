@@ -41,6 +41,8 @@ $d3d12ArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-d3d12-
 $d3d12ArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-d3d12-commercial-quality-artifact.ps1"
 $vulkanStrictArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1"
 $vulkanStrictArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-artifact.ps1"
+$vulkanStrictHostEvidenceGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1"
+$vulkanStrictHostEvidenceCheckText = Get-AgentSurfaceText "tools/check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1"
 $appleMetalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-apple-metal-commercial-quality-artifact.ps1"
 $appleMetalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-apple-metal-commercial-quality-artifact.ps1"
 $packageArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-package-commercial-quality-artifacts.ps1"
@@ -331,6 +333,8 @@ Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-host-
     "renderer commercial readiness D3D12 host supplement validate task"
 Assert-ContainsText $validateText 'check-renderer-d3d12-commercial-quality-artifact.ps1' `
     "renderer commercial readiness D3D12 artifact producer validate task"
+Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1' `
+    "renderer commercial readiness strict Vulkan host evidence generator validate task"
 Assert-ContainsText $validateText 'check-renderer-vulkan-strict-commercial-quality-artifact.ps1' `
     "renderer commercial readiness strict Vulkan artifact producer validate task"
 Assert-ContainsText $validateText 'check-renderer-apple-metal-commercial-quality-artifact.ps1' `
@@ -353,6 +357,8 @@ Assert-ContainsText $d3d12HostSupplementCheckText 'renderer-d3d12-commercial-qua
     "renderer commercial readiness D3D12 host supplement check"
 Assert-ContainsText $d3d12ArtifactProducerCheckText 'renderer-d3d12-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness D3D12 artifact producer check"
+Assert-ContainsText $vulkanStrictHostEvidenceCheckText 'renderer-vulkan-strict-commercial-quality-host-evidence-check: ok' `
+    "renderer commercial readiness strict Vulkan host evidence generator check"
 Assert-ContainsText $vulkanStrictArtifactProducerCheckText 'renderer-vulkan-strict-commercial-quality-artifact-check: ok' `
     "renderer commercial readiness strict Vulkan artifact producer check"
 Assert-ContainsText $appleMetalArtifactProducerCheckText 'renderer-apple-metal-commercial-quality-artifact-check: ok' `
@@ -655,6 +661,63 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $d3d12ArtifactProducerCheckText $needle `
         "renderer commercial readiness D3D12 artifact producer check"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'Mode',
+        'Generate',
+        'OutputRootRelative',
+        'PackageSmokeOutputRelative',
+        'artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostGate.v1',
+        'renderer-vulkan-strict-commercial-quality-host-evidence',
+        'renderer-vulkan-strict-commercial-quality-artifact-v1',
+        'Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25',
+        'vulkan-strict-host-evidence.json',
+        'host-gate-summary.json',
+        'vkCmdPipelineBarrier2',
+        'VkDependencyInfo',
+        'VK_LAYER_KHRONOS_validation',
+        'VUID-vkBindBufferMemory-memory-01030',
+        'vulkan_timestamp_query_package_counters_required',
+        'environment_vulkan_strict_aggregate_ready',
+        'vulkan_debug_profiling_execution_gpu_timestamps_ok',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_status=ready',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_status=$status',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_ready=1',
+        'renderer_vulkan_timestamp_ready=1',
+        'renderer_vulkan_native_handles_exposed=0',
+        'renderer_backend_parity_ready=0',
+        'renderer_metal_broad_readiness=0',
+        'renderer_broad_quality_ready=0',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $vulkanStrictHostEvidenceGeneratorText $needle `
+        "renderer commercial readiness strict Vulkan host evidence generator"
+}
+
+foreach ($needle in @(
+        'tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1',
+        'tools/collect-renderer-vulkan-strict-commercial-quality-artifact.ps1',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1',
+        'renderer-vulkan-strict-commercial-quality-artifact-v1',
+        'Khronos-Vulkan-Synchronization2-Memory-QueueOwnership-2026-06-25',
+        'environment_platform_linux_vulkan_ready=1',
+        'vulkan_strict_host_evidence_not_ready',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_status=ready',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_written=1',
+        'renderer_vulkan_timestamp_ready=1',
+        'renderer_vulkan_strict_renderer_quality_ready',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'native_handles'
+    )) {
+    Assert-ContainsText $vulkanStrictHostEvidenceCheckText $needle `
+        "renderer commercial readiness strict Vulkan host evidence generator check"
 }
 
 foreach ($needle in @(
@@ -1249,6 +1312,12 @@ Assert-ContainsText $commandsFragmentText 'rendererCommercialReadinessEvidenceCo
     "renderer commercial readiness evidence collector command surface"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-evidence-collector' `
     "renderer commercial readiness evidence collector validation recipe"
+Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQualityHostEvidenceCheck' `
+    "renderer commercial readiness strict Vulkan host evidence check command"
+Assert-ContainsText $commandsFragmentText 'rendererVulkanStrictCommercialQualityHostEvidenceGenerator' `
+    "renderer commercial readiness strict Vulkan host evidence generator command"
+Assert-ContainsText $validationRecipesFragmentText 'renderer-vulkan-strict-commercial-quality-host-evidence' `
+    "renderer commercial readiness strict Vulkan host evidence validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-promotion-preflight' `
     "renderer commercial readiness final promotion preflight validation recipe"
 Assert-ContainsText $validationRecipesFragmentText 'renderer-commercial-readiness-final-retained-root-assembler' `
@@ -1272,6 +1341,28 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validateWorkflowText $needle "renderer commercial readiness final retained-root CI retention"
     Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness final retained-root CI retention check"
+}
+foreach ($needle in @(
+        'Collect renderer strict Vulkan commercial quality host evidence',
+        'artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/current-run',
+        '-RequireVulkanShaders',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-vulkan-strict-aggregate',
+        '--require-vulkan-gpu-memory-evidence',
+        '--require-vulkan-debug-profiling-evidence',
+        'tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1',
+        'renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required',
+        'Upload renderer strict Vulkan commercial quality host evidence',
+        'renderer-vulkan-strict-commercial-quality-host-evidence',
+        'artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/current-run/**',
+        'if-no-files-found: error',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0'
+    )) {
+    Assert-ContainsText $validateWorkflowText $needle "renderer commercial readiness strict Vulkan host evidence CI retention"
+    Assert-ContainsText $ciMatrixCheckText $needle "renderer commercial readiness strict Vulkan host evidence CI retention check"
 }
 foreach ($needle in @(
         'renderer_commercial_readiness_final_preflight_required_files=',
@@ -1412,6 +1503,26 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle `
         "renderer commercial readiness D3D12 artifact producer validation recipe"
+}
+
+foreach ($needle in @(
+        'renderer-vulkan-strict-commercial-quality-host-evidence',
+        'tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1',
+        'PackageSmokeOutputRelative',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1',
+        'GameEngine.RendererVulkanStrictCommercialQualityHostGate.v1',
+        'vkCmdPipelineBarrier2',
+        'VkDependencyInfo',
+        'VK_LAYER_KHRONOS_validation',
+        'memory binding VUID',
+        'timestampPeriod',
+        'spirv-val',
+        'host-gate-summary.json',
+        'native_handles_exposed=false',
+        'renderer_commercial_readiness=0'
+    )) {
+    Assert-ContainsText $validationRecipesFragmentText $needle `
+        "renderer commercial readiness strict Vulkan host evidence generator validation recipe"
 }
 
 foreach ($needle in @(
