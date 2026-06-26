@@ -106,10 +106,18 @@ try {
     Write-TextFile -Path $linuxHostStrictSmokePath -Value $packageSmokeText
 
     $linuxHostGateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate-linux-vulkan-runtime-host.ps1") -Raw
-    foreach ($needle in @("[string[]]`$SmokeArgs = @()", "`"-SmokeArgs`"", "`$SmokeArgs")) {
+    foreach ($needle in @("[string[]]`$SmokeArgs = @()", "-SmokeArgs", "`$SmokeArgs")) {
         if (-not $linuxHostGateScriptText.Contains($needle)) {
             Write-Error "Linux Vulkan runtime host gate must accept and forward strict package SmokeArgs for commercial Vulkan evidence: $needle"
         }
+    }
+    foreach ($needle in @("ConvertTo-PowerShellSingleQuotedLiteral", "`"-EncodedCommand`"", "[System.Text.Encoding]::Unicode")) {
+        if (-not $linuxHostGateScriptText.Contains($needle)) {
+            Write-Error "Linux Vulkan runtime host gate must encode strict package SmokeArgs so dash-leading values bind as string[]: $needle"
+        }
+    }
+    if ($linuxHostGateScriptText.Contains("`$packageArguments += `"`-SmokeArgs`"")) {
+        Write-Error "Linux Vulkan runtime host gate must not forward strict package SmokeArgs directly through pwsh -File argument parsing."
     }
 
     $workflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw

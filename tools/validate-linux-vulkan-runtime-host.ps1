@@ -143,6 +143,21 @@ function Invoke-ToolCapture {
     }
 }
 
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return '$null'
+    }
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function New-PowerShellEncodedCommand {
+    param([Parameter(Mandatory = $true)][string]$Command)
+
+    return [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($Command))
+}
+
 function Get-ShaderToolchainEvidence {
     $scriptPath = Join-Path $PSScriptRoot "check-shader-toolchain.ps1"
     $result = Invoke-ToolCapture -FilePath "pwsh" -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath) -TimeoutSeconds 60
@@ -180,22 +195,28 @@ function Invoke-LinuxPackageSmokeIfRequired {
         Remove-Item -LiteralPath $packageDiagnosticLog -Force
     }
 
+    $smokeArgsExpression = "@("
+    if ($SmokeArgs.Count -gt 0) {
+        $smokeArgsExpression += [string]::Join(
+            ", ",
+            @($SmokeArgs | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral $_ })
+        )
+    }
+    $smokeArgsExpression += ")"
+    $packageCommand = [string]::Join(
+        [Environment]::NewLine,
+        @(
+            "`$ErrorActionPreference = 'Stop'",
+            "& $(ConvertTo-PowerShellSingleQuotedLiteral $PackageScript) -GameTarget 'sample_desktop_runtime_game' -RequireVulkanShaders -DiagnosticLogPath $(ConvertTo-PowerShellSingleQuotedLiteral $packageDiagnosticLog) -SmokeArgs $smokeArgsExpression"
+        )
+    )
     $packageArguments = @(
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
-        "-File",
-        $PackageScript,
-        "-GameTarget",
-        "sample_desktop_runtime_game",
-        "-RequireVulkanShaders",
-        "-DiagnosticLogPath",
-        $packageDiagnosticLog
+        "-EncodedCommand",
+        (New-PowerShellEncodedCommand $packageCommand)
     )
-    if ($SmokeArgs.Count -gt 0) {
-        $packageArguments += "-SmokeArgs"
-        $packageArguments += $SmokeArgs
-    }
 
     $smoke = Invoke-ToolCapture `
         -FilePath "pwsh" `
