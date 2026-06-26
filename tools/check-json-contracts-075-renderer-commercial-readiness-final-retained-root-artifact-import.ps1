@@ -33,6 +33,7 @@ foreach ($needle in @(
         "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
         "renderer-metal-memory-profiling-host-artifacts",
+        "renderer-package-commercial-quality-host-evidence",
         "metal-host-optimization-artifacts",
         "linux-vulkan-host-evidence",
         "windows-packages",
@@ -53,10 +54,10 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=6",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=5",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
         "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available=0",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifact_names=renderer-clean-room-legal-review-artifacts",

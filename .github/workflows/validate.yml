@@ -904,6 +904,106 @@ jobs:
         shell: pwsh
         run: ./tools/evaluate-cpp23.ps1 -Release
 
+      - name: Collect renderer package commercial quality host evidence
+        shell: pwsh
+        run: |
+          $artifactRoot = "artifacts/renderer/package-commercial-quality-host-evidence/current-run"
+          New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+          $generated3dLog = "$artifactRoot/generated-3d-package.log"
+          $runtimeUiLog = "$artifactRoot/runtime-ui-package.log"
+          $environmentLog = "$artifactRoot/environment-package.log"
+          $collectorLog = "$artifactRoot/collector-output.log"
+
+          $generated3dLines = @(& ./tools/package-desktop-runtime.ps1 `
+              -GameTarget sample_generated_desktop_runtime_3d_package `
+              -RequireD3d12Shaders `
+              -SmokeArgs @(
+                '--smoke',
+                '--max-frames', '2',
+                '--require-config', 'runtime/sample_generated_desktop_runtime_3d_package.config',
+                '--require-scene-package', 'runtime/sample_generated_desktop_runtime_3d_package.geindex',
+                '--require-primary-camera-controller',
+                '--require-transform-animation',
+                '--require-morph-package',
+                '--require-compute-morph',
+                '--require-compute-morph-normal-tangent',
+                '--require-compute-morph-skin',
+                '--require-compute-morph-async-telemetry',
+                '--require-quaternion-animation',
+                '--require-package-streaming-safe-point',
+                '--require-gameplay-systems',
+                '--require-d3d12-scene-shaders',
+                '--require-d3d12-renderer',
+                '--require-scene-gpu-bindings',
+                '--require-postprocess',
+                '--require-postprocess-depth-input',
+                '--require-renderer-quality-gates',
+                '--require-renderer-quality-matrix',
+                '--require-rendering-vfx-profiling',
+                '--require-playable-3d-slice',
+                '--require-native-ui-overlay',
+                '--require-visible-3d-production-proof',
+                '--require-scene-collision-package',
+                '--require-native-ui-textured-sprite-atlas',
+                '--require-package-upload-staging'
+              ) *>&1)
+          Set-Content -LiteralPath $generated3dLog -Encoding utf8NoBOM -Value ($generated3dLines | ForEach-Object { [string]$_ })
+
+          $runtimeUiLines = @(& ./tools/package-desktop-runtime.ps1 `
+              -GameTarget sample_2d_desktop_runtime_package `
+              -SmokeArgs @(
+                '--smoke',
+                '--require-config', 'runtime/sample_2d_desktop_runtime_package.config',
+                '--require-scene-package', 'runtime/sample_2d_desktop_runtime_package.geindex',
+                '--require-runtime-ui-production-stack',
+                '--require-runtime-ui-renderer-atlas-handoff'
+              ) *>&1)
+          Set-Content -LiteralPath $runtimeUiLog -Encoding utf8NoBOM -Value ($runtimeUiLines | ForEach-Object { [string]$_ })
+
+          $environmentLines = @(& ./tools/package-desktop-runtime.ps1 `
+              -GameTarget sample_desktop_runtime_game `
+              -SmokeArgs @(
+                '--smoke',
+                '--max-frames', '2',
+                '--require-config', 'runtime/sample_desktop_runtime_game.config',
+                '--require-scene-package', 'runtime/sample_desktop_runtime_game.geindex',
+                '--require-environment-profile'
+              ) *>&1)
+          Set-Content -LiteralPath $environmentLog -Encoding utf8NoBOM -Value ($environmentLines | ForEach-Object { [string]$_ })
+
+          $collectorLines = @(./tools/collect-renderer-package-commercial-quality-host-evidence.ps1 `
+              -Mode Collect `
+              -OutputRootRelative $artifactRoot `
+              -Visible3dStatusLogRelative $generated3dLog `
+              -RuntimeUiStatusLogRelative $runtimeUiLog `
+              -EnvironmentStatusLogRelative $environmentLog `
+              -GeneratedGameStatusLogRelative $generated3dLog)
+          Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
+          foreach ($requiredLine in @(
+              "renderer_package_commercial_quality_host_evidence_written=1",
+              "renderer_visible_3d_package_ready=1",
+              "renderer_runtime_ui_package_ready=1",
+              "renderer_environment_package_ready=1",
+              "renderer_generated_game_package_ready=1",
+              "renderer_commercial_readiness=0",
+              "renderer_environment_ready=0"
+            )) {
+            if (-not $collectorLines.Contains($requiredLine)) {
+              Write-Error "renderer package commercial quality host evidence missing expected line: $requiredLine"
+            }
+          }
+
+      - name: Upload renderer package commercial quality host evidence
+        if: ${{ success() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-package-commercial-quality-host-evidence
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/package-commercial-quality-host-evidence/current-run/**
+          if-no-files-found: error
+
       - name: Save vcpkg tool checkout cache
         if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
         continue-on-error: true

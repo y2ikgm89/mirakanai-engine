@@ -1008,6 +1008,14 @@ Task 10M current-run artifact intake handoff evidence:
 - `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-ci-matrix.ps1`, `tools/check-format.ps1`, and `tools/check-agents.ps1`: passed after docs, manifest fragments, composed manifest, workflow, and static needles were synchronized.
 - `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 41 static checks in `out/validation-logs/validate-20260626-100131-38844`; Windows-host Apple/Metal tooling remained diagnostic host gates and broad renderer counters stayed non-ready.
 
+Task 10P package host evidence retention evidence:
+
+- `tools/check-renderer-package-commercial-quality-host-evidence.ps1` first failed because `tools/collect-renderer-package-commercial-quality-host-evidence.ps1` did not exist. It now proves unsafe path rejection, broad `environment_ready=1` rejection, conversion of selected generated 3D visible/package-upload, 2D runtime UI atlas handoff, and sample desktop environment profile package status logs into non-fixture `GameEngine.RendererPackageCommercialQualityHostEvidence.v1`, then feeds that JSON through `tools/collect-renderer-package-commercial-quality-artifacts.ps1` while keeping `renderer_commercial_readiness=0`.
+- `.github/workflows/validate.yml` now has the selected `windows-cpp23` lane collect three first-party installed package smoke logs and upload `renderer-package-commercial-quality-host-evidence` separately from immutable `windows-packages`. The current-run artifact importer treats that artifact as the package assembler source, so `package_host_evidence` can become present without claiming D3D12, strict Vulkan, Apple Metal, quality/VFX, final retained-root, broad renderer quality, broad Metal, backend parity, or commercial readiness.
+- `tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1` now requires `renderer-package-commercial-quality-host-evidence` in addition to `windows-packages`; artifact intake can distinguish release ZIP availability from accepted package host evidence JSON availability.
+- `tools/check-renderer-package-commercial-quality-host-evidence.ps1`, `tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1`, `tools/check-ci-matrix.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-validation-recipe-runner.ps1`, `tools/check-format.ps1`, and `tools/check-agents.ps1`: passed after producer, workflow, importer, manifest, validation recipe, and static needles were synchronized.
+- `tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`: passed with 44 static checks in `out/validation-logs/validate-20260626-141458-38248`; Windows-host Apple/Metal tooling remained diagnostic host gates and broad renderer counters stayed non-ready.
+
 ## Host Evidence Matrix
 
 | Host lane | Required proof | Promotion rule |
