@@ -554,10 +554,46 @@ Current status:
 - Task 10L adds `tools/generate-renderer-clean-room-legal-review-input.ps1` as a host-independent retained clean-room/legal review input producer. It writes `GameEngine.RendererCleanRoomLegalReviewInput.v1` and `GameEngine.RendererCleanRoomLegalReviewSourceSummary.v1` from official public Unity Terms/Trademark, Unreal Engine EULA/Trademark, and Godot license/compliance documentation URLs only, records `renderer-clean-room-legal-review-artifacts` for CI retention, and keeps `renderer_commercial_readiness=0`. It is not legal advice, does not use external engine code/samples/assets/UI/shaders/trademarks/API/project schemas, and does not claim Unity, Unreal Engine, or Godot compatibility, equivalence, parity, or replacement.
 - Task 10M adds `renderer-commercial-artifact-intake` to `.github/workflows/validate.yml` as a current-run artifact intake handoff. The job uses GitHub Actions `github.run_id` / `github.repository`, `gh api`, and `gh run download` through the importer to save `workflow-artifacts.json`, download diagnostics, `intake-manifest.json`, `assembler_handoff`, and `final_preflight_handoff` rows, then uploads `renderer-commercial-readiness-current-run-artifact-intake`. It uses `contents: read` plus `actions: read`, does not pass `-RequireReady`, and verifies `renderer_commercial_readiness=0`.
 - Task 10N strengthens the artifact intake gap diagnostics without promoting readiness. The importer now records `artifact_handoff_strategy` rows that separate the optional `renderer-commercial-readiness-final-retained-root` artifact path from assembler source artifact availability, emits missing assembler source artifact names, and records exact `missing_assembler_inputs` / `renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names` rows so a current-run intake artifact can say whether the next step is final preflight or which of the seven D3D12, strict Vulkan, Apple-host Metal, Metal memory/profiling, package, quality/VFX, or clean-room/legal inputs remains absent.
+- Task 10F.1 adds a retained D3D12 host evidence generator in front of the existing D3D12 artifact collector. The new generator consumes selected D3D12 package smoke counters plus a supplemental host proof JSON, writes `GameEngine.RendererD3d12CommercialQualityHostEvidence.v1` only when both are complete, rejects fixture-only supplemental proof, rejects unsafe paths, and keeps `renderer_commercial_readiness=0`, `renderer_broad_quality_ready=0`, `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`, and `renderer_environment_ready=0`.
 - `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
 - The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
 
 Remaining producer sequence:
+
+### Task 10F.1: D3D12 Retained Host Evidence Generator
+
+**Files:**
+
+- Add: `tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1`
+- Add: `tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Regenerate: `engine/agent/manifest.json`
+
+Steps:
+
+- [x] Add a failing static check that requires a real host evidence generator before retained D3D12 artifact assembly.
+- [x] Require `PackageSmokeOutputRelative` for selected package-visible D3D12 counters and `SupplementalHostEvidenceRelative` for proof that package smoke cannot infer: `ID3D12CommandQueue::GetClockCalibration`, zero debug/GPU validation messages, `ID3D12Device3::EnqueueMakeResident`, `IDXGIAdapter3::QueryVideoMemoryInfo`, unordered-access barrier coverage, and `native_handles_exposed=false`.
+- [x] Reject fixture-only supplemental host proof, unsafe paths, missing package smoke, missing supplement, Vulkan/Metal inference, external-engine parity, broad UI/environment readiness, and broad commercial readiness promotion.
+- [x] Feed generated `GameEngine.RendererD3d12CommercialQualityHostEvidence.v1` into the existing D3D12 artifact collector and commercial readiness validator while the other retained rows remain fixtures.
+
+Task 10F.1 implementation evidence:
+
+- `tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1` first failed RED on the missing `tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1`.
+- `tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1` now writes `d3d12-host-evidence.json` only when package smoke counters and supplemental host proof are both present, and otherwise writes a host-gate summary / fails `-RequireReady`.
+- `tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1` validates the generated host evidence through `tools/collect-renderer-d3d12-commercial-quality-artifact.ps1`, then through `tools/collect-renderer-commercial-readiness-evidence.ps1` and `tools/validate-renderer-commercial-readiness-evidence.ps1`, proving `renderer_d3d12_renderer_quality_ready=1` while `renderer_commercial_readiness=0`.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1
+```
+
+Validation evidence:
+
+- `tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1`: passed with `renderer_d3d12_commercial_quality_host_evidence_ready=1`, `renderer_d3d12_commercial_quality_host_evidence_written=1`, `renderer_d3d12_renderer_quality_ready=1`, and `renderer_commercial_readiness=0`.
 
 ### Task 10A: D3D12 Retained Commercial Row Producer
 
