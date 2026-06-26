@@ -584,6 +584,7 @@ Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @
 Assert-DryRunRecipe -Recipe "renderer-commercial-quality-closeout" -ExpectedArgv @("-File", "validate-renderer-commercial-quality-closeout.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-evidence" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-evidence.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-clean-room-legal-review-input" -ExpectedArgv @("-File", "generate-renderer-clean-room-legal-review-input.ps1", "-Mode", "Plan") | Out-Null
+Assert-DryRunRecipe -Recipe "renderer-apple-metal-commercial-quality-host-evidence" -ExpectedArgv @("-File", "generate-renderer-apple-metal-commercial-quality-host-evidence.ps1", "-Mode", "Plan") | Out-Null
 $rendererFinalPreflightDryRun = Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-final-promotion-preflight.ps1")
 Assert-ArgvDoesNotContainText -Result $rendererFinalPreflightDryRun -Unexpected "-RequireReady" -Label "dry-run argv for renderer commercial final preflight"
 $rendererFinalAssemblerDryRun = Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler" -ExpectedArgv @("-File", "assemble-renderer-commercial-readiness-final-retained-root.ps1", "-Mode", "Plan")
