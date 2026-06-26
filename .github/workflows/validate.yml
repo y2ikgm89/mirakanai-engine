@@ -1086,77 +1086,6 @@ jobs:
           path: artifacts/renderer/d3d12-commercial-quality-host-evidence/current-run/**
           if-no-files-found: error
 
-      - name: Collect renderer strict Vulkan commercial quality host evidence
-        shell: pwsh
-        run: |
-          $artifactRoot = "artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/current-run"
-          New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
-          $packageSmokeLog = "$artifactRoot/package-smoke.log"
-          $collectorLog = "$artifactRoot/collector-output.log"
-
-          $packageSmokeLines = @()
-          try {
-            $packageSmokeLines = @(& ./tools/package-desktop-runtime.ps1 `
-                -GameTarget sample_desktop_runtime_game `
-                -RequireVulkanShaders `
-                -SmokeArgs @(
-                  '--smoke',
-                  '--max-frames', '2',
-                  '--require-config', 'runtime/sample_desktop_runtime_game.config',
-                  '--require-scene-package', 'runtime/sample_desktop_runtime_game.geindex',
-                  '--require-vulkan-renderer',
-                  '--require-scene-gpu-bindings',
-                  '--require-postprocess',
-                  '--require-postprocess-depth-input',
-                  '--require-vulkan-postprocess-evidence',
-                  '--require-environment-vulkan-strict-aggregate',
-                  '--require-gpu-memory-policy',
-                  '--require-memory-diagnostics',
-                  '--require-vulkan-gpu-memory-evidence',
-                  '--require-debug-profiling-policy',
-                  '--require-vulkan-debug-profiling-evidence'
-                ) *>&1)
-          }
-          catch {
-            $packageSmokeLines += [string]$_
-          }
-          if ($global:LASTEXITCODE -ne 0) {
-            $packageSmokeLines += "vulkan_package_smoke_exit_code=$global:LASTEXITCODE"
-            $global:LASTEXITCODE = 0
-          }
-          Set-Content -LiteralPath $packageSmokeLog -Encoding utf8NoBOM -Value ($packageSmokeLines | ForEach-Object { [string]$_ })
-
-          $collectorLines = @(./tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1 `
-              -Mode Generate `
-              -OutputRootRelative $artifactRoot `
-              -PackageSmokeOutputRelative $packageSmokeLog)
-          Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
-          foreach ($requiredLine in @(
-              "renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1",
-              "renderer_commercial_readiness=0",
-              "renderer_environment_ready=0"
-            )) {
-            if (-not $collectorLines.Contains($requiredLine)) {
-              Write-Error "renderer strict Vulkan commercial quality host evidence missing expected line: $requiredLine"
-            }
-          }
-          if (-not ($collectorLines.Contains("renderer_vulkan_strict_commercial_quality_host_evidence_status=ready") -or
-              $collectorLines.Contains("renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required"))) {
-            Write-Error "renderer strict Vulkan commercial quality host evidence did not report ready or host_evidence_required status."
-          }
-
-      - name: Upload renderer strict Vulkan commercial quality host evidence
-        if: ${{ success() && !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: renderer-vulkan-strict-commercial-quality-host-evidence
-          retention-days: 14
-          compression-level: 0
-          include-hidden-files: false
-          path: artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/current-run/**
-          if-no-files-found: error
-
       - name: Save vcpkg tool checkout cache
         if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
         continue-on-error: true
@@ -1429,6 +1358,14 @@ jobs:
           . ./tools/common.ps1
           $null = Set-MirakanaiVcpkgEnvironment
           $validateCommand = @'
+          $linuxSmokeArgs = @(
+            '--smoke',
+            '--require-config', 'runtime/sample_desktop_runtime_game.config',
+            '--require-scene-package', 'runtime/sample_desktop_runtime_game.geindex',
+            '--require-linux-vulkan-presentation-smoke',
+            '--require-linux-vulkan-readback',
+            '--require-linux-vulkan-validation-log'
+          )
           $expected = @(
             "validation_recipe=environment-platform-linux-vulkan-package",
             "host=linux",
@@ -1447,10 +1384,36 @@ jobs:
             "environment_platform_requires_linux_vulkan_host_evidence=0",
             "environment_all_platform_unconditional_ready=0"
           )
-          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters $expected
+          ./tools/validate-linux-vulkan-runtime-host.ps1 -RequireReady -PackageSmokeTimeoutSeconds 2400 -ExpectedEvidenceCounters $expected -SmokeArgs $linuxSmokeArgs
           '@
           xvfb-run -a pwsh -NoProfile -ExecutionPolicy Bypass -Command $validateCommand *>&1 |
             Tee-Object -FilePath $output
+
+      - name: Collect renderer strict Vulkan commercial quality host evidence
+        shell: pwsh
+        run: |
+          $artifactRoot = "artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/current-run"
+          New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+          $packageSmokeLog = "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt"
+          $collectorLog = "$artifactRoot/collector-output.log"
+
+          $collectorLines = @(./tools/generate-renderer-vulkan-strict-commercial-quality-host-evidence.ps1 `
+              -Mode Generate `
+              -OutputRootRelative $artifactRoot `
+              -PackageSmokeOutputRelative $packageSmokeLog)
+          Set-Content -LiteralPath $collectorLog -Encoding utf8NoBOM -Value $collectorLines
+          foreach ($requiredLine in @(
+              "renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
+              "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
+              "renderer_commercial_readiness=0",
+              "renderer_environment_ready=0"
+            )) {
+            if (-not $collectorLines.Contains($requiredLine)) {
+              Write-Error "renderer strict Vulkan commercial quality host evidence missing expected line: $requiredLine"
+            }
+          }
 
       - name: Save Linux Vulkan vcpkg tool checkout cache
         if: ${{ success() && !cancelled() && steps.restore-linux-vulkan-vcpkg-tool.outcome == 'success' && steps.restore-linux-vulkan-vcpkg-tool.outputs.cache-hit != 'true' }}
@@ -1470,6 +1433,17 @@ jobs:
           include-hidden-files: false
           path: artifacts/environment/platform/linux-vulkan-host/**
           if-no-files-found: warn
+
+      - name: Upload renderer strict Vulkan commercial quality host evidence
+        if: ${{ success() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-vulkan-strict-commercial-quality-host-evidence
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/vulkan-strict-commercial-quality-host-evidence/current-run/**
+          if-no-files-found: error
 
   linux-coverage:
     name: Linux Coverage

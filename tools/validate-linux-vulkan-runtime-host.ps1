@@ -5,6 +5,7 @@
 param(
     [switch]$RequireReady,
     [string[]]$ExpectedEvidenceCounters = @(),
+    [string[]]$SmokeArgs = @(),
     [ValidateRange(60, 3600)]
     [int]$PackageSmokeTimeoutSeconds = 2400
 )
@@ -142,6 +143,21 @@ function Invoke-ToolCapture {
     }
 }
 
+function ConvertTo-PowerShellSingleQuotedLiteral {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return '$null'
+    }
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function New-PowerShellEncodedCommand {
+    param([Parameter(Mandatory = $true)][string]$Command)
+
+    return [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($Command))
+}
+
 function Get-ShaderToolchainEvidence {
     $scriptPath = Join-Path $PSScriptRoot "check-shader-toolchain.ps1"
     $result = Invoke-ToolCapture -FilePath "pwsh" -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath) -TimeoutSeconds 60
@@ -157,6 +173,7 @@ function Invoke-LinuxPackageSmokeIfRequired {
         [bool]$ShouldRun,
         [bool]$PrerequisitesReady,
         [Parameter(Mandatory = $true)][string]$PackageScript,
+        [string[]]$SmokeArgs = @(),
         [int]$TimeoutSeconds = 900
     )
 
@@ -178,20 +195,32 @@ function Invoke-LinuxPackageSmokeIfRequired {
         Remove-Item -LiteralPath $packageDiagnosticLog -Force
     }
 
+    $smokeArgsExpression = "@("
+    if ($SmokeArgs.Count -gt 0) {
+        $smokeArgsExpression += [string]::Join(
+            ", ",
+            @($SmokeArgs | ForEach-Object { ConvertTo-PowerShellSingleQuotedLiteral $_ })
+        )
+    }
+    $smokeArgsExpression += ")"
+    $packageCommand = [string]::Join(
+        [Environment]::NewLine,
+        @(
+            "`$ErrorActionPreference = 'Stop'",
+            "& $(ConvertTo-PowerShellSingleQuotedLiteral $PackageScript) -GameTarget 'sample_desktop_runtime_game' -RequireVulkanShaders -DiagnosticLogPath $(ConvertTo-PowerShellSingleQuotedLiteral $packageDiagnosticLog) -SmokeArgs $smokeArgsExpression"
+        )
+    )
+    $packageArguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-EncodedCommand",
+        (New-PowerShellEncodedCommand $packageCommand)
+    )
+
     $smoke = Invoke-ToolCapture `
         -FilePath "pwsh" `
-        -Arguments @(
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            $PackageScript,
-            "-GameTarget",
-            "sample_desktop_runtime_game",
-            "-RequireVulkanShaders",
-            "-DiagnosticLogPath",
-            $packageDiagnosticLog
-        ) `
+        -Arguments $packageArguments `
         -TimeoutSeconds $TimeoutSeconds
     if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
         Write-Host (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
@@ -253,6 +282,7 @@ $smokeEvidence = Invoke-LinuxPackageSmokeIfRequired `
     -ShouldRun:$RequireReady.IsPresent `
     -PrerequisitesReady:$preSmokeReady `
     -PackageScript $linuxPackageScript `
+    -SmokeArgs $SmokeArgs `
     -TimeoutSeconds $PackageSmokeTimeoutSeconds
 
 $linuxVulkanReady = $hostMatches -and
