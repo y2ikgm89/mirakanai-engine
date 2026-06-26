@@ -21,6 +21,7 @@ param(
         "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
         "renderer-metal-memory-profiling-host-artifacts",
+        "renderer-package-commercial-quality-host-evidence",
         "metal-host-optimization-artifacts",
         "linux-vulkan-host-evidence",
         "windows-packages"
