@@ -1413,7 +1413,15 @@ foreach ($needle in @(
         '--require-environment-vulkan-strict-aggregate',
         '--require-vulkan-gpu-memory-evidence',
         '--require-vulkan-debug-profiling-evidence',
+        'renderer_vulkan_strict_linux_gate_runtime_counters_ready=',
+        'renderer_vulkan_strict_linux_gate_readback_bytes=',
+        'presentation.vulkan_synchronization2_barriers',
+        'presentation.vulkan_validation_layer_ready',
+        'presentation.vulkan_readback_bytes',
         'environment_vulkan_strict_aggregate_status=host_evidence_required',
+        'environment_vulkan_strict_aggregate_validation_layers_ready=',
+        'environment_vulkan_strict_aggregate_synchronization2_barriers=',
+        'environment_vulkan_strict_aggregate_readback_rows=',
         'vulkan_gpu_memory_execution_status=host_evidence_required',
         'vulkan_debug_profiling_execution_status=host_evidence_required'
     )) {

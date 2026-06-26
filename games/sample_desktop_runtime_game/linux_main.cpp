@@ -214,6 +214,9 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
               << " renderer_vulkan_strict_linux_gate_requested=" << bit(strict_requirements_requested)
               << " renderer_vulkan_strict_linux_gate_emit_only="
               << bit(options.emit_vulkan_strict_commercial_host_gate && !strict_requirements_requested)
+              << " renderer_vulkan_strict_linux_gate_runtime_counters_ready="
+              << bit(presentation.linux_vulkan_strict_counter_evidence_ready)
+              << " renderer_vulkan_strict_linux_gate_readback_bytes=" << presentation.vulkan_readback_bytes
               << " environment_vulkan_strict_aggregate_status=host_evidence_required"
               << " environment_vulkan_strict_aggregate_ready=0"
               << " environment_vulkan_strict_aggregate_profile_v2=0"
@@ -233,14 +236,17 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
               << " environment_vulkan_strict_aggregate_vulkan_sdk_tools_ready=0"
               << " environment_vulkan_strict_aggregate_dxc_spirv_codegen_ready=0"
               << " environment_vulkan_strict_aggregate_spirv_validation_ready=0"
-              << " environment_vulkan_strict_aggregate_validation_layers_ready=0"
+              << " environment_vulkan_strict_aggregate_validation_layers_ready="
+              << bit(presentation.vulkan_validation_layer_ready)
               << " environment_vulkan_strict_aggregate_device_features_ready=0"
               << " environment_vulkan_strict_aggregate_toolchain_rows=0"
               << " environment_vulkan_strict_aggregate_missing_toolchain_rows=6"
-              << " environment_vulkan_strict_aggregate_missing_validation_layer_rows=1"
+              << " environment_vulkan_strict_aggregate_missing_validation_layer_rows="
+              << bit(!presentation.vulkan_validation_layer_ready)
               << " environment_vulkan_strict_aggregate_missing_spirv_validation_rows=1"
               << " environment_vulkan_strict_aggregate_unsupported_feature_device_rows=0"
-              << " environment_vulkan_strict_aggregate_synchronization2_barriers=0"
+              << " environment_vulkan_strict_aggregate_synchronization2_barriers="
+              << presentation.vulkan_synchronization2_barriers
               << " environment_vulkan_strict_aggregate_resource_usage_layout_ready=0"
               << " environment_vulkan_strict_aggregate_resource_usage_layout_rows=0"
               << " environment_vulkan_strict_aggregate_attachment_usage_layout_rows=0"
@@ -249,11 +255,11 @@ void print_vulkan_strict_commercial_host_gate(const LinuxRuntimeOptions& options
               << " environment_vulkan_strict_aggregate_cube_map_usage_layout_rows=0"
               << " environment_vulkan_strict_aggregate_weather_texture_usage_layout_rows=0"
               << " environment_vulkan_strict_aggregate_froxel_buffer_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows=0"
-              << " environment_vulkan_strict_aggregate_renderer_draws=0"
+              << " environment_vulkan_strict_aggregate_readback_resource_usage_layout_rows="
+              << bit(presentation.vulkan_readback_bytes > 0U) << " environment_vulkan_strict_aggregate_renderer_draws=0"
               << " environment_vulkan_strict_aggregate_compute_dispatches=0"
               << " environment_vulkan_strict_aggregate_texture_uploads=0"
-              << " environment_vulkan_strict_aggregate_readback_rows=0"
+              << " environment_vulkan_strict_aggregate_readback_rows=" << bit(presentation.vulkan_readback_bytes > 0U)
               << " environment_vulkan_strict_aggregate_native_handle_access=0"
               << " environment_vulkan_strict_aggregate_d3d12_fallback=0"
               << " environment_vulkan_strict_aggregate_metal_fallback=0"

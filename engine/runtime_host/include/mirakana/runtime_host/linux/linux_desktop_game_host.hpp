@@ -58,6 +58,9 @@ struct LinuxDesktopVulkanPresentationRequest {
     bool frame_presented{false};
     bool readback_nonzero{false};
     bool validation_log_clean{false};
+    bool validation_layer_ready{false};
+    std::uint32_t synchronization2_barriers{0};
+    std::uint64_t readback_bytes{0};
     bool native_handle_access{false};
 };
 
@@ -93,6 +96,10 @@ struct LinuxDesktopVulkanPresentationReport {
     bool linux_vulkan_validation_log_clean{false};
     bool environment_platform_linux_vulkan_ready{false};
     bool environment_platform_windows_vulkan_inferred{false};
+    bool linux_vulkan_strict_counter_evidence_ready{false};
+    bool vulkan_validation_layer_ready{false};
+    std::uint32_t vulkan_synchronization2_barriers{0};
+    std::uint64_t vulkan_readback_bytes{0};
     bool native_handle_access{false};
     std::string diagnostic;
 
