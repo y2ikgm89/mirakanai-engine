@@ -49,6 +49,7 @@ $appleMetalArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-a
 $appleMetalArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-apple-metal-commercial-quality-artifact.ps1"
 $packageArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-package-commercial-quality-artifacts.ps1"
 $packageArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-package-commercial-quality-artifacts.ps1"
+$qualityVfxHostProducerText = Get-AgentSurfaceText "tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1"
 $qualityVfxArtifactProducerText = Get-AgentSurfaceText "tools/collect-renderer-quality-vfx-commercial-artifacts.ps1"
 $qualityVfxArtifactProducerCheckText = Get-AgentSurfaceText "tools/check-renderer-quality-vfx-commercial-artifacts.ps1"
 $cleanRoomLegalReviewInputGeneratorText = Get-AgentSurfaceText "tools/generate-renderer-clean-room-legal-review-input.ps1"
@@ -413,6 +414,37 @@ foreach ($needle in @(
         'external_engine_parity = $false'
     )) {
     Assert-ContainsText $collectorText $needle "renderer commercial readiness evidence collector"
+}
+
+foreach ($needle in @(
+        '#requires -Version 7.0',
+        '[CmdletBinding(PositionalBinding = $false)]',
+        'renderer-quality-vfx-commercial-host-evidence',
+        'Generated3dStatusLogRelative',
+        'PackageHostEvidenceRelative',
+        'D3d12HostEvidenceRelative',
+        'VulkanStrictHostEvidenceRelative',
+        'AppleMetalHostEvidenceRelative',
+        'MetalMemoryProfilingHostEvidenceRelative',
+        'GameEngine.RendererQualityVfxCommercialHostEvidence.v1',
+        'GameEngine.RendererQualityVfxCommercialHostGate.v1',
+        'renderer-quality-vfx-commercial-artifacts-v1',
+        'host-gate-summary.json',
+        'quality-vfx-host-evidence.json',
+        'fixture_only = $false',
+        'quality_vfx_host_evidence_not_ready',
+        'renderer_quality_vfx_commercial_host_evidence_status=ready',
+        'renderer_quality_vfx_commercial_host_evidence_status=$Status',
+        'renderer_quality_matrix_ready=1',
+        'rendering_vfx_profiling_reviewed=1',
+        'renderer_production_vfx_profiling_ready=1',
+        'renderer_commercial_readiness=0',
+        'renderer_environment_ready=0',
+        'external_engine_parity',
+        'native_handles_exposed'
+    )) {
+    Assert-ContainsText $qualityVfxHostProducerText $needle `
+        "renderer commercial readiness quality/VFX host evidence producer"
 }
 
 foreach ($needle in @(
@@ -1472,6 +1504,8 @@ Assert-ContainsText $commandsFragmentText 'rendererPackageCommercialQualityArtif
     "renderer commercial readiness package artifact producer collector command surface"
 Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialArtifactsCheck' `
     "renderer commercial readiness quality/VFX artifact producer check command surface"
+Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialHostEvidenceCollector' `
+    "renderer commercial readiness quality/VFX host evidence producer command surface"
 Assert-ContainsText $commandsFragmentText 'rendererQualityVfxCommercialArtifactsCollector' `
     "renderer commercial readiness quality/VFX artifact producer collector command surface"
 Assert-ContainsText $commandsFragmentText 'rendererCleanRoomLegalArtifactCheck' `
@@ -1626,6 +1660,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         'renderer-quality-vfx-commercial-artifacts',
+        'tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1',
         'tools/collect-renderer-quality-vfx-commercial-artifacts.ps1',
         'QualityVfxHostEvidenceRelative',
         'renderer-quality-matrix.json',
