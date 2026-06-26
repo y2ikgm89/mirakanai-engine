@@ -1051,6 +1051,8 @@ Assert-ContainsAll $windowsCpp23Job @(
     "artifacts/renderer/d3d12-commercial-quality-host-evidence/current-run",
     "--require-d3d12-gpu-memory-evidence",
     "--require-d3d12-debug-profiling-evidence",
+    "--require-directional-shadow",
+    "--require-directional-shadow-filtering",
     "--require-framegraph-multiqueue-evidence",
     "./tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1",
     "./tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1",

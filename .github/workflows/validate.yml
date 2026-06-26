@@ -1027,6 +1027,8 @@ jobs:
                 '--require-postprocess',
                 '--require-postprocess-depth-input',
                 '--require-d3d12-postprocess-evidence',
+                '--require-directional-shadow',
+                '--require-directional-shadow-filtering',
                 '--require-renderer-quality-gates',
                 '--require-gpu-memory-policy',
                 '--require-memory-diagnostics',

@@ -3223,10 +3223,6 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         (after.value != 0 && after_resource == nullptr)) {
         return false;
     }
-    if (command_record->queue == QueueKind::copy &&
-        (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
-        return false;
-    }
 
     if (before_resource != nullptr && before_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
@@ -3235,7 +3231,36 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         return false;
     }
 
-    if (before.value != 0 && after.value != 0 && impl_->resources_share_placed_alias_group(before, after)) {
+    const bool resources_share_placed_alias_group =
+        before.value != 0 && after.value != 0 && impl_->resources_share_placed_alias_group(before, after);
+    const bool before_is_placed = before.value != 0 && impl_->resource_is_placed(before);
+    const bool after_is_placed = after.value != 0 && impl_->resource_is_placed(after);
+    const bool records_concrete_placed_alias =
+        (before_is_placed && after.value == 0) || (before.value == 0 && after_is_placed);
+    if (command_record->queue == QueueKind::copy && records_concrete_placed_alias &&
+        (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
+        return false;
+    }
+
+    if (resources_share_placed_alias_group) {
+        if (command_record->queue == QueueKind::copy &&
+            (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Aliasing.pResourceBefore = nullptr;
+            barrier.Aliasing.pResourceAfter = nullptr;
+
+            command_record->list->ResourceBarrier(1, &barrier);
+            command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+                .before = before,
+                .after = after,
+            });
+            ++impl_->stats.texture_aliasing_barriers;
+            ++impl_->stats.null_resource_aliasing_barriers;
+            return true;
+        }
+
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -3251,9 +3276,6 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         ++impl_->stats.placed_resource_aliasing_barriers;
         return true;
     }
-
-    const bool before_is_placed = before.value != 0 && impl_->resource_is_placed(before);
-    const bool after_is_placed = after.value != 0 && impl_->resource_is_placed(after);
 
     // Unproven pairs stay on a backend-private null-resource aliasing barrier.
     // Explicit wildcard endpoints may name a proven placed resource on the concrete side.
