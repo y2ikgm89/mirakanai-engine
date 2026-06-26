@@ -513,6 +513,10 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_writes_evidence=$(ConvertTo-CounterBit $willWriteManifest)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_ready=$(ConvertTo-CounterBit $intakeReady)"
 
+# Missing workflow artifacts are represented in the manifest and counters above.
+# Do not leak handled `gh run download` native exit codes into CI unless readiness is required.
+$global:LASTEXITCODE = 0
+
 if ($RequireReady.IsPresent -and -not $intakeReady) {
     Write-Error "Renderer commercial readiness GitHub artifact intake is not ready: missing assembler inputs or final retained root."
 }
