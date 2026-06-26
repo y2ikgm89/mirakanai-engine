@@ -20,6 +20,7 @@ param(
     [string[]]$ArtifactNames = @(
         "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
+        "renderer-d3d12-commercial-quality-host-evidence",
         "renderer-metal-memory-profiling-host-artifacts",
         "renderer-package-commercial-quality-host-evidence",
         "metal-host-optimization-artifacts",

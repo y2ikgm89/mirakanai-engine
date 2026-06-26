@@ -83,6 +83,9 @@ make_probe_summary_json(const mirakana::rhi::d3d12::CommercialQualityHostSupplem
          << "  \"info_queue_available\": " << json_bool(result.info_queue_available) << ",\n"
          << "  \"debug_message_count\": " << result.debug_message_count << ",\n"
          << "  \"gpu_based_validation_message_count\": " << result.gpu_based_validation_message_count << ",\n"
+         << "  \"first_debug_message_id\": " << result.first_debug_message_id << ",\n"
+         << "  \"first_debug_message_description\": \"" << json_escape(result.first_debug_message_description)
+         << "\",\n"
          << "  \"clock_calibration_ready\": " << json_bool(result.clock_calibration_ready) << ",\n"
          << "  \"query_video_memory_info_ready\": " << json_bool(result.query_video_memory_info_ready) << ",\n"
          << "  \"enqueue_make_resident_ready\": " << json_bool(result.enqueue_make_resident_ready) << ",\n"
@@ -111,6 +114,9 @@ make_host_gate_summary_json(const mirakana::rhi::d3d12::CommercialQualityHostSup
          << "  \"renderer_environment_ready\": 0,\n"
          << "  \"debug_message_count\": " << result.debug_message_count << ",\n"
          << "  \"gpu_based_validation_message_count\": " << result.gpu_based_validation_message_count << ",\n"
+         << "  \"first_debug_message_id\": " << result.first_debug_message_id << ",\n"
+         << "  \"first_debug_message_description\": \"" << json_escape(result.first_debug_message_description)
+         << "\",\n"
          << "  \"diagnostic\": \"" << json_escape(result.diagnostic) << "\"\n"
          << "}\n";
     return json.str();
@@ -137,7 +143,10 @@ make_supplement_json(const mirakana::rhi::d3d12::CommercialQualityHostSupplement
          << "      \"ready\": true,\n"
          << "      \"debug_layer_or_gpu_based_validation_clean\": true,\n"
          << "      \"debug_message_count\": " << result.debug_message_count << ",\n"
-         << "      \"gpu_based_validation_message_count\": " << result.gpu_based_validation_message_count << "\n"
+         << "      \"gpu_based_validation_message_count\": " << result.gpu_based_validation_message_count << ",\n"
+         << "      \"first_debug_message_id\": " << result.first_debug_message_id << ",\n"
+         << "      \"first_debug_message_description\": \"" << json_escape(result.first_debug_message_description)
+         << "\"\n"
          << "    },\n"
          << "    \"residency\": {\n"
          << "      \"ready\": true,\n"

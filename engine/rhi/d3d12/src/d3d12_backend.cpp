@@ -3223,10 +3223,6 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         (after.value != 0 && after_resource == nullptr)) {
         return false;
     }
-    if (command_record->queue == QueueKind::copy &&
-        (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
-        return false;
-    }
 
     if (before_resource != nullptr && before_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
@@ -3235,7 +3231,36 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         return false;
     }
 
-    if (before.value != 0 && after.value != 0 && impl_->resources_share_placed_alias_group(before, after)) {
+    const bool resources_share_placed_alias_group =
+        before.value != 0 && after.value != 0 && impl_->resources_share_placed_alias_group(before, after);
+    const bool before_is_placed = before.value != 0 && impl_->resource_is_placed(before);
+    const bool after_is_placed = after.value != 0 && impl_->resource_is_placed(after);
+    const bool records_concrete_placed_alias =
+        (before_is_placed && after.value == 0) || (before.value == 0 && after_is_placed);
+    if (command_record->queue == QueueKind::copy && records_concrete_placed_alias &&
+        (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
+        return false;
+    }
+
+    if (resources_share_placed_alias_group) {
+        if (command_record->queue == QueueKind::copy &&
+            (!impl_->resource_in_common_state(before) || !impl_->resource_in_common_state(after))) {
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Aliasing.pResourceBefore = nullptr;
+            barrier.Aliasing.pResourceAfter = nullptr;
+
+            command_record->list->ResourceBarrier(1, &barrier);
+            command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+                .before = before,
+                .after = after,
+            });
+            ++impl_->stats.texture_aliasing_barriers;
+            ++impl_->stats.null_resource_aliasing_barriers;
+            return true;
+        }
+
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -3251,9 +3276,6 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         ++impl_->stats.placed_resource_aliasing_barriers;
         return true;
     }
-
-    const bool before_is_placed = before.value != 0 && impl_->resource_is_placed(before);
-    const bool after_is_placed = after.value != 0 && impl_->resource_is_placed(after);
 
     // Unproven pairs stay on a backend-private null-resource aliasing barrier.
     // Explicit wildcard endpoints may name a proven placed resource on the concrete side.
@@ -8916,8 +8938,7 @@ collect_commercial_quality_host_supplement(const CommercialQualityHostSupplement
     const auto resident_buffer_desc = buffer_resource_desc(4096, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
     Microsoft::WRL::ComPtr<ID3D12Resource> resident_buffer;
     if (FAILED(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &resident_buffer_desc,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                                               IID_PPV_ARGS(&resident_buffer)))) {
+                                               D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&resident_buffer)))) {
         result.diagnostic = "d3d12 commercial quality supplement resident buffer unavailable";
         return result;
     }
@@ -8939,11 +8960,17 @@ collect_commercial_quality_host_supplement(const CommercialQualityHostSupplement
     if (SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator))) &&
         SUCCEEDED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator.Get(), nullptr,
                                             IID_PPV_ARGS(&command_list)))) {
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.UAV.pResource = resident_buffer.Get();
-        command_list->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_BARRIER barriers[2]{};
+        barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[0].Transition.pResource = resident_buffer.Get();
+        barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+        barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[1].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[1].UAV.pResource = resident_buffer.Get();
+        command_list->ResourceBarrier(2, barriers);
         if (SUCCEEDED(command_list->Close())) {
             ID3D12CommandList* command_lists[] = {command_list.Get()};
             command_queue->ExecuteCommandLists(1, command_lists);
@@ -8969,6 +8996,17 @@ collect_commercial_quality_host_supplement(const CommercialQualityHostSupplement
         const auto messages = info_queue->GetNumStoredMessagesAllowedByRetrievalFilter();
         result.debug_message_count = messages;
         result.gpu_based_validation_message_count = result.gpu_based_validation_enabled ? messages : 0;
+        if (messages > 0) {
+            std::size_t message_size = 0;
+            if (SUCCEEDED(info_queue->GetMessage(0, nullptr, &message_size)) && message_size > 0) {
+                std::vector<std::byte> message_bytes(message_size);
+                auto* message = reinterpret_cast<D3D12_MESSAGE*>(message_bytes.data());
+                if (SUCCEEDED(info_queue->GetMessage(0, message, &message_size)) && message->pDescription != nullptr) {
+                    result.first_debug_message_id = static_cast<std::uint64_t>(message->ID);
+                    result.first_debug_message_description = message->pDescription;
+                }
+            }
+        }
     }
 
     result.ready = result.device_created && result.debug_layer_available && result.debug_layer_enabled &&

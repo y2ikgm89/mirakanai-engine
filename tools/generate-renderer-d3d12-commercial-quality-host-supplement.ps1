@@ -180,6 +180,11 @@ foreach ($staleFile in @("d3d12-host-supplement.json", "host-gate-summary.json",
     }
 }
 
+$buildDirectory = Resolve-CMakeBuildDirectory -Arguments @("--build", "--preset", $BuildPreset)
+if ([string]::IsNullOrWhiteSpace($buildDirectory)) {
+    Write-Error "D3D12 host supplement producer could not resolve CMake build directory for build preset '$BuildPreset'."
+}
+
 if (-not $NoBuild.IsPresent) {
     $tools = Assert-CppBuildTools
     Invoke-CheckedCommand $tools.CMake --preset $BuildPreset
@@ -187,8 +192,8 @@ if (-not $NoBuild.IsPresent) {
 }
 
 $probeCandidates = @(
-    (Join-Path $root "out/build/$BuildPreset/$BuildConfig/MK_d3d12_commercial_quality_host_supplement_probe.exe"),
-    (Join-Path $root "out/build/$BuildPreset/MK_d3d12_commercial_quality_host_supplement_probe.exe")
+    (Join-Path (Join-Path $buildDirectory $BuildConfig) "MK_d3d12_commercial_quality_host_supplement_probe.exe"),
+    (Join-Path $buildDirectory "MK_d3d12_commercial_quality_host_supplement_probe.exe")
 )
 $probePath = @($probeCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1)
 if ($probePath.Count -eq 0) {

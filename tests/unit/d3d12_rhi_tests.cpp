@@ -1396,6 +1396,32 @@ MK_TEST("d3d12 device context records public null texture aliasing barriers") {
     MK_REQUIRE(stats.texture_transitions == 0);
 }
 
+MK_TEST("d3d12 device context records conservative copy queue aliasing barriers for unproven texture pairs") {
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto first = context->create_committed_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto second = context->create_committed_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto commands = context->create_command_list(mirakana::rhi::QueueKind::copy);
+
+    MK_REQUIRE(context->texture_aliasing_barrier(commands, first, second));
+    MK_REQUIRE(context->close_command_list(commands));
+
+    const auto stats = context->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.null_resource_aliasing_barriers == 1);
+    MK_REQUIRE(stats.placed_resource_aliasing_barriers == 0);
+}
+
 MK_TEST("d3d12 device context applies public null placed texture aliasing state updates") {
     auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
@@ -1620,12 +1646,19 @@ MK_TEST("d3d12 device context records placed resource aliasing barriers on copy 
 
     MK_REQUIRE(non_common_aliases.size() == 2);
     const auto rejected_commands = context->create_command_list(mirakana::rhi::QueueKind::copy);
-    MK_REQUIRE(!context->texture_aliasing_barrier(rejected_commands, non_common_aliases[0], non_common_aliases[1]));
+    MK_REQUIRE(context->texture_aliasing_barrier(rejected_commands, non_common_aliases[0], non_common_aliases[1]));
     MK_REQUIRE(context->close_command_list(rejected_commands));
+    const auto fallback_fence = context->execute_command_list(rejected_commands);
+    MK_REQUIRE(fallback_fence.value != 0);
+    MK_REQUIRE(fallback_fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(context->wait_for_fence(fallback_fence, 0xFFFFFFFFU));
+    auto stats = context->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.placed_resource_aliasing_barriers == 0);
+    MK_REQUIRE(stats.null_resource_aliasing_barriers == 1);
+
     context->destroy_committed_resource(non_common_aliases[0]);
     context->destroy_committed_resource(non_common_aliases[1]);
-    MK_REQUIRE(context->stats().texture_aliasing_barriers == 0);
-    MK_REQUIRE(context->stats().placed_resource_aliasing_barriers == 0);
     MK_REQUIRE(context->stats().placed_resources_alive == 0);
 
     const auto aliases = context->create_placed_texture_alias_group(
@@ -1649,10 +1682,10 @@ MK_TEST("d3d12 device context records placed resource aliasing barriers on copy 
     MK_REQUIRE(fence.queue == mirakana::rhi::QueueKind::copy);
     MK_REQUIRE(context->wait_for_fence(fence, 0xFFFFFFFFU));
 
-    const auto stats = context->stats();
-    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    stats = context->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 2);
     MK_REQUIRE(stats.placed_resource_aliasing_barriers == 1);
-    MK_REQUIRE(stats.null_resource_aliasing_barriers == 0);
+    MK_REQUIRE(stats.null_resource_aliasing_barriers == 1);
 
     context->destroy_committed_resource(aliases[0]);
     context->destroy_committed_resource(aliases[1]);
@@ -10766,6 +10799,28 @@ MK_TEST("d3d12 rhi memory diagnostics reports committed resource bytes and optio
     const auto mem = device->memory_diagnostics();
     MK_REQUIRE(mem.committed_resources_byte_estimate_available);
     MK_REQUIRE(mem.committed_resources_byte_estimate >= 2048U);
+}
+
+MK_TEST("d3d12 commercial quality host supplement is clean with debug validation enabled when available") {
+    const auto result = mirakana::rhi::d3d12::collect_commercial_quality_host_supplement(
+        mirakana::rhi::d3d12::CommercialQualityHostSupplementDesc{
+            .device = mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true, .enable_debug_layer = true},
+            .enable_gpu_based_validation = true,
+        });
+
+    MK_REQUIRE(result.windows_sdk_available);
+    MK_REQUIRE(result.device_created);
+    MK_REQUIRE(result.used_warp);
+    if (!result.debug_layer_enabled || !result.gpu_based_validation_enabled || !result.info_queue_available) {
+        MK_REQUIRE(!result.ready);
+        return;
+    }
+
+    MK_REQUIRE(result.debug_message_count == 0U);
+    MK_REQUIRE(result.gpu_based_validation_message_count == 0U);
+    MK_REQUIRE(result.first_debug_message_id == 0U);
+    MK_REQUIRE(result.first_debug_message_description.empty());
+    MK_REQUIRE(result.ready);
 }
 
 int main() {

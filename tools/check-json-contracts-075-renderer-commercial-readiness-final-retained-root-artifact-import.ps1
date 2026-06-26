@@ -33,6 +33,7 @@ foreach ($needle in @(
         "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
         "renderer-metal-memory-profiling-host-artifacts",
+        "renderer-d3d12-commercial-quality-host-evidence",
         "renderer-package-commercial-quality-host-evidence",
         "metal-host-optimization-artifacts",
         "linux-vulkan-host-evidence",
@@ -54,12 +55,13 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=7",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=8",
         "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=5",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=6",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
         "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available=0",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_source_workflow_artifacts=6",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifact_names=renderer-clean-room-legal-review-artifacts",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names=d3d12_host_evidence,vulkan_strict_host_evidence,apple_metal_host_evidence,metal_memory_profiling_host_evidence,package_host_evidence,quality_vfx_host_evidence,clean_room_legal_review",
