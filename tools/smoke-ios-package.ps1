@@ -17,8 +17,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ($Help) {
-    Write-Host "ios-smoke: builds an iOS Simulator app, installs it with xcrun simctl, launches it, and terminates it."
-    Write-Host "ios-smoke: parameters: -Game <game_name> -Configuration <Debug|Release> [-BundleIdentifier <id>] [-DeviceUdid <udid>] [-DeviceName <name>] [-SkipBuild] [-BootTimeoutSeconds <seconds>] [-BootAttempts <count>]"
+    Write-Output "ios-smoke: builds an iOS Simulator app, installs it with xcrun simctl, launches it, and terminates it."
+    Write-Output "ios-smoke: parameters: -Game <game_name> -Configuration <Debug|Release> [-BundleIdentifier <id>] [-DeviceUdid <udid>] [-DeviceName <name>] [-SkipBuild] [-BootTimeoutSeconds <seconds>] [-BootAttempts <count>]"
     return
 }
 
@@ -314,17 +314,17 @@ try {
     }
     [void](Invoke-XcrunAllowFailure @("simctl", "terminate", $selectedDevice.Udid, $BundleIdentifier))
 
-    Write-Host "ios-smoke: device=$($selectedDevice.Name)"
-    Write-Host "ios-smoke: udid=$($selectedDevice.Udid)"
-    Write-Host "ios-smoke: runtime=$($selectedDevice.RuntimeIdentifier)"
-    Write-Host "ios-smoke: app=$appBundle"
-    Write-Host "ios-smoke: ios_metal_evidence=$iosMetalEvidencePath"
+    Write-Output "ios-smoke: device=$($selectedDevice.Name)"
+    Write-Output "ios-smoke: udid=$($selectedDevice.Udid)"
+    Write-Output "ios-smoke: runtime=$($selectedDevice.RuntimeIdentifier)"
+    Write-Output "ios-smoke: app=$appBundle"
+    Write-Output "ios-smoke: ios_metal_evidence=$iosMetalEvidencePath"
     foreach ($line in ($iosMetalEvidence -split "`r?`n")) {
         if (-not [string]::IsNullOrWhiteSpace($line)) {
-            Write-Host "ios-smoke: $line"
+            Write-Output "ios-smoke: $line"
         }
     }
-    Write-Host "ios-smoke: ok"
+    Write-Output "ios-smoke: ok"
 }
 finally {
     if ($bootedByScript -and $null -ne $selectedDevice) {

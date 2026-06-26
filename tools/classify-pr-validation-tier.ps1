@@ -459,7 +459,7 @@ function New-ValidationTierSelection {
         macos_metal_cmake = ($heavyBuildLane -or $rendererCommercialReadinessLane)
         metal_host_evidence = ($fullValidationWorkflowLane -or $appleHostEvidence -or $rendererCommercialReadinessLane)
         ios_metal_evidence = ($fullValidationWorkflowLane -or $iosValidationWorkflow -or $appleHostEvidence)
-        windows_cpp23_release = ($fullValidationWorkflowLane -or $cpp23Relevant)
+        windows_cpp23_release = ($fullValidationWorkflowLane -or $cpp23Relevant -or $rendererCommercialReadinessLane)
     } -Reason $classificationReasons.ToArray()
 }
 
