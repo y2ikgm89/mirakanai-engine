@@ -29,6 +29,7 @@ foreach ($needle in @(
         "gh run download",
         "GitHub CLI",
         "GitHub Actions artifacts",
+        "renderer-clean-room-legal-review-artifacts",
         "renderer-commercial-readiness-final-retained-root",
         "renderer-metal-memory-profiling-host-artifacts",
         "host-gate-summary.json",
@@ -50,7 +51,7 @@ foreach ($needle in @(
         "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok",
         "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
         "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
-        "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-commercial-readiness-final-retained-root",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
@@ -86,9 +87,12 @@ foreach ($needle in @(
         "renderer-commercial-readiness-final-promotion-preflight",
         "renderer-commercial-readiness-final-retained-root-assembler",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
+        "renderer-clean-room-legal-review-input",
         "assemble-renderer-commercial-readiness-final-retained-root.ps1",
+        "generate-renderer-clean-room-legal-review-input.ps1",
         "import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
         "artifact-intake-plan-only",
+        "clean-room-review-input-plan-only",
         "final-retained-root-plan-only"
     )) {
     Assert-ContainsText $recipePlansText $needle "renderer commercial readiness final retained-root validation recipe runner plan"
@@ -97,6 +101,7 @@ foreach ($needle in @(
 foreach ($needle in @(
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler"',
+        'Assert-DryRunRecipe -Recipe "renderer-clean-room-legal-review-input"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-artifact-import"',
         'Assert-ArgvDoesNotContainText -Result $rendererFinalArtifactImportDryRun -Unexpected "-RunId"'
     )) {

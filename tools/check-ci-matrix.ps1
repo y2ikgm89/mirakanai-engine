@@ -1092,6 +1092,13 @@ Assert-ContainsAll $agentStaticJob @(
     "fetch-depth: 0",
     'if: ${{ github.event_name == ''pull_request'' }}',
     'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
+    "Generate renderer clean-room legal review input",
+    "./tools/generate-renderer-clean-room-legal-review-input.ps1 -Mode Generate",
+    "Upload renderer clean-room legal review artifacts",
+    "name: renderer-clean-room-legal-review-artifacts",
+    "compression-level: 0",
+    "artifacts/renderer/clean-room-legal-review/renderer-commercial-readiness/**",
+    "if-no-files-found: error",
     "Run static validation",
     "run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120"
 ) ".github/workflows/validate.yml agent-static job"

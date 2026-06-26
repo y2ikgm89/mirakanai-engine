@@ -179,6 +179,11 @@ if (-not (Test-Path -LiteralPath $producerScript -PathType Leaf)) {
     Write-Error "tools/collect-renderer-clean-room-legal-artifact.ps1 must exist for Task 10E clean-room legal artifact production."
 }
 
+$reviewGeneratorScript = Join-Path $root "tools/generate-renderer-clean-room-legal-review-input.ps1"
+if (-not (Test-Path -LiteralPath $reviewGeneratorScript -PathType Leaf)) {
+    Write-Error "tools/generate-renderer-clean-room-legal-review-input.ps1 must exist so CI can retain real clean-room/legal review input for final assembler handoff."
+}
+
 $collectorScript = Join-Path $root "tools/collect-renderer-commercial-readiness-evidence.ps1"
 if (-not (Test-Path -LiteralPath $collectorScript -PathType Leaf)) {
     Write-Error "tools/collect-renderer-commercial-readiness-evidence.ps1 must exist for Task 10 retained artifact assembly."
@@ -188,9 +193,13 @@ $fixtureRoot = "tests/fixtures/renderer/commercial-readiness-evidence/ready"
 $evidenceRootRelative = "artifacts/renderer/commercial-readiness-evidence/clean-room-legal-contract-$PID"
 $inputRootRelative = "$evidenceRootRelative/input"
 $producerOutputRootRelative = "$evidenceRootRelative/producer-output"
+$generatedInputRootRelative = "$evidenceRootRelative/generated-input"
+$generatedProducerOutputRootRelative = "$evidenceRootRelative/generated-producer-output"
 $badOutputRootRelative = "$evidenceRootRelative/bad-output"
 $collectorOutputRootRelative = "$evidenceRootRelative/collector-output"
 $realInputRelative = "$inputRootRelative/clean-room-legal-review.json"
+$generatedInputRelative = "$generatedInputRootRelative/clean-room-legal-review.json"
+$generatedSourceSummaryRelative = "$generatedInputRootRelative/official-source-summary.json"
 $fixtureInputRelative = "$inputRootRelative/clean-room-legal-fixture-review.json"
 $forbiddenInputRelative = "$inputRootRelative/clean-room-legal-forbidden-review.json"
 $evidenceRootPath = ConvertTo-LocalPath $evidenceRootRelative
@@ -206,6 +215,74 @@ try {
         -Value (New-CleanRoomLegalReview -FixtureOnly $true -ForbiddenMaterial $false)
     Write-JsonObject -Path (ConvertTo-LocalPath $forbiddenInputRelative) `
         -Value (New-CleanRoomLegalReview -FixtureOnly $false -ForbiddenMaterial $true)
+
+    $generatorPlanLines = @(& $reviewGeneratorScript -Mode Plan -OutputRootRelative $generatedInputRootRelative)
+    foreach ($expectedLine in @(
+            "renderer_clean_room_legal_review_input_generator_mode=Plan",
+            "renderer_clean_room_legal_review_input_written=0",
+            "renderer_clean_room_legal_review_input_ready=0",
+            "renderer_commercial_readiness=0",
+            "renderer_environment_ready=0"
+        )) {
+        Assert-LinePresent $generatorPlanLines $expectedLine "clean-room legal review input generator Plan mode"
+    }
+
+    $generatorUnsafeRejected = $false
+    try {
+        $null = & $reviewGeneratorScript -Mode Generate -OutputRootRelative "../unsafe" 2>&1
+    }
+    catch {
+        $generatorUnsafeRejected = [string]$_.Exception.Message -like "*unsafe_relative_path*"
+    }
+    if (-not $generatorUnsafeRejected) {
+        Write-Error "clean-room legal review input generator must reject unsafe output paths."
+    }
+
+    $generatorLines = @(& $reviewGeneratorScript -Mode Generate -OutputRootRelative $generatedInputRootRelative)
+    foreach ($expectedLine in @(
+            "renderer_clean_room_legal_review_input_generator_mode=Generate",
+            "renderer_clean_room_legal_review_input_written=1",
+            "renderer_clean_room_legal_review_input_ready=1",
+            "renderer_clean_room_public_docs_only=1",
+            "renderer_clean_room_external_engine_zero_material_ready=1",
+            "renderer_external_engine_forbidden_material_detected_rows=0",
+            "renderer_external_engine_api_used=0",
+            "renderer_external_engine_compatibility_claim=0",
+            "renderer_external_engine_equivalence_claim=0",
+            "renderer_external_engine_parity_claim=0",
+            "renderer_commercial_readiness=0",
+            "renderer_environment_ready=0"
+        )) {
+        Assert-LinePresent $generatorLines $expectedLine "clean-room legal review input generator Generate mode"
+    }
+    foreach ($generatedFile in @($generatedInputRelative, $generatedSourceSummaryRelative)) {
+        $generatedPath = ConvertTo-LocalPath $generatedFile
+        if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
+            Write-Error "clean-room legal review input generator did not write $generatedFile."
+        }
+    }
+    $generatedReview = Get-Content -LiteralPath (ConvertTo-LocalPath $generatedInputRelative) -Raw | ConvertFrom-Json
+    if ([string]$generatedReview.schema_version -ne "GameEngine.RendererCleanRoomLegalReviewInput.v1") {
+        Write-Error "generated clean-room legal review schema_version mismatch."
+    }
+    if ([bool]$generatedReview.fixture_only) {
+        Write-Error "generated clean-room legal review must be retained real evidence, not fixture_only."
+    }
+    $generatedCollectLines = @(& $producerScript `
+            -Mode Assemble `
+            -OutputRootRelative $generatedProducerOutputRootRelative `
+            -CleanRoomLegalReviewRelative $generatedInputRelative)
+    foreach ($expectedLine in @(
+            "renderer_clean_room_legal_artifact_collector_mode=Assemble",
+            "renderer_clean_room_legal_artifact_written=1",
+            "renderer_clean_room_legal_ready=1",
+            "renderer_clean_room_public_docs_only=1",
+            "renderer_external_engine_forbidden_material_detected_rows=0",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $generatedCollectLines $expectedLine `
+            "clean-room legal artifact collector with generated review input"
+    }
 
     $planLines = @(& $producerScript -Mode Plan -OutputRootRelative $producerOutputRootRelative)
     foreach ($expectedLine in @(

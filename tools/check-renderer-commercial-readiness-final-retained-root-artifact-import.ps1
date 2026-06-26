@@ -86,7 +86,7 @@ try {
     foreach ($expectedLine in @(
             "validation_recipe=renderer-commercial-readiness-final-retained-root-artifact-import",
             "renderer_commercial_readiness_final_retained_root_artifact_import_mode=Plan",
-            "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=5",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_required_workflow_artifacts=6",
             "renderer_commercial_readiness_final_retained_root_artifact_import_required_assembler_inputs=7",
             "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=0",
@@ -149,8 +149,8 @@ try {
     foreach ($expectedLine in @(
             "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present=1",
             "renderer_commercial_readiness_final_retained_root_artifact_import_available_workflow_artifacts=4",
-            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=1",
-            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-commercial-readiness-final-retained-root",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifacts=2",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=renderer-clean-room-legal-review-artifacts,renderer-commercial-readiness-final-retained-root",
             "renderer_commercial_readiness_final_retained_root_artifact_import_expired_workflow_artifacts=0",
             "renderer_commercial_readiness_final_retained_root_artifact_import_ready=0",
             "renderer_commercial_readiness=0"
