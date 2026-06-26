@@ -1070,7 +1070,8 @@ jobs:
               Write-Error "renderer D3D12 commercial quality host evidence missing expected line: $requiredLine"
             }
           }
-          if (-not $supplementLines.Contains("renderer_d3d12_commercial_quality_host_supplement_ready=1")) {
+          $supplementCounterText = [string]::Join("`n", $supplementLines)
+          if (-not $supplementCounterText.Contains("renderer_d3d12_commercial_quality_host_supplement_ready=1")) {
             Write-Error "renderer D3D12 commercial quality host supplement did not report ready evidence."
           }
 

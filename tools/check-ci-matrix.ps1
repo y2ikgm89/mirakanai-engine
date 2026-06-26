@@ -1057,6 +1057,8 @@ Assert-ContainsAll $windowsCpp23Job @(
     "./tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1",
     "-BuildPreset cpp23-release-eval",
     "./tools/generate-renderer-d3d12-commercial-quality-host-evidence.ps1",
+    '$supplementCounterText = [string]::Join("`n", $supplementLines)',
+    '$supplementCounterText.Contains("renderer_d3d12_commercial_quality_host_supplement_ready=1")',
     "renderer_d3d12_commercial_quality_host_supplement_ready=1",
     "renderer_d3d12_commercial_quality_host_evidence_written=1",
     "renderer_d3d12_commercial_quality_host_evidence_ready=1",
