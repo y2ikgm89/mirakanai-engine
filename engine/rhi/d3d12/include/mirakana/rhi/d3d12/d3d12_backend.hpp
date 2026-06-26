@@ -59,6 +59,39 @@ struct ResourceOwnershipResult {
     std::uint64_t texture_allocation_size_bytes{0};
 };
 
+struct CommercialQualityHostSupplementDesc {
+    DeviceBootstrapDesc device;
+    bool enable_gpu_based_validation{true};
+};
+
+struct CommercialQualityHostSupplementResult {
+    bool ready{false};
+    bool windows_sdk_available{false};
+    bool dxgi_factory_created{false};
+    bool device_created{false};
+    bool used_warp{false};
+    bool debug_layer_available{false};
+    bool debug_layer_enabled{false};
+    bool gpu_based_validation_enabled{false};
+    bool info_queue_available{false};
+    std::uint64_t debug_message_count{0};
+    std::uint64_t gpu_based_validation_message_count{0};
+    bool clock_calibration_ready{false};
+    std::uint64_t queue_frequency_hz{0};
+    std::uint64_t clock_calibration_gpu_timestamp{0};
+    std::uint64_t clock_calibration_cpu_qpc_sample{0};
+    bool query_video_memory_info_ready{false};
+    std::uint64_t local_video_memory_budget_bytes{0};
+    std::uint64_t local_video_memory_usage_bytes{0};
+    bool enqueue_make_resident_ready{false};
+    bool enqueue_make_resident_fence_signaled{false};
+    std::uint64_t residency_fence_value{0};
+    bool unordered_access_barrier_ready{false};
+    std::uint64_t unordered_access_barriers_recorded{0};
+    bool native_handles_exposed{false};
+    std::string_view diagnostic;
+};
+
 enum class D3d12EnvironmentIblTextureFormat : std::uint8_t {
     unknown = 0,
     rgba16_float,
@@ -615,6 +648,8 @@ class DeviceContext final {
 [[nodiscard]] RuntimeProbe probe_runtime() noexcept;
 [[nodiscard]] DeviceBootstrapResult bootstrap_device(const DeviceBootstrapDesc& desc) noexcept;
 [[nodiscard]] ResourceOwnershipResult bootstrap_resource_ownership(const ResourceOwnershipDesc& desc) noexcept;
+[[nodiscard]] CommercialQualityHostSupplementResult
+collect_commercial_quality_host_supplement(const CommercialQualityHostSupplementDesc& desc) noexcept;
 [[nodiscard]] D3d12EnvironmentIblRendererUploadResult
 execute_environment_ibl_renderer_upload(const D3d12EnvironmentIblRendererUploadDesc& desc) noexcept;
 [[nodiscard]] std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc);

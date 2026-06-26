@@ -555,6 +555,7 @@ Current status:
 - Task 10M adds `renderer-commercial-artifact-intake` to `.github/workflows/validate.yml` as a current-run artifact intake handoff. The job uses GitHub Actions `github.run_id` / `github.repository`, `gh api`, and `gh run download` through the importer to save `workflow-artifacts.json`, download diagnostics, `intake-manifest.json`, `assembler_handoff`, and `final_preflight_handoff` rows, then uploads `renderer-commercial-readiness-current-run-artifact-intake`. It uses `contents: read` plus `actions: read`, does not pass `-RequireReady`, and verifies `renderer_commercial_readiness=0`.
 - Task 10N strengthens the artifact intake gap diagnostics without promoting readiness. The importer now records `artifact_handoff_strategy` rows that separate the optional `renderer-commercial-readiness-final-retained-root` artifact path from assembler source artifact availability, emits missing assembler source artifact names, and records exact `missing_assembler_inputs` / `renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names` rows so a current-run intake artifact can say whether the next step is final preflight or which of the seven D3D12, strict Vulkan, Apple-host Metal, Metal memory/profiling, package, quality/VFX, or clean-room/legal inputs remains absent.
 - Task 10F.1 adds a retained D3D12 host evidence generator in front of the existing D3D12 artifact collector. The new generator consumes selected D3D12 package smoke counters plus a supplemental host proof JSON, writes `GameEngine.RendererD3d12CommercialQualityHostEvidence.v1` only when both are complete, rejects fixture-only supplemental proof, rejects unsafe paths, and keeps `renderer_commercial_readiness=0`, `renderer_broad_quality_ready=0`, `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`, and `renderer_environment_ready=0`.
+- Task 10F.2 adds an isolated D3D12 host supplement probe and producer that can create the `GameEngine.RendererD3d12CommercialQualityHostSupplement.v1` input required by Task 10F.1. It uses Microsoft D3D12/DXGI APIs only, does not consume Unity, Unreal Engine, Godot, blog, sample, shader, asset, UI, or project material, and keeps every broad renderer/commercial/environment readiness counter at 0 unless the isolated host probe records clean debug/GPU validation output.
 - `renderer_commercial_readiness=1` is therefore accepted only for `fixture_only=1` validator proof; default validation and real repository state remain non-ready until retained host artifacts are supplied.
 - The plan stays active until real host artifacts are collected or a follow-up plan explicitly takes over Task 10.
 
@@ -594,6 +595,55 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-d3d12-commerc
 Validation evidence:
 
 - `tools/check-renderer-d3d12-commercial-quality-host-evidence.ps1`: passed with `renderer_d3d12_commercial_quality_host_evidence_ready=1`, `renderer_d3d12_commercial_quality_host_evidence_written=1`, `renderer_d3d12_renderer_quality_ready=1`, and `renderer_commercial_readiness=0`.
+
+### Task 10F.2: D3D12 Isolated Host Supplement Probe
+
+**Files:**
+
+- Add: `tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1`
+- Add: `tools/check-renderer-d3d12-commercial-quality-host-supplement.ps1`
+- Add: `tests/fixtures/d3d12_commercial_quality_host_supplement_probe.cpp`
+- Modify: `CMakeLists.txt`
+- Modify: `engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp`
+- Modify: `engine/rhi/d3d12/src/d3d12_backend.cpp`
+- Modify: `tests/unit/d3d12_rhi_tests.cpp`
+- Modify: `tools/validate.ps1`
+- Modify: `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1`
+- Modify: `engine/agent/manifest.fragments/002-commands.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Regenerate: `engine/agent/manifest.json`
+
+Steps:
+
+- [x] Add a failing C++ test that requires a D3D12 host supplement collection API before the backend can claim supplemental residency/debug/timing proof.
+- [x] Implement `collect_commercial_quality_host_supplement` behind the D3D12 backend boundary, keeping native COM handles private and returning value-only proof rows for `ID3D12CommandQueue::GetClockCalibration`, `ID3D12InfoQueue` debug/GPU validation counts, `ID3D12Device3::EnqueueMakeResident`, `IDXGIAdapter3::QueryVideoMemoryInfo`, `D3D12_RESOURCE_BARRIER` unordered-access coverage, and `native_handles_exposed=false`.
+- [x] Keep debug layer and GPU-based validation process-isolated in `MK_d3d12_commercial_quality_host_supplement_probe`; the unit test exercises the same value API without enabling process-wide debug/GBV state so the normal `MK_d3d12_rhi_tests` lane remains deterministic.
+- [x] Add a host supplement producer that writes `d3d12-host-supplement.json` only when every proof row is ready and clean, writes `host-gate-summary.json` / `probe-summary.json` otherwise, and fails `-RequireReady` when clean host evidence is not present.
+- [x] Connect the producer to validate, manifest commands, validation recipes, and AI integration needles without promoting `renderer_commercial_readiness`, backend parity, Metal broad readiness, broad renderer quality, environment, Vulkan, package, generated-game, or external-engine parity readiness.
+
+Task 10F.2 implementation evidence:
+
+- Microsoft D3D12/DXGI documentation was used for `ID3D12Debug1::SetEnableGPUBasedValidation`, `ID3D12InfoQueue`, `ID3D12CommandQueue::GetClockCalibration`, `ID3D12Device3::EnqueueMakeResident`, `IDXGIAdapter3::QueryVideoMemoryInfo`, and `D3D12_RESOURCE_BARRIER`; no external engine code, samples, shaders, assets, UI expression, project formats, or compatibility claims are used.
+- `tools/check-renderer-d3d12-commercial-quality-host-supplement.ps1` first failed RED on the missing producer, then passed after `tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1`, `tests/fixtures/d3d12_commercial_quality_host_supplement_probe.cpp`, and the CMake target were added.
+- Local Windows/WARP probe execution created a host-gate summary instead of a retained supplement because `debug_message_count=1` and `gpu_based_validation_message_count=1`; clock calibration, video memory query, `EnqueueMakeResident`, residency fence signaling, unordered-access barrier recording, WARP device creation, and native handle non-exposure were otherwise present. `-RequireReady` correctly failed rather than promoting readiness.
+
+Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_d3d12_rhi_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_d3d12_rhi_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_d3d12_commercial_quality_host_supplement_probe
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-renderer-d3d12-commercial-quality-host-supplement.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-renderer-d3d12-commercial-quality-host-supplement.ps1 -Mode Generate -OutputRootRelative artifacts/renderer/d3d12-commercial-quality-host-evidence/<local-run>/supplement -NoBuild
+```
+
+Validation evidence:
+
+- `MK_d3d12_rhi_tests`: passed through `ctest` after keeping debug/GBV in the isolated probe.
+- `MK_d3d12_commercial_quality_host_supplement_probe`: built successfully.
+- `tools/check-renderer-d3d12-commercial-quality-host-supplement.ps1`: passed.
+- Local supplement generation: `renderer_d3d12_commercial_quality_host_supplement_status=host_evidence_required`, `renderer_d3d12_commercial_quality_host_supplement_ready=0`, `renderer_d3d12_commercial_quality_host_supplement_written=0`, `renderer_backend_parity_ready=0`, `renderer_metal_broad_readiness=0`, `renderer_broad_quality_ready=0`, `renderer_commercial_readiness=0`, and `renderer_environment_ready=0`.
+- Slice validation: `tools/validate.ps1` passed with the new `check-renderer-d3d12-commercial-quality-host-supplement.ps1` static lane, full CMake build, and 159/159 CTest tests; Windows-host Metal/Apple checks remained diagnostic-only host gates.
 
 ### Task 10A: D3D12 Retained Commercial Row Producer
 
