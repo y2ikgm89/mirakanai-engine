@@ -5,6 +5,7 @@
 param(
     [switch]$RequireReady,
     [string[]]$ExpectedEvidenceCounters = @(),
+    [string[]]$SmokeArgs = @(),
     [ValidateRange(60, 3600)]
     [int]$PackageSmokeTimeoutSeconds = 2400
 )
@@ -157,6 +158,7 @@ function Invoke-LinuxPackageSmokeIfRequired {
         [bool]$ShouldRun,
         [bool]$PrerequisitesReady,
         [Parameter(Mandatory = $true)][string]$PackageScript,
+        [string[]]$SmokeArgs = @(),
         [int]$TimeoutSeconds = 900
     )
 
@@ -178,20 +180,26 @@ function Invoke-LinuxPackageSmokeIfRequired {
         Remove-Item -LiteralPath $packageDiagnosticLog -Force
     }
 
+    $packageArguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        $PackageScript,
+        "-GameTarget",
+        "sample_desktop_runtime_game",
+        "-RequireVulkanShaders",
+        "-DiagnosticLogPath",
+        $packageDiagnosticLog
+    )
+    if ($SmokeArgs.Count -gt 0) {
+        $packageArguments += "-SmokeArgs"
+        $packageArguments += $SmokeArgs
+    }
+
     $smoke = Invoke-ToolCapture `
         -FilePath "pwsh" `
-        -Arguments @(
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            $PackageScript,
-            "-GameTarget",
-            "sample_desktop_runtime_game",
-            "-RequireVulkanShaders",
-            "-DiagnosticLogPath",
-            $packageDiagnosticLog
-        ) `
+        -Arguments $packageArguments `
         -TimeoutSeconds $TimeoutSeconds
     if (Test-Path -LiteralPath $packageDiagnosticLog -PathType Leaf) {
         Write-Host (Get-Content -LiteralPath $packageDiagnosticLog -Raw).TrimEnd()
@@ -253,6 +261,7 @@ $smokeEvidence = Invoke-LinuxPackageSmokeIfRequired `
     -ShouldRun:$RequireReady.IsPresent `
     -PrerequisitesReady:$preSmokeReady `
     -PackageScript $linuxPackageScript `
+    -SmokeArgs $SmokeArgs `
     -TimeoutSeconds $PackageSmokeTimeoutSeconds
 
 $linuxVulkanReady = $hostMatches -and

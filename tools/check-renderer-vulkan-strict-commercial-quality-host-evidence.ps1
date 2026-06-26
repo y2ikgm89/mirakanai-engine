@@ -81,8 +81,10 @@ $artifactOutputRootRelative = "artifacts/renderer/commercial-readiness-evidence/
 $collectorOutputRootRelative = "artifacts/renderer/commercial-readiness-evidence/vulkan-strict-host-evidence-contract-$PID/readiness"
 $platformOnlySmokeRelative = "$sourceRootRelative/linux-platform-only.log"
 $packageSmokeRelative = "$sourceRootRelative/vulkan-strict-package.log"
+$linuxHostStrictSmokeRelative = "artifacts/environment/platform/linux-vulkan-host/strict-contract-$PID/validate-linux-vulkan-runtime-host.txt"
 $evidenceRootPath = ConvertTo-LocalPath $evidenceRootRelative
 $commercialRootPath = ConvertTo-LocalPath "artifacts/renderer/commercial-readiness-evidence/vulkan-strict-host-evidence-contract-$PID"
+$linuxHostStrictSmokePath = ConvertTo-LocalPath $linuxHostStrictSmokeRelative
 
 $platformOnlySmokeText = @"
 sample_desktop_runtime_game status=ready validation_recipe=environment-platform-linux-vulkan-package host=linux vulkaninfo_ready=1 VK_LAYER_KHRONOS_validation_ready=1 dxc_spirv_codegen_ready=1 spirv_val_ready=1 linux_package_smoke_ready=1 linux_vulkan_readback_ready=1 linux_vulkan_validation_log_clean=1 environment_platform_linux_vulkan_ready=1 environment_all_platform_unconditional_ready=0 native_handle_access=0
@@ -101,6 +103,28 @@ try {
 
     Write-TextFile -Path (ConvertTo-LocalPath $platformOnlySmokeRelative) -Value $platformOnlySmokeText
     Write-TextFile -Path (ConvertTo-LocalPath $packageSmokeRelative) -Value $packageSmokeText
+    Write-TextFile -Path $linuxHostStrictSmokePath -Value $packageSmokeText
+
+    $linuxHostGateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate-linux-vulkan-runtime-host.ps1") -Raw
+    foreach ($needle in @("[string[]]`$SmokeArgs = @()", "`"-SmokeArgs`"", "`$SmokeArgs")) {
+        if (-not $linuxHostGateScriptText.Contains($needle)) {
+            Write-Error "Linux Vulkan runtime host gate must accept and forward strict package SmokeArgs for commercial Vulkan evidence: $needle"
+        }
+    }
+
+    $workflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
+    foreach ($needle in @(
+            "Validate Linux Vulkan host evidence gate",
+            "--require-environment-vulkan-strict-aggregate",
+            "Collect renderer strict Vulkan commercial quality host evidence",
+            "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt",
+            "Upload renderer strict Vulkan commercial quality host evidence",
+            "name: renderer-vulkan-strict-commercial-quality-host-evidence"
+        )) {
+        if (-not $workflowText.Contains($needle)) {
+            Write-Error "Validate workflow must collect strict Vulkan commercial evidence from the Linux Vulkan host lane: $needle"
+        }
+    }
 
     $planLines = @(& $producerScript -Mode Plan -OutputRootRelative $producerOutputRootRelative)
     Assert-LinePresent $planLines `
@@ -147,6 +171,28 @@ try {
     $platformHostEvidencePath = ConvertTo-LocalPath "$producerOutputRootRelative/vulkan-strict-host-evidence.json"
     if (Test-Path -LiteralPath $platformHostEvidencePath -PathType Leaf) {
         Write-Error "platform-only Vulkan smoke must not write strict Vulkan host evidence JSON."
+    }
+
+    $linuxHostGenerateLines = @(& $producerScript `
+            -Mode Generate `
+            -OutputRootRelative $producerOutputRootRelative `
+            -PackageSmokeOutputRelative $linuxHostStrictSmokeRelative `
+            -RequireReady)
+    foreach ($expectedLine in @(
+            "renderer_vulkan_strict_commercial_quality_host_evidence_status=ready",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_ready=1",
+            "renderer_vulkan_synchronization2_ready=1",
+            "renderer_vulkan_validation_layer_ready=1",
+            "renderer_vulkan_sync_validation_ready=1",
+            "renderer_vulkan_memory_binding_ready=1",
+            "renderer_vulkan_timestamp_ready=1",
+            "renderer_vulkan_shader_validation_ready=1",
+            "renderer_vulkan_package_readback_ready=1"
+        )) {
+        Assert-LinePresent $linuxHostGenerateLines $expectedLine "strict Vulkan host evidence generator Linux host gate log input"
+    }
+    if (Test-Path -LiteralPath $platformHostEvidencePath -PathType Leaf) {
+        Remove-Item -LiteralPath $platformHostEvidencePath -Force
     }
 
     $generateLines = @(& $producerScript `
@@ -271,6 +317,10 @@ finally {
         if (Test-Path -LiteralPath $path) {
             Remove-Item -LiteralPath $path -Recurse -Force
         }
+    }
+    $linuxHostStrictSmokeDirectory = Split-Path -Parent $linuxHostStrictSmokePath
+    if (Test-Path -LiteralPath $linuxHostStrictSmokeDirectory -PathType Container) {
+        Remove-Item -LiteralPath $linuxHostStrictSmokeDirectory -Recurse -Force
     }
 }
 
