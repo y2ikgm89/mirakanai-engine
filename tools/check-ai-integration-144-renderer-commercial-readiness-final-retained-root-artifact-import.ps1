@@ -6,6 +6,8 @@ $importerText = Get-AgentSurfaceText "tools/import-renderer-commercial-readiness
 $importerCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1"
 $runnerPreflightText = Get-AgentSurfaceText "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1"
 $runnerPreflightCheckText = Get-AgentSurfaceText "tools/check-renderer-metal-memory-profiling-capable-host-runner.ps1"
+$finalHandoffText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-final-handoff.ps1"
+$finalHandoffCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-handoff.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
@@ -147,9 +149,47 @@ Assert-ContainsText $validateText "check-renderer-metal-memory-profiling-capable
     "renderer Metal memory/profiling capable-host runner preflight validate task"
 
 foreach ($needle in @(
+        "validation_recipe=renderer-commercial-readiness-final-handoff",
+        "renderer_commercial_readiness_final_handoff_status=",
+        "renderer_commercial_readiness_final_handoff_next_action=",
+        "renderer_commercial_readiness_final_handoff_source_run_ready=",
+        "renderer_commercial_readiness_final_handoff_runner_available=",
+        "renderer_commercial_readiness_final_handoff_missing_assembler_inputs=",
+        "renderer_commercial_readiness_final_handoff_quality_vfx_dependency_blockers=",
+        "renderer_commercial_readiness_final_handoff_capable_host_workflow_command=",
+        "renderer_commercial_readiness_final_handoff_final_from_runs_workflow_command=",
+        "gh workflow run renderer-metal-memory-profiling-capable-host.yml",
+        "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1",
+        "tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalHandoffText $needle "renderer commercial readiness final handoff planner"
+}
+
+foreach ($needle in @(
+        "renderer-commercial-readiness-final-handoff-check: ok",
+        "renderer_commercial_readiness_final_handoff_status=capable_host_runner_required",
+        "renderer_commercial_readiness_final_handoff_next_action=provision_capable_host_runner",
+        "renderer_commercial_readiness_final_handoff_status=metal_memory_profiling_run_required",
+        "renderer_commercial_readiness_final_handoff_next_action=run_metal_memory_profiling_capable_host_workflow",
+        "renderer_commercial_readiness_final_handoff_status=ready_for_final_from_runs_workflow",
+        "renderer_commercial_readiness_final_handoff_final_from_runs_workflow_command=gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "renderer_commercial_readiness_final_handoff_status=ready_for_final_preflight",
+        "renderer_commercial_readiness_final_handoff_final_preflight_command=pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-commercial-readiness-final-promotion-preflight.ps1",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalHandoffCheckText $needle "renderer commercial readiness final handoff planner check"
+}
+Assert-ContainsText $validateText "check-renderer-commercial-readiness-final-handoff.ps1" `
+    "renderer commercial readiness final handoff validate task"
+
+foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
         "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
+        "rendererCommercialReadinessFinalHandoff",
+        "validate-renderer-commercial-readiness-final-handoff.ps1",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
         "confirm_final_retained_root_handoff=renderer-commercial-final-retained-root",
@@ -163,6 +203,9 @@ foreach ($needle in @(
         "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "/repos/{owner}/{repo}/actions/runners",
         "self-hosted, macOS, ARM64, and metal-residency-set",
+        "renderer-commercial-readiness-final-handoff",
+        "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
+        "final-handoff-plan-only",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
         "GitHub Actions artifacts",
@@ -178,6 +221,9 @@ foreach ($needle in @(
         "renderer-metal-memory-profiling-capable-host-runner-preflight",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "host-evidence-required",
+        "renderer-commercial-readiness-final-handoff",
+        "validate-renderer-commercial-readiness-final-handoff.ps1",
+        "final-handoff-plan-only",
         "renderer-commercial-readiness-final-promotion-preflight",
         "renderer-commercial-readiness-final-retained-root-assembler",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
@@ -194,6 +240,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         'Assert-DryRunRecipe -Recipe "renderer-metal-memory-profiling-capable-host-runner-preflight"',
+        'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-handoff"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler"',
         'Assert-DryRunRecipe -Recipe "renderer-clean-room-legal-review-input"',
@@ -214,7 +261,11 @@ foreach ($surface in @(
     foreach ($needle in @(
             "renderer-commercial-readiness-final-retained-root-artifact-import",
             "renderer-metal-memory-profiling-capable-host-runner-preflight",
+            "renderer-commercial-readiness-final-handoff",
+            "rendererCommercialReadinessFinalHandoff",
             "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+            "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
+            "tools/check-renderer-commercial-readiness-final-handoff.ps1",
             "/repos/{owner}/{repo}/actions/runners",
             "self-hosted, macOS, ARM64, metal-residency-set",
             "renderer_metal_memory_profiling_capable_host_runner_available",
@@ -233,6 +284,8 @@ foreach ($surface in @(
             "metal_memory_profiling_run_id",
             "RegenerateQualityVfx",
             "AutoAssemble",
+            "quality_vfx_dependency_blockers",
+            "next_action",
             "renderer_commercial_readiness=0"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) final retained-root artifact import"
