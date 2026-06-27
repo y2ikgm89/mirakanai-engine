@@ -2250,6 +2250,18 @@ MK_TEST("vulkan runtime physical device snapshots expose properties for determin
     }
 }
 
+MK_TEST("vulkan physical device properties limits storage preserves Vulkan timestamp ABI alignment") {
+    constexpr std::size_t prefix_bytes = (sizeof(std::uint32_t) * 5U) + 256U + 16U;
+    constexpr std::size_t limits_alignment = alignof(std::uint64_t);
+    constexpr std::size_t expected_limits_offset =
+        ((prefix_bytes + limits_alignment - 1U) / limits_alignment) * limits_alignment;
+
+    MK_REQUIRE(prefix_bytes == 292U);
+    MK_REQUIRE(expected_limits_offset == 296U);
+    MK_REQUIRE(mirakana::rhi::vulkan::vulkan_physical_device_properties_limits_offset_bytes() ==
+               expected_limits_offset);
+}
+
 MK_TEST("vulkan runtime physical device selection probe projects snapshots into candidates") {
     mirakana::rhi::vulkan::VulkanInstanceCreateDesc desc;
     desc.application_name = "GameEnginePhysicalDeviceSelectionProbe";

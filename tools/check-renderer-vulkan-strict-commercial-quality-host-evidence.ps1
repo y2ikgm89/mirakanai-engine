@@ -145,6 +145,7 @@ try {
     $linuxMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_game/linux_main.cpp") -Raw
     $linuxHostHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp") -Raw
     $vulkanBackendText = Get-Content -LiteralPath (Join-Path $root "engine/rhi/vulkan/src/vulkan_backend.cpp") -Raw
+    $backendTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/backend_scaffold_tests.cpp") -Raw
     foreach ($needle in @(
             "--emit-vulkan-strict-commercial-host-gate",
             "--require-environment-vulkan-strict-aggregate",
@@ -240,10 +241,20 @@ try {
             "vkCmdWriteTimestamp2KHR",
             "load_device_command<VulkanCmdPipelineBarrier2>",
             "load_device_command<VulkanQueueSubmit2>",
-            "load_device_command<VulkanCmdWriteTimestamp2>"
+            "load_device_command<VulkanCmdWriteTimestamp2>",
+            "limits_alignment_padding",
+            "vulkan_physical_device_properties_limits_offset_bytes"
         )) {
         if (-not $vulkanBackendText.Contains($needle)) {
             Write-Error "Vulkan runtime command resolution must use core synchronization2 names with KHR alias fallback for strict hosted timestamp evidence: $needle"
+        }
+    }
+    foreach ($needle in @(
+            "vulkan physical device properties limits storage preserves Vulkan timestamp ABI alignment",
+            "expected_limits_offset == 296U"
+        )) {
+        if (-not $backendTestsText.Contains($needle)) {
+            Write-Error "Vulkan backend scaffold tests must lock the timestamp-period ABI offset regression: $needle"
         }
     }
 

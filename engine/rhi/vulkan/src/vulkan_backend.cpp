@@ -523,6 +523,7 @@ struct NativeVulkanPhysicalDeviceProperties {
     std::uint32_t device_type;
     std::array<char, vulkan_max_physical_device_name_size> device_name{};
     std::array<std::uint8_t, vulkan_uuid_size> pipeline_cache_uuid{};
+    std::array<std::uint8_t, 4> limits_alignment_padding{};
     std::array<std::uint8_t, vulkan_physical_device_properties_tail_storage_size> limits_and_sparse_properties{};
 };
 
@@ -8646,6 +8647,10 @@ VulkanPhysicalDeviceCandidate make_physical_device_candidate(const VulkanRuntime
         .draw_indirect_count_supported = snapshot.draw_indirect_count_supported,
         .queue_families = snapshot.queue_families,
     };
+}
+
+std::size_t vulkan_physical_device_properties_limits_offset_bytes() noexcept {
+    return offsetof(NativeVulkanPhysicalDeviceProperties, limits_and_sparse_properties);
 }
 
 std::vector<VulkanCommandRequest> vulkan_backend_command_requests() {
