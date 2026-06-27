@@ -164,7 +164,10 @@ function Write-MacOSHostGatedProbeArtifacts {
     param(
         [Parameter(Mandatory = $true)][string]$WorkloadRootFull,
         [Parameter(Mandatory = $true)][string]$Reason,
-        [Parameter(Mandatory = $true)][string]$ProbeText
+        [Parameter(Mandatory = $true)][string]$ProbeText,
+        [Parameter(Mandatory = $true)][int]$ProbeExitCode,
+        [Parameter(Mandatory = $true)][string]$MacosVersion,
+        [Parameter(Mandatory = $true)][string]$XcodeVersion
     )
 
     $summaryText = [string]::Join("`n", @(
@@ -172,6 +175,9 @@ function Write-MacOSHostGatedProbeArtifacts {
             "plan_id=renderer-metal-memory-profiling-apple-host-artifacts-v1",
             "renderer_metal_memory_profiling_host_artifacts_status=host_gated",
             "renderer_metal_memory_profiling_host_gate_reason=$(ConvertTo-CounterValue -Value $Reason)",
+            "renderer_metal_memory_profiling_host_gate_probe_exit_code=$ProbeExitCode",
+            "renderer_metal_memory_profiling_host_gate_macos_version=$(ConvertTo-CounterValue -Value $MacosVersion)",
+            "renderer_metal_memory_profiling_host_gate_xcode_version=$(ConvertTo-CounterValue -Value $XcodeVersion)",
             "renderer_metal_memory_profiling_host_artifacts_ready=0",
             "renderer_metal_memory_profiling_host_artifacts_probe_ready=0",
             "renderer_metal_memory_profiling_host_artifacts_written=0",
@@ -195,6 +201,18 @@ function Write-MacOSHostGatedProbeArtifacts {
         plan_id = "renderer-metal-memory-profiling-apple-host-artifacts-v1"
         status = "host_gated"
         reason = $Reason
+        host = [ordered]@{
+            platform = "macos"
+            macos_version = $MacosVersion
+            xcode_version = $XcodeVersion
+            full_xcode_selected = $true
+            metal_tool_ready = $true
+            metallib_tool_ready = $true
+        }
+        probe = [ordered]@{
+            exit_code = $ProbeExitCode
+            output = $ProbeText
+        }
         renderer_metal_memory_profiling_host_artifacts_ready = 0
         renderer_metal_memory_profiling_host_artifacts_probe_ready = 0
         renderer_metal_memory_profiling_host_artifacts_written = 0
@@ -283,6 +301,15 @@ foreach ($tool in @("metal", "metallib")) {
         Write-Error "xcrun --sdk macosx $tool is required for renderer Metal memory/profiling host artifacts."
     }
 }
+$macosVersion = (& sw_vers -productVersion 2>$null | Select-Object -First 1)
+$xcodebuild = Find-CommandOnCombinedPath "xcodebuild"
+if (-not $xcodebuild) {
+    Write-Error "xcodebuild is required to record the Xcode version."
+}
+$xcodeVersion = (& $xcodebuild -version 2>$null | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($macosVersion) -or [string]::IsNullOrWhiteSpace($xcodeVersion)) {
+    Write-Error "Renderer Metal memory/profiling host artifacts require macOS and Xcode version evidence."
+}
 
 $jobsToUse = Resolve-ParallelJobCount -Jobs $Jobs
 Remove-GeneratedArtifactPath -Path $taskRootFull -ArtifactRootFull $artifactRootFull
@@ -320,7 +347,8 @@ if ($probeResult.ExitCode -ne 0) {
     }
 
     Write-MacOSHostGatedProbeArtifacts -WorkloadRootFull $workloadRootFull `
-        -Reason $hostGateReason -ProbeText $probeText
+        -Reason $hostGateReason -ProbeText $probeText -ProbeExitCode $probeResult.ExitCode `
+        -MacosVersion ([string]$macosVersion) -XcodeVersion ([string]$xcodeVersion)
     $counterLine = [string]::Join(" ", @(
             "renderer-metal-memory-profiling-host-artifacts:",
             "validation_recipe=renderer-metal-memory-profiling-host-evidence",
@@ -359,16 +387,6 @@ $captureArtifactRelativePath = "$workloadRootRelative/$($summary.capture_artifac
 $captureArtifactFull = [System.IO.Path]::GetFullPath((Join-Path $root $captureArtifactRelativePath))
 if (-not (Test-Path -LiteralPath $captureArtifactFull -PathType Leaf)) {
     Write-Error "Renderer Metal memory/profiling Apple host probe did not write capture artifact: $captureArtifactRelativePath"
-}
-
-$macosVersion = (& sw_vers -productVersion 2>$null | Select-Object -First 1)
-$xcodebuild = Find-CommandOnCombinedPath "xcodebuild"
-if (-not $xcodebuild) {
-    Write-Error "xcodebuild is required to record the Xcode version."
-}
-$xcodeVersion = (& $xcodebuild -version 2>$null | Select-Object -First 1)
-if ([string]::IsNullOrWhiteSpace($macosVersion) -or [string]::IsNullOrWhiteSpace($xcodeVersion)) {
-    Write-Error "Renderer Metal memory/profiling host artifacts require macOS and Xcode version evidence."
 }
 
 Write-Information "renderer-metal-memory-profiling-host-artifacts: importing evidence.json..." `
