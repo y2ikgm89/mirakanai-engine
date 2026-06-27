@@ -36,6 +36,18 @@ function Assert-LinePresent {
     }
 }
 
+function Assert-LineAbsent {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][string]$UnexpectedLine,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    if ($Lines.Contains($UnexpectedLine)) {
+        Write-Error "$Context contained unexpected line: $UnexpectedLine"
+    }
+}
+
 function ConvertTo-LocalPath {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
 
@@ -153,6 +165,13 @@ try {
             runners = @()
         })
 
+    $publicRepoJson = "$fixtureRootRelative/public-repo.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $publicRepoJson) -Value ([ordered]@{
+            full_name = "owner/repo"
+            private = $false
+            visibility = "public"
+        })
+
     $missingRunnerLines = @(& $handoffScript `
             -RepoFullName "owner/repo" `
             -RunnersJsonPath $missingRunnerJson `
@@ -177,6 +196,50 @@ try {
             "renderer_commercial_readiness=0"
         )) {
         Assert-LinePresent $missingRunnerLines $expectedLine "final handoff missing runner"
+    }
+
+    $publicRepoUnreviewedLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $missingRunnerJson `
+            -RepositoryJsonPath $publicRepoJson `
+            -IntakeManifestRelative $blockedManifestRelative)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=public_runner_security_review_required",
+            "renderer_commercial_readiness_final_handoff_next_action=complete_public_runner_security_review",
+            "renderer_commercial_readiness_final_handoff_runner_repository_metadata_known=1",
+            "renderer_commercial_readiness_final_handoff_runner_repository_visibility=public",
+            "renderer_commercial_readiness_final_handoff_runner_repository_private=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmation_required=public-repo-self-hosted-runner-risk-reviewed",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $publicRepoUnreviewedLines $expectedLine "final handoff public repo unreviewed"
+    }
+    Assert-LineAbsent $publicRepoUnreviewedLines `
+        "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token" `
+        "final handoff public repo unreviewed"
+
+    $publicRepoReviewedLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $missingRunnerJson `
+            -RepositoryJsonPath $publicRepoJson `
+            -ConfirmPublicRepoSelfHostedRunnerSecurityReview public-repo-self-hosted-runner-risk-reviewed `
+            -IntakeManifestRelative $blockedManifestRelative)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=capable_host_runner_required",
+            "renderer_commercial_readiness_final_handoff_next_action=provision_capable_host_runner",
+            "renderer_commercial_readiness_final_handoff_runner_repository_metadata_known=1",
+            "renderer_commercial_readiness_final_handoff_runner_repository_visibility=public",
+            "renderer_commercial_readiness_final_handoff_runner_repository_private=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=0",
+            "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $publicRepoReviewedLines $expectedLine "final handoff public repo reviewed"
     }
 
     $readyRunnerLines = @(& $handoffScript `
