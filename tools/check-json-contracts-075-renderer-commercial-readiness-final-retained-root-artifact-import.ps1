@@ -4,6 +4,8 @@
 
 $importerText = Get-JsonContractSurfaceText "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
 $importerCheckText = Get-JsonContractSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1"
+$runnerPreflightText = Get-JsonContractSurfaceText "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1"
+$runnerPreflightCheckText = Get-JsonContractSurfaceText "tools/check-renderer-metal-memory-profiling-capable-host-runner.ps1"
 $commandsFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $productionLoopFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -112,8 +114,33 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "validation_recipe=renderer-metal-memory-profiling-capable-host-runner-preflight",
+        "renderer_metal_memory_profiling_capable_host_runner_api_endpoint=",
+        "/repos/{owner}/{repo}/actions/runners",
+        "renderer_metal_memory_profiling_capable_host_runner_available=",
+        "renderer_metal_memory_profiling_capable_host_runner_total=",
+        "renderer_metal_memory_profiling_capable_host_runner_required_labels=",
+        "actions/runners?per_page=100",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $runnerPreflightText $needle "renderer Metal memory/profiling capable-host runner preflight script"
+}
+
+foreach ($needle in @(
+        "renderer-metal-memory-profiling-capable-host-runner-check: ok",
+        "renderer_metal_memory_profiling_capable_host_runner_api_endpoint=/repos/{owner}/{repo}/actions/runners",
+        "renderer_metal_memory_profiling_capable_host_runner_available=1",
+        "renderer_metal_memory_profiling_capable_host_runner_available=0",
+        "Renderer Metal memory profiling capable host runner is not available"
+    )) {
+    Assert-ContainsText $runnerPreflightCheckText $needle "renderer Metal memory/profiling capable-host runner preflight check"
+}
+
+foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
+        "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
+        "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
     )) {
@@ -121,6 +148,10 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "renderer-metal-memory-profiling-capable-host-runner-preflight",
+        "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+        "/repos/{owner}/{repo}/actions/runners",
+        "self-hosted, macOS, ARM64, and metal-residency-set",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "renderer-clean-room-legal-review-input",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
