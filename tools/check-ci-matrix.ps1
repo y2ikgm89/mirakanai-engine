@@ -1640,7 +1640,7 @@ Assert-ContainsAll $rendererCommercialArtifactIntakeJob @(
     "- windows-cpp23",
     "- linux-vulkan",
     "- macos",
-    'if: ${{ always() && !cancelled() }}',
+    "if: `${{ always() && !cancelled() && needs.changes.outputs.windows_msvc == 'true' && needs.changes.outputs.linux_vulkan_host == 'true' && needs.changes.outputs.macos_metal_cmake == 'true' }}",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 15",
     "permissions:",
