@@ -148,6 +148,9 @@ function Get-ProbeHostGateReason {
     if ($ProbeText.Contains("Metal command queue creation failed")) {
         return "metal_command_queue_unavailable"
     }
+    if ($ProbeText.Contains("MTLResidencySet unsupported")) {
+        return "mtlresidencyset_unsupported"
+    }
     if ($ProbeText.Contains("MTLResidencySet")) {
         return "mtlresidencyset_unavailable"
     }
@@ -160,6 +163,65 @@ function Get-ProbeHostGateReason {
     return ""
 }
 
+function Get-ProbeCapabilitySummary {
+    param([Parameter(Mandatory = $true)][string]$WorkloadRootFull)
+
+    $capabilitySummaryPath = Join-Path $WorkloadRootFull "probe-capability-summary.json"
+    if (-not (Test-Path -LiteralPath $capabilitySummaryPath -PathType Leaf)) {
+        return $null
+    }
+
+    return Get-Content -LiteralPath $capabilitySummaryPath -Raw | ConvertFrom-Json
+}
+
+function Get-JsonScalarProperty {
+    param(
+        [object]$JsonObject,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $JsonObject) {
+        return $DefaultValue
+    }
+
+    $property = $JsonObject.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+    return $property.Value
+}
+
+function ConvertTo-OptionalCounterBit {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return "unknown"
+    }
+    return ConvertTo-CounterBit ([bool]$Value)
+}
+
+function Get-ProbeCapabilityCounterRows {
+    param([object]$CapabilitySummary)
+
+    $summaryPresent = $null -ne $CapabilitySummary
+    $requiredFamily = [string](Get-JsonScalarProperty -JsonObject $CapabilitySummary `
+            -Name "residency_sets_required_gpu_family" -DefaultValue "MTLGPUFamilyApple6")
+    $deviceName = [string](Get-JsonScalarProperty -JsonObject $CapabilitySummary -Name "device_name" -DefaultValue "unknown")
+    $residencySetsSupported = ConvertTo-OptionalCounterBit (Get-JsonScalarProperty -JsonObject $CapabilitySummary `
+            -Name "residency_sets_supported")
+    $apple6Supported = ConvertTo-OptionalCounterBit (Get-JsonScalarProperty -JsonObject $CapabilitySummary `
+            -Name "gpu_family_apple6_supported")
+
+    return @(
+        "renderer_metal_memory_profiling_host_gate_capability_summary_present=$(ConvertTo-CounterBit $summaryPresent)",
+        "renderer_metal_memory_profiling_host_gate_residency_sets_supported=$residencySetsSupported",
+        "renderer_metal_memory_profiling_host_gate_gpu_family_apple6_supported=$apple6Supported",
+        "renderer_metal_memory_profiling_host_gate_required_gpu_family=$(ConvertTo-CounterValue -Value $requiredFamily)",
+        "renderer_metal_memory_profiling_host_gate_device_name=$(ConvertTo-CounterValue -Value $deviceName)"
+    )
+}
+
 function Write-MacOSHostGatedProbeArtifacts {
     param(
         [Parameter(Mandatory = $true)][string]$WorkloadRootFull,
@@ -170,6 +232,8 @@ function Write-MacOSHostGatedProbeArtifacts {
         [Parameter(Mandatory = $true)][string]$XcodeVersion
     )
 
+    $capabilitySummary = Get-ProbeCapabilitySummary -WorkloadRootFull $WorkloadRootFull
+    $capabilityCounterRows = Get-ProbeCapabilityCounterRows -CapabilitySummary $capabilitySummary
     $summaryText = [string]::Join("`n", @(
             "validation_recipe=renderer-metal-memory-profiling-host-evidence",
             "plan_id=renderer-metal-memory-profiling-apple-host-artifacts-v1",
@@ -177,7 +241,8 @@ function Write-MacOSHostGatedProbeArtifacts {
             "renderer_metal_memory_profiling_host_gate_reason=$(ConvertTo-CounterValue -Value $Reason)",
             "renderer_metal_memory_profiling_host_gate_probe_exit_code=$ProbeExitCode",
             "renderer_metal_memory_profiling_host_gate_macos_version=$(ConvertTo-CounterValue -Value $MacosVersion)",
-            "renderer_metal_memory_profiling_host_gate_xcode_version=$(ConvertTo-CounterValue -Value $XcodeVersion)",
+            "renderer_metal_memory_profiling_host_gate_xcode_version=$(ConvertTo-CounterValue -Value $XcodeVersion)"
+        ) + @($capabilityCounterRows) + @(
             "renderer_metal_memory_profiling_host_artifacts_ready=0",
             "renderer_metal_memory_profiling_host_artifacts_probe_ready=0",
             "renderer_metal_memory_profiling_host_artifacts_written=0",
@@ -212,6 +277,8 @@ function Write-MacOSHostGatedProbeArtifacts {
         probe = [ordered]@{
             exit_code = $ProbeExitCode
             output = $ProbeText
+            capability_summary_present = $null -ne $capabilitySummary
+            capability = $capabilitySummary
         }
         renderer_metal_memory_profiling_host_artifacts_ready = 0
         renderer_metal_memory_profiling_host_artifacts_probe_ready = 0
@@ -224,7 +291,7 @@ function Write-MacOSHostGatedProbeArtifacts {
         renderer_environment_ready = 0
         probe_output = $ProbeText
     }
-    $summaryJson | ConvertTo-Json -Depth 4 |
+    $summaryJson | ConvertTo-Json -Depth 6 |
         Set-Content -LiteralPath (Join-Path $WorkloadRootFull "host-gate-summary.json") -Encoding utf8
 }
 
@@ -349,13 +416,16 @@ if ($probeResult.ExitCode -ne 0) {
     Write-MacOSHostGatedProbeArtifacts -WorkloadRootFull $workloadRootFull `
         -Reason $hostGateReason -ProbeText $probeText -ProbeExitCode $probeResult.ExitCode `
         -MacosVersion ([string]$macosVersion) -XcodeVersion ([string]$xcodeVersion)
+    $capabilitySummary = Get-ProbeCapabilitySummary -WorkloadRootFull $workloadRootFull
+    $capabilityCounterRows = Get-ProbeCapabilityCounterRows -CapabilitySummary $capabilitySummary
     $counterLine = [string]::Join(" ", @(
             "renderer-metal-memory-profiling-host-artifacts:",
             "validation_recipe=renderer-metal-memory-profiling-host-evidence",
             "host=macos",
             "host_gate=metal-apple",
             "renderer_metal_memory_profiling_host_artifacts_status=host_gated",
-            "renderer_metal_memory_profiling_host_gate_reason=$(ConvertTo-CounterValue -Value $hostGateReason)",
+            "renderer_metal_memory_profiling_host_gate_reason=$(ConvertTo-CounterValue -Value $hostGateReason)"
+        ) + @($capabilityCounterRows) + @(
             "renderer_metal_memory_profiling_host_artifacts_ready=0",
             "renderer_metal_memory_profiling_host_artifacts_probe_ready=0",
             "renderer_metal_memory_profiling_host_artifacts_written=0",
