@@ -50,6 +50,9 @@ foreach ($needle in @(
         "host-gate-summary.json",
         "host_gate_summaries",
         "host_gate_summary_reasons",
+        "assembler_input_blockers",
+        "host_gate_blocked_assembler_inputs",
+        "quality_vfx_dependency_blockers",
         "mtlresidencyset_unavailable",
         "D3d12CommercialQualityHostEvidence",
         "VulkanStrictCommercialQualityHostEvidence",
@@ -76,6 +79,9 @@ foreach ($needle in @(
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_input_names=d3d12_host_evidence,vulkan_strict_host_evidence,apple_metal_host_evidence,metal_memory_profiling_host_evidence,package_host_evidence,quality_vfx_host_evidence,clean_room_legal_review",
         "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summaries=3",
         "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_reasons=mtlresidencyset_unavailable,metal_memory_profiling_host_evidence_required",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_inputs=2",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_input_names=metal_memory_profiling_host_evidence,quality_vfx_host_evidence",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_dependency_blockers=metal_memory_profiling_host_evidence",
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
         "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=0",
@@ -151,6 +157,7 @@ foreach ($surface in @(
             "artifact_handoff_strategy",
             "missing_assembler_inputs",
             "host_gate_summaries",
+            "assembler_input_blockers",
             "auto_assemble",
             "renderer_commercial_readiness=0"
         )) {

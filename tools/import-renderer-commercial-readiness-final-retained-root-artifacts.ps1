@@ -62,7 +62,7 @@ function ConvertTo-CounterValue {
 }
 
 function Select-UniqueCounterValues {
-    param([Parameter(Mandatory = $true)][string[]]$Values)
+    param([Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Values)
 
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $uniqueValues = [System.Collections.Generic.List[string]]::new()
@@ -238,6 +238,53 @@ function Find-HostGateSummaries {
             }) | Out-Null
     }
     return @($summaries)
+}
+
+function Select-HostGateSummariesForAssemblerInput {
+    param(
+        [Parameter(Mandatory = $true)][string]$InputName,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$HostGateSummaries
+    )
+
+    switch ($InputName) {
+        "metal_memory_profiling_host_evidence" {
+            return @($HostGateSummaries | Where-Object {
+                    [string]$_.SchemaVersion -ceq "GameEngine.RendererMetalMemoryProfilingHostGate.v1" -or
+                    [string]$_.Path -like "*renderer-metal-memory-profiling-host-artifacts*"
+                })
+        }
+        "quality_vfx_host_evidence" {
+            return @($HostGateSummaries | Where-Object {
+                    $path = [string]$_.Path
+                    [string]$_.SchemaVersion -ceq "GameEngine.RendererQualityVfxCommercialHostGate.v1" -or
+                    $path -like "*renderer-quality-vfx-commercial-artifacts/host-gate-summary.json"
+                })
+        }
+        default {
+            return @()
+        }
+    }
+}
+
+function Select-DependentMissingAssemblerInputs {
+    param(
+        [Parameter(Mandatory = $true)][string]$InputName,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$ReasonValues,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$MissingInputNames
+    )
+
+    $missing = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($missingInputName in @($MissingInputNames)) {
+        $null = $missing.Add($missingInputName)
+    }
+
+    $dependencies = [System.Collections.Generic.List[string]]::new()
+    if ($InputName -ceq "quality_vfx_host_evidence" -and
+        $missing.Contains("metal_memory_profiling_host_evidence") -and
+        @($ReasonValues).Contains("metal_memory_profiling_host_evidence_required")) {
+        $dependencies.Add("metal_memory_profiling_host_evidence") | Out-Null
+    }
+    return @($dependencies)
 }
 
 function Get-WorkflowArtifactListSummary {
@@ -502,6 +549,33 @@ $finalRootPresent = Test-Path -LiteralPath $finalRootEvidencePath -PathType Leaf
 $hostGateSummaries = @(Find-HostGateSummaries -SearchRootFull $outputRootFull)
 $metalHostGateSummary = Find-HostGateSummary -SearchRootFull $outputRootFull
 $metalHostGateSummaryPresent = $null -ne $metalHostGateSummary
+$assemblerInputBlockers = [ordered]@{}
+$hostGateBlockedAssemblerInputNames = [System.Collections.Generic.List[string]]::new()
+foreach ($missingInputName in @($missingAssemblerInputNames)) {
+    $relatedHostGateSummaries = @(Select-HostGateSummariesForAssemblerInput `
+            -InputName ([string]$missingInputName) `
+            -HostGateSummaries $hostGateSummaries)
+    $relatedHostGateReasons = @(Select-UniqueCounterValues -Values ([string[]]@($relatedHostGateSummaries | ForEach-Object {
+                    ConvertTo-CounterValue -Value ([string]$_.Reason)
+                })))
+    $dependentMissingInputs = Select-DependentMissingAssemblerInputs `
+        -InputName ([string]$missingInputName) `
+        -ReasonValues ([string[]]@($relatedHostGateReasons)) `
+        -MissingInputNames ([string[]]@($missingAssemblerInputNames))
+    if (@($relatedHostGateSummaries).Count -eq 0 -and @($dependentMissingInputs).Count -eq 0) {
+        continue
+    }
+
+    $hostGateBlockedAssemblerInputNames.Add([string]$missingInputName) | Out-Null
+    $assemblerInputBlockers[[string]$missingInputName] = [ordered]@{
+        host_gate_summary_count = @($relatedHostGateSummaries).Count
+        host_gate_reasons = @($relatedHostGateReasons)
+        dependent_missing_inputs = @($dependentMissingInputs)
+        host_gate_summary_paths = @($relatedHostGateSummaries | ForEach-Object {
+                [string]$_.Path
+            })
+    }
+}
 $intakeReady = $presentInputs -eq $requiredAssemblerInputs.Count -or $finalRootPresent
 $assemblerOutputRootRelative = "$OutputRootRelative/assembled-final-retained-root"
 $assemblerHandoffReady = $presentInputs -eq $requiredAssemblerInputs.Count
@@ -645,6 +719,7 @@ $manifest = [ordered]@{
                 reason = [string]$_.Reason
             }
         })
+    assembler_input_blockers = $assemblerInputBlockers
     ready = $intakeReady
 }
 
@@ -683,6 +758,14 @@ if (@($hostGateSummaries).Count -gt 0) {
                 ConvertTo-CounterValue -Value ([string]$_.Reason)
             }))
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_reasons=$($hostGateSummaryReasons -join ',')"
+}
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_inputs=$(@($hostGateBlockedAssemblerInputNames).Count)"
+if (@($hostGateBlockedAssemblerInputNames).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_input_names=$((@($hostGateBlockedAssemblerInputNames) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
+}
+$qualityVfxInputBlocker = $assemblerInputBlockers["quality_vfx_host_evidence"]
+if ($null -ne $qualityVfxInputBlocker -and @($qualityVfxInputBlocker.dependent_missing_inputs).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_dependency_blockers=$((@($qualityVfxInputBlocker.dependent_missing_inputs) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
 }
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=$(ConvertTo-CounterBit $metalHostGateSummaryPresent)"
 if ($metalHostGateSummaryPresent) {
