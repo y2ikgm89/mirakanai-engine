@@ -167,6 +167,13 @@ try {
             "renderer_commercial_readiness_final_handoff_missing_assembler_inputs=2",
             "renderer_commercial_readiness_final_handoff_missing_assembler_input_names=metal_memory_profiling_host_evidence,quality_vfx_host_evidence",
             "renderer_commercial_readiness_final_handoff_quality_vfx_dependency_blockers=metal_memory_profiling_host_evidence",
+            "renderer_commercial_readiness_final_handoff_runner_required_labels=self-hosted,macOS,ARM64,metal-residency-set",
+            "renderer_commercial_readiness_final_handoff_runner_registration_token_endpoint=/repos/owner/repo/actions/runners/registration-token",
+            "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token",
+            "renderer_commercial_readiness_final_handoff_runner_registration_token_expires_minutes=60",
+            "renderer_commercial_readiness_final_handoff_runner_config_command_template=./config.sh --url https://github.com/owner/repo --token <registration-token> --labels metal-residency-set",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=1",
+            "renderer_commercial_readiness_final_handoff_runner_label_truth_requires_metal_probe=1",
             "renderer_commercial_readiness=0"
         )) {
         Assert-LinePresent $missingRunnerLines $expectedLine "final handoff missing runner"

@@ -217,6 +217,24 @@ function Join-CommandArguments {
     return [string]::Join(" ", @($Arguments))
 }
 
+function Get-GitHubRepositoryUrl {
+    param([string]$RepositoryFullName = "")
+
+    if ([string]::IsNullOrWhiteSpace($RepositoryFullName)) {
+        return "https://github.com/<owner>/<repo>"
+    }
+    return "https://github.com/$RepositoryFullName"
+}
+
+function Get-GitHubRunnerRegistrationTokenEndpoint {
+    param([string]$RepositoryFullName = "")
+
+    if ([string]::IsNullOrWhiteSpace($RepositoryFullName)) {
+        return "/repos/<owner>/<repo>/actions/runners/registration-token"
+    }
+    return "/repos/$RepositoryFullName/actions/runners/registration-token"
+}
+
 if (-not [string]::IsNullOrWhiteSpace($RepoFullName) -and
     $RepoFullName -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
     Write-Error "RepoFullName must be in owner/repo form."
@@ -331,6 +349,11 @@ if ($assemblerHandoffReady) {
         $assemblerCommand = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/assemble-renderer-commercial-readiness-final-retained-root.ps1 $(Join-CommandArguments -Arguments ([string[]]$assemblerArguments))"
     }
 }
+$runnerRequiredLabels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
+$runnerRequiredLabelText = [string]::Join(",", $runnerRequiredLabels)
+$runnerRegistrationTokenEndpoint = Get-GitHubRunnerRegistrationTokenEndpoint -RepositoryFullName $RepoFullName
+$runnerRegistrationTokenCommand = "gh api -X POST -H `"Accept: application/vnd.github+json`" $runnerRegistrationTokenEndpoint"
+$runnerConfigCommandTemplate = "./config.sh --url $(Get-GitHubRepositoryUrl -RepositoryFullName $RepoFullName) --token <registration-token> --labels metal-residency-set"
 
 Write-Output "validation_recipe=renderer-commercial-readiness-final-handoff"
 if (-not [string]::IsNullOrWhiteSpace($RepoFullName)) {
@@ -374,6 +397,15 @@ if (-not [string]::IsNullOrWhiteSpace($finalPreflightCommand)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($assemblerCommand)) {
     Write-Output "renderer_commercial_readiness_final_handoff_final_assembler_command=$assemblerCommand"
+}
+if ($nextAction -ceq "provision_capable_host_runner") {
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_required_labels=$runnerRequiredLabelText"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_endpoint=$runnerRegistrationTokenEndpoint"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_command=$runnerRegistrationTokenCommand"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_expires_minutes=60"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_config_command_template=$runnerConfigCommandTemplate"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=1"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_label_truth_requires_metal_probe=1"
 }
 Write-Output "renderer_backend_parity_ready=0"
 Write-Output "renderer_metal_broad_readiness=0"
