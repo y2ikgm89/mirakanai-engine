@@ -138,6 +138,7 @@ int main(int argc, char** argv) {
 
             MTLResidencySetDescriptor* residency_descriptor = [MTLResidencySetDescriptor new];
             residency_descriptor.label = @"GameEngine.RHI.Metal.MemoryProfiling.ResidencySet";
+            residency_descriptor.initialCapacity = 2;
 
             NSError* residency_error = nil;
             residency_set = [device newResidencySetWithDescriptor:residency_descriptor error:&residency_error];
