@@ -2080,6 +2080,7 @@ build_frame_synchronization_plan(const VulkanFrameSynchronizationDesc& desc,
 [[nodiscard]] VulkanRuntimeTextureCreatePlan build_runtime_texture_create_plan(const VulkanRuntimeTextureDesc& desc);
 [[nodiscard]] VulkanSpirvShaderArtifactValidation
 validate_spirv_shader_artifact(const VulkanSpirvShaderArtifactDesc& desc);
+[[nodiscard]] std::size_t vulkan_physical_device_properties_limits_offset_bytes() noexcept;
 [[nodiscard]] VulkanPhysicalDeviceCandidate
 make_physical_device_candidate(const VulkanRuntimePhysicalDeviceSnapshot& snapshot);
 [[nodiscard]] std::vector<VulkanCommandRequest> vulkan_backend_command_requests();
