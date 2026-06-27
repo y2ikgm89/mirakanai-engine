@@ -1,0 +1,83 @@
+name: Renderer Metal Memory Profiling Capable Host
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_capable_apple_host:
+        description: Type MTLGPUFamilyApple6 to confirm this self-hosted Apple runner is intended for residency-set proof.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apple-metal-capable-host:
+    name: Renderer Metal memory profiling capable Apple host
+    runs-on: [self-hosted, macOS, ARM64, metal-residency-set]
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Confirm capable Apple host dispatch
+        shell: bash
+        run: |
+          if [ "${{ inputs.confirm_capable_apple_host }}" != "MTLGPUFamilyApple6" ]; then
+            echo "confirm_capable_apple_host must be MTLGPUFamilyApple6 for this self-hosted Metal residency-set proof lane."
+            exit 1
+          fi
+
+      - name: Show Apple Metal host environment
+        shell: bash
+        run: |
+          xcodebuild -version
+          xcode-select -p
+          xcrun --sdk macosx --show-sdk-path
+          system_profiler SPDisplaysDataType -detailLevel mini
+
+      - name: Generate Renderer Metal memory profiling host artifacts
+        shell: pwsh
+        run: |
+          $jobs = [int](& sysctl -n hw.logicalcpu)
+          $expected = @(
+            "renderer_metal_memory_profiling_host_artifacts_status=ready",
+            "renderer_metal_memory_profiling_host_artifacts_ready=1",
+            "renderer_metal_memory_profiling_host_artifacts_probe_ready=1",
+            "renderer_metal_memory_profiling_host_artifacts_written=1",
+            "renderer_metal_memory_profiling_status=ready",
+            "renderer_metal_memory_profiling_ready=1",
+            "renderer_backend_parity_ready=0",
+            "renderer_metal_broad_readiness=0",
+            "renderer_commercial_readiness=0",
+            "renderer_broad_quality_ready=0",
+            "renderer_environment_ready=0"
+          )
+          ./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs $jobs -RequireReady -TaskId 2026-06-27-capable-host-workflow -ExpectedEvidenceCounters $expected
+
+      - name: Upload Renderer Metal memory profiling capable host artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-metal-memory-profiling-host-artifacts
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/metal-memory-profiling-host-evidence/**
+          if-no-files-found: error

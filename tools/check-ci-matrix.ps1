@@ -387,6 +387,26 @@ Assert-ValidationTierSelection `
     -ExpectedClassificationReasons "ci-ios-workflow"
 
 Assert-ValidationTierSelection `
+    -Label "renderer Metal capable host workflow PR" `
+    -ChangedPath @(".github/workflows/renderer-metal-memory-profiling-capable-host.yml") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "none" `
+    -ExpectedClassificationReasons "ci-renderer-metal-capable-host-workflow"
+
+Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
     -ChangedPath @("tools/classify-pr-validation-tier.ps1") `
     -ExpectedWindowsMsvc $false `
@@ -688,6 +708,7 @@ Assert-ValidationTierSelection `
     -ExpectedClassificationReasons "non-pr-full-matrix"
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
+$rendererMetalMemoryProfilingCapableHostWorkflow = Read-RequiredText ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
 $checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
 $cacheActionRef = "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae"
 $cacheRestoreActionRef = "actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae"
@@ -737,6 +758,68 @@ Assert-ContainsAll $validateWorkflow @(
     'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
     "cancel-in-progress: true"
 ) ".github/workflows/validate.yml triggers"
+
+Assert-DoesNotContainAny $rendererMetalMemoryProfilingCapableHostWorkflow @(
+    "push:",
+    "pull_request:",
+    "pull_request_target:",
+    "merge_group:",
+    "workflow_call:",
+    "repository_dispatch:",
+    "workflow_run:",
+    "schedule:",
+    "uses: actions/checkout@v6",
+    "uses: actions/upload-artifact@v7",
+    "actions/checkout@v4",
+    "actions/upload-artifact@v4",
+    "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
+    "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
+) ".github/workflows/renderer-metal-memory-profiling-capable-host.yml manual proof workflow contract"
+Assert-ContainsAll $rendererMetalMemoryProfilingCapableHostWorkflow @(
+    "name: Renderer Metal Memory Profiling Capable Host",
+    "workflow_dispatch:",
+    "confirm_capable_apple_host:",
+    "Type MTLGPUFamilyApple6",
+    "permissions:",
+    "contents: read",
+    "concurrency:",
+    'group: ${{ github.workflow }}-${{ github.ref }}',
+    "cancel-in-progress: true"
+) ".github/workflows/renderer-metal-memory-profiling-capable-host.yml triggers"
+
+$rendererMetalMemoryProfilingCapableHostJob = Get-WorkflowJobText -WorkflowText $rendererMetalMemoryProfilingCapableHostWorkflow `
+    -JobName "apple-metal-capable-host" -Label ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+Assert-ContainsAll $rendererMetalMemoryProfilingCapableHostJob @(
+    "name: Renderer Metal memory profiling capable Apple host",
+    "runs-on: [self-hosted, macOS, ARM64, metal-residency-set]",
+    "timeout-minutes: 90",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Confirm capable Apple host dispatch",
+    "MTLGPUFamilyApple6",
+    "Show Apple Metal host environment",
+    "xcodebuild -version",
+    "xcode-select -p",
+    "xcrun --sdk macosx --show-sdk-path",
+    "Generate Renderer Metal memory profiling host artifacts",
+    "./tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs -RequireReady -TaskId 2026-06-27-capable-host-workflow -ExpectedEvidenceCounters `$expected",
+    "renderer_metal_memory_profiling_host_artifacts_status=ready",
+    "renderer_metal_memory_profiling_host_artifacts_ready=1",
+    "renderer_metal_memory_profiling_host_artifacts_probe_ready=1",
+    "renderer_metal_memory_profiling_ready=1",
+    "renderer_backend_parity_ready=0",
+    "renderer_metal_broad_readiness=0",
+    "renderer_commercial_readiness=0",
+    "renderer_broad_quality_ready=0",
+    "renderer_environment_ready=0",
+    $uploadArtifactActionRef,
+    "name: renderer-metal-memory-profiling-host-artifacts",
+    "retention-days: 14",
+    "compression-level: 0",
+    "include-hidden-files: false",
+    "artifacts/renderer/metal-memory-profiling-host-evidence/**",
+    "if-no-files-found: error"
+) ".github/workflows/renderer-metal-memory-profiling-capable-host.yml apple-metal-capable-host job"
 
 $changesJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "changes" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $changesJob @(
@@ -1704,6 +1787,9 @@ Assert-CheckoutRetryContract -Text $macosJob -Label ".github/workflows/validate.
 Assert-CheckoutRetryContract -Text $iosMetalJob -Label ".github/workflows/validate.yml ios-metal checkout retry"
 Assert-CheckoutRetryContract -Text $rendererCommercialArtifactIntakeJob -Label ".github/workflows/validate.yml renderer-commercial-artifact-intake checkout retry" -RequiresFetchDepthZero
 Assert-CheckoutRetryContract -Text $iosJob -Label ".github/workflows/ios-validate.yml simulator-smoke checkout retry"
+Assert-CheckoutRetryContract -Text $rendererMetalMemoryProfilingCapableHostJob `
+    -Label ".github/workflows/renderer-metal-memory-profiling-capable-host.yml apple-metal-capable-host checkout retry" `
+    -RequiresFetchDepthZero
 
 Assert-CcacheStatsGuard -Text $linuxJob -Label ".github/workflows/validate.yml linux ccache stats guard"
 Assert-CcacheStatsGuard -Text $linuxCoverageJob -Label ".github/workflows/validate.yml linux-coverage ccache stats guard"
@@ -1730,5 +1816,7 @@ Assert-MatchesText $validateWorkflow "^  ios-metal:\s*$" ".github/workflows/vali
 Assert-MatchesText $validateWorkflow "^  renderer-commercial-artifact-intake:\s*$" ".github/workflows/validate.yml renderer-commercial-artifact-intake job id"
 Assert-MatchesText $validateWorkflow "^  pr-gate:\s*$" ".github/workflows/validate.yml pr-gate job id"
 Assert-MatchesText $iosWorkflow "^  simulator-smoke:\s*$" ".github/workflows/ios-validate.yml simulator-smoke job id"
+Assert-MatchesText $rendererMetalMemoryProfilingCapableHostWorkflow "^  apple-metal-capable-host:\s*$" `
+    ".github/workflows/renderer-metal-memory-profiling-capable-host.yml apple-metal-capable-host job id"
 
 Write-Host "ci-matrix-check: ok"
