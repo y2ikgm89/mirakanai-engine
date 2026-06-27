@@ -507,6 +507,34 @@ try {
     $discoveredReadyRunnerLines = @(& $handoffScript `
             -RepoFullName "owner/repo" `
             -RunnersJsonPath $readyRunnerJson `
+            -RepositoryJsonPath $publicRepoJson `
+            -UseRunDiscovery `
+            -RunDiscoverySourceRunsJsonPath $sourceRunsJson `
+            -RunDiscoverySourceArtifactsJsonPath $sourceArtifactsJson `
+            -RunDiscoveryMetalRunsJsonPath $metalRunsJson `
+            -RunDiscoveryMetalArtifactsJsonPath $missingMetalArtifactsJson)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=public_runner_security_review_required",
+            "renderer_commercial_readiness_final_handoff_next_action=complete_public_runner_security_review",
+            "renderer_commercial_readiness_final_handoff_run_discovery_known=1",
+            "renderer_commercial_readiness_final_handoff_source_run_id=111111",
+            "renderer_commercial_readiness_final_handoff_runner_available=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $discoveredReadyRunnerLines $expectedLine "final handoff run discovery ready public runner unreviewed"
+    }
+    Assert-LineAbsent $discoveredReadyRunnerLines `
+        "renderer_commercial_readiness_final_handoff_capable_host_workflow_command=gh workflow run renderer-metal-memory-profiling-capable-host.yml -f confirm_capable_apple_host=MTLGPUFamilyApple6" `
+        "final handoff run discovery ready public runner unreviewed"
+
+    $discoveredReviewedReadyRunnerLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $readyRunnerJson `
+            -RepositoryJsonPath $publicRepoJson `
+            -PublicRepoRunnerSecurityReviewRelative $publicRunnerSecurityReviewJson `
             -UseRunDiscovery `
             -RunDiscoverySourceRunsJsonPath $sourceRunsJson `
             -RunDiscoverySourceArtifactsJsonPath $sourceArtifactsJson `
@@ -518,10 +546,14 @@ try {
             "renderer_commercial_readiness_final_handoff_run_discovery_known=1",
             "renderer_commercial_readiness_final_handoff_source_run_id=111111",
             "renderer_commercial_readiness_final_handoff_runner_available=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_workflow_audit_valid=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=0",
             "renderer_commercial_readiness_final_handoff_capable_host_workflow_command=gh workflow run renderer-metal-memory-profiling-capable-host.yml -f confirm_capable_apple_host=MTLGPUFamilyApple6",
             "renderer_commercial_readiness=0"
         )) {
-        Assert-LinePresent $discoveredReadyRunnerLines $expectedLine "final handoff run discovery ready runner"
+        Assert-LinePresent $discoveredReviewedReadyRunnerLines $expectedLine "final handoff run discovery ready public runner reviewed"
     }
 
     $discoveredFromRunsLines = @(& $handoffScript `

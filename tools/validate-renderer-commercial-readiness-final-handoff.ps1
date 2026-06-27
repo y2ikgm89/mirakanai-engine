@@ -618,7 +618,8 @@ $runnerRegistrationTokenEndpoint = Get-GitHubRunnerRegistrationTokenEndpoint -Re
 $runnerRegistrationTokenCommand = "gh api -X POST -H `"Accept: application/vnd.github+json`" $runnerRegistrationTokenEndpoint"
 $runnerConfigCommandTemplate = "./config.sh --url $(Get-GitHubRepositoryUrl -RepositoryFullName $RepoFullName) --token <registration-token> --labels metal-residency-set"
 
-if ($nextAction -ceq "provision_capable_host_runner") {
+if ($nextAction -ceq "provision_capable_host_runner" -or
+    $nextAction -ceq "run_metal_memory_profiling_capable_host_workflow") {
     if (-not [string]::IsNullOrWhiteSpace($RepositoryJsonPath)) {
         $repositoryMetadata = Read-JsonFile -RelativePath $RepositoryJsonPath -Label "RepositoryJsonPath"
         $repositoryMetadataKnown = $true
@@ -676,8 +677,10 @@ if ($nextAction -ceq "provision_capable_host_runner") {
     }
     $publicRepoSecurityReviewArtifactInvalid = $publicRepoSecurityReviewArtifactPresent -and
         -not $publicRepoSecurityReviewArtifactValid
-    $publicRepoRegistrationBlocked = ($publicRepoSecurityReviewRequired -and -not $publicRepoSecurityReviewConfirmed) -or
-        $publicRepoSecurityReviewArtifactInvalid
+    $publicRepoRegistrationGateActive = $repositoryMetadataKnown -or $publicRepoSecurityReviewArtifactInvalid
+    $publicRepoRegistrationBlocked = $publicRepoRegistrationGateActive -and (
+        ($publicRepoSecurityReviewRequired -and -not $publicRepoSecurityReviewConfirmed) -or
+        $publicRepoSecurityReviewArtifactInvalid)
     if ($publicRepoRegistrationBlocked -and
         ($repositoryMetadataKnown -or $publicRepoSecurityReviewArtifactInvalid)) {
         $status = "public_runner_security_review_required"
@@ -724,7 +727,9 @@ if (@($qualityVfxDependencyBlockers).Count -gt 0) {
 }
 Write-Output "renderer_commercial_readiness_final_handoff_assembler_handoff_ready=$(ConvertTo-CounterBit $assemblerHandoffReady)"
 Write-Output "renderer_commercial_readiness_final_handoff_final_preflight_ready=$(ConvertTo-CounterBit $finalPreflightReady)"
-if ($nextAction -ceq "run_metal_memory_profiling_capable_host_workflow" -or $runnerAvailable) {
+$capableHostWorkflowCommandReady = ($nextAction -ceq "run_metal_memory_profiling_capable_host_workflow" -or
+    $runnerAvailable) -and -not $publicRepoRegistrationBlocked
+if ($capableHostWorkflowCommandReady) {
     Write-Output "renderer_commercial_readiness_final_handoff_capable_host_workflow_command=$capableHostWorkflowCommand"
 }
 if (-not [string]::IsNullOrWhiteSpace($finalFromRunsWorkflowCommand)) {
@@ -737,6 +742,7 @@ if (-not [string]::IsNullOrWhiteSpace($assemblerCommand)) {
     Write-Output "renderer_commercial_readiness_final_handoff_final_assembler_command=$assemblerCommand"
 }
 if ($nextAction -ceq "provision_capable_host_runner" -or
+    $nextAction -ceq "run_metal_memory_profiling_capable_host_workflow" -or
     $nextAction -ceq "complete_public_runner_security_review") {
     Write-Output "renderer_commercial_readiness_final_handoff_runner_required_labels=$runnerRequiredLabelText"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_repository_metadata_known=$(ConvertTo-CounterBit $repositoryMetadataKnown)"
