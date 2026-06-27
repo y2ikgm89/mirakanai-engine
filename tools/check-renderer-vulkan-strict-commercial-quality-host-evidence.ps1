@@ -144,6 +144,7 @@ try {
     $workflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
     $linuxMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_game/linux_main.cpp") -Raw
     $linuxHostHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_host/include/mirakana/runtime_host/linux/linux_desktop_game_host.hpp") -Raw
+    $vulkanBackendText = Get-Content -LiteralPath (Join-Path $root "engine/rhi/vulkan/src/vulkan_backend.cpp") -Raw
     foreach ($needle in @(
             "--emit-vulkan-strict-commercial-host-gate",
             "--require-environment-vulkan-strict-aggregate",
@@ -231,6 +232,18 @@ try {
         )) {
         if (-not $workflowText.Contains($needle)) {
             Write-Error "Validate workflow must collect strict Vulkan commercial evidence from the Linux Vulkan host lane: $needle"
+        }
+    }
+    foreach ($needle in @(
+            "vkCmdPipelineBarrier2KHR",
+            "vkQueueSubmit2KHR",
+            "vkCmdWriteTimestamp2KHR",
+            "load_device_command<VulkanCmdPipelineBarrier2>",
+            "load_device_command<VulkanQueueSubmit2>",
+            "load_device_command<VulkanCmdWriteTimestamp2>"
+        )) {
+        if (-not $vulkanBackendText.Contains($needle)) {
+            Write-Error "Vulkan runtime command resolution must use core synchronization2 names with KHR alias fallback for strict hosted timestamp evidence: $needle"
         }
     }
 

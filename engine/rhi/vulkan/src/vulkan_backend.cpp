@@ -2185,6 +2185,32 @@ make_native_mesh_shader_features(const VulkanLogicalDeviceCreatePlan& plan) noex
     return chain_head;
 }
 
+[[nodiscard]] std::string_view synchronization2_core_command_alias(std::string_view command_name) noexcept {
+    if (command_name == "vkCmdPipelineBarrier2") {
+        return "vkCmdPipelineBarrier2KHR";
+    }
+    if (command_name == "vkQueueSubmit2") {
+        return "vkQueueSubmit2KHR";
+    }
+    if (command_name == "vkCmdWriteTimestamp2") {
+        return "vkCmdWriteTimestamp2KHR";
+    }
+    return {};
+}
+
+template <typename Command>
+[[nodiscard]] Command load_device_command(VulkanGetDeviceProcAddr get_device_proc_addr, NativeVulkanDevice device,
+                                          const char* name, const char* alias = nullptr) noexcept {
+    if (get_device_proc_addr == nullptr) {
+        return nullptr;
+    }
+    auto command = reinterpret_cast<Command>(get_device_proc_addr(device, name));
+    if (command == nullptr && alias != nullptr) {
+        command = reinterpret_cast<Command>(get_device_proc_addr(device, alias));
+    }
+    return command;
+}
+
 void append_instance_command_availability(std::vector<VulkanCommandAvailability>& availability,
                                           VulkanGetInstanceProcAddr get_instance_proc_addr,
                                           NativeVulkanInstance instance,
@@ -2201,8 +2227,12 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
                                         VulkanGetDeviceProcAddr get_device_proc_addr, NativeVulkanDevice device,
                                         const std::vector<VulkanCommandRequest>& requests) {
     for (const auto& request : requests) {
-        const auto resolved =
+        auto resolved =
             get_device_proc_addr != nullptr && get_device_proc_addr(device, request.name.c_str()) != nullptr;
+        if (!resolved && get_device_proc_addr != nullptr) {
+            const auto alias = synchronization2_core_command_alias(request.name);
+            resolved = !alias.empty() && get_device_proc_addr(device, alias.data()) != nullptr;
+        }
         availability.push_back(
             VulkanCommandAvailability{.name = request.name, .scope = request.scope, .available = resolved});
     }
@@ -3309,9 +3339,13 @@ has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBi
 
 [[nodiscard]] bool command_is_available(const std::vector<VulkanCommandAvailability>& available_commands,
                                         const VulkanCommandRequest& request) noexcept {
+    const auto alias = synchronization2_core_command_alias(request.name);
     for (const auto& available : available_commands) {
-        if (available.scope == request.scope && available.name == request.name) {
-            return available.available;
+        if (available.scope == request.scope &&
+            (available.name == request.name || (!alias.empty() && available.name == alias))) {
+            if (available.available) {
+                return true;
+            }
         }
     }
     return false;
@@ -10192,15 +10226,16 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdDrawMeshTasksIndirect>(get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectEXT"));
     const auto cmd_draw_mesh_tasks_indirect_count = reinterpret_cast<VulkanCmdDrawMeshTasksIndirectCount>(
         get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectCountEXT"));
-    const auto cmd_pipeline_barrier2 =
-        reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
+    const auto cmd_pipeline_barrier2 = load_device_command<VulkanCmdPipelineBarrier2>(
+        get_device_proc_addr, device, "vkCmdPipelineBarrier2", "vkCmdPipelineBarrier2KHR");
     const auto cmd_reset_query_pool =
         reinterpret_cast<VulkanCmdResetQueryPool>(get_device_proc_addr(device, "vkCmdResetQueryPool"));
-    const auto cmd_write_timestamp2 =
-        reinterpret_cast<VulkanCmdWriteTimestamp2>(get_device_proc_addr(device, "vkCmdWriteTimestamp2"));
+    const auto cmd_write_timestamp2 = load_device_command<VulkanCmdWriteTimestamp2>(
+        get_device_proc_addr, device, "vkCmdWriteTimestamp2", "vkCmdWriteTimestamp2KHR");
     const auto get_query_pool_results =
         reinterpret_cast<VulkanGetQueryPoolResults>(get_device_proc_addr(device, "vkGetQueryPoolResults"));
-    const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
+    const auto queue_submit2 =
+        load_device_command<VulkanQueueSubmit2>(get_device_proc_addr, device, "vkQueueSubmit2", "vkQueueSubmit2KHR");
     const auto queue_wait_idle = reinterpret_cast<VulkanQueueWaitIdle>(get_device_proc_addr(device, "vkQueueWaitIdle"));
     const auto create_buffer = reinterpret_cast<VulkanCreateBuffer>(get_device_proc_addr(device, "vkCreateBuffer"));
     const auto destroy_buffer = reinterpret_cast<VulkanDestroyBuffer>(get_device_proc_addr(device, "vkDestroyBuffer"));
@@ -10670,15 +10705,16 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
         reinterpret_cast<VulkanCmdDrawMeshTasksIndirect>(get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectEXT"));
     const auto cmd_draw_mesh_tasks_indirect_count = reinterpret_cast<VulkanCmdDrawMeshTasksIndirectCount>(
         get_device_proc_addr(device, "vkCmdDrawMeshTasksIndirectCountEXT"));
-    const auto cmd_pipeline_barrier2 =
-        reinterpret_cast<VulkanCmdPipelineBarrier2>(get_device_proc_addr(device, "vkCmdPipelineBarrier2"));
+    const auto cmd_pipeline_barrier2 = load_device_command<VulkanCmdPipelineBarrier2>(
+        get_device_proc_addr, device, "vkCmdPipelineBarrier2", "vkCmdPipelineBarrier2KHR");
     const auto cmd_reset_query_pool =
         reinterpret_cast<VulkanCmdResetQueryPool>(get_device_proc_addr(device, "vkCmdResetQueryPool"));
-    const auto cmd_write_timestamp2 =
-        reinterpret_cast<VulkanCmdWriteTimestamp2>(get_device_proc_addr(device, "vkCmdWriteTimestamp2"));
+    const auto cmd_write_timestamp2 = load_device_command<VulkanCmdWriteTimestamp2>(
+        get_device_proc_addr, device, "vkCmdWriteTimestamp2", "vkCmdWriteTimestamp2KHR");
     const auto get_query_pool_results =
         reinterpret_cast<VulkanGetQueryPoolResults>(get_device_proc_addr(device, "vkGetQueryPoolResults"));
-    const auto queue_submit2 = reinterpret_cast<VulkanQueueSubmit2>(get_device_proc_addr(device, "vkQueueSubmit2"));
+    const auto queue_submit2 =
+        load_device_command<VulkanQueueSubmit2>(get_device_proc_addr, device, "vkQueueSubmit2", "vkQueueSubmit2KHR");
     const auto queue_wait_idle = reinterpret_cast<VulkanQueueWaitIdle>(get_device_proc_addr(device, "vkQueueWaitIdle"));
     const auto create_buffer = reinterpret_cast<VulkanCreateBuffer>(get_device_proc_addr(device, "vkCreateBuffer"));
     const auto destroy_buffer = reinterpret_cast<VulkanDestroyBuffer>(get_device_proc_addr(device, "vkDestroyBuffer"));
