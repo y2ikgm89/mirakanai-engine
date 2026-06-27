@@ -181,8 +181,25 @@ try {
             status = "host_gated"
             reason = "mtlresidencyset_unavailable"
         })
+    $qualityHostGatePath = ConvertTo-LocalPath "$contractRootRelative/renderer-quality-vfx-commercial-artifacts/host-gate-summary.json"
+    Write-JsonObject -Path $qualityHostGatePath -Value ([ordered]@{
+            schema_version = "GameEngine.RendererQualityVfxCommercialHostGate.v1"
+            validation_recipe = "renderer-quality-vfx-commercial-artifacts"
+            status = "host_gated"
+            reason = "metal_memory_profiling_host_evidence_required"
+        })
+    $nestedMetalHostGatePath = ConvertTo-LocalPath "$contractRootRelative/renderer-quality-vfx-commercial-artifacts/source-artifacts/renderer-metal-memory-profiling-host-artifacts/host-gate-summary.json"
+    Write-JsonObject -Path $nestedMetalHostGatePath -Value ([ordered]@{
+            schema = "GameEngine.RendererMetalMemoryProfilingHostGate.v1"
+            validation_recipe = "renderer-metal-memory-profiling-host-evidence"
+            status = "host_gated"
+            reason = "mtlresidencyset_unavailable"
+        })
     $hostGateLines = @(& $importerScript -Mode Inspect -OutputRootRelative $contractRootRelative -NoWrite)
     foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summaries=3",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_statuses=host_gated,host_gated,host_gated",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_reasons=mtlresidencyset_unavailable,metal_memory_profiling_host_evidence_required",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=1",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_status=host_gated",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_reason=mtlresidencyset_unavailable",
@@ -300,6 +317,15 @@ try {
     }
     if (@($manifest.missing_assembler_inputs).Count -ne 0) {
         Write-Error "GitHub artifact intake manifest must expose zero missing assembler inputs when all seven inputs are present."
+    }
+    if (@($manifest.host_gate_summaries).Count -ne 3) {
+        Write-Error "GitHub artifact intake manifest must expose every retained host gate summary."
+    }
+    $hostGateReasons = @($manifest.host_gate_summaries | ForEach-Object { [string]$_.reason })
+    foreach ($expectedReason in @("mtlresidencyset_unavailable", "metal_memory_profiling_host_evidence_required")) {
+        if (-not $hostGateReasons.Contains($expectedReason)) {
+            Write-Error "GitHub artifact intake manifest missing host gate reason: $expectedReason"
+        }
     }
     if ([string]$manifest.assembler_handoff.script -cne "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1") {
         Write-Error "GitHub artifact intake manifest must point at the final retained-root assembler script."
