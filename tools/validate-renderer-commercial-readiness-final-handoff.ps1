@@ -11,6 +11,8 @@ param(
 
     [string]$ConfirmPublicRepoSelfHostedRunnerSecurityReview = "",
 
+    [string]$PublicRepoRunnerSecurityReviewRelative = "",
+
     [string]$IntakeManifestRelative = "",
 
     [string]$SourceRunId = "",
@@ -180,6 +182,99 @@ function Test-JsonReady {
     return [bool]$Value
 }
 
+function Test-JsonBooleanTrue {
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value -or -not ($Value -is [bool])) {
+        return $false
+    }
+    return [bool]$Value
+}
+
+function Test-StringSetEquals {
+    param(
+        [AllowNull()]$Value,
+        [Parameter(Mandatory = $true)][string[]]$ExpectedValues
+    )
+
+    $actualSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($item in @(Select-StringArray -Value $Value)) {
+        $null = $actualSet.Add($item)
+    }
+    if ($actualSet.Count -ne @($ExpectedValues).Count) {
+        return $false
+    }
+    foreach ($expectedValue in @($ExpectedValues)) {
+        if (-not $actualSet.Contains($expectedValue)) {
+            return $false
+        }
+    }
+    return $true
+}
+
+function Test-StringArrayContains {
+    param(
+        [AllowNull()]$Value,
+        [Parameter(Mandatory = $true)][string]$ExpectedValue
+    )
+
+    foreach ($item in @(Select-StringArray -Value $Value)) {
+        if ($item -ceq $ExpectedValue) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-PublicRepoRunnerSecurityReviewArtifact {
+    param(
+        [AllowNull()]$Review,
+        [string]$RepositoryFullName = "",
+        [Parameter(Mandatory = $true)][string[]]$RequiredLabels
+    )
+
+    if ($null -eq $Review) {
+        return $false
+    }
+
+    if ([string](Get-JsonPropertyValue -JsonObject $Review -Name "schema_version") -cne
+        "GameEngine.RendererPublicSelfHostedRunnerSecurityReview.v1") {
+        return $false
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RepositoryFullName) -and
+        [string](Get-JsonPropertyValue -JsonObject $Review -Name "repo_full_name") -cne $RepositoryFullName) {
+        return $false
+    }
+    if ([string](Get-JsonPropertyValue -JsonObject $Review -Name "repository_visibility") -cne "public") {
+        return $false
+    }
+    if ([string](Get-JsonPropertyValue -JsonObject $Review -Name "review_status") -cne "approved") {
+        return $false
+    }
+    foreach ($requiredBoolean in @(
+            "reviewed_public_fork_pr_risk",
+            "reviewed_runner_isolation",
+            "reviewed_secret_exposure",
+            "reviewed_metal_probe_truth"
+        )) {
+        if (-not (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $Review -Name $requiredBoolean))) {
+            return $false
+        }
+    }
+    if (-not (Test-StringArrayContains `
+                -Value (Get-JsonPropertyValue -JsonObject $Review -Name "reviewed_allowed_workflows") `
+                -ExpectedValue "renderer-metal-memory-profiling-capable-host.yml")) {
+        return $false
+    }
+    if (-not (Test-StringSetEquals `
+                -Value (Get-JsonPropertyValue -JsonObject $Review -Name "reviewed_required_labels") `
+                -ExpectedValues $RequiredLabels)) {
+        return $false
+    }
+
+    return $true
+}
+
 function Get-HandoffReadyProperty {
     param(
         [AllowNull()]$Manifest,
@@ -281,6 +376,9 @@ $publicRepoSecurityReviewRequired = $true
 $publicRepoSecurityReviewConfirmed = $false
 $publicRepoRegistrationBlocked = $false
 $publicRepoSecurityReviewConfirmationRequired = "public-repo-self-hosted-runner-risk-reviewed"
+$publicRepoSecurityReviewArtifactPresent = -not [string]::IsNullOrWhiteSpace($PublicRepoRunnerSecurityReviewRelative)
+$publicRepoSecurityReviewArtifactValid = $false
+$publicRepoSecurityReviewArtifactStatus = "not_supplied"
 
 $manifest = $null
 $manifestPresent = $false
@@ -415,10 +513,38 @@ if ($nextAction -ceq "provision_capable_host_runner") {
         $publicRepoSecurityReviewRequired = $isPublicRepository
     }
 
-    $publicRepoSecurityReviewConfirmed = $ConfirmPublicRepoSelfHostedRunnerSecurityReview -ceq
+    if ($publicRepoSecurityReviewArtifactPresent) {
+        $publicRepoSecurityReviewArtifact = Read-JsonFile `
+            -RelativePath $PublicRepoRunnerSecurityReviewRelative `
+            -Label "PublicRepoRunnerSecurityReviewRelative"
+        $reviewStatusValue = Get-JsonPropertyValue -JsonObject $publicRepoSecurityReviewArtifact -Name "review_status"
+        if (-not [string]::IsNullOrWhiteSpace([string]$reviewStatusValue)) {
+            $publicRepoSecurityReviewArtifactStatus = [string]$reviewStatusValue
+        } else {
+            $publicRepoSecurityReviewArtifactStatus = "missing_review_status"
+        }
+        $publicRepoSecurityReviewArtifactValid = Test-PublicRepoRunnerSecurityReviewArtifact `
+            -Review $publicRepoSecurityReviewArtifact `
+            -RepositoryFullName $RepoFullName `
+            -RequiredLabels $runnerRequiredLabels
+    }
+
+    $publicRepoSecurityReviewConfirmedByString = $ConfirmPublicRepoSelfHostedRunnerSecurityReview -ceq
         $publicRepoSecurityReviewConfirmationRequired
-    $publicRepoRegistrationBlocked = $publicRepoSecurityReviewRequired -and -not $publicRepoSecurityReviewConfirmed
-    if ($publicRepoRegistrationBlocked -and $repositoryMetadataKnown) {
+    $publicRepoSecurityReviewConfirmedByArtifact = $publicRepoSecurityReviewArtifactPresent -and
+        $publicRepoSecurityReviewArtifactValid
+    $publicRepoSecurityReviewConfirmed = if ($publicRepoSecurityReviewArtifactPresent -and
+        -not $publicRepoSecurityReviewArtifactValid) {
+        $false
+    } else {
+        $publicRepoSecurityReviewConfirmedByString -or $publicRepoSecurityReviewConfirmedByArtifact
+    }
+    $publicRepoSecurityReviewArtifactInvalid = $publicRepoSecurityReviewArtifactPresent -and
+        -not $publicRepoSecurityReviewArtifactValid
+    $publicRepoRegistrationBlocked = ($publicRepoSecurityReviewRequired -and -not $publicRepoSecurityReviewConfirmed) -or
+        $publicRepoSecurityReviewArtifactInvalid
+    if ($publicRepoRegistrationBlocked -and
+        ($repositoryMetadataKnown -or $publicRepoSecurityReviewArtifactInvalid)) {
         $status = "public_runner_security_review_required"
         $nextAction = "complete_public_runner_security_review"
     }
@@ -480,6 +606,12 @@ if ($nextAction -ceq "provision_capable_host_runner" -or
     Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=$(ConvertTo-CounterBit $publicRepoSecurityReviewRequired)"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=$(ConvertTo-CounterBit $publicRepoSecurityReviewConfirmed)"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmation_required=$publicRepoSecurityReviewConfirmationRequired"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_present=$(ConvertTo-CounterBit $publicRepoSecurityReviewArtifactPresent)"
+    if ($publicRepoSecurityReviewArtifactPresent) {
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact=$PublicRepoRunnerSecurityReviewRelative"
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=$(ConvertTo-CounterBit $publicRepoSecurityReviewArtifactValid)"
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_status=$(ConvertTo-CounterValue -Value $publicRepoSecurityReviewArtifactStatus)"
+    }
     Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=$(ConvertTo-CounterBit $publicRepoRegistrationBlocked)"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_endpoint=$runnerRegistrationTokenEndpoint"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_expires_minutes=60"
