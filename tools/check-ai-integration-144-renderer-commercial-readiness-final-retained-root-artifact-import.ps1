@@ -31,6 +31,10 @@ foreach ($needle in @(
         "missing_assembler_inputs",
         "assembler_handoff",
         "final_preflight_handoff",
+        "AutoAssemble",
+        "auto_assemble",
+        "auto_assemble_requested",
+        "auto_assemble_output_log",
         "assembler_handoff_ready",
         "gh run download",
         "GitHub CLI",
@@ -71,6 +75,10 @@ foreach ($needle in @(
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
         "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=0",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ran=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ready=0",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_root=",
         "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
         "renderer_commercial_readiness=0"
     )) {
@@ -138,6 +146,7 @@ foreach ($surface in @(
             "GitHub Actions artifacts",
             "artifact_handoff_strategy",
             "missing_assembler_inputs",
+            "auto_assemble",
             "renderer_commercial_readiness=0"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) final retained-root artifact import"
