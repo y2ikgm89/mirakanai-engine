@@ -7,6 +7,10 @@ param(
 
     [string]$RunnersJsonPath = "",
 
+    [string]$RepositoryJsonPath = "",
+
+    [string]$ConfirmPublicRepoSelfHostedRunnerSecurityReview = "",
+
     [string]$IntakeManifestRelative = "",
 
     [string]$SourceRunId = "",
@@ -235,9 +239,28 @@ function Get-GitHubRunnerRegistrationTokenEndpoint {
     return "/repos/$RepositoryFullName/actions/runners/registration-token"
 }
 
+function Invoke-GitHubRepositoryMetadata {
+    param([string]$RepositoryFullName = "")
+
+    if ([string]::IsNullOrWhiteSpace($RepositoryFullName)) {
+        return $null
+    }
+
+    $endpoint = "/repos/$RepositoryFullName"
+    $output = & gh api $endpoint -H "Accept: application/vnd.github+json" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "gh api $endpoint failed: $(@($output) -join "`n")"
+    }
+    return (@($output) -join "`n") | ConvertFrom-Json
+}
+
 if (-not [string]::IsNullOrWhiteSpace($RepoFullName) -and
     $RepoFullName -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
     Write-Error "RepoFullName must be in owner/repo form."
+}
+if (-not [string]::IsNullOrWhiteSpace($ConfirmPublicRepoSelfHostedRunnerSecurityReview) -and
+    $ConfirmPublicRepoSelfHostedRunnerSecurityReview -cne "public-repo-self-hosted-runner-risk-reviewed") {
+    Write-Error "ConfirmPublicRepoSelfHostedRunnerSecurityReview must equal public-repo-self-hosted-runner-risk-reviewed when provided."
 }
 foreach ($runIdSpec in @(
         @{ Name = "SourceRunId"; Value = $SourceRunId },
@@ -248,6 +271,16 @@ foreach ($runIdSpec in @(
         Write-Error "$($runIdSpec.Name) must contain only digits when provided."
     }
 }
+
+$repositoryMetadata = $null
+$repositoryMetadataKnown = $false
+$repositoryVisibility = "unknown"
+$repositoryPrivate = $false
+$repositoryPrivateKnown = $false
+$publicRepoSecurityReviewRequired = $true
+$publicRepoSecurityReviewConfirmed = $false
+$publicRepoRegistrationBlocked = $false
+$publicRepoSecurityReviewConfirmationRequired = "public-repo-self-hosted-runner-risk-reviewed"
 
 $manifest = $null
 $manifestPresent = $false
@@ -355,6 +388,42 @@ $runnerRegistrationTokenEndpoint = Get-GitHubRunnerRegistrationTokenEndpoint -Re
 $runnerRegistrationTokenCommand = "gh api -X POST -H `"Accept: application/vnd.github+json`" $runnerRegistrationTokenEndpoint"
 $runnerConfigCommandTemplate = "./config.sh --url $(Get-GitHubRepositoryUrl -RepositoryFullName $RepoFullName) --token <registration-token> --labels metal-residency-set"
 
+if ($nextAction -ceq "provision_capable_host_runner") {
+    if (-not [string]::IsNullOrWhiteSpace($RepositoryJsonPath)) {
+        $repositoryMetadata = Read-JsonFile -RelativePath $RepositoryJsonPath -Label "RepositoryJsonPath"
+        $repositoryMetadataKnown = $true
+    } elseif (-not [string]::IsNullOrWhiteSpace($RepoFullName) -and
+        [string]::IsNullOrWhiteSpace($RunnersJsonPath)) {
+        $repositoryMetadata = Invoke-GitHubRepositoryMetadata -RepositoryFullName $RepoFullName
+        $repositoryMetadataKnown = $null -ne $repositoryMetadata
+    }
+
+    if ($repositoryMetadataKnown) {
+        $visibilityValue = Get-JsonPropertyValue -JsonObject $repositoryMetadata -Name "visibility"
+        if (-not [string]::IsNullOrWhiteSpace([string]$visibilityValue)) {
+            $repositoryVisibility = [string]$visibilityValue
+        }
+
+        $privateValue = Get-JsonPropertyValue -JsonObject $repositoryMetadata -Name "private"
+        if ($null -ne $privateValue) {
+            $repositoryPrivateKnown = $true
+            $repositoryPrivate = [bool]$privateValue
+        }
+
+        $isPublicRepository = $repositoryVisibility -ceq "public" -or
+            ($repositoryPrivateKnown -and -not $repositoryPrivate)
+        $publicRepoSecurityReviewRequired = $isPublicRepository
+    }
+
+    $publicRepoSecurityReviewConfirmed = $ConfirmPublicRepoSelfHostedRunnerSecurityReview -ceq
+        $publicRepoSecurityReviewConfirmationRequired
+    $publicRepoRegistrationBlocked = $publicRepoSecurityReviewRequired -and -not $publicRepoSecurityReviewConfirmed
+    if ($publicRepoRegistrationBlocked -and $repositoryMetadataKnown) {
+        $status = "public_runner_security_review_required"
+        $nextAction = "complete_public_runner_security_review"
+    }
+}
+
 Write-Output "validation_recipe=renderer-commercial-readiness-final-handoff"
 if (-not [string]::IsNullOrWhiteSpace($RepoFullName)) {
     Write-Output "renderer_commercial_readiness_final_handoff_repo=$RepoFullName"
@@ -398,14 +467,27 @@ if (-not [string]::IsNullOrWhiteSpace($finalPreflightCommand)) {
 if (-not [string]::IsNullOrWhiteSpace($assemblerCommand)) {
     Write-Output "renderer_commercial_readiness_final_handoff_final_assembler_command=$assemblerCommand"
 }
-if ($nextAction -ceq "provision_capable_host_runner") {
+if ($nextAction -ceq "provision_capable_host_runner" -or
+    $nextAction -ceq "complete_public_runner_security_review") {
     Write-Output "renderer_commercial_readiness_final_handoff_runner_required_labels=$runnerRequiredLabelText"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_repository_metadata_known=$(ConvertTo-CounterBit $repositoryMetadataKnown)"
+    if ($repositoryMetadataKnown) {
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_repository_visibility=$(ConvertTo-CounterValue -Value $repositoryVisibility)"
+        if ($repositoryPrivateKnown) {
+            Write-Output "renderer_commercial_readiness_final_handoff_runner_repository_private=$(ConvertTo-CounterBit $repositoryPrivate)"
+        }
+    }
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=$(ConvertTo-CounterBit $publicRepoSecurityReviewRequired)"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=$(ConvertTo-CounterBit $publicRepoSecurityReviewConfirmed)"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmation_required=$publicRepoSecurityReviewConfirmationRequired"
+    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=$(ConvertTo-CounterBit $publicRepoRegistrationBlocked)"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_endpoint=$runnerRegistrationTokenEndpoint"
-    Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_command=$runnerRegistrationTokenCommand"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_expires_minutes=60"
-    Write-Output "renderer_commercial_readiness_final_handoff_runner_config_command_template=$runnerConfigCommandTemplate"
-    Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_required=1"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_label_truth_requires_metal_probe=1"
+    if ($nextAction -ceq "provision_capable_host_runner") {
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_command=$runnerRegistrationTokenCommand"
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_config_command_template=$runnerConfigCommandTemplate"
+    }
 }
 Write-Output "renderer_backend_parity_ready=0"
 Write-Output "renderer_metal_broad_readiness=0"
