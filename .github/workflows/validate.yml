@@ -1365,6 +1365,8 @@ jobs:
             '--require-linux-vulkan-presentation-smoke',
             '--require-linux-vulkan-readback',
             '--require-linux-vulkan-validation-log',
+            '--require-environment-vulkan-strict-aggregate',
+            '--require-vulkan-gpu-memory-evidence',
             '--emit-vulkan-strict-commercial-host-gate'
           )
           $expected = @(
@@ -1408,6 +1410,7 @@ jobs:
               "renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1",
               "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
               "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
+              "renderer_vulkan_timestamp_ready=0",
               "renderer_commercial_readiness=0",
               "renderer_environment_ready=0"
             )) {

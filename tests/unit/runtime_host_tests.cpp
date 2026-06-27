@@ -794,6 +794,69 @@ MK_TEST("linux desktop vulkan strict commercial report requires memory and times
     MK_REQUIRE(ready.vulkan_debug_profiling_gpu_timestamp_query_writes == 2U);
 }
 
+MK_TEST("linux desktop vulkan strict commercial evidence populates exact retained rows from host counters") {
+    auto request = mirakana::LinuxDesktopVulkanPresentationRequest{
+        .linux_host = true,
+        .xcb_window_ready = true,
+        .vulkan_loader_ready = true,
+        .vulkan_xcb_surface_created = true,
+        .surface_support_probed = true,
+        .swapchain_created = true,
+        .frame_acquired = true,
+        .frame_presented = true,
+        .readback_nonzero = true,
+        .validation_log_clean = true,
+        .validation_layer_ready = true,
+        .synchronization2_barriers = 3U,
+        .readback_bytes = 64U * 64U * 4U,
+    };
+    request = mirakana::with_linux_desktop_vulkan_strict_commercial_evidence(
+        request, mirakana::LinuxDesktopVulkanStrictCommercialEvidence{
+                     .selected_strict_aggregate_counters_ready = true,
+                     .vulkan_sdk_tools_ready = true,
+                     .dxc_spirv_codegen_ready = true,
+                     .spirv_validation_ready = true,
+                     .device_features_ready = true,
+                     .committed_byte_estimate_available = true,
+                     .committed_resources_byte_estimate = 4096U,
+                     .upload_bytes_written = 2048U,
+                     .framegraph_barrier_steps_executed = 7U,
+                     .memory_budget_ok = true,
+                     .transient_heap_ok = true,
+                     .gpu_timestamp_ticks_per_second = 1'000'000'000ULL,
+                     .gpu_timestamp_query_writes = 2U,
+                     .gpu_timestamp_query_results_read = 1U,
+                     .gpu_timestamp_query_failures = 0U,
+                     .gpu_debug_markers_ok = true,
+                     .framegraph_render_passes_recorded = 3U,
+                 });
+
+    const auto report = mirakana::evaluate_linux_desktop_vulkan_presentation_request(request);
+    MK_REQUIRE(report.ready());
+    MK_REQUIRE(report.linux_vulkan_strict_commercial_ready);
+    MK_REQUIRE(report.environment_vulkan_strict_aggregate_ready);
+    MK_REQUIRE(report.strict_aggregate_feature_rows == 6U);
+    MK_REQUIRE(report.strict_aggregate_descriptor_set_bindings == 15U);
+    MK_REQUIRE(report.strict_aggregate_resource_usage_layout_rows == 20U);
+    MK_REQUIRE(report.strict_aggregate_attachment_usage_layout_rows == 2U);
+    MK_REQUIRE(report.strict_aggregate_sampled_texture_usage_layout_rows == 6U);
+    MK_REQUIRE(report.strict_aggregate_storage_buffer_usage_layout_rows == 2U);
+    MK_REQUIRE(report.strict_aggregate_cube_map_usage_layout_rows == 1U);
+    MK_REQUIRE(report.strict_aggregate_weather_texture_usage_layout_rows == 3U);
+    MK_REQUIRE(report.strict_aggregate_froxel_buffer_usage_layout_rows == 1U);
+    MK_REQUIRE(report.strict_aggregate_readback_resource_usage_layout_rows == 5U);
+    MK_REQUIRE(report.strict_aggregate_renderer_draws == 2U);
+    MK_REQUIRE(report.strict_aggregate_compute_dispatches == 1U);
+    MK_REQUIRE(report.strict_aggregate_texture_uploads == 3U);
+    MK_REQUIRE(report.strict_aggregate_readback_rows == 5U);
+    MK_REQUIRE(report.strict_aggregate_framegraph_render_passes_recorded == 3U);
+    MK_REQUIRE(report.vulkan_gpu_memory_execution_status == mirakana::LinuxDesktopVulkanStrictExecutionStatus::ready);
+    MK_REQUIRE(report.vulkan_debug_profiling_execution_status ==
+               mirakana::LinuxDesktopVulkanStrictExecutionStatus::ready);
+    MK_REQUIRE(report.renderer_vulkan_timestamp_ready);
+    MK_REQUIRE(!report.native_handle_access);
+}
+
 MK_TEST("linux desktop vulkan presentation probe is fail closed before host runtime execution") {
     const auto report =
         mirakana::probe_linux_desktop_vulkan_presentation(mirakana::LinuxDesktopVulkanPresentationProbeDesc{

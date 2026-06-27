@@ -148,7 +148,9 @@ try {
             "--emit-vulkan-strict-commercial-host-gate",
             "--require-environment-vulkan-strict-aggregate",
             "--require-vulkan-gpu-memory-evidence",
+            "--require-debug-profiling-policy",
             "--require-vulkan-debug-profiling-evidence",
+            ".collect_strict_commercial_evidence = options.should_emit_strict_vulkan_commercial_host_gate()",
             "renderer_vulkan_strict_linux_gate_runtime_counters_ready=",
             "renderer_vulkan_strict_linux_gate_readback_bytes=",
             "const bool strict_aggregate_ready = presentation.environment_vulkan_strict_aggregate_ready;",
@@ -194,6 +196,16 @@ try {
             Write-Error "Linux sample_desktop_runtime_game must accept strict Vulkan commercial smoke flags and emit report-driven strict host evidence counters while keeping renderer commercial readiness non-promoted: $needle"
         }
     }
+    foreach ($needle in @(
+            "struct LinuxDesktopVulkanStrictCommercialEvidence",
+            "selected_strict_aggregate_counters_ready",
+            "with_linux_desktop_vulkan_strict_commercial_evidence",
+            "collect_strict_commercial_evidence"
+        )) {
+        if (-not $linuxHostHeaderText.Contains($needle)) {
+            Write-Error "Linux runtime host public contract must keep scalar strict commercial evidence hydration without native handles: $needle"
+        }
+    }
     foreach ($forbiddenNeedle in @(
             "last_gpu_timestamp_begin",
             "last_gpu_timestamp_end"
@@ -208,6 +220,10 @@ try {
             "--require-linux-vulkan-presentation-smoke",
             "--require-linux-vulkan-readback",
             "--require-linux-vulkan-validation-log",
+            "--require-environment-vulkan-strict-aggregate",
+            "--require-vulkan-gpu-memory-evidence",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
             "Collect renderer strict Vulkan commercial quality host evidence",
             "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt",
             "Upload renderer strict Vulkan commercial quality host evidence",
