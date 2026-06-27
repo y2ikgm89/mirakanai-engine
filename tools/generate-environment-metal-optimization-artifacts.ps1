@@ -143,7 +143,9 @@ function Invoke-CapturedTool {
         [Parameter(Mandatory = $true)][string[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$LogPath,
         [Parameter(Mandatory = $true)][string]$Description,
-        [int]$TimeoutSeconds = 0
+        [int]$TimeoutSeconds = 0,
+        [switch]$AllowTimeout,
+        [ref]$TimedOut
     )
 
     if ($TimeoutSeconds -gt 0) {
@@ -182,8 +184,15 @@ function Invoke-CapturedTool {
         }
         $text = [string]::Join("`n", @($outputParts))
         Write-Utf8NoBomText -Path $LogPath -Text "$text`n"
+        if ($null -ne $TimedOut) {
+            $TimedOut.Value = $timedOut
+        }
         if ($timedOut) {
-            Write-Error "$Description timed out after $TimeoutSeconds second(s); see $(Get-RelativeArtifactPath -FullPath $LogPath)."
+            if (-not $AllowTimeout.IsPresent) {
+                Write-Error "$Description timed out after $TimeoutSeconds second(s); see $(Get-RelativeArtifactPath -FullPath $LogPath)."
+            }
+            Write-Warning "$Description timed out after $TimeoutSeconds second(s); continuing only if later trace export and validation gates pass."
+            return $text
         }
         if ($process.ExitCode -ne 0) {
             Write-Error "$Description failed with exit code $($process.ExitCode); see $(Get-RelativeArtifactPath -FullPath $LogPath)."
@@ -195,6 +204,9 @@ function Invoke-CapturedTool {
     $exitCode = $LASTEXITCODE
     $text = [string]::Join("`n", @($output | ForEach-Object { [string]$_ }))
     Write-Utf8NoBomText -Path $LogPath -Text "$text`n"
+    if ($null -ne $TimedOut) {
+        $TimedOut.Value = $false
+    }
     if ($exitCode -ne 0) {
         Write-Error "$Description failed with exit code $exitCode; see $(Get-RelativeArtifactPath -FullPath $LogPath)."
     }
@@ -354,6 +366,7 @@ $tracePath = Join-Path $sharedRootFull "metal-system.trace"
 Remove-GeneratedArtifactPath -Path $tracePath
 
 $recordLog = Join-Path $sharedRootFull "xctrace-record.log"
+$recordTimedOut = $false
 $recordArguments = @(
     "xctrace",
     "record",
@@ -378,7 +391,9 @@ $null = Invoke-CapturedTool `
     -Arguments $recordArguments `
     -LogPath $recordLog `
     -Description "xcrun xctrace Metal System Trace recording" `
-    -TimeoutSeconds $XctraceRecordTimeoutSeconds
+    -TimeoutSeconds $XctraceRecordTimeoutSeconds `
+    -AllowTimeout `
+    -TimedOut ([ref]$recordTimedOut)
 
 if (-not (Test-Path -LiteralPath $tracePath)) {
     Write-Error "xctrace did not create the expected trace artifact: $tracePath"
@@ -555,6 +570,7 @@ $counterLine = [string]::Join(" ", @(
         "xctrace_template=$templateCounter",
         "xctrace_time_limit=$timeLimitCounter",
         "xctrace_record_timeout_seconds=$XctraceRecordTimeoutSeconds",
+        "xctrace_record_watchdog_timeout=$(ConvertTo-CounterBit $recordTimedOut)",
         "environment_metal_host_optimization_artifacts_written=$generatedRows",
         "environment_metal_host_optimization_required_workloads=7",
         "environment_metal_host_optimization_profiler_artifacts=$generatedRows",
