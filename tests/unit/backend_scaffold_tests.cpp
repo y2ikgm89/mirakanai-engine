@@ -1032,6 +1032,91 @@ MK_TEST("vulkan command resolution plan rejects missing required commands but to
     MK_REQUIRE(plan.diagnostic == "missing required Vulkan command: vkCreateDevice");
 }
 
+MK_TEST("vulkan command resolution plan accepts synchronization2 KHR aliases for core command names") {
+    const std::vector<mirakana::rhi::vulkan::VulkanCommandRequest> requests{
+        mirakana::rhi::vulkan::VulkanCommandRequest{
+            .name = "vkCmdPipelineBarrier2",
+            .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+            .required = true,
+        },
+        mirakana::rhi::vulkan::VulkanCommandRequest{
+            .name = "vkQueueSubmit2",
+            .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+            .required = true,
+        },
+        mirakana::rhi::vulkan::VulkanCommandRequest{
+            .name = "vkCmdWriteTimestamp2",
+            .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+            .required = false,
+        },
+    };
+
+    const auto plan = mirakana::rhi::vulkan::build_command_resolution_plan(
+        requests, {
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkCmdPipelineBarrier2",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = false,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkCmdPipelineBarrier2KHR",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = true,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkQueueSubmit2",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = false,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkQueueSubmit2KHR",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = true,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkCmdWriteTimestamp2",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = false,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkCmdWriteTimestamp2KHR",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = true,
+                      },
+                  });
+
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.resolutions.size() == requests.size());
+    MK_REQUIRE(plan.missing_required_commands.empty());
+    for (const auto& resolution : plan.resolutions) {
+        MK_REQUIRE(resolution.resolved);
+    }
+
+    const auto missing_required = mirakana::rhi::vulkan::build_command_resolution_plan(
+        requests, {
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkCmdPipelineBarrier2",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = false,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkQueueSubmit2",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = false,
+                      },
+                      mirakana::rhi::vulkan::VulkanCommandAvailability{
+                          .name = "vkCmdWriteTimestamp2",
+                          .scope = mirakana::rhi::vulkan::VulkanCommandScope::device,
+                          .available = false,
+                      },
+                  });
+
+    MK_REQUIRE(!missing_required.supported);
+    MK_REQUIRE(missing_required.missing_required_commands.size() == 2);
+    MK_REQUIRE(missing_required.missing_required_commands[0].name == "vkCmdPipelineBarrier2");
+    MK_REQUIRE(missing_required.missing_required_commands[1].name == "vkQueueSubmit2");
+}
+
 MK_TEST("vulkan runtime global command probe inspects current host without exposing native pointers") {
     const auto result = mirakana::rhi::vulkan::probe_runtime_global_commands();
     const auto host = mirakana::rhi::current_rhi_host_platform();
