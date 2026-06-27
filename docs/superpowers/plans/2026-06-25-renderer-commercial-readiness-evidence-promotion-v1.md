@@ -1131,6 +1131,12 @@ Task 10AC strict Vulkan timestamp-period ABI alignment closeout:
 - `MK_backend_scaffold_tests` now exposes a backend-neutral offset helper and locks the limits storage offset to the Vulkan ABI alignment boundary without including Vulkan headers or exposing native handles. `tools/check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1` now has static needles for the padding and offset test.
 - TDD evidence: `MK_backend_scaffold_tests` first failed with `requirement failed: mirakana::rhi::vulkan::vulkan_physical_device_properties_limits_offset_bytes() == expected_limits_offset` at offset `292` vs expected `296`, then passed after adding the private padding. This slice does not set `renderer_vulkan_timestamp_ready=1`, `renderer_backend_parity_ready=1`, `renderer_metal_broad_readiness=1`, `renderer_broad_quality_ready=1`, or `renderer_commercial_readiness=1`; the hosted Linux artifact must still prove positive timestamp frequency/write/read counters before final non-fixture promotion.
 
+Task 10AD strict Vulkan hosted collector ready/host-gated closeout:
+
+- Hosted PR #857 proved the Linux Vulkan host gate itself can pass after Task 10AC, but the commercial strict Vulkan collector still encoded the older assumption that the retained strict Vulkan artifact must remain `host_evidence_required` with `renderer_vulkan_timestamp_ready=0`.
+- `.github/workflows/validate.yml` now accepts either `renderer_vulkan_strict_commercial_quality_host_evidence_status=ready` with written evidence and `renderer_vulkan_timestamp_ready=1`, or `renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required` with `renderer_vulkan_timestamp_ready=0`. Both branches still require `renderer_commercial_readiness=0` and `renderer_environment_ready=0`.
+- `tools/check-renderer-vulkan-strict-commercial-quality-host-evidence.ps1`, `tools/check-ci-matrix.ps1`, and `tools/check-ai-integration-143-renderer-commercial-readiness-evidence.ps1` lock this CI contract so a real hosted strict Vulkan artifact is retained instead of failing only because timestamp evidence became ready. This slice still does not promote `renderer_backend_parity_ready`, `renderer_metal_broad_readiness`, `renderer_broad_quality_ready`, or `renderer_commercial_readiness`; those remain blocked on final retained-root assembly and `-RequireReady` preflight.
+
 ## Host Evidence Matrix
 
 | Host lane | Required proof | Promotion rule |

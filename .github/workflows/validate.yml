@@ -1408,14 +1408,36 @@ jobs:
           foreach ($requiredLine in @(
               "renderer_vulkan_strict_commercial_quality_host_evidence_generator_mode=Generate",
               "renderer_vulkan_strict_commercial_quality_host_evidence_writes_evidence=1",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
-              "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
-              "renderer_vulkan_timestamp_ready=0",
               "renderer_commercial_readiness=0",
               "renderer_environment_ready=0"
             )) {
             if (-not $collectorLines.Contains($requiredLine)) {
               Write-Error "renderer strict Vulkan commercial quality host evidence missing expected line: $requiredLine"
+            }
+          }
+          if (-not ($collectorLines.Contains("renderer_vulkan_strict_commercial_quality_host_evidence_status=ready") -or
+              $collectorLines.Contains("renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required"))) {
+            Write-Error "renderer strict Vulkan commercial quality host evidence did not report ready or host_evidence_required status."
+          }
+          if ($collectorLines.Contains("renderer_vulkan_strict_commercial_quality_host_evidence_status=ready")) {
+            foreach ($readyLine in @(
+                "renderer_vulkan_strict_commercial_quality_host_evidence_ready=1",
+                "renderer_vulkan_strict_commercial_quality_host_evidence_written=1",
+                "renderer_vulkan_timestamp_ready=1"
+              )) {
+              if (-not $collectorLines.Contains($readyLine)) {
+                Write-Error "renderer strict Vulkan commercial quality host evidence ready status missing expected line: $readyLine"
+              }
+            }
+          }
+          if ($collectorLines.Contains("renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required")) {
+            foreach ($blockedLine in @(
+                "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
+                "renderer_vulkan_timestamp_ready=0"
+              )) {
+              if (-not $collectorLines.Contains($blockedLine)) {
+                Write-Error "renderer strict Vulkan commercial quality host evidence host-gated status missing expected line: $blockedLine"
+              }
             }
           }
 

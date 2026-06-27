@@ -224,10 +224,16 @@ try {
             "--require-linux-vulkan-validation-log",
             "--require-environment-vulkan-strict-aggregate",
             "--require-vulkan-gpu-memory-evidence",
-            "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
-            "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
             "Collect renderer strict Vulkan commercial quality host evidence",
             "artifacts/environment/platform/linux-vulkan-host/validate-linux-vulkan-runtime-host.txt",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_status=ready",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_status=host_evidence_required",
+            "renderer strict Vulkan commercial quality host evidence did not report ready or host_evidence_required status.",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_ready=1",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_written=1",
+            "renderer_vulkan_timestamp_ready=1",
+            "renderer_vulkan_strict_commercial_quality_host_evidence_ready=0",
+            "renderer_vulkan_timestamp_ready=0",
             "Upload renderer strict Vulkan commercial quality host evidence",
             "name: renderer-vulkan-strict-commercial-quality-host-evidence"
         )) {
