@@ -342,6 +342,34 @@ try {
     if ([bool]$manifest.final_preflight_handoff.ready) {
         Write-Error "GitHub artifact intake final preflight handoff must stay blocked when no final retained root exists."
     }
+
+    $autoAssembleLines = @(& $importerScript -Mode Inspect -OutputRootRelative $contractRootRelative -AutoAssemble)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ran=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ready=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_root=$contractRootRelative/assembled-final-retained-root",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $autoAssembleLines $expectedLine "GitHub artifact intake AutoAssemble Inspect mode"
+    }
+    $autoManifest = Get-Content -LiteralPath (ConvertTo-LocalPath "$contractRootRelative/intake-manifest.json") -Raw |
+        ConvertFrom-Json
+    if (-not [bool]$autoManifest.auto_assemble.requested) {
+        Write-Error "GitHub artifact intake auto assemble manifest must record requested=true."
+    }
+    if (-not [bool]$autoManifest.auto_assemble.ran) {
+        Write-Error "GitHub artifact intake auto assemble manifest must record ran=true when all seven inputs are present."
+    }
+    if ([bool]$autoManifest.auto_assemble.ready) {
+        Write-Error "GitHub artifact intake auto assemble must not mark stub assembler inputs ready."
+    }
+    if ([string]$autoManifest.auto_assemble.output_root -cne "$contractRootRelative/assembled-final-retained-root") {
+        Write-Error "GitHub artifact intake auto assemble manifest must record the exact assembler output root."
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$autoManifest.auto_assemble.output_log)) {
+        Write-Error "GitHub artifact intake auto assemble manifest must record the assembler output log path."
+    }
 }
 finally {
     Remove-TestRoot -RelativePath $contractRootRelative

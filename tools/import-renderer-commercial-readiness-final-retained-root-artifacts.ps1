@@ -33,6 +33,8 @@ param(
 
     [string]$ArtifactListJsonRelative = "",
 
+    [switch]$AutoAssemble,
+
     [switch]$NoWrite,
     [switch]$RequireReady
 )
@@ -392,6 +394,12 @@ Write-Output "renderer_environment_ready=0"
 if ($Mode -eq "Plan") {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_writes_evidence=0"
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_downloads_artifacts=0"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=$(ConvertTo-CounterBit $AutoAssemble.IsPresent)"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ran=0"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ready=0"
+    if ($AutoAssemble.IsPresent) {
+        Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_blocker=plan_mode"
+    }
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_ready=0"
     return
 }
@@ -491,6 +499,49 @@ if ($finalRootPresent) {
 $manifestRelative = "$OutputRootRelative/intake-manifest.json"
 $manifestFull = Resolve-RepoRelativePath -RelativePath $manifestRelative -Label "intake manifest"
 $willWriteManifest = -not $NoWrite.IsPresent
+$autoAssembleRequested = $AutoAssemble.IsPresent
+$autoAssembleRan = $false
+$autoAssembleReady = $false
+$autoAssembleExitCode = 0
+$autoAssembleBlocker = ""
+$autoAssembleOutputLogRelative = "$OutputRootRelative/auto-assemble-output.log"
+$autoAssembleOutputRootRelative = $assemblerOutputRootRelative
+$autoAssembleCommandArguments = @($assemblerCommandArguments)
+if ($autoAssembleRequested -and $RequireReady.IsPresent -and $assemblerHandoffReady) {
+    $autoAssembleCommandArguments += "-RequireReady"
+}
+
+if ($autoAssembleRequested) {
+    if (-not $assemblerHandoffReady) {
+        $autoAssembleBlocker = "assembler_handoff_not_ready"
+    } elseif (-not $willWriteManifest) {
+        $autoAssembleBlocker = "no_write"
+    } else {
+        $autoAssembleRan = $true
+        $assemblerScriptPath = Join-Path $PSScriptRoot "assemble-renderer-commercial-readiness-final-retained-root.ps1"
+        if (-not (Test-Path -LiteralPath $assemblerScriptPath -PathType Leaf)) {
+            Write-Error "required_tool_missing: tools/assemble-renderer-commercial-readiness-final-retained-root.ps1"
+        }
+
+        $autoAssembleOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $assemblerScriptPath @autoAssembleCommandArguments 2>&1)
+        $autoAssembleExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        $autoAssembleLogFull = Resolve-RepoRelativePath `
+            -RelativePath $autoAssembleOutputLogRelative `
+            -Label "auto assemble output log"
+        $autoAssembleLogParent = Split-Path -Parent $autoAssembleLogFull
+        if (-not [string]::IsNullOrWhiteSpace($autoAssembleLogParent)) {
+            $null = New-Item -ItemType Directory -Force -Path $autoAssembleLogParent
+        }
+        Set-Content -LiteralPath $autoAssembleLogFull -Encoding utf8NoBOM -Value (@($autoAssembleOutput) | ForEach-Object {
+                [string]$_
+            })
+        $autoAssembleReady = $autoAssembleExitCode -eq 0 -and
+            @($autoAssembleOutput).Contains("renderer_commercial_readiness_final_assembler_ready=1")
+        if (-not $autoAssembleReady -and [string]::IsNullOrWhiteSpace($autoAssembleBlocker)) {
+            $autoAssembleBlocker = "assembler_not_ready"
+        }
+    }
+}
 
 $manifest = [ordered]@{
     schema_version = "GameEngine.RendererCommercialReadinessFinalRetainedRootArtifactImport.v1"
@@ -533,6 +584,17 @@ $manifest = [ordered]@{
         artifact_root = if ($finalRootPresent) { $finalRetainedRootRelative } else { "" }
         command_arguments = @($finalPreflightArguments)
     }
+    auto_assemble = [ordered]@{
+        requested = $autoAssembleRequested
+        ran = $autoAssembleRan
+        ready = $autoAssembleReady
+        exit_code = $autoAssembleExitCode
+        blocker = $autoAssembleBlocker
+        script = "tools/assemble-renderer-commercial-readiness-final-retained-root.ps1"
+        output_root = $autoAssembleOutputRootRelative
+        output_log = if ($autoAssembleRan) { $autoAssembleOutputLogRelative } else { "" }
+        command_arguments = @($autoAssembleCommandArguments)
+    }
     metal_host_gate_summary = [ordered]@{
         present = $metalHostGateSummaryPresent
         path = if ($metalHostGateSummaryPresent) { $metalHostGateSummary.Path } else { "" }
@@ -559,6 +621,17 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_required_input_paths=$($requiredAssemblerInputs.Count)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_output_root=$assemblerOutputRootRelative"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=$(ConvertTo-CounterBit $finalRootPresent)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=$(ConvertTo-CounterBit $autoAssembleRequested)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ran=$(ConvertTo-CounterBit $autoAssembleRan)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ready=$(ConvertTo-CounterBit $autoAssembleReady)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_exit_code=$autoAssembleExitCode"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_root=$autoAssembleOutputRootRelative"
+if (-not [string]::IsNullOrWhiteSpace($autoAssembleBlocker)) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_blocker=$(ConvertTo-CounterValue -Value $autoAssembleBlocker)"
+}
+if ($autoAssembleRan) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_log=$autoAssembleOutputLogRelative"
+}
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=$(ConvertTo-CounterBit $metalHostGateSummaryPresent)"
 if ($metalHostGateSummaryPresent) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_status=$(ConvertTo-CounterValue -Value $metalHostGateSummary.Status)"
@@ -574,4 +647,7 @@ $global:LASTEXITCODE = 0
 
 if ($RequireReady.IsPresent -and -not $intakeReady) {
     Write-Error "Renderer commercial readiness GitHub artifact intake is not ready: missing assembler inputs or final retained root."
+}
+if ($RequireReady.IsPresent -and $autoAssembleRequested -and -not $autoAssembleReady) {
+    Write-Error "Renderer commercial readiness GitHub artifact intake auto assemble is not ready."
 }

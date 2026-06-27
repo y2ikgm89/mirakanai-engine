@@ -20,6 +20,10 @@ foreach ($needle in @(
         "assembler_source_artifacts",
         "assembler_handoff",
         "final_preflight_handoff",
+        "AutoAssemble",
+        "auto_assemble",
+        "auto_assemble_requested",
+        "auto_assemble_output_log",
         "renderer_commercial_readiness_final_retained_root_artifact_import_workflow_artifact_list_present",
         "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names",
         "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available",
@@ -72,6 +76,10 @@ foreach ($needle in @(
         "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
         "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_handoff_ready=1",
         "renderer_commercial_readiness_final_retained_root_artifact_import_final_preflight_handoff_ready=0",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ran=1",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ready=0",
+        "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_root=",
         "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
         "renderer_commercial_readiness=0"
     )) {
