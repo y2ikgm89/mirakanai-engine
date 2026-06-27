@@ -1,0 +1,127 @@
+name: Renderer Commercial Readiness Final From Runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_artifact_run_id:
+        description: GitHub Actions run id that produced the current-run renderer commercial readiness artifacts.
+        required: true
+        type: string
+      metal_memory_profiling_run_id:
+        description: GitHub Actions run id from the Metal memory profiling capable-host workflow.
+        required: true
+        type: string
+      confirm_final_retained_root_handoff:
+        description: Type renderer-commercial-final-retained-root to run the non-promoting final retained-root handoff.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  renderer-commercial-final-from-runs:
+    name: Renderer commercial final retained root from runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate final-from-runs dispatch inputs
+        shell: pwsh
+        run: |
+          $sourceRunId = "${{ inputs.source_artifact_run_id }}"
+          $metalMemoryRunId = "${{ inputs.metal_memory_profiling_run_id }}"
+          $confirmation = "${{ inputs.confirm_final_retained_root_handoff }}"
+
+          if ($sourceRunId -notmatch '^\d+$') {
+            Write-Error "source_artifact_run_id must be decimal digits."
+          }
+          if ($metalMemoryRunId -notmatch '^\d+$') {
+            Write-Error "metal_memory_profiling_run_id must be decimal digits."
+          }
+          if ($confirmation -cne "renderer-commercial-final-retained-root") {
+            Write-Error "confirm_final_retained_root_handoff must be renderer-commercial-final-retained-root."
+          }
+
+      - name: Capture source workflow artifact list
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $intakeRoot = "artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake"
+          New-Item -ItemType Directory -Force -Path $intakeRoot | Out-Null
+          $artifactListPath = Join-Path $intakeRoot "workflow-artifacts.json"
+          $artifactList = @(gh api -H "Accept: application/vnd.github+json" "/repos/${{ github.repository }}/actions/runs/${{ inputs.source_artifact_run_id }}/artifacts?per_page=100" 2>&1)
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "failed to list source workflow run artifacts: $([string]::Join("`n", $artifactList))"
+          }
+          Set-Content -LiteralPath $artifactListPath -Encoding utf8NoBOM -Value ([string]::Join("`n", $artifactList))
+
+      - name: Import final renderer commercial artifacts from selected runs
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $importLines = @(./tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1 -Mode Import `
+              -RepoFullName "${{ github.repository }}" `
+              -RunId "${{ inputs.source_artifact_run_id }}" `
+              -SupplementalRunIds "${{ inputs.metal_memory_profiling_run_id }}" `
+              -SupplementalArtifactNames renderer-metal-memory-profiling-host-artifacts `
+              -OutputRootRelative artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake `
+              -ArtifactListJsonRelative artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/workflow-artifacts.json `
+              -RegenerateQualityVfx `
+              -AutoAssemble)
+          $logPath = "artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/import-output.log"
+          Set-Content -LiteralPath $logPath -Encoding utf8NoBOM -Value $importLines
+          foreach ($requiredLine in @(
+              "renderer_commercial_readiness=0",
+              "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_run_count=1",
+              "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_requested=1",
+              "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=1",
+              "renderer_commercial_readiness_final_retained_root_artifact_import_manifest=artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/intake-manifest.json"
+            )) {
+            if (-not $importLines.Contains($requiredLine)) {
+              Write-Error "renderer commercial final-from-runs intake missing expected non-promoting line: $requiredLine"
+            }
+          }
+
+      - name: Upload renderer commercial readiness final-from-runs artifact intake
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-commercial-readiness-final-from-runs-artifact-intake
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/**
+          if-no-files-found: error
+
+      - name: Upload renderer commercial readiness final retained root
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renderer-commercial-readiness-final-retained-root
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+          path: artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/assembled-final-retained-root/**
+          if-no-files-found: warn

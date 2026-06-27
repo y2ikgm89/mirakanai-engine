@@ -709,6 +709,7 @@ Assert-ValidationTierSelection `
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 $rendererMetalMemoryProfilingCapableHostWorkflow = Read-RequiredText ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+$rendererCommercialFinalFromRunsWorkflow = Read-RequiredText ".github/workflows/renderer-commercial-readiness-final-from-runs.yml"
 $checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
 $cacheActionRef = "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae"
 $cacheRestoreActionRef = "actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae"
@@ -820,6 +821,77 @@ Assert-ContainsAll $rendererMetalMemoryProfilingCapableHostJob @(
     "artifacts/renderer/metal-memory-profiling-host-evidence/**",
     "if-no-files-found: error"
 ) ".github/workflows/renderer-metal-memory-profiling-capable-host.yml apple-metal-capable-host job"
+
+Assert-DoesNotContainAny $rendererCommercialFinalFromRunsWorkflow @(
+    "push:",
+    "pull_request:",
+    "pull_request_target:",
+    "merge_group:",
+    "workflow_call:",
+    "repository_dispatch:",
+    "workflow_run:",
+    "schedule:",
+    "uses: actions/checkout@v6",
+    "uses: actions/upload-artifact@v7",
+    "actions/checkout@v4",
+    "actions/upload-artifact@v4",
+    "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
+    "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
+) ".github/workflows/renderer-commercial-readiness-final-from-runs.yml manual final-from-runs workflow contract"
+Assert-ContainsAll $rendererCommercialFinalFromRunsWorkflow @(
+    "name: Renderer Commercial Readiness Final From Runs",
+    "workflow_dispatch:",
+    "source_artifact_run_id:",
+    "metal_memory_profiling_run_id:",
+    "confirm_final_retained_root_handoff:",
+    "type: string",
+    "permissions:",
+    "contents: read",
+    "actions: read",
+    "concurrency:",
+    'group: ${{ github.workflow }}-${{ github.ref }}',
+    "cancel-in-progress: true"
+) ".github/workflows/renderer-commercial-readiness-final-from-runs.yml triggers"
+
+$rendererCommercialFinalFromRunsJob = Get-WorkflowJobText -WorkflowText $rendererCommercialFinalFromRunsWorkflow `
+    -JobName "renderer-commercial-final-from-runs" -Label ".github/workflows/renderer-commercial-readiness-final-from-runs.yml"
+Assert-ContainsAll $rendererCommercialFinalFromRunsJob @(
+    "name: Renderer commercial final retained root from runs",
+    "runs-on: ubuntu-latest",
+    "timeout-minutes: 20",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Validate final-from-runs dispatch inputs",
+    "source_artifact_run_id must be decimal digits",
+    "metal_memory_profiling_run_id must be decimal digits",
+    "confirm_final_retained_root_handoff must be renderer-commercial-final-retained-root",
+    "Capture source workflow artifact list",
+    'GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}',
+    'gh api -H "Accept: application/vnd.github+json" "/repos/${{ github.repository }}/actions/runs/${{ inputs.source_artifact_run_id }}/artifacts?per_page=100"',
+    "Import final renderer commercial artifacts from selected runs",
+    "./tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1 -Mode Import",
+    '-RepoFullName "${{ github.repository }}"',
+    '-RunId "${{ inputs.source_artifact_run_id }}"',
+    '-SupplementalRunIds "${{ inputs.metal_memory_profiling_run_id }}"',
+    "-SupplementalArtifactNames renderer-metal-memory-profiling-host-artifacts",
+    "-OutputRootRelative artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake",
+    "-ArtifactListJsonRelative artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/workflow-artifacts.json",
+    "-RegenerateQualityVfx",
+    "-AutoAssemble",
+    "renderer_commercial_readiness=0",
+    "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_run_count=1",
+    "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_requested=1",
+    "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=1",
+    "Upload renderer commercial readiness final-from-runs artifact intake",
+    $uploadArtifactActionRef,
+    "name: renderer-commercial-readiness-final-from-runs-artifact-intake",
+    "path: artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/**",
+    "if-no-files-found: error",
+    "Upload renderer commercial readiness final retained root",
+    "name: renderer-commercial-readiness-final-retained-root",
+    "path: artifacts/renderer/commercial-readiness-evidence/final-from-runs-artifact-intake/assembled-final-retained-root/**",
+    "if-no-files-found: warn"
+) ".github/workflows/renderer-commercial-readiness-final-from-runs.yml renderer-commercial-final-from-runs job"
 
 $changesJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "changes" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $changesJob @(
