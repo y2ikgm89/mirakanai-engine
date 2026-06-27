@@ -6,6 +6,8 @@ $importerText = Get-AgentSurfaceText "tools/import-renderer-commercial-readiness
 $importerCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1"
 $runnerPreflightText = Get-AgentSurfaceText "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1"
 $runnerPreflightCheckText = Get-AgentSurfaceText "tools/check-renderer-metal-memory-profiling-capable-host-runner.ps1"
+$publicRunnerReviewText = Get-AgentSurfaceText "tools/generate-renderer-public-runner-security-review.ps1"
+$publicRunnerReviewCheckText = Get-AgentSurfaceText "tools/check-renderer-public-runner-security-review.ps1"
 $finalHandoffText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-final-handoff.ps1"
 $finalHandoffCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-handoff.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
@@ -149,6 +151,51 @@ Assert-ContainsText $validateText "check-renderer-metal-memory-profiling-capable
     "renderer Metal memory/profiling capable-host runner preflight validate task"
 
 foreach ($needle in @(
+        "validation_recipe=renderer-public-runner-security-review",
+        "GameEngine.RendererPublicSelfHostedRunnerSecurityReview.v1",
+        "ApprovePublicRepoSelfHostedRunnerReview",
+        "public-repo-self-hosted-runner-risk-reviewed",
+        "ReviewedPublicForkPrRisk",
+        "ReviewedRunnerIsolation",
+        "ReviewedSecretExposure",
+        "ReviewedMetalProbeTruth",
+        "renderer_public_runner_security_review_status=",
+        "renderer_public_runner_security_review_ready=",
+        "renderer_public_runner_security_review_blockers=",
+        "renderer_public_runner_security_review_artifact_written=",
+        "renderer_public_runner_security_review_registration_token_endpoint=",
+        "renderer_public_runner_security_review_registration_token_expires_minutes=60",
+        "renderer_public_runner_security_review_registration_token_fetched=0",
+        "renderer_public_runner_security_review_registration_token_printed=0",
+        "renderer_public_runner_security_review_workflow_dispatched=0",
+        "reviewed_allowed_workflows",
+        "reviewed_required_labels",
+        "reviewed_metal_probe_truth",
+        "registration_token_fetched",
+        "workflow_dispatched",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $publicRunnerReviewText $needle "renderer public runner security review producer"
+}
+
+foreach ($needle in @(
+        "renderer-public-runner-security-review-check: ok",
+        "renderer_public_runner_security_review_status=review_required",
+        "renderer_public_runner_security_review_status=approved",
+        "renderer_public_runner_security_review_ready=1",
+        "renderer_public_runner_security_review_blockers=approval_confirmation_required,public_fork_pr_risk_review_required,runner_isolation_review_required,secret_exposure_review_required,metal_probe_truth_review_required",
+        "renderer_public_runner_security_review_artifact_written=1",
+        "renderer_public_runner_security_review_registration_token_fetched=0",
+        "renderer_public_runner_security_review_workflow_dispatched=0",
+        "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=1",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $publicRunnerReviewCheckText $needle "renderer public runner security review producer check"
+}
+Assert-ContainsText $validateText "check-renderer-public-runner-security-review.ps1" `
+    "renderer public runner security review validate task"
+
+foreach ($needle in @(
         "validation_recipe=renderer-commercial-readiness-final-handoff",
         "renderer_commercial_readiness_final_handoff_status=",
         "renderer_commercial_readiness_final_handoff_next_action=",
@@ -236,7 +283,9 @@ foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
         "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
+        "rendererPublicRunnerSecurityReviewGenerator",
         "rendererCommercialReadinessFinalHandoff",
+        "generate-renderer-public-runner-security-review.ps1",
         "validate-renderer-commercial-readiness-final-handoff.ps1",
         "PublicRepoRunnerSecurityReviewRelative",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
@@ -250,6 +299,8 @@ foreach ($needle in @(
 foreach ($needle in @(
         "renderer-metal-memory-profiling-capable-host-runner-preflight",
         "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+        "renderer-public-runner-security-review",
+        "tools/generate-renderer-public-runner-security-review.ps1",
         "/repos/{owner}/{repo}/actions/runners",
         "/repos/{owner}/{repo}/actions/runners/registration-token",
         "GET /repos/{owner}/{repo}",
@@ -257,6 +308,14 @@ foreach ($needle in @(
         "ConfirmPublicRepoSelfHostedRunnerSecurityReview",
         "PublicRepoRunnerSecurityReviewRelative",
         "GameEngine.RendererPublicSelfHostedRunnerSecurityReview.v1",
+        "ApprovePublicRepoSelfHostedRunnerReview",
+        "ReviewedPublicForkPrRisk",
+        "ReviewedRunnerIsolation",
+        "ReviewedSecretExposure",
+        "ReviewedMetalProbeTruth",
+        "registration_token_fetched=false",
+        "registration_token_printed=false",
+        "workflow_dispatched=false",
         "public-repo-self-hosted-runner-risk-reviewed",
         "review_status=approved",
         "reviewed_public_fork_pr_risk=true",
@@ -290,6 +349,8 @@ foreach ($needle in @(
 foreach ($needle in @(
         "renderer-metal-memory-profiling-capable-host-runner-preflight",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+        "renderer-public-runner-security-review",
+        "generate-renderer-public-runner-security-review.ps1",
         "host-evidence-required",
         "renderer-commercial-readiness-final-handoff",
         "validate-renderer-commercial-readiness-final-handoff.ps1",
@@ -310,6 +371,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         'Assert-DryRunRecipe -Recipe "renderer-metal-memory-profiling-capable-host-runner-preflight"',
+        'Assert-DryRunRecipe -Recipe "renderer-public-runner-security-review"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-handoff"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler"',
@@ -331,9 +393,13 @@ foreach ($surface in @(
     foreach ($needle in @(
             "renderer-commercial-readiness-final-retained-root-artifact-import",
             "renderer-metal-memory-profiling-capable-host-runner-preflight",
+            "renderer-public-runner-security-review",
             "renderer-commercial-readiness-final-handoff",
             "rendererCommercialReadinessFinalHandoff",
+            "rendererPublicRunnerSecurityReviewGenerator",
             "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+            "tools/generate-renderer-public-runner-security-review.ps1",
+            "tools/check-renderer-public-runner-security-review.ps1",
             "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
             "tools/check-renderer-commercial-readiness-final-handoff.ps1",
             "/repos/{owner}/{repo}/actions/runners",
@@ -343,6 +409,12 @@ foreach ($surface in @(
             "ConfirmPublicRepoSelfHostedRunnerSecurityReview",
             "PublicRepoRunnerSecurityReviewRelative",
             "GameEngine.RendererPublicSelfHostedRunnerSecurityReview.v1",
+            "ApprovePublicRepoSelfHostedRunnerReview",
+            "ReviewedPublicForkPrRisk",
+            "ReviewedRunnerIsolation",
+            "ReviewedSecretExposure",
+            "ReviewedMetalProbeTruth",
+            "renderer_public_runner_security_review",
             "public-repo-self-hosted-runner-risk-reviewed",
             "review_status=approved",
             "reviewed_public_fork_pr_risk",

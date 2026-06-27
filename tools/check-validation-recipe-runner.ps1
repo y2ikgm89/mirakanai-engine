@@ -582,6 +582,7 @@ Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") |
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @("-File", "validate-renderer-metal-apple.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-memory-profiling-capable-host-runner-preflight" -ExpectedArgv @("-File", "validate-renderer-metal-memory-profiling-capable-host-runner.ps1") | Out-Null
+Assert-DryRunRecipe -Recipe "renderer-public-runner-security-review" -ExpectedArgv @("-File", "generate-renderer-public-runner-security-review.ps1", "-Mode", "Plan") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-handoff" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-final-handoff.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-quality-closeout" -ExpectedArgv @("-File", "validate-renderer-commercial-quality-closeout.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-evidence" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-evidence.ps1") | Out-Null
