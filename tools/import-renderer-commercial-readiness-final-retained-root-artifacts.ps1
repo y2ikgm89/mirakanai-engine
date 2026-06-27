@@ -33,6 +33,17 @@ param(
 
     [string]$ArtifactListJsonRelative = "",
 
+    [ValidatePattern('^\d+$')]
+    [string[]]$SupplementalRunIds = @(),
+
+    [string[]]$SupplementalArtifactNames = @(
+        "renderer-metal-memory-profiling-host-artifacts"
+    ),
+
+    [switch]$RegenerateQualityVfx,
+
+    [string]$RegeneratedQualityVfxOutputRootRelative = "",
+
     [switch]$AutoAssemble,
 
     [switch]$NoWrite,
@@ -59,6 +70,25 @@ function ConvertTo-CounterValue {
     param([Parameter(Mandatory = $true)][string]$Value)
 
     return ($Value -replace '[^A-Za-z0-9_.-]', '_')
+}
+
+function Test-SafeArtifactName {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    return $Value -match '^[A-Za-z0-9_.-]+$'
+}
+
+function Assert-SafeArtifactNames {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Values,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    foreach ($value in @($Values)) {
+        if ([string]::IsNullOrWhiteSpace($value) -or -not (Test-SafeArtifactName -Value $value)) {
+            Write-Error "unsafe_artifact_name: $Label must contain only artifact names with letters, digits, underscore, dot, or dash."
+        }
+    }
 }
 
 function Select-UniqueCounterValues {
@@ -195,6 +225,25 @@ function Find-JsonEvidencePath {
         return ConvertTo-RepoRelativePath -FullPath $jsonFile.FullName
     }
     return ""
+}
+
+function Find-FirstFileRelative {
+    param(
+        [Parameter(Mandatory = $true)][string]$SearchRootFull,
+        [Parameter(Mandatory = $true)][string]$FileName
+    )
+
+    if (-not (Test-Path -LiteralPath $SearchRootFull -PathType Container)) {
+        return ""
+    }
+
+    $file = @(Get-ChildItem -LiteralPath $SearchRootFull -Recurse -File -Filter $FileName |
+            Sort-Object FullName |
+            Select-Object -First 1)
+    if ($file.Count -eq 0) {
+        return ""
+    }
+    return ConvertTo-RepoRelativePath -FullPath $file[0].FullName
 }
 
 function Find-HostGateSummary {
@@ -378,6 +427,22 @@ if (-not (Test-SafeRepoRelativePath -RelativePath $OutputRootRelative)) {
 if (-not (Test-AllowedOutputRoot -RelativePath $OutputRootRelative)) {
     Write-Error "OutputRootRelative must be under artifacts/renderer/commercial-readiness-evidence/."
 }
+Assert-SafeArtifactNames -Values ([string[]]$ArtifactNames) -Label "ArtifactNames"
+Assert-SafeArtifactNames -Values ([string[]]$SupplementalArtifactNames) -Label "SupplementalArtifactNames"
+
+$outputRootLeaf = Split-Path -Leaf $OutputRootRelative
+if ([string]::IsNullOrWhiteSpace($RegeneratedQualityVfxOutputRootRelative)) {
+    $RegeneratedQualityVfxOutputRootRelative =
+        "artifacts/renderer/quality-vfx-commercial-host-evidence/$outputRootLeaf"
+}
+if (-not (Test-SafeRepoRelativePath -RelativePath $RegeneratedQualityVfxOutputRootRelative)) {
+    Write-Error "unsafe_relative_path: RegeneratedQualityVfxOutputRootRelative must be a safe repo-relative path."
+}
+if (-not $RegeneratedQualityVfxOutputRootRelative.StartsWith(
+        "artifacts/renderer/quality-vfx-commercial-host-evidence/",
+        [System.StringComparison]::Ordinal)) {
+    Write-Error "RegeneratedQualityVfxOutputRootRelative must be under artifacts/renderer/quality-vfx-commercial-host-evidence/."
+}
 
 $workflowArtifactListSummary = Get-WorkflowArtifactListSummary `
     -ArtifactListRelativePath $ArtifactListJsonRelative `
@@ -458,6 +523,11 @@ Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_final_root_workflow_artifact_available=$(ConvertTo-CounterBit $finalRootWorkflowArtifactAvailable)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_assembler_source_workflow_artifacts=$(@($availableAssemblerSourceArtifacts).Count)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_source_workflow_artifacts=$(@($missingAssemblerSourceArtifacts).Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_run_count=$(@($SupplementalRunIds).Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_artifact_count=$(@($SupplementalArtifactNames).Count)"
+if (@($SupplementalArtifactNames).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_artifact_names=$((@($SupplementalArtifactNames) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
+}
 if (@($workflowArtifactListSummary.missing_artifacts).Count -gt 0) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_workflow_artifact_names=$((@($workflowArtifactListSummary.missing_artifacts) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_) }) -join ',')"
 }
@@ -479,6 +549,10 @@ if ($Mode -eq "Plan") {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_requested=$(ConvertTo-CounterBit $AutoAssemble.IsPresent)"
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ran=0"
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_ready=0"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_requested=$(ConvertTo-CounterBit $RegenerateQualityVfx.IsPresent)"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_ran=0"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_ready=0"
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_output_root=$RegeneratedQualityVfxOutputRootRelative"
     if ($AutoAssemble.IsPresent) {
         Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_blocker=plan_mode"
     }
@@ -489,6 +563,8 @@ if ($Mode -eq "Plan") {
 $outputRootFull = Resolve-RepoRelativePath -RelativePath $OutputRootRelative -Label "OutputRootRelative"
 $downloadedArtifacts = 0
 $downloadFailures = [System.Collections.Generic.List[string]]::new()
+$supplementalDownloadedArtifacts = 0
+$supplementalDownloadFailures = [System.Collections.Generic.List[string]]::new()
 
 if ($Mode -eq "Import") {
     if ([string]::IsNullOrWhiteSpace($RunId)) {
@@ -514,16 +590,147 @@ if ($Mode -eq "Import") {
             Set-Content -LiteralPath $logPath -Encoding utf8NoBOM -Value ([string]::Join("`n", @($output)))
         }
     }
+
+    foreach ($supplementalRunId in @($SupplementalRunIds)) {
+        foreach ($artifactName in @($SupplementalArtifactNames)) {
+            $artifactDirectory = Join-Path $outputRootFull $artifactName
+            $null = New-Item -ItemType Directory -Force -Path $artifactDirectory
+            $output = @(& $gh "run" "download" $supplementalRunId "-R" $RepoFullName "-n" $artifactName "-D" $artifactDirectory 2>&1)
+            if ($LASTEXITCODE -eq 0) {
+                $supplementalDownloadedArtifacts += 1
+            } else {
+                $supplementalDownloadFailures.Add(
+                    "$(ConvertTo-CounterValue -Value ([string]$supplementalRunId)):$(
+                        ConvertTo-CounterValue -Value ([string]$artifactName))") | Out-Null
+                $logPath = Join-Path $artifactDirectory "supplemental-download-$supplementalRunId-failed.log"
+                Set-Content -LiteralPath $logPath -Encoding utf8NoBOM -Value ([string]::Join("`n", @($output)))
+            }
+        }
+    }
+}
+
+$qualityVfxRegenerateRequested = $RegenerateQualityVfx.IsPresent
+$qualityVfxRegenerateRan = $false
+$qualityVfxRegenerateReady = $false
+$qualityVfxRegenerateExitCode = 0
+$qualityVfxRegenerateBlocker = ""
+$qualityVfxRegenerateOutputLogRelative = "$OutputRootRelative/quality-vfx-regenerate-output.log"
+$qualityVfxRegeneratedEvidenceRelative = ""
+$qualityVfxRegenerateCommandArguments = @()
+$qualityVfxRegenerateSourceInputs = [ordered]@{
+    generated_3d_status_log = ""
+    package_host_evidence = ""
+    d3d12_host_evidence = ""
+    vulkan_strict_host_evidence = ""
+    apple_metal_host_evidence = ""
+    metal_memory_profiling_host_evidence = ""
+}
+
+if ($qualityVfxRegenerateRequested) {
+    if ($NoWrite.IsPresent) {
+        $qualityVfxRegenerateBlocker = "no_write"
+    } else {
+        $packageRoot = Join-Path $outputRootFull "renderer-package-commercial-quality-host-evidence"
+        $d3d12Root = Join-Path $outputRootFull "renderer-d3d12-commercial-quality-host-evidence"
+        $vulkanRoot = Join-Path $outputRootFull "renderer-vulkan-strict-commercial-quality-host-evidence"
+        $appleRoot = Join-Path $outputRootFull "renderer-apple-metal-commercial-quality-host-evidence"
+        $metalMemoryRoot = Join-Path $outputRootFull "renderer-metal-memory-profiling-host-artifacts"
+
+        $qualityVfxRegenerateSourceInputs.generated_3d_status_log = Find-FirstFileRelative `
+            -SearchRootFull $packageRoot `
+            -FileName "generated-3d-package.log"
+        $qualityVfxRegenerateSourceInputs.package_host_evidence = Find-JsonEvidencePath `
+            -SearchRootFull $packageRoot `
+            -SchemaVersion "GameEngine.RendererPackageCommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-package-commercial-quality-artifacts-v1"
+        $qualityVfxRegenerateSourceInputs.d3d12_host_evidence = Find-JsonEvidencePath `
+            -SearchRootFull $d3d12Root `
+            -SchemaVersion "GameEngine.RendererD3d12CommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-d3d12-commercial-quality-artifact-v1"
+        $qualityVfxRegenerateSourceInputs.vulkan_strict_host_evidence = Find-JsonEvidencePath `
+            -SearchRootFull $vulkanRoot `
+            -SchemaVersion "GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-vulkan-strict-commercial-quality-artifact-v1"
+        $qualityVfxRegenerateSourceInputs.apple_metal_host_evidence = Find-JsonEvidencePath `
+            -SearchRootFull $appleRoot `
+            -SchemaVersion "GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1" `
+            -ClaimId "renderer-apple-metal-commercial-quality-artifact-v1"
+        $qualityVfxRegenerateSourceInputs.metal_memory_profiling_host_evidence = Find-JsonEvidencePath `
+            -SearchRootFull $metalMemoryRoot `
+            -SchemaVersion "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1" `
+            -ClaimId "renderer-metal-memory-profiling-host-evidence-v1"
+
+        $missingQualityVfxSourceInputs = @($qualityVfxRegenerateSourceInputs.PSObject.Properties | Where-Object {
+                [string]::IsNullOrWhiteSpace([string]$_.Value)
+            } | ForEach-Object {
+                [string]$_.Name
+            })
+
+        if (@($missingQualityVfxSourceInputs).Count -gt 0) {
+            $qualityVfxRegenerateBlocker = "source_inputs_missing"
+        } else {
+            $qualityVfxRegenerateCommandArguments = @(
+                "-Mode", "Collect",
+                "-OutputRootRelative", $RegeneratedQualityVfxOutputRootRelative,
+                "-Generated3dStatusLogRelative", [string]$qualityVfxRegenerateSourceInputs.generated_3d_status_log,
+                "-PackageHostEvidenceRelative", [string]$qualityVfxRegenerateSourceInputs.package_host_evidence,
+                "-D3d12HostEvidenceRelative", [string]$qualityVfxRegenerateSourceInputs.d3d12_host_evidence,
+                "-VulkanStrictHostEvidenceRelative", [string]$qualityVfxRegenerateSourceInputs.vulkan_strict_host_evidence,
+                "-AppleMetalHostEvidenceRelative", [string]$qualityVfxRegenerateSourceInputs.apple_metal_host_evidence,
+                "-MetalMemoryProfilingHostEvidenceRelative", [string]$qualityVfxRegenerateSourceInputs.metal_memory_profiling_host_evidence
+            )
+
+            $qualityVfxCollectorPath = Join-Path $PSScriptRoot "collect-renderer-quality-vfx-commercial-host-evidence.ps1"
+            if (-not (Test-Path -LiteralPath $qualityVfxCollectorPath -PathType Leaf)) {
+                Write-Error "required_tool_missing: tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1"
+            }
+
+            $qualityVfxRegenerateRan = $true
+            $qualityVfxRegenerateOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $qualityVfxCollectorPath @qualityVfxRegenerateCommandArguments 2>&1)
+            $qualityVfxRegenerateExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+            $qualityVfxRegenerateLogFull = Resolve-RepoRelativePath `
+                -RelativePath $qualityVfxRegenerateOutputLogRelative `
+                -Label "quality/VFX regenerate output log"
+            $qualityVfxRegenerateLogParent = Split-Path -Parent $qualityVfxRegenerateLogFull
+            if (-not [string]::IsNullOrWhiteSpace($qualityVfxRegenerateLogParent)) {
+                $null = New-Item -ItemType Directory -Force -Path $qualityVfxRegenerateLogParent
+            }
+            Set-Content -LiteralPath $qualityVfxRegenerateLogFull -Encoding utf8NoBOM -Value (@($qualityVfxRegenerateOutput) | ForEach-Object {
+                    [string]$_
+                })
+            $qualityVfxRegenerateReady = $qualityVfxRegenerateExitCode -eq 0 -and
+                @($qualityVfxRegenerateOutput).Contains("renderer_quality_vfx_commercial_host_evidence_ready=1")
+            if ($qualityVfxRegenerateReady) {
+                $qualityVfxRegeneratedRootFull = Resolve-RepoRelativePath `
+                    -RelativePath $RegeneratedQualityVfxOutputRootRelative `
+                    -Label "regenerated quality/VFX output root"
+                $qualityVfxRegeneratedEvidenceRelative = Find-JsonEvidencePath `
+                    -SearchRootFull $qualityVfxRegeneratedRootFull `
+                    -SchemaVersion "GameEngine.RendererQualityVfxCommercialHostEvidence.v1" `
+                    -ClaimId "renderer-quality-vfx-commercial-artifacts-v1"
+            }
+            if (-not $qualityVfxRegenerateReady -and [string]::IsNullOrWhiteSpace($qualityVfxRegenerateBlocker)) {
+                $qualityVfxRegenerateBlocker = "collector_not_ready"
+            }
+        }
+    }
 }
 
 $presentInputs = 0
 $inputRows = [ordered]@{}
 $missingAssemblerInputNames = [System.Collections.Generic.List[string]]::new()
 foreach ($inputSpec in $requiredAssemblerInputs) {
-    $relativePath = Find-JsonEvidencePath `
-        -SearchRootFull $outputRootFull `
-        -SchemaVersion ([string]$inputSpec.Schema) `
-        -ClaimId ([string]$inputSpec.Claim)
+    $relativePath = ""
+    if ([string]$inputSpec.Name -ceq "quality_vfx_host_evidence" -and
+        -not [string]::IsNullOrWhiteSpace($qualityVfxRegeneratedEvidenceRelative)) {
+        $relativePath = $qualityVfxRegeneratedEvidenceRelative
+    }
+    if ([string]::IsNullOrWhiteSpace($relativePath)) {
+        $relativePath = Find-JsonEvidencePath `
+            -SearchRootFull $outputRootFull `
+            -SchemaVersion ([string]$inputSpec.Schema) `
+            -ClaimId ([string]$inputSpec.Claim)
+    }
     $present = -not [string]::IsNullOrWhiteSpace($relativePath)
     if ($present) {
         $presentInputs += 1
@@ -660,6 +867,12 @@ $manifest = [ordered]@{
     run_id = $RunId
     output_root = $OutputRootRelative
     requested_artifacts = @($ArtifactNames)
+    supplemental_import = [ordered]@{
+        run_ids = @($SupplementalRunIds)
+        artifact_names = @($SupplementalArtifactNames)
+        downloaded_artifacts = $supplementalDownloadedArtifacts
+        download_failures = @($supplementalDownloadFailures)
+    }
     workflow_artifact_list = $workflowArtifactListSummary
     artifact_handoff_strategy = [ordered]@{
         final_retained_root_artifact = [ordered]@{
@@ -705,6 +918,19 @@ $manifest = [ordered]@{
         output_log = if ($autoAssembleRan) { $autoAssembleOutputLogRelative } else { "" }
         command_arguments = @($autoAssembleCommandArguments)
     }
+    quality_vfx_regenerate = [ordered]@{
+        requested = $qualityVfxRegenerateRequested
+        ran = $qualityVfxRegenerateRan
+        ready = $qualityVfxRegenerateReady
+        exit_code = $qualityVfxRegenerateExitCode
+        blocker = $qualityVfxRegenerateBlocker
+        script = "tools/collect-renderer-quality-vfx-commercial-host-evidence.ps1"
+        output_root = $RegeneratedQualityVfxOutputRootRelative
+        output_log = if ($qualityVfxRegenerateRan) { $qualityVfxRegenerateOutputLogRelative } else { "" }
+        evidence_path = $qualityVfxRegeneratedEvidenceRelative
+        source_inputs = $qualityVfxRegenerateSourceInputs
+        command_arguments = @($qualityVfxRegenerateCommandArguments)
+    }
     metal_host_gate_summary = [ordered]@{
         present = $metalHostGateSummaryPresent
         path = if ($metalHostGateSummaryPresent) { $metalHostGateSummary.Path } else { "" }
@@ -730,6 +956,8 @@ if ($willWriteManifest) {
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_downloads_artifacts=$(ConvertTo-CounterBit ($Mode -eq "Import"))"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_downloaded_workflow_artifacts=$downloadedArtifacts"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_download_failures=$($downloadFailures.Count)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_downloaded_workflow_artifacts=$supplementalDownloadedArtifacts"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_download_failures=$($supplementalDownloadFailures.Count)"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=$presentInputs"
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=$($requiredAssemblerInputs.Count - $presentInputs)"
 if (@($missingAssemblerInputNames).Count -gt 0) {
@@ -750,6 +978,20 @@ if (-not [string]::IsNullOrWhiteSpace($autoAssembleBlocker)) {
 }
 if ($autoAssembleRan) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_log=$autoAssembleOutputLogRelative"
+}
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_requested=$(ConvertTo-CounterBit $qualityVfxRegenerateRequested)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_ran=$(ConvertTo-CounterBit $qualityVfxRegenerateRan)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_ready=$(ConvertTo-CounterBit $qualityVfxRegenerateReady)"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_exit_code=$qualityVfxRegenerateExitCode"
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_output_root=$RegeneratedQualityVfxOutputRootRelative"
+if (-not [string]::IsNullOrWhiteSpace($qualityVfxRegenerateBlocker)) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_blocker=$(ConvertTo-CounterValue -Value $qualityVfxRegenerateBlocker)"
+}
+if ($qualityVfxRegenerateRan) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_output_log=$qualityVfxRegenerateOutputLogRelative"
+}
+if (-not [string]::IsNullOrWhiteSpace($qualityVfxRegeneratedEvidenceRelative)) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_evidence_path=$qualityVfxRegeneratedEvidenceRelative"
 }
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summaries=$(@($hostGateSummaries).Count)"
 if (@($hostGateSummaries).Count -gt 0) {
@@ -782,6 +1024,9 @@ $global:LASTEXITCODE = 0
 
 if ($RequireReady.IsPresent -and -not $intakeReady) {
     Write-Error "Renderer commercial readiness GitHub artifact intake is not ready: missing assembler inputs or final retained root."
+}
+if ($RequireReady.IsPresent -and $qualityVfxRegenerateRequested -and -not $qualityVfxRegenerateReady) {
+    Write-Error "Renderer commercial readiness GitHub artifact intake quality/VFX regeneration is not ready."
 }
 if ($RequireReady.IsPresent -and $autoAssembleRequested -and -not $autoAssembleReady) {
     Write-Error "Renderer commercial readiness GitHub artifact intake auto assemble is not ready."

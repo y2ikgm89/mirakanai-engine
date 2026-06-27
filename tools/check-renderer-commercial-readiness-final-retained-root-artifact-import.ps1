@@ -48,11 +48,19 @@ function Remove-TestRoot {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
 
     $fullPath = [System.IO.Path]::GetFullPath((ConvertTo-LocalPath $RelativePath))
-    $allowedRoot = [System.IO.Path]::GetFullPath(
-        (ConvertTo-LocalPath "artifacts/renderer/commercial-readiness-evidence")).TrimEnd(
-        [System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
-    if (-not $fullPath.StartsWith($allowedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        Write-Error "Refusing to remove test root outside artifacts/renderer/commercial-readiness-evidence: $fullPath"
+    $commercialRoot = [System.IO.Path]::GetFullPath(
+        (ConvertTo-LocalPath "artifacts/renderer/commercial-readiness-evidence"))
+    $qualityVfxRoot = [System.IO.Path]::GetFullPath(
+        (ConvertTo-LocalPath "artifacts/renderer/quality-vfx-commercial-host-evidence"))
+    $commercialRootWithSeparator = $commercialRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+        [System.IO.Path]::DirectorySeparatorChar
+    $qualityVfxRootWithSeparator = $qualityVfxRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+        [System.IO.Path]::DirectorySeparatorChar
+    $allowed =
+        $fullPath.StartsWith($commercialRootWithSeparator, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($qualityVfxRootWithSeparator, [System.StringComparison]::OrdinalIgnoreCase)
+    if (-not $allowed) {
+        Write-Error "Refusing to remove test root outside approved renderer artifact roots: $fullPath"
     }
     if (Test-Path -LiteralPath $fullPath) {
         Remove-Item -LiteralPath $fullPath -Recurse -Force
@@ -72,6 +80,47 @@ function New-EvidenceStub {
     }
 }
 
+function Write-Generated3dQualityVfxLog {
+    param([Parameter(Mandatory = $true)][string]$RelativePath)
+
+    $statusLine = [string]::Join(" ", @(
+            "sample_generated_desktop_runtime_3d_package status=ready",
+            "renderer_quality_matrix_status=host_evidence_required",
+            "renderer_quality_matrix_reviewed=1",
+            "renderer_quality_matrix_d3d12_ready=1",
+            "renderer_quality_matrix_vulkan_strict_ready=1",
+            "renderer_quality_matrix_general_renderer_quality_ready=0",
+            "renderer_quality_matrix_diagnostics=0",
+            "renderer_quality_matrix_replay_hash=42",
+            "renderer_quality_matrix_gpu_command_side_effects=0",
+            "renderer_quality_matrix_native_capture_side_effects=0",
+            "renderer_quality_matrix_crash_upload_side_effects=0",
+            "rendering_vfx_profiling_reviewed=1",
+            "rendering_vfx_profiling_d3d12_host_evidence_ready=1",
+            "rendering_vfx_profiling_vulkan_strict_host_evidence_ready=1",
+            "rendering_vfx_profiling_debug_policy_ready=1",
+            "rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready=1",
+            "rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready=1",
+            "rendering_vfx_profiling_debug_package_counter_evidence_ready=1",
+            "rendering_vfx_profiling_memory_policy_ready=1",
+            "rendering_vfx_profiling_memory_budget_evidence_ready=1",
+            "rendering_vfx_profiling_memory_residency_pressure_evidence_ready=1",
+            "rendering_vfx_profiling_memory_package_counter_evidence_ready=1",
+            "rendering_vfx_profiling_diagnostics=0",
+            "rendering_vfx_profiling_replay_hash=43",
+            "renderer_production_vfx_native_capture_side_effects=0",
+            "renderer_production_vfx_crash_upload_side_effects=0",
+            "renderer_backend_parity_ready=0",
+            "renderer_metal_broad_readiness=0",
+            "renderer_broad_quality_ready=0",
+            "renderer_commercial_readiness=0",
+            "environment_ready=0",
+            "native_handles_exposed=0",
+            "external_engine_parity=0"
+        ))
+    Set-Content -LiteralPath (ConvertTo-LocalPath $RelativePath) -Encoding utf8NoBOM -Value $statusLine
+}
+
 $importerScript = Join-Path $root "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
 if (-not (Test-Path -LiteralPath $importerScript -PathType Leaf)) {
     Write-Error "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1 must exist."
@@ -83,10 +132,14 @@ if (-not $importerText.Contains('$global:LASTEXITCODE = 0')) {
 
 $contractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-contract-$PID"
 $finalRootOnlyContractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-final-root-only-contract-$PID"
+$multiRunContractRootRelative = "artifacts/renderer/commercial-readiness-evidence/final-retained-root-artifact-import-multi-run-contract-$PID"
+$multiRunQualityRootRelative = "artifacts/renderer/quality-vfx-commercial-host-evidence/final-retained-root-artifact-import-multi-run-contract-$PID"
 
 try {
     Remove-TestRoot -RelativePath $contractRootRelative
     Remove-TestRoot -RelativePath $finalRootOnlyContractRootRelative
+    Remove-TestRoot -RelativePath $multiRunContractRootRelative
+    Remove-TestRoot -RelativePath $multiRunQualityRootRelative
 
     $planLines = @(& $importerScript -Mode Plan -OutputRootRelative $contractRootRelative)
     foreach ($expectedLine in @(
@@ -272,6 +325,76 @@ try {
         Write-Error "GitHub artifact intake assembler handoff must stay blocked when only a final retained root exists."
     }
 
+    $multiRunInputSpecs = @(
+        @{
+            Path = "$multiRunContractRootRelative/renderer-d3d12-commercial-quality-host-evidence/d3d12-host-evidence.json"
+            Schema = "GameEngine.RendererD3d12CommercialQualityHostEvidence.v1"
+            Claim = "renderer-d3d12-commercial-quality-artifact-v1"
+        },
+        @{
+            Path = "$multiRunContractRootRelative/renderer-vulkan-strict-commercial-quality-host-evidence/vulkan-host-evidence.json"
+            Schema = "GameEngine.RendererVulkanStrictCommercialQualityHostEvidence.v1"
+            Claim = "renderer-vulkan-strict-commercial-quality-artifact-v1"
+        },
+        @{
+            Path = "$multiRunContractRootRelative/renderer-apple-metal-commercial-quality-host-evidence/apple-host-evidence.json"
+            Schema = "GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1"
+            Claim = "renderer-apple-metal-commercial-quality-artifact-v1"
+        },
+        @{
+            Path = "$multiRunContractRootRelative/renderer-metal-memory-profiling-host-artifacts/evidence.json"
+            Schema = "GameEngine.RendererMetalMemoryProfilingHostEvidence.v1"
+            Claim = "renderer-metal-memory-profiling-host-evidence-v1"
+        },
+        @{
+            Path = "$multiRunContractRootRelative/renderer-package-commercial-quality-host-evidence/package-host-evidence.json"
+            Schema = "GameEngine.RendererPackageCommercialQualityHostEvidence.v1"
+            Claim = "renderer-package-commercial-quality-artifacts-v1"
+        },
+        @{
+            Path = "$multiRunContractRootRelative/renderer-clean-room-legal-review-artifacts/clean-room-legal-review.json"
+            Schema = "GameEngine.RendererCleanRoomLegalReviewInput.v1"
+            Claim = "renderer-clean-room-legal-artifact-v1"
+        }
+    )
+    foreach ($inputSpec in $multiRunInputSpecs) {
+        Write-JsonObject `
+            -Path (ConvertTo-LocalPath ([string]$inputSpec.Path)) `
+            -Value (New-EvidenceStub -SchemaVersion ([string]$inputSpec.Schema) -ClaimId ([string]$inputSpec.Claim))
+    }
+    Write-Generated3dQualityVfxLog `
+        -RelativePath "$multiRunContractRootRelative/renderer-package-commercial-quality-host-evidence/generated-3d-package.log"
+
+    $multiRunLines = @(& $importerScript -Mode Inspect `
+            -OutputRootRelative $multiRunContractRootRelative `
+            -SupplementalRunIds "123456789" `
+            -SupplementalArtifactNames "renderer-metal-memory-profiling-host-artifacts" `
+            -RegenerateQualityVfx)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_run_count=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_supplemental_artifact_names=renderer-metal-memory-profiling-host-artifacts",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_requested=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_ran=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_regenerate_ready=1",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_present_assembler_inputs=7",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_missing_assembler_inputs=0",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_ready=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $multiRunLines $expectedLine "GitHub artifact intake supplemental multi-run quality/VFX regeneration"
+    }
+    $multiRunManifest = Get-Content -LiteralPath (ConvertTo-LocalPath "$multiRunContractRootRelative/intake-manifest.json") -Raw |
+        ConvertFrom-Json
+    if (@($multiRunManifest.supplemental_import.run_ids).Count -ne 1) {
+        Write-Error "GitHub artifact intake manifest must record the supplemental run id list."
+    }
+    if (-not [bool]$multiRunManifest.quality_vfx_regenerate.ready) {
+        Write-Error "GitHub artifact intake quality/VFX regeneration must become ready when all source evidence is available."
+    }
+    if ([string]$multiRunManifest.assembler_inputs.quality_vfx_host_evidence.path -cne "$multiRunQualityRootRelative/quality-vfx-host-evidence.json") {
+        Write-Error "GitHub artifact intake assembler handoff must use the regenerated quality/VFX host evidence path."
+    }
+
     $inputSpecs = @(
         @{
             Path = "$contractRootRelative/input/d3d12/d3d12-host-evidence.json"
@@ -429,6 +552,8 @@ try {
 finally {
     Remove-TestRoot -RelativePath $contractRootRelative
     Remove-TestRoot -RelativePath $finalRootOnlyContractRootRelative
+    Remove-TestRoot -RelativePath $multiRunContractRootRelative
+    Remove-TestRoot -RelativePath $multiRunQualityRootRelative
 }
 
 Write-Information "renderer-commercial-readiness-final-retained-root-artifact-import-check: ok" -InformationAction Continue
