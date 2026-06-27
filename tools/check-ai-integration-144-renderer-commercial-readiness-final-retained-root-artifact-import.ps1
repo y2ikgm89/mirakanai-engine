@@ -12,6 +12,7 @@ $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 $recipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $recipeRunnerCheckText = Get-AgentSurfaceText "tools/check-validation-recipe-runner.ps1"
 $validateWorkflowText = Get-AgentSurfaceText ".github/workflows/validate.yml"
+$finalFromRunsWorkflowText = Get-AgentSurfaceText ".github/workflows/renderer-commercial-readiness-final-from-runs.yml"
 $ciMatrixCheckText = Get-AgentSurfaceText "tools/check-ci-matrix.ps1"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -110,6 +111,9 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
+        "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
+        "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "confirm_final_retained_root_handoff=renderer-commercial-final-retained-root",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
     )) {
     Assert-ContainsText $commandsFragmentText $needle "renderer commercial readiness final retained-root artifact import command"
@@ -170,9 +174,41 @@ foreach ($surface in @(
             "host_gate_summaries",
             "assembler_input_blockers",
             "auto_assemble",
+            ".github/workflows/renderer-commercial-readiness-final-from-runs.yml",
+            "renderer-commercial-readiness-final-from-runs",
+            "renderer-commercial-readiness-final-from-runs-artifact-intake",
+            "source_artifact_run_id",
+            "metal_memory_profiling_run_id",
+            "RegenerateQualityVfx",
+            "AutoAssemble",
             "renderer_commercial_readiness=0"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) final retained-root artifact import"
+    }
+}
+
+foreach ($surface in @(
+        @{ Text = $finalFromRunsWorkflowText; Label = ".github/workflows/renderer-commercial-readiness-final-from-runs.yml" },
+        @{ Text = $ciMatrixCheckText; Label = "tools/check-ci-matrix.ps1" }
+    )) {
+    foreach ($needle in @(
+            "Renderer Commercial Readiness Final From Runs",
+            "renderer-commercial-final-from-runs",
+            "source_artifact_run_id",
+            "metal_memory_profiling_run_id",
+            "confirm_final_retained_root_handoff",
+            "renderer-commercial-final-retained-root",
+            "actions: read",
+            'actions/runs/${{ inputs.source_artifact_run_id }}/artifacts?per_page=100',
+            "renderer-commercial-readiness-final-from-runs-artifact-intake",
+            "renderer-commercial-readiness-final-retained-root",
+            "SupplementalRunIds",
+            "renderer-metal-memory-profiling-host-artifacts",
+            "RegenerateQualityVfx",
+            "AutoAssemble",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) final-from-runs workflow"
     }
 }
 
