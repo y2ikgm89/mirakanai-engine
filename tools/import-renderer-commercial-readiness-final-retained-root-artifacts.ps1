@@ -61,6 +61,22 @@ function ConvertTo-CounterValue {
     return ($Value -replace '[^A-Za-z0-9_.-]', '_')
 }
 
+function Select-UniqueCounterValues {
+    param([Parameter(Mandatory = $true)][string[]]$Values)
+
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $uniqueValues = [System.Collections.Generic.List[string]]::new()
+    foreach ($value in @($Values)) {
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        if ($seen.Add($value)) {
+            $uniqueValues.Add($value) | Out-Null
+        }
+    }
+    return @($uniqueValues)
+}
+
 function Test-SafeRepoRelativePath {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
 
@@ -184,25 +200,44 @@ function Find-JsonEvidencePath {
 function Find-HostGateSummary {
     param([Parameter(Mandatory = $true)][string]$SearchRootFull)
 
-    if (-not (Test-Path -LiteralPath $SearchRootFull -PathType Container)) {
+    $summaries = @(Find-HostGateSummaries -SearchRootFull $SearchRootFull)
+    $metalSummaries = @($summaries | Where-Object {
+            [string]$_.SchemaVersion -ceq "GameEngine.RendererMetalMemoryProfilingHostGate.v1" -or
+            [string]$_.Path -like "*renderer-metal-memory-profiling-host-artifacts*"
+        } | Select-Object -First 1)
+    if ($metalSummaries.Count -eq 0) {
         return $null
+    }
+    return $metalSummaries[0]
+}
+
+function Find-HostGateSummaries {
+    param([Parameter(Mandatory = $true)][string]$SearchRootFull)
+
+    if (-not (Test-Path -LiteralPath $SearchRootFull -PathType Container)) {
+        return @()
     }
 
-    $summary = Get-ChildItem -LiteralPath $SearchRootFull -Recurse -File -Filter "host-gate-summary.json" |
-        Sort-Object FullName |
-        Select-Object -First 1
-    if ($null -eq $summary) {
-        return $null
+    $summaries = [System.Collections.Generic.List[object]]::new()
+    $summaryFiles = @(Get-ChildItem -LiteralPath $SearchRootFull -Recurse -File -Filter "host-gate-summary.json" |
+            Sort-Object FullName)
+    foreach ($summary in $summaryFiles) {
+        $json = Read-JsonFileOrNull -Path $summary.FullName
+        if ($null -eq $json) {
+            continue
+        }
+        $schemaVersion = [string](Get-JsonPropertyValue -JsonObject $json -Name "schema_version")
+        if ([string]::IsNullOrWhiteSpace($schemaVersion)) {
+            $schemaVersion = [string](Get-JsonPropertyValue -JsonObject $json -Name "schema")
+        }
+        $summaries.Add([pscustomobject]@{
+                Path = ConvertTo-RepoRelativePath -FullPath $summary.FullName
+                SchemaVersion = $schemaVersion
+                Status = [string](Get-JsonPropertyValue -JsonObject $json -Name "status")
+                Reason = [string](Get-JsonPropertyValue -JsonObject $json -Name "reason")
+            }) | Out-Null
     }
-    $json = Read-JsonFileOrNull -Path $summary.FullName
-    if ($null -eq $json) {
-        return $null
-    }
-    return [pscustomobject]@{
-        Path = ConvertTo-RepoRelativePath -FullPath $summary.FullName
-        Status = [string](Get-JsonPropertyValue -JsonObject $json -Name "status")
-        Reason = [string](Get-JsonPropertyValue -JsonObject $json -Name "reason")
-    }
+    return @($summaries)
 }
 
 function Get-WorkflowArtifactListSummary {
@@ -464,6 +499,7 @@ $finalRetainedRootFull = Resolve-RepoRelativePath `
     -Label "final retained root artifact"
 $finalRootEvidencePath = Join-Path $finalRetainedRootFull "evidence.json"
 $finalRootPresent = Test-Path -LiteralPath $finalRootEvidencePath -PathType Leaf
+$hostGateSummaries = @(Find-HostGateSummaries -SearchRootFull $outputRootFull)
 $metalHostGateSummary = Find-HostGateSummary -SearchRootFull $outputRootFull
 $metalHostGateSummaryPresent = $null -ne $metalHostGateSummary
 $intakeReady = $presentInputs -eq $requiredAssemblerInputs.Count -or $finalRootPresent
@@ -601,6 +637,14 @@ $manifest = [ordered]@{
         status = if ($metalHostGateSummaryPresent) { $metalHostGateSummary.Status } else { "" }
         reason = if ($metalHostGateSummaryPresent) { $metalHostGateSummary.Reason } else { "" }
     }
+    host_gate_summaries = @($hostGateSummaries | ForEach-Object {
+            [ordered]@{
+                path = [string]$_.Path
+                schema_version = [string]$_.SchemaVersion
+                status = [string]$_.Status
+                reason = [string]$_.Reason
+            }
+        })
     ready = $intakeReady
 }
 
@@ -631,6 +675,14 @@ if (-not [string]::IsNullOrWhiteSpace($autoAssembleBlocker)) {
 }
 if ($autoAssembleRan) {
     Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_auto_assemble_output_log=$autoAssembleOutputLogRelative"
+}
+Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summaries=$(@($hostGateSummaries).Count)"
+if (@($hostGateSummaries).Count -gt 0) {
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_statuses=$((@($hostGateSummaries) | ForEach-Object { ConvertTo-CounterValue -Value ([string]$_.Status) }) -join ',')"
+    $hostGateSummaryReasons = Select-UniqueCounterValues -Values ([string[]]@($hostGateSummaries | ForEach-Object {
+                ConvertTo-CounterValue -Value ([string]$_.Reason)
+            }))
+    Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_reasons=$($hostGateSummaryReasons -join ',')"
 }
 Write-Output "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=$(ConvertTo-CounterBit $metalHostGateSummaryPresent)"
 if ($metalHostGateSummaryPresent) {
