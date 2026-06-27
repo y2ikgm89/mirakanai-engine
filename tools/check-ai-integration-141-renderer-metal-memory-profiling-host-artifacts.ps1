@@ -11,6 +11,7 @@ $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $classifierText = Get-AgentSurfaceText "tools/classify-pr-validation-tier.ps1"
 $ciMatrixText = Get-AgentSurfaceText "tools/check-ci-matrix.ps1"
 $workflowText = Get-AgentSurfaceText ".github/workflows/validate.yml"
+$capableHostWorkflowText = Get-AgentSurfaceText ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $recipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
@@ -19,6 +20,7 @@ $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $testingText = Get-AgentSurfaceText "docs/testing.md"
+$workflowsText = Get-AgentSurfaceText "docs/workflows.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-24-renderer-metal-memory-profiling-apple-host-artifacts-v1.md"
 $renderingGuidanceText = Get-AgentSurfaceText ".agents/skills/rendering-change/references/full-guidance.md"
@@ -111,6 +113,55 @@ Assert-ContainsText $workflowText "GitHub-hosted macOS can be Metal-capable whil
 Assert-ContainsText $workflowText "generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs" ".github/workflows/validate.yml renderer Metal host artifact lane"
 Assert-DoesNotContainText $workflowText "generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs -RequireReady" ".github/workflows/validate.yml renderer Metal host artifact hosted lane"
 Assert-ContainsText $workflowText "artifacts/renderer/metal-memory-profiling-host-evidence/**" ".github/workflows/validate.yml renderer Metal host artifact upload"
+foreach ($needle in @(
+        "name: Renderer Metal Memory Profiling Capable Host",
+        "workflow_dispatch:",
+        "confirm_capable_apple_host:",
+        "Type MTLGPUFamilyApple6",
+        "runs-on: [self-hosted, macOS, ARM64, metal-residency-set]",
+        "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+        "generate-renderer-metal-memory-profiling-host-artifacts.ps1 -Jobs `$jobs -RequireReady -TaskId 2026-06-27-capable-host-workflow",
+        "renderer_metal_memory_profiling_host_artifacts_status=ready",
+        "renderer_metal_memory_profiling_host_artifacts_ready=1",
+        "renderer_metal_memory_profiling_host_artifacts_probe_ready=1",
+        "renderer_metal_memory_profiling_host_artifacts_written=1",
+        "renderer_metal_memory_profiling_ready=1",
+        "renderer_backend_parity_ready=0",
+        "renderer_metal_broad_readiness=0",
+        "renderer_commercial_readiness=0",
+        "renderer_broad_quality_ready=0",
+        "renderer_environment_ready=0",
+        "name: renderer-metal-memory-profiling-host-artifacts",
+        "artifacts/renderer/metal-memory-profiling-host-evidence/**",
+        "if-no-files-found: error"
+    )) {
+    Assert-ContainsText $capableHostWorkflowText $needle ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+}
+foreach ($forbiddenNeedle in @(
+        "pull_request:",
+        "pull_request_target:",
+        "push:",
+        "merge_group:",
+        "workflow_call:",
+        "repository_dispatch:",
+        "workflow_run:",
+        "schedule:",
+        "uses: actions/checkout@v",
+        "uses: actions/upload-artifact@v"
+    )) {
+    Assert-DoesNotContainText $capableHostWorkflowText $forbiddenNeedle ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+}
+Assert-ContainsText $classifierText "ci-renderer-metal-capable-host-workflow" "tools/classify-pr-validation-tier.ps1 renderer Metal capable host workflow"
+Assert-ContainsText $ciMatrixText ".github/workflows/renderer-metal-memory-profiling-capable-host.yml" "tools/check-ci-matrix.ps1 renderer Metal capable host workflow"
+foreach ($needle in @(
+        "Workflow-dispatch-only supplemental proof workflows",
+        ".github/workflows/renderer-metal-memory-profiling-capable-host.yml",
+        "tools/check-ci-matrix.ps1",
+        "not branch-protection-required"
+    )) {
+    Assert-ContainsText $workflowsText $needle "docs/workflows.md renderer Metal capable host workflow policy"
+}
 Assert-ContainsText $commandsFragmentText "rendererMetalMemoryProfilingHostArtifactsCheck" "manifest commands renderer Metal memory/profiling host artifacts"
 
 foreach ($surface in @(
@@ -151,7 +202,8 @@ foreach ($surface in @(
             "renderer_backend_parity_ready=1",
             "renderer_metal_broad_readiness=1",
             "renderer_commercial_readiness=1",
-            "renderer_broad_quality_ready=1"
+            "renderer_broad_quality_ready=1",
+            "renderer_environment_ready=1"
         )) {
         Assert-DoesNotContainText $surface.Text $forbiddenNeedle "$($surface.Label) forbidden renderer Metal memory/profiling Apple-host artifacts claim"
     }

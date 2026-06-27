@@ -107,7 +107,11 @@ router says the current task needs detailed API names, detailed validation lanes
   The probe checks `MTLGPUFamilyApple6`, writes `probe-capability-summary.json`, and host gates unsupported devices with
   `renderer_metal_memory_profiling_host_gate_residency_sets_supported=0` plus `mtlresidencyset_unsupported`.
   GitHub-hosted macOS runs without `-RequireReady` and may record `host-gate-summary.*` diagnostics when `MTLResidencySet`
-  creation is rejected. Non-Apple/default validation stays host-gated, and broad backend parity, broad Metal readiness,
+  creation is rejected. For final retained artifact production, use the workflow-dispatch-only
+  `.github/workflows/renderer-metal-memory-profiling-capable-host.yml` lane on an operator-owned self-hosted Apple runner
+  labelled `[self-hosted, macOS, ARM64, metal-residency-set]` with `confirm_capable_apple_host=MTLGPUFamilyApple6`; it runs
+  the same producer with `-RequireReady -TaskId 2026-06-27-capable-host-workflow` and uploads
+  `renderer-metal-memory-profiling-host-artifacts`. Non-Apple/default validation stays host-gated, and broad backend parity, broad Metal readiness,
   commercial renderer readiness,
   broad renderer quality, external-engine parity, and broad `environment_ready` remain unclaimed.
 - For Renderer Commercial Quality Closeout Task 4 / selected Metal visible package evidence, use

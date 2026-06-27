@@ -50,13 +50,20 @@ function Test-IosValidationWorkflowPath {
     return $Path -eq ".github/workflows/ios-validate.yml"
 }
 
+function Test-RendererMetalMemoryProfilingCapableHostWorkflowPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return $Path -eq ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+}
+
 function Test-OtherCiWorkflowPath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     return (
         $Path -match "^\.github/workflows/" -and
         -not (Test-ValidationWorkflowPath -Path $Path) -and
-        -not (Test-IosValidationWorkflowPath -Path $Path)
+        -not (Test-IosValidationWorkflowPath -Path $Path) -and
+        -not (Test-RendererMetalMemoryProfilingCapableHostWorkflowPath -Path $Path)
     )
 }
 
@@ -375,6 +382,9 @@ function New-ValidationTierSelection {
         if (Test-IosValidationWorkflowPath -Path $path) {
             $iosValidationWorkflow = $true
             Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-ios-workflow"
+        }
+        if (Test-RendererMetalMemoryProfilingCapableHostWorkflowPath -Path $path) {
+            Add-UniqueClassificationReason -Reasons $classificationReasons -Reason "ci-renderer-metal-capable-host-workflow"
         }
         if (Test-OtherCiWorkflowPath -Path $path) {
             $otherCiWorkflow = $true
