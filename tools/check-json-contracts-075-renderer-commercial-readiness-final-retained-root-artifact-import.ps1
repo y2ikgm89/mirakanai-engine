@@ -10,6 +10,8 @@ $publicRunnerReviewText = Get-JsonContractSurfaceText "tools/generate-renderer-p
 $publicRunnerReviewCheckText = Get-JsonContractSurfaceText "tools/check-renderer-public-runner-security-review.ps1"
 $finalHandoffText = Get-JsonContractSurfaceText "tools/validate-renderer-commercial-readiness-final-handoff.ps1"
 $finalHandoffCheckText = Get-JsonContractSurfaceText "tools/check-renderer-commercial-readiness-final-handoff.ps1"
+$finalRunDiscoveryText = Get-JsonContractSurfaceText "tools/plan-renderer-commercial-readiness-final-run-discovery.ps1"
+$finalRunDiscoveryCheckText = Get-JsonContractSurfaceText "tools/check-renderer-commercial-readiness-final-run-discovery.ps1"
 $commandsFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $productionLoopFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -264,12 +266,52 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "validation_recipe=renderer-commercial-readiness-final-run-discovery",
+        "renderer_commercial_readiness_final_run_discovery_status=",
+        "renderer_commercial_readiness_final_run_discovery_next_action=",
+        "renderer_commercial_readiness_final_run_discovery_source_run_id=",
+        "renderer_commercial_readiness_final_run_discovery_metal_memory_profiling_run_id=",
+        "renderer_commercial_readiness_final_run_discovery_final_from_runs_workflow_command=",
+        "renderer-commercial-readiness-current-run-artifact-intake",
+        "renderer-metal-memory-profiling-host-artifacts",
+        "renderer-commercial-readiness-final-from-runs.yml",
+        "/actions/runs",
+        "/actions/runs/{run_id}/artifacts",
+        "/websites/github_en_rest",
+        "/websites/github_en_actions",
+        "workflow_dispatched=0",
+        "artifacts_downloaded=0",
+        "gpu_workload_executed=0",
+        "evidence_assembled=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalRunDiscoveryText $needle "renderer commercial readiness final run discovery planner"
+}
+
+foreach ($needle in @(
+        "renderer-commercial-readiness-final-run-discovery-check: ok",
+        "renderer_commercial_readiness_final_run_discovery_status=ready_for_final_from_runs_workflow",
+        "renderer_commercial_readiness_final_run_discovery_status=metal_memory_profiling_run_required",
+        "renderer_commercial_readiness_final_run_discovery_status=source_run_required",
+        "renderer_commercial_readiness_final_run_discovery_source_run_id=111111",
+        "renderer_commercial_readiness_final_run_discovery_metal_memory_profiling_run_id=222222",
+        "renderer_commercial_readiness_final_run_discovery_final_from_runs_workflow_command=gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "renderer_commercial_readiness_final_run_discovery_workflow_dispatched=0",
+        "renderer_commercial_readiness_final_run_discovery_artifacts_downloaded=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalRunDiscoveryCheckText $needle "renderer commercial readiness final run discovery planner check"
+}
+
+foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
         "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
         "rendererPublicRunnerSecurityReviewGenerator",
         "rendererCommercialReadinessFinalHandoff",
+        "rendererCommercialReadinessFinalRunDiscovery",
         "validate-renderer-commercial-readiness-final-handoff.ps1",
+        "plan-renderer-commercial-readiness-final-run-discovery.ps1",
         "generate-renderer-public-runner-security-review.ps1",
         "PublicRepoRunnerSecurityReviewRelative",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
@@ -318,6 +360,14 @@ foreach ($needle in @(
         "renderer-commercial-readiness-final-handoff",
         "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
         "final-handoff-plan-only",
+        "renderer-commercial-readiness-final-run-discovery",
+        "tools/plan-renderer-commercial-readiness-final-run-discovery.ps1",
+        "rendererCommercialReadinessFinalRunDiscovery",
+        "final-run-discovery-plan-only",
+        "GET /repos/{owner}/{repo}/actions/runs",
+        "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+        "renderer-commercial-readiness-current-run-artifact-intake",
+        "renderer-metal-memory-profiling-host-artifacts",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "renderer-clean-room-legal-review-input",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
