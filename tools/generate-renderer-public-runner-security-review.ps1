@@ -12,6 +12,8 @@ param(
 
     [string]$RepositoryJsonPath = "",
 
+    [string]$WorkflowRelative = ".github/workflows/renderer-metal-memory-profiling-capable-host.yml",
+
     [string]$OutputRootRelative = "artifacts/renderer/public-runner-security-review/renderer-commercial-readiness",
 
     [string]$ApprovePublicRepoSelfHostedRunnerReview = "",
@@ -136,6 +138,67 @@ function Read-JsonFile {
     return Get-Content -LiteralPath $fullPath -Raw | ConvertFrom-Json
 }
 
+function New-WorkflowSecurityAudit {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)][string[]]$ExpectedLabels
+    )
+
+    $fullPath = Resolve-RepoRelativePath -RelativePath $RelativePath -Label "WorkflowRelative"
+    $workflowExists = Test-Path -LiteralPath $fullPath -PathType Leaf
+    $workflowText = if ($workflowExists) {
+        Get-Content -LiteralPath $fullPath -Raw
+    } else {
+        ""
+    }
+
+    $workflowDispatchPresent = $workflowText -match '(?m)^\s*workflow_dispatch\s*:'
+    $untrustedTriggerMatches = [regex]::Matches(
+        $workflowText,
+        '(?m)^\s*(pull_request|pull_request_target|push|schedule)\s*:'
+    )
+    $untrustedPrTriggersPresent = $untrustedTriggerMatches.Count -gt 0
+    $workflowDispatchOnly = $workflowDispatchPresent -and -not $untrustedPrTriggersPresent
+    $contentsPermissionReadOnly = $workflowText -match '(?m)^\s*contents\s*:\s*read\s*$' -and
+        $workflowText -notmatch '(?m)^\s*contents\s*:\s*write\s*$'
+    $expectedRunsOn = "runs-on: [$([string]::Join(', ', $ExpectedLabels))]"
+    $requiredLabelsMatch = $workflowText.Contains($expectedRunsOn)
+    $checkoutUseCount = [regex]::Matches(
+        $workflowText,
+        '(?m)^\s*uses\s*:\s*actions/checkout@[0-9a-f]{40}\s*(?:#.*)?$'
+    ).Count
+    $checkoutPersistFalseCount = [regex]::Matches(
+        $workflowText,
+        '(?m)^\s*persist-credentials\s*:\s*false\s*$'
+    ).Count
+    $checkoutActionPinned = $checkoutUseCount -gt 0
+    $checkoutPersistCredentialsDisabled = $checkoutUseCount -gt 0 -and
+        $checkoutPersistFalseCount -ge $checkoutUseCount
+    $confirmInputRequired = $workflowText.Contains("confirm_capable_apple_host") -and
+        $workflowText.Contains("MTLGPUFamilyApple6")
+    $ready = $workflowExists -and
+        $workflowDispatchOnly -and
+        $contentsPermissionReadOnly -and
+        $requiredLabelsMatch -and
+        $checkoutActionPinned -and
+        $checkoutPersistCredentialsDisabled -and
+        $confirmInputRequired
+
+    return [ordered]@{
+        workflow_file = $RelativePath
+        workflow_file_exists = $workflowExists
+        workflow_dispatch_only = $workflowDispatchOnly
+        untrusted_pr_triggers_present = $untrustedPrTriggersPresent
+        contents_permission_read_only = $contentsPermissionReadOnly
+        required_labels = $ExpectedLabels
+        required_labels_match = $requiredLabelsMatch
+        checkout_action_pinned = $checkoutActionPinned
+        checkout_persist_credentials_disabled = $checkoutPersistCredentialsDisabled
+        confirm_input_required = $confirmInputRequired
+        ready = $ready
+    }
+}
+
 function Invoke-GitHubRepositoryMetadata {
     param([Parameter(Mandatory = $true)][string]$RepositoryFullName)
 
@@ -151,7 +214,9 @@ function New-PublicRunnerSecurityReview {
     param(
         [Parameter(Mandatory = $true)][string]$RepositoryFullName,
         [Parameter(Mandatory = $true)][string]$RepositoryVisibility,
-        [Parameter(Mandatory = $true)][string]$GeneratedUtc
+        [Parameter(Mandatory = $true)][string]$GeneratedUtc,
+        [Parameter(Mandatory = $true)][string]$ReviewedWorkflowFile,
+        [Parameter(Mandatory = $true)]$WorkflowAudit
     )
 
     return [ordered]@{
@@ -167,6 +232,8 @@ function New-PublicRunnerSecurityReview {
         reviewed_allowed_workflows = $allowedWorkflows
         reviewed_required_labels = $requiredLabels
         reviewed_metal_probe_truth = $true
+        reviewed_workflow_file = $ReviewedWorkflowFile
+        workflow_audit = $WorkflowAudit
         official_source_rows = [ordered]@{
             github_actions_self_hosted_runner_security = "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions"
             github_actions_secure_use_reference = "https://docs.github.com/en/actions/reference/secure-use-reference"
@@ -217,6 +284,9 @@ function Write-JsonObject {
 if ($RepoFullName -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
     Write-Error "RepoFullName must be in owner/repo form."
 }
+if (-not (Test-SafeRepoRelativePath -RelativePath $WorkflowRelative)) {
+    Write-Error "WorkflowRelative must be repo-relative without absolute, drive-qualified, colon, backslash, or '..' segments."
+}
 if (-not (Test-SafeRepoRelativePath -RelativePath $OutputRootRelative) -or
     -not (Test-AllowedOutputRoot -RelativePath $OutputRootRelative)) {
     Write-Error "OutputRootRelative must be under artifacts/renderer/public-runner-security-review/ or artifacts/renderer/commercial-readiness-evidence/."
@@ -247,9 +317,14 @@ if ($null -ne $privateValue) {
 $isPublicRepository = $repositoryVisibility -ceq "public" -or
     ($repositoryPrivateKnown -and -not $repositoryPrivate)
 
+$workflowAudit = New-WorkflowSecurityAudit -RelativePath $WorkflowRelative -ExpectedLabels $requiredLabels
+
 $blockers = [System.Collections.Generic.List[string]]::new()
 if (-not $isPublicRepository) {
     $blockers.Add("public_repository_metadata_required") | Out-Null
+}
+if (-not [bool]$workflowAudit.ready) {
+    $blockers.Add("workflow_security_audit_required") | Out-Null
 }
 if ($ApprovePublicRepoSelfHostedRunnerReview -cne "public-repo-self-hosted-runner-risk-reviewed") {
     $blockers.Add("approval_confirmation_required") | Out-Null
@@ -274,7 +349,9 @@ if ($ready -and -not $NoWrite) {
     $review = New-PublicRunnerSecurityReview `
         -RepositoryFullName $RepoFullName `
         -RepositoryVisibility $repositoryVisibility `
-        -GeneratedUtc ([System.DateTimeOffset]::UtcNow.ToString("o"))
+        -GeneratedUtc ([System.DateTimeOffset]::UtcNow.ToString("o")) `
+        -ReviewedWorkflowFile $WorkflowRelative `
+        -WorkflowAudit $workflowAudit
     Write-JsonObject -RelativePath $reviewRelative -Value $review
     $artifactWritten = $true
 }
@@ -290,6 +367,15 @@ if ($repositoryPrivateKnown) {
 }
 Write-Output "renderer_public_runner_security_review_required_labels=$([string]::Join(',', $requiredLabels))"
 Write-Output "renderer_public_runner_security_review_allowed_workflows=$([string]::Join(',', $allowedWorkflows))"
+Write-Output "renderer_public_runner_security_review_workflow_audit_file=$WorkflowRelative"
+Write-Output "renderer_public_runner_security_review_workflow_audit_ready=$(ConvertTo-CounterBit ([bool]$workflowAudit.ready))"
+Write-Output "renderer_public_runner_security_review_workflow_dispatch_only=$(ConvertTo-CounterBit ([bool]$workflowAudit.workflow_dispatch_only))"
+Write-Output "renderer_public_runner_security_review_workflow_untrusted_pr_triggers=$(ConvertTo-CounterBit ([bool]$workflowAudit.untrusted_pr_triggers_present))"
+Write-Output "renderer_public_runner_security_review_workflow_permissions_read_only=$(ConvertTo-CounterBit ([bool]$workflowAudit.contents_permission_read_only))"
+Write-Output "renderer_public_runner_security_review_workflow_required_labels_match=$(ConvertTo-CounterBit ([bool]$workflowAudit.required_labels_match))"
+Write-Output "renderer_public_runner_security_review_workflow_checkout_action_pinned=$(ConvertTo-CounterBit ([bool]$workflowAudit.checkout_action_pinned))"
+Write-Output "renderer_public_runner_security_review_workflow_checkout_persist_credentials_disabled=$(ConvertTo-CounterBit ([bool]$workflowAudit.checkout_persist_credentials_disabled))"
+Write-Output "renderer_public_runner_security_review_workflow_confirm_input_required=$(ConvertTo-CounterBit ([bool]$workflowAudit.confirm_input_required))"
 Write-Output "renderer_public_runner_security_review_public_fork_pr_risk_reviewed=$(ConvertTo-CounterBit $ReviewedPublicForkPrRisk)"
 Write-Output "renderer_public_runner_security_review_runner_isolation_reviewed=$(ConvertTo-CounterBit $ReviewedRunnerIsolation)"
 Write-Output "renderer_public_runner_security_review_secret_exposure_reviewed=$(ConvertTo-CounterBit $ReviewedSecretExposure)"

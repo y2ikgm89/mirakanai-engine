@@ -194,6 +194,16 @@ try {
             reviewed_allowed_workflows = @("renderer-metal-memory-profiling-capable-host.yml")
             reviewed_required_labels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
             reviewed_metal_probe_truth = $true
+            reviewed_workflow_file = ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+            workflow_audit = [ordered]@{
+                workflow_dispatch_only = $true
+                untrusted_pr_triggers_present = $false
+                contents_permission_read_only = $true
+                required_labels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
+                checkout_action_pinned = $true
+                checkout_persist_credentials_disabled = $true
+                confirm_input_required = $true
+            }
         })
 
     $invalidPublicRunnerSecurityReviewJson = "$fixtureRootRelative/public-runner-security-review-pending.json"
@@ -208,6 +218,40 @@ try {
             reviewed_allowed_workflows = @("renderer-metal-memory-profiling-capable-host.yml")
             reviewed_required_labels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
             reviewed_metal_probe_truth = $true
+            reviewed_workflow_file = ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+            workflow_audit = [ordered]@{
+                workflow_dispatch_only = $true
+                untrusted_pr_triggers_present = $false
+                contents_permission_read_only = $true
+                required_labels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
+                checkout_action_pinned = $true
+                checkout_persist_credentials_disabled = $true
+                confirm_input_required = $true
+            }
+        })
+
+    $invalidPublicRunnerWorkflowReviewJson = "$fixtureRootRelative/public-runner-security-review-invalid-workflow.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $invalidPublicRunnerWorkflowReviewJson) -Value ([ordered]@{
+            schema_version = "GameEngine.RendererPublicSelfHostedRunnerSecurityReview.v1"
+            repo_full_name = "owner/repo"
+            repository_visibility = "public"
+            review_status = "approved"
+            reviewed_public_fork_pr_risk = $true
+            reviewed_runner_isolation = $true
+            reviewed_secret_exposure = $true
+            reviewed_allowed_workflows = @("renderer-metal-memory-profiling-capable-host.yml")
+            reviewed_required_labels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
+            reviewed_metal_probe_truth = $true
+            reviewed_workflow_file = ".github/workflows/renderer-metal-memory-profiling-capable-host.yml"
+            workflow_audit = [ordered]@{
+                workflow_dispatch_only = $false
+                untrusted_pr_triggers_present = $true
+                contents_permission_read_only = $true
+                required_labels = @("self-hosted", "macOS", "ARM64", "metal-residency-set")
+                checkout_action_pinned = $true
+                checkout_persist_credentials_disabled = $true
+                confirm_input_required = $true
+            }
         })
 
     $sourceRunsJson = "$fixtureRootRelative/source-runs.json"
@@ -350,6 +394,7 @@ try {
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_present=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_status=approved",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_workflow_audit_valid=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_confirmed=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=0",
             "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token",
@@ -379,6 +424,28 @@ try {
     Assert-LineAbsent $publicRepoInvalidReviewArtifactLines `
         "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token" `
         "final handoff public repo invalid review artifact"
+
+    $publicRepoInvalidWorkflowReviewLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $missingRunnerJson `
+            -RepositoryJsonPath $publicRepoJson `
+            -PublicRepoRunnerSecurityReviewRelative $invalidPublicRunnerWorkflowReviewJson `
+            -IntakeManifestRelative $blockedManifestRelative)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=public_runner_security_review_required",
+            "renderer_commercial_readiness_final_handoff_next_action=complete_public_runner_security_review",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_present=1",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_status=approved",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_workflow_audit_valid=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $publicRepoInvalidWorkflowReviewLines $expectedLine "final handoff public repo invalid workflow review artifact"
+    }
+    Assert-LineAbsent $publicRepoInvalidWorkflowReviewLines `
+        "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token" `
+        "final handoff public repo invalid workflow review artifact"
 
     $readyRunnerLines = @(& $handoffScript `
             -RepoFullName "owner/repo" `
