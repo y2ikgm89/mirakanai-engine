@@ -127,8 +127,8 @@ function ConvertTo-KeyValueMap {
 
 function Invoke-RunnerPreflight {
     param(
-        [Parameter(Mandatory = $true)][string]$RepositoryFullName,
-        [Parameter(Mandatory = $true)][string]$RunnerJsonPath
+        [string]$RepositoryFullName = "",
+        [string]$RunnerJsonPath = ""
     )
 
     $preflightScript = Join-Path $PSScriptRoot "validate-renderer-metal-memory-profiling-capable-host-runner.ps1"

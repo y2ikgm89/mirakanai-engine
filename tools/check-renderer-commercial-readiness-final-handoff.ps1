@@ -16,6 +16,13 @@ $handoffScript = Join-Path $root "tools/validate-renderer-commercial-readiness-f
 if (-not (Test-Path -LiteralPath $handoffScript -PathType Leaf)) {
     Write-Error "tools/validate-renderer-commercial-readiness-final-handoff.ps1 must exist."
 }
+$handoffScriptText = Get-Content -LiteralPath $handoffScript -Raw
+if ($handoffScriptText -match '\[Parameter\(Mandatory = \$true\)\]\[string\]\$RepositoryFullName') {
+    Write-Error "Invoke-RunnerPreflight must allow an empty RepositoryFullName so RunnersJsonPath-only fixture preflight does not fail during PowerShell binding."
+}
+if ($handoffScriptText -match '\[Parameter\(Mandatory = \$true\)\]\[string\]\$RunnerJsonPath') {
+    Write-Error "Invoke-RunnerPreflight must allow an empty RunnerJsonPath so RepoFullName-only API preflight does not fail during PowerShell binding."
+}
 
 function Assert-LinePresent {
     param(
@@ -177,6 +184,19 @@ try {
             "renderer_commercial_readiness=0"
         )) {
         Assert-LinePresent $readyRunnerLines $expectedLine "final handoff ready runner"
+    }
+
+    $fixtureOnlyRunnerLines = @(& $handoffScript `
+            -RunnersJsonPath $readyRunnerJson `
+            -IntakeManifestRelative $blockedManifestRelative)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=metal_memory_profiling_run_required",
+            "renderer_commercial_readiness_final_handoff_next_action=run_metal_memory_profiling_capable_host_workflow",
+            "renderer_commercial_readiness_final_handoff_runner_preflight_known=1",
+            "renderer_commercial_readiness_final_handoff_runner_available=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $fixtureOnlyRunnerLines $expectedLine "final handoff fixture-only runner"
     }
 
     $fromRunsLines = @(& $handoffScript `
