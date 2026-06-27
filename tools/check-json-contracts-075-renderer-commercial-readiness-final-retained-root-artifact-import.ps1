@@ -6,6 +6,8 @@ $importerText = Get-JsonContractSurfaceText "tools/import-renderer-commercial-re
 $importerCheckText = Get-JsonContractSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1"
 $runnerPreflightText = Get-JsonContractSurfaceText "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1"
 $runnerPreflightCheckText = Get-JsonContractSurfaceText "tools/check-renderer-metal-memory-profiling-capable-host-runner.ps1"
+$finalHandoffText = Get-JsonContractSurfaceText "tools/validate-renderer-commercial-readiness-final-handoff.ps1"
+$finalHandoffCheckText = Get-JsonContractSurfaceText "tools/check-renderer-commercial-readiness-final-handoff.ps1"
 $commandsFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $productionLoopFragmentText = Get-JsonContractSurfaceText "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -137,9 +139,43 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "validation_recipe=renderer-commercial-readiness-final-handoff",
+        "renderer_commercial_readiness_final_handoff_status=",
+        "renderer_commercial_readiness_final_handoff_next_action=",
+        "renderer_commercial_readiness_final_handoff_source_run_ready=",
+        "renderer_commercial_readiness_final_handoff_metal_memory_profiling_run_ready=",
+        "renderer_commercial_readiness_final_handoff_runner_available=",
+        "renderer_commercial_readiness_final_handoff_missing_assembler_inputs=",
+        "renderer_commercial_readiness_final_handoff_quality_vfx_dependency_blockers=",
+        "renderer_commercial_readiness_final_handoff_capable_host_workflow_command=",
+        "renderer_commercial_readiness_final_handoff_final_from_runs_workflow_command=",
+        "renderer_commercial_readiness_final_handoff_final_preflight_command=",
+        "gh workflow run renderer-metal-memory-profiling-capable-host.yml",
+        "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalHandoffText $needle "renderer commercial readiness final handoff planner"
+}
+
+foreach ($needle in @(
+        "renderer-commercial-readiness-final-handoff-check: ok",
+        "renderer_commercial_readiness_final_handoff_status=capable_host_runner_required",
+        "renderer_commercial_readiness_final_handoff_status=metal_memory_profiling_run_required",
+        "renderer_commercial_readiness_final_handoff_status=ready_for_final_from_runs_workflow",
+        "renderer_commercial_readiness_final_handoff_status=ready_for_final_preflight",
+        "renderer_commercial_readiness_final_handoff_next_action=run_final_from_runs_workflow",
+        "renderer_commercial_readiness_final_handoff_final_from_runs_workflow_command=gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalHandoffCheckText $needle "renderer commercial readiness final handoff planner check"
+}
+
+foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
         "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
+        "rendererCommercialReadinessFinalHandoff",
+        "validate-renderer-commercial-readiness-final-handoff.ps1",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
@@ -152,6 +188,9 @@ foreach ($needle in @(
         "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "/repos/{owner}/{repo}/actions/runners",
         "self-hosted, macOS, ARM64, and metal-residency-set",
+        "renderer-commercial-readiness-final-handoff",
+        "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
+        "final-handoff-plan-only",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "renderer-clean-room-legal-review-input",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
@@ -159,6 +198,11 @@ foreach ($needle in @(
         ".github/workflows/renderer-commercial-readiness-final-from-runs.yml",
         "renderer-commercial-readiness-final-from-runs",
         "renderer-commercial-readiness-final-from-runs-artifact-intake",
+        "renderer-commercial-readiness-final-handoff",
+        "rendererCommercialReadinessFinalHandoff",
+        "validate-renderer-commercial-readiness-final-handoff.ps1",
+        "quality_vfx_dependency_blockers",
+        "next_action",
         "source_artifact_run_id",
         "metal_memory_profiling_run_id",
         "RegenerateQualityVfx",
