@@ -139,6 +139,14 @@ try {
             "renderer_public_runner_security_review_repository_visibility=public",
             "renderer_public_runner_security_review_required_labels=self-hosted,macOS,ARM64,metal-residency-set",
             "renderer_public_runner_security_review_allowed_workflows=renderer-metal-memory-profiling-capable-host.yml",
+            "renderer_public_runner_security_review_workflow_audit_file=.github/workflows/renderer-metal-memory-profiling-capable-host.yml",
+            "renderer_public_runner_security_review_workflow_audit_ready=1",
+            "renderer_public_runner_security_review_workflow_dispatch_only=1",
+            "renderer_public_runner_security_review_workflow_untrusted_pr_triggers=0",
+            "renderer_public_runner_security_review_workflow_permissions_read_only=1",
+            "renderer_public_runner_security_review_workflow_checkout_action_pinned=1",
+            "renderer_public_runner_security_review_workflow_checkout_persist_credentials_disabled=1",
+            "renderer_public_runner_security_review_workflow_confirm_input_required=1",
             "renderer_public_runner_security_review_artifact_written=0",
             "renderer_public_runner_security_review_registration_token_fetched=0",
             "renderer_public_runner_security_review_workflow_dispatched=0",
@@ -181,6 +189,13 @@ try {
             "renderer_public_runner_security_review_ready=1",
             "renderer_public_runner_security_review_artifact=$reviewArtifactRelative",
             "renderer_public_runner_security_review_artifact_written=1",
+            "renderer_public_runner_security_review_workflow_audit_ready=1",
+            "renderer_public_runner_security_review_workflow_dispatch_only=1",
+            "renderer_public_runner_security_review_workflow_untrusted_pr_triggers=0",
+            "renderer_public_runner_security_review_workflow_permissions_read_only=1",
+            "renderer_public_runner_security_review_workflow_checkout_action_pinned=1",
+            "renderer_public_runner_security_review_workflow_checkout_persist_credentials_disabled=1",
+            "renderer_public_runner_security_review_workflow_confirm_input_required=1",
             "renderer_public_runner_security_review_registration_token_endpoint=/repos/owner/repo/actions/runners/registration-token",
             "renderer_public_runner_security_review_registration_token_expires_minutes=60",
             "renderer_public_runner_security_review_registration_token_fetched=0",
@@ -201,7 +216,14 @@ try {
         -not [bool]$review.reviewed_public_fork_pr_risk -or
         -not [bool]$review.reviewed_runner_isolation -or
         -not [bool]$review.reviewed_secret_exposure -or
-        -not [bool]$review.reviewed_metal_probe_truth) {
+        -not [bool]$review.reviewed_metal_probe_truth -or
+        [string]$review.reviewed_workflow_file -cne ".github/workflows/renderer-metal-memory-profiling-capable-host.yml" -or
+        -not [bool]$review.workflow_audit.workflow_dispatch_only -or
+        [bool]$review.workflow_audit.untrusted_pr_triggers_present -or
+        -not [bool]$review.workflow_audit.contents_permission_read_only -or
+        -not [bool]$review.workflow_audit.checkout_action_pinned -or
+        -not [bool]$review.workflow_audit.checkout_persist_credentials_disabled -or
+        -not [bool]$review.workflow_audit.confirm_input_required) {
         Write-Error "public runner review artifact did not preserve approved review rows."
     }
 
@@ -217,6 +239,7 @@ try {
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_present=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_status=approved",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_workflow_audit_valid=1",
             "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=0",
             "renderer_commercial_readiness=0"
         )) {

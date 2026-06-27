@@ -1,0 +1,69 @@
+{
+  "schema_version": "GameEngine.RendererPublicSelfHostedRunnerSecurityReview.v1",
+  "validation_recipe": "renderer-public-runner-security-review",
+  "generated_utc": "2026-06-27T21:04:18.9460948+00:00",
+  "repo_full_name": "y2ikgm89/mirakanai-engine",
+  "repository_visibility": "public",
+  "review_status": "approved",
+  "reviewed_public_fork_pr_risk": true,
+  "reviewed_runner_isolation": true,
+  "reviewed_secret_exposure": true,
+  "reviewed_allowed_workflows": [
+    "renderer-metal-memory-profiling-capable-host.yml"
+  ],
+  "reviewed_required_labels": [
+    "self-hosted",
+    "macOS",
+    "ARM64",
+    "metal-residency-set"
+  ],
+  "reviewed_metal_probe_truth": true,
+  "reviewed_workflow_file": ".github/workflows/renderer-metal-memory-profiling-capable-host.yml",
+  "workflow_audit": {
+    "workflow_file": ".github/workflows/renderer-metal-memory-profiling-capable-host.yml",
+    "workflow_file_exists": true,
+    "workflow_dispatch_only": true,
+    "untrusted_pr_triggers_present": false,
+    "contents_permission_read_only": true,
+    "required_labels": [
+      "self-hosted",
+      "macOS",
+      "ARM64",
+      "metal-residency-set"
+    ],
+    "required_labels_match": true,
+    "checkout_action_pinned": true,
+    "checkout_persist_credentials_disabled": true,
+    "confirm_input_required": true,
+    "ready": true
+  },
+  "official_source_rows": {
+    "github_actions_self_hosted_runner_security": "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions",
+    "github_actions_secure_use_reference": "https://docs.github.com/en/actions/reference/secure-use-reference",
+    "github_actions_runner_labels": "https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job",
+    "github_rest_repository_runner_registration_token": "https://docs.github.com/en/rest/actions/self-hosted-runners#create-a-registration-token-for-a-repository",
+    "context7_actions_library_id": "/websites/github_en_actions",
+    "context7_rest_library_id": "/websites/github_en_rest"
+  },
+  "non_actions": {
+    "registration_token_fetched": false,
+    "registration_token_printed": false,
+    "workflow_dispatched": false,
+    "runner_registered": false,
+    "gpu_workload_executed": false
+  },
+  "token_handoff": {
+    "endpoint": "/repos/y2ikgm89/mirakanai-engine/actions/runners/registration-token",
+    "expires_minutes": 60,
+    "token_value_retained": false
+  },
+  "non_claims": {
+    "runner_available": false,
+    "metal_memory_profiling_host_evidence_ready": false,
+    "renderer_backend_parity_ready": false,
+    "renderer_metal_broad_readiness": false,
+    "renderer_broad_quality_ready": false,
+    "renderer_commercial_readiness": false,
+    "renderer_environment_ready": false
+  }
+}

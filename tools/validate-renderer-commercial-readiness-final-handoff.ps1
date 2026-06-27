@@ -264,6 +264,48 @@ function Test-StringArrayContains {
     return $false
 }
 
+function Test-PublicRepoRunnerSecurityReviewWorkflowAudit {
+    param(
+        [AllowNull()]$Review,
+        [Parameter(Mandatory = $true)][string[]]$RequiredLabels
+    )
+
+    $workflowFile = [string](Get-JsonPropertyValue -JsonObject $Review -Name "reviewed_workflow_file")
+    if ($workflowFile -cne ".github/workflows/renderer-metal-memory-profiling-capable-host.yml") {
+        return $false
+    }
+
+    $audit = Get-JsonPropertyValue -JsonObject $Review -Name "workflow_audit"
+    if ($null -eq $audit) {
+        return $false
+    }
+    if (-not (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $audit -Name "workflow_dispatch_only"))) {
+        return $false
+    }
+    if (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $audit -Name "untrusted_pr_triggers_present")) {
+        return $false
+    }
+    if (-not (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $audit -Name "contents_permission_read_only"))) {
+        return $false
+    }
+    if (-not (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $audit -Name "checkout_action_pinned"))) {
+        return $false
+    }
+    if (-not (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $audit -Name "checkout_persist_credentials_disabled"))) {
+        return $false
+    }
+    if (-not (Test-JsonBooleanTrue -Value (Get-JsonPropertyValue -JsonObject $audit -Name "confirm_input_required"))) {
+        return $false
+    }
+    if (-not (Test-StringSetEquals `
+                -Value (Get-JsonPropertyValue -JsonObject $audit -Name "required_labels") `
+                -ExpectedValues $RequiredLabels)) {
+        return $false
+    }
+
+    return $true
+}
+
 function Test-PublicRepoRunnerSecurityReviewArtifact {
     param(
         [AllowNull()]$Review,
@@ -307,6 +349,9 @@ function Test-PublicRepoRunnerSecurityReviewArtifact {
     if (-not (Test-StringSetEquals `
                 -Value (Get-JsonPropertyValue -JsonObject $Review -Name "reviewed_required_labels") `
                 -ExpectedValues $RequiredLabels)) {
+        return $false
+    }
+    if (-not (Test-PublicRepoRunnerSecurityReviewWorkflowAudit -Review $Review -RequiredLabels $RequiredLabels)) {
         return $false
     }
 
@@ -416,6 +461,7 @@ $publicRepoRegistrationBlocked = $false
 $publicRepoSecurityReviewConfirmationRequired = "public-repo-self-hosted-runner-risk-reviewed"
 $publicRepoSecurityReviewArtifactPresent = -not [string]::IsNullOrWhiteSpace($PublicRepoRunnerSecurityReviewRelative)
 $publicRepoSecurityReviewArtifactValid = $false
+$publicRepoSecurityReviewArtifactWorkflowAuditValid = $false
 $publicRepoSecurityReviewArtifactStatus = "not_supplied"
 
 $manifest = $null
@@ -609,6 +655,9 @@ if ($nextAction -ceq "provision_capable_host_runner") {
         } else {
             $publicRepoSecurityReviewArtifactStatus = "missing_review_status"
         }
+        $publicRepoSecurityReviewArtifactWorkflowAuditValid = Test-PublicRepoRunnerSecurityReviewWorkflowAudit `
+            -Review $publicRepoSecurityReviewArtifact `
+            -RequiredLabels $runnerRequiredLabels
         $publicRepoSecurityReviewArtifactValid = Test-PublicRepoRunnerSecurityReviewArtifact `
             -Review $publicRepoSecurityReviewArtifact `
             -RepositoryFullName $RepoFullName `
@@ -705,6 +754,7 @@ if ($nextAction -ceq "provision_capable_host_runner" -or
         Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact=$PublicRepoRunnerSecurityReviewRelative"
         Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_valid=$(ConvertTo-CounterBit $publicRepoSecurityReviewArtifactValid)"
         Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_status=$(ConvertTo-CounterValue -Value $publicRepoSecurityReviewArtifactStatus)"
+        Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_security_review_artifact_workflow_audit_valid=$(ConvertTo-CounterBit $publicRepoSecurityReviewArtifactWorkflowAuditValid)"
     }
     Write-Output "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=$(ConvertTo-CounterBit $publicRepoRegistrationBlocked)"
     Write-Output "renderer_commercial_readiness_final_handoff_runner_registration_token_endpoint=$runnerRegistrationTokenEndpoint"
