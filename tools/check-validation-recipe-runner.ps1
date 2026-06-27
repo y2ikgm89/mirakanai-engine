@@ -581,6 +581,7 @@ Assert-DryRunRecipe -Recipe "agent-contract" -ExpectedArgv @("-File", "check-ai-
 Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @("-File", "validate-renderer-metal-apple.ps1") | Out-Null
+Assert-DryRunRecipe -Recipe "renderer-metal-memory-profiling-capable-host-runner-preflight" -ExpectedArgv @("-File", "validate-renderer-metal-memory-profiling-capable-host-runner.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-quality-closeout" -ExpectedArgv @("-File", "validate-renderer-commercial-quality-closeout.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-evidence" -ExpectedArgv @("-File", "validate-renderer-commercial-readiness-evidence.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "renderer-clean-room-legal-review-input" -ExpectedArgv @("-File", "generate-renderer-clean-room-legal-review-input.ps1", "-Mode", "Plan") | Out-Null

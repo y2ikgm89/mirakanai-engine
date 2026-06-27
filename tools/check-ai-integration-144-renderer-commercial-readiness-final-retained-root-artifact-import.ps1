@@ -4,6 +4,8 @@
 
 $importerText = Get-AgentSurfaceText "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
 $importerCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1"
+$runnerPreflightText = Get-AgentSurfaceText "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1"
+$runnerPreflightCheckText = Get-AgentSurfaceText "tools/check-renderer-metal-memory-profiling-capable-host-runner.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
@@ -110,8 +112,45 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "validation_recipe=renderer-metal-memory-profiling-capable-host-runner-preflight",
+        "renderer_metal_memory_profiling_capable_host_runner_api_endpoint=",
+        "/repos/{owner}/{repo}/actions/runners",
+        "renderer_metal_memory_profiling_capable_host_runner_status=",
+        "renderer_metal_memory_profiling_capable_host_runner_available=",
+        "renderer_metal_memory_profiling_capable_host_runner_required_labels=",
+        "self-hosted",
+        "macOS",
+        "ARM64",
+        "metal-residency-set",
+        "gh",
+        "actions/runners?per_page=100",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $runnerPreflightText $needle "renderer Metal memory/profiling capable-host runner preflight"
+}
+
+foreach ($needle in @(
+        "renderer-metal-memory-profiling-capable-host-runner-check: ok",
+        "renderer_metal_memory_profiling_capable_host_runner_api_endpoint=/repos/{owner}/{repo}/actions/runners",
+        "renderer_metal_memory_profiling_capable_host_runner_status=ready",
+        "renderer_metal_memory_profiling_capable_host_runner_status=host_evidence_required",
+        "renderer_metal_memory_profiling_capable_host_runner_available=1",
+        "renderer_metal_memory_profiling_capable_host_runner_available=0",
+        "renderer_metal_memory_profiling_capable_host_runner_total=2",
+        "renderer_metal_memory_profiling_capable_host_runner_total=0",
+        "Renderer Metal memory profiling capable host runner is not available",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $runnerPreflightCheckText $needle "renderer Metal memory/profiling capable-host runner preflight check"
+}
+Assert-ContainsText $validateText "check-renderer-metal-memory-profiling-capable-host-runner.ps1" `
+    "renderer Metal memory/profiling capable-host runner preflight validate task"
+
+foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
+        "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
+        "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
         "confirm_final_retained_root_handoff=renderer-commercial-final-retained-root",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1"
@@ -120,6 +159,10 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "renderer-metal-memory-profiling-capable-host-runner-preflight",
+        "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+        "/repos/{owner}/{repo}/actions/runners",
+        "self-hosted, macOS, ARM64, and metal-residency-set",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
         "GitHub Actions artifacts",
@@ -132,6 +175,9 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "renderer-metal-memory-profiling-capable-host-runner-preflight",
+        "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+        "host-evidence-required",
         "renderer-commercial-readiness-final-promotion-preflight",
         "renderer-commercial-readiness-final-retained-root-assembler",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
@@ -147,6 +193,7 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        'Assert-DryRunRecipe -Recipe "renderer-metal-memory-profiling-capable-host-runner-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler"',
         'Assert-DryRunRecipe -Recipe "renderer-clean-room-legal-review-input"',
@@ -166,6 +213,11 @@ foreach ($surface in @(
     )) {
     foreach ($needle in @(
             "renderer-commercial-readiness-final-retained-root-artifact-import",
+            "renderer-metal-memory-profiling-capable-host-runner-preflight",
+            "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
+            "/repos/{owner}/{repo}/actions/runners",
+            "self-hosted, macOS, ARM64, metal-residency-set",
+            "renderer_metal_memory_profiling_capable_host_runner_available",
             "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
             "tools/check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1",
             "GitHub Actions artifacts",

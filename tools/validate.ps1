@@ -563,6 +563,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-final-promotion-preflight.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-final-retained-root-assembler.ps1"
     Get-ValidateTask -ScriptFileName "check-renderer-commercial-readiness-final-retained-root-artifact-import.ps1"
+    Get-ValidateTask -ScriptFileName "check-renderer-metal-memory-profiling-capable-host-runner.ps1"
     # renderer-metal-memory-profiling-apple-host-artifacts-v1 fail-closed host-gated check.
     Get-ValidateTask -ScriptFileName "generate-renderer-metal-memory-profiling-host-artifacts.ps1"
     Get-ValidateTask -ScriptFileName "check-optional-gpu-compute-review-collector.ps1"
