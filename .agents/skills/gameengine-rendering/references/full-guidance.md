@@ -105,6 +105,8 @@ counters.
   only for Apple-host retained artifact production. The macOS/full-Xcode `-RequireReady` path builds
   `MK_metal_memory_profiling_host_artifacts_probe`, captures real `MTLHeap`, `MTLResidencySet`, `MTLCaptureManager`, and
   `MTLCaptureScope` evidence, imports it through the collector, and may validate local `renderer_metal_memory_profiling_ready=1`.
+  The probe checks `MTLGPUFamilyApple6`, writes `probe-capability-summary.json`, and host gates unsupported devices with
+  `renderer_metal_memory_profiling_host_gate_residency_sets_supported=0` plus `mtlresidencyset_unsupported`.
   GitHub-hosted macOS runs without `-RequireReady` and may record `host-gate-summary.*` diagnostics when `MTLResidencySet`
   creation is rejected. Non-Apple/default validation stays host-gated, and broad backend parity, broad Metal readiness,
   commercial renderer readiness,

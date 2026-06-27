@@ -96,6 +96,26 @@ void write_json(NSURL* url, NSDictionary* value) {
     }
 }
 
+[[nodiscard]] BOOL supports_gpu_family(id<MTLDevice> device, MTLGPUFamily family) {
+    if (device == nil || ![device respondsToSelector:@selector(supportsFamily:)]) {
+        return NO;
+    }
+    return [device supportsFamily:family];
+}
+
+[[nodiscard]] NSDictionary* make_capability_summary(id<MTLDevice> device) {
+    const BOOL supports_family_selector = device != nil && [device respondsToSelector:@selector(supportsFamily:)];
+    const BOOL apple6_supported = supports_family_selector ? supports_gpu_family(device, MTLGPUFamilyApple6) : NO;
+    NSString* device_name = device.name == nil || device.name.length == 0U ? @"unknown" : device.name;
+    return @{
+        @"device_name" : device_name,
+        @"supports_family_selector" : @(supports_family_selector),
+        @"residency_sets_required_gpu_family" : @"MTLGPUFamilyApple6",
+        @"gpu_family_apple6_supported" : @(apple6_supported),
+        @"residency_sets_supported" : @(apple6_supported)
+    };
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -115,14 +135,18 @@ int main(int argc, char** argv) {
         NSURL* capture_document_url = [output_url URLByAppendingPathComponent:@"capture.gputrace"];
         NSURL* capture_summary_url = [output_url URLByAppendingPathComponent:@"capture-summary.txt"];
         NSURL* summary_url = [output_url URLByAppendingPathComponent:@"probe-summary.json"];
+        NSURL* capability_summary_url = [output_url URLByAppendingPathComponent:@"probe-capability-summary.json"];
         remove_existing_path(capture_document_url);
         remove_existing_path(capture_summary_url);
         remove_existing_path(summary_url);
+        remove_existing_path(capability_summary_url);
 
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
         if (device == nil) {
             fail(@"MTLCreateSystemDefaultDevice returned nil");
         }
+        NSDictionary* capability_summary = make_capability_summary(device);
+        write_json(capability_summary_url, capability_summary);
 
         id<MTLCommandQueue> command_queue = [device newCommandQueue];
         if (command_queue == nil) {
@@ -134,6 +158,9 @@ int main(int argc, char** argv) {
         if (@available(macOS 15.0, *)) {
             if (![device respondsToSelector:@selector(newResidencySetWithDescriptor:error:)]) {
                 fail(@"MTLDevice newResidencySetWithDescriptor:error: selector is unavailable on this host");
+            }
+            if (![capability_summary[@"residency_sets_supported"] boolValue]) {
+                fail(@"MTLResidencySet unsupported: MTLGPUFamilyApple6 is not supported by this device");
             }
 
             MTLResidencySetDescriptor* residency_descriptor = [MTLResidencySetDescriptor new];
@@ -254,6 +281,9 @@ int main(int argc, char** argv) {
                            "residency_api_name=MTLResidencySet\n"
                            "capture_api_name=MTLCaptureManager\n"
                            "capture_scope_api_name=MTLCaptureScope\n"
+                           "residency_sets_required_gpu_family=MTLGPUFamilyApple6\n"
+                           "gpu_family_apple6_supported=1\n"
+                           "residency_sets_supported=1\n"
                            "heap_resource_rows=1\n"
                            "heap_allocated_bytes=%llu\n"
                            "resident_bytes=%llu\n"
@@ -278,6 +308,9 @@ int main(int argc, char** argv) {
             @"heap_allocated_bytes" : @(heap_buffer_bytes),
             @"resident_bytes" : @(heap_buffer_bytes),
             @"budget_bytes" : @(heap_size),
+            @"residency_sets_required_gpu_family" : @"MTLGPUFamilyApple6",
+            @"gpu_family_apple6_supported" : @YES,
+            @"residency_sets_supported" : @YES,
             @"residency_set_allocation_rows" : @2,
             @"memory_pressure_sample_rows" : @1,
             @"memory_pressure_budget_status" : @"within_budget",

@@ -6,9 +6,9 @@
 
 **Goal:** Add a first-party Apple-host artifact producer that turns real macOS Metal heap, residency-set, and programmatic capture execution into validator-ready `GameEngine.RendererMetalMemoryProfilingHostEvidence.v1` evidence.
 
-**Architecture:** Keep native Metal objects inside an Apple-only probe executable and the existing `mirakana::rhi::metal` private/test boundary. A PowerShell wrapper builds/runs the probe only on macOS with full Xcode, imports its artifact through the existing collector on `-RequireReady` capable hosts, validates retained evidence through the existing validator, and leaves Windows/Linux/default validation host-gated. GitHub-hosted macOS builds and runs the probe but may emit host-gated diagnostics when the hosted Metal device rejects `MTLResidencySet` creation. No public native handles, gameplay upload APIs, external-engine compatibility, broad backend parity, broad Metal readiness, commercial renderer readiness, broad renderer quality, or `environment_ready` claims are introduced.
+**Architecture:** Keep native Metal objects inside an Apple-only probe executable and the existing `mirakana::rhi::metal` private/test boundary. A PowerShell wrapper builds/runs the probe only on macOS with full Xcode, imports its artifact through the existing collector on `-RequireReady` capable hosts, validates retained evidence through the existing validator, and leaves Windows/Linux/default validation host-gated. GitHub-hosted macOS builds and runs the probe but may emit host-gated diagnostics when the hosted Metal device rejects `MTLResidencySet` creation or when the `MTLGPUFamilyApple6` residency-set feature gate is not met. No public native handles, gameplay upload APIs, external-engine compatibility, broad backend parity, broad Metal readiness, commercial renderer readiness, broad renderer quality, or `environment_ready` claims are introduced.
 
-**Tech Stack:** C++23, Objective-C++ on Apple hosts, Metal `MTLHeap`, `MTLResidencySet`, `MTLCommandQueue.addResidencySet`, `MTLCaptureManager`, `MTLCaptureDescriptor`, `MTLCaptureScope`, PowerShell 7, CMake/CTest, GitHub Actions macOS Metal lane.
+**Tech Stack:** C++23, Objective-C++ on Apple hosts, Metal `MTLHeap`, `MTLResidencySet`, `MTLGPUFamilyApple6`, `MTLCommandQueue.addResidencySet`, `MTLCaptureManager`, `MTLCaptureDescriptor`, `MTLCaptureScope`, PowerShell 7, CMake/CTest, GitHub Actions macOS Metal lane.
 
 ---
 
@@ -20,6 +20,8 @@
 - Apple Developer Documentation says staged `MTLResidencySet.addAllocation(_:)` / `addAllocations(_:)` changes are applied by calling `MTLResidencySet.commit()`: <https://developer.apple.com/documentation/metal/mtlresidencyset/commit%28%29>.
 - Apple Developer Documentation says `MTLResidencySet.requestResidency()` asks Metal to prepare allocations for residency: <https://developer.apple.com/documentation/metal/mtlresidencyset/requestresidency%28%29>.
 - Apple Developer Documentation says a command queue can attach residency sets through `addResidencySet(_:)` / `addResidencySets`: <https://developer.apple.com/documentation/metal/mtlcommandqueue/addresidencyset%28_%3A%29>.
+- Apple Developer Documentation says `MTLDevice.supportsFamily(_:)` returns whether a GPU supports a specific GPU family feature set, and `MTLGPUFamily` is the family enum used for that check: <https://developer.apple.com/documentation/metal/mtldevice/supportsfamily%28_%3A%29> and <https://developer.apple.com/documentation/metal/mtlgpufamily>.
+- Apple's Metal Feature Set Tables list `Residency sets` as available for Metal 3/4 starting with Apple GPU family `Apple6`, and list 32 residency sets per queue/buffer for Apple6 and newer: <https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf>.
 - Apple Developer Documentation says `MTLCaptureManager` captures Metal command data programmatically, and the Xcode guide documents `MTLCaptureDescriptor.outputURL` for GPU trace documents: <https://developer.apple.com/documentation/metal/mtlcapturemanager> and <https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-programmatically>.
 - Apple Developer Documentation says `MTLCaptureScope` configures frame-capture scope boundaries: <https://developer.apple.com/documentation/metal/mtlcapturescope>.
 
@@ -31,11 +33,11 @@ Context7 was checked for Apple Metal SDK API docs. It only surfaced the Metal Sh
 - Do not make `xctrace`, Xcode, Apple hardware, or `MTLCaptureManager` a default Windows/Linux validation dependency.
 - Do not copy Apple samples, Stack Overflow snippets, Unity/Unreal/Godot APIs, or third-party implementation code.
 - Do not add a public native handle API. Apple SDK types may appear only in Apple-only `.mm`/fixture implementation and private CMake wiring.
-- If programmatic GPU trace document capture or `MTLResidencySet` creation is unavailable on a host, emit exact host-gated counters and fail only when `-RequireReady` is requested.
+- If programmatic GPU trace document capture, the `MTLGPUFamilyApple6` residency-set gate, or `MTLResidencySet` creation is unavailable on a host, emit exact host-gated counters and fail only when `-RequireReady` is requested.
 
 ## Done When
 
-- `tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1` reports host-gated counters on non-macOS hosts and, on macOS, builds/runs the Apple probe. A `-RequireReady` capable Apple host imports evidence with `tools/collect-renderer-metal-memory-profiling-host-evidence.ps1` and validates `renderer_metal_memory_profiling_status=ready` / `renderer_metal_memory_profiling_ready=1`; hosted or incomplete Apple hosts emit `renderer_metal_memory_profiling_host_artifacts_status=host_gated` with an exact host-gate reason.
+- `tools/generate-renderer-metal-memory-profiling-host-artifacts.ps1` reports host-gated counters on non-macOS hosts and, on macOS, builds/runs the Apple probe. A `-RequireReady` capable Apple host imports evidence with `tools/collect-renderer-metal-memory-profiling-host-evidence.ps1` and validates `renderer_metal_memory_profiling_status=ready` / `renderer_metal_memory_profiling_ready=1`; hosted or incomplete Apple hosts emit `renderer_metal_memory_profiling_host_artifacts_status=host_gated` with an exact host-gate reason, `probe-capability-summary.json`, `renderer_metal_memory_profiling_host_gate_residency_sets_supported`, and `mtlresidencyset_unsupported` when the device family gate is not met.
 - An Apple-only probe executable creates a real Metal device, command queue, heap allocation, heap resource allocation, residency set, residency request/commit, capture scope, command buffer, and capture artifact without exposing native handles.
 - `tools/check-renderer-metal-memory-profiling-host-evidence.ps1` default validation remains `host_evidence_required` / `ready=0` unless generated artifacts are explicitly supplied.
 - `.github/workflows/validate.yml` runs the producer without `-RequireReady` only on the existing macOS Metal host evidence lane and uploads generated ready artifacts or host-gated diagnostics for inspection.
@@ -98,6 +100,7 @@ It writes:
 capture.gputrace
 capture-summary.txt
 probe-summary.json
+probe-capability-summary.json
 ```
 
 `probe-summary.json` contains at least:
@@ -110,6 +113,9 @@ probe-summary.json
   "heap_allocated_bytes": 4096,
   "resident_bytes": 4096,
   "budget_bytes": 65536,
+  "residency_sets_required_gpu_family": "MTLGPUFamilyApple6",
+  "gpu_family_apple6_supported": true,
+  "residency_sets_supported": true,
   "residency_set_allocation_rows": 1,
   "memory_pressure_sample_rows": 1,
   "memory_pressure_budget_status": "within_budget",
