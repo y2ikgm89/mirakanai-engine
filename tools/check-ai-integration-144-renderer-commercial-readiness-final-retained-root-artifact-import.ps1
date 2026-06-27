@@ -10,6 +10,8 @@ $publicRunnerReviewText = Get-AgentSurfaceText "tools/generate-renderer-public-r
 $publicRunnerReviewCheckText = Get-AgentSurfaceText "tools/check-renderer-public-runner-security-review.ps1"
 $finalHandoffText = Get-AgentSurfaceText "tools/validate-renderer-commercial-readiness-final-handoff.ps1"
 $finalHandoffCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-handoff.ps1"
+$finalRunDiscoveryText = Get-AgentSurfaceText "tools/plan-renderer-commercial-readiness-final-run-discovery.ps1"
+$finalRunDiscoveryCheckText = Get-AgentSurfaceText "tools/check-renderer-commercial-readiness-final-run-discovery.ps1"
 $validateText = Get-AgentSurfaceText "tools/validate.ps1"
 $commandsFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $validationRecipesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
@@ -280,13 +282,55 @@ Assert-ContainsText $validateText "check-renderer-commercial-readiness-final-han
     "renderer commercial readiness final handoff validate task"
 
 foreach ($needle in @(
+        "validation_recipe=renderer-commercial-readiness-final-run-discovery",
+        "renderer_commercial_readiness_final_run_discovery_status=",
+        "renderer_commercial_readiness_final_run_discovery_next_action=",
+        "renderer_commercial_readiness_final_run_discovery_source_run_id=",
+        "renderer_commercial_readiness_final_run_discovery_metal_memory_profiling_run_id=",
+        "renderer_commercial_readiness_final_run_discovery_final_from_runs_workflow_command=",
+        "renderer-commercial-readiness-current-run-artifact-intake",
+        "renderer-metal-memory-profiling-host-artifacts",
+        "renderer-commercial-readiness-final-from-runs.yml",
+        "/actions/runs",
+        "/actions/runs/{run_id}/artifacts",
+        "/websites/github_en_rest",
+        "/websites/github_en_actions",
+        "workflow_dispatched=0",
+        "artifacts_downloaded=0",
+        "gpu_workload_executed=0",
+        "evidence_assembled=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalRunDiscoveryText $needle "renderer commercial readiness final run discovery planner"
+}
+
+foreach ($needle in @(
+        "renderer-commercial-readiness-final-run-discovery-check: ok",
+        "renderer_commercial_readiness_final_run_discovery_status=ready_for_final_from_runs_workflow",
+        "renderer_commercial_readiness_final_run_discovery_status=metal_memory_profiling_run_required",
+        "renderer_commercial_readiness_final_run_discovery_status=source_run_required",
+        "renderer_commercial_readiness_final_run_discovery_source_run_id=111111",
+        "renderer_commercial_readiness_final_run_discovery_metal_memory_profiling_run_id=222222",
+        "renderer_commercial_readiness_final_run_discovery_final_from_runs_workflow_command=gh workflow run renderer-commercial-readiness-final-from-runs.yml",
+        "renderer_commercial_readiness_final_run_discovery_workflow_dispatched=0",
+        "renderer_commercial_readiness_final_run_discovery_artifacts_downloaded=0",
+        "renderer_commercial_readiness=0"
+    )) {
+    Assert-ContainsText $finalRunDiscoveryCheckText $needle "renderer commercial readiness final run discovery planner check"
+}
+Assert-ContainsText $validateText "check-renderer-commercial-readiness-final-run-discovery.ps1" `
+    "renderer commercial readiness final run discovery validate task"
+
+foreach ($needle in @(
         "rendererCommercialReadinessFinalRetainedRootArtifactImport",
         "rendererCommercialReadinessFinalRetainedRootFromRunsWorkflow",
         "rendererMetalMemoryProfilingCapableHostRunnerPreflight",
         "rendererPublicRunnerSecurityReviewGenerator",
         "rendererCommercialReadinessFinalHandoff",
+        "rendererCommercialReadinessFinalRunDiscovery",
         "generate-renderer-public-runner-security-review.ps1",
         "validate-renderer-commercial-readiness-final-handoff.ps1",
+        "plan-renderer-commercial-readiness-final-run-discovery.ps1",
         "PublicRepoRunnerSecurityReviewRelative",
         "validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
         "gh workflow run renderer-commercial-readiness-final-from-runs.yml",
@@ -335,6 +379,16 @@ foreach ($needle in @(
         "renderer-commercial-readiness-final-handoff",
         "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
         "final-handoff-plan-only",
+        "renderer-commercial-readiness-final-run-discovery",
+        "tools/plan-renderer-commercial-readiness-final-run-discovery.ps1",
+        "rendererCommercialReadinessFinalRunDiscovery",
+        "final-run-discovery-plan-only",
+        "GET /repos/{owner}/{repo}/actions/runs",
+        "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+        "source_artifact_run_id",
+        "metal_memory_profiling_run_id",
+        "renderer-commercial-readiness-current-run-artifact-intake",
+        "renderer-metal-memory-profiling-host-artifacts",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
         "tools/import-renderer-commercial-readiness-final-retained-root-artifacts.ps1",
         "GitHub Actions artifacts",
@@ -355,6 +409,9 @@ foreach ($needle in @(
         "renderer-commercial-readiness-final-handoff",
         "validate-renderer-commercial-readiness-final-handoff.ps1",
         "final-handoff-plan-only",
+        "renderer-commercial-readiness-final-run-discovery",
+        "plan-renderer-commercial-readiness-final-run-discovery.ps1",
+        "final-run-discovery-plan-only",
         "renderer-commercial-readiness-final-promotion-preflight",
         "renderer-commercial-readiness-final-retained-root-assembler",
         "renderer-commercial-readiness-final-retained-root-artifact-import",
@@ -373,6 +430,7 @@ foreach ($needle in @(
         'Assert-DryRunRecipe -Recipe "renderer-metal-memory-profiling-capable-host-runner-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-public-runner-security-review"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-handoff"',
+        'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-run-discovery"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-promotion-preflight"',
         'Assert-DryRunRecipe -Recipe "renderer-commercial-readiness-final-retained-root-assembler"',
         'Assert-DryRunRecipe -Recipe "renderer-clean-room-legal-review-input"',
@@ -396,12 +454,16 @@ foreach ($surface in @(
             "renderer-public-runner-security-review",
             "renderer-commercial-readiness-final-handoff",
             "rendererCommercialReadinessFinalHandoff",
+            "renderer-commercial-readiness-final-run-discovery",
+            "rendererCommercialReadinessFinalRunDiscovery",
             "rendererPublicRunnerSecurityReviewGenerator",
             "tools/validate-renderer-metal-memory-profiling-capable-host-runner.ps1",
             "tools/generate-renderer-public-runner-security-review.ps1",
             "tools/check-renderer-public-runner-security-review.ps1",
             "tools/validate-renderer-commercial-readiness-final-handoff.ps1",
             "tools/check-renderer-commercial-readiness-final-handoff.ps1",
+            "tools/plan-renderer-commercial-readiness-final-run-discovery.ps1",
+            "tools/check-renderer-commercial-readiness-final-run-discovery.ps1",
             "/repos/{owner}/{repo}/actions/runners",
             "/repos/{owner}/{repo}/actions/runners/registration-token",
             "GET /repos/{owner}/{repo}",
@@ -443,6 +505,9 @@ foreach ($surface in @(
             ".github/workflows/renderer-commercial-readiness-final-from-runs.yml",
             "renderer-commercial-readiness-final-from-runs",
             "renderer-commercial-readiness-final-from-runs-artifact-intake",
+            "renderer-commercial-readiness-current-run-artifact-intake",
+            "GET /repos/{owner}/{repo}/actions/runs",
+            "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
             "source_artifact_run_id",
             "metal_memory_profiling_run_id",
             "RegenerateQualityVfx",
