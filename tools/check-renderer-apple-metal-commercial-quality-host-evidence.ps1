@@ -192,6 +192,29 @@ if (-not (Test-Path -LiteralPath $readinessCollectorScript -PathType Leaf)) {
     Write-Error "tools/collect-renderer-commercial-readiness-evidence.ps1 must exist for retained artifact assembly."
 }
 
+$metalAppleValidatorScript = Join-Path $root "tools/validate-renderer-metal-apple.ps1"
+if (-not (Test-Path -LiteralPath $metalAppleValidatorScript -PathType Leaf)) {
+    Write-Error "tools/validate-renderer-metal-apple.ps1 must exist for Apple Metal commercial status row production."
+}
+$metalAppleValidatorText = Get-Content -LiteralPath $metalAppleValidatorScript -Raw
+foreach ($needle in @(
+        "renderer_apple_metal_commercial_quality_host_source_id=Apple-Metal-Commercial-Host-Bridge-2026-06-25",
+        "renderer_apple_metal_xcode_tools_ready=1",
+        "renderer_apple_metal_toolchain_source_id=Apple-Building-Shader-Library-Precompiling-Source-Files-2026-06-25",
+        "renderer_apple_metal_msl_shader_ready=1",
+        "renderer_apple_metal_msl_source_id=Apple-Metal-Shading-Language-Specification-2026-06-25",
+        "renderer_apple_metal_visible_package_evidence_status=ready",
+        "renderer_apple_metal_visible_package_selected_3d=1",
+        "renderer_apple_metal_visible_package_runtime_ui=1",
+        "renderer_apple_metal_visible_package_environment=1",
+        "renderer_apple_metal_visible_package_generated_game=1",
+        "renderer_apple_metal_visible_package_hash_sha256="
+    )) {
+    if (-not $metalAppleValidatorText.Contains($needle, [System.StringComparison]::Ordinal)) {
+        Write-Error "Apple Metal validator must emit commercial host evidence status rows for the producer: $needle"
+    }
+}
+
 $fixtureRoot = "tests/fixtures/renderer/commercial-readiness-evidence/ready"
 $evidenceRootRelative = "artifacts/renderer/apple-metal-commercial-quality-host-evidence/contract-$PID"
 $sourceRootRelative = "$evidenceRootRelative/source"

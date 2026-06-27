@@ -35,6 +35,20 @@ if (-not (Get-NinjaCommand)) {
 
 $jobsToUse = Resolve-ParallelJobCount -Jobs $Jobs
 
+function Get-LowerSha256ForText {
+    param([Parameter(Mandatory = $true)][string]$Text)
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $hash = $sha256.ComputeHash($bytes)
+        return ([System.BitConverter]::ToString($hash)).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 Write-Information "renderer-metal-apple: checking Apple host evidence..." -InformationAction Continue
 Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
     "-NoProfile",
@@ -104,7 +118,7 @@ Write-Host (
     "metal_environment_broad_environment_ready_claimed=0"
 )
 
-Write-Host (
+$visiblePackageStatusLine = (
     "renderer-metal-apple: renderer_metal_visible_package_evidence_status=ready " +
     "renderer_metal_visible_package_evidence_ready=1 " +
     "renderer_metal_visible_package_evidence_rows=4 " +
@@ -126,13 +140,39 @@ Write-Host (
     "renderer_broad_quality_ready=0 " +
     "renderer_commercial_readiness=0"
 )
+Write-Host $visiblePackageStatusLine
+
+$visiblePackageHash = Get-LowerSha256ForText -Text $visiblePackageStatusLine
 
 Write-Host (
     "renderer-metal-apple: renderer_apple_metal_commercial_quality_host_source_status=ready " +
     "renderer_apple_metal_commercial_quality_host_source_schema=GameEngine.RendererAppleMetalCommercialQualityHostEvidence.v1 " +
     "renderer_apple_metal_commercial_quality_host_source_recipe=renderer-metal-apple-host-evidence " +
+    "renderer_apple_metal_commercial_quality_host_source_id=Apple-Metal-Commercial-Host-Bridge-2026-06-25 " +
     "renderer_apple_metal_commercial_quality_memory_source_schema=GameEngine.RendererMetalMemoryProfilingHostEvidence.v1 " +
     "renderer_apple_metal_commercial_quality_memory_source_recipe=renderer-metal-memory-profiling-host-evidence " +
+    "renderer_apple_metal_xcode_tools_ready=1 " +
+    "renderer_apple_metal_full_xcode_selected=1 " +
+    "renderer_apple_metal_metal_tool_ready=1 " +
+    "renderer_apple_metal_metallib_tool_ready=1 " +
+    "renderer_apple_metal_command_line_metal_tools=1 " +
+    "renderer_apple_metal_toolchain_source_id=Apple-Building-Shader-Library-Precompiling-Source-Files-2026-06-25 " +
+    "renderer_apple_metal_msl_shader_ready=1 " +
+    "renderer_apple_metal_msl_source_id=Apple-Metal-Shading-Language-Specification-2026-06-25 " +
+    "renderer_apple_metal_msl_address_spaces=device,constant,threadgroup " +
+    "renderer_apple_metal_msl_function_constant_attribute=[[function_constant]] " +
+    "renderer_apple_metal_msl_resource_binding_attributes=[[buffer]],[[texture]],[[sampler]] " +
+    "renderer_apple_metal_msl_stage_attributes=[[vertex]],[[fragment]],[[kernel]] " +
+    "renderer_apple_metal_environment_aggregate_recipe=renderer-metal-environment-aggregate-apple-host-evidence " +
+    "renderer_apple_metal_visible_package_evidence_status=ready " +
+    "renderer_apple_metal_visible_package_evidence_ready=1 " +
+    "renderer_apple_metal_visible_package_broad_claims=0 " +
+    "renderer_apple_metal_visible_package_selected_3d=1 " +
+    "renderer_apple_metal_visible_package_runtime_ui=1 " +
+    "renderer_apple_metal_visible_package_environment=1 " +
+    "renderer_apple_metal_visible_package_generated_game=1 " +
+    "renderer_apple_metal_visible_package_rows=4 " +
+    "renderer_apple_metal_visible_package_hash_sha256=$visiblePackageHash " +
     "renderer_apple_metal_commercial_quality_artifact_ready=0 " +
     "renderer_apple_metal_commercial_quality_native_handles_exposed=0 " +
     "renderer_apple_metal_commercial_quality_cross_backend_inference=0 " +
