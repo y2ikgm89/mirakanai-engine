@@ -17,7 +17,19 @@ param(
 
     [string]$SourceRunId = "",
 
-    [string]$MetalMemoryProfilingRunId = ""
+    [string]$MetalMemoryProfilingRunId = "",
+
+    [switch]$UseRunDiscovery,
+
+    [string]$RunDiscoveryBranch = "main",
+
+    [string]$RunDiscoverySourceRunsJsonPath = "",
+
+    [string]$RunDiscoverySourceArtifactsJsonPath = "",
+
+    [string]$RunDiscoveryMetalRunsJsonPath = "",
+
+    [string]$RunDiscoveryMetalArtifactsJsonPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -150,6 +162,32 @@ function Invoke-RunnerPreflight {
     } else {
         @(& $preflightScript -RepoFullName $RepositoryFullName)
     }
+    return ConvertTo-KeyValueMap -Lines ([string[]]$lines)
+}
+
+function Invoke-FinalRunDiscovery {
+    param(
+        [string]$RepositoryFullName = "",
+        [string]$HeadBranch = "main",
+        [string]$SourceRunsJsonPath = "",
+        [string]$SourceArtifactsJsonPath = "",
+        [string]$MetalRunsJsonPath = "",
+        [string]$MetalArtifactsJsonPath = ""
+    )
+
+    $discoveryScript = Join-Path $PSScriptRoot "plan-renderer-commercial-readiness-final-run-discovery.ps1"
+    if (-not (Test-Path -LiteralPath $discoveryScript -PathType Leaf)) {
+        Write-Error "required_tool_missing: tools/plan-renderer-commercial-readiness-final-run-discovery.ps1"
+    }
+
+    $lines = @(& $discoveryScript `
+            -Mode Plan `
+            -RepoFullName $RepositoryFullName `
+            -Branch $HeadBranch `
+            -SourceRunsJsonPath $SourceRunsJsonPath `
+            -SourceArtifactsJsonPath $SourceArtifactsJsonPath `
+            -MetalRunsJsonPath $MetalRunsJsonPath `
+            -MetalArtifactsJsonPath $MetalArtifactsJsonPath)
     return ConvertTo-KeyValueMap -Lines ([string[]]$lines)
 }
 
@@ -397,6 +435,29 @@ if ($runnerPreflightKnown) {
     $runnerAvailable = [string]$runnerMap["renderer_metal_memory_profiling_capable_host_runner_available"] -ceq "1"
 }
 
+$runDiscoveryKnown = $UseRunDiscovery.IsPresent
+$runDiscoveryStatus = "not_requested"
+$runDiscoveryNextAction = "not_requested"
+$runDiscoverySourceRunId = ""
+$runDiscoverySourceRunReady = $false
+$runDiscoveryMetalRunId = ""
+$runDiscoveryMetalRunReady = $false
+if ($runDiscoveryKnown) {
+    $runDiscoveryMap = Invoke-FinalRunDiscovery `
+        -RepositoryFullName $RepoFullName `
+        -HeadBranch $RunDiscoveryBranch `
+        -SourceRunsJsonPath $RunDiscoverySourceRunsJsonPath `
+        -SourceArtifactsJsonPath $RunDiscoverySourceArtifactsJsonPath `
+        -MetalRunsJsonPath $RunDiscoveryMetalRunsJsonPath `
+        -MetalArtifactsJsonPath $RunDiscoveryMetalArtifactsJsonPath
+    $runDiscoveryStatus = [string]$runDiscoveryMap["renderer_commercial_readiness_final_run_discovery_status"]
+    $runDiscoveryNextAction = [string]$runDiscoveryMap["renderer_commercial_readiness_final_run_discovery_next_action"]
+    $runDiscoverySourceRunId = [string]$runDiscoveryMap["renderer_commercial_readiness_final_run_discovery_source_run_id"]
+    $runDiscoverySourceRunReady = [string]$runDiscoveryMap["renderer_commercial_readiness_final_run_discovery_source_run_ready"] -ceq "1"
+    $runDiscoveryMetalRunId = [string]$runDiscoveryMap["renderer_commercial_readiness_final_run_discovery_metal_memory_profiling_run_id"]
+    $runDiscoveryMetalRunReady = [string]$runDiscoveryMap["renderer_commercial_readiness_final_run_discovery_metal_memory_profiling_run_ready"] -ceq "1"
+}
+
 $manifestRunId = if ($manifestPresent) {
     [string](Get-JsonPropertyValue -JsonObject $manifest -Name "run_id")
 } else {
@@ -404,11 +465,22 @@ $manifestRunId = if ($manifestPresent) {
 }
 $resolvedSourceRunId = if (-not [string]::IsNullOrWhiteSpace($SourceRunId)) {
     $SourceRunId
-} else {
+} elseif (-not [string]::IsNullOrWhiteSpace($manifestRunId)) {
     $manifestRunId
+} elseif ($runDiscoverySourceRunReady -and -not [string]::IsNullOrWhiteSpace($runDiscoverySourceRunId)) {
+    $runDiscoverySourceRunId
+} else {
+    ""
 }
 $sourceRunReady = -not [string]::IsNullOrWhiteSpace($resolvedSourceRunId)
-$metalRunReady = -not [string]::IsNullOrWhiteSpace($MetalMemoryProfilingRunId)
+$resolvedMetalMemoryProfilingRunId = if (-not [string]::IsNullOrWhiteSpace($MetalMemoryProfilingRunId)) {
+    $MetalMemoryProfilingRunId
+} elseif ($runDiscoveryMetalRunReady -and -not [string]::IsNullOrWhiteSpace($runDiscoveryMetalRunId)) {
+    $runDiscoveryMetalRunId
+} else {
+    ""
+}
+$metalRunReady = -not [string]::IsNullOrWhiteSpace($resolvedMetalMemoryProfilingRunId)
 
 $missingAssemblerInputNames = if ($manifestPresent) {
     Select-StringArray -Value (Get-JsonPropertyValue -JsonObject $manifest -Name "missing_assembler_inputs")
@@ -433,12 +505,26 @@ if ($finalPreflightReady) {
 } elseif ($assemblerHandoffReady) {
     $status = "ready_for_final_assembler"
     $nextAction = "run_final_assembler"
-} elseif (-not $manifestPresent) {
+} elseif (-not $manifestPresent -and -not $runDiscoveryKnown) {
     $status = "artifact_intake_required"
     $nextAction = "inspect_current_run_artifact_intake"
 } elseif (-not $sourceRunReady) {
     $status = "source_run_required"
     $nextAction = "identify_source_artifact_run"
+} elseif (-not $manifestPresent -and $runDiscoveryKnown -and -not $metalRunReady) {
+    if (-not $runnerPreflightKnown) {
+        $status = "capable_host_runner_preflight_required"
+        $nextAction = "run_capable_host_runner_preflight"
+    } elseif ($runnerAvailable) {
+        $status = "metal_memory_profiling_run_required"
+        $nextAction = "run_metal_memory_profiling_capable_host_workflow"
+    } else {
+        $status = "capable_host_runner_required"
+        $nextAction = "provision_capable_host_runner"
+    }
+} elseif (-not $manifestPresent -and $runDiscoveryKnown -and $metalRunReady) {
+    $status = "ready_for_final_from_runs_workflow"
+    $nextAction = "run_final_from_runs_workflow"
 } elseif ($metalMemoryInputMissing -and -not $metalRunReady) {
     if (-not $runnerPreflightKnown) {
         $status = "capable_host_runner_preflight_required"
@@ -464,7 +550,7 @@ if ($finalPreflightReady) {
 $capableHostWorkflowCommand = "gh workflow run renderer-metal-memory-profiling-capable-host.yml -f confirm_capable_apple_host=MTLGPUFamilyApple6"
 $finalFromRunsWorkflowCommand = ""
 if ($sourceRunReady -and $metalRunReady) {
-    $finalFromRunsWorkflowCommand = "gh workflow run renderer-commercial-readiness-final-from-runs.yml -f source_artifact_run_id=$resolvedSourceRunId -f metal_memory_profiling_run_id=$MetalMemoryProfilingRunId -f confirm_final_retained_root_handoff=renderer-commercial-final-retained-root"
+    $finalFromRunsWorkflowCommand = "gh workflow run renderer-commercial-readiness-final-from-runs.yml -f source_artifact_run_id=$resolvedSourceRunId -f metal_memory_profiling_run_id=$resolvedMetalMemoryProfilingRunId -f confirm_final_retained_root_handoff=renderer-commercial-final-retained-root"
 }
 $finalPreflightCommand = ""
 if ($finalPreflightReady) {
@@ -560,13 +646,21 @@ Write-Output "renderer_commercial_readiness_final_handoff_intake_manifest_presen
 if ($manifestPresent) {
     Write-Output "renderer_commercial_readiness_final_handoff_intake_manifest=$IntakeManifestRelative"
 }
+Write-Output "renderer_commercial_readiness_final_handoff_run_discovery_known=$(ConvertTo-CounterBit $runDiscoveryKnown)"
+if ($runDiscoveryKnown) {
+    Write-Output "renderer_commercial_readiness_final_handoff_run_discovery_branch=$(ConvertTo-CounterValue -Value $RunDiscoveryBranch)"
+    Write-Output "renderer_commercial_readiness_final_handoff_run_discovery_status=$(ConvertTo-CounterValue -Value $runDiscoveryStatus)"
+    Write-Output "renderer_commercial_readiness_final_handoff_run_discovery_next_action=$(ConvertTo-CounterValue -Value $runDiscoveryNextAction)"
+    Write-Output "renderer_commercial_readiness_final_handoff_run_discovery_source_run_ready=$(ConvertTo-CounterBit $runDiscoverySourceRunReady)"
+    Write-Output "renderer_commercial_readiness_final_handoff_run_discovery_metal_memory_profiling_run_ready=$(ConvertTo-CounterBit $runDiscoveryMetalRunReady)"
+}
 Write-Output "renderer_commercial_readiness_final_handoff_source_run_ready=$(ConvertTo-CounterBit $sourceRunReady)"
 if ($sourceRunReady) {
     Write-Output "renderer_commercial_readiness_final_handoff_source_run_id=$resolvedSourceRunId"
 }
 Write-Output "renderer_commercial_readiness_final_handoff_metal_memory_profiling_run_ready=$(ConvertTo-CounterBit $metalRunReady)"
 if ($metalRunReady) {
-    Write-Output "renderer_commercial_readiness_final_handoff_metal_memory_profiling_run_id=$MetalMemoryProfilingRunId"
+    Write-Output "renderer_commercial_readiness_final_handoff_metal_memory_profiling_run_id=$resolvedMetalMemoryProfilingRunId"
 }
 Write-Output "renderer_commercial_readiness_final_handoff_runner_preflight_known=$(ConvertTo-CounterBit $runnerPreflightKnown)"
 Write-Output "renderer_commercial_readiness_final_handoff_runner_status=$(ConvertTo-CounterValue -Value $runnerStatus)"

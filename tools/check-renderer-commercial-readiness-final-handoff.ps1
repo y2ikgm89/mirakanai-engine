@@ -23,6 +23,16 @@ if ($handoffScriptText -match '\[Parameter\(Mandatory = \$true\)\]\[string\]\$Re
 if ($handoffScriptText -match '\[Parameter\(Mandatory = \$true\)\]\[string\]\$RunnerJsonPath') {
     Write-Error "Invoke-RunnerPreflight must allow an empty RunnerJsonPath so RepoFullName-only API preflight does not fail during PowerShell binding."
 }
+foreach ($needle in @(
+        "UseRunDiscovery",
+        "plan-renderer-commercial-readiness-final-run-discovery.ps1",
+        "renderer_commercial_readiness_final_handoff_run_discovery_known",
+        "renderer_commercial_readiness_final_handoff_run_discovery_status"
+    )) {
+    if (-not $handoffScriptText.Contains($needle)) {
+        Write-Error "final handoff script missing required run-discovery bridge needle: $needle"
+    }
+}
 
 function Assert-LinePresent {
     param(
@@ -200,6 +210,64 @@ try {
             reviewed_metal_probe_truth = $true
         })
 
+    $sourceRunsJson = "$fixtureRootRelative/source-runs.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $sourceRunsJson) -Value ([ordered]@{
+            total_count = 1
+            workflow_runs = @(
+                [ordered]@{
+                    id = 111111
+                    name = "Validate"
+                    head_branch = "main"
+                    status = "completed"
+                    conclusion = "success"
+                    created_at = "2026-06-27T17:00:00Z"
+                }
+            )
+        })
+
+    $sourceArtifactsJson = "$fixtureRootRelative/source-artifacts.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $sourceArtifactsJson) -Value ([ordered]@{
+            total_count = 1
+            artifacts = @(
+                [ordered]@{
+                    name = "renderer-commercial-readiness-current-run-artifact-intake"
+                    expired = $false
+                }
+            )
+        })
+
+    $metalRunsJson = "$fixtureRootRelative/metal-runs.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $metalRunsJson) -Value ([ordered]@{
+            total_count = 1
+            workflow_runs = @(
+                [ordered]@{
+                    id = 222222
+                    name = "Renderer Metal Memory Profiling Capable Host"
+                    head_branch = "main"
+                    status = "completed"
+                    conclusion = "success"
+                    created_at = "2026-06-27T18:00:00Z"
+                }
+            )
+        })
+
+    $metalArtifactsJson = "$fixtureRootRelative/metal-artifacts.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $metalArtifactsJson) -Value ([ordered]@{
+            total_count = 1
+            artifacts = @(
+                [ordered]@{
+                    name = "renderer-metal-memory-profiling-host-artifacts"
+                    expired = $false
+                }
+            )
+        })
+
+    $missingMetalArtifactsJson = "$fixtureRootRelative/missing-metal-artifacts.json"
+    Write-JsonObject -Path (ConvertTo-LocalPath $missingMetalArtifactsJson) -Value ([ordered]@{
+            total_count = 0
+            artifacts = @()
+        })
+
     $missingRunnerLines = @(& $handoffScript `
             -RepoFullName "owner/repo" `
             -RunnersJsonPath $missingRunnerJson `
@@ -337,6 +405,77 @@ try {
             "renderer_commercial_readiness=0"
         )) {
         Assert-LinePresent $fixtureOnlyRunnerLines $expectedLine "final handoff fixture-only runner"
+    }
+
+    $discoveredMissingRunnerLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $missingRunnerJson `
+            -RepositoryJsonPath $publicRepoJson `
+            -UseRunDiscovery `
+            -RunDiscoverySourceRunsJsonPath $sourceRunsJson `
+            -RunDiscoverySourceArtifactsJsonPath $sourceArtifactsJson `
+            -RunDiscoveryMetalRunsJsonPath $metalRunsJson `
+            -RunDiscoveryMetalArtifactsJsonPath $missingMetalArtifactsJson)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=public_runner_security_review_required",
+            "renderer_commercial_readiness_final_handoff_next_action=complete_public_runner_security_review",
+            "renderer_commercial_readiness_final_handoff_intake_manifest_present=0",
+            "renderer_commercial_readiness_final_handoff_run_discovery_known=1",
+            "renderer_commercial_readiness_final_handoff_run_discovery_status=metal_memory_profiling_run_required",
+            "renderer_commercial_readiness_final_handoff_run_discovery_source_run_ready=1",
+            "renderer_commercial_readiness_final_handoff_run_discovery_metal_memory_profiling_run_ready=0",
+            "renderer_commercial_readiness_final_handoff_source_run_ready=1",
+            "renderer_commercial_readiness_final_handoff_source_run_id=111111",
+            "renderer_commercial_readiness_final_handoff_metal_memory_profiling_run_ready=0",
+            "renderer_commercial_readiness_final_handoff_runner_available=0",
+            "renderer_commercial_readiness_final_handoff_runner_public_repo_registration_blocked=1",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $discoveredMissingRunnerLines $expectedLine "final handoff run discovery missing runner"
+    }
+    Assert-LineAbsent $discoveredMissingRunnerLines `
+        "renderer_commercial_readiness_final_handoff_runner_registration_token_command=gh api -X POST -H `"Accept: application/vnd.github+json`" /repos/owner/repo/actions/runners/registration-token" `
+        "final handoff run discovery missing runner"
+
+    $discoveredReadyRunnerLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $readyRunnerJson `
+            -UseRunDiscovery `
+            -RunDiscoverySourceRunsJsonPath $sourceRunsJson `
+            -RunDiscoverySourceArtifactsJsonPath $sourceArtifactsJson `
+            -RunDiscoveryMetalRunsJsonPath $metalRunsJson `
+            -RunDiscoveryMetalArtifactsJsonPath $missingMetalArtifactsJson)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=metal_memory_profiling_run_required",
+            "renderer_commercial_readiness_final_handoff_next_action=run_metal_memory_profiling_capable_host_workflow",
+            "renderer_commercial_readiness_final_handoff_run_discovery_known=1",
+            "renderer_commercial_readiness_final_handoff_source_run_id=111111",
+            "renderer_commercial_readiness_final_handoff_runner_available=1",
+            "renderer_commercial_readiness_final_handoff_capable_host_workflow_command=gh workflow run renderer-metal-memory-profiling-capable-host.yml -f confirm_capable_apple_host=MTLGPUFamilyApple6",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $discoveredReadyRunnerLines $expectedLine "final handoff run discovery ready runner"
+    }
+
+    $discoveredFromRunsLines = @(& $handoffScript `
+            -RepoFullName "owner/repo" `
+            -RunnersJsonPath $missingRunnerJson `
+            -UseRunDiscovery `
+            -RunDiscoverySourceRunsJsonPath $sourceRunsJson `
+            -RunDiscoverySourceArtifactsJsonPath $sourceArtifactsJson `
+            -RunDiscoveryMetalRunsJsonPath $metalRunsJson `
+            -RunDiscoveryMetalArtifactsJsonPath $metalArtifactsJson)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_handoff_status=ready_for_final_from_runs_workflow",
+            "renderer_commercial_readiness_final_handoff_next_action=run_final_from_runs_workflow",
+            "renderer_commercial_readiness_final_handoff_run_discovery_status=ready_for_final_from_runs_workflow",
+            "renderer_commercial_readiness_final_handoff_run_discovery_metal_memory_profiling_run_ready=1",
+            "renderer_commercial_readiness_final_handoff_source_run_id=111111",
+            "renderer_commercial_readiness_final_handoff_metal_memory_profiling_run_id=222222",
+            "renderer_commercial_readiness_final_handoff_final_from_runs_workflow_command=gh workflow run renderer-commercial-readiness-final-from-runs.yml -f source_artifact_run_id=111111 -f metal_memory_profiling_run_id=222222 -f confirm_final_retained_root_handoff=renderer-commercial-final-retained-root",
+            "renderer_commercial_readiness=0"
+        )) {
+        Assert-LinePresent $discoveredFromRunsLines $expectedLine "final handoff run discovery from-runs ready"
     }
 
     $fromRunsLines = @(& $handoffScript `
