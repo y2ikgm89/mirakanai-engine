@@ -200,6 +200,9 @@ try {
             "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summaries=3",
             "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_statuses=host_gated,host_gated,host_gated",
             "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_summary_reasons=mtlresidencyset_unavailable,metal_memory_profiling_host_evidence_required",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_inputs=2",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_input_names=metal_memory_profiling_host_evidence,quality_vfx_host_evidence",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_dependency_blockers=metal_memory_profiling_host_evidence",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_summary_present=1",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_status=host_gated",
             "renderer_commercial_readiness_final_retained_root_artifact_import_metal_host_gate_reason=mtlresidencyset_unavailable",
@@ -207,6 +210,32 @@ try {
             "renderer_commercial_readiness=0"
         )) {
         Assert-LinePresent $hostGateLines $expectedLine "GitHub artifact intake host-gated Inspect mode"
+    }
+    $hostGateManifestLines = @(& $importerScript -Mode Inspect -OutputRootRelative $contractRootRelative)
+    foreach ($expectedLine in @(
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_inputs=2",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_host_gate_blocked_assembler_input_names=metal_memory_profiling_host_evidence,quality_vfx_host_evidence",
+            "renderer_commercial_readiness_final_retained_root_artifact_import_quality_vfx_dependency_blockers=metal_memory_profiling_host_evidence"
+        )) {
+        Assert-LinePresent $hostGateManifestLines $expectedLine "GitHub artifact intake host-gated manifest mode"
+    }
+    $hostGateManifest = Get-Content -LiteralPath (ConvertTo-LocalPath "$contractRootRelative/intake-manifest.json") -Raw |
+        ConvertFrom-Json
+    if (@($hostGateManifest.assembler_input_blockers.PSObject.Properties).Count -ne 2) {
+        Write-Error "GitHub artifact intake manifest must expose two host-gate blocked assembler input rows."
+    }
+    $qualityVfxBlocker = $hostGateManifest.assembler_input_blockers.quality_vfx_host_evidence
+    if ($null -eq $qualityVfxBlocker) {
+        Write-Error "GitHub artifact intake manifest must expose quality_vfx_host_evidence blocker details."
+    }
+    if (-not @($qualityVfxBlocker.dependent_missing_inputs).Contains("metal_memory_profiling_host_evidence")) {
+        Write-Error "GitHub artifact intake quality/VFX blocker must name metal_memory_profiling_host_evidence as the missing dependency."
+    }
+    if (-not @($qualityVfxBlocker.host_gate_reasons).Contains("metal_memory_profiling_host_evidence_required")) {
+        Write-Error "GitHub artifact intake quality/VFX blocker must retain its own Metal memory/profiling dependency reason."
+    }
+    if (@($qualityVfxBlocker.host_gate_reasons).Contains("mtlresidencyset_unavailable")) {
+        Write-Error "GitHub artifact intake quality/VFX blocker must not absorb nested Metal memory/profiling host-gate reasons."
     }
 
     Write-JsonObject `
