@@ -909,7 +909,7 @@ Task 5 guarantees:
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 - Modify: `docs/editor.md`
 
-- [ ] **Step 1: Add failing handoff tests**
+- [x] **Step 1: Add failing handoff tests**
 
 Tests must prove:
 
@@ -919,15 +919,15 @@ Tests must prove:
 - Existing targets, empty source paths, line separators, device paths, path traversal, and unsupported extensions are blocked.
 - Import execution requires `asset_browser.import.execute_reviewed_plan`, matching generation, and user confirmation.
 
-- [ ] **Step 2: Implement shell-owned path review**
+- [x] **Step 2: Implement shell-owned path review**
 
 Use the existing `IFileDialogService` boundary. On Windows host code, use the Common Item Dialog / `IFileDialog` adapter already present in the project service layer; do not move native path APIs into `editor/core`. The shell path review must canonicalize and compare paths against the project root before converting to store-relative paths.
 
-- [ ] **Step 3: Implement explicit import execution handoff**
+- [x] **Step 3: Implement explicit import execution handoff**
 
 The shell passes reviewed options into existing `execute_asset_import_plan` / `ExternalAssetImportAdapters::options()` after command review and user confirmation. The shell must record result rows back into the production model; `editor/core` remains non-executing.
 
-- [ ] **Step 4: Run validation**
+- [x] **Step 4: Run validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1`
 
@@ -938,6 +938,23 @@ If optional codec adapters are touched, also run:
 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1`
 
 Expected: optional importer lane passes or reports an explicit host/dependency blocker.
+
+### Task 6 Implementation Evidence - 2026-06-29
+
+- Red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` failed with unresolved `NativeEditorApp::show_asset_browser_import_sources_dialog`, `poll_asset_browser_import_sources_dialog`, `review_asset_browser_external_source_copy`, and `execute_reviewed_asset_browser_import_plan`.
+- Green focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` PASS.
+- Focused shell test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` PASS.
+- Focused core build/test after diagnostic-row sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` PASS; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` PASS.
+- Editor lane: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` PASS with `100% tests passed, 0 tests failed out of 160`.
+- Static checks: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-dependency-policy.ps1`, `tools/check-tidy.ps1 -Files editor/core/src/content_browser_import_panel.cpp,editor/src/native_editor_app.cpp,editor/src/native_editor_win32_services.cpp`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` PASS.
+- Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS with 50 static checks and `100% tests passed, 0 tests failed out of 159`.
+
+Task 6 guarantees:
+
+- Browse Import Sources is routed through `IFileDialogService`, normalized by the native shell, and rejected when selections leave the project root or contain invalid/device paths.
+- External source copy review targets only `ProjectDocument::asset_root/imported_sources/<filename>` and blocks existing targets, unsupported extensions, and unsafe paths before copy execution.
+- `execute_asset_import_plan` is reachable only through the reviewed `asset_browser.import.execute_reviewed_plan` command with matching generation, user confirmation, and a bound shell filesystem service.
+- `MK_editor_core` remains value-only for retained rows and does not own native dialogs, path canonicalization, filesystem mutation, importer execution, package scripts, validation recipes, renderer/RHI work, Unity/Unreal/Godot compatibility, or native handles.
 
 ## Task 7: Preview, Inspect, Thumbnail, And Hot-Reload Evidence
 

@@ -434,6 +434,10 @@ external_source_copy_row_status(const EditorContentBrowserImportExternalSourceCo
         diagnostic = input.diagnostic.empty() ? "external import source copy failed" : input.diagnostic;
         return "Failed";
     }
+    if (!input.diagnostic.empty()) {
+        diagnostic = input.diagnostic;
+        return "Blocked";
+    }
     if (input.source_path.empty()) {
         diagnostic = "external import source copy source path is required";
         return "Blocked";
@@ -445,7 +449,8 @@ external_source_copy_row_status(const EditorContentBrowserImportExternalSourceCo
     if (!is_supported_import_source_path(input.source_path) ||
         !is_supported_import_source_path(input.target_project_path)) {
         diagnostic =
-            "external import source copy paths must be first-party source document or supported codec source paths";
+            "external import source copy paths must be first-party source document, supported codec source paths, or "
+            "supported import source codec paths";
         return "Blocked";
     }
     if (!is_safe_project_relative_path(input.target_project_path)) {
@@ -639,7 +644,7 @@ make_content_browser_import_open_dialog_model(const mirakana::FileDialogResult& 
                 model.status_label = import_open_dialog_status("blocked");
                 model.diagnostics.emplace_back(
                     "asset import open dialog selections must be first-party source document "
-                    "or supported codec source paths");
+                    "or supported codec source paths; supported import source codec paths are required");
                 append_import_open_dialog_rows(model, result.paths.size(), result.selected_filter);
                 return model;
             }

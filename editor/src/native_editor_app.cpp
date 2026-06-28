@@ -11,10 +11,13 @@
 #include "mirakana/environment/environment_profile.hpp"
 #include "mirakana/platform/clipboard.hpp"
 #include "mirakana/scene/scene.hpp"
+#include "mirakana/tools/asset_import_adapters.hpp"
+#include "mirakana/tools/asset_import_tool.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -680,6 +683,81 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return id == "win32_tsf";
 }
 
+[[nodiscard]] bool contains_invalid_path_characters(std::string_view path) noexcept {
+    return path.empty() || path.find('\n') != std::string_view::npos || path.find('\r') != std::string_view::npos ||
+           path.find('=') != std::string_view::npos || path.find(';') != std::string_view::npos;
+}
+
+[[nodiscard]] bool contains_invalid_project_path_characters(std::string_view path) noexcept {
+    return contains_invalid_path_characters(path) || path.find('\\') != std::string_view::npos ||
+           path.find(':') != std::string_view::npos;
+}
+
+[[nodiscard]] bool is_device_path(std::string_view path) {
+    auto normalized = std::string(path);
+    std::ranges::replace(normalized, '\\', '/');
+    return normalized.starts_with("//./") || normalized.starts_with("//?/");
+}
+
+[[nodiscard]] bool has_parent_segment(const std::filesystem::path& path) {
+    return std::ranges::any_of(path, [](const std::filesystem::path& segment) { return segment == ".."; });
+}
+
+[[nodiscard]] std::filesystem::path normalized_project_root(std::string_view root_path) {
+    return std::filesystem::absolute(std::filesystem::path{std::string(root_path)}).lexically_normal();
+}
+
+[[nodiscard]] std::string normalize_selected_import_path(std::string_view project_root, std::string_view selected_path,
+                                                         std::string& diagnostic) {
+    if (contains_invalid_path_characters(selected_path)) {
+        diagnostic = "asset browser import source selection contains invalid characters";
+        return {};
+    }
+    if (is_device_path(selected_path)) {
+        diagnostic = "asset browser import source selection must not be a device path";
+        return {};
+    }
+
+    const auto root = normalized_project_root(project_root);
+    const auto selected = std::filesystem::path{std::string(selected_path)};
+    const auto normalized = (selected.is_absolute() ? selected : root / selected).lexically_normal();
+    const auto relative = normalized.lexically_relative(root);
+    auto project_path = relative.generic_string();
+    if (project_path.empty() || project_path == "." || has_parent_segment(relative)) {
+        diagnostic = "asset browser import source selection must resolve inside the project root";
+        return {};
+    }
+    if (contains_invalid_project_path_characters(project_path)) {
+        diagnostic = "asset browser import source selection contains invalid characters";
+        return {};
+    }
+    return project_path;
+}
+
+[[nodiscard]] std::string imported_source_target_path(std::string_view asset_root, std::string_view source_path,
+                                                      std::string& diagnostic) {
+    if (contains_invalid_path_characters(source_path)) {
+        diagnostic = "external import source copy source path contains invalid characters";
+        return {};
+    }
+    if (is_device_path(source_path)) {
+        diagnostic = "external import source copy source path must not be a device path";
+        return {};
+    }
+
+    const auto filename = std::filesystem::path{std::string(source_path)}.filename().generic_string();
+    if (filename.empty() || filename == "." || filename == ".." || contains_invalid_project_path_characters(filename)) {
+        diagnostic = "external import source copy source path filename is invalid";
+        return {};
+    }
+
+    return (std::filesystem::path{std::string(asset_root)} / "imported_sources" / filename).generic_string();
+}
+
+[[nodiscard]] bool contains_string(std::span<const std::string> values, std::string_view value) {
+    return std::ranges::any_of(values, [value](const std::string& candidate) { return candidate == value; });
+}
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -757,6 +835,7 @@ struct NativeEditorApp::Impl {
     IFileDialogService* file_dialog_service{nullptr};
     ui::IClipboardTextAdapter* clipboard_adapter{nullptr};
     IProcessRunner* process_runner{nullptr};
+    IFileSystem* asset_import_filesystem{nullptr};
     ui::IPlatformIntegrationAdapter* platform_text_input_adapter{nullptr};
     ui::IImeAdapter* ime_adapter{nullptr};
     ui::IAccessibilityAdapter* accessibility_adapter{nullptr};
@@ -983,6 +1062,12 @@ void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services)
             services.accessibility_service_id.empty() ? "external" : std::move(services.accessibility_service_id);
         impl_->service_status.accessibility_available = true;
     }
+    if (services.asset_import_filesystem != nullptr) {
+        impl_->asset_import_filesystem = services.asset_import_filesystem;
+        impl_->service_status.asset_import_filesystem_id =
+            services.asset_import_filesystem_id.empty() ? "external" : std::move(services.asset_import_filesystem_id);
+        impl_->service_status.asset_import_filesystem_available = true;
+    }
 }
 
 NativeEditorTextInputFocusResult NativeEditorApp::focus_text_input_target(NativeEditorTextInputTargetDesc target) {
@@ -1177,6 +1262,118 @@ std::optional<FileDialogResult> NativeEditorApp::poll_file_dialog_result(FileDia
         return std::nullopt;
     }
     return impl_->file_dialog_service->poll_result(id);
+}
+
+FileDialogId NativeEditorApp::show_asset_browser_import_sources_dialog() {
+    return show_file_dialog(make_content_browser_import_open_dialog_request(impl_->project.asset_root));
+}
+
+NativeEditorAssetBrowserImportSourcesDialogReview
+NativeEditorApp::poll_asset_browser_import_sources_dialog(FileDialogId id) {
+    NativeEditorAssetBrowserImportSourcesDialogReview review;
+    const auto result = poll_file_dialog_result(id);
+    if (!result.has_value()) {
+        review.dialog = make_content_browser_import_open_dialog_model(FileDialogResult{
+            .id = id == 0U ? 1U : id,
+            .status = FileDialogStatus::failed,
+            .error = "asset browser import source dialog result is unavailable",
+        });
+        review.diagnostics = review.dialog.diagnostics;
+        return review;
+    }
+
+    if (result->status != FileDialogStatus::accepted) {
+        review.dialog = make_content_browser_import_open_dialog_model(*result);
+        review.diagnostics = review.dialog.diagnostics;
+        review.accepted = review.dialog.accepted;
+        return review;
+    }
+
+    FileDialogResult normalized_result = *result;
+    normalized_result.paths.clear();
+    normalized_result.paths.reserve(result->paths.size());
+    for (const auto& path : result->paths) {
+        std::string diagnostic;
+        auto project_path = normalize_selected_import_path(impl_->project.root_path, path, diagnostic);
+        if (!diagnostic.empty()) {
+            review.dialog = make_content_browser_import_open_dialog_model(FileDialogResult{
+                .id = result->id,
+                .status = FileDialogStatus::failed,
+                .paths = result->paths,
+                .selected_filter = result->selected_filter,
+                .error = diagnostic,
+            });
+            review.diagnostics = review.dialog.diagnostics;
+            return review;
+        }
+        normalized_result.paths.push_back(std::move(project_path));
+    }
+
+    review.dialog = make_content_browser_import_open_dialog_model(normalized_result);
+    review.diagnostics = review.dialog.diagnostics;
+    review.accepted = review.dialog.accepted;
+    if (review.accepted) {
+        review.accepted_project_paths = review.dialog.selected_paths;
+    }
+    return review;
+}
+
+NativeEditorAssetBrowserExternalSourceCopyReview NativeEditorApp::review_asset_browser_external_source_copy(
+    const NativeEditorAssetBrowserExternalSourceCopyRequest& request) const {
+    std::vector<EditorContentBrowserImportExternalSourceCopyInput> inputs;
+    inputs.reserve(request.source_paths.size());
+    for (const auto& source_path : request.source_paths) {
+        std::string diagnostic;
+        const auto target_path = imported_source_target_path(impl_->project.asset_root, source_path, diagnostic);
+        inputs.push_back(EditorContentBrowserImportExternalSourceCopyInput{
+            .source_path = source_path,
+            .target_project_path = target_path,
+            .diagnostic = std::move(diagnostic),
+            .source_exists = contains_string(request.existing_source_paths, source_path),
+            .target_exists = contains_string(request.existing_project_paths, target_path),
+        });
+    }
+
+    NativeEditorAssetBrowserExternalSourceCopyReview review;
+    review.copy = make_content_browser_import_external_source_copy_model(inputs);
+    review.diagnostics = review.copy.diagnostics;
+    return review;
+}
+
+NativeEditorAssetBrowserImportExecutionResult
+NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBrowserImportExecutionRequest request) {
+    NativeEditorAssetBrowserImportExecutionResult result;
+    result.command = plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+        .kind = EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        .mode = EditorAssetBrowserCommandMode::apply,
+        .expected_generation = request.expected_generation,
+        .current_generation = impl_->asset_browser.generation,
+        .user_confirmed = request.user_confirmed,
+    });
+
+    if (result.command.status != EditorAssetBrowserCommandStatus::ready || !result.command.executes_import_tools) {
+        result.diagnostic = result.command.diagnostics.empty()
+                                ? "asset browser import execution requires a reviewed ready command"
+                                : result.command.diagnostics.front();
+        return result;
+    }
+    if (impl_->asset_import_filesystem == nullptr) {
+        impl_->service_status.asset_import_filesystem_available = false;
+        result.diagnostic = "asset browser import execution requires an asset import filesystem service";
+        return result;
+    }
+
+    ExternalAssetImportAdapters adapters;
+    const auto import_result = execute_asset_import_plan(*impl_->asset_import_filesystem,
+                                                         impl_->asset_browser_import_plan, adapters.options());
+    result.executed = true;
+    result.import_tools_invoked = true;
+    result.imported_count = import_result.imported.size();
+    result.import_failure_count = import_result.failures.size();
+    result.diagnostic = import_result.failures.empty() ? "asset browser import execution succeeded"
+                                                       : import_result.failures.front().diagnostic;
+    ++impl_->service_status.asset_import_executions;
+    return result;
 }
 
 ui::ClipboardTextWriteResult NativeEditorApp::write_clipboard_text(ui::ClipboardTextWriteRequest request) {

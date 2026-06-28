@@ -24,12 +24,14 @@
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/platform/file_dialog.hpp"
+#include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/process.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -350,6 +352,156 @@ MK_TEST("editor first party document renders Source Pulse assets instead of lega
     MK_REQUIRE(counters.editor_asset_browser_source_pulse_rows == asset_browser.rows.size());
     MK_REQUIRE(counters.editor_asset_browser_hardcoded_rows == 0U);
     MK_REQUIRE(!counters.editor_asset_browser_native_handles_exposed);
+}
+
+MK_TEST("editor asset browser import source dialog routes through native shell service") {
+    mirakana::MemoryFileDialogService file_dialogs;
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .file_dialog_service = &file_dialogs,
+        .file_dialog_service_id = "memory_import_dialog",
+    });
+
+    const auto root = std::filesystem::absolute(".").lexically_normal();
+    const auto selected = (root / "assets/source/hero.texture").lexically_normal().generic_string();
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {selected},
+        .selected_filter = 0,
+    });
+
+    const auto id = app.show_asset_browser_import_sources_dialog();
+    const auto* request = file_dialogs.last_request() ? std::addressof(*file_dialogs.last_request()) : nullptr;
+    MK_REQUIRE(id != 0U);
+    MK_REQUIRE(request != nullptr);
+    MK_REQUIRE(request->title == "Import Assets");
+    MK_REQUIRE(request->allow_many);
+    MK_REQUIRE(app.services().file_dialog_requests_routed == 1U);
+
+    const auto review = app.poll_asset_browser_import_sources_dialog(id);
+    MK_REQUIRE(review.dialog.accepted);
+    MK_REQUIRE(review.accepted_project_paths.size() == 1U);
+    MK_REQUIRE(review.accepted_project_paths[0] == "assets/source/hero.texture");
+    MK_REQUIRE(review.diagnostics.empty());
+}
+
+MK_TEST("editor asset browser import source dialog rejects unsafe project paths") {
+    mirakana::MemoryFileDialogService file_dialogs;
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{.file_dialog_service = &file_dialogs});
+    const auto root = std::filesystem::absolute(".").lexically_normal();
+
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {(root.parent_path() / "outside/hero.texture").lexically_normal().generic_string()},
+        .selected_filter = 0,
+    });
+    const auto outside = app.poll_asset_browser_import_sources_dialog(app.show_asset_browser_import_sources_dialog());
+    MK_REQUIRE(!outside.dialog.accepted);
+    MK_REQUIRE(!outside.diagnostics.empty());
+    MK_REQUIRE(outside.diagnostics[0].contains("inside the project root"));
+
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {"assets/source/hero.ogg"},
+        .selected_filter = 0,
+    });
+    const auto unsupported =
+        app.poll_asset_browser_import_sources_dialog(app.show_asset_browser_import_sources_dialog());
+    MK_REQUIRE(!unsupported.dialog.accepted);
+    MK_REQUIRE(!unsupported.diagnostics.empty());
+    MK_REQUIRE(unsupported.diagnostics[0].contains("supported import source"));
+
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {"assets/source/bad\nname.texture"},
+        .selected_filter = 0,
+    });
+    const auto invalid = app.poll_asset_browser_import_sources_dialog(app.show_asset_browser_import_sources_dialog());
+    MK_REQUIRE(!invalid.dialog.accepted);
+    MK_REQUIRE(!invalid.diagnostics.empty());
+    MK_REQUIRE(invalid.diagnostics[0].contains("invalid characters"));
+}
+
+MK_TEST("editor asset browser external source copy review targets imported sources only") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto outside_source = "C:/drop/hero.png";
+
+    const auto ready = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {outside_source},
+            .existing_source_paths = {outside_source},
+        });
+    MK_REQUIRE(ready.copy.can_copy);
+    MK_REQUIRE(ready.copy.target_project_paths.size() == 1U);
+    MK_REQUIRE(ready.copy.target_project_paths[0] == "assets/imported_sources/hero.png");
+
+    const auto existing = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {outside_source},
+            .existing_source_paths = {outside_source},
+            .existing_project_paths = {"assets/imported_sources/hero.png"},
+        });
+    MK_REQUIRE(existing.copy.blocked);
+    MK_REQUIRE(!existing.copy.diagnostics.empty());
+    MK_REQUIRE(existing.copy.diagnostics[0].contains("already exists"));
+
+    const auto unsupported = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {"C:/drop/theme.ogg"},
+            .existing_source_paths = {"C:/drop/theme.ogg"},
+        });
+    MK_REQUIRE(unsupported.copy.blocked);
+    MK_REQUIRE(!unsupported.copy.diagnostics.empty());
+    MK_REQUIRE(unsupported.copy.diagnostics[0].contains("supported import source"));
+
+    const auto device = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {"//./C:/drop/hero.png"},
+            .existing_source_paths = {"//./C:/drop/hero.png"},
+        });
+    MK_REQUIRE(device.copy.blocked);
+    MK_REQUIRE(!device.copy.diagnostics.empty());
+    MK_REQUIRE(device.copy.diagnostics[0].contains("device path"));
+}
+
+MK_TEST("editor asset browser import execution requires reviewed confirmed generation") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto missing_confirmation =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .user_confirmed = false,
+        });
+    MK_REQUIRE(!missing_confirmation.executed);
+    MK_REQUIRE(!missing_confirmation.import_tools_invoked);
+    MK_REQUIRE(missing_confirmation.command.requires_user_confirmation);
+
+    const auto stale =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation + 1U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(!stale.executed);
+    MK_REQUIRE(stale.command.status == mirakana::editor::EditorAssetBrowserCommandStatus::rejected_stale_generation);
+
+    mirakana::MemoryFileSystem filesystem;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+    const auto confirmed =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(confirmed.executed);
+    MK_REQUIRE(confirmed.import_tools_invoked);
+    MK_REQUIRE(confirmed.command.command_id == "asset_browser.import.execute_reviewed_plan");
+    MK_REQUIRE(confirmed.import_failure_count > 0U);
+    MK_REQUIRE(app.services().asset_import_filesystem_id == "memory_import_fs");
+    MK_REQUIRE(app.services().asset_import_filesystem_available);
+    MK_REQUIRE(app.services().asset_import_executions == 1U);
 }
 
 MK_TEST("editor first party document exposes runtime UI editor authoring rows") {
@@ -2076,6 +2228,8 @@ MK_TEST("editor native shell service status defaults stay deterministic") {
     MK_REQUIRE(app.services().file_dialog_service_id == "memory");
     MK_REQUIRE(app.services().clipboard_service_id == "memory");
     MK_REQUIRE(app.services().reviewed_process_runner_id == "recording");
+    MK_REQUIRE(app.services().asset_import_filesystem_id == "unbound");
+    MK_REQUIRE(!app.services().asset_import_filesystem_available);
     MK_REQUIRE(app.services().user_confirmation_required_for_process_execution);
 }
 
