@@ -1190,7 +1190,7 @@ Task 10 evidence (2026-06-29):
 - Modify: this plan with validation evidence
 - Modify: docs from Task 10 if validation changes capability wording
 
-- [ ] **Step 1: Run focused editor checks**
+- [x] **Step 1: Run focused editor checks**
 
 Run:
 
@@ -1198,7 +1198,7 @@ Run:
 
 Expected: editor lane passes.
 
-- [ ] **Step 2: Run full repository validation**
+- [x] **Step 2: Run full repository validation**
 
 Run:
 
@@ -1206,18 +1206,27 @@ Run:
 
 Expected: full validation passes. If a host/toolchain blocker occurs, record the exact command, blocker, and unaffected focused checks in this plan before stopping.
 
-- [ ] **Step 3: Record final evidence**
+- [x] **Step 3: Record final evidence**
 
 Add a closeout evidence subsection to this plan with exact test commands, pass/fail status, hosted PR evidence if available, retained smoke counters, legal/dependency check status, and explicit non-claims.
 
+Task 11 closeout evidence (2026-06-29):
+
+- Focused editor lane: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` PASS, including desktop-editor configure/build and `100% tests passed, 0 tests failed out of 160`.
+- Full repository gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS, including 50 independent static checks, `license-check: ok`, `agent-config-check: ok`, `json-contract-check: ok`, `ai-integration-check: ok`, `first-party-ui-clean-room: ok`, and `100% tests passed, 0 tests failed out of 159`.
+- Direct editor smoke: `out\build\desktop-editor\editor\Debug\MK_editor.exe --smoke-frames 1 --no-user-config` PASS with `editor_shell_status=ready`, `editor_shell_ui=first_party`, `editor_shell_backend=d3d12`, `editor_shell_panels=12`, `editor_asset_browser_visible=1`, `editor_asset_browser_source_pulse_rows=3`, `editor_asset_browser_hardcoded_rows=0`, `editor_asset_browser_native_handles_exposed=0`, `editor_shell_accessibility_status=uia_provider_ready`, `editor_shell_accessibility_diagnostics=0`, `editor_shell_viewport_native_handles_exposed=0`, `editor_shell_material_preview_native_handles_exposed=0`, `editor_runtime_ui_editor_external_engine_parity_claim=0`, and `editor_runtime_ui_editor_native_handles_exposed=0`.
+- Legal/dependency status: no third-party dependency, external asset, marketplace content, external engine code/sample/UI expression, or copied trademark material was added; `tools/validate.ps1` includes `check-license.ps1` and `check-dependency-policy.ps1` pass evidence.
+- Hosted PR evidence: draft PR #880 (`codex/editor-asset-browser-production-v1`) is the publication surface for this implementation slice; hosted CI remains the remote review gate.
+- Explicit non-claims at closeout: arbitrary importer adapters, automatic import execution, package script execution, validation recipe execution, broad runtime package streaming, renderer/RHI execution from editor core, public native handles, Vulkan/Metal preview display parity, cross-platform accessibility parity, external-engine compatibility/equivalence/parity, Unity/Unreal/Godot asset/project/schema import compatibility, copied external-engine UI expression, legal advice, and broad editor/importer/product parity.
+
 ## Acceptance Checklist
 
-- [ ] The visible `MK_editor` Assets panel no longer uses hard-coded `EditorAssetListRow` rows.
-- [ ] `MK_editor_core` owns all persistent production asset browser state as value models.
-- [ ] Native dialogs, path canonicalization, external copy, import execution, preview execution, and accessibility publication stay shell-owned.
-- [ ] Every command has a dry-run/apply review path, stale-generation rejection, and user-confirmation requirements where mutation/execution is possible.
-- [ ] Every source/cooked/package row is key-first through `AssetKeyV2`.
-- [ ] Legal/provenance rows block license-less, NC/ND, external-engine sample, trademark, marketplace, and copied UI-expression material.
-- [ ] Official Unity/Unreal/Godot docs are retained only as category/legal research inputs.
-- [ ] Context7 C++/OpenEXR/KTX evidence is used only to shape validation and import/cook metadata, not copied implementation.
-- [ ] Focused editor validation and full `tools/validate.ps1` have run or exact host blockers are recorded.
+- [x] The visible `MK_editor` Assets panel no longer uses hard-coded `EditorAssetListRow` rows.
+- [x] `MK_editor_core` owns all persistent production asset browser state as value models.
+- [x] Native dialogs, path canonicalization, external copy, import execution, preview execution, and accessibility publication stay shell-owned.
+- [x] Every command has a dry-run/apply review path, stale-generation rejection, and user-confirmation requirements where mutation/execution is possible.
+- [x] Every source/cooked/package row is key-first through `AssetKeyV2`.
+- [x] Legal/provenance rows block license-less, NC/ND, external-engine sample, trademark, marketplace, and copied UI-expression material.
+- [x] Official Unity/Unreal/Godot docs are retained only as category/legal research inputs.
+- [x] Context7 C++/OpenEXR/KTX evidence is used only to shape validation and import/cook metadata, not copied implementation.
+- [x] Focused editor validation and full `tools/validate.ps1` have run or exact host blockers are recorded.
