@@ -20,13 +20,6 @@ struct EditorPropertyRow {
     bool editable{true};
 };
 
-struct EditorAssetListRow {
-    std::string id;
-    std::string path;
-    std::string kind;
-    bool enabled{true};
-};
-
 struct EditorCommandPaletteEntry {
     std::string id;
     std::string label;
@@ -68,7 +61,6 @@ struct EditorTimelinePanelModel {
 };
 
 [[nodiscard]] mirakana::ui::UiDocument make_inspector_ui_model(const std::vector<EditorPropertyRow>& rows);
-[[nodiscard]] mirakana::ui::UiDocument make_asset_list_ui_model(const std::vector<EditorAssetListRow>& rows);
 [[nodiscard]] mirakana::ui::UiDocument
 make_command_palette_ui_model(const std::vector<EditorCommandPaletteEntry>& entries);
 [[nodiscard]] mirakana::ui::UiDocument make_diagnostics_ui_model(const std::vector<EditorDiagnosticRow>& rows);

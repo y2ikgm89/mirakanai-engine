@@ -11,6 +11,7 @@
 #include "native_viewport_surface.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
+#include "mirakana/editor/asset_browser_production.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/editor/material_asset_preview_panel.hpp"
 #include "mirakana/editor/profiler.hpp"
@@ -126,7 +127,8 @@ class NativeEditorApp {
     [[nodiscard]] std::span<const EnvironmentAuthoringInspectorRow>
     environment_authoring_inspector_rows() const noexcept;
     [[nodiscard]] std::span<const EditorPropertyRow> inspector_rows() const noexcept;
-    [[nodiscard]] std::span<const EditorAssetListRow> asset_rows() const noexcept;
+    [[nodiscard]] const EditorAssetBrowserProductionModel& asset_browser() const noexcept;
+    [[nodiscard]] std::span<const EditorAssetBrowserCommandPlan> asset_browser_command_plans() const noexcept;
     [[nodiscard]] std::span<const EditorDiagnosticRow> console_rows() const noexcept;
     [[nodiscard]] const EditorResourcePanelModel& resources() const noexcept;
     [[nodiscard]] const EditorAiCommandPanelModel& ai_commands() const noexcept;

@@ -826,16 +826,16 @@ Task 4 guarantees:
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Add failing native shell tests**
+- [x] **Step 1: Add failing native shell tests**
 
 Add tests that assert:
 
 - `NativeEditorApp::asset_browser()` exists and returns a production model.
 - `NativeEditorApp::asset_rows()` no longer exists after this task.
-- `make_first_party_editor_document(app)` contains `asset_browser.source_pulse` retained rows, not legacy `assets.row.*` hard-coded rows.
+- `make_first_party_editor_document(app)` contains `asset_browser.source_pulse` retained rows, not legacy `assets.*` hard-coded rows.
 - Smoke counters include `editor_asset_browser_visible=1`, `editor_asset_browser_source_pulse_rows>0`, `editor_asset_browser_hardcoded_rows=0`, and `editor_asset_browser_native_handles_exposed=0`.
 
-- [ ] **Step 2: Replace the app surface**
+- [x] **Step 2: Replace the app surface**
 
 Remove `asset_rows()` and `EditorAssetListRow` usage from `NativeEditorApp`. Add:
 
@@ -844,23 +844,61 @@ Remove `asset_rows()` and `EditorAssetListRow` usage from `NativeEditorApp`. Add
 [[nodiscard]] std::span<const EditorAssetBrowserCommandPlan> asset_browser_command_plans() const noexcept;
 ```
 
-- [ ] **Step 3: Build the model in `NativeEditorApp`**
+- [x] **Step 3: Build the model in `NativeEditorApp`**
 
 Use existing default project/source registry/import/material preview state. Do not add hard-coded visual rows. Hard-coded test fixture source data is acceptable only as in-memory sample project data used to exercise the model until real project load is wired.
 
-- [ ] **Step 4: Render retained UI**
+- [x] **Step 4: Render retained UI**
 
 In `first_party_editor_document.cpp`, render the Assets panel by cloning `make_editor_asset_browser_production_ui_model(app.asset_browser())` into the shell document under the existing `assets` panel root. Keep `mirakana::ui` ids stable and never expose Win32/D3D12 handles.
 
-- [ ] **Step 5: Delete legacy row model**
+- [x] **Step 5: Delete legacy row model**
 
 Remove `EditorAssetListRow` and `make_asset_list_ui_model` only after tests in Step 1 are updated to the production model. If another panel still depends on them, migrate that panel in the same task rather than adding compatibility aliases.
 
-- [ ] **Step 6: Run shell validation**
+- [x] **Step 6: Run shell validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1`
 
 Expected: editor lane builds and native shell tests pass.
+
+## Task 5 Evidence (2026-06-29)
+
+Implementation:
+
+- `NativeEditorApp` now exposes `asset_browser()` and `asset_browser_command_plans()` and no longer exposes `asset_rows()`.
+- The app builds the production Source Pulse model from first-party `SourceAssetRegistryDocumentV1`, `ContentBrowserState`, and import-plan value data.
+- `first_party_editor_document.cpp` renders `make_editor_asset_browser_production_ui_model(app.asset_browser())` under the existing visible `editor.panel.assets` shell panel.
+- `EditorAssetListRow` and `make_asset_list_ui_model` were removed without compatibility aliases.
+- Smoke counters and `MK_editor` smoke output now include `editor_asset_browser_visible`, `editor_asset_browser_source_pulse_rows`, `editor_asset_browser_hardcoded_rows`, and `editor_asset_browser_native_handles_exposed`.
+- `engine/agent/manifest.fragments/014-gameCodeGuidance.json` and composed `engine/agent/manifest.json` were updated so the agent-facing contract no longer describes the visible Assets panel as future-only for Source Pulse.
+
+RED evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`: failed before implementation because `NativeEditorApp::asset_browser`, `NativeEditorApp::asset_browser_command_plans`, and the new smoke counters did not exist.
+
+GREEN evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`: passed; `MK_editor_native_shell_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`: passed; `MK_editor_core_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1`: passed; desktop-editor lane CTest passed 160 tests.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/core/src/ui_model.cpp,editor/src/first_party_editor_document.cpp,editor/src/native_editor_app.cpp,tests/unit/editor_core_tests.cpp,tests/unit/editor_native_shell_tests.cpp`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-editor -Files editor/src/main.cpp`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed; 50 static checks and 159 CTest tests passed.
+
+Task 5 guarantees:
+
+- The visible `MK_editor` Assets panel is backed by Source Pulse retained rows under `asset_browser.*`.
+- Legacy hard-coded `assets.*` row ids from `EditorAssetListRow` are absent from the shell document and smoke counters.
+- Native handles, package scripts, validation recipes, and import execution remain unclaimed by the Assets panel shell replacement.
 
 ## Task 6: Dialog, Path, Import, And External Copy Execution Handoff
 

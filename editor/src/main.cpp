@@ -139,6 +139,12 @@ int main(int argc, char** argv) {
             << (smoke_counters.runtime_ui_editor_external_engine_parity_claim ? 1 : 0) << '\n'
             << "editor_runtime_ui_editor_native_handles_exposed="
             << (smoke_counters.runtime_ui_editor_native_handles_exposed ? 1 : 0) << '\n'
+            << "editor_asset_browser_visible=" << (smoke_counters.editor_asset_browser_visible ? 1 : 0) << '\n'
+            << "editor_asset_browser_source_pulse_rows=" << smoke_counters.editor_asset_browser_source_pulse_rows
+            << '\n'
+            << "editor_asset_browser_hardcoded_rows=" << smoke_counters.editor_asset_browser_hardcoded_rows << '\n'
+            << "editor_asset_browser_native_handles_exposed="
+            << (smoke_counters.editor_asset_browser_native_handles_exposed ? 1 : 0) << '\n'
             << "editor_shell_resizes=" << result.resize_count << '\n'
             << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n'
             << "editor_shell_renderer_boxes_submitted=" << result.renderer_boxes_submitted << '\n'

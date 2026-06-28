@@ -4,6 +4,7 @@
 #include "native_editor_app.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/shader_compile.hpp"
@@ -154,12 +155,108 @@ make_default_inspector_rows(const ProjectDocument& project, const EnvironmentAut
     return rows;
 }
 
-[[nodiscard]] std::vector<EditorAssetListRow> make_default_asset_rows() {
-    return {
-        EditorAssetListRow{.id = "scene_start", .path = "assets/scenes/start.scene", .kind = "scene"},
-        EditorAssetListRow{.id = "material_default", .path = "assets/materials/default.material", .kind = "material"},
-        EditorAssetListRow{.id = "shader_editor", .path = "assets/shaders/editor_preview.shader", .kind = "shader"},
+[[nodiscard]] SourceAssetRegistryRowV1 make_default_asset_browser_source_row(AssetKeyV2 key, AssetKind kind,
+                                                                             std::string source_path,
+                                                                             std::string imported_path) {
+    return SourceAssetRegistryRowV1{
+        .key = std::move(key),
+        .kind = kind,
+        .source_path = std::move(source_path),
+        .source_format = std::string{expected_source_asset_format_v1(kind)},
+        .imported_path = std::move(imported_path),
     };
+}
+
+[[nodiscard]] SourceAssetRegistryDocumentV1 make_default_asset_browser_source_registry() {
+    return SourceAssetRegistryDocumentV1{
+        .assets =
+            {
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/scenes/start"}, AssetKind::scene,
+                                                      "source/scenes/start.scene", "assets/scenes/start.scene"),
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/materials/default"}, AssetKind::material,
+                                                      "source/materials/default.material",
+                                                      "assets/materials/default.material"),
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/textures/editor_preview"}, AssetKind::texture,
+                                                      "source/textures/editor_preview.texture",
+                                                      "assets/textures/editor_preview.texture"),
+            },
+    };
+}
+
+[[nodiscard]] ContentBrowserState
+make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& source_registry) {
+    ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+    return browser;
+}
+
+[[nodiscard]] AssetImportActionKind asset_import_action_kind_for_asset_browser(AssetKind kind) noexcept {
+    switch (kind) {
+    case AssetKind::texture:
+        return AssetImportActionKind::texture;
+    case AssetKind::material:
+        return AssetImportActionKind::material;
+    case AssetKind::scene:
+        return AssetImportActionKind::scene;
+    default:
+        return AssetImportActionKind::unknown;
+    }
+}
+
+[[nodiscard]] AssetImportPlan make_default_asset_browser_import_plan(const SourceAssetRegistryDocumentV1& registry) {
+    AssetImportPlan plan;
+    for (const auto& row : registry.assets) {
+        const auto kind = asset_import_action_kind_for_asset_browser(row.kind);
+        if (kind == AssetImportActionKind::unknown) {
+            continue;
+        }
+        plan.actions.push_back(AssetImportAction{
+            .id = asset_id_from_key_v2(row.key),
+            .kind = kind,
+            .source_path = row.source_path,
+            .output_path = row.imported_path,
+        });
+    }
+    return plan;
+}
+
+[[nodiscard]] EditorAssetBrowserProductionModel make_default_asset_browser_model(const ProjectDocument& project,
+                                                                                 const ContentBrowserState& browser,
+                                                                                 const AssetImportPlan& import_plan) {
+    return make_editor_asset_browser_production_model(EditorAssetBrowserProductionDesc{
+        .browser = &browser,
+        .import_plan = &import_plan,
+        .project_root = project.root_path,
+        .asset_root = project.asset_root,
+        .source_registry_path = project.source_registry_path,
+        .generation = 1U,
+    });
+}
+
+[[nodiscard]] std::vector<EditorAssetBrowserCommandPlan>
+make_default_asset_browser_command_plans(const EditorAssetBrowserProductionModel& model) {
+    constexpr std::array kinds{
+        EditorAssetBrowserCommandKind::reload_source_registry,
+        EditorAssetBrowserCommandKind::review_import_sources,
+        EditorAssetBrowserCommandKind::copy_external_sources,
+        EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        EditorAssetBrowserCommandKind::preview_cooked_package,
+        EditorAssetBrowserCommandKind::stage_hot_reload_recook,
+        EditorAssetBrowserCommandKind::inspect_selection,
+        EditorAssetBrowserCommandKind::apply_package_registration,
+    };
+
+    std::vector<EditorAssetBrowserCommandPlan> plans;
+    plans.reserve(kinds.size());
+    for (const auto kind : kinds) {
+        plans.push_back(plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+            .kind = kind,
+            .mode = EditorAssetBrowserCommandMode::dry_run,
+            .expected_generation = model.generation,
+            .current_generation = model.generation,
+        }));
+    }
+    return plans;
 }
 
 [[nodiscard]] NativeEditorEnvironmentArtistWorkflowCommandPlanRow
@@ -591,7 +688,13 @@ struct NativeEditorApp::Impl {
           scene(make_default_scene_document()), environment_authoring(make_default_environment_authoring_document()),
           environment_authoring_inspector(make_default_environment_authoring_inspector(environment_authoring)),
           inspector_rows(make_default_inspector_rows(project, environment_authoring_inspector)),
-          asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
+          asset_browser_source_registry(make_default_asset_browser_source_registry()),
+          asset_browser_content_browser(make_default_asset_browser_content_browser(asset_browser_source_registry)),
+          asset_browser_import_plan(make_default_asset_browser_import_plan(asset_browser_source_registry)),
+          asset_browser(
+              make_default_asset_browser_model(project, asset_browser_content_browser, asset_browser_import_plan)),
+          asset_browser_command_plans(make_default_asset_browser_command_plans(asset_browser)),
+          console_rows(make_default_console_rows()),
           environment_artist_workflow_command_plans(
               make_default_environment_artist_workflow_command_plans(environment_authoring)),
           environment_artist_workflow_execution_review(
@@ -624,7 +727,11 @@ struct NativeEditorApp::Impl {
     EnvironmentAuthoringDocument environment_authoring;
     EnvironmentAuthoringInspectorModel environment_authoring_inspector;
     std::vector<EditorPropertyRow> inspector_rows;
-    std::vector<EditorAssetListRow> asset_rows;
+    SourceAssetRegistryDocumentV1 asset_browser_source_registry;
+    ContentBrowserState asset_browser_content_browser;
+    AssetImportPlan asset_browser_import_plan;
+    EditorAssetBrowserProductionModel asset_browser;
+    std::vector<EditorAssetBrowserCommandPlan> asset_browser_command_plans;
     std::vector<EditorDiagnosticRow> console_rows;
     std::vector<NativeEditorEnvironmentArtistWorkflowCommandPlanRow> environment_artist_workflow_command_plans;
     EnvironmentArtistWorkflowExecutionReviewModel environment_artist_workflow_execution_review;
@@ -748,8 +855,12 @@ std::span<const EditorPropertyRow> NativeEditorApp::inspector_rows() const noexc
     return impl_->inspector_rows;
 }
 
-std::span<const EditorAssetListRow> NativeEditorApp::asset_rows() const noexcept {
-    return impl_->asset_rows;
+const EditorAssetBrowserProductionModel& NativeEditorApp::asset_browser() const noexcept {
+    return impl_->asset_browser;
+}
+
+std::span<const EditorAssetBrowserCommandPlan> NativeEditorApp::asset_browser_command_plans() const noexcept {
+    return impl_->asset_browser_command_plans;
 }
 
 std::span<const EditorDiagnosticRow> NativeEditorApp::console_rows() const noexcept {

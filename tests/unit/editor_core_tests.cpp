@@ -15113,7 +15113,7 @@ MK_TEST("editor command palette executes enabled commands only") {
     MK_REQUIRE(!mirakana::editor::execute_palette_command(registry, "missing.command"));
 }
 
-MK_TEST("editor ui models build retained inspector assets commands and diagnostics") {
+MK_TEST("editor ui models build retained inspector commands and diagnostics") {
     const auto inspector = mirakana::editor::make_inspector_ui_model({
         mirakana::editor::EditorPropertyRow{
             .id = "transform.position", .label = "Position", .value = "1,2,3", .editable = true},
@@ -15127,17 +15127,6 @@ MK_TEST("editor ui models build retained inspector assets commands and diagnosti
     MK_REQUIRE(position_value != nullptr);
     MK_REQUIRE(position_value->text.label == "1,2,3");
     MK_REQUIRE(position_value->enabled);
-
-    const auto assets = mirakana::editor::make_asset_list_ui_model({
-        mirakana::editor::EditorAssetListRow{
-            .id = "asset.player", .path = "textures/player.getex", .kind = "Texture", .enabled = true},
-        mirakana::editor::EditorAssetListRow{
-            .id = "asset.music", .path = "audio/theme.geaudio", .kind = "Audio", .enabled = false},
-    });
-    MK_REQUIRE(assets.find(mirakana::ui::ElementId{"assets.asset.player"})->role ==
-               mirakana::ui::SemanticRole::list_item);
-    MK_REQUIRE(assets.find(mirakana::ui::ElementId{"assets.asset.player.path"})->text.label == "textures/player.getex");
-    MK_REQUIRE(!assets.find(mirakana::ui::ElementId{"assets.asset.music"})->enabled);
 
     const auto commands = mirakana::editor::make_command_palette_ui_model({
         mirakana::editor::EditorCommandPaletteEntry{

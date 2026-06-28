@@ -310,6 +310,48 @@ MK_TEST("editor first party document includes visible panel roots") {
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor"));
 }
 
+MK_TEST("editor native shell exposes Source Pulse asset browser model") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto& asset_browser = app.asset_browser();
+    const auto command_plans = app.asset_browser_command_plans();
+
+    MK_REQUIRE(asset_browser.status == mirakana::editor::EditorAssetBrowserProductionStatus::ready);
+    MK_REQUIRE(asset_browser.rows.size() >= 3U);
+    MK_REQUIRE(asset_browser.visible_row_count == asset_browser.rows.size());
+    MK_REQUIRE(!asset_browser.mutates);
+    MK_REQUIRE(!asset_browser.executes);
+    MK_REQUIRE(!asset_browser.exposes_native_handles);
+    MK_REQUIRE(command_plans.size() == 8U);
+    for (const auto& command : command_plans) {
+        MK_REQUIRE(command.current_generation == asset_browser.generation);
+        MK_REQUIRE(!command.executes_package_scripts);
+        MK_REQUIRE(!command.executes_validation_recipes);
+        MK_REQUIRE(!command.exposes_native_handles);
+    }
+}
+
+MK_TEST("editor first party document renders Source Pulse assets instead of legacy hard coded rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+    const auto& asset_browser = app.asset_browser();
+
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.assets"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.source_pulse"));
+    MK_REQUIRE(!asset_browser.rows.empty());
+    MK_REQUIRE(contains_element(shell_document.document, asset_browser.rows.front().row_id));
+    MK_REQUIRE(!contains_element(shell_document.document, "assets.scene_start"));
+    MK_REQUIRE(!contains_element(shell_document.document, "assets.material_default"));
+    MK_REQUIRE(!contains_element(shell_document.document, "assets.shader_editor"));
+    MK_REQUIRE(counters.editor_asset_browser_visible);
+    MK_REQUIRE(counters.editor_asset_browser_source_pulse_rows == asset_browser.rows.size());
+    MK_REQUIRE(counters.editor_asset_browser_hardcoded_rows == 0U);
+    MK_REQUIRE(!counters.editor_asset_browser_native_handles_exposed);
+}
+
 MK_TEST("editor first party document exposes runtime UI editor authoring rows") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
