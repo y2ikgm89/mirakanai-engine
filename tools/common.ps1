@@ -675,6 +675,48 @@ function Get-VisualStudioInstallationPath {
     return $path.Trim()
 }
 
+function Get-VisualStudioCppInstallationPath {
+    $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+        return $null
+    }
+
+    $path = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($path)) {
+        return $null
+    }
+
+    return $path.Trim()
+}
+
+function Get-VisualStudioDevShellScript {
+    $vsPath = Get-VisualStudioCppInstallationPath
+    if (-not $vsPath) {
+        return $null
+    }
+
+    $candidate = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        return (Resolve-Path -LiteralPath $candidate).Path
+    }
+
+    return $null
+}
+
+function Get-VisualStudioDevCmdScript {
+    $vsPath = Get-VisualStudioCppInstallationPath
+    if (-not $vsPath) {
+        return $null
+    }
+
+    $candidate = Join-Path $vsPath "Common7\Tools\VsDevCmd.bat"
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        return (Resolve-Path -LiteralPath $candidate).Path
+    }
+
+    return $null
+}
+
 function Get-CMakeCommand {
     $fromPath = Get-Command cmake -ErrorAction SilentlyContinue
     if ($fromPath) {
@@ -852,9 +894,9 @@ function Assert-CppBuildTools {
     $vsPath = $null
     $msbuild = $null
     if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
-        $vsPath = Get-VisualStudioInstallationPath
+        $vsPath = Get-VisualStudioCppInstallationPath
         if (-not $vsPath) {
-            Write-Error "Visual Studio Build Tools are required on Windows but were not found. Install official Visual Studio Build Tools with MSVC and MSBuild."
+            Write-Error "Visual Studio Build Tools with MSVC C++ tools are required on Windows but were not found. Install official Visual Studio Build Tools with the C++ build tools workload."
         }
 
         $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"

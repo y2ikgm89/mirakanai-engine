@@ -22,6 +22,15 @@ Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` for the a
 
 On Windows, the repository CMake and CTest wrappers launch CMake and pass MSBuild a single `Path` environment key even when the parent process exposes `PATH`, `Path`, or both. Keep new local CMake/CTest workflows on `tools/cmake.ps1` / `tools/ctest.ps1` unless a task explicitly requires raw command behavior.
 
+For rare raw MSVC tool usage from ordinary PowerShell, use the repository wrapper below. It initializes Microsoft's Visual Studio Developer PowerShell environment through the detected `Launch-VsDevShell.ps1`, then either prints the resolved `cl`, `nmake`, `MSBuild`, and `cmake` paths or runs the command that follows the script name.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/invoke-msvc-dev-shell.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/invoke-msvc-dev-shell.ps1 cl /?
+```
+
+GNU `make` is not a Windows-side prerequisite for this engine. External POSIX-oriented C projects should use WSL or another Linux build environment for `make`, `gcc`/`clang`, and development packages such as `zlib1g-dev`. For the developer-local `codebase-memory-mcp` external validation lane, use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install-codebase-memory-wsl-deps.ps1 [-DistroName Ubuntu-24.04]` to install `zlib1g-dev`, `clang-format`, and `pkg-config` inside WSL; this is not a GameEngine CMake/vcpkg dependency.
+
 Checked-in CMake configure/build presets still inherit `normalized-configure-environment` / `normalized-build-environment` so preset-defined environments remain explicit and verifiable. On Windows Visual Studio generator hosts, these presets inherit `PATH` and unset `Path`, which keeps raw `cmake --preset ...` configure/build behavior aligned with CMake Presets environment support; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when raw `cmake` support itself is required.
 
 MSVC targets use bounded compiler-level parallelism through `MK_apply_common_target_options`: `MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES` defaults to `2`, emitting `/MP2` for each target plus `/Zf` for faster PDB generation during parallel builds. CMake/MSBuild still owns target-level parallelism through the repository wrappers, so the default avoids the worst `P x C` oversubscription while improving targets with multiple translation units.

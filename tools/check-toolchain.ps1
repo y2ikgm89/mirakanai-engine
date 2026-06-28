@@ -289,8 +289,30 @@ $directCmake = Get-Command cmake -ErrorAction SilentlyContinue | Select-Object -
 if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
     Write-ToolPath "visual-studio" $tools.VisualStudio
     Write-ToolPath "msbuild" $tools.MSBuild
+    Write-ToolPath "msvc-dev-shell" (Get-VisualStudioDevShellScript)
+    Write-ToolPath "msvc-dev-cmd" (Get-VisualStudioDevCmdScript)
     $shellState = if (Test-VisualStudioDeveloperShell) { "developer-shell" } else { "ordinary-shell" }
     Write-Host "toolchain-check: windows-shell=$shellState"
+
+    $directCl = Get-Command cl -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($directCl) {
+        Write-Host "toolchain-check: direct-cl=$($directCl.Source)"
+        Write-Host "toolchain-check: direct-cl-status=ready"
+    } else {
+        Write-Host "toolchain-check: direct-cl=missing"
+        Write-Host "toolchain-check: direct-cl-status=developer-shell-required"
+    }
+
+    $directNmake = Get-Command nmake -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($directNmake) {
+        Write-Host "toolchain-check: direct-nmake=$($directNmake.Source)"
+        Write-Host "toolchain-check: direct-nmake-status=ready"
+    } else {
+        Write-Host "toolchain-check: direct-nmake=missing"
+        Write-Host "toolchain-check: direct-nmake-status=developer-shell-required"
+    }
+
+    Write-Host "toolchain-check: msvc-dev-shell-note=Use tools/invoke-msvc-dev-shell.ps1 for raw cl/nmake commands from ordinary PowerShell; repository CMake wrappers remain the preferred build entrypoint."
 
     if (-not $directCmake) {
         $message = "Direct 'cmake --preset ...' commands require CMake on PATH. On Windows, use Visual Studio Developer PowerShell/Command Prompt or install official CMake 3.30+ on PATH. Repository wrappers use the resolved CMake path above."
