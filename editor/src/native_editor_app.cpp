@@ -223,9 +223,10 @@ make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& 
     return plan;
 }
 
-[[nodiscard]] EditorAssetBrowserProductionModel make_default_asset_browser_model(const ProjectDocument& project,
-                                                                                 const ContentBrowserState& browser,
-                                                                                 const AssetImportPlan& import_plan) {
+[[nodiscard]] EditorAssetBrowserProductionModel
+make_default_asset_browser_model(const ProjectDocument& project, const ContentBrowserState& browser,
+                                 const AssetImportPlan& import_plan,
+                                 const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr) {
     return make_editor_asset_browser_production_model(EditorAssetBrowserProductionDesc{
         .browser = &browser,
         .import_plan = &import_plan,
@@ -233,6 +234,7 @@ make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& 
         .asset_root = project.asset_root,
         .source_registry_path = project.source_registry_path,
         .generation = 1U,
+        .preview_evidence = preview_evidence,
     });
 }
 
@@ -535,6 +537,15 @@ make_default_environment_artist_workflow_execution_review(const EnvironmentAutho
     return make_editor_material_asset_preview_panel_model(filesystem, registry, material_id, shader_artifacts);
 }
 
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceDesc
+make_default_asset_browser_preview_evidence_desc(const AssetImportPlan& import_plan,
+                                                 const EditorMaterialAssetPreviewPanelModel& material_preview) {
+    return EditorAssetBrowserPreviewEvidenceDesc{
+        .material_previews = {material_preview},
+        .thumbnail_requests = make_editor_asset_thumbnail_requests(import_plan),
+    };
+}
+
 [[nodiscard]] std::vector<EditorDiagnosticRow> make_default_console_rows() {
     return {
         EditorDiagnosticRow{
@@ -792,11 +803,20 @@ struct NativeEditorApp::Impl {
           text_input_state(
               make_native_editor_text_input_state(make_native_editor_project_name_text_input_target(project.name))),
           clipboard_text_adapter(memory_clipboard) {
+        refresh_asset_browser_preview_evidence();
         file_dialog_service = &memory_file_dialog_service;
         clipboard_adapter = &clipboard_text_adapter;
         process_runner = &recording_process_runner;
         platform_text_input_adapter = &memory_text_input_adapter;
         ime_adapter = &memory_ime_adapter;
+    }
+
+    void refresh_asset_browser_preview_evidence() {
+        const auto preview_evidence =
+            make_default_asset_browser_preview_evidence_desc(asset_browser_import_plan, material_preview);
+        asset_browser = make_default_asset_browser_model(project, asset_browser_content_browser,
+                                                         asset_browser_import_plan, &preview_evidence);
+        asset_browser_command_plans = make_default_asset_browser_command_plans(asset_browser);
     }
 
     ProjectDocument project;
@@ -1504,6 +1524,7 @@ void NativeEditorApp::record_native_material_preview_d3d12_host_ready(std::uint6
     });
     apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
                                                          impl_->material_preview_display.execution_snapshot);
+    impl_->refresh_asset_browser_preview_evidence();
 }
 
 void NativeEditorApp::record_native_viewport_texture_display(NativeViewportDisplayPlan plan) {
@@ -1519,6 +1540,7 @@ void NativeEditorApp::record_native_material_preview_texture_display(NativeMater
     impl_->material_preview_display = std::move(plan);
     apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
                                                          impl_->material_preview_display.execution_snapshot);
+    impl_->refresh_asset_browser_preview_evidence();
 }
 
 void NativeEditorApp::record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence) {

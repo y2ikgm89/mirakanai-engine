@@ -4,7 +4,12 @@
 #pragma once
 
 #include "mirakana/assets/asset_import_pipeline.hpp"
+#include "mirakana/assets/asset_source_format.hpp"
+#include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/content_browser.hpp"
+#include "mirakana/editor/material_asset_preview_panel.hpp"
+#include "mirakana/editor/scene_authoring.hpp"
+#include "mirakana/tools/gltf_mesh_inspect.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <cstddef>
@@ -54,6 +59,43 @@ struct EditorAssetBrowserSourcePulseRow {
     bool host_gated{false};
 };
 
+struct EditorAssetBrowserPreviewEvidenceRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string preview_kind;
+    std::string backend_label;
+    std::string display_path_label;
+    std::string status_label;
+    std::string diagnostic;
+    std::uint64_t frame_or_sample_count{0};
+    bool host_owned{true};
+    bool ready{false};
+    bool exposes_native_handles{false};
+};
+
+struct EditorAssetBrowserGltfInspectEvidenceInput {
+    AssetId asset;
+    std::string asset_key_label;
+    std::string source_path;
+    GltfMeshInspectReport report;
+};
+
+struct EditorAssetBrowserAudioSummaryInput {
+    AssetId asset;
+    std::string asset_key_label;
+    std::string source_path;
+    AudioSourceDocument audio;
+};
+
+struct EditorAssetBrowserPreviewEvidenceDesc {
+    std::vector<EditorMaterialAssetPreviewPanelModel> material_previews;
+    std::vector<EditorAssetThumbnailRequest> thumbnail_requests;
+    std::vector<EditorAssetBrowserGltfInspectEvidenceInput> gltf_inspects;
+    std::vector<EditorAssetBrowserAudioSummaryInput> audio_summaries;
+    std::vector<SceneAuthoringDiagnostic> scene_reference_diagnostics;
+    std::vector<AssetHotReloadRecookRequest> hot_reload_recook_requests;
+};
+
 struct EditorAssetBrowserProductionDesc {
     const ContentBrowserState* browser{nullptr};
     const AssetImportPlan* import_plan{nullptr};
@@ -61,6 +103,7 @@ struct EditorAssetBrowserProductionDesc {
     std::string asset_root{"assets"};
     std::string source_registry_path;
     std::uint64_t generation{1};
+    const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence{nullptr};
 };
 
 struct EditorAssetBrowserProductionModel {
@@ -73,10 +116,16 @@ struct EditorAssetBrowserProductionModel {
     std::size_t total_row_count{0};
     std::size_t visible_row_count{0};
     std::vector<EditorAssetBrowserSourcePulseRow> rows;
+    std::vector<EditorAssetBrowserPreviewEvidenceRow> preview_rows;
     std::vector<std::string> diagnostics;
     bool mutates{false};
     bool executes{false};
     bool exposes_native_handles{false};
+    bool decodes_source_files{false};
+    bool uploads_gpu_resources{false};
+    bool executes_shader_compilers{false};
+    bool streams_packages{false};
+    bool mutates_manifests{false};
 };
 
 struct EditorAssetBrowserQueryTokenRow {
@@ -197,6 +246,8 @@ struct EditorAssetBrowserKtx2BasisSourceReviewRow {
 [[nodiscard]] std::string_view
 editor_asset_browser_production_status_label(EditorAssetBrowserProductionStatus status) noexcept;
 [[nodiscard]] std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind kind) noexcept;
+[[nodiscard]] std::vector<EditorAssetBrowserPreviewEvidenceRow>
+make_editor_asset_browser_preview_evidence_rows(const EditorAssetBrowserPreviewEvidenceDesc& desc);
 [[nodiscard]] EditorAssetBrowserProductionModel
 make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDesc& desc);
 [[nodiscard]] mirakana::ui::UiDocument

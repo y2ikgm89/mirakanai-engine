@@ -60,6 +60,7 @@ All rows below were reviewed on 2026-06-29. Implementation is permitted to cite 
 | Microsoft C++ docs through Context7 | `/microsoftdocs/cpp-docs` | Public editor-core types use RAII-owned values, standard containers, smart-pointer/private-handle adapters when ownership is required, and no raw owning pointers or Win32 handles in public core models. |
 | OpenEXR through Context7 | `/academysoftwarefoundation/openexr` | EXR source review rows must record required header attributes, data/display windows, channels, compression, line order, tiled policy, multipart/deep policy, and explicit color-intent/chromaticity status before any package-ready claim. |
 | KTX Software through Context7 | `/khronosgroup/ktx-software` | KTX2/Basis review rows must record whether transcoding is required, selected transcode target, backend format-support evidence, dimensions, levels, layers, faces, supercompression, and no editor-core upload. |
+| Khronos glTF 2.0 specification | `https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html` | Asset Browser glTF inspect evidence treats a mesh as value-only primitive rows with attributes/indices/material/mode-derived diagnostics; it does not load runtime scenes, infer renderer/RHI readiness, fetch arbitrary external resources, expose parser/native handles, or copy external-engine import workflows. |
 | Unity Project window reference | `https://docs.unity3d.com/Manual/ProjectView.html` | Asset browser category expectations include project files, asset navigation, search/filtering, import visibility, and preview/selection concepts. Unity `t:` / `l:` query syntax, layout, shortcuts, labels, icons, and screenshots are forbidden implementation inputs. |
 | Unreal Engine Content Browser docs | `https://dev.epicgames.com/documentation/en-us/unreal-engine/content-browser-in-unreal-engine` | Asset browser category expectations include browsing, importing, organizing, previewing, text filtering, issue identification, and project content operations. Unreal collection behavior, content drawer expression, API names, layout, icons, assets, and compatibility claims are forbidden implementation inputs. |
 | Godot File system docs | `https://docs.godotengine.org/en/stable/tutorials/scripting/filesystem.html` | Asset browser category expectations include project filesystem visibility and imported/generated artifact awareness. Godot `res://` semantics, dock expression, metadata formats, labels, icons, samples, and compatibility claims are forbidden implementation inputs. |
@@ -966,11 +967,11 @@ Task 6 guarantees:
 - Modify: `tests/unit/editor_core_tests.cpp`
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Add failing preview evidence tests**
+- [x] **Step 1: Add failing preview evidence tests**
 
 Add tests for material, texture thumbnail request, glTF/glB inspect, audio summary, scene reference diagnostics, and hot-reload staged recook rows. Each test must prove preview evidence is host-owned and that `editor/core` does not create renderer/RHI resources, decode arbitrary files for display, execute shader compilers, stream packages, expose native handles, or mutate manifests.
 
-- [ ] **Step 2: Add preview evidence row types**
+- [x] **Step 2: Add preview evidence row types**
 
 Add:
 
@@ -990,15 +991,32 @@ struct EditorAssetBrowserPreviewEvidenceRow {
 };
 ```
 
-- [ ] **Step 3: Wire existing preview sources**
+- [x] **Step 3: Wire existing preview sources**
 
 Reuse `EditorMaterialAssetPreviewPanelModel`, `make_editor_asset_thumbnail_requests`, `inspect_gltf_mesh_primitives` review rows, and `AssetHotReloadRecookScheduler` summaries as inputs. Do not introduce a new image library, audio decoder, or GPU upload path in this task.
 
-- [ ] **Step 4: Run validation**
+- [x] **Step 4: Run validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1`
 
 Expected: preview and shell evidence tests pass.
+
+### Task 7 Implementation Evidence - 2026-06-29
+
+- Official-doc check: Context7 did not expose an official Khronos glTF specification library ID, so the implementation decision was cross-checked against the Khronos glTF 2.0 specification at `https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html`; Asset Browser uses only value rows for mesh primitive inspect evidence.
+- Red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` failed on missing `EditorAssetBrowserPreviewEvidenceDesc`, `EditorAssetBrowserGltfInspectEvidenceInput`, `EditorAssetBrowserAudioSummaryInput`, `make_editor_asset_browser_preview_evidence_rows`, `EditorAssetBrowserProductionDesc::preview_evidence`, and production-model preview/non-execution fields.
+- Green focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` PASS.
+- Focused tests: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_(core|native_shell)_tests"` PASS with `100% tests passed, 0 tests failed out of 2`.
+- Editor lane: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` PASS with `100% tests passed, 0 tests failed out of 160`.
+- Static checks: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-dependency-policy.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files editor/core/src/asset_browser_production.cpp,editor/src/native_editor_app.cpp`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` PASS.
+- Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS with 50 static checks and `100% tests passed, 0 tests failed out of 159`.
+
+Task 7 guarantees:
+
+- `EditorAssetBrowserPreviewEvidenceRow` and `make_editor_asset_browser_preview_evidence_rows` aggregate selected material GPU execution snapshots, thumbnail requests, glTF mesh inspect reports, audio metadata summaries, scene-reference diagnostics, and hot-reload recook requests as deterministic value rows under `asset_browser.preview.*`.
+- `EditorAssetBrowserProductionModel::preview_rows` updates Source Pulse `preview_status_label` / `hot_reload_status_label` from caller-supplied evidence while keeping `editor/core` non-mutating and non-executing.
+- The native shell rebuilds Source Pulse preview evidence from the current material-preview host snapshot and import-plan thumbnail requests when native material preview display evidence changes.
+- `MK_editor_core` still does not create renderer/RHI resources, decode arbitrary files for display, execute shader compilers, stream packages, expose native handles, mutate manifests, copy external-engine workflows, or claim Unity/Unreal/Godot project/schema compatibility.
 
 ## Task 8: Accessibility, Keyboard, And AI-Operable Retained Rows
 

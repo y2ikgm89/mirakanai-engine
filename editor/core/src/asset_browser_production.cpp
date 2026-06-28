@@ -24,6 +24,10 @@ namespace {
     return "asset_browser.source_pulse." + std::to_string(asset.value);
 }
 
+[[nodiscard]] std::string preview_row_id(std::string_view kind, AssetId asset) {
+    return "asset_browser.preview." + std::string(kind) + "." + std::to_string(asset.value);
+}
+
 [[nodiscard]] bool import_plan_contains(const AssetImportPlan* plan, AssetId asset, std::string_view output_path) {
     if (plan == nullptr) {
         return false;
@@ -206,6 +210,197 @@ namespace {
 [[nodiscard]] bool missing_ktx2_metadata(const EditorAssetBrowserKtx2BasisSourceReviewRow& row) {
     return row.source_path.empty() || row.basis_color_model.empty() || row.dimensions.empty() || row.levels.empty() ||
            row.layers.empty() || row.faces.empty() || row.supercompression.empty() || row.payload_byte_count.empty();
+}
+
+[[nodiscard]] std::string_view thumbnail_kind_id(EditorAssetThumbnailKind kind) noexcept {
+    switch (kind) {
+    case EditorAssetThumbnailKind::texture:
+        return "thumbnail_texture";
+    case EditorAssetThumbnailKind::mesh:
+        return "thumbnail_mesh";
+    case EditorAssetThumbnailKind::material:
+        return "thumbnail_material";
+    case EditorAssetThumbnailKind::scene:
+        return "thumbnail_scene";
+    case EditorAssetThumbnailKind::audio:
+        return "thumbnail_audio";
+    case EditorAssetThumbnailKind::unknown:
+        break;
+    }
+    return "thumbnail_unknown";
+}
+
+[[nodiscard]] std::string_view scene_reference_diagnostic_kind_label(SceneAuthoringDiagnosticKind kind) noexcept {
+    switch (kind) {
+    case SceneAuthoringDiagnosticKind::missing_asset:
+        return "missing_asset";
+    case SceneAuthoringDiagnosticKind::wrong_asset_kind:
+        return "wrong_asset_kind";
+    }
+    return "missing_asset";
+}
+
+[[nodiscard]] std::string fallback_asset_label(AssetId asset) {
+    return "asset:" + std::to_string(asset.value);
+}
+
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceRow
+make_material_preview_evidence_row(const EditorMaterialAssetPreviewPanelModel& preview) {
+    EditorAssetBrowserPreviewEvidenceRow row{
+        .id = preview_row_id("material", preview.material),
+        .asset_key_label = preview.material_id.empty() ? fallback_asset_label(preview.material) : preview.material_id,
+        .preview_kind = "material",
+        .backend_label = preview.gpu_execution_backend_label.empty() ? "-" : preview.gpu_execution_backend_label,
+        .display_path_label = preview.gpu_execution_display_path_label.empty()
+                                  ? preview.material_path
+                                  : preview.gpu_execution_display_path_label,
+        .status_label =
+            preview.gpu_execution_status_label.empty() ? preview.status_label : preview.gpu_execution_status_label,
+        .diagnostic = preview.gpu_execution_diagnostic.empty() ? "material preview execution evidence is host-owned"
+                                                               : preview.gpu_execution_diagnostic,
+        .frame_or_sample_count = preview.gpu_execution_frames_rendered,
+        .host_owned = preview.gpu_execution_host_owned,
+        .ready = preview.gpu_execution_ready,
+        .exposes_native_handles = preview.exposes_native_handles,
+    };
+    if (preview.executes || preview.exposes_native_handles) {
+        row.status_label = "blocked";
+        row.diagnostic = "material preview evidence must not claim editor-core execution or native handle exposure";
+        row.ready = false;
+        row.host_owned = true;
+        row.exposes_native_handles = preview.exposes_native_handles;
+    }
+    if (row.status_label.empty()) {
+        row.status_label = "Host Required";
+    }
+    if (row.display_path_label.empty()) {
+        row.display_path_label = "-";
+    }
+    return row;
+}
+
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceRow
+make_thumbnail_preview_evidence_row(const EditorAssetThumbnailRequest& request) {
+    const std::string_view kind = thumbnail_kind_id(request.kind);
+    return EditorAssetBrowserPreviewEvidenceRow{
+        .id = preview_row_id(kind, request.asset),
+        .asset_key_label = request.output_path.empty() ? fallback_asset_label(request.asset) : request.output_path,
+        .preview_kind = std::string(kind),
+        .backend_label = "host-thumbnail-queue",
+        .display_path_label = request.output_path.empty() ? request.source_path : request.output_path,
+        .status_label = "host_request_queued",
+        .diagnostic = "thumbnail request is host-owned; editor core does not decode or upload source files",
+        .frame_or_sample_count = 0,
+        .host_owned = true,
+        .ready = false,
+        .exposes_native_handles = false,
+    };
+}
+
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceRow
+make_gltf_inspect_evidence_row(const EditorAssetBrowserGltfInspectEvidenceInput& input) {
+    EditorAssetBrowserPreviewEvidenceRow row{
+        .id = preview_row_id("gltf_mesh_inspect", input.asset),
+        .asset_key_label = input.asset_key_label.empty() ? fallback_asset_label(input.asset) : input.asset_key_label,
+        .preview_kind = "gltf_mesh_inspect",
+        .backend_label = "gltf2-mesh-inspector",
+        .display_path_label = input.source_path,
+        .status_label = input.report.parse_succeeded ? "inspect_ready" : "inspect_failed",
+        .diagnostic = input.report.parse_succeeded
+                          ? "glTF 2.0 mesh primitives inspected as value-only attributes/indices evidence"
+                          : input.report.diagnostic,
+        .frame_or_sample_count = static_cast<std::uint64_t>(input.report.rows.size()),
+        .host_owned = true,
+        .ready = input.report.parse_succeeded,
+        .exposes_native_handles = false,
+    };
+    if (row.display_path_label.empty()) {
+        row.display_path_label = "-";
+    }
+    if (row.diagnostic.empty()) {
+        row.diagnostic = "glTF mesh inspect report is unavailable";
+    }
+    return row;
+}
+
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceRow
+make_audio_summary_evidence_row(const EditorAssetBrowserAudioSummaryInput& input) {
+    const bool ready = is_valid_audio_source_document(input.audio);
+    return EditorAssetBrowserPreviewEvidenceRow{
+        .id = preview_row_id("audio_summary", input.asset),
+        .asset_key_label = input.asset_key_label.empty() ? fallback_asset_label(input.asset) : input.asset_key_label,
+        .preview_kind = "audio_summary",
+        .backend_label = "source-audio-metadata",
+        .display_path_label = input.source_path.empty() ? "-" : input.source_path,
+        .status_label = ready ? "metadata_ready" : "invalid_audio_summary",
+        .diagnostic = "audio summary uses metadata only: " + std::to_string(input.audio.channel_count) + "ch " +
+                      std::to_string(input.audio.sample_rate) + "Hz " +
+                      std::string(audio_source_sample_format_name(input.audio.sample_format)),
+        .frame_or_sample_count = input.audio.frame_count,
+        .host_owned = true,
+        .ready = ready,
+        .exposes_native_handles = false,
+    };
+}
+
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceRow
+make_scene_reference_diagnostic_evidence_row(const SceneAuthoringDiagnostic& diagnostic, std::size_t index) {
+    return EditorAssetBrowserPreviewEvidenceRow{
+        .id = "asset_browser.preview.scene_reference." + std::to_string(diagnostic.node.value) + "." +
+              std::to_string(diagnostic.asset.value) + "." + std::to_string(index),
+        .asset_key_label = fallback_asset_label(diagnostic.asset),
+        .preview_kind = "scene_reference_diagnostic",
+        .backend_label = "scene-authoring-validator",
+        .display_path_label = diagnostic.field.empty() ? "-" : diagnostic.field,
+        .status_label = "blocked",
+        .diagnostic =
+            std::string(scene_reference_diagnostic_kind_label(diagnostic.kind)) + ": " + diagnostic.diagnostic,
+        .frame_or_sample_count = 0,
+        .host_owned = true,
+        .ready = false,
+        .exposes_native_handles = false,
+    };
+}
+
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceRow
+make_hot_reload_recook_evidence_row(const AssetHotReloadRecookRequest& request) {
+    return EditorAssetBrowserPreviewEvidenceRow{
+        .id = preview_row_id("hot_reload_recook", request.asset),
+        .asset_key_label = fallback_asset_label(request.asset),
+        .preview_kind = "hot_reload_recook",
+        .backend_label = "asset-hot-reload-scheduler",
+        .display_path_label = request.trigger_path.empty() ? "-" : request.trigger_path,
+        .status_label = "recook_staged",
+        .diagnostic = std::string(editor_asset_hot_reload_recook_reason_label(request.reason)),
+        .frame_or_sample_count = request.current_revision,
+        .host_owned = true,
+        .ready = true,
+        .exposes_native_handles = false,
+    };
+}
+
+[[nodiscard]] bool preview_matches_source_pulse(const EditorAssetBrowserPreviewEvidenceRow& preview,
+                                                const EditorAssetBrowserSourcePulseRow& row) {
+    return (!preview.asset_key_label.empty() && preview.asset_key_label == row.asset_key_label) ||
+           (!preview.display_path_label.empty() &&
+            (preview.display_path_label == row.imported_path || preview.display_path_label == row.source_path));
+}
+
+void apply_preview_evidence_to_source_pulse_rows(EditorAssetBrowserProductionModel& model) {
+    for (auto& source_row : model.rows) {
+        for (const auto& preview : model.preview_rows) {
+            if (!preview_matches_source_pulse(preview, source_row)) {
+                continue;
+            }
+            if (preview.preview_kind == "hot_reload_recook") {
+                source_row.hot_reload_status_label = preview.status_label;
+            } else {
+                source_row.preview_status_label = preview.status_label;
+            }
+            source_row.host_gated = source_row.host_gated || (preview.host_owned && !preview.ready);
+            source_row.blocked = source_row.blocked || preview.exposes_native_handles;
+        }
+    }
 }
 
 void append_command_report_rows(EditorAssetBrowserCommandPlan& plan, EditorAssetBrowserCommandMode mode) {
@@ -429,6 +624,37 @@ std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind k
     return "asset_browser.source_registry.reload";
 }
 
+std::vector<EditorAssetBrowserPreviewEvidenceRow>
+make_editor_asset_browser_preview_evidence_rows(const EditorAssetBrowserPreviewEvidenceDesc& desc) {
+    std::vector<EditorAssetBrowserPreviewEvidenceRow> rows;
+    rows.reserve(desc.material_previews.size() + desc.thumbnail_requests.size() + desc.gltf_inspects.size() +
+                 desc.audio_summaries.size() + desc.scene_reference_diagnostics.size() +
+                 desc.hot_reload_recook_requests.size());
+
+    for (const auto& preview : desc.material_previews) {
+        rows.push_back(make_material_preview_evidence_row(preview));
+    }
+    for (const auto& request : desc.thumbnail_requests) {
+        rows.push_back(make_thumbnail_preview_evidence_row(request));
+    }
+    for (const auto& input : desc.gltf_inspects) {
+        rows.push_back(make_gltf_inspect_evidence_row(input));
+    }
+    for (const auto& input : desc.audio_summaries) {
+        rows.push_back(make_audio_summary_evidence_row(input));
+    }
+    for (std::size_t index = 0; index < desc.scene_reference_diagnostics.size(); ++index) {
+        rows.push_back(make_scene_reference_diagnostic_evidence_row(desc.scene_reference_diagnostics[index], index));
+    }
+    for (const auto& request : desc.hot_reload_recook_requests) {
+        rows.push_back(make_hot_reload_recook_evidence_row(request));
+    }
+
+    std::ranges::sort(rows, [](const EditorAssetBrowserPreviewEvidenceRow& lhs,
+                               const EditorAssetBrowserPreviewEvidenceRow& rhs) { return lhs.id < rhs.id; });
+    return rows;
+}
+
 EditorAssetBrowserProductionModel
 make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDesc& desc) {
     EditorAssetBrowserProductionModel model;
@@ -451,6 +677,12 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
         model.rows.push_back(make_source_pulse_row(item, selected, desc.import_plan));
     }
     sort_rows(model.rows);
+    if (desc.preview_evidence != nullptr) {
+        model.preview_rows = make_editor_asset_browser_preview_evidence_rows(*desc.preview_evidence);
+        apply_preview_evidence_to_source_pulse_rows(model);
+        model.exposes_native_handles =
+            std::ranges::any_of(model.preview_rows, [](const auto& row) { return row.exposes_native_handles; });
+    }
 
     model.status =
         model.rows.empty() ? EditorAssetBrowserProductionStatus::empty : EditorAssetBrowserProductionStatus::ready;

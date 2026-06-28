@@ -2133,6 +2133,49 @@ MK_TEST("editor native material preview plan keeps d3d12 handles private") {
     MK_REQUIRE(!app.material_preview().exposes_native_handles);
 }
 
+MK_TEST("editor native shell routes material preview evidence into asset browser preview rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .frame_index = 33U,
+            .backend_id = "d3d12",
+            .frames_rendered = 3U,
+            .executes = false,
+        });
+
+    app.record_native_material_preview_texture_display(plan);
+
+    const auto& asset_browser = app.asset_browser();
+    const auto material_row = std::ranges::find_if(asset_browser.preview_rows,
+                                                   [](const auto& row) { return row.preview_kind == "material"; });
+    MK_REQUIRE(material_row != asset_browser.preview_rows.end());
+    MK_REQUIRE(material_row->backend_label == "D3D12");
+    MK_REQUIRE(material_row->display_path_label == "host-private-native");
+    MK_REQUIRE(material_row->frame_or_sample_count == 3U);
+    MK_REQUIRE(material_row->ready);
+    MK_REQUIRE(material_row->host_owned);
+    MK_REQUIRE(!material_row->exposes_native_handles);
+    MK_REQUIRE(!asset_browser.executes);
+    MK_REQUIRE(!asset_browser.exposes_native_handles);
+    MK_REQUIRE(!asset_browser.uploads_gpu_resources);
+    MK_REQUIRE(std::ranges::any_of(asset_browser.preview_rows, [](const auto& row) {
+        return row.preview_kind == "thumbnail_material" && row.status_label == "host_request_queued";
+    }));
+}
+
 MK_TEST("editor native shell routes file dialog requests through bound service") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     mirakana::MemoryFileDialogService file_dialogs;
