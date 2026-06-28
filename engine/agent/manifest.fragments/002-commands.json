@@ -7,6 +7,8 @@
     "postMergeTaskCleanup": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/post-merge-task-cleanup.ps1 -WorktreePath <path> [-HeadRefOid <headRefOid>] [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>]",
     "toolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
     "directToolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake",
+    "msvcDevShell": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/invoke-msvc-dev-shell.ps1 [<command> ...]",
+    "installCodebaseMemoryWslDeps": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install-codebase-memory-wsl-deps.ps1 [-DistroName Ubuntu-24.04] [-CheckOnly]",
     "bootstrapDeps": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
     "build": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1",
     "buildEditor": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1",

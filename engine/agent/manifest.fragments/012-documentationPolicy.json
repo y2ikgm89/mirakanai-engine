@@ -65,6 +65,36 @@
     ],
     "secretStorage": "User-level MCP configuration only.",
     "doNotStoreApiKeysInRepo": true,
+    "developerLocalMcpTools": {
+      "codebaseMemoryMcp": {
+        "status": "local-helper-policy-accepted",
+        "spec": "docs/specs/2026-06-28-codebase-memory-local-ai-helper-v1.md",
+        "repositoryArtifactPolicy": ".codebase-memory/ is ignored; .mcp.json stays ignored; graph artifacts and trace bodies are user-local only.",
+        "wslHostSetupCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install-codebase-memory-wsl-deps.ps1 [-DistroName Ubuntu-24.04] [-CheckOnly]",
+        "wslHostPackages": [
+          "zlib1g-dev",
+          "clang-format",
+          "pkg-config"
+        ],
+        "allowedOperations": [
+          "index_repository mode=full with persistence=false by default; persistence=true only for explicit ignored local artifacts",
+          "search_graph, get_code_snippet, get_graph_schema, trace_path when exposed, index_status, list_projects, and detect_changes as exploratory aids",
+          "ingest_traces with sanitized OTLP-shaped spans after RuntimeTrace, RuntimeSpan, CONTAINS_SPAN, and OBSERVED_EXECUTION smoke verification"
+        ],
+        "reservedOperations": [
+          "unsanitized trace payloads, raw logs, credentials, crash dumps, PIX/ETW traces, binary payloads, and machine-local absolute paths"
+        ],
+        "forbiddenOperations": [
+          "manage_adr for project decisions",
+          "engine/runtime/editor dependency integration",
+          "committed MCP configs, indexes, traces, or generated graph artifacts"
+        ],
+        "verification": [
+          "Confirm exact claims with rg, git status, manifest data, tests, and repository validation.",
+          "Run focused agent-surface checks after policy changes."
+        ]
+      }
+    },
     "copyingPolicy": "Use documentation for guidance; do not copy external code unless the license is explicit and recorded."
   }
 }

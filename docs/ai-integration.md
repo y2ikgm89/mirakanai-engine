@@ -184,6 +184,17 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 - Keep MCP API keys, personal connector state, and local tool credentials in user-level configuration only. Do not commit them.
 - Keep local override files uncommitted: `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md`.
 
+## Developer-Local Code Intelligence MCP
+
+`codebase-memory-mcp` may be used as a developer-local AI helper only. It is not an engine, editor, runtime, package, CMake, vcpkg, CI, or public API dependency. Use [`docs/specs/2026-06-28-codebase-memory-local-ai-helper-v1.md`](specs/2026-06-28-codebase-memory-local-ai-helper-v1.md) as the retained policy record.
+
+- Use `index_repository` with `mode=full` and `persistence=false` by default for this repository. `persistence=true` is allowed only when an operator explicitly wants a local repo artifact; `.codebase-memory/graph.db.zst` and all `.codebase-memory/` contents stay ignored and uncommitted.
+- Use `search_graph`, `get_code_snippet`, `get_graph_schema`, `index_status`, `list_projects`, `detect_changes`, and `trace_path` when exposed as exploration aids. Verify exact claims with `rg`, direct file reads, `git status`, manifest data, tests, and repository validation.
+- For external `codebase-memory-mcp` validation on WSL, use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install-codebase-memory-wsl-deps.ps1 [-DistroName Ubuntu-24.04]` to install `zlib1g-dev`, `clang-format`, and `pkg-config` inside WSL. Use `-CheckOnly` before installing; if sudo requires a password, run it from an interactive terminal.
+- Do not use `manage_adr`; project decisions belong in `docs/adr/`, `docs/specs/`, `docs/superpowers/plans/`, and `engine/agent/manifest.fragments/`.
+- Use `ingest_traces` only with a patched local or upstream `codebase-memory-mcp` build that has passed runtime-edge smoke verification. On 2026-06-28 the local WSL wrapper build created `RuntimeTrace`, `RuntimeSpan`, `CONTAINS_SPAN`, and `OBSERVED_EXECUTION` graph data from sanitized OTLP-shaped input.
+- Runtime traces must be OpenTelemetry-compatible spans with reviewed attributes such as `service.name`, `code.function.name`, repository-relative `code.file.path`, `validation.recipe.id`, `test.target`, `game.id`, `package.target`, `ge.status`, and `ge.diagnostic_code`; never commit trace bodies, raw logs, credentials, machine-local paths, crash dumps, PIX/ETW traces, or binary payloads.
+
 ## Official References
 
 - Codex AGENTS.md: https://developers.openai.com/codex/guides/agents-md
@@ -203,3 +214,6 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 - PSScriptAnalyzer ShouldProcess rule: https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/rules/shouldprocess
 - PowerShell ShouldProcess guidance: https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess
 - PowerShell Write-Information: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/write-information
+- Codebase Memory MCP: https://github.com/DeusData/codebase-memory-mcp
+- OpenTelemetry traces: https://opentelemetry.io/docs/concepts/signals/traces/
+- OpenTelemetry source code attributes: https://opentelemetry.io/docs/specs/semconv/general/attributes/
