@@ -15,8 +15,22 @@
 - **Plan ID:** `editor-asset-browser-production-v1`
 - **Status:** Candidate plan, not selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 - **Date:** 2026-06-28
+- **Final review date:** 2026-06-29
 - **Scope:** Generic editor `Content Browser` / visible `Assets` panel productionization. This does not replace `EnvironmentArtistWorkflowAssetBrowser*`; that environment-specific asset browser remains a specialized read-only workflow model.
 - **Non-goal:** Backward-compatible support for the current hard-coded `EditorAssetListRow` visible shell path. This plan intentionally removes that path after replacement evidence is green.
+
+## Final Review Addendum (2026-06-29)
+
+The final review keeps this as a candidate plan. It does not change
+`engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`; the active renderer commercial-readiness plan remains the active production loop.
+
+Implementation workers must treat the following as fixed decisions:
+
+- The visible editor panel name is first-party `Assets`, and the product concept is first-party `Source Pulse`; Unity Project window, Unreal Content Browser, and Godot FileSystem dock terminology must not become product branding, query syntax, retained row ids, shortcuts, icons, or compatibility claims.
+- `editor/core` owns only deterministic value models, query/command plans, provenance/legal review rows, and retained `mirakana::ui` output. Win32 dialogs, Win32 path APIs, UI Automation providers, preview execution, file copy, import execution, package writes, and renderer/RHI resources stay in `editor/src` or existing tool/runtime modules.
+- Source assets enter package-ready state only through `AssetKeyV2`, `GameEngine.SourceAssetRegistry.v1`, existing import/cook/package evidence, complete legal provenance rows, and explicit reviewed command plans.
+- External engine code, sample assets, editor screenshots/icons/layout expression, project schemas, trademarked material, marketplace/Fab/Asset Store content, and compatibility/equivalence/parity claims are rejected by default. An exception is blocked until a separate legal and technical approval record exists before implementation work.
+- OpenEXR and KTX2/Basis handling is metadata review and optional importer evidence only. This plan does not add default dependencies, default codec execution, editor-core decoding, or editor-core GPU upload.
 
 ## Research And Source Use
 
@@ -37,6 +51,25 @@ The following sources are approved only as factual category/API/legal context. T
 
 This plan is not legal advice. Before shipping third-party assets, code, models, fonts, images, codecs, or sample content through the asset browser, update `THIRD_PARTY_NOTICES.md`, `docs/legal-and-licensing.md`, `docs/dependencies.md`, and `vcpkg.json` as applicable, then run the dependency-policy checks.
 
+## Primary Source Ledger
+
+All rows below were reviewed on 2026-06-29. Implementation is permitted to cite these rows only for the allowed use listed here.
+
+| Source | Official URL or Context7 ID | Implementation decision locked by the source |
+| --- | --- | --- |
+| Microsoft C++ docs through Context7 | `/microsoftdocs/cpp-docs` | Public editor-core types use RAII-owned values, standard containers, smart-pointer/private-handle adapters when ownership is required, and no raw owning pointers or Win32 handles in public core models. |
+| OpenEXR through Context7 | `/academysoftwarefoundation/openexr` | EXR source review rows must record required header attributes, data/display windows, channels, compression, line order, tiled policy, multipart/deep policy, and explicit color-intent/chromaticity status before any package-ready claim. |
+| KTX Software through Context7 | `/khronosgroup/ktx-software` | KTX2/Basis review rows must record whether transcoding is required, selected transcode target, backend format-support evidence, dimensions, levels, layers, faces, supercompression, and no editor-core upload. |
+| Unity Project window reference | `https://docs.unity3d.com/Manual/ProjectView.html` | Asset browser category expectations include project files, asset navigation, search/filtering, import visibility, and preview/selection concepts. Unity `t:` / `l:` query syntax, layout, shortcuts, labels, icons, and screenshots are forbidden implementation inputs. |
+| Unreal Engine Content Browser docs | `https://dev.epicgames.com/documentation/en-us/unreal-engine/content-browser-in-unreal-engine` | Asset browser category expectations include browsing, importing, organizing, previewing, text filtering, issue identification, and project content operations. Unreal collection behavior, content drawer expression, API names, layout, icons, assets, and compatibility claims are forbidden implementation inputs. |
+| Godot File system docs | `https://docs.godotengine.org/en/stable/tutorials/scripting/filesystem.html` | Asset browser category expectations include project filesystem visibility and imported/generated artifact awareness. Godot `res://` semantics, dock expression, metadata formats, labels, icons, samples, and compatibility claims are forbidden implementation inputs. |
+| Microsoft `IFileDialog` docs | `https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ifiledialog` | Native file-open/save selection uses shell-owned Common Item Dialog service boundaries; no dialog API crosses into `editor/core`. |
+| Microsoft `PathCchCanonicalizeEx` docs | `https://learn.microsoft.com/en-us/windows/win32/api/pathcch/nf-pathcch-pathcchcanonicalizeex` | Windows path canonicalization and project-root containment are shell responsibilities before converting selections to safe store-relative paths. |
+| Microsoft UI Automation control patterns docs | `https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-controlpatternsoverview` | Windows accessibility evidence must publish the required list/tree/grid, selection, invoke, scroll, and item metadata patterns through the private UIA provider; cross-platform accessibility parity remains unclaimed. |
+| Unity trademark page | `https://unity.com/legal/trademarks` | Unity marks, logos, branded UI, and confusing endorsement/compatibility wording are blocked. |
+| Unreal Engine EULA and Unreal trademark request page | `https://www.unrealengine.com/en-US/eula/unreal`, `https://dev.epicgames.com/docs/dev-portal/unreal-engine/ue-trademark-license` | Unreal Engine code, samples, Starter Content, marketplace/Fab material, logos, marks, branded UI expression, and endorsement/compatibility wording are blocked until a separate legal approval record exists. |
+| Godot license compliance docs | `https://docs.godotengine.org/en/stable/about/complying_with_licenses.html` | Godot MIT-licensed material still needs complete notices and must not be copied editor UI expression, trademark use, or project/schema compatibility behavior. |
+
 ## Current Project Baseline
 
 - `ContentBrowserState` already refreshes deterministic flat rows from `AssetRegistry`, `AssetIdentityDocumentV2`, or `SourceAssetRegistryDocumentV1`.
@@ -44,6 +77,15 @@ This plan is not legal advice. Before shipping third-party assets, code, models,
 - `EditorContentBrowserImportPanelModel` already combines visible assets, selected asset details, import queue/progress, diagnostics, dependency rows, thumbnail requests, material preview rows, and hot-reload summaries.
 - `EditorContentBrowserImportOpenDialogModel` and `EditorContentBrowserImportExternalSourceCopyModel` already review source selections and external copy staging without executing automatically.
 - `EditorMaterialAssetPreviewPanelModel` already reports selected material metadata, texture payload rows, shader readiness, host-owned GPU preview evidence, and no native handles.
+- Existing package registration rows live in `make_scene_package_candidate_rows`,
+  `make_scene_package_registration_draft_rows`,
+  `make_scene_package_registration_apply_plan`, and
+  `apply_scene_package_registration_to_manifest`; Asset Browser package rows must connect to these contracts or introduce one narrow core hook with tests.
+- Existing import/cook/package/hot-reload execution contracts are
+  `execute_asset_import_plan`, `build_asset_recook_plan`,
+  `ExternalAssetImportAdapters::options`, `assemble_asset_cooked_package`,
+  `write_asset_cooked_package_index`, and
+  `AssetHotReloadRecookScheduler`; Asset Browser core references their value evidence only and does not execute them.
 - The native shell still exposes hard-coded `EditorAssetListRow` values through `NativeEditorApp::asset_rows()` / `make_asset_list_ui_model`; this is the clean-break replacement target.
 
 ## Clean-Room Product Direction
@@ -54,14 +96,80 @@ The production asset browser must be a MIRAIKANAI-first tool, not a clone of Uni
 - Every row exposes source path, imported/cooked path, kind, package visibility, provenance/license status, import plan status, dependency status, preview status, hot-reload status, and blocked/host-gated reasons.
 - The browser answers "can this asset safely enter the runtime package?" instead of only "where is this file?"
 - Search is a first-party query grammar: `kind=<asset-kind>`, `scope=source|cooked|package|hot_reload`, `state=ready|blocked|host_gated|missing`, `key=<asset-key-prefix>`, `path=<substring>`, and plain text. Do not implement Unity `t:` / `l:` filters, Unreal collection syntax, or Godot dock terms.
-- The visible panel may use tree/list/detail/preview regions because those are generic UI categories, but row ids, labels, layout metrics, commands, icons, shortcuts, and user-facing names must be first-party.
+- The visible panel uses only generic tree/list/detail/preview regions. Row ids, labels, layout metrics, commands, icons, shortcuts, and user-facing names are first-party `asset_browser.*` / `Source Pulse` terms.
+
+## Official Import Metadata Contracts
+
+These rows are mandatory when the asset browser presents source metadata from optional importers. Unsupported, missing, or unavailable optional importer evidence must fail closed with a diagnostic row; it must not infer readiness.
+
+### OpenEXR Source Review Row
+
+An EXR source asset review row must contain:
+
+- `asset_key_label`
+- `source_path`
+- `header_required_attributes_present`
+- `display_window`
+- `data_window`
+- `pixel_aspect_ratio`
+- `channels`
+- `pixel_type_rows`
+- `compression`
+- `line_order`
+- `screen_window_width`
+- `screen_window_center`
+- `tiled_policy`
+- `multipart_policy`
+- `deep_image_policy`
+- `chromaticities_present`
+- `declared_color_intent`
+- `scene_linear_claimed`
+- `optional_importer_feature`
+- `status_label`
+- `diagnostic`
+
+Rules:
+
+- `scene_linear_claimed=true` is allowed only when explicit source metadata or a reviewed source-side policy declares scene-linear intent.
+- Missing required header attributes, unsupported compression, unsupported pixel type, unsupported multipart/deep image mode, or absent optional importer evidence sets `blocked=true`.
+- Do not copy OpenEXR sample code, test images, or library examples into this repository as implementation material.
+
+### KTX2/Basis Source Review Row
+
+A KTX2/Basis source asset review row must contain:
+
+- `asset_key_label`
+- `source_path`
+- `loaded_with_image_data`
+- `needs_transcoding`
+- `basis_color_model`
+- `selected_transcode_target`
+- `backend_format_support_evidence_id`
+- `dimensions`
+- `levels`
+- `layers`
+- `faces`
+- `supercompression`
+- `payload_byte_count`
+- `gpu_upload_requested`
+- `editor_core_upload_executed`
+- `optional_importer_feature`
+- `status_label`
+- `diagnostic`
+
+Rules:
+
+- `gpu_upload_requested=false` and `editor_core_upload_executed=false` in every editor-core row.
+- `selected_transcode_target` is non-empty only when backed by explicit backend format-support evidence such as D3D12 BC, Vulkan compressed-format, or Apple-host Metal ASTC evidence.
+- If `needs_transcoding=true`, package readiness is blocked until the selected transcode target and optional importer execution evidence are present.
+- Do not copy KTX sample code, transcoder demos, or reference assets into this repository as implementation material.
 
 ## Non-Negotiable Claim Rules
 
 | Claim | Required evidence | Explicit non-evidence |
 | --- | --- | --- |
 | `editor_asset_browser_core_ready` | `MK_editor_core` tests prove deterministic Source Pulse rows, query/filter semantics, source-registry generation safety, retained UI ids, clean-room/legal rows, and fail-closed mutation/execution/native-handle flags. | Existing flat `ContentBrowserState` rows alone. |
-| `editor_asset_browser_visible_ready` | `MK_editor` shell tests prove the visible Assets panel consumes the production model, no hard-coded asset rows remain, native dialogs are shell-owned, accessibility rows are published, and panel smoke counters are positive. | A future-doc statement or retained core model without shell binding. |
+| `editor_asset_browser_visible_ready` | `MK_editor` shell tests prove the visible Assets panel consumes the production model, no hard-coded asset rows remain, native dialogs are shell-owned, accessibility rows are published, and panel smoke counters are positive. | A roadmap/doc-only statement or retained core model without shell binding. |
 | `editor_asset_browser_import_ready` | Explicit reviewed command plan, user-confirmed shell execution, optional adapter diagnostics, source/copy/cook evidence, package candidate rows, rollback diagnostics, and no automatic import. | File selection, copied external source rows, or codec availability alone. |
 | `editor_asset_browser_preview_ready` | Host-owned preview cache evidence for selected material/glTF/audio/texture thumbnail rows, with backend scope, frame/hash/counter evidence, and native handles hidden. | Renderer/RHI execution from `editor/core`, selected-material rows without host-owned preview evidence, or D3D12 evidence inferred to Vulkan/Metal. |
 | `editor_asset_browser_legal_clean_room_ready` | Retained source summaries, notices, license/provenance rows for shipped third-party material, and explicit external-engine rejection rows. | Reading Unity/Unreal/Godot public docs, using search-result snippets, or "inspired by" claims. |
@@ -72,9 +180,9 @@ The production asset browser must be a MIRAIKANAI-first tool, not a clone of Uni
 | --- | --- |
 | `editor/core/include/mirakana/editor/asset_browser_production.hpp` | Public value-only Source Pulse model, query, command, legal/provenance, and readiness row types. |
 | `editor/core/src/asset_browser_production.cpp` | Deterministic model/query/command/readiness implementation. |
-| `editor/core/include/mirakana/editor/content_browser.hpp` | Keep only low-level browser row storage and selection; add generation counters only if the production model needs stale-command rejection. |
+| `editor/core/include/mirakana/editor/content_browser.hpp` | Keep only low-level browser row storage and selection; Task 2 decides whether generation counters live here or only in `asset_browser_production.hpp`. |
 | `editor/core/src/content_browser.cpp` | Deterministic refresh/query support shared by production model. |
-| `editor/core/include/mirakana/editor/content_browser_import_panel.hpp` | Either re-export production panel compatibility during the same clean-break slice or retire it after `asset_browser_production.hpp` owns the visible Assets panel contract. |
+| `editor/core/include/mirakana/editor/content_browser_import_panel.hpp` | During the clean-break slice, migrate callers to the production panel contract or retire this header; do not add aliases. |
 | `editor/core/src/content_browser_import_panel.cpp` | Retire duplicated UI assembly once production model emits the retained UI document. |
 | `editor/src/native_editor_app.hpp` | Expose `asset_browser()` production model and reviewed asset-browser command plans. Remove `asset_rows()`. |
 | `editor/src/native_editor_app.cpp` | Build Source Pulse model from project/source registry/import/material preview state; route reviewed shell execution evidence into the model. |
@@ -84,49 +192,157 @@ The production asset browser must be a MIRAIKANAI-first tool, not a clone of Uni
 | `tests/unit/editor_core_tests.cpp` | Core production model, query, command, legal, provenance, retained UI, and fail-closed tests. |
 | `tests/unit/editor_native_shell_tests.cpp` | Visible shell replacement, dialog routing, accessibility, smoke counter, and no hard-coded-row tests. |
 | `docs/editor.md` | Current product docs after each completed phase. |
-| `docs/current-capabilities.md` | Capability rows and explicit non-claims after implementation evidence exists. |
+| `docs/current-capabilities.md` | Capability rows and explicit non-claims after Task 11 evidence is recorded. |
 | `docs/roadmap.md` | Roadmap summary and follow-up blockers. |
 | `docs/superpowers/plans/README.md` | Registry entry for this candidate plan and Task 11 closeout evidence. |
-| `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` | Update only if this plan becomes `currentActivePlan` or changes machine-readable production claims. |
+| `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` | Update for this work only when this plan becomes `currentActivePlan` or machine-readable production claims change. |
 | `tools/check-ai-integration.ps1` | Update only when new retained ids become agent-contract needles. |
+
+## Task 0: Final Source And Contract Preflight
+
+**Files:**
+- Read-only: `engine/agent/manifest.json`
+- Read-only: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Read-only: `editor/core/include/mirakana/editor/content_browser.hpp`
+- Read-only: `editor/core/src/content_browser.cpp`
+- Read-only: `editor/core/include/mirakana/editor/source_registry_browser.hpp`
+- Read-only: `editor/core/src/source_registry_browser.cpp`
+- Read-only: `editor/core/include/mirakana/editor/scene_authoring.hpp`
+- Read-only: `editor/core/src/scene_authoring.cpp`
+- Read-only: `engine/tools/include/mirakana/tools/asset_import_tool.hpp`
+- Read-only: `engine/tools/include/mirakana/tools/asset_import_adapters.hpp`
+- Read-only: `engine/tools/include/mirakana/tools/asset_package_tool.hpp`
+- Read-only: `engine/assets/include/mirakana/assets/asset_hot_reload.hpp`
+
+- [x] **Step 1: Verify active-plan status**
+
+Run:
+
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal`
+
+Expected:
+
+- `currentActivePlan` remains the renderer commercial-readiness plan unless the operator explicitly selects this plan.
+- `unsupportedProductionGaps` remains unchanged by this plan update.
+- No manifest fragment is edited during Task 0.
+
+- [x] **Step 2: Refresh primary sources**
+
+Use Context7 with these exact library IDs and questions before coding:
+
+- `/microsoftdocs/cpp-docs`: confirm RAII, standard containers, smart pointers, and private shell handle adapters for C++ editor models.
+- `/academysoftwarefoundation/openexr`: confirm EXR required header attributes and color/tiling/multipart/deep metadata rows.
+- `/khronosgroup/ktx-software`: confirm KTX2/Basis transcode-required checks, target format selection, and texture metadata rows.
+
+Verify the official URL rows in the Primary Source Ledger are reachable or record the exact host/browser blocker. If a legal page blocks automated access, record `manual_legal_review_required` and do not weaken the clean-room restrictions.
+
+- [x] **Step 3: Reconfirm project connection points**
+
+Run these targeted reads before implementation:
+
+`rg -n "SourceAssetRegistry|AssetKeyV2|asset_id_from_key_v2|refresh_content_browser_from_project_source_registry" editor/core/include editor/core/src tests/unit/editor_core_tests.cpp`
+
+`rg -n "execute_asset_import_plan|build_asset_recook_plan|ExternalAssetImportAdapters|assemble_asset_cooked_package|write_asset_cooked_package_index|AssetHotReloadRecookScheduler" engine editor tests -g "*.hpp" -g "*.cpp"`
+
+`rg -n "package candidate|PackageCandidate|runtimePackageFiles|add_runtime_file|make_.*package_candidate|registration" editor/core/include/mirakana/editor/scene_authoring.hpp editor/core/src/scene_authoring.cpp`
+
+Expected:
+
+- Asset Browser rows connect to existing `ContentBrowserState`, `refresh_content_browser_from_project_source_registry`, `AssetKeyV2`, and source-registry tests.
+- Import/cook/package/hot-reload rows connect to existing tool contracts by value evidence only.
+- Package registration review connects to `ScenePackageCandidateRow`, `ScenePackageRegistrationDraftRow`, `make_scene_package_registration_apply_plan`, and `apply_scene_package_registration_to_manifest`.
+
+- [x] **Step 4: Fail ambiguity and clone-risk checks**
+
+Run:
+
+`$terms = @("TB"+"D","TO"+"DO","similar"+" to","copy "+"Unity","copy "+"Unreal","copy "+"Godot","Unity"+"-compatible","Unreal"+"-compatible","Godot"+"-compatible","parity with "+"Unity","parity with "+"Unreal","parity with "+"Godot"); foreach ($term in $terms) { rg -n --fixed-strings $term docs/superpowers/plans/2026-06-28-editor-asset-browser-production-v1.md }`
+
+Expected: no matches. If a match is intentional source-policy wording, rewrite it as a concrete allow/deny rule before code changes.
+
+- [x] **Step 5: Write the implementation preflight note**
+
+Before Task 1 code edits, add a short implementation note to the working branch or PR description with:
+
+- Context7 source IDs used.
+- Official URL reachability or legal-review blockers.
+- Existing project contracts selected.
+- Exact non-claims retained.
+- Confirmation that no external engine code, assets, screenshots, icons, project schemas, samples, or trademark material were used.
+
+## Implementation Preflight Evidence (2026-06-29)
+
+Task 0 was executed in the isolated worktree
+`G:\workspace\development\GameEngine\.worktrees\editor-asset-browser-production-v1`
+on branch `codex/editor-asset-browser-production-v1`.
+
+Evidence:
+
+- `tools/prepare-worktree.ps1`: passed; linked worktree, `.worktrees` ignore, shared `external/vcpkg`, and shared `vcpkg_installed` links are ready.
+- `tools/agent-context.ps1 -ContextProfile Minimal`: passed; `currentActivePlan` remains `docs/superpowers/plans/2026-06-25-renderer-commercial-readiness-evidence-promotion-v1.md`; `unsupportedProductionGaps` remains empty; no manifest fragment was edited.
+- Context7 `/microsoftdocs/cpp-docs`: confirmed modern C++ RAII, smart pointers, standard containers, and private Win32 handle wrappers as the correct ownership boundary; no examples were copied.
+- Context7 `/academysoftwarefoundation/openexr`: confirmed EXR required header attributes including `displayWindow`, `dataWindow`, `pixelAspectRatio`, `channels`, `compression`, `lineOrder`, `screenWindowWidth`, `screenWindowCenter`, and tiled-file metadata; chromaticities remain explicit metadata evidence; no examples or images were copied.
+- Context7 `/khronosgroup/ktx-software`: confirmed KTX2/Basis `ktxTexture2_NeedsTranscoding`, `ktxTexture2_TranscodeBasis`, backend-supported target selection, and post-transcode upload sequencing; editor core remains non-uploading and no examples or assets were copied.
+- Official URL reachability: Unity Project window, Unreal Content Browser docs, Godot File system docs, Microsoft `IFileDialog`, Microsoft `PathCchCanonicalizeEx`, Microsoft UI Automation control patterns, Unity trademarks, Epic Unreal trademark request, and Godot license compliance returned HTTP 200 through automated checks.
+- Official URL blocker: `https://www.unrealengine.com/en-US/eula/unreal` returned HTTP 403 through automated checks; treat this as `manual_legal_review_required` and keep all Unreal Engine legal restrictions fail-closed.
+- Existing code connection points were reconfirmed for `ContentBrowserState`, `SourceAssetRegistryDocumentV1`, `AssetKeyV2`, `refresh_content_browser_from_project_source_registry`, `execute_asset_import_plan`, `build_asset_recook_plan`, `ExternalAssetImportAdapters::options`, `assemble_asset_cooked_package`, `write_asset_cooked_package_index`, `AssetHotReloadRecookScheduler`, `ScenePackageCandidateRow`, `ScenePackageRegistrationDraftRow`, `make_scene_package_registration_apply_plan`, and `apply_scene_package_registration_to_manifest`.
+- Clone-risk and ambiguity search terms returned no matches in this plan.
+
+Non-claims retained:
+
+- No Unity/Unreal/Godot asset, project, schema, API, UI, shortcut, icon, layout, marketplace, compatibility, equivalence, replacement, or parity claim.
+- No editor-core native handle, Win32 dialog, Win32 path API, UIA provider, renderer/RHI execution, image/audio decode, import execution, package mutation, validation recipe execution, or GPU upload.
+- No new third-party dependency, bundled asset, copied sample, external engine material, trademark use, or shipped third-party notice requirement in Task 0.
 
 ## Task 1: Core Source Pulse Model
 
 **Files:**
 - Create: `editor/core/include/mirakana/editor/asset_browser_production.hpp`
 - Create: `editor/core/src/asset_browser_production.cpp`
-- Modify: `editor/core/CMakeLists.txt`
+- Modify: `editor/CMakeLists.txt`
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Write failing core model tests**
+- [x] **Step 1: Write failing core model tests**
 
-Add a test section named `editor_asset_browser_production_model_builds_source_pulse_rows` to `tests/unit/editor_core_tests.cpp`. The test must build a `SourceAssetRegistryDocumentV1` with texture, material, mesh, audio, scene, shader, and UI atlas rows; refresh `ContentBrowserState`; create one import plan; and assert:
+Add a test section named `editor asset browser production model builds source pulse rows` to `tests/unit/editor_core_tests.cpp`. The test must build a `SourceAssetRegistryDocumentV1` with texture, material, mesh, audio, scene, shader, and UI atlas rows; refresh `ContentBrowserState`; create one import plan; and assert:
 
 ```cpp
 const auto model = mirakana::editor::make_editor_asset_browser_production_model(
     mirakana::editor::EditorAssetBrowserProductionDesc{
-        .browser = browser,
-        .import_plan = import_plan,
+        .browser = &browser,
+        .import_plan = &import_plan,
         .project_root = ".",
         .asset_root = "assets",
-        .source_registry_path = "source/assets/package.geassets",
+        .source_registry_path = "source/assets/package=main.geassets",
     });
 MK_REQUIRE(model.status_label == "Asset browser ready");
-MK_REQUIRE(model.source_registry_path == "source/assets/package.geassets");
+MK_REQUIRE(model.source_registry_path == "source/assets/package=main.geassets");
 MK_REQUIRE(model.rows.size() == 7U);
-MK_REQUIRE(model.rows.front().asset_key_label.starts_with("asset."));
+MK_REQUIRE(model.rows[0].imported_path == "assets/00/shared.artifact");
+MK_REQUIRE(model.rows[0].asset_key_label == "assets/audio/hit");
+MK_REQUIRE(model.rows[1].imported_path == "assets/00/shared.artifact");
+MK_REQUIRE(model.rows[1].asset_key_label == "assets/materials/player");
 MK_REQUIRE(model.mutates == false);
 MK_REQUIRE(model.executes == false);
 MK_REQUIRE(model.exposes_native_handles == false);
 ```
 
-- [ ] **Step 2: Verify the test fails**
+The same test must also assert:
+
+- row ids are exactly `asset_browser.source_pulse.<AssetId value>`;
+- rows sort by `imported_path`, then `asset_key_label`, then `row_id`;
+- the planned import action produces `import_status_label == "planned"` and unrelated rows produce `not_planned`;
+- retained UI rows include `asset_browser.status`, `asset_browser.source_registry.path`, `.scope`, `.source_path`, `.import_status`, and `.package_status`;
+- ordinary display paths containing `=` remain valid labels and do not become UI ids or query grammar.
+- cooked-only rows without `AssetKeyV2` identity remain visible as `missing_identity`, disabled, blocked rows with `asset_key == "-"` in retained UI rather than throwing.
+
+- [x] **Step 2: Verify the test fails**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`
 
 Expected: compile failure because `asset_browser_production.hpp` and `make_editor_asset_browser_production_model` do not exist.
 
-- [ ] **Step 3: Add the public value model**
+- [x] **Step 3: Add the public value model**
 
 Create `editor/core/include/mirakana/editor/asset_browser_production.hpp` with these exact first-pass public types:
 
@@ -207,15 +423,15 @@ make_editor_asset_browser_production_ui_model(const EditorAssetBrowserProduction
 } // namespace mirakana::editor
 ```
 
-- [ ] **Step 4: Implement deterministic row building**
+- [x] **Step 4: Implement deterministic row building**
 
 Create `editor/core/src/asset_browser_production.cpp`. Use `std::vector`, `std::ranges::sort`, explicit strings, no OS APIs, no renderer/RHI types, no native handles, and no exceptions for ordinary missing optional input. Row ids must be `asset_browser.source_pulse.<AssetId value>`. Sort rows by `imported_path`, then `asset_key_label`, then `row_id`.
 
-- [ ] **Step 5: Register the files in CMake**
+- [x] **Step 5: Register the files in CMake**
 
-Modify `editor/core/CMakeLists.txt` to add the new header/source to `MK_editor_core` using the existing local source listing style. Do not create a new target.
+Modify `editor/CMakeLists.txt` to add `core/src/asset_browser_production.cpp` to `MK_editor_core` using the existing local source listing style. Do not create a new target.
 
-- [ ] **Step 6: Run the focused test**
+- [x] **Step 6: Run the focused test**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`
 
@@ -224,6 +440,37 @@ Expected: build succeeds.
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`
 
 Expected: the new core model test passes.
+
+## Task 1 Evidence (2026-06-29)
+
+Task 1 is implemented in branch `codex/editor-asset-browser-production-v1`.
+
+Red/green evidence:
+
+- Red 1: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed before `asset_browser_production.hpp` existed.
+- Red 2: retained UI `.scope` assertion failed before the Source Pulse UI row exposed scope labels.
+- Red 3: retained UI `.import_status` assertion failed before import status labels were emitted.
+- Red 4: display path labels containing `=` failed before path labels were separated from UI-id/query-field validation.
+- Green: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` passed.
+- Green: `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` passed.
+- Regression coverage: cooked-only `AssetRegistry` rows without identity now render as blocked `missing_identity` rows without exception.
+
+Focused validation:
+
+- `tools/format.ps1`: passed.
+- `tools/check-format.ps1`: passed.
+- `tools/check-tidy.ps1 -Files "editor/core/src/asset_browser_production.cpp,tests/unit/editor_core_tests.cpp"`: passed.
+- `tools/check-dependency-policy.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/check-json-contracts.ps1`: passed.
+- `tools/check-ai-integration.ps1`: passed.
+- `tools/validate.ps1`: passed; 50 static checks and 159 CTest tests passed.
+
+Task 1 non-claims retained:
+
+- The model is value-only editor core; it does not import, cook, package, decode, preview, upload, execute validation recipes, call Win32 APIs, expose native handles, or mutate project files.
+- The implementation uses first-party row ids and labels under `asset_browser.*` / `Source Pulse`; it does not implement Unity, Unreal Engine, or Godot query syntax, layout, icons, shortcuts, asset formats, schemas, compatibility, equivalence, or parity claims.
+- No new third-party dependency, copied source, external-engine material, sample asset, screenshot, icon, marketplace asset, trademark material, or legal notice was added.
 
 ## Task 2: Query Grammar And Stale-Command Safety
 
@@ -368,8 +615,8 @@ Expected: command-plan tests pass.
 **Files:**
 - Modify: `editor/core/include/mirakana/editor/asset_browser_production.hpp`
 - Modify: `editor/core/src/asset_browser_production.cpp`
-- Modify: `docs/legal-and-licensing.md` only if new third-party material is actually added
-- Modify: `THIRD_PARTY_NOTICES.md` only if new third-party material is actually shipped
+- Modify: `docs/legal-and-licensing.md` when new third-party material is actually added
+- Modify: `THIRD_PARTY_NOTICES.md` when new third-party material is actually shipped
 - Test: `tests/unit/editor_core_tests.cpp`
 
 - [ ] **Step 1: Add failing legal/provenance tests**
@@ -380,7 +627,9 @@ Add tests proving:
 - License-less material is blocked.
 - `CC-NC` and `CC-ND` assets are blocked for production package use.
 - Unity Asset Store, Unreal Marketplace/Fab, engine sample content, engine logos/trademarks, and copied editor screenshots/icons/layout descriptions are rejected as `external_engine_material_rejected`.
-- Godot MIT material may be accepted only when notice rows are complete and the asset is not copied editor UI expression or trademark usage.
+- Godot MIT material is accepted only when notice rows are complete and the asset is not copied editor UI expression or trademark usage.
+- EXR rows with missing required header attributes, unsupported compression, unsupported pixel type, unsupported multipart/deep mode, or absent optional importer evidence are blocked.
+- KTX2/Basis rows with required transcoding but no selected target or no backend format-support evidence are blocked.
 
 - [ ] **Step 2: Add legal row types**
 
@@ -405,11 +654,68 @@ struct EditorAssetBrowserLegalProvenanceRow {
 };
 ```
 
-- [ ] **Step 3: Implement fail-closed provenance review**
+- [ ] **Step 3: Add official source metadata review row types**
+
+Add:
+
+```cpp
+struct EditorAssetBrowserOpenExrSourceReviewRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string source_path;
+    std::string display_window;
+    std::string data_window;
+    std::string pixel_aspect_ratio;
+    std::string channels;
+    std::string pixel_type_rows;
+    std::string compression;
+    std::string line_order;
+    std::string screen_window_width;
+    std::string screen_window_center;
+    std::string tiled_policy;
+    std::string multipart_policy;
+    std::string deep_image_policy;
+    std::string declared_color_intent;
+    std::string status_label;
+    std::string diagnostic;
+    bool header_required_attributes_present{false};
+    bool chromaticities_present{false};
+    bool scene_linear_claimed{false};
+    bool optional_importer_feature{false};
+    bool blocked{true};
+};
+
+struct EditorAssetBrowserKtx2BasisSourceReviewRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string source_path;
+    std::string basis_color_model;
+    std::string selected_transcode_target;
+    std::string backend_format_support_evidence_id;
+    std::string dimensions;
+    std::string levels;
+    std::string layers;
+    std::string faces;
+    std::string supercompression;
+    std::string payload_byte_count;
+    std::string status_label;
+    std::string diagnostic;
+    bool loaded_with_image_data{false};
+    bool needs_transcoding{false};
+    bool gpu_upload_requested{false};
+    bool editor_core_upload_executed{false};
+    bool optional_importer_feature{false};
+    bool blocked{true};
+};
+```
+
+- [ ] **Step 4: Implement fail-closed provenance and source metadata review**
 
 No asset with incomplete provenance can become `package_visible=true` in the production model. Public-doc category references from Unity, Unreal Engine, and Godot must be represented only as `reference_only` rows and must never become asset rows.
 
-- [ ] **Step 4: Run legal validation**
+EXR and KTX2/Basis rows must implement the Official Import Metadata Contracts exactly. Missing optional importer evidence is a blocked diagnostic row, not a soft warning. Editor core never decodes source payloads, uploads textures, or infers backend support.
+
+- [ ] **Step 5: Run legal validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`
 
@@ -491,7 +797,7 @@ Use the existing `IFileDialogService` boundary. On Windows host code, use the Co
 
 - [ ] **Step 3: Implement explicit import execution handoff**
 
-The shell may pass reviewed options into existing `execute_asset_import_plan` / `ExternalAssetImportAdapters::options()` only after command review and user confirmation. The shell must record result rows back into the production model; `editor/core` remains non-executing.
+The shell passes reviewed options into existing `execute_asset_import_plan` / `ExternalAssetImportAdapters::options()` after command review and user confirmation. The shell must record result rows back into the production model; `editor/core` remains non-executing.
 
 - [ ] **Step 4: Run validation**
 
@@ -557,7 +863,7 @@ Expected: preview and shell evidence tests pass.
 - Modify: `editor/src/native_editor_uia_provider.*`
 - Modify: `tests/unit/editor_core_tests.cpp`
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
-- Modify: `tools/check-ai-integration.ps1` only if retained ids become contract needles
+- Modify: `tools/check-ai-integration.ps1` when retained ids become contract needles
 
 - [ ] **Step 1: Add failing retained UI and accessibility tests**
 
@@ -578,7 +884,7 @@ Native shell tests must prove UIA publication for the asset tree/list items, sel
 
 - [ ] **Step 2: Implement retained UI model**
 
-`make_editor_asset_browser_production_ui_model` must produce a deterministic `mirakana::ui::UiDocument` with semantic roles: panel, text input/search field, tree/list, list item, label, button, and status. Use existing `mirakana::ui` roles; add new roles only if existing roles cannot represent the control.
+`make_editor_asset_browser_production_ui_model` must produce a deterministic `mirakana::ui::UiDocument` with semantic roles: panel, text input/search field, tree/list, list item, label, button, and status. Use existing `mirakana::ui` roles. Add new roles for this plan only when an existing role cannot represent the control, and cover each new role with retained UI and UIA tests.
 
 - [ ] **Step 3: Publish accessibility rows**
 
@@ -601,7 +907,7 @@ Expected: agent-contract needles pass.
 **Files:**
 - Modify: `editor/core/include/mirakana/editor/asset_browser_production.hpp`
 - Modify: `editor/core/src/asset_browser_production.cpp`
-- Modify: `editor/core/include/mirakana/editor/scene_authoring.hpp` only if existing package candidate rows need one narrow hook
+- Modify: `editor/core/include/mirakana/editor/scene_authoring.hpp` when existing package candidate rows need one narrow value-only hook
 - Modify: `tests/unit/editor_core_tests.cpp`
 - Modify: `docs/editor.md`
 
@@ -616,7 +922,16 @@ Tests must prove:
 
 - [ ] **Step 2: Implement package review rows**
 
-Add package rows to the production model rather than inventing a parallel package panel. Reuse existing scene/package candidate draft patterns where possible, but keep asset-browser-specific row ids.
+Add package rows to the production model rather than inventing a parallel package panel. The implementation must read or adapt these existing contracts:
+
+- `ScenePackageCandidateRow`
+- `ScenePackageRegistrationDraftRow`
+- `make_scene_package_candidate_rows`
+- `make_scene_package_registration_draft_rows`
+- `make_scene_package_registration_apply_plan`
+- `apply_scene_package_registration_to_manifest`
+
+Keep asset-browser-specific row ids under `asset_browser.package.*`. If these existing scene-focused rows cannot represent one required asset-browser package status, add exactly one narrow value-only helper in `scene_authoring.hpp/.cpp`, prove it with `MK_editor_core` tests, and do not add a compatibility alias.
 
 - [ ] **Step 3: Run focused validation**
 
@@ -631,9 +946,9 @@ Expected: package review tests pass.
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only if this plan becomes active or ready claims change
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` when this plan becomes active or ready claims change
 - Modify: `engine/agent/manifest.json` only by running compose if fragments changed
-- Modify: `tools/check-ai-integration.ps1` only if durable agent-contract needles change
+- Modify: `tools/check-ai-integration.ps1` when durable agent-contract needles change
 
 - [ ] **Step 1: Update docs with exact evidence**
 
@@ -649,7 +964,7 @@ When Tasks 1-9 have passing evidence, update docs to say exactly what is ready a
 - external-engine compatibility/equivalence/parity
 - Unity/Unreal/Godot asset/project/schema import compatibility
 
-- [ ] **Step 2: Update manifest only if required**
+- [ ] **Step 2: Update manifest when required**
 
 If `currentActivePlan` is intentionally changed to this plan or production claim rows change, edit the relevant fragment under `engine/agent/manifest.fragments/`, then run:
 

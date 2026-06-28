@@ -8,6 +8,7 @@
 
 #include "mirakana/editor/ai_command_panel.hpp"
 #include "mirakana/editor/ai_operation_surface.hpp"
+#include "mirakana/editor/asset_browser_production.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/command.hpp"
 #include "mirakana/editor/content_browser.hpp"
@@ -2697,6 +2698,168 @@ MK_TEST("editor content browser populates source registry rows") {
     MK_REQUIRE(model.has_selected_asset);
     MK_REQUIRE(model.selected_asset.asset_key_label == material_key.value);
     MK_REQUIRE(model.selected_asset.identity_source_path == "source/materials/player.material");
+}
+
+MK_TEST("editor asset browser production model builds source pulse rows") {
+    const mirakana::AssetKeyV2 audio_key{"assets/audio/hit"};
+    const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
+    const mirakana::AssetKeyV2 mesh_key{"assets/meshes/player"};
+    const mirakana::AssetKeyV2 scene_key{"assets/scenes/start"};
+    const mirakana::AssetKeyV2 shader_key{"assets/shaders/player"};
+    const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
+    const mirakana::AssetKeyV2 ui_atlas_key{"assets/ui/hud"};
+
+    mirakana::SourceAssetRegistryDocumentV1 source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = texture_key,
+        .kind = mirakana::AssetKind::texture,
+        .source_path = "source/textures/player.png",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+        .imported_path = "assets/textures/player.texture",
+    });
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = material_key,
+        .kind = mirakana::AssetKind::material,
+        .source_path = "source/materials/player.material",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::material)},
+        .imported_path = "assets/00/shared.artifact",
+        .dependencies = {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
+                                                              .key = texture_key}},
+    });
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = mesh_key,
+        .kind = mirakana::AssetKind::mesh,
+        .source_path = "source/meshes/player.gltf",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::mesh)},
+        .imported_path = "assets/meshes/player.mesh",
+    });
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = audio_key,
+        .kind = mirakana::AssetKind::audio,
+        .source_path = "source/audio/hit.wav",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::audio)},
+        .imported_path = "assets/00/shared.artifact",
+    });
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = scene_key,
+        .kind = mirakana::AssetKind::scene,
+        .source_path = "source/scenes/start.scene",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::scene)},
+        .imported_path = "assets/scenes/start.scene",
+    });
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = shader_key,
+        .kind = mirakana::AssetKind::shader,
+        .source_path = "source/shaders/player.hlsl",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::shader)},
+        .imported_path = "assets/shaders/player.shader",
+    });
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = ui_atlas_key,
+        .kind = mirakana::AssetKind::ui_atlas,
+        .source_path = "source/ui/hud=blue.ui_atlas",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::ui_atlas)},
+        .imported_path = "assets/ui/hud=blue.ui_atlas",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+
+    mirakana::AssetImportPlan import_plan;
+    import_plan.actions.push_back(mirakana::AssetImportAction{
+        .id = mirakana::asset_id_from_key_v2(texture_key),
+        .kind = mirakana::AssetImportActionKind::texture,
+        .source_path = "source/textures/player.png",
+        .output_path = "assets/textures/player.texture",
+    });
+
+    const auto model =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .import_plan = &import_plan,
+            .project_root = ".",
+            .asset_root = "assets",
+            .source_registry_path = "source/assets/package=main.geassets",
+        });
+
+    MK_REQUIRE(model.status_label == "Asset browser ready");
+    MK_REQUIRE(model.source_registry_path == "source/assets/package=main.geassets");
+    MK_REQUIRE(model.rows.size() == 7U);
+    MK_REQUIRE(model.rows[0].imported_path == "assets/00/shared.artifact");
+    MK_REQUIRE(model.rows[0].asset_key_label == audio_key.value);
+    MK_REQUIRE(model.rows[1].imported_path == "assets/00/shared.artifact");
+    MK_REQUIRE(model.rows[1].asset_key_label == material_key.value);
+    MK_REQUIRE(model.rows[2].imported_path == "assets/meshes/player.mesh");
+    MK_REQUIRE(model.rows[3].imported_path == "assets/scenes/start.scene");
+    MK_REQUIRE(model.rows[4].imported_path == "assets/shaders/player.shader");
+    MK_REQUIRE(model.rows[5].imported_path == "assets/textures/player.texture");
+    MK_REQUIRE(model.rows[6].imported_path == "assets/ui/hud=blue.ui_atlas");
+    MK_REQUIRE(model.mutates == false);
+    MK_REQUIRE(model.executes == false);
+    MK_REQUIRE(model.exposes_native_handles == false);
+
+    const auto texture_row = std::ranges::find_if(
+        model.rows, [&texture_key](const auto& row) { return row.asset_key_label == texture_key.value; });
+    MK_REQUIRE(texture_row != model.rows.end());
+    MK_REQUIRE(texture_row->row_id ==
+               "asset_browser.source_pulse." + std::to_string(mirakana::asset_id_from_key_v2(texture_key).value));
+    MK_REQUIRE(texture_row->import_status_label == "planned");
+    const auto material_row = std::ranges::find_if(
+        model.rows, [&material_key](const auto& row) { return row.asset_key_label == material_key.value; });
+    MK_REQUIRE(material_row != model.rows.end());
+    MK_REQUIRE(material_row->import_status_label == "not_planned");
+    const auto document = mirakana::editor::make_editor_asset_browser_production_ui_model(model);
+    const auto* status = document.find(mirakana::ui::ElementId{"asset_browser.status"});
+    MK_REQUIRE(status != nullptr);
+    MK_REQUIRE(status->text.label == "Asset browser ready");
+    const auto* source_registry_path = document.find(mirakana::ui::ElementId{"asset_browser.source_registry.path"});
+    MK_REQUIRE(source_registry_path != nullptr);
+    MK_REQUIRE(source_registry_path->text.label == "source/assets/package=main.geassets");
+    const auto* scope = document.find(mirakana::ui::ElementId{texture_row->row_id + ".scope"});
+    MK_REQUIRE(scope != nullptr);
+    MK_REQUIRE(scope->text.label == "source");
+    const auto* import_status = document.find(mirakana::ui::ElementId{texture_row->row_id + ".import_status"});
+    MK_REQUIRE(import_status != nullptr);
+    MK_REQUIRE(import_status->text.label == "planned");
+    const auto ui_atlas_row = std::ranges::find_if(
+        model.rows, [&ui_atlas_key](const auto& row) { return row.asset_key_label == ui_atlas_key.value; });
+    MK_REQUIRE(ui_atlas_row != model.rows.end());
+    const auto* ui_atlas_source = document.find(mirakana::ui::ElementId{ui_atlas_row->row_id + ".source_path"});
+    MK_REQUIRE(ui_atlas_source != nullptr);
+    MK_REQUIRE(ui_atlas_source->text.label == "source/ui/hud=blue.ui_atlas");
+}
+
+MK_TEST("editor asset browser production ui tolerates cooked rows without identity") {
+    mirakana::AssetRegistry registry;
+    registry.add(mirakana::AssetRecord{
+        .id = mirakana::AssetId{42U},
+        .kind = mirakana::AssetKind::mesh,
+        .path = "assets/meshes/loose.mesh",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(registry);
+
+    const auto model =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .project_root = ".",
+            .asset_root = "assets",
+            .source_registry_path = "source/assets/package=loose.geassets",
+        });
+
+    MK_REQUIRE(model.rows.size() == 1U);
+    MK_REQUIRE(model.rows[0].asset_key_label.empty());
+    MK_REQUIRE(model.rows[0].state_label == "missing_identity");
+    MK_REQUIRE(model.rows[0].blocked);
+
+    const auto document = mirakana::editor::make_editor_asset_browser_production_ui_model(model);
+    const auto* item = document.find(mirakana::ui::ElementId{model.rows[0].row_id});
+    MK_REQUIRE(item != nullptr);
+    MK_REQUIRE(!item->enabled);
+    const auto* asset_key = document.find(mirakana::ui::ElementId{model.rows[0].row_id + ".asset_key"});
+    MK_REQUIRE(asset_key != nullptr);
+    MK_REQUIRE(asset_key->text.label == "-");
 }
 
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
