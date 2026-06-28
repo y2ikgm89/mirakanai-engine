@@ -1140,7 +1140,7 @@ Task 9 guarantees:
 - Modify: `engine/agent/manifest.json` only by running compose if fragments changed
 - Modify: `tools/check-ai-integration.ps1` when durable agent-contract needles change
 
-- [ ] **Step 1: Update docs with exact evidence**
+- [x] **Step 1: Update docs with exact evidence**
 
 When Tasks 1-9 have passing evidence, update docs to say exactly what is ready and what remains unsupported. Use these non-claims unless a named follow-up plan proves them:
 
@@ -1154,7 +1154,7 @@ When Tasks 1-9 have passing evidence, update docs to say exactly what is ready a
 - external-engine compatibility/equivalence/parity
 - Unity/Unreal/Godot asset/project/schema import compatibility
 
-- [ ] **Step 2: Update manifest when required**
+- [x] **Step 2: Update manifest when required**
 
 If `currentActivePlan` is intentionally changed to this plan or production claim rows change, edit the relevant fragment under `engine/agent/manifest.fragments/`, then run:
 
@@ -1162,7 +1162,7 @@ If `currentActivePlan` is intentionally changed to this plan or production claim
 
 Expected: composed `engine/agent/manifest.json` changes only through the compose script.
 
-- [ ] **Step 3: Run docs/agent checks**
+- [x] **Step 3: Run docs/agent checks**
 
 Run:
 
@@ -1173,6 +1173,16 @@ Run:
 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
 
 Expected: all pass, or report exact stale contract rows to fix.
+
+Task 10 evidence (2026-06-29):
+
+- Updated `docs/editor.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, and `docs/superpowers/plans/README.md` so Source Pulse readiness is limited to project-owned source-registry rows, query/filter rows, reviewed command plans, legal/provenance blockers, shell-owned import handoff, host-owned preview evidence, retained UI/accessibility rows, and value-only package review rows.
+- Updated `engine/agent/manifest.fragments/005-applications.json` and `engine/agent/manifest.fragments/009-validationRecipes.json`, then regenerated `engine/agent/manifest.json` with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
+- Did not edit `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`: `currentActivePlan` remains the renderer commercial readiness evidence promotion plan, and this asset-browser slice does not promote production readiness counters.
+- Context7 glTF lookup returned implementation SDKs rather than an official Khronos glTF specification source; the Task 7 decision remains tied to the Khronos glTF 2.0 specification URL already recorded in this plan, and Asset Browser uses value-only mesh primitive inspect evidence rather than adopting an external SDK.
+- Official Unity, Unreal Engine, and Godot public legal/trademark/license sources remain category/legal research inputs only; Source Pulse does not use external engine code, samples, assets, UI expression, trademarks, project schemas, compatibility claims, equivalence claims, or parity claims.
+- Unsupported claims recorded in docs/manifest: arbitrary importer adapters, automatic import execution, package script execution, validation recipe execution, broad runtime package streaming, renderer/RHI execution from editor core, public native handles, Vulkan/Metal preview display parity, cross-platform accessibility parity, external-engine compatibility/equivalence/parity, and Unity/Unreal/Godot asset/project/schema import compatibility.
+- Validation passed: `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/check-format.ps1`, and `git diff --check`.
 
 ## Task 11: Final Validation And Closeout
 
