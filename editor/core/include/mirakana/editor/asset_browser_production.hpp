@@ -96,6 +96,34 @@ struct EditorAssetBrowserPreviewEvidenceDesc {
     std::vector<AssetHotReloadRecookRequest> hot_reload_recook_requests;
 };
 
+struct EditorAssetBrowserRetainedCommandRow {
+    std::string command_id;
+    std::string label;
+    std::string status_label;
+    bool enabled{false};
+    bool requires_user_confirmation{false};
+    bool mutates_project_files{false};
+    bool executes_import_tools{false};
+    bool executes_package_scripts{false};
+    bool executes_validation_recipes{false};
+    bool exposes_native_handles{false};
+};
+
+struct EditorAssetBrowserRetainedLegalRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string status_label;
+    std::string diagnostic;
+    bool blocked{true};
+};
+
+struct EditorAssetBrowserRetainedUiDesc {
+    std::string query_text;
+    std::string query_status_label{"Asset browser query empty"};
+    std::vector<EditorAssetBrowserRetainedCommandRow> command_rows;
+    std::vector<EditorAssetBrowserRetainedLegalRow> legal_rows;
+};
+
 struct EditorAssetBrowserProductionDesc {
     const ContentBrowserState* browser{nullptr};
     const AssetImportPlan* import_plan{nullptr};
@@ -104,6 +132,7 @@ struct EditorAssetBrowserProductionDesc {
     std::string source_registry_path;
     std::uint64_t generation{1};
     const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence{nullptr};
+    const EditorAssetBrowserRetainedUiDesc* retained_ui{nullptr};
 };
 
 struct EditorAssetBrowserProductionModel {
@@ -117,6 +146,10 @@ struct EditorAssetBrowserProductionModel {
     std::size_t visible_row_count{0};
     std::vector<EditorAssetBrowserSourcePulseRow> rows;
     std::vector<EditorAssetBrowserPreviewEvidenceRow> preview_rows;
+    std::string query_text;
+    std::string query_status_label{"Asset browser query empty"};
+    std::vector<EditorAssetBrowserRetainedCommandRow> command_rows;
+    std::vector<EditorAssetBrowserRetainedLegalRow> legal_rows;
     std::vector<std::string> diagnostics;
     bool mutates{false};
     bool executes{false};

@@ -264,6 +264,27 @@ make_default_asset_browser_command_plans(const EditorAssetBrowserProductionModel
     return plans;
 }
 
+[[nodiscard]] std::vector<EditorAssetBrowserRetainedCommandRow>
+make_asset_browser_retained_command_rows(std::span<const EditorAssetBrowserCommandPlan> plans) {
+    std::vector<EditorAssetBrowserRetainedCommandRow> rows;
+    rows.reserve(plans.size());
+    for (const auto& plan : plans) {
+        rows.push_back(EditorAssetBrowserRetainedCommandRow{
+            .command_id = plan.command_id,
+            .label = plan.label,
+            .status_label = plan.status_label,
+            .enabled = plan.status == EditorAssetBrowserCommandStatus::ready,
+            .requires_user_confirmation = plan.requires_user_confirmation,
+            .mutates_project_files = plan.mutates_project_files,
+            .executes_import_tools = plan.executes_import_tools,
+            .executes_package_scripts = plan.executes_package_scripts,
+            .executes_validation_recipes = plan.executes_validation_recipes,
+            .exposes_native_handles = plan.exposes_native_handles,
+        });
+    }
+    return rows;
+}
+
 [[nodiscard]] NativeEditorEnvironmentArtistWorkflowCommandPlanRow
 make_environment_artist_workflow_shell_command_row(const EnvironmentAuthoringDocument& document,
                                                    EnvironmentArtistWorkflowCommandKind kind) {
@@ -817,6 +838,7 @@ struct NativeEditorApp::Impl {
         asset_browser = make_default_asset_browser_model(project, asset_browser_content_browser,
                                                          asset_browser_import_plan, &preview_evidence);
         asset_browser_command_plans = make_default_asset_browser_command_plans(asset_browser);
+        asset_browser.command_rows = make_asset_browser_retained_command_rows(asset_browser_command_plans);
     }
 
     ProjectDocument project;

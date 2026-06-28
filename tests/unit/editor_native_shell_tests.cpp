@@ -354,6 +354,65 @@ MK_TEST("editor first party document renders Source Pulse assets instead of lega
     MK_REQUIRE(!counters.editor_asset_browser_native_handles_exposed);
 }
 
+MK_TEST("editor native UIA provider publishes asset browser retained rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    auto adapter = mirakana::editor::make_native_editor_uia_accessibility_adapter();
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .accessibility_adapter = adapter.get(),
+        .accessibility_service_id = "win32_uia",
+    });
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto& asset_browser = app.asset_browser();
+    const auto asset_document = mirakana::editor::make_editor_asset_browser_production_ui_model(asset_browser);
+    const auto layout =
+        mirakana::ui::solve_layout(asset_document, mirakana::ui::ElementId{"asset_browser"},
+                                   mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 960.0F, .height = 640.0F});
+    const auto submission = mirakana::ui::build_renderer_submission(asset_document, layout);
+
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.query"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.commands"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.preview"));
+    MK_REQUIRE(!asset_browser.rows.empty());
+    MK_REQUIRE(!asset_browser.preview_rows.empty());
+    MK_REQUIRE(!asset_browser.command_rows.empty());
+
+    const auto command_id = "asset_browser.commands." + asset_browser.command_rows.front().command_id;
+    MK_REQUIRE(contains_element(shell_document.document, command_id));
+    MK_REQUIRE(contains_element(shell_document.document, asset_browser.preview_rows.front().id + ".status"));
+
+    const auto payload = mirakana::ui::build_accessibility_payload(submission);
+    MK_REQUIRE(
+        std::ranges::any_of(payload.nodes, [](const auto& node) { return node.id.value == "asset_browser.query"; }));
+    const auto result = app.publish_native_accessibility_payload(payload, shell_document.focused_element);
+    MK_REQUIRE(result.published);
+
+    const auto* query = find_uia_node(app.accessibility_state(), "asset_browser.query");
+    const auto* source_list = find_uia_node(app.accessibility_state(), "asset_browser.source_pulse");
+    const auto* source_item = find_uia_node(app.accessibility_state(), asset_browser.rows.front().row_id);
+    const auto* command = find_uia_node(app.accessibility_state(), command_id);
+    const auto* status = find_uia_node(app.accessibility_state(), "asset_browser.status");
+    const auto* preview_status =
+        find_uia_node(app.accessibility_state(), asset_browser.preview_rows.front().id + ".status");
+
+    MK_REQUIRE(query != nullptr);
+    MK_REQUIRE(query->control_type_id == "UIA_EditControlTypeId");
+    MK_REQUIRE(source_list != nullptr);
+    MK_REQUIRE(source_list->control_type_id == "UIA_ListControlTypeId");
+    MK_REQUIRE(source_item != nullptr);
+    MK_REQUIRE(source_item->control_type_id == "UIA_ListItemControlTypeId");
+    MK_REQUIRE(command != nullptr);
+    MK_REQUIRE(command->control_type_id == "UIA_ButtonControlTypeId");
+    MK_REQUIRE(status != nullptr);
+    MK_REQUIRE(status->control_type_id == "UIA_TextControlTypeId");
+    MK_REQUIRE(preview_status != nullptr);
+    MK_REQUIRE(preview_status->control_type_id == "UIA_TextControlTypeId");
+    MK_REQUIRE(app.accessibility_state().hidden_nodes == 0U);
+    MK_REQUIRE(app.accessibility_state().unsupported_pattern_diagnostics == 0U);
+    MK_REQUIRE(!app.accessibility_state().native_handles_exposed);
+}
+
 MK_TEST("editor asset browser import source dialog routes through native shell service") {
     mirakana::MemoryFileDialogService file_dialogs;
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};

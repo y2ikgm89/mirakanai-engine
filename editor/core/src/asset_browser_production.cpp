@@ -560,6 +560,7 @@ void add_or_throw(mirakana::ui::UiDocument& document, mirakana::ui::ElementDesc 
     desc.id = mirakana::ui::ElementId{std::move(id)};
     desc.role = role;
     desc.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 1.0F, .height = 1.0F};
+    desc.accessibility_label = desc.id.value;
     return desc;
 }
 
@@ -570,6 +571,7 @@ void add_or_throw(mirakana::ui::UiDocument& document, mirakana::ui::ElementDesc 
     desc.parent = std::move(parent);
     desc.role = role;
     desc.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 1.0F, .height = 1.0F};
+    desc.accessibility_label = desc.id.value;
     return desc;
 }
 
@@ -585,7 +587,24 @@ void append_label(mirakana::ui::UiDocument& document, const mirakana::ui::Elemen
                   std::string label) {
     mirakana::ui::ElementDesc desc = make_child(std::move(id), parent, mirakana::ui::SemanticRole::label);
     desc.text = make_text(std::move(label));
+    desc.accessibility_label = desc.text.label;
     add_or_throw(document, std::move(desc));
+}
+
+void append_text_field(mirakana::ui::UiDocument& document, const mirakana::ui::ElementId& parent, std::string id,
+                       std::string label, std::string accessibility_label) {
+    mirakana::ui::ElementDesc desc = make_child(std::move(id), parent, mirakana::ui::SemanticRole::text_field);
+    desc.text = make_text(std::move(label));
+    desc.accessibility_label = std::move(accessibility_label);
+    add_or_throw(document, std::move(desc));
+}
+
+[[nodiscard]] std::string bool_label(bool value) {
+    return value ? "true" : "false";
+}
+
+[[nodiscard]] std::string command_row_id(std::string_view command_id) {
+    return "asset_browser.commands." + std::string{command_id};
 }
 
 } // namespace
@@ -683,6 +702,12 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
         model.exposes_native_handles =
             std::ranges::any_of(model.preview_rows, [](const auto& row) { return row.exposes_native_handles; });
     }
+    if (desc.retained_ui != nullptr) {
+        model.query_text = desc.retained_ui->query_text;
+        model.query_status_label = desc.retained_ui->query_status_label;
+        model.command_rows = desc.retained_ui->command_rows;
+        model.legal_rows = desc.retained_ui->legal_rows;
+    }
 
     model.status =
         model.rows.empty() ? EditorAssetBrowserProductionStatus::empty : EditorAssetBrowserProductionStatus::ready;
@@ -692,18 +717,24 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
 
 mirakana::ui::UiDocument make_editor_asset_browser_production_ui_model(const EditorAssetBrowserProductionModel& model) {
     mirakana::ui::UiDocument document;
-    add_or_throw(document, make_root("asset_browser", mirakana::ui::SemanticRole::panel));
+    auto root_desc = make_root("asset_browser", mirakana::ui::SemanticRole::panel);
+    root_desc.accessibility_label = "Asset Browser";
+    add_or_throw(document, std::move(root_desc));
     const mirakana::ui::ElementId root{"asset_browser"};
 
     require_safe_field("status", model.status_label);
     require_safe_label("source_registry_path", model.source_registry_path);
     append_label(document, root, "asset_browser.status", model.status_label);
+    append_text_field(document, root, "asset_browser.query", model.query_text, "Search assets");
+    append_label(document, root, "asset_browser.query.status", model.query_status_label);
     append_label(document, root, "asset_browser.source_registry.path",
                  model.source_registry_path.empty() ? "-" : model.source_registry_path);
     append_label(document, root, "asset_browser.total_rows", std::to_string(model.total_row_count));
     append_label(document, root, "asset_browser.visible_rows", std::to_string(model.visible_row_count));
 
-    add_or_throw(document, make_child("asset_browser.source_pulse", root, mirakana::ui::SemanticRole::list));
+    auto source_pulse = make_child("asset_browser.source_pulse", root, mirakana::ui::SemanticRole::list);
+    source_pulse.accessibility_label = "Source Pulse Assets";
+    add_or_throw(document, std::move(source_pulse));
     const mirakana::ui::ElementId list_root{"asset_browser.source_pulse"};
 
     for (const auto& row : model.rows) {
@@ -715,6 +746,7 @@ mirakana::ui::UiDocument make_editor_asset_browser_production_ui_model(const Edi
 
         mirakana::ui::ElementDesc item = make_child(row.row_id, list_root, mirakana::ui::SemanticRole::list_item);
         item.text = make_text(row.display_name.empty() ? row.asset_key_label : row.display_name);
+        item.accessibility_label = item.text.label.empty() ? row.row_id : item.text.label;
         item.enabled = !row.blocked;
         add_or_throw(document, std::move(item));
 
@@ -728,6 +760,69 @@ mirakana::ui::UiDocument make_editor_asset_browser_production_ui_model(const Edi
         append_label(document, item_id, row.row_id + ".state", row.state_label);
         append_label(document, item_id, row.row_id + ".import_status", row.import_status_label);
         append_label(document, item_id, row.row_id + ".package_status", row.package_status_label);
+    }
+
+    auto preview_root = make_child("asset_browser.preview", root, mirakana::ui::SemanticRole::list);
+    preview_root.accessibility_label = "Asset Browser Preview Evidence";
+    add_or_throw(document, std::move(preview_root));
+    const mirakana::ui::ElementId preview_root_id{"asset_browser.preview"};
+    for (const auto& row : model.preview_rows) {
+        require_safe_field("preview_id", row.id);
+        require_safe_label("preview_status_label", row.status_label);
+        mirakana::ui::ElementDesc item = make_child(row.id, preview_root_id, mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.preview_kind);
+        item.accessibility_label = row.preview_kind.empty() ? row.id : row.preview_kind;
+        item.enabled = row.ready;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{row.id};
+        append_label(document, item_id, row.id + ".asset_key", row.asset_key_label.empty() ? "-" : row.asset_key_label);
+        append_label(document, item_id, row.id + ".backend", row.backend_label.empty() ? "-" : row.backend_label);
+        append_label(document, item_id, row.id + ".display_path",
+                     row.display_path_label.empty() ? "-" : row.display_path_label);
+        append_label(document, item_id, row.id + ".status", row.status_label);
+        append_label(document, item_id, row.id + ".diagnostic", row.diagnostic.empty() ? "-" : row.diagnostic);
+    }
+
+    auto legal_root = make_child("asset_browser.legal", root, mirakana::ui::SemanticRole::list);
+    legal_root.accessibility_label = "Asset Browser Legal Provenance";
+    add_or_throw(document, std::move(legal_root));
+    const mirakana::ui::ElementId legal_root_id{"asset_browser.legal"};
+    for (const auto& row : model.legal_rows) {
+        require_safe_field("legal_id", row.id);
+        require_safe_label("legal_status_label", row.status_label);
+        mirakana::ui::ElementDesc item = make_child(row.id, legal_root_id, mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.asset_key_label.empty() ? row.id : row.asset_key_label);
+        item.accessibility_label = item.text.label;
+        item.enabled = !row.blocked;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{row.id};
+        append_label(document, item_id, row.id + ".status", row.status_label);
+        append_label(document, item_id, row.id + ".diagnostic", row.diagnostic.empty() ? "-" : row.diagnostic);
+    }
+
+    auto commands_root = make_child("asset_browser.commands", root, mirakana::ui::SemanticRole::list);
+    commands_root.accessibility_label = "Asset Browser Commands";
+    add_or_throw(document, std::move(commands_root));
+    const mirakana::ui::ElementId commands_root_id{"asset_browser.commands"};
+    for (const auto& row : model.command_rows) {
+        require_safe_field("command_id", row.command_id);
+        require_safe_label("command_label", row.label);
+        const std::string row_id = command_row_id(row.command_id);
+        mirakana::ui::ElementDesc item = make_child(row_id, commands_root_id, mirakana::ui::SemanticRole::button);
+        item.text = make_text(row.label.empty() ? row.command_id : row.label);
+        item.accessibility_label = item.text.label;
+        item.enabled = row.enabled;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{row_id};
+        append_label(document, item_id, row_id + ".status", row.status_label);
+        append_label(document, item_id, row_id + ".requires_user_confirmation",
+                     bool_label(row.requires_user_confirmation));
+        append_label(document, item_id, row_id + ".mutates_project_files", bool_label(row.mutates_project_files));
+        append_label(document, item_id, row_id + ".executes_import_tools", bool_label(row.executes_import_tools));
+        append_label(document, item_id, row_id + ".executes_package_scripts", bool_label(row.executes_package_scripts));
+        append_label(document, item_id, row_id + ".executes_validation_recipes",
+                     bool_label(row.executes_validation_recipes));
+        append_label(document, item_id, row_id + ".native_handles_exposed", bool_label(row.exposes_native_handles));
     }
 
     return document;

@@ -1028,7 +1028,7 @@ Task 7 guarantees:
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 - Modify: `tools/check-ai-integration.ps1` when retained ids become contract needles
 
-- [ ] **Step 1: Add failing retained UI and accessibility tests**
+- [x] **Step 1: Add failing retained UI and accessibility tests**
 
 Tests must prove retained rows for:
 
@@ -1045,15 +1045,15 @@ Tests must prove retained rows for:
 
 Native shell tests must prove UIA publication for the asset tree/list items, selection rows, command buttons, and status rows with no hidden/unsupported-pattern counters.
 
-- [ ] **Step 2: Implement retained UI model**
+- [x] **Step 2: Implement retained UI model**
 
 `make_editor_asset_browser_production_ui_model` must produce a deterministic `mirakana::ui::UiDocument` with semantic roles: panel, text input/search field, tree/list, list item, label, button, and status. Use existing `mirakana::ui` roles. Add new roles for this plan only when an existing role cannot represent the control, and cover each new role with retained UI and UIA tests.
 
-- [ ] **Step 3: Publish accessibility rows**
+- [x] **Step 3: Publish accessibility rows**
 
 Map the visible retained rows through the existing private Windows UIA provider. Use UI Automation tree/control-pattern guidance as the Windows host contract, but keep cross-platform accessibility unclaimed.
 
-- [ ] **Step 4: Run validation**
+- [x] **Step 4: Run validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1`
 
@@ -1064,6 +1064,20 @@ If new retained ids become static needles, run:
 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
 
 Expected: agent-contract needles pass.
+
+### Task 8 Implementation Evidence - 2026-06-29
+
+- Red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` failed on missing `EditorAssetBrowserRetainedUiDesc`, `EditorAssetBrowserRetainedCommandRow`, `EditorAssetBrowserRetainedLegalRow`, and `EditorAssetBrowserProductionDesc::retained_ui`.
+- Green focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` PASS.
+- Focused tests: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_(core|native_shell)_tests"` PASS with `100% tests passed, 0 tests failed out of 2`.
+- Editor lane: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` PASS with `100% tests passed, 0 tests failed out of 160`.
+- Static checks: `tools/check-format.ps1`, `git diff --check`, `tools/check-tidy.ps1 -Files editor/core/src/asset_browser_production.cpp,editor/src/native_editor_app.cpp`, and `tools/check-ai-integration.ps1` PASS.
+
+Task 8 guarantees:
+
+- `EditorAssetBrowserRetainedUiDesc` carries query, command, and legal retained-row inputs into `EditorAssetBrowserProductionModel` without mutation, execution, native handles, or compatibility shims.
+- `make_editor_asset_browser_production_ui_model` now emits deterministic retained ids for `asset_browser.status`, `asset_browser.query`, `asset_browser.source_registry.path`, Source Pulse asset key/source path/state/package status, `asset_browser.preview.<id>.status`, `asset_browser.legal.<id>.status`, and `asset_browser.commands.<command_id>` using existing `mirakana::ui` semantic roles.
+- Native shell tests prove the asset browser retained document publishes text-field, list, list-item, button, and status rows through the private UIA provider with hidden, unsupported-pattern, and native-handle counters at zero.
 
 ## Task 9: Package Candidate And Runtime Registration Review
 

@@ -3495,6 +3495,106 @@ MK_TEST("editor asset browser production model keeps preview evidence value only
     MK_REQUIRE(!model.mutates_manifests);
 }
 
+MK_TEST("editor asset browser production ui exposes query legal command and preview retained rows") {
+    const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
+    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
+
+    mirakana::SourceAssetRegistryDocumentV1 source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = material_key,
+        .kind = mirakana::AssetKind::material,
+        .source_path = "source/materials/player.material",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::material)},
+        .imported_path = "assets/materials/player.material",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+
+    mirakana::editor::EditorMaterialAssetPreviewPanelModel material_preview;
+    material_preview.material = material_id;
+    material_preview.material_id = material_key.value;
+    material_preview.material_path = "assets/materials/player.material";
+    material_preview.gpu_execution_status_label = "Ready";
+    material_preview.gpu_execution_backend_label = "D3D12";
+    material_preview.gpu_execution_display_path_label = "host-private-native";
+    material_preview.gpu_execution_frames_rendered = 3U;
+    material_preview.gpu_execution_host_owned = true;
+    material_preview.gpu_execution_ready = true;
+
+    const auto preview_evidence = mirakana::editor::EditorAssetBrowserPreviewEvidenceDesc{
+        .material_previews = {material_preview},
+    };
+    const auto retained_ui = mirakana::editor::EditorAssetBrowserRetainedUiDesc{
+        .query_text = "kind=material",
+        .query_status_label = "Asset browser query ready",
+        .command_rows =
+            {
+                mirakana::editor::EditorAssetBrowserRetainedCommandRow{
+                    .command_id = "asset_browser.selection.inspect",
+                    .label = "Inspect selection",
+                    .status_label = "ready",
+                    .enabled = true,
+                },
+            },
+        .legal_rows =
+            {
+                mirakana::editor::EditorAssetBrowserRetainedLegalRow{
+                    .id = "asset_browser.legal.third_party.material",
+                    .asset_key_label = material_key.value,
+                    .status_label = "accepted_for_package",
+                    .diagnostic = "legal provenance row is complete",
+                    .blocked = false,
+                },
+            },
+    };
+    const auto model =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .project_root = ".",
+            .asset_root = "assets",
+            .source_registry_path = "source/assets/package.geassets",
+            .generation = 2U,
+            .preview_evidence = &preview_evidence,
+            .retained_ui = &retained_ui,
+        });
+
+    const auto document = mirakana::editor::make_editor_asset_browser_production_ui_model(model);
+    const auto* query = document.find(mirakana::ui::ElementId{"asset_browser.query"});
+    MK_REQUIRE(query != nullptr);
+    MK_REQUIRE(query->role == mirakana::ui::SemanticRole::text_field);
+    MK_REQUIRE(query->text.label == "kind=material");
+    const auto* query_status = document.find(mirakana::ui::ElementId{"asset_browser.query.status"});
+    MK_REQUIRE(query_status != nullptr);
+    MK_REQUIRE(query_status->text.label == "Asset browser query ready");
+
+    MK_REQUIRE(model.rows.size() == 1U);
+    const auto& source_row = model.rows[0];
+    MK_REQUIRE(document.find(mirakana::ui::ElementId{source_row.row_id + ".asset_key"}) != nullptr);
+    MK_REQUIRE(document.find(mirakana::ui::ElementId{source_row.row_id + ".source_path"}) != nullptr);
+    MK_REQUIRE(document.find(mirakana::ui::ElementId{source_row.row_id + ".state"}) != nullptr);
+    MK_REQUIRE(document.find(mirakana::ui::ElementId{source_row.row_id + ".package_status"}) != nullptr);
+
+    MK_REQUIRE(model.preview_rows.size() == 1U);
+    const auto* preview_status = document.find(mirakana::ui::ElementId{model.preview_rows[0].id + ".status"});
+    MK_REQUIRE(preview_status != nullptr);
+    MK_REQUIRE(preview_status->text.label == "Ready");
+
+    const auto* legal_status =
+        document.find(mirakana::ui::ElementId{"asset_browser.legal.third_party.material.status"});
+    MK_REQUIRE(legal_status != nullptr);
+    MK_REQUIRE(legal_status->text.label == "accepted_for_package");
+
+    const auto* command =
+        document.find(mirakana::ui::ElementId{"asset_browser.commands.asset_browser.selection.inspect"});
+    MK_REQUIRE(command != nullptr);
+    MK_REQUIRE(command->role == mirakana::ui::SemanticRole::button);
+    const auto* command_status =
+        document.find(mirakana::ui::ElementId{"asset_browser.commands.asset_browser.selection.inspect.status"});
+    MK_REQUIRE(command_status != nullptr);
+    MK_REQUIRE(command_status->text.label == "ready");
+}
+
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
     const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
     const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};
