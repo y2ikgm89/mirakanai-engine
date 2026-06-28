@@ -8,7 +8,9 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -28,6 +30,147 @@ namespace {
     }
     return std::ranges::any_of(plan->actions, [asset, output_path](const AssetImportAction& action) {
         return action.id == asset && (output_path.empty() || action.output_path == output_path);
+    });
+}
+
+[[nodiscard]] char ascii_lower(char value) noexcept {
+    return static_cast<char>(std::tolower(static_cast<unsigned char>(value)));
+}
+
+[[nodiscard]] bool ascii_is_space(char value) noexcept {
+    return value == ' ' || value == '\t' || value == '\n' || value == '\r' || value == '\f' || value == '\v';
+}
+
+[[nodiscard]] std::string lower_ascii(std::string_view value) {
+    std::string lowered;
+    lowered.reserve(value.size());
+    for (const char character : value) {
+        lowered.push_back(ascii_lower(character));
+    }
+    return lowered;
+}
+
+[[nodiscard]] bool equals_case_insensitive(std::string_view lhs, std::string_view rhs) {
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    return std::ranges::equal(lhs, rhs, [](char left, char right) { return ascii_lower(left) == ascii_lower(right); });
+}
+
+[[nodiscard]] bool starts_with_case_insensitive(std::string_view text, std::string_view prefix) {
+    if (prefix.size() > text.size()) {
+        return false;
+    }
+    return equals_case_insensitive(text.substr(0, prefix.size()), prefix);
+}
+
+[[nodiscard]] bool contains_case_insensitive(std::string_view text, std::string_view needle) {
+    if (needle.empty()) {
+        return true;
+    }
+    if (needle.size() > text.size()) {
+        return false;
+    }
+    return !std::ranges::search(text, needle, [](char lhs, char rhs) {
+                return ascii_lower(lhs) == ascii_lower(rhs);
+            }).empty();
+}
+
+[[nodiscard]] std::vector<std::string_view> split_query_tokens(std::string_view query_text) {
+    std::vector<std::string_view> tokens;
+    std::size_t cursor = 0;
+    while (cursor < query_text.size()) {
+        while (cursor < query_text.size() && ascii_is_space(query_text[cursor])) {
+            ++cursor;
+        }
+        const std::size_t begin = cursor;
+        while (cursor < query_text.size() && !ascii_is_space(query_text[cursor])) {
+            ++cursor;
+        }
+        if (begin != cursor) {
+            tokens.push_back(query_text.substr(begin, cursor - begin));
+        }
+    }
+    return tokens;
+}
+
+[[nodiscard]] bool is_supported_query_operator(std::string_view key) {
+    return key == "kind" || key == "scope" || key == "state" || key == "key" || key == "path";
+}
+
+[[nodiscard]] EditorAssetBrowserQueryTokenRow make_query_token(std::size_t index, std::string key, std::string value,
+                                                               bool blocked) {
+    return EditorAssetBrowserQueryTokenRow{
+        .id = "asset_browser.query.token." + std::to_string(index),
+        .key = std::move(key),
+        .value = std::move(value),
+        .status_label = blocked ? "blocked" : "active",
+        .active = !blocked,
+        .blocked = blocked,
+    };
+}
+
+void append_normalized_token(std::string& normalized_query, std::string_view token) {
+    if (!normalized_query.empty()) {
+        normalized_query.push_back(' ');
+    }
+    normalized_query.append(token);
+}
+
+[[nodiscard]] bool matches_query_state(const EditorAssetBrowserSourcePulseRow& row, std::string_view value) {
+    if (equals_case_insensitive(value, "ready")) {
+        return equals_case_insensitive(row.state_label, "ready") && !row.blocked && !row.host_gated;
+    }
+    if (equals_case_insensitive(value, "blocked")) {
+        return row.blocked;
+    }
+    if (equals_case_insensitive(value, "host_gated")) {
+        return row.host_gated;
+    }
+    if (equals_case_insensitive(value, "missing")) {
+        return contains_case_insensitive(row.state_label, "missing");
+    }
+    return equals_case_insensitive(row.state_label, value);
+}
+
+[[nodiscard]] bool matches_query_operator(const EditorAssetBrowserSourcePulseRow& row, std::string_view key,
+                                          std::string_view value) {
+    if (key == "kind") {
+        const std::string_view kind_label = row.kind_label.empty() ? asset_kind_label(row.kind) : row.kind_label;
+        return equals_case_insensitive(kind_label, value);
+    }
+    if (key == "scope") {
+        return equals_case_insensitive(row.scope_label, value);
+    }
+    if (key == "state") {
+        return matches_query_state(row, value);
+    }
+    if (key == "key") {
+        return starts_with_case_insensitive(row.asset_key_label, value);
+    }
+    if (key == "path") {
+        return contains_case_insensitive(row.source_path, value) || contains_case_insensitive(row.imported_path, value);
+    }
+    return false;
+}
+
+[[nodiscard]] bool matches_plain_text(const EditorAssetBrowserSourcePulseRow& row, std::string_view value) {
+    return contains_case_insensitive(row.display_name, value) || contains_case_insensitive(row.source_path, value) ||
+           contains_case_insensitive(row.imported_path, value) || contains_case_insensitive(row.asset_key_label, value);
+}
+
+[[nodiscard]] bool matches_query_token(const EditorAssetBrowserSourcePulseRow& row,
+                                       const EditorAssetBrowserQueryTokenRow& token) {
+    if (token.key == "text") {
+        return matches_plain_text(row, token.value);
+    }
+    return matches_query_operator(row, token.key, token.value);
+}
+
+[[nodiscard]] bool matches_all_query_tokens(const EditorAssetBrowserSourcePulseRow& row,
+                                            const std::vector<EditorAssetBrowserQueryTokenRow>& tokens) {
+    return std::ranges::all_of(tokens, [&row](const EditorAssetBrowserQueryTokenRow& token) {
+        return !token.active || matches_query_token(row, token);
     });
 }
 
@@ -149,6 +292,7 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
     model.project_root = desc.project_root;
     model.asset_root = desc.asset_root;
     model.source_registry_path = desc.source_registry_path;
+    model.generation = desc.generation;
 
     if (desc.browser == nullptr) {
         model.diagnostics.push_back("content browser state is missing");
@@ -212,6 +356,62 @@ mirakana::ui::UiDocument make_editor_asset_browser_production_ui_model(const Edi
     }
 
     return document;
+}
+
+EditorAssetBrowserQueryResult plan_editor_asset_browser_query(const EditorAssetBrowserQueryDesc& desc) {
+    EditorAssetBrowserQueryResult result;
+    const std::vector<std::string_view> tokens = split_query_tokens(desc.query_text);
+    if (tokens.empty()) {
+        result.rows = desc.rows;
+        return result;
+    }
+
+    result.tokens.reserve(tokens.size());
+    bool blocked = false;
+    for (const std::string_view token : tokens) {
+        append_normalized_token(result.normalized_query, token);
+        if (token.find(':') != std::string_view::npos) {
+            blocked = true;
+            result.diagnostics.push_back("unsupported query syntax: " + std::string(token));
+            result.tokens.push_back(make_query_token(result.tokens.size(), "syntax", std::string(token), true));
+            continue;
+        }
+
+        const auto equals = token.find('=');
+        if (equals == std::string_view::npos) {
+            result.tokens.push_back(make_query_token(result.tokens.size(), "text", std::string(token), false));
+            continue;
+        }
+
+        const std::string key = lower_ascii(token.substr(0, equals));
+        const std::string value{token.substr(equals + 1U)};
+        if (!is_supported_query_operator(key)) {
+            blocked = true;
+            result.diagnostics.push_back("unsupported query operator: " + key);
+            result.tokens.push_back(make_query_token(result.tokens.size(), key, value, true));
+            continue;
+        }
+        if (value.empty()) {
+            blocked = true;
+            result.diagnostics.push_back("empty query value: " + key);
+            result.tokens.push_back(make_query_token(result.tokens.size(), key, value, true));
+            continue;
+        }
+        result.tokens.push_back(make_query_token(result.tokens.size(), key, value, false));
+    }
+
+    if (blocked) {
+        result.status = EditorAssetBrowserQueryStatus::blocked;
+        result.status_label = "Asset browser query blocked";
+        return result;
+    }
+
+    result.rows.reserve(desc.rows.size());
+    std::ranges::copy_if(desc.rows, std::back_inserter(result.rows),
+                         [&result](const auto& row) { return matches_all_query_tokens(row, result.tokens); });
+    result.status = EditorAssetBrowserQueryStatus::ready;
+    result.status_label = "Asset browser query ready";
+    return result;
 }
 
 } // namespace mirakana::editor

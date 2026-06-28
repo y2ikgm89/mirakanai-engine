@@ -479,11 +479,11 @@ Task 1 non-claims retained:
 - Modify: `editor/core/src/asset_browser_production.cpp`
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Add failing query tests**
+- [x] **Step 1: Add failing query tests**
 
-Add tests for `kind=texture`, `scope=source`, `state=ready`, `key=asset.environment`, `path=clouds`, plain text, invalid key, and a Unity/Unreal/Godot syntax rejection case. The invalid external-engine syntax test must assert diagnostics for `t:texture`, `collection:`, and `res://` rather than silently accepting those as first-party query operators.
+Add tests for `kind=texture`, `scope=source`, `scope=cooked`, `state=ready`, `state=missing`, `key=<AssetKeyV2 prefix>`, `path=<source/imported substring>`, ASCII case-insensitive plain text, invalid key, and a Unity/Unreal/Godot syntax rejection case. The invalid external-engine syntax test must assert diagnostics for `t:texture`, `collection:`, and `res://` rather than silently accepting those as first-party query operators.
 
-- [ ] **Step 2: Add query types**
+- [x] **Step 2: Add query types**
 
 Extend the header with:
 
@@ -517,19 +517,44 @@ struct EditorAssetBrowserQueryResult {
 plan_editor_asset_browser_query(const EditorAssetBrowserQueryDesc& desc);
 ```
 
-- [ ] **Step 3: Implement first-party query parsing**
+- [x] **Step 3: Implement first-party query parsing**
 
 Support only these operators: `kind=`, `scope=`, `state=`, `key=`, and `path=`. Treat all other `name=value` operators as blocked diagnostics. Treat plain tokens as ASCII case-insensitive substring matches over display name, source path, imported path, and asset key. Do not implement fuzzy matching, tag collections, saved searches, Unity labels, Unreal collections, or Godot `res://` path semantics in this plan.
 
-- [ ] **Step 4: Add generation fields for command safety**
+- [x] **Step 4: Add generation fields for command safety**
 
-Add `std::uint64_t generation{1};` to `EditorAssetBrowserProductionModel`. Command requests introduced in Task 3 must include `expected_generation`; stale generations must produce `rejected_stale_generation`.
+Add `std::uint64_t generation{1};` to `EditorAssetBrowserProductionDesc` and `EditorAssetBrowserProductionModel`. Command requests introduced in Task 3 must include `expected_generation`; stale generations must produce `rejected_stale_generation`.
 
-- [ ] **Step 5: Run focused validation**
+- [x] **Step 5: Run focused validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`
 
 Expected: query tests pass and invalid external-engine syntax stays blocked.
+
+## Task 2 Evidence (2026-06-29)
+
+Task 2 is implemented in branch `codex/editor-asset-browser-production-v1`.
+
+Red/green evidence:
+
+- Red: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed before `generation`, `EditorAssetBrowserQueryStatus`, `EditorAssetBrowserQueryDesc`, and `plan_editor_asset_browser_query` existed.
+- Green: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` passed.
+- Green: `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` passed.
+- `tools/check-format.ps1`: passed.
+- `tools/check-tidy.ps1 -Files "editor/core/src/asset_browser_production.cpp,tests/unit/editor_core_tests.cpp"`: passed.
+- `tools/check-dependency-policy.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/check-json-contracts.ps1`: passed.
+- `tools/check-ai-integration.ps1`: passed.
+- `tools/validate.ps1`: passed; 50 static checks and 159 CTest tests passed.
+
+Task 2 guarantees:
+
+- First-party operators are limited to `kind=`, `scope=`, `state=`, `key=`, and `path=`.
+- Plain text is ASCII case-insensitive and searches display name, source path, imported path, and asset key.
+- Unsupported `name=value` operators produce blocked diagnostics and no result rows.
+- Unity-style `t:`, Unreal-style `collection:`, and Godot-style `res://` syntax produce blocked diagnostics and no result rows.
+- `EditorAssetBrowserProductionDesc::generation` flows into the model for Task 3 stale-command rejection.
 
 ## Task 3: Reviewed Asset Browser Commands
 

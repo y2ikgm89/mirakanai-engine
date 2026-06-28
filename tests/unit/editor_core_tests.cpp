@@ -2794,6 +2794,7 @@ MK_TEST("editor asset browser production model builds source pulse rows") {
     MK_REQUIRE(model.rows[4].imported_path == "assets/shaders/player.shader");
     MK_REQUIRE(model.rows[5].imported_path == "assets/textures/player.texture");
     MK_REQUIRE(model.rows[6].imported_path == "assets/ui/hud=blue.ui_atlas");
+    MK_REQUIRE(model.generation == 1U);
     MK_REQUIRE(model.mutates == false);
     MK_REQUIRE(model.executes == false);
     MK_REQUIRE(model.exposes_native_handles == false);
@@ -2846,9 +2847,11 @@ MK_TEST("editor asset browser production ui tolerates cooked rows without identi
             .project_root = ".",
             .asset_root = "assets",
             .source_registry_path = "source/assets/package=loose.geassets",
+            .generation = 7U,
         });
 
     MK_REQUIRE(model.rows.size() == 1U);
+    MK_REQUIRE(model.generation == 7U);
     MK_REQUIRE(model.rows[0].asset_key_label.empty());
     MK_REQUIRE(model.rows[0].state_label == "missing_identity");
     MK_REQUIRE(model.rows[0].blocked);
@@ -2860,6 +2863,143 @@ MK_TEST("editor asset browser production ui tolerates cooked rows without identi
     const auto* asset_key = document.find(mirakana::ui::ElementId{model.rows[0].row_id + ".asset_key"});
     MK_REQUIRE(asset_key != nullptr);
     MK_REQUIRE(asset_key->text.label == "-");
+}
+
+MK_TEST("editor asset browser production query grammar filters source pulse rows") {
+    std::vector<mirakana::editor::EditorAssetBrowserSourcePulseRow> rows{
+        mirakana::editor::EditorAssetBrowserSourcePulseRow{
+            .asset = mirakana::AssetId{1U},
+            .kind = mirakana::AssetKind::texture,
+            .row_id = "asset_browser.source_pulse.1",
+            .kind_label = "texture",
+            .asset_key_label = "assets/textures/player",
+            .source_path = "source/textures/player.png",
+            .imported_path = "assets/textures/player.texture",
+            .display_name = "player.texture",
+            .scope_label = "source",
+            .state_label = "ready",
+        },
+        mirakana::editor::EditorAssetBrowserSourcePulseRow{
+            .asset = mirakana::AssetId{2U},
+            .kind = mirakana::AssetKind::material,
+            .row_id = "asset_browser.source_pulse.2",
+            .kind_label = "material",
+            .asset_key_label = "assets/materials/player",
+            .source_path = "source/materials/player.material",
+            .imported_path = "assets/materials/player.material",
+            .display_name = "player.material",
+            .scope_label = "source",
+            .state_label = "ready",
+        },
+        mirakana::editor::EditorAssetBrowserSourcePulseRow{
+            .asset = mirakana::AssetId{3U},
+            .kind = mirakana::AssetKind::mesh,
+            .row_id = "asset_browser.source_pulse.3",
+            .kind_label = "mesh",
+            .imported_path = "assets/meshes/loose.mesh",
+            .display_name = "loose.mesh",
+            .scope_label = "cooked",
+            .state_label = "missing_identity",
+            .blocked = true,
+        },
+    };
+
+    const auto query = [&rows](std::string text) {
+        return mirakana::editor::plan_editor_asset_browser_query(mirakana::editor::EditorAssetBrowserQueryDesc{
+            .query_text = std::move(text),
+            .rows = rows,
+        });
+    };
+
+    const auto by_kind = query("kind=texture");
+    MK_REQUIRE(by_kind.status == mirakana::editor::EditorAssetBrowserQueryStatus::ready);
+    MK_REQUIRE(by_kind.rows.size() == 1U);
+    MK_REQUIRE(by_kind.rows[0].asset_key_label == "assets/textures/player");
+
+    const auto by_scope = query("scope=cooked");
+    MK_REQUIRE(by_scope.rows.size() == 1U);
+    MK_REQUIRE(by_scope.rows[0].imported_path == "assets/meshes/loose.mesh");
+
+    const auto by_source_scope = query("scope=source");
+    MK_REQUIRE(by_source_scope.rows.size() == 2U);
+
+    const auto by_ready_state = query("state=ready");
+    MK_REQUIRE(by_ready_state.rows.size() == 2U);
+
+    const auto by_state = query("state=missing");
+    MK_REQUIRE(by_state.rows.size() == 1U);
+    MK_REQUIRE(by_state.rows[0].state_label == "missing_identity");
+
+    const auto by_key = query("key=assets/materials");
+    MK_REQUIRE(by_key.rows.size() == 1U);
+    MK_REQUIRE(by_key.rows[0].asset_key_label == "assets/materials/player");
+
+    const auto by_path = query("path=player.png");
+    MK_REQUIRE(by_path.rows.size() == 1U);
+    MK_REQUIRE(by_path.rows[0].source_path == "source/textures/player.png");
+
+    const auto by_text = query("PLAYER.MATERIAL");
+    MK_REQUIRE(by_text.rows.size() == 1U);
+    MK_REQUIRE(by_text.rows[0].asset_key_label == "assets/materials/player");
+    MK_REQUIRE(by_text.tokens.size() == 1U);
+    MK_REQUIRE(by_text.tokens[0].key == "text");
+    MK_REQUIRE(by_text.tokens[0].active);
+}
+
+MK_TEST("editor asset browser production query grammar rejects unsupported syntax") {
+    std::vector<mirakana::editor::EditorAssetBrowserSourcePulseRow> rows{
+        mirakana::editor::EditorAssetBrowserSourcePulseRow{
+            .asset = mirakana::AssetId{1U},
+            .kind = mirakana::AssetKind::texture,
+            .row_id = "asset_browser.source_pulse.1",
+            .kind_label = "texture",
+            .asset_key_label = "assets/textures/player",
+            .source_path = "source/textures/player.png",
+            .imported_path = "assets/textures/player.texture",
+            .display_name = "player.texture",
+            .scope_label = "source",
+            .state_label = "ready",
+        },
+    };
+
+    const auto invalid_key =
+        mirakana::editor::plan_editor_asset_browser_query(mirakana::editor::EditorAssetBrowserQueryDesc{
+            .query_text = "owner=tools",
+            .rows = rows,
+        });
+    MK_REQUIRE(invalid_key.status == mirakana::editor::EditorAssetBrowserQueryStatus::blocked);
+    MK_REQUIRE(invalid_key.rows.empty());
+    MK_REQUIRE(invalid_key.tokens.size() == 1U);
+    MK_REQUIRE(invalid_key.tokens[0].key == "owner");
+    MK_REQUIRE(invalid_key.tokens[0].blocked);
+    const bool has_invalid_key_diagnostic =
+        std::ranges::any_of(invalid_key.diagnostics, [](const std::string& diagnostic) {
+            return diagnostic.find("unsupported query operator: owner") != std::string::npos;
+        });
+    MK_REQUIRE(has_invalid_key_diagnostic);
+
+    const auto external =
+        mirakana::editor::plan_editor_asset_browser_query(mirakana::editor::EditorAssetBrowserQueryDesc{
+            .query_text = "t:texture collection: res://assets/player.png",
+            .rows = rows,
+        });
+    MK_REQUIRE(external.status == mirakana::editor::EditorAssetBrowserQueryStatus::blocked);
+    MK_REQUIRE(external.rows.empty());
+    const bool has_unity_syntax_diagnostic =
+        std::ranges::any_of(external.diagnostics, [](const std::string& diagnostic) {
+            return diagnostic.find("unsupported query syntax: t:texture") != std::string::npos;
+        });
+    MK_REQUIRE(has_unity_syntax_diagnostic);
+    const bool has_unreal_syntax_diagnostic =
+        std::ranges::any_of(external.diagnostics, [](const std::string& diagnostic) {
+            return diagnostic.find("unsupported query syntax: collection:") != std::string::npos;
+        });
+    MK_REQUIRE(has_unreal_syntax_diagnostic);
+    const bool has_godot_syntax_diagnostic =
+        std::ranges::any_of(external.diagnostics, [](const std::string& diagnostic) {
+            return diagnostic.find("unsupported query syntax: res://assets/player.png") != std::string::npos;
+        });
+    MK_REQUIRE(has_godot_syntax_diagnostic);
 }
 
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {

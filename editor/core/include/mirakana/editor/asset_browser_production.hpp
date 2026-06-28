@@ -16,6 +16,7 @@
 namespace mirakana::editor {
 
 enum class EditorAssetBrowserProductionStatus : std::uint8_t { empty, ready, attention };
+enum class EditorAssetBrowserQueryStatus : std::uint8_t { empty, ready, blocked };
 
 struct EditorAssetBrowserSourcePulseRow {
     AssetId asset;
@@ -47,6 +48,7 @@ struct EditorAssetBrowserProductionDesc {
     std::string project_root{"."};
     std::string asset_root{"assets"};
     std::string source_registry_path;
+    std::uint64_t generation{1};
 };
 
 struct EditorAssetBrowserProductionModel {
@@ -55,6 +57,7 @@ struct EditorAssetBrowserProductionModel {
     std::string project_root;
     std::string asset_root;
     std::string source_registry_path;
+    std::uint64_t generation{1};
     std::size_t total_row_count{0};
     std::size_t visible_row_count{0};
     std::vector<EditorAssetBrowserSourcePulseRow> rows;
@@ -64,11 +67,35 @@ struct EditorAssetBrowserProductionModel {
     bool exposes_native_handles{false};
 };
 
+struct EditorAssetBrowserQueryTokenRow {
+    std::string id;
+    std::string key;
+    std::string value;
+    std::string status_label;
+    bool active{false};
+    bool blocked{false};
+};
+
+struct EditorAssetBrowserQueryDesc {
+    std::string query_text;
+    std::vector<EditorAssetBrowserSourcePulseRow> rows;
+};
+
+struct EditorAssetBrowserQueryResult {
+    EditorAssetBrowserQueryStatus status{EditorAssetBrowserQueryStatus::empty};
+    std::string status_label{"Asset browser query empty"};
+    std::string normalized_query;
+    std::vector<EditorAssetBrowserQueryTokenRow> tokens;
+    std::vector<EditorAssetBrowserSourcePulseRow> rows;
+    std::vector<std::string> diagnostics;
+};
+
 [[nodiscard]] std::string_view
 editor_asset_browser_production_status_label(EditorAssetBrowserProductionStatus status) noexcept;
 [[nodiscard]] EditorAssetBrowserProductionModel
 make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDesc& desc);
 [[nodiscard]] mirakana::ui::UiDocument
 make_editor_asset_browser_production_ui_model(const EditorAssetBrowserProductionModel& model);
+[[nodiscard]] EditorAssetBrowserQueryResult plan_editor_asset_browser_query(const EditorAssetBrowserQueryDesc& desc);
 
 } // namespace mirakana::editor
