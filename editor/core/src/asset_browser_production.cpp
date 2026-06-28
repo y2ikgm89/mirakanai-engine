@@ -98,6 +98,85 @@ namespace {
     return key == "kind" || key == "scope" || key == "state" || key == "key" || key == "path";
 }
 
+[[nodiscard]] std::string_view command_label(EditorAssetBrowserCommandKind kind) noexcept {
+    switch (kind) {
+    case EditorAssetBrowserCommandKind::reload_source_registry:
+        return "Reload source registry";
+    case EditorAssetBrowserCommandKind::review_import_sources:
+        return "Review import sources";
+    case EditorAssetBrowserCommandKind::copy_external_sources:
+        return "Copy external sources";
+    case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
+        return "Execute reviewed import plan";
+    case EditorAssetBrowserCommandKind::preview_cooked_package:
+        return "Preview cooked package";
+    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
+        return "Stage hot-reload recook";
+    case EditorAssetBrowserCommandKind::inspect_selection:
+        return "Inspect selection";
+    case EditorAssetBrowserCommandKind::apply_package_registration:
+        return "Apply package registration";
+    }
+    return "Reload source registry";
+}
+
+[[nodiscard]] std::string_view command_mode_label(EditorAssetBrowserCommandMode mode) noexcept {
+    switch (mode) {
+    case EditorAssetBrowserCommandMode::dry_run:
+        return "dry_run";
+    case EditorAssetBrowserCommandMode::apply:
+        return "apply";
+    }
+    return "dry_run";
+}
+
+[[nodiscard]] bool command_requires_confirmation(EditorAssetBrowserCommandKind kind) noexcept {
+    switch (kind) {
+    case EditorAssetBrowserCommandKind::copy_external_sources:
+    case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
+    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
+    case EditorAssetBrowserCommandKind::apply_package_registration:
+        return true;
+    case EditorAssetBrowserCommandKind::reload_source_registry:
+    case EditorAssetBrowserCommandKind::review_import_sources:
+    case EditorAssetBrowserCommandKind::preview_cooked_package:
+    case EditorAssetBrowserCommandKind::inspect_selection:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool command_mutates_project_files(EditorAssetBrowserCommandKind kind) noexcept {
+    switch (kind) {
+    case EditorAssetBrowserCommandKind::copy_external_sources:
+    case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
+    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
+    case EditorAssetBrowserCommandKind::apply_package_registration:
+        return true;
+    case EditorAssetBrowserCommandKind::reload_source_registry:
+    case EditorAssetBrowserCommandKind::review_import_sources:
+    case EditorAssetBrowserCommandKind::preview_cooked_package:
+    case EditorAssetBrowserCommandKind::inspect_selection:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool command_executes_import_tools(EditorAssetBrowserCommandKind kind) noexcept {
+    return kind == EditorAssetBrowserCommandKind::execute_reviewed_import_plan;
+}
+
+void append_command_report_rows(EditorAssetBrowserCommandPlan& plan, EditorAssetBrowserCommandMode mode) {
+    plan.report_rows.push_back("command_id=" + plan.command_id);
+    plan.report_rows.push_back("mode=" + std::string(command_mode_label(mode)));
+    plan.report_rows.push_back("expected_generation=" + std::to_string(plan.expected_generation));
+    plan.report_rows.push_back("current_generation=" + std::to_string(plan.current_generation));
+    plan.report_rows.push_back("editor_core_execution=false");
+    plan.report_rows.push_back("package_scripts=false");
+    plan.report_rows.push_back("validation_recipes=false");
+    plan.report_rows.push_back("native_handles=false");
+}
+
 [[nodiscard]] EditorAssetBrowserQueryTokenRow make_query_token(std::size_t index, std::string key, std::string value,
                                                                bool blocked) {
     return EditorAssetBrowserQueryTokenRow{
@@ -286,6 +365,28 @@ std::string_view editor_asset_browser_production_status_label(EditorAssetBrowser
     return "Asset browser empty";
 }
 
+std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind kind) noexcept {
+    switch (kind) {
+    case EditorAssetBrowserCommandKind::reload_source_registry:
+        return "asset_browser.source_registry.reload";
+    case EditorAssetBrowserCommandKind::review_import_sources:
+        return "asset_browser.import.review_sources";
+    case EditorAssetBrowserCommandKind::copy_external_sources:
+        return "asset_browser.import.copy_external_sources";
+    case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
+        return "asset_browser.import.execute_reviewed_plan";
+    case EditorAssetBrowserCommandKind::preview_cooked_package:
+        return "asset_browser.cook.package_preview";
+    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
+        return "asset_browser.hot_reload.stage_recook";
+    case EditorAssetBrowserCommandKind::inspect_selection:
+        return "asset_browser.selection.inspect";
+    case EditorAssetBrowserCommandKind::apply_package_registration:
+        return "asset_browser.package.apply_registration";
+    }
+    return "asset_browser.source_registry.reload";
+}
+
 EditorAssetBrowserProductionModel
 make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDesc& desc) {
     EditorAssetBrowserProductionModel model;
@@ -412,6 +513,42 @@ EditorAssetBrowserQueryResult plan_editor_asset_browser_query(const EditorAssetB
     result.status = EditorAssetBrowserQueryStatus::ready;
     result.status_label = "Asset browser query ready";
     return result;
+}
+
+EditorAssetBrowserCommandPlan plan_editor_asset_browser_command(const EditorAssetBrowserCommandRequest& request) {
+    EditorAssetBrowserCommandPlan plan{
+        .command_id = std::string(editor_asset_browser_command_id(request.kind)),
+        .label = std::string(command_label(request.kind)),
+        .status = EditorAssetBrowserCommandStatus::blocked,
+        .status_label = "blocked",
+        .expected_generation = request.expected_generation,
+        .current_generation = request.current_generation,
+        .requires_user_confirmation = command_requires_confirmation(request.kind),
+    };
+    append_command_report_rows(plan, request.mode);
+
+    if (request.expected_generation != request.current_generation) {
+        plan.status = EditorAssetBrowserCommandStatus::rejected_stale_generation;
+        plan.status_label = "rejected_stale_generation";
+        plan.diagnostics.push_back("rejected_stale_generation: expected " +
+                                   std::to_string(request.expected_generation) + " current " +
+                                   std::to_string(request.current_generation));
+        return plan;
+    }
+
+    if (request.mode == EditorAssetBrowserCommandMode::apply && plan.requires_user_confirmation &&
+        !request.user_confirmed) {
+        plan.diagnostics.push_back("requires_user_confirmation: " + plan.command_id);
+        return plan;
+    }
+
+    plan.status = EditorAssetBrowserCommandStatus::ready;
+    plan.status_label = "ready";
+    if (request.mode == EditorAssetBrowserCommandMode::apply && request.user_confirmed) {
+        plan.mutates_project_files = command_mutates_project_files(request.kind);
+        plan.executes_import_tools = command_executes_import_tools(request.kind);
+    }
+    return plan;
 }
 
 } // namespace mirakana::editor

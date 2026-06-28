@@ -3002,6 +3002,108 @@ MK_TEST("editor asset browser production query grammar rejects unsupported synta
     MK_REQUIRE(has_godot_syntax_diagnostic);
 }
 
+MK_TEST("editor asset browser command plans expose reviewed dry runs") {
+    const std::vector<mirakana::editor::EditorAssetBrowserCommandKind> commands{
+        mirakana::editor::EditorAssetBrowserCommandKind::reload_source_registry,
+        mirakana::editor::EditorAssetBrowserCommandKind::review_import_sources,
+        mirakana::editor::EditorAssetBrowserCommandKind::copy_external_sources,
+        mirakana::editor::EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        mirakana::editor::EditorAssetBrowserCommandKind::preview_cooked_package,
+        mirakana::editor::EditorAssetBrowserCommandKind::stage_hot_reload_recook,
+        mirakana::editor::EditorAssetBrowserCommandKind::inspect_selection,
+        mirakana::editor::EditorAssetBrowserCommandKind::apply_package_registration,
+    };
+
+    for (const auto command : commands) {
+        const auto plan =
+            mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+                .kind = command,
+                .mode = mirakana::editor::EditorAssetBrowserCommandMode::dry_run,
+                .expected_generation = 9U,
+                .current_generation = 9U,
+            });
+
+        MK_REQUIRE(plan.command_id == mirakana::editor::editor_asset_browser_command_id(command));
+        MK_REQUIRE(plan.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+        MK_REQUIRE(plan.expected_generation == 9U);
+        MK_REQUIRE(plan.current_generation == 9U);
+        MK_REQUIRE(!plan.mutates_project_files);
+        MK_REQUIRE(!plan.executes_import_tools);
+        MK_REQUIRE(!plan.executes_package_scripts);
+        MK_REQUIRE(!plan.executes_validation_recipes);
+        MK_REQUIRE(!plan.exposes_native_handles);
+        MK_REQUIRE(!plan.report_rows.empty());
+    }
+}
+
+MK_TEST("editor asset browser command plans require confirmation for shell mutations") {
+    const auto unconfirmed =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::copy_external_sources,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = false,
+        });
+    MK_REQUIRE(unconfirmed.status == mirakana::editor::EditorAssetBrowserCommandStatus::blocked);
+    MK_REQUIRE(unconfirmed.requires_user_confirmation);
+    MK_REQUIRE(!unconfirmed.mutates_project_files);
+    MK_REQUIRE(!unconfirmed.executes_import_tools);
+
+    const auto copy =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::copy_external_sources,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(copy.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(copy.requires_user_confirmation);
+    MK_REQUIRE(copy.mutates_project_files);
+    MK_REQUIRE(!copy.executes_import_tools);
+    MK_REQUIRE(!copy.executes_package_scripts);
+    MK_REQUIRE(!copy.executes_validation_recipes);
+    MK_REQUIRE(!copy.exposes_native_handles);
+
+    const auto import =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(import.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(import.requires_user_confirmation);
+    MK_REQUIRE(import.mutates_project_files);
+    MK_REQUIRE(import.executes_import_tools);
+    MK_REQUIRE(!import.executes_package_scripts);
+    MK_REQUIRE(!import.executes_validation_recipes);
+    MK_REQUIRE(!import.exposes_native_handles);
+}
+
+MK_TEST("editor asset browser command plans reject stale generations") {
+    const auto stale =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::apply_package_registration,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 2U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(stale.status == mirakana::editor::EditorAssetBrowserCommandStatus::rejected_stale_generation);
+    MK_REQUIRE(stale.expected_generation == 2U);
+    MK_REQUIRE(stale.current_generation == 3U);
+    MK_REQUIRE(!stale.mutates_project_files);
+    MK_REQUIRE(!stale.executes_import_tools);
+    const bool has_stale_diagnostic = std::ranges::any_of(stale.diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.find("rejected_stale_generation") != std::string::npos;
+    });
+    MK_REQUIRE(has_stale_diagnostic);
+}
+
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
     const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
     const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};

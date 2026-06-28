@@ -563,7 +563,7 @@ Task 2 guarantees:
 - Modify: `editor/core/src/asset_browser_production.cpp`
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Add failing command-plan tests**
+- [x] **Step 1: Add failing command-plan tests**
 
 Add tests for:
 
@@ -578,7 +578,7 @@ Add tests for:
 
 Each test must assert dry-run rows, `expected_generation`, `requires_user_confirmation` for mutating/executing shell-owned work, stale-generation rejection, no editor-core execution, no package scripts, no validation recipes, and no native handles.
 
-- [ ] **Step 2: Add command public types**
+- [x] **Step 2: Add command public types**
 
 Add:
 
@@ -610,6 +610,8 @@ struct EditorAssetBrowserCommandPlan {
     std::string label;
     EditorAssetBrowserCommandStatus status{EditorAssetBrowserCommandStatus::blocked};
     std::string status_label;
+    std::uint64_t expected_generation{0};
+    std::uint64_t current_generation{0};
     bool requires_user_confirmation{false};
     bool mutates_project_files{false};
     bool executes_import_tools{false};
@@ -625,15 +627,40 @@ struct EditorAssetBrowserCommandPlan {
 plan_editor_asset_browser_command(const EditorAssetBrowserCommandRequest& request);
 ```
 
-- [ ] **Step 3: Implement command planning**
+- [x] **Step 3: Implement command planning**
 
 `editor/core` must only plan. The only plans allowed to set `mutates_project_files=true` or `executes_import_tools=true` are apply-mode plans with matching generation and `user_confirmed=true`; they still do not execute. `executes_package_scripts`, `executes_validation_recipes`, and `exposes_native_handles` must always remain `false`.
 
-- [ ] **Step 4: Run focused validation**
+- [x] **Step 4: Run focused validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`
 
 Expected: command-plan tests pass.
+
+## Task 3 Evidence (2026-06-29)
+
+Task 3 is implemented in branch `codex/editor-asset-browser-production-v1`.
+
+Red/green evidence:
+
+- Red: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed before `EditorAssetBrowserCommandKind`, `EditorAssetBrowserCommandMode`, `EditorAssetBrowserCommandStatus`, `EditorAssetBrowserCommandRequest`, `EditorAssetBrowserCommandPlan`, `editor_asset_browser_command_id`, and `plan_editor_asset_browser_command` existed.
+- Green: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` passed.
+- Green: `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` passed.
+- `tools/check-format.ps1`: passed.
+- `tools/check-tidy.ps1 -Files "editor/core/src/asset_browser_production.cpp,tests/unit/editor_core_tests.cpp"`: passed.
+- `tools/check-dependency-policy.ps1`: passed.
+- `tools/check-agents.ps1`: passed.
+- `tools/check-json-contracts.ps1`: passed.
+- `tools/check-ai-integration.ps1`: passed.
+- `tools/validate.ps1`: passed; 50 static checks and 159 CTest tests passed.
+
+Task 3 guarantees:
+
+- The eight first-party command ids are deterministic under `asset_browser.*`.
+- Every command plan records `expected_generation`, `current_generation`, dry-run report rows, and no editor-core execution.
+- Stale generations return `rejected_stale_generation` and do not set mutation or execution flags.
+- Apply-mode shell mutation/execution plans require `user_confirmed=true` before setting `mutates_project_files` or `executes_import_tools`.
+- `executes_package_scripts`, `executes_validation_recipes`, and `exposes_native_handles` always remain `false`.
 
 ## Task 4: Legal, Provenance, And Clean-Room Rows
 
