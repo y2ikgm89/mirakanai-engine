@@ -188,6 +188,7 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 
 `codebase-memory-mcp` may be used as a developer-local AI helper only. It is not an engine, editor, runtime, package, CMake, vcpkg, CI, or public API dependency. Use [`docs/specs/2026-06-28-codebase-memory-local-ai-helper-v1.md`](specs/2026-06-28-codebase-memory-local-ai-helper-v1.md) as the retained policy record.
 
+- Use `.agents/skills/gameengine-codebase-memory/SKILL.md`, `.claude/skills/gameengine-codebase-memory/SKILL.md`, and `.cursor/skills/gameengine-codebase-memory/SKILL.md` for cross-tool operational guidance.
 - Use `index_repository` with `mode=full` and `persistence=false` by default for this repository. `persistence=true` is allowed only when an operator explicitly wants a local repo artifact; `.codebase-memory/graph.db.zst` and all `.codebase-memory/` contents stay ignored and uncommitted.
 - Use `search_graph`, `get_code_snippet`, `get_graph_schema`, `index_status`, `list_projects`, `detect_changes`, and `trace_path` when exposed as exploration aids. Verify exact claims with `rg`, direct file reads, `git status`, manifest data, tests, and repository validation.
 - For external `codebase-memory-mcp` validation on WSL, use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install-codebase-memory-wsl-deps.ps1 [-DistroName Ubuntu-24.04]` to install `zlib1g-dev`, `clang-format`, and `pkg-config` inside WSL. Use `-CheckOnly` before installing; if sudo requires a password, run it from an interactive terminal.

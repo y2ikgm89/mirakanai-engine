@@ -23,6 +23,8 @@ No compatibility layer is required. If external runtime edge creation lands, thi
 - A patched external `codebase-memory-mcp` local build on 2026-06-28 passed `make -f Makefile.cbm test`, `make -f Makefile.cbm lint-format`, production build, MCP stdio `tools/list`, Windows-path WSL translation, and runtime trace smoke verification.
 - The runtime trace smoke indexed a Windows-path temporary repository through the WSL wrapper, translated it to `/mnt/...`, then `ingest_traces` returned `status=accepted`, `nodes_created=2`, and `edges_created=2`; follow-up graph queries returned one `RuntimeTrace` and one `OBSERVED_EXECUTION` edge.
 - A local full index of this repository reached ready status as project `mnt-g-workspace-development-GameEngine` with 63502 nodes and 183330 edges using `persistence=false`. `mode=fast` is insufficient here because this repository's AI-operable workflow depends on docs and tools.
+- After Codex restart on 2026-06-28, `mcp__codebase_memory_mcp` tools were exposed in-session. `list_projects`, `index_status`, `get_graph_schema`, `trace_path`, `detect_changes`, and `ingest_traces` all executed against `mnt-g-workspace-development-GameEngine`; after the agent-surface update and full `persistence=false` re-index, the active local cache reported ready status with 63518 nodes and 185686 edges after one sanitized smoke trace created `RuntimeTrace`, `RuntimeSpan`, `CONTAINS_SPAN`, and `OBSERVED_EXECUTION`.
+- The cross-tool agent surface was updated with the dedicated `gameengine-codebase-memory` skill for Codex, Claude Code, and Cursor, plus matching rule and subagent guidance.
 
 Official references:
 
@@ -35,6 +37,7 @@ Official references:
 
 Allowed local uses:
 
+- Use the `gameengine-codebase-memory` skill when a task mentions `codebase-memory-mcp`, codebase memory, MCP graph indexing, `ingest_traces`, runtime trace graph edges, or broad graph-backed code exploration.
 - Use `index_repository` with `mode=full` and `persistence=false` by default for this repository.
 - Use `persistence=true` only when an operator explicitly wants a local repo artifact. `.codebase-memory/graph.db.zst` and all other `.codebase-memory/` contents are ignored repository-local artifacts and must not be committed.
 - Use `list_projects`, `index_status`, `get_graph_schema`, `search_graph`, `get_code_snippet`, and `trace_path` when exposed by the active MCP as exploration aids.
