@@ -80,6 +80,10 @@ struct FirstPartyEditorShellSmokeCounters {
     bool environment_artist_workflow_executes_validation_recipes{false};
     bool environment_artist_workflow_native_handles_exposed{false};
     bool environment_artist_workflow_ready_claimed{false};
+    bool editor_asset_browser_visible{false};
+    std::uint32_t editor_asset_browser_source_pulse_rows{0};
+    std::uint32_t editor_asset_browser_hardcoded_rows{0};
+    bool editor_asset_browser_native_handles_exposed{false};
     bool runtime_ui_editor_panel_visible{false};
     std::uint32_t runtime_ui_editor_hierarchy_rows{0};
     std::uint32_t runtime_ui_editor_inspector_rows{0};

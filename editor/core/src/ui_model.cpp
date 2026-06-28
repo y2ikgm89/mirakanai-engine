@@ -125,29 +125,6 @@ mirakana::ui::UiDocument make_inspector_ui_model(const std::vector<EditorPropert
     return document;
 }
 
-mirakana::ui::UiDocument make_asset_list_ui_model(const std::vector<EditorAssetListRow>& rows) {
-    mirakana::ui::UiDocument document;
-    add_or_throw(document, make_root("assets", mirakana::ui::SemanticRole::list));
-    const mirakana::ui::ElementId root{"assets"};
-
-    for (const auto& row : rows) {
-        require_safe_field("asset.id", row.id);
-        require_safe_field("asset.path", row.path);
-        require_safe_field("asset.kind", row.kind);
-
-        mirakana::ui::ElementDesc item = make_child("assets." + row.id, root, mirakana::ui::SemanticRole::list_item);
-        item.text = make_text(row.kind);
-        item.enabled = row.enabled;
-        add_or_throw(document, std::move(item));
-
-        const mirakana::ui::ElementId item_id{"assets." + row.id};
-        append_label(document, item_id, "assets." + row.id + ".path", row.path);
-        append_label(document, item_id, "assets." + row.id + ".kind", row.kind);
-    }
-
-    return document;
-}
-
 mirakana::ui::UiDocument make_command_palette_ui_model(const std::vector<EditorCommandPaletteEntry>& entries) {
     mirakana::ui::UiDocument document;
     add_or_throw(document, make_root("commands", mirakana::ui::SemanticRole::panel));

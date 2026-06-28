@@ -4,16 +4,20 @@
 #include "native_editor_app.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/shader_compile.hpp"
 #include "mirakana/environment/environment_profile.hpp"
 #include "mirakana/platform/clipboard.hpp"
 #include "mirakana/scene/scene.hpp"
+#include "mirakana/tools/asset_import_adapters.hpp"
+#include "mirakana/tools/asset_import_tool.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -154,12 +158,131 @@ make_default_inspector_rows(const ProjectDocument& project, const EnvironmentAut
     return rows;
 }
 
-[[nodiscard]] std::vector<EditorAssetListRow> make_default_asset_rows() {
-    return {
-        EditorAssetListRow{.id = "scene_start", .path = "assets/scenes/start.scene", .kind = "scene"},
-        EditorAssetListRow{.id = "material_default", .path = "assets/materials/default.material", .kind = "material"},
-        EditorAssetListRow{.id = "shader_editor", .path = "assets/shaders/editor_preview.shader", .kind = "shader"},
+[[nodiscard]] SourceAssetRegistryRowV1 make_default_asset_browser_source_row(AssetKeyV2 key, AssetKind kind,
+                                                                             std::string source_path,
+                                                                             std::string imported_path) {
+    return SourceAssetRegistryRowV1{
+        .key = std::move(key),
+        .kind = kind,
+        .source_path = std::move(source_path),
+        .source_format = std::string{expected_source_asset_format_v1(kind)},
+        .imported_path = std::move(imported_path),
     };
+}
+
+[[nodiscard]] SourceAssetRegistryDocumentV1 make_default_asset_browser_source_registry() {
+    return SourceAssetRegistryDocumentV1{
+        .assets =
+            {
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/scenes/start"}, AssetKind::scene,
+                                                      "source/scenes/start.scene", "assets/scenes/start.scene"),
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/materials/default"}, AssetKind::material,
+                                                      "source/materials/default.material",
+                                                      "assets/materials/default.material"),
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/textures/editor_preview"}, AssetKind::texture,
+                                                      "source/textures/editor_preview.texture",
+                                                      "assets/textures/editor_preview.texture"),
+            },
+    };
+}
+
+[[nodiscard]] ContentBrowserState
+make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& source_registry) {
+    ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+    return browser;
+}
+
+[[nodiscard]] AssetImportActionKind asset_import_action_kind_for_asset_browser(AssetKind kind) noexcept {
+    switch (kind) {
+    case AssetKind::texture:
+        return AssetImportActionKind::texture;
+    case AssetKind::material:
+        return AssetImportActionKind::material;
+    case AssetKind::scene:
+        return AssetImportActionKind::scene;
+    default:
+        return AssetImportActionKind::unknown;
+    }
+}
+
+[[nodiscard]] AssetImportPlan make_default_asset_browser_import_plan(const SourceAssetRegistryDocumentV1& registry) {
+    AssetImportPlan plan;
+    for (const auto& row : registry.assets) {
+        const auto kind = asset_import_action_kind_for_asset_browser(row.kind);
+        if (kind == AssetImportActionKind::unknown) {
+            continue;
+        }
+        plan.actions.push_back(AssetImportAction{
+            .id = asset_id_from_key_v2(row.key),
+            .kind = kind,
+            .source_path = row.source_path,
+            .output_path = row.imported_path,
+        });
+    }
+    return plan;
+}
+
+[[nodiscard]] EditorAssetBrowserProductionModel
+make_default_asset_browser_model(const ProjectDocument& project, const ContentBrowserState& browser,
+                                 const AssetImportPlan& import_plan,
+                                 const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr) {
+    return make_editor_asset_browser_production_model(EditorAssetBrowserProductionDesc{
+        .browser = &browser,
+        .import_plan = &import_plan,
+        .project_root = project.root_path,
+        .asset_root = project.asset_root,
+        .source_registry_path = project.source_registry_path,
+        .generation = 1U,
+        .preview_evidence = preview_evidence,
+    });
+}
+
+[[nodiscard]] std::vector<EditorAssetBrowserCommandPlan>
+make_default_asset_browser_command_plans(const EditorAssetBrowserProductionModel& model) {
+    constexpr std::array kinds{
+        EditorAssetBrowserCommandKind::reload_source_registry,
+        EditorAssetBrowserCommandKind::review_import_sources,
+        EditorAssetBrowserCommandKind::copy_external_sources,
+        EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        EditorAssetBrowserCommandKind::preview_cooked_package,
+        EditorAssetBrowserCommandKind::stage_hot_reload_recook,
+        EditorAssetBrowserCommandKind::inspect_selection,
+        EditorAssetBrowserCommandKind::apply_package_registration,
+    };
+
+    std::vector<EditorAssetBrowserCommandPlan> plans;
+    plans.reserve(kinds.size());
+    for (const auto kind : kinds) {
+        plans.push_back(plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+            .kind = kind,
+            .mode = EditorAssetBrowserCommandMode::dry_run,
+            .expected_generation = model.generation,
+            .current_generation = model.generation,
+        }));
+    }
+    return plans;
+}
+
+[[nodiscard]] std::vector<EditorAssetBrowserRetainedCommandRow>
+make_asset_browser_retained_command_rows(std::span<const EditorAssetBrowserCommandPlan> plans) {
+    std::vector<EditorAssetBrowserRetainedCommandRow> rows;
+    rows.reserve(plans.size());
+    for (const auto& plan : plans) {
+        rows.push_back(EditorAssetBrowserRetainedCommandRow{
+            .command_id = plan.command_id,
+            .label = plan.label,
+            .status_label = plan.status_label,
+            .enabled = plan.status == EditorAssetBrowserCommandStatus::ready,
+            .requires_user_confirmation = plan.requires_user_confirmation,
+            .mutates_project_files = plan.mutates_project_files,
+            .executes_import_tools = plan.executes_import_tools,
+            .executes_package_scripts = plan.executes_package_scripts,
+            .executes_validation_recipes = plan.executes_validation_recipes,
+            .exposes_native_handles = plan.exposes_native_handles,
+        });
+    }
+    return rows;
 }
 
 [[nodiscard]] NativeEditorEnvironmentArtistWorkflowCommandPlanRow
@@ -435,6 +558,15 @@ make_default_environment_artist_workflow_execution_review(const EnvironmentAutho
     return make_editor_material_asset_preview_panel_model(filesystem, registry, material_id, shader_artifacts);
 }
 
+[[nodiscard]] EditorAssetBrowserPreviewEvidenceDesc
+make_default_asset_browser_preview_evidence_desc(const AssetImportPlan& import_plan,
+                                                 const EditorMaterialAssetPreviewPanelModel& material_preview) {
+    return EditorAssetBrowserPreviewEvidenceDesc{
+        .material_previews = {material_preview},
+        .thumbnail_requests = make_editor_asset_thumbnail_requests(import_plan),
+    };
+}
+
 [[nodiscard]] std::vector<EditorDiagnosticRow> make_default_console_rows() {
     return {
         EditorDiagnosticRow{
@@ -583,6 +715,108 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return id == "win32_tsf";
 }
 
+[[nodiscard]] bool contains_invalid_path_characters(std::string_view path) noexcept {
+    return path.empty() || path.find('\n') != std::string_view::npos || path.find('\r') != std::string_view::npos ||
+           path.find('=') != std::string_view::npos || path.find(';') != std::string_view::npos;
+}
+
+[[nodiscard]] bool contains_invalid_project_path_characters(std::string_view path) noexcept {
+    return contains_invalid_path_characters(path) || path.find('\\') != std::string_view::npos ||
+           path.find(':') != std::string_view::npos;
+}
+
+[[nodiscard]] bool is_device_path(std::string_view path) {
+    auto normalized = std::string(path);
+    std::ranges::replace(normalized, '\\', '/');
+    return normalized.starts_with("//./") || normalized.starts_with("//?/");
+}
+
+[[nodiscard]] bool has_parent_segment(const std::filesystem::path& path) {
+    return std::ranges::any_of(path, [](const std::filesystem::path& segment) { return segment == ".."; });
+}
+
+[[nodiscard]] std::filesystem::path strip_trailing_empty_path_segment(std::filesystem::path path) {
+    while (path.has_relative_path() && path.filename().empty()) {
+        const auto parent = path.parent_path();
+        if (parent.empty() || parent == path) {
+            break;
+        }
+        path = parent;
+    }
+    return path;
+}
+
+[[nodiscard]] std::filesystem::path normalized_project_root(std::string_view root_path) {
+    return strip_trailing_empty_path_segment(
+        std::filesystem::absolute(std::filesystem::path{std::string(root_path)}).lexically_normal());
+}
+
+[[nodiscard]] bool is_strict_child_path(const std::filesystem::path& root, const std::filesystem::path& path) {
+    auto root_it = root.begin();
+    auto path_it = path.begin();
+    for (; root_it != root.end(); ++root_it, ++path_it) {
+        if (path_it == path.end() || *root_it != *path_it) {
+            return false;
+        }
+    }
+    return path_it != path.end();
+}
+
+[[nodiscard]] std::string normalize_selected_import_path(std::string_view project_root, std::string_view selected_path,
+                                                         std::string& diagnostic) {
+    if (contains_invalid_path_characters(selected_path)) {
+        diagnostic = "asset browser import source selection contains invalid characters";
+        return {};
+    }
+    if (is_device_path(selected_path)) {
+        diagnostic = "asset browser import source selection must not be a device path";
+        return {};
+    }
+
+    const auto root = normalized_project_root(project_root);
+    const auto selected = std::filesystem::path{std::string(selected_path)};
+    const auto normalized = (selected.is_absolute() ? selected : root / selected).lexically_normal();
+    if (!is_strict_child_path(root, normalized)) {
+        diagnostic = "asset browser import source selection must resolve inside the project root";
+        return {};
+    }
+    const auto relative = normalized.lexically_relative(root);
+    auto project_path = relative.generic_string();
+    if (project_path.empty() || project_path == "." || has_parent_segment(relative)) {
+        diagnostic = "asset browser import source selection must resolve inside the project root";
+        return {};
+    }
+    if (contains_invalid_project_path_characters(project_path)) {
+        diagnostic = "asset browser import source selection contains invalid characters";
+        return {};
+    }
+    return project_path;
+}
+
+[[nodiscard]] std::string imported_source_target_path(std::string_view asset_root, std::string_view source_path,
+                                                      std::string& diagnostic) {
+    if (contains_invalid_path_characters(source_path)) {
+        diagnostic = "external import source copy source path contains invalid characters";
+        return {};
+    }
+    if (is_device_path(source_path)) {
+        diagnostic = "external import source copy source path must not be a device path";
+        return {};
+    }
+
+    const auto filename = std::filesystem::path{std::string(source_path)}.filename().generic_string();
+    if (filename.empty() || filename == "." || filename == ".." || contains_invalid_project_path_characters(filename)) {
+        diagnostic = "external import source copy source path filename is invalid";
+        return {};
+    }
+
+    return (std::filesystem::path{std::string(asset_root)} / "imported_sources" / filename).generic_string();
+}
+
+[[nodiscard]] bool contains_string(std::span<const std::string> values, std::string_view value) {
+    return std::ranges::any_of(values, [value](const std::string& candidate) { return candidate == value; });
+}
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -591,7 +825,13 @@ struct NativeEditorApp::Impl {
           scene(make_default_scene_document()), environment_authoring(make_default_environment_authoring_document()),
           environment_authoring_inspector(make_default_environment_authoring_inspector(environment_authoring)),
           inspector_rows(make_default_inspector_rows(project, environment_authoring_inspector)),
-          asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
+          asset_browser_source_registry(make_default_asset_browser_source_registry()),
+          asset_browser_content_browser(make_default_asset_browser_content_browser(asset_browser_source_registry)),
+          asset_browser_import_plan(make_default_asset_browser_import_plan(asset_browser_source_registry)),
+          asset_browser(
+              make_default_asset_browser_model(project, asset_browser_content_browser, asset_browser_import_plan)),
+          asset_browser_command_plans(make_default_asset_browser_command_plans(asset_browser)),
+          console_rows(make_default_console_rows()),
           environment_artist_workflow_command_plans(
               make_default_environment_artist_workflow_command_plans(environment_authoring)),
           environment_artist_workflow_execution_review(
@@ -611,11 +851,21 @@ struct NativeEditorApp::Impl {
           text_input_state(
               make_native_editor_text_input_state(make_native_editor_project_name_text_input_target(project.name))),
           clipboard_text_adapter(memory_clipboard) {
+        refresh_asset_browser_preview_evidence();
         file_dialog_service = &memory_file_dialog_service;
         clipboard_adapter = &clipboard_text_adapter;
         process_runner = &recording_process_runner;
         platform_text_input_adapter = &memory_text_input_adapter;
         ime_adapter = &memory_ime_adapter;
+    }
+
+    void refresh_asset_browser_preview_evidence() {
+        const auto preview_evidence =
+            make_default_asset_browser_preview_evidence_desc(asset_browser_import_plan, material_preview);
+        asset_browser = make_default_asset_browser_model(project, asset_browser_content_browser,
+                                                         asset_browser_import_plan, &preview_evidence);
+        asset_browser_command_plans = make_default_asset_browser_command_plans(asset_browser);
+        asset_browser.command_rows = make_asset_browser_retained_command_rows(asset_browser_command_plans);
     }
 
     ProjectDocument project;
@@ -624,7 +874,11 @@ struct NativeEditorApp::Impl {
     EnvironmentAuthoringDocument environment_authoring;
     EnvironmentAuthoringInspectorModel environment_authoring_inspector;
     std::vector<EditorPropertyRow> inspector_rows;
-    std::vector<EditorAssetListRow> asset_rows;
+    SourceAssetRegistryDocumentV1 asset_browser_source_registry;
+    ContentBrowserState asset_browser_content_browser;
+    AssetImportPlan asset_browser_import_plan;
+    EditorAssetBrowserProductionModel asset_browser;
+    std::vector<EditorAssetBrowserCommandPlan> asset_browser_command_plans;
     std::vector<EditorDiagnosticRow> console_rows;
     std::vector<NativeEditorEnvironmentArtistWorkflowCommandPlanRow> environment_artist_workflow_command_plans;
     EnvironmentArtistWorkflowExecutionReviewModel environment_artist_workflow_execution_review;
@@ -650,6 +904,7 @@ struct NativeEditorApp::Impl {
     IFileDialogService* file_dialog_service{nullptr};
     ui::IClipboardTextAdapter* clipboard_adapter{nullptr};
     IProcessRunner* process_runner{nullptr};
+    IFileSystem* asset_import_filesystem{nullptr};
     ui::IPlatformIntegrationAdapter* platform_text_input_adapter{nullptr};
     ui::IImeAdapter* ime_adapter{nullptr};
     ui::IAccessibilityAdapter* accessibility_adapter{nullptr};
@@ -748,8 +1003,12 @@ std::span<const EditorPropertyRow> NativeEditorApp::inspector_rows() const noexc
     return impl_->inspector_rows;
 }
 
-std::span<const EditorAssetListRow> NativeEditorApp::asset_rows() const noexcept {
-    return impl_->asset_rows;
+const EditorAssetBrowserProductionModel& NativeEditorApp::asset_browser() const noexcept {
+    return impl_->asset_browser;
+}
+
+std::span<const EditorAssetBrowserCommandPlan> NativeEditorApp::asset_browser_command_plans() const noexcept {
+    return impl_->asset_browser_command_plans;
 }
 
 std::span<const EditorDiagnosticRow> NativeEditorApp::console_rows() const noexcept {
@@ -871,6 +1130,12 @@ void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services)
         impl_->service_status.accessibility_service_id =
             services.accessibility_service_id.empty() ? "external" : std::move(services.accessibility_service_id);
         impl_->service_status.accessibility_available = true;
+    }
+    if (services.asset_import_filesystem != nullptr) {
+        impl_->asset_import_filesystem = services.asset_import_filesystem;
+        impl_->service_status.asset_import_filesystem_id =
+            services.asset_import_filesystem_id.empty() ? "external" : std::move(services.asset_import_filesystem_id);
+        impl_->service_status.asset_import_filesystem_available = true;
     }
 }
 
@@ -1068,6 +1333,118 @@ std::optional<FileDialogResult> NativeEditorApp::poll_file_dialog_result(FileDia
     return impl_->file_dialog_service->poll_result(id);
 }
 
+FileDialogId NativeEditorApp::show_asset_browser_import_sources_dialog() {
+    return show_file_dialog(make_content_browser_import_open_dialog_request(impl_->project.asset_root));
+}
+
+NativeEditorAssetBrowserImportSourcesDialogReview
+NativeEditorApp::poll_asset_browser_import_sources_dialog(FileDialogId id) {
+    NativeEditorAssetBrowserImportSourcesDialogReview review;
+    const auto result = poll_file_dialog_result(id);
+    if (!result.has_value()) {
+        review.dialog = make_content_browser_import_open_dialog_model(FileDialogResult{
+            .id = id == 0U ? 1U : id,
+            .status = FileDialogStatus::failed,
+            .error = "asset browser import source dialog result is unavailable",
+        });
+        review.diagnostics = review.dialog.diagnostics;
+        return review;
+    }
+
+    if (result->status != FileDialogStatus::accepted) {
+        review.dialog = make_content_browser_import_open_dialog_model(*result);
+        review.diagnostics = review.dialog.diagnostics;
+        review.accepted = review.dialog.accepted;
+        return review;
+    }
+
+    FileDialogResult normalized_result = *result;
+    normalized_result.paths.clear();
+    normalized_result.paths.reserve(result->paths.size());
+    for (const auto& path : result->paths) {
+        std::string diagnostic;
+        auto project_path = normalize_selected_import_path(impl_->project.root_path, path, diagnostic);
+        if (!diagnostic.empty()) {
+            review.dialog = make_content_browser_import_open_dialog_model(FileDialogResult{
+                .id = result->id,
+                .status = FileDialogStatus::failed,
+                .paths = result->paths,
+                .selected_filter = result->selected_filter,
+                .error = diagnostic,
+            });
+            review.diagnostics = review.dialog.diagnostics;
+            return review;
+        }
+        normalized_result.paths.push_back(std::move(project_path));
+    }
+
+    review.dialog = make_content_browser_import_open_dialog_model(normalized_result);
+    review.diagnostics = review.dialog.diagnostics;
+    review.accepted = review.dialog.accepted;
+    if (review.accepted) {
+        review.accepted_project_paths = review.dialog.selected_paths;
+    }
+    return review;
+}
+
+NativeEditorAssetBrowserExternalSourceCopyReview NativeEditorApp::review_asset_browser_external_source_copy(
+    const NativeEditorAssetBrowserExternalSourceCopyRequest& request) const {
+    std::vector<EditorContentBrowserImportExternalSourceCopyInput> inputs;
+    inputs.reserve(request.source_paths.size());
+    for (const auto& source_path : request.source_paths) {
+        std::string diagnostic;
+        const auto target_path = imported_source_target_path(impl_->project.asset_root, source_path, diagnostic);
+        inputs.push_back(EditorContentBrowserImportExternalSourceCopyInput{
+            .source_path = source_path,
+            .target_project_path = target_path,
+            .diagnostic = std::move(diagnostic),
+            .source_exists = contains_string(request.existing_source_paths, source_path),
+            .target_exists = contains_string(request.existing_project_paths, target_path),
+        });
+    }
+
+    NativeEditorAssetBrowserExternalSourceCopyReview review;
+    review.copy = make_content_browser_import_external_source_copy_model(inputs);
+    review.diagnostics = review.copy.diagnostics;
+    return review;
+}
+
+NativeEditorAssetBrowserImportExecutionResult
+NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBrowserImportExecutionRequest request) {
+    NativeEditorAssetBrowserImportExecutionResult result;
+    result.command = plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+        .kind = EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        .mode = EditorAssetBrowserCommandMode::apply,
+        .expected_generation = request.expected_generation,
+        .current_generation = impl_->asset_browser.generation,
+        .user_confirmed = request.user_confirmed,
+    });
+
+    if (result.command.status != EditorAssetBrowserCommandStatus::ready || !result.command.executes_import_tools) {
+        result.diagnostic = result.command.diagnostics.empty()
+                                ? "asset browser import execution requires a reviewed ready command"
+                                : result.command.diagnostics.front();
+        return result;
+    }
+    if (impl_->asset_import_filesystem == nullptr) {
+        impl_->service_status.asset_import_filesystem_available = false;
+        result.diagnostic = "asset browser import execution requires an asset import filesystem service";
+        return result;
+    }
+
+    ExternalAssetImportAdapters adapters;
+    const auto import_result = execute_asset_import_plan(*impl_->asset_import_filesystem,
+                                                         impl_->asset_browser_import_plan, adapters.options());
+    result.executed = true;
+    result.import_tools_invoked = true;
+    result.imported_count = import_result.imported.size();
+    result.import_failure_count = import_result.failures.size();
+    result.diagnostic = import_result.failures.empty() ? "asset browser import execution succeeded"
+                                                       : import_result.failures.front().diagnostic;
+    ++impl_->service_status.asset_import_executions;
+    return result;
+}
+
 ui::ClipboardTextWriteResult NativeEditorApp::write_clipboard_text(ui::ClipboardTextWriteRequest request) {
     if (impl_->clipboard_adapter == nullptr) {
         impl_->service_status.clipboard_available = false;
@@ -1196,6 +1573,7 @@ void NativeEditorApp::record_native_material_preview_d3d12_host_ready(std::uint6
     });
     apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
                                                          impl_->material_preview_display.execution_snapshot);
+    impl_->refresh_asset_browser_preview_evidence();
 }
 
 void NativeEditorApp::record_native_viewport_texture_display(NativeViewportDisplayPlan plan) {
@@ -1211,6 +1589,7 @@ void NativeEditorApp::record_native_material_preview_texture_display(NativeMater
     impl_->material_preview_display = std::move(plan);
     apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
                                                          impl_->material_preview_display.execution_snapshot);
+    impl_->refresh_asset_browser_preview_evidence();
 }
 
 void NativeEditorApp::record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence) {

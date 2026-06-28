@@ -11,6 +11,8 @@
 #include "native_viewport_surface.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
+#include "mirakana/editor/asset_browser_production.hpp"
+#include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/editor/material_asset_preview_panel.hpp"
 #include "mirakana/editor/profiler.hpp"
@@ -21,6 +23,7 @@
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/editor/workspace.hpp"
 #include "mirakana/platform/file_dialog.hpp"
+#include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/process.hpp"
 #include "mirakana/ui/ui.hpp"
 
@@ -41,12 +44,14 @@ struct NativeEditorServiceStatus {
     std::string platform_text_input_service_id{"memory"};
     std::string ime_service_id{"memory"};
     std::string accessibility_service_id{"memory"};
+    std::string asset_import_filesystem_id{"unbound"};
     bool file_dialog_available{true};
     bool clipboard_available{true};
     bool reviewed_process_runner_available{true};
     bool platform_text_input_available{true};
     bool ime_available{true};
     bool accessibility_available{false};
+    bool asset_import_filesystem_available{false};
     bool user_confirmation_required_for_process_execution{true};
     std::uint32_t file_dialog_requests_routed{0};
     std::uint32_t clipboard_operations_routed{0};
@@ -57,6 +62,7 @@ struct NativeEditorServiceStatus {
     std::uint32_t ime_composition_updates{0};
     std::uint32_t committed_text_inputs{0};
     std::uint32_t accessibility_publish_requests{0};
+    std::uint32_t asset_import_executions{0};
     std::string reviewed_process_status_label{"confirmation required"};
 };
 
@@ -67,12 +73,14 @@ struct NativeEditorServiceBindings {
     ui::IPlatformIntegrationAdapter* platform_text_input_adapter{nullptr};
     ui::IImeAdapter* ime_adapter{nullptr};
     ui::IAccessibilityAdapter* accessibility_adapter{nullptr};
+    IFileSystem* asset_import_filesystem{nullptr};
     std::string file_dialog_service_id;
     std::string clipboard_service_id;
     std::string reviewed_process_runner_id;
     std::string platform_text_input_service_id;
     std::string ime_service_id;
     std::string accessibility_service_id;
+    std::string asset_import_filesystem_id;
 };
 
 struct NativeEditorReviewedProcessRequest {
@@ -93,6 +101,38 @@ struct NativeEditorEnvironmentArtistWorkflowCommandPlanRow {
     std::string label;
     EnvironmentArtistWorkflowCommandPlan dry_run;
     EnvironmentArtistWorkflowCommandPlan apply;
+};
+
+struct NativeEditorAssetBrowserImportSourcesDialogReview {
+    EditorContentBrowserImportOpenDialogModel dialog;
+    std::vector<std::string> accepted_project_paths;
+    std::vector<std::string> diagnostics;
+    bool accepted{false};
+};
+
+struct NativeEditorAssetBrowserExternalSourceCopyRequest {
+    std::vector<std::string> source_paths;
+    std::vector<std::string> existing_source_paths;
+    std::vector<std::string> existing_project_paths;
+};
+
+struct NativeEditorAssetBrowserExternalSourceCopyReview {
+    EditorContentBrowserImportExternalSourceCopyModel copy;
+    std::vector<std::string> diagnostics;
+};
+
+struct NativeEditorAssetBrowserImportExecutionRequest {
+    std::uint64_t expected_generation{0};
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserImportExecutionResult {
+    EditorAssetBrowserCommandPlan command;
+    bool executed{false};
+    bool import_tools_invoked{false};
+    std::size_t imported_count{0};
+    std::size_t import_failure_count{0};
+    std::string diagnostic;
 };
 
 class NativeEditorApp {
@@ -126,7 +166,8 @@ class NativeEditorApp {
     [[nodiscard]] std::span<const EnvironmentAuthoringInspectorRow>
     environment_authoring_inspector_rows() const noexcept;
     [[nodiscard]] std::span<const EditorPropertyRow> inspector_rows() const noexcept;
-    [[nodiscard]] std::span<const EditorAssetListRow> asset_rows() const noexcept;
+    [[nodiscard]] const EditorAssetBrowserProductionModel& asset_browser() const noexcept;
+    [[nodiscard]] std::span<const EditorAssetBrowserCommandPlan> asset_browser_command_plans() const noexcept;
     [[nodiscard]] std::span<const EditorDiagnosticRow> console_rows() const noexcept;
     [[nodiscard]] const EditorResourcePanelModel& resources() const noexcept;
     [[nodiscard]] const EditorAiCommandPanelModel& ai_commands() const noexcept;
@@ -159,6 +200,13 @@ class NativeEditorApp {
     publish_native_accessibility_payload(const ui::AccessibilityPayload& payload, const ui::ElementId& focused);
     [[nodiscard]] FileDialogId show_file_dialog(FileDialogRequest request);
     [[nodiscard]] std::optional<FileDialogResult> poll_file_dialog_result(FileDialogId id);
+    [[nodiscard]] FileDialogId show_asset_browser_import_sources_dialog();
+    [[nodiscard]] NativeEditorAssetBrowserImportSourcesDialogReview
+    poll_asset_browser_import_sources_dialog(FileDialogId id);
+    [[nodiscard]] NativeEditorAssetBrowserExternalSourceCopyReview
+    review_asset_browser_external_source_copy(const NativeEditorAssetBrowserExternalSourceCopyRequest& request) const;
+    [[nodiscard]] NativeEditorAssetBrowserImportExecutionResult
+    execute_reviewed_asset_browser_import_plan(NativeEditorAssetBrowserImportExecutionRequest request);
     [[nodiscard]] ui::ClipboardTextWriteResult write_clipboard_text(ui::ClipboardTextWriteRequest request);
     [[nodiscard]] ui::ClipboardTextReadResult read_clipboard_text(ui::ClipboardTextReadRequest request);
     [[nodiscard]] EditorAiReviewedValidationExecutionModel

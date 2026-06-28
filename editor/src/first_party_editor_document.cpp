@@ -5,6 +5,7 @@
 
 #include "native_editor_app.hpp"
 
+#include "mirakana/editor/asset_browser_production.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/editor_rich_text.hpp"
 
@@ -166,6 +167,11 @@ command_plan_executes_package_scripts(const NativeEditorEnvironmentArtistWorkflo
 
 [[nodiscard]] bool command_plan_exposes_native_handles(const NativeEditorEnvironmentArtistWorkflowCommandPlanRow& row) {
     return row.dry_run.exposes_native_handles || row.apply.exposes_native_handles;
+}
+
+[[nodiscard]] std::uint32_t count_legacy_asset_rows(const ui::UiDocument& document) {
+    return static_cast<std::uint32_t>(std::ranges::count_if(
+        document.traverse(), [](const ui::Element& element) { return element.id.value.starts_with("assets."); }));
 }
 
 void append_environment_artist_workflow_command_plan_rows(ui::UiDocument& document, const ui::ElementId& root,
@@ -426,6 +432,8 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
             make_editor_console_rich_text_document(app.console_rows(), "editor.panel.console.rich_text"));
     } else if (panel_id == "resources") {
         append_label(document, panel_root, prefix + ".status", "resources " + app.resources().status);
+    } else if (panel_id == "assets") {
+        append_ui_document(document, panel_root, make_editor_asset_browser_production_ui_model(app.asset_browser()));
     } else if (panel_id == "ai_commands") {
         append_rich_text_document(
             document, panel_root,
@@ -637,6 +645,7 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const auto& material_preview_display = app.material_preview_display();
     const auto workflow_command_plans = app.environment_artist_workflow_command_plans();
     const auto& workflow_review = app.environment_artist_workflow_execution_review();
+    const auto& asset_browser = app.asset_browser();
     const auto workflow_executes_backend =
         workflow_review.invokes_backend ||
         std::ranges::any_of(workflow_command_plans, [](const auto& row) { return command_plan_executes_backend(row); });
@@ -709,6 +718,11 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .environment_artist_workflow_executes_validation_recipes = workflow_review.executes_validation_recipes,
         .environment_artist_workflow_native_handles_exposed = workflow_native_handles_exposed,
         .environment_artist_workflow_ready_claimed = workflow_review.complete_artist_workflow_ready_claimed,
+        .editor_asset_browser_visible = app.has_native_panel("assets") && app.is_panel_visible(PanelId::assets) &&
+                                        document.document.find(ui::ElementId{"asset_browser"}) != nullptr,
+        .editor_asset_browser_source_pulse_rows = static_cast<std::uint32_t>(asset_browser.rows.size()),
+        .editor_asset_browser_hardcoded_rows = count_legacy_asset_rows(document.document),
+        .editor_asset_browser_native_handles_exposed = asset_browser.exposes_native_handles,
         .runtime_ui_editor_panel_visible =
             app.has_native_panel("runtime_ui_editor") && app.is_panel_visible(PanelId::runtime_ui_editor),
         .runtime_ui_editor_hierarchy_rows = static_cast<std::uint32_t>(runtime_ui.hierarchy_rows.size()),

@@ -24,12 +24,14 @@
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/platform/file_dialog.hpp"
+#include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/process.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -308,6 +310,257 @@ MK_TEST("editor first party document includes visible panel roots") {
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.timeline"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.project_settings"));
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.runtime_ui_editor"));
+}
+
+MK_TEST("editor native shell exposes Source Pulse asset browser model") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto& asset_browser = app.asset_browser();
+    const auto command_plans = app.asset_browser_command_plans();
+
+    MK_REQUIRE(asset_browser.status == mirakana::editor::EditorAssetBrowserProductionStatus::ready);
+    MK_REQUIRE(asset_browser.rows.size() >= 3U);
+    MK_REQUIRE(asset_browser.visible_row_count == asset_browser.rows.size());
+    MK_REQUIRE(!asset_browser.mutates);
+    MK_REQUIRE(!asset_browser.executes);
+    MK_REQUIRE(!asset_browser.exposes_native_handles);
+    MK_REQUIRE(command_plans.size() == 8U);
+    for (const auto& command : command_plans) {
+        MK_REQUIRE(command.current_generation == asset_browser.generation);
+        MK_REQUIRE(!command.executes_package_scripts);
+        MK_REQUIRE(!command.executes_validation_recipes);
+        MK_REQUIRE(!command.exposes_native_handles);
+    }
+}
+
+MK_TEST("editor first party document renders Source Pulse assets instead of legacy hard coded rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+    const auto& asset_browser = app.asset_browser();
+
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.assets"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.source_pulse"));
+    MK_REQUIRE(!asset_browser.rows.empty());
+    MK_REQUIRE(contains_element(shell_document.document, asset_browser.rows.front().row_id));
+    MK_REQUIRE(!contains_element(shell_document.document, "assets.scene_start"));
+    MK_REQUIRE(!contains_element(shell_document.document, "assets.material_default"));
+    MK_REQUIRE(!contains_element(shell_document.document, "assets.shader_editor"));
+    MK_REQUIRE(counters.editor_asset_browser_visible);
+    MK_REQUIRE(counters.editor_asset_browser_source_pulse_rows == asset_browser.rows.size());
+    MK_REQUIRE(counters.editor_asset_browser_hardcoded_rows == 0U);
+    MK_REQUIRE(!counters.editor_asset_browser_native_handles_exposed);
+}
+
+MK_TEST("editor native UIA provider publishes asset browser retained rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    auto adapter = mirakana::editor::make_native_editor_uia_accessibility_adapter();
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .accessibility_adapter = adapter.get(),
+        .accessibility_service_id = "win32_uia",
+    });
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto& asset_browser = app.asset_browser();
+    const auto asset_document = mirakana::editor::make_editor_asset_browser_production_ui_model(asset_browser);
+    const auto layout =
+        mirakana::ui::solve_layout(asset_document, mirakana::ui::ElementId{"asset_browser"},
+                                   mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 960.0F, .height = 640.0F});
+    const auto submission = mirakana::ui::build_renderer_submission(asset_document, layout);
+
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.query"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.commands"));
+    MK_REQUIRE(contains_element(shell_document.document, "asset_browser.preview"));
+    MK_REQUIRE(!asset_browser.rows.empty());
+    MK_REQUIRE(!asset_browser.preview_rows.empty());
+    MK_REQUIRE(!asset_browser.command_rows.empty());
+
+    const auto command_id = "asset_browser.commands." + asset_browser.command_rows.front().command_id;
+    MK_REQUIRE(contains_element(shell_document.document, command_id));
+    MK_REQUIRE(contains_element(shell_document.document, asset_browser.preview_rows.front().id + ".status"));
+
+    const auto payload = mirakana::ui::build_accessibility_payload(submission);
+    MK_REQUIRE(
+        std::ranges::any_of(payload.nodes, [](const auto& node) { return node.id.value == "asset_browser.query"; }));
+    const auto result = app.publish_native_accessibility_payload(payload, shell_document.focused_element);
+    MK_REQUIRE(result.published);
+
+    const auto* query = find_uia_node(app.accessibility_state(), "asset_browser.query");
+    const auto* source_list = find_uia_node(app.accessibility_state(), "asset_browser.source_pulse");
+    const auto* source_item = find_uia_node(app.accessibility_state(), asset_browser.rows.front().row_id);
+    const auto* command = find_uia_node(app.accessibility_state(), command_id);
+    const auto* status = find_uia_node(app.accessibility_state(), "asset_browser.status");
+    const auto* preview_status =
+        find_uia_node(app.accessibility_state(), asset_browser.preview_rows.front().id + ".status");
+
+    MK_REQUIRE(query != nullptr);
+    MK_REQUIRE(query->control_type_id == "UIA_EditControlTypeId");
+    MK_REQUIRE(source_list != nullptr);
+    MK_REQUIRE(source_list->control_type_id == "UIA_ListControlTypeId");
+    MK_REQUIRE(source_item != nullptr);
+    MK_REQUIRE(source_item->control_type_id == "UIA_ListItemControlTypeId");
+    MK_REQUIRE(command != nullptr);
+    MK_REQUIRE(command->control_type_id == "UIA_ButtonControlTypeId");
+    MK_REQUIRE(status != nullptr);
+    MK_REQUIRE(status->control_type_id == "UIA_TextControlTypeId");
+    MK_REQUIRE(preview_status != nullptr);
+    MK_REQUIRE(preview_status->control_type_id == "UIA_TextControlTypeId");
+    MK_REQUIRE(app.accessibility_state().hidden_nodes == 0U);
+    MK_REQUIRE(app.accessibility_state().unsupported_pattern_diagnostics == 0U);
+    MK_REQUIRE(!app.accessibility_state().native_handles_exposed);
+}
+
+MK_TEST("editor asset browser import source dialog routes through native shell service") {
+    mirakana::MemoryFileDialogService file_dialogs;
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .file_dialog_service = &file_dialogs,
+        .file_dialog_service_id = "memory_import_dialog",
+    });
+
+    const auto root = std::filesystem::current_path().lexically_normal();
+    const auto selected = (root / "assets/source/hero.texture").lexically_normal().generic_string();
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {selected},
+        .selected_filter = 0,
+    });
+
+    const auto id = app.show_asset_browser_import_sources_dialog();
+    const auto* request = file_dialogs.last_request() ? std::addressof(*file_dialogs.last_request()) : nullptr;
+    MK_REQUIRE(id != 0U);
+    MK_REQUIRE(request != nullptr);
+    MK_REQUIRE(request->title == "Import Assets");
+    MK_REQUIRE(request->allow_many);
+    MK_REQUIRE(app.services().file_dialog_requests_routed == 1U);
+
+    const auto review = app.poll_asset_browser_import_sources_dialog(id);
+    MK_REQUIRE(review.dialog.accepted);
+    MK_REQUIRE(review.accepted_project_paths.size() == 1U);
+    MK_REQUIRE(review.accepted_project_paths[0] == "assets/source/hero.texture");
+    MK_REQUIRE(review.diagnostics.empty());
+}
+
+MK_TEST("editor asset browser import source dialog rejects unsafe project paths") {
+    mirakana::MemoryFileDialogService file_dialogs;
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{.file_dialog_service = &file_dialogs});
+    const auto root = std::filesystem::current_path().lexically_normal();
+
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {(root.parent_path() / "outside/hero.texture").lexically_normal().generic_string()},
+        .selected_filter = 0,
+    });
+    const auto outside = app.poll_asset_browser_import_sources_dialog(app.show_asset_browser_import_sources_dialog());
+    MK_REQUIRE(!outside.dialog.accepted);
+    MK_REQUIRE(!outside.diagnostics.empty());
+    MK_REQUIRE(outside.diagnostics[0].contains("inside the project root"));
+
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {"assets/source/hero.ogg"},
+        .selected_filter = 0,
+    });
+    const auto unsupported =
+        app.poll_asset_browser_import_sources_dialog(app.show_asset_browser_import_sources_dialog());
+    MK_REQUIRE(!unsupported.dialog.accepted);
+    MK_REQUIRE(!unsupported.diagnostics.empty());
+    MK_REQUIRE(unsupported.diagnostics[0].contains("supported import source"));
+
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {"assets/source/bad\nname.texture"},
+        .selected_filter = 0,
+    });
+    const auto invalid = app.poll_asset_browser_import_sources_dialog(app.show_asset_browser_import_sources_dialog());
+    MK_REQUIRE(!invalid.dialog.accepted);
+    MK_REQUIRE(!invalid.diagnostics.empty());
+    MK_REQUIRE(invalid.diagnostics[0].contains("invalid characters"));
+}
+
+MK_TEST("editor asset browser external source copy review targets imported sources only") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto outside_source = "C:/drop/hero.png";
+
+    const auto ready = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {outside_source},
+            .existing_source_paths = {outside_source},
+        });
+    MK_REQUIRE(ready.copy.can_copy);
+    MK_REQUIRE(ready.copy.target_project_paths.size() == 1U);
+    MK_REQUIRE(ready.copy.target_project_paths[0] == "assets/imported_sources/hero.png");
+
+    const auto existing = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {outside_source},
+            .existing_source_paths = {outside_source},
+            .existing_project_paths = {"assets/imported_sources/hero.png"},
+        });
+    MK_REQUIRE(existing.copy.blocked);
+    MK_REQUIRE(!existing.copy.diagnostics.empty());
+    MK_REQUIRE(existing.copy.diagnostics[0].contains("already exists"));
+
+    const auto unsupported = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {"C:/drop/theme.ogg"},
+            .existing_source_paths = {"C:/drop/theme.ogg"},
+        });
+    MK_REQUIRE(unsupported.copy.blocked);
+    MK_REQUIRE(!unsupported.copy.diagnostics.empty());
+    MK_REQUIRE(unsupported.copy.diagnostics[0].contains("supported import source"));
+
+    const auto device = app.review_asset_browser_external_source_copy(
+        mirakana::editor::NativeEditorAssetBrowserExternalSourceCopyRequest{
+            .source_paths = {"//./C:/drop/hero.png"},
+            .existing_source_paths = {"//./C:/drop/hero.png"},
+        });
+    MK_REQUIRE(device.copy.blocked);
+    MK_REQUIRE(!device.copy.diagnostics.empty());
+    MK_REQUIRE(device.copy.diagnostics[0].contains("device path"));
+}
+
+MK_TEST("editor asset browser import execution requires reviewed confirmed generation") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto missing_confirmation =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .user_confirmed = false,
+        });
+    MK_REQUIRE(!missing_confirmation.executed);
+    MK_REQUIRE(!missing_confirmation.import_tools_invoked);
+    MK_REQUIRE(missing_confirmation.command.requires_user_confirmation);
+
+    const auto stale =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation + 1U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(!stale.executed);
+    MK_REQUIRE(stale.command.status == mirakana::editor::EditorAssetBrowserCommandStatus::rejected_stale_generation);
+
+    mirakana::MemoryFileSystem filesystem;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+    const auto confirmed =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(confirmed.executed);
+    MK_REQUIRE(confirmed.import_tools_invoked);
+    MK_REQUIRE(confirmed.command.command_id == "asset_browser.import.execute_reviewed_plan");
+    MK_REQUIRE(confirmed.import_failure_count > 0U);
+    MK_REQUIRE(app.services().asset_import_filesystem_id == "memory_import_fs");
+    MK_REQUIRE(app.services().asset_import_filesystem_available);
+    MK_REQUIRE(app.services().asset_import_executions == 1U);
 }
 
 MK_TEST("editor first party document exposes runtime UI editor authoring rows") {
@@ -1939,6 +2192,49 @@ MK_TEST("editor native material preview plan keeps d3d12 handles private") {
     MK_REQUIRE(!app.material_preview().exposes_native_handles);
 }
 
+MK_TEST("editor native shell routes material preview evidence into asset browser preview rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .frame_index = 33U,
+            .backend_id = "d3d12",
+            .frames_rendered = 3U,
+            .executes = false,
+        });
+
+    app.record_native_material_preview_texture_display(plan);
+
+    const auto& asset_browser = app.asset_browser();
+    const auto material_row = std::ranges::find_if(asset_browser.preview_rows,
+                                                   [](const auto& row) { return row.preview_kind == "material"; });
+    MK_REQUIRE(material_row != asset_browser.preview_rows.end());
+    MK_REQUIRE(material_row->backend_label == "D3D12");
+    MK_REQUIRE(material_row->display_path_label == "host-private-native");
+    MK_REQUIRE(material_row->frame_or_sample_count == 3U);
+    MK_REQUIRE(material_row->ready);
+    MK_REQUIRE(material_row->host_owned);
+    MK_REQUIRE(!material_row->exposes_native_handles);
+    MK_REQUIRE(!asset_browser.executes);
+    MK_REQUIRE(!asset_browser.exposes_native_handles);
+    MK_REQUIRE(!asset_browser.uploads_gpu_resources);
+    MK_REQUIRE(std::ranges::any_of(asset_browser.preview_rows, [](const auto& row) {
+        return row.preview_kind == "thumbnail_material" && row.status_label == "host_request_queued";
+    }));
+}
+
 MK_TEST("editor native shell routes file dialog requests through bound service") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     mirakana::MemoryFileDialogService file_dialogs;
@@ -2034,6 +2330,8 @@ MK_TEST("editor native shell service status defaults stay deterministic") {
     MK_REQUIRE(app.services().file_dialog_service_id == "memory");
     MK_REQUIRE(app.services().clipboard_service_id == "memory");
     MK_REQUIRE(app.services().reviewed_process_runner_id == "recording");
+    MK_REQUIRE(app.services().asset_import_filesystem_id == "unbound");
+    MK_REQUIRE(!app.services().asset_import_filesystem_available);
     MK_REQUIRE(app.services().user_confirmation_required_for_process_execution);
 }
 

@@ -7,12 +7,14 @@
 #include "native_editor_tsf_text_input.hpp"
 #include "native_editor_uia_provider.hpp"
 
+#include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/win32/win32_clipboard.hpp"
 #include "mirakana/platform/win32/win32_file_dialog.hpp"
 #include "mirakana/platform/win32_process.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 
 namespace mirakana::editor {
 
@@ -29,6 +31,7 @@ class NativeEditorWin32Services final {
     Win32ProcessRunner process_runner_;
     NativeEditorTsfTextServicesAdapter text_services_;
     std::unique_ptr<NativeEditorUiaAccessibilityAdapter> accessibility_;
+    std::optional<RootedFileSystem> asset_import_filesystem_;
 };
 
 } // namespace mirakana::editor
