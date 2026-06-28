@@ -739,6 +739,17 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return std::filesystem::absolute(std::filesystem::path{std::string(root_path)}).lexically_normal();
 }
 
+[[nodiscard]] bool is_strict_child_path(const std::filesystem::path& root, const std::filesystem::path& path) {
+    auto root_it = root.begin();
+    auto path_it = path.begin();
+    for (; root_it != root.end(); ++root_it, ++path_it) {
+        if (path_it == path.end() || *root_it != *path_it) {
+            return false;
+        }
+    }
+    return path_it != path.end();
+}
+
 [[nodiscard]] std::string normalize_selected_import_path(std::string_view project_root, std::string_view selected_path,
                                                          std::string& diagnostic) {
     if (contains_invalid_path_characters(selected_path)) {
@@ -753,6 +764,10 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     const auto root = normalized_project_root(project_root);
     const auto selected = std::filesystem::path{std::string(selected_path)};
     const auto normalized = (selected.is_absolute() ? selected : root / selected).lexically_normal();
+    if (!is_strict_child_path(root, normalized)) {
+        diagnostic = "asset browser import source selection must resolve inside the project root";
+        return {};
+    }
     const auto relative = normalized.lexically_relative(root);
     auto project_path = relative.generic_string();
     if (project_path.empty() || project_path == "." || has_parent_segment(relative)) {

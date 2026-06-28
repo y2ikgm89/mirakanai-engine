@@ -1219,6 +1219,14 @@ Task 11 closeout evidence (2026-06-29):
 - Hosted PR evidence: draft PR #880 (`codex/editor-asset-browser-production-v1`) is the publication surface for this implementation slice; hosted CI remains the remote review gate.
 - Explicit non-claims at closeout: arbitrary importer adapters, automatic import execution, package script execution, validation recipe execution, broad runtime package streaming, renderer/RHI execution from editor core, public native handles, Vulkan/Metal preview display parity, cross-platform accessibility parity, external-engine compatibility/equivalence/parity, Unity/Unreal/Godot asset/project/schema import compatibility, copied external-engine UI expression, legal advice, and broad editor/importer/product parity.
 
+Task 11 hosted CI fix evidence (2026-06-29):
+
+- Hosted PR #880 head `ab1d3a90` failed `Linux CMake`, `Linux Clang ASan/UBSan`, `Linux Coverage`, and `macOS Metal CMake` on the same `MK_editor_native_shell_tests` assertion: `editor asset browser import source dialog rejects unsafe project paths` reported `!outside.dialog.accepted` as failed.
+- Root cause: native import-source path containment relied on the later `lexically_relative` / parent-segment check only. The fix adds an explicit component-prefix containment gate before deriving the retained project-relative path, so sibling paths outside `ProjectDocument::root_path` fail closed on POSIX and Windows paths.
+- Focused verification after the fix: `tools/cmake.ps1 --build --preset desktop-editor --target MK_editor_native_shell_tests` PASS; `tools/ctest.ps1 --preset desktop-editor --output-on-failure -R MK_editor_native_shell_tests` PASS with `100% tests passed, 0 tests failed out of 1`.
+- Static verification after the fix: `tools/check-format.ps1`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp`, and `git diff --check` PASS.
+- Full verification after the fix: `tools/build-editor.ps1` PASS with `100% tests passed, 0 tests failed out of 160`; `tools/validate.ps1` PASS with 50 static checks and `100% tests passed, 0 tests failed out of 159`.
+
 ## Acceptance Checklist
 
 - [x] The visible `MK_editor` Assets panel no longer uses hard-coded `EditorAssetListRow` rows.
