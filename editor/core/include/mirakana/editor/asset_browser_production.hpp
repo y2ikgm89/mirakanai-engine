@@ -34,6 +34,15 @@ enum class EditorAssetBrowserCommandKind : std::uint8_t {
 };
 enum class EditorAssetBrowserCommandMode : std::uint8_t { dry_run, apply };
 enum class EditorAssetBrowserCommandStatus : std::uint8_t { ready, blocked, rejected_stale_generation };
+enum class EditorAssetBrowserPackageReviewStatus : std::uint8_t {
+    add,
+    already_registered,
+    source_only,
+    unsafe_path,
+    duplicate,
+    missing_cooked_artifact,
+    blocked_license,
+};
 
 struct EditorAssetBrowserSourcePulseRow {
     AssetId asset;
@@ -124,6 +133,38 @@ struct EditorAssetBrowserRetainedUiDesc {
     std::vector<EditorAssetBrowserRetainedLegalRow> legal_rows;
 };
 
+struct EditorAssetBrowserPackageReviewRow {
+    std::string id;
+    ScenePackageCandidateKind kind{ScenePackageCandidateKind::scene_source};
+    std::string kind_label;
+    std::string candidate_path;
+    std::string runtime_package_path;
+    EditorAssetBrowserPackageReviewStatus status{EditorAssetBrowserPackageReviewStatus::source_only};
+    std::string status_label;
+    std::string diagnostic;
+    bool runtime_file{false};
+    bool can_apply{false};
+    bool blocked{true};
+};
+
+struct EditorAssetBrowserPackageReviewDesc {
+    std::vector<ScenePackageCandidateRow> candidates;
+    std::string project_root_path;
+    std::string game_manifest_path{"game.agent.json"};
+    std::vector<std::string> existing_runtime_package_files;
+    std::vector<std::string> available_cooked_artifacts;
+    std::vector<std::string> blocked_license_runtime_package_files;
+};
+
+struct EditorAssetBrowserPackageReviewModel {
+    std::vector<EditorAssetBrowserPackageReviewRow> rows;
+    ScenePackageRegistrationApplyPlan apply_plan;
+    bool executes_package_scripts{false};
+    bool executes_validation_recipes{false};
+    bool streams_packages{false};
+    bool loads_runtime_game_modules{false};
+};
+
 struct EditorAssetBrowserProductionDesc {
     const ContentBrowserState* browser{nullptr};
     const AssetImportPlan* import_plan{nullptr};
@@ -133,6 +174,7 @@ struct EditorAssetBrowserProductionDesc {
     std::uint64_t generation{1};
     const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence{nullptr};
     const EditorAssetBrowserRetainedUiDesc* retained_ui{nullptr};
+    const EditorAssetBrowserPackageReviewDesc* package_review{nullptr};
 };
 
 struct EditorAssetBrowserProductionModel {
@@ -150,6 +192,7 @@ struct EditorAssetBrowserProductionModel {
     std::string query_status_label{"Asset browser query empty"};
     std::vector<EditorAssetBrowserRetainedCommandRow> command_rows;
     std::vector<EditorAssetBrowserRetainedLegalRow> legal_rows;
+    EditorAssetBrowserPackageReviewModel package_review;
     std::vector<std::string> diagnostics;
     bool mutates{false};
     bool executes{false};
@@ -159,6 +202,9 @@ struct EditorAssetBrowserProductionModel {
     bool executes_shader_compilers{false};
     bool streams_packages{false};
     bool mutates_manifests{false};
+    bool executes_package_scripts{false};
+    bool executes_validation_recipes{false};
+    bool loads_runtime_game_modules{false};
 };
 
 struct EditorAssetBrowserQueryTokenRow {
@@ -279,8 +325,12 @@ struct EditorAssetBrowserKtx2BasisSourceReviewRow {
 [[nodiscard]] std::string_view
 editor_asset_browser_production_status_label(EditorAssetBrowserProductionStatus status) noexcept;
 [[nodiscard]] std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind kind) noexcept;
+[[nodiscard]] std::string_view
+editor_asset_browser_package_review_status_label(EditorAssetBrowserPackageReviewStatus status) noexcept;
 [[nodiscard]] std::vector<EditorAssetBrowserPreviewEvidenceRow>
 make_editor_asset_browser_preview_evidence_rows(const EditorAssetBrowserPreviewEvidenceDesc& desc);
+[[nodiscard]] EditorAssetBrowserPackageReviewModel
+make_editor_asset_browser_package_review_model(const EditorAssetBrowserPackageReviewDesc& desc);
 [[nodiscard]] EditorAssetBrowserProductionModel
 make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDesc& desc);
 [[nodiscard]] mirakana::ui::UiDocument

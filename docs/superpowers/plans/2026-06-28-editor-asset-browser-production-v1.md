@@ -1088,7 +1088,7 @@ Task 8 guarantees:
 - Modify: `tests/unit/editor_core_tests.cpp`
 - Modify: `docs/editor.md`
 
-- [ ] **Step 1: Add failing package review tests**
+- [x] **Step 1: Add failing package review tests**
 
 Tests must prove:
 
@@ -1097,7 +1097,7 @@ Tests must prove:
 - `asset_browser.package.apply_registration` plans only a narrow `game.agent.json.runtimePackageFiles` edit through `ITextStore`.
 - The model does not execute package scripts, run validation recipes, stream packages, or load runtime game modules.
 
-- [ ] **Step 2: Implement package review rows**
+- [x] **Step 2: Implement package review rows**
 
 Add package rows to the production model rather than inventing a parallel package panel. The implementation must read or adapt these existing contracts:
 
@@ -1110,11 +1110,24 @@ Add package rows to the production model rather than inventing a parallel packag
 
 Keep asset-browser-specific row ids under `asset_browser.package.*`. If these existing scene-focused rows cannot represent one required asset-browser package status, add exactly one narrow value-only helper in `scene_authoring.hpp/.cpp`, prove it with `MK_editor_core` tests, and do not add a compatibility alias.
 
-- [ ] **Step 3: Run focused validation**
+- [x] **Step 3: Run focused validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`
 
 Expected: package review tests pass.
+
+### Task 9 Implementation Evidence - 2026-06-29
+
+- Red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed on missing `EditorAssetBrowserPackageReviewDesc`, `make_editor_asset_browser_package_review_model`, `EditorAssetBrowserProductionDesc::package_review`, and production-model package review fields.
+- Green focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` PASS.
+- Focused tests: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests"` PASS with `100% tests passed, 0 tests failed out of 1`.
+- Static checks: `tools/check-format.ps1`, `git diff --check`, `tools/check-tidy.ps1 -Files editor/core/src/asset_browser_production.cpp`, and `tools/check-public-api-boundaries.ps1` PASS.
+
+Task 9 guarantees:
+
+- `EditorAssetBrowserPackageReviewDesc` and `make_editor_asset_browser_package_review_model` adapt existing `ScenePackageCandidateRow`, `ScenePackageRegistrationDraftRow`, `make_scene_package_registration_draft_rows`, and `make_scene_package_registration_apply_plan` into `asset_browser.package.*` value rows.
+- Package rows classify `add`, `already_registered`, `source_only`, `unsafe_path`, `duplicate`, `missing_cooked_artifact`, and `blocked_license` without executing package scripts, running validation recipes, streaming packages, loading runtime game modules, exposing native handles, or inferring cooked artifact existence without caller-supplied evidence.
+- The generated apply plan includes only reviewed `add` rows and narrows mutation to `game.agent.json.runtimePackageFiles` through `apply_scene_package_registration_to_manifest` and `ITextStore`.
 
 ## Task 10: Documentation, Manifest, And Static Contract Synchronization
 

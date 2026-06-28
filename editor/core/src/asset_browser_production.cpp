@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -78,6 +79,104 @@ namespace {
     return !std::ranges::search(text, needle, [](char lhs, char rhs) {
                 return ascii_lower(lhs) == ascii_lower(rhs);
             }).empty();
+}
+
+[[nodiscard]] std::string package_path_key(std::string_view path) {
+    std::string key;
+    key.reserve(path.size());
+    for (const char character : path) {
+        key.push_back(character == '\\' ? '/' : ascii_lower(character));
+    }
+    while (key.starts_with("./")) {
+        key.erase(0, 2);
+    }
+    while (key.starts_with('/')) {
+        key.erase(0, 1);
+    }
+    return key;
+}
+
+[[nodiscard]] std::string strip_project_root_key(std::string_view path, std::string_view project_root) {
+    std::string path_key = package_path_key(path);
+    const std::string root_key = package_path_key(project_root);
+    if (root_key.empty()) {
+        return path_key;
+    }
+    if (path_key == root_key) {
+        return {};
+    }
+    const std::string root_prefix = root_key + "/";
+    if (path_key.starts_with(root_prefix)) {
+        return path_key.substr(root_prefix.size());
+    }
+    return path_key;
+}
+
+void insert_package_path_key(std::unordered_set<std::string>& keys, std::string_view path,
+                             std::string_view project_root) {
+    if (path.empty()) {
+        return;
+    }
+    keys.insert(package_path_key(path));
+    keys.insert(strip_project_root_key(path, project_root));
+}
+
+[[nodiscard]] bool contains_package_path_key(const std::unordered_set<std::string>& keys, std::string_view path,
+                                             std::string_view project_root) {
+    return keys.contains(package_path_key(path)) || keys.contains(strip_project_root_key(path, project_root));
+}
+
+[[nodiscard]] EditorAssetBrowserPackageReviewStatus
+map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexcept {
+    switch (status) {
+    case ScenePackageRegistrationDraftStatus::add_runtime_file:
+        return EditorAssetBrowserPackageReviewStatus::add;
+    case ScenePackageRegistrationDraftStatus::already_registered:
+        return EditorAssetBrowserPackageReviewStatus::already_registered;
+    case ScenePackageRegistrationDraftStatus::rejected_source_file:
+        return EditorAssetBrowserPackageReviewStatus::source_only;
+    case ScenePackageRegistrationDraftStatus::rejected_unsafe_path:
+        return EditorAssetBrowserPackageReviewStatus::unsafe_path;
+    case ScenePackageRegistrationDraftStatus::rejected_duplicate:
+        return EditorAssetBrowserPackageReviewStatus::duplicate;
+    }
+    return EditorAssetBrowserPackageReviewStatus::source_only;
+}
+
+[[nodiscard]] bool asset_browser_package_status_blocks(EditorAssetBrowserPackageReviewStatus status) noexcept {
+    switch (status) {
+    case EditorAssetBrowserPackageReviewStatus::add:
+    case EditorAssetBrowserPackageReviewStatus::already_registered:
+        return false;
+    case EditorAssetBrowserPackageReviewStatus::source_only:
+    case EditorAssetBrowserPackageReviewStatus::unsafe_path:
+    case EditorAssetBrowserPackageReviewStatus::duplicate:
+    case EditorAssetBrowserPackageReviewStatus::missing_cooked_artifact:
+    case EditorAssetBrowserPackageReviewStatus::blocked_license:
+        return true;
+    }
+    return true;
+}
+
+[[nodiscard]] std::string asset_browser_package_diagnostic(EditorAssetBrowserPackageReviewStatus status,
+                                                           std::string_view fallback) {
+    switch (status) {
+    case EditorAssetBrowserPackageReviewStatus::add:
+        return "reviewed runtimePackageFiles entry can be added";
+    case EditorAssetBrowserPackageReviewStatus::already_registered:
+        return "runtime package file is already registered";
+    case EditorAssetBrowserPackageReviewStatus::source_only:
+        return "source-only asset is not a runtime package file";
+    case EditorAssetBrowserPackageReviewStatus::unsafe_path:
+        return "runtime package candidate path is unsafe";
+    case EditorAssetBrowserPackageReviewStatus::duplicate:
+        return "duplicate runtime package file candidate";
+    case EditorAssetBrowserPackageReviewStatus::missing_cooked_artifact:
+        return "runtime package candidate is missing caller-supplied cooked artifact evidence";
+    case EditorAssetBrowserPackageReviewStatus::blocked_license:
+        return "runtime package candidate is blocked by legal provenance review";
+    }
+    return std::string{fallback};
 }
 
 [[nodiscard]] std::vector<std::string_view> split_query_tokens(std::string_view query_text) {
@@ -643,6 +742,27 @@ std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind k
     return "asset_browser.source_registry.reload";
 }
 
+std::string_view
+editor_asset_browser_package_review_status_label(EditorAssetBrowserPackageReviewStatus status) noexcept {
+    switch (status) {
+    case EditorAssetBrowserPackageReviewStatus::add:
+        return "add";
+    case EditorAssetBrowserPackageReviewStatus::already_registered:
+        return "already_registered";
+    case EditorAssetBrowserPackageReviewStatus::source_only:
+        return "source_only";
+    case EditorAssetBrowserPackageReviewStatus::unsafe_path:
+        return "unsafe_path";
+    case EditorAssetBrowserPackageReviewStatus::duplicate:
+        return "duplicate";
+    case EditorAssetBrowserPackageReviewStatus::missing_cooked_artifact:
+        return "missing_cooked_artifact";
+    case EditorAssetBrowserPackageReviewStatus::blocked_license:
+        return "blocked_license";
+    }
+    return "source_only";
+}
+
 std::vector<EditorAssetBrowserPreviewEvidenceRow>
 make_editor_asset_browser_preview_evidence_rows(const EditorAssetBrowserPreviewEvidenceDesc& desc) {
     std::vector<EditorAssetBrowserPreviewEvidenceRow> rows;
@@ -672,6 +792,63 @@ make_editor_asset_browser_preview_evidence_rows(const EditorAssetBrowserPreviewE
     std::ranges::sort(rows, [](const EditorAssetBrowserPreviewEvidenceRow& lhs,
                                const EditorAssetBrowserPreviewEvidenceRow& rhs) { return lhs.id < rhs.id; });
     return rows;
+}
+
+EditorAssetBrowserPackageReviewModel
+make_editor_asset_browser_package_review_model(const EditorAssetBrowserPackageReviewDesc& desc) {
+    EditorAssetBrowserPackageReviewModel model;
+    const auto draft_rows = make_scene_package_registration_draft_rows(desc.candidates, desc.project_root_path,
+                                                                       desc.existing_runtime_package_files);
+
+    std::unordered_set<std::string> available_artifacts;
+    for (const auto& path : desc.available_cooked_artifacts) {
+        insert_package_path_key(available_artifacts, path, desc.project_root_path);
+    }
+    std::unordered_set<std::string> blocked_license_paths;
+    for (const auto& path : desc.blocked_license_runtime_package_files) {
+        insert_package_path_key(blocked_license_paths, path, desc.project_root_path);
+    }
+
+    std::vector<ScenePackageRegistrationDraftRow> apply_rows;
+    model.rows.reserve(draft_rows.size());
+    apply_rows.reserve(draft_rows.size());
+    for (std::size_t index = 0; index < draft_rows.size(); ++index) {
+        const auto& draft = draft_rows[index];
+        auto status = map_scene_package_draft_status(draft.status);
+        if (status == EditorAssetBrowserPackageReviewStatus::add &&
+            (contains_package_path_key(blocked_license_paths, draft.candidate_path, desc.project_root_path) ||
+             contains_package_path_key(blocked_license_paths, draft.runtime_package_path, desc.project_root_path))) {
+            status = EditorAssetBrowserPackageReviewStatus::blocked_license;
+        }
+        if (status == EditorAssetBrowserPackageReviewStatus::add &&
+            !contains_package_path_key(available_artifacts, draft.candidate_path, desc.project_root_path) &&
+            !contains_package_path_key(available_artifacts, draft.runtime_package_path, desc.project_root_path)) {
+            status = EditorAssetBrowserPackageReviewStatus::missing_cooked_artifact;
+        }
+
+        const bool can_apply = status == EditorAssetBrowserPackageReviewStatus::add;
+        if (can_apply) {
+            apply_rows.push_back(draft);
+        }
+        const std::string status_label{editor_asset_browser_package_review_status_label(status)};
+        model.rows.push_back(EditorAssetBrowserPackageReviewRow{
+            .id = "asset_browser.package." + std::to_string(index),
+            .kind = draft.kind,
+            .kind_label = std::string{scene_package_candidate_kind_label(draft.kind)},
+            .candidate_path = draft.candidate_path,
+            .runtime_package_path = draft.runtime_package_path,
+            .status = status,
+            .status_label = status_label,
+            .diagnostic = asset_browser_package_diagnostic(status, draft.diagnostic),
+            .runtime_file = draft.runtime_file,
+            .can_apply = can_apply,
+            .blocked = asset_browser_package_status_blocks(status),
+        });
+    }
+
+    model.apply_plan =
+        make_scene_package_registration_apply_plan(apply_rows, desc.project_root_path, desc.game_manifest_path);
+    return model;
 }
 
 EditorAssetBrowserProductionModel
@@ -707,6 +884,13 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
         model.query_status_label = desc.retained_ui->query_status_label;
         model.command_rows = desc.retained_ui->command_rows;
         model.legal_rows = desc.retained_ui->legal_rows;
+    }
+    if (desc.package_review != nullptr) {
+        model.package_review = make_editor_asset_browser_package_review_model(*desc.package_review);
+        model.executes_package_scripts = model.package_review.executes_package_scripts;
+        model.executes_validation_recipes = model.package_review.executes_validation_recipes;
+        model.streams_packages = model.package_review.streams_packages;
+        model.loads_runtime_game_modules = model.package_review.loads_runtime_game_modules;
     }
 
     model.status =
@@ -799,6 +983,36 @@ mirakana::ui::UiDocument make_editor_asset_browser_production_ui_model(const Edi
         append_label(document, item_id, row.id + ".status", row.status_label);
         append_label(document, item_id, row.id + ".diagnostic", row.diagnostic.empty() ? "-" : row.diagnostic);
     }
+
+    auto package_root = make_child("asset_browser.package", root, mirakana::ui::SemanticRole::list);
+    package_root.accessibility_label = "Asset Browser Package Review";
+    add_or_throw(document, std::move(package_root));
+    const mirakana::ui::ElementId package_root_id{"asset_browser.package"};
+    for (const auto& row : model.package_review.rows) {
+        require_safe_field("package_id", row.id);
+        require_safe_label("package_status_label", row.status_label);
+        mirakana::ui::ElementDesc item = make_child(row.id, package_root_id, mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.runtime_package_path.empty() ? row.candidate_path : row.runtime_package_path);
+        item.accessibility_label = item.text.label.empty() ? row.id : item.text.label;
+        item.enabled = !row.blocked;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{row.id};
+        append_label(document, item_id, row.id + ".kind", row.kind_label);
+        append_label(document, item_id, row.id + ".candidate_path",
+                     row.candidate_path.empty() ? "-" : row.candidate_path);
+        append_label(document, item_id, row.id + ".runtime_package_path",
+                     row.runtime_package_path.empty() ? "-" : row.runtime_package_path);
+        append_label(document, item_id, row.id + ".status", row.status_label);
+        append_label(document, item_id, row.id + ".diagnostic", row.diagnostic.empty() ? "-" : row.diagnostic);
+    }
+    append_label(document, package_root_id, "asset_browser.package.apply_plan.status",
+                 model.package_review.apply_plan.can_apply ? "ready" : "blocked");
+    append_label(document, package_root_id, "asset_browser.package.apply_plan.game_manifest_path",
+                 model.package_review.apply_plan.game_manifest_path.empty()
+                     ? "-"
+                     : model.package_review.apply_plan.game_manifest_path);
+    append_label(document, package_root_id, "asset_browser.package.apply_plan.runtime_package_files",
+                 std::to_string(model.package_review.apply_plan.runtime_package_files.size()));
 
     auto commands_root = make_child("asset_browser.commands", root, mirakana::ui::SemanticRole::list);
     commands_root.accessibility_label = "Asset Browser Commands";

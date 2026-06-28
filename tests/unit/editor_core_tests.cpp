@@ -3595,6 +3595,168 @@ MK_TEST("editor asset browser production ui exposes query legal command and prev
     MK_REQUIRE(command_status->text.label == "ready");
 }
 
+MK_TEST("editor asset browser package review classifies runtime package candidates") {
+    const std::vector<mirakana::editor::ScenePackageCandidateRow> candidates{
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_source,
+         .path = "games/sample/assets/scenes/start.scene",
+         .runtime_file = false},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/scenes/start.scene",
+         .runtime_file = true},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::package_index,
+         .path = "games/sample/runtime/start.geindex",
+         .runtime_file = true},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "../escape.scene",
+         .runtime_file = true},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/dupe.scene",
+         .runtime_file = true},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/dupe.scene",
+         .runtime_file = true},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/missing.scene",
+         .runtime_file = true},
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/blocked.scene",
+         .runtime_file = true},
+    };
+
+    const auto review = mirakana::editor::make_editor_asset_browser_package_review_model(
+        mirakana::editor::EditorAssetBrowserPackageReviewDesc{
+            .candidates = candidates,
+            .project_root_path = "games/sample",
+            .game_manifest_path = "game.agent.json",
+            .existing_runtime_package_files = {"runtime/start.geindex"},
+            .available_cooked_artifacts = {"runtime/scenes/start.scene", "runtime/dupe.scene", "runtime/blocked.scene"},
+            .blocked_license_runtime_package_files = {"runtime/blocked.scene"},
+        });
+
+    const auto has_status = [&review](std::string_view status) {
+        return std::ranges::any_of(review.rows, [status](const auto& row) { return row.status_label == status; });
+    };
+
+    MK_REQUIRE(review.rows.size() == candidates.size());
+    MK_REQUIRE(has_status("add"));
+    MK_REQUIRE(has_status("already_registered"));
+    MK_REQUIRE(has_status("source_only"));
+    MK_REQUIRE(has_status("unsafe_path"));
+    MK_REQUIRE(has_status("duplicate"));
+    MK_REQUIRE(has_status("missing_cooked_artifact"));
+    MK_REQUIRE(has_status("blocked_license"));
+    MK_REQUIRE(review.apply_plan.can_apply);
+    MK_REQUIRE(review.apply_plan.game_manifest_path == "games/sample/game.agent.json");
+    MK_REQUIRE(review.apply_plan.runtime_package_files.size() == 2U);
+    MK_REQUIRE(review.apply_plan.runtime_package_files[0] == "runtime/scenes/start.scene");
+    MK_REQUIRE(review.apply_plan.runtime_package_files[1] == "runtime/dupe.scene");
+    MK_REQUIRE(!review.executes_package_scripts);
+    MK_REQUIRE(!review.executes_validation_recipes);
+    MK_REQUIRE(!review.streams_packages);
+    MK_REQUIRE(!review.loads_runtime_game_modules);
+}
+
+MK_TEST("editor asset browser package review applies only runtimePackageFiles manifest edits") {
+    const std::vector<mirakana::editor::ScenePackageCandidateRow> candidates{
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/scenes/start.scene",
+         .runtime_file = true},
+    };
+    const auto package_review = mirakana::editor::make_editor_asset_browser_package_review_model(
+        mirakana::editor::EditorAssetBrowserPackageReviewDesc{
+            .candidates = candidates,
+            .project_root_path = "games/sample",
+            .game_manifest_path = "game.agent.json",
+            .existing_runtime_package_files = {"runtime/start.geindex"},
+            .available_cooked_artifacts = {"runtime/scenes/start.scene"},
+        });
+
+    mirakana::editor::MemoryTextStore store;
+    store.write_text("games/sample/game.agent.json", "{\n"
+                                                     "  \"schemaVersion\": 1,\n"
+                                                     "  \"name\": \"sample\",\n"
+                                                     "  \"runtimePackageFiles\": [\n"
+                                                     "    \"runtime/start.geindex\"\n"
+                                                     "  ],\n"
+                                                     "  \"validationRecipes\": []\n"
+                                                     "}\n");
+
+    const auto result =
+        mirakana::editor::apply_scene_package_registration_to_manifest(store, package_review.apply_plan);
+
+    MK_REQUIRE(result.applied);
+    MK_REQUIRE(result.runtime_package_files.size() == 2U);
+    MK_REQUIRE(result.runtime_package_files[0] == "runtime/start.geindex");
+    MK_REQUIRE(result.runtime_package_files[1] == "runtime/scenes/start.scene");
+    const auto manifest = store.read_text("games/sample/game.agent.json");
+    MK_REQUIRE(manifest.contains("\"runtimePackageFiles\": [\n"
+                                 "    \"runtime/start.geindex\",\n"
+                                 "    \"runtime/scenes/start.scene\"\n"
+                                 "  ]"));
+    MK_REQUIRE(manifest.contains("\"validationRecipes\": []"));
+    MK_REQUIRE(!manifest.contains("packageScripts"));
+    MK_REQUIRE(!package_review.executes_package_scripts);
+    MK_REQUIRE(!package_review.executes_validation_recipes);
+    MK_REQUIRE(!package_review.streams_packages);
+    MK_REQUIRE(!package_review.loads_runtime_game_modules);
+}
+
+MK_TEST("editor asset browser production model exposes package review rows") {
+    const mirakana::AssetKeyV2 scene_key{"assets/scenes/start"};
+
+    mirakana::SourceAssetRegistryDocumentV1 source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = scene_key,
+        .kind = mirakana::AssetKind::scene,
+        .source_path = "source/scenes/start.scene",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::scene)},
+        .imported_path = "assets/scenes/start.scene",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+
+    const std::vector<mirakana::editor::ScenePackageCandidateRow> candidates{
+        {.kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+         .path = "games/sample/runtime/scenes/start.scene",
+         .runtime_file = true},
+    };
+    const auto package_review = mirakana::editor::EditorAssetBrowserPackageReviewDesc{
+        .candidates = candidates,
+        .project_root_path = "games/sample",
+        .game_manifest_path = "game.agent.json",
+        .available_cooked_artifacts = {"runtime/scenes/start.scene"},
+    };
+    const auto model =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .project_root = "games/sample",
+            .asset_root = "assets",
+            .source_registry_path = "source/assets/package.geassets",
+            .package_review = &package_review,
+        });
+
+    MK_REQUIRE(model.package_review.rows.size() == 1U);
+    MK_REQUIRE(model.package_review.rows[0].id == "asset_browser.package.0");
+    MK_REQUIRE(model.package_review.rows[0].status_label == "add");
+    MK_REQUIRE(model.package_review.apply_plan.can_apply);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.executes_validation_recipes);
+    MK_REQUIRE(!model.streams_packages);
+    MK_REQUIRE(!model.loads_runtime_game_modules);
+
+    const auto document = mirakana::editor::make_editor_asset_browser_production_ui_model(model);
+    const auto* package = document.find(mirakana::ui::ElementId{"asset_browser.package"});
+    MK_REQUIRE(package != nullptr);
+    MK_REQUIRE(package->role == mirakana::ui::SemanticRole::list);
+    const auto* status = document.find(mirakana::ui::ElementId{"asset_browser.package.0.status"});
+    MK_REQUIRE(status != nullptr);
+    MK_REQUIRE(status->text.label == "add");
+    const auto* apply_status = document.find(mirakana::ui::ElementId{"asset_browser.package.apply_plan.status"});
+    MK_REQUIRE(apply_status != nullptr);
+    MK_REQUIRE(apply_status->text.label == "ready");
+}
+
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
     const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
     const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};
