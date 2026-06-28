@@ -13,6 +13,17 @@ $aiIntegrationContent = Get-AgentSurfaceText "docs/ai-integration.md"
 $gitIgnoreContent = Get-Content -LiteralPath (Resolve-RequiredAgentPath ".gitignore") -Raw
 $commandsManifestContent = Get-Content -LiteralPath (Resolve-RequiredAgentPath "engine/agent/manifest.fragments/002-commands.json") -Raw
 $documentationPolicyManifestContent = Get-Content -LiteralPath (Resolve-RequiredAgentPath "engine/agent/manifest.fragments/012-documentationPolicy.json") -Raw
+$agentsSkillContent = Get-AgentSurfaceText ".agents/skills/gameengine-codebase-memory/SKILL.md"
+$claudeSkillContent = Get-AgentSurfaceText ".claude/skills/gameengine-codebase-memory/SKILL.md"
+$cursorSkillContent = Get-AgentSurfaceText ".cursor/skills/gameengine-codebase-memory/SKILL.md"
+$agentsExplorerContent = Get-AgentSurfaceText ".codex/agents/explorer.toml"
+$claudeExplorerContent = Get-AgentSurfaceText ".claude/agents/explorer.md"
+$cursorExplorerContent = Get-AgentSurfaceText ".cursor/agents/explorer.md"
+$agentsAuditorContent = Get-AgentSurfaceText ".codex/agents/agent-surface-auditor.toml"
+$claudeAuditorContent = Get-AgentSurfaceText ".claude/agents/agent-surface-auditor.md"
+$cursorAuditorContent = Get-AgentSurfaceText ".cursor/agents/agent-surface-auditor.md"
+$claudeRuleContent = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
+$cursorRuleContent = Get-AgentSurfaceText ".cursor/rules/mirakana-ai-agent-integration.mdc"
 
 Assert-ContainsText $gitIgnoreContent ".codebase-memory/" ".gitignore"
 
@@ -29,6 +40,7 @@ foreach ($needle in @(
         "code.function.name",
         "validation.recipe.id",
         "tools/install-codebase-memory-wsl-deps.ps1",
+        "gameengine-codebase-memory",
         "zlib1g-dev",
         "clang-format",
         "pkg-config"
@@ -76,6 +88,7 @@ foreach ($needle in @(
         "codebaseMemoryMcp",
         "local-helper-policy-accepted",
         $codebaseMemorySpecRelativePath,
+        "gameengine-codebase-memory",
         ".codebase-memory/ is ignored",
         "wslHostSetupCommand",
         "wslHostPackages",
@@ -89,6 +102,70 @@ foreach ($needle in @(
         "Confirm exact claims with rg, git status, manifest data, tests, and repository validation."
     )) {
     Assert-ContainsText $documentationPolicyManifestContent $needle "engine/agent/manifest.fragments/012-documentationPolicy.json"
+}
+
+foreach ($contentAndLabel in @(
+        @($agentsSkillContent, ".agents/skills/gameengine-codebase-memory/SKILL.md"),
+        @($claudeSkillContent, ".claude/skills/gameengine-codebase-memory/SKILL.md"),
+        @($cursorSkillContent, ".cursor/skills/gameengine-codebase-memory/SKILL.md")
+    )) {
+    $content = $contentAndLabel[0]
+    $label = $contentAndLabel[1]
+    foreach ($needle in @(
+            "gameengine-codebase-memory",
+            "codebase-memory-mcp",
+            "mode=full",
+            "persistence=false",
+            ".codebase-memory/graph.db.zst",
+            "manage_adr",
+            "ingest_traces",
+            "RuntimeTrace",
+            "RuntimeSpan",
+            "OBSERVED_EXECUTION",
+            "code.function.name",
+            "validation.recipe.id",
+            "tools/install-codebase-memory-wsl-deps.ps1"
+        )) {
+        Assert-ContainsText $content $needle $label
+    }
+}
+
+foreach ($contentAndLabel in @(
+        @($agentsExplorerContent, ".codex/agents/explorer.toml"),
+        @($claudeExplorerContent, ".claude/agents/explorer.md"),
+        @($cursorExplorerContent, ".cursor/agents/explorer.md")
+    )) {
+    $content = $contentAndLabel[0]
+    $label = $contentAndLabel[1]
+    foreach ($needle in @(
+            "codebase-memory-mcp",
+            "list_projects",
+            "index_status",
+            "trace_path",
+            "get_graph_schema",
+            "detect_changes"
+        )) {
+        Assert-ContainsText $content $needle $label
+    }
+}
+
+foreach ($contentAndLabel in @(
+        @($agentsAuditorContent, ".codex/agents/agent-surface-auditor.toml"),
+        @($claudeAuditorContent, ".claude/agents/agent-surface-auditor.md"),
+        @($cursorAuditorContent, ".cursor/agents/agent-surface-auditor.md"),
+        @($claudeRuleContent, ".claude/rules/ai-agent-integration.md"),
+        @($cursorRuleContent, ".cursor/rules/mirakana-ai-agent-integration.mdc")
+    )) {
+    $content = $contentAndLabel[0]
+    $label = $contentAndLabel[1]
+    foreach ($needle in @(
+            "codebase-memory-mcp",
+            "gameengine-codebase-memory",
+            "persistence=false",
+            "manage_adr"
+        )) {
+        Assert-ContainsText $content $needle $label
+    }
 }
 
 foreach ($needle in @(

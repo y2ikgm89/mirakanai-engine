@@ -11301,6 +11301,12 @@
       "codebaseMemoryMcp": {
         "status": "local-helper-policy-accepted",
         "spec": "docs/specs/2026-06-28-codebase-memory-local-ai-helper-v1.md",
+        "skill": ".agents/skills/gameengine-codebase-memory/SKILL.md",
+        "crossToolSkills": [
+          ".agents/skills/gameengine-codebase-memory/SKILL.md",
+          ".claude/skills/gameengine-codebase-memory/SKILL.md",
+          ".cursor/skills/gameengine-codebase-memory/SKILL.md"
+        ],
         "repositoryArtifactPolicy": ".codebase-memory/ is ignored; .mcp.json stays ignored; graph artifacts and trace bodies are user-local only.",
         "wslHostSetupCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install-codebase-memory-wsl-deps.ps1 [-DistroName Ubuntu-24.04] [-CheckOnly]",
         "wslHostPackages": [
@@ -11322,6 +11328,7 @@
           "committed MCP configs, indexes, traces, or generated graph artifacts"
         ],
         "verification": [
+          "Use the gameengine-codebase-memory skill when a task mentions codebase-memory-mcp, graph indexing, impact analysis, or ingest_traces.",
           "Confirm exact claims with rg, git status, manifest data, tests, and repository validation.",
           "Run focused agent-surface checks after policy changes."
         ]

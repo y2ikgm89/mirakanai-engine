@@ -545,6 +545,7 @@ if (Test-Path -LiteralPath $cursorSkillRoot) {
 $claudeToCodexSkillMap = @{
     "gameengine-agent-integration"  = "gameengine-agent-integration"
     "gameengine-cmake-build-system" = "cmake-build-system"
+    "gameengine-codebase-memory"    = "gameengine-codebase-memory"
     "gameengine-debugging"          = "cpp-engine-debugging"
     "gameengine-editor"             = "editor-change"
     "gameengine-feature"            = "gameengine-feature"
