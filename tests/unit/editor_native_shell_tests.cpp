@@ -421,7 +421,7 @@ MK_TEST("editor asset browser import source dialog routes through native shell s
         .file_dialog_service_id = "memory_import_dialog",
     });
 
-    const auto root = std::filesystem::absolute(".").lexically_normal();
+    const auto root = std::filesystem::current_path().lexically_normal();
     const auto selected = (root / "assets/source/hero.texture").lexically_normal().generic_string();
     file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
         .status = mirakana::FileDialogStatus::accepted,
@@ -448,7 +448,7 @@ MK_TEST("editor asset browser import source dialog rejects unsafe project paths"
     mirakana::MemoryFileDialogService file_dialogs;
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{.file_dialog_service = &file_dialogs});
-    const auto root = std::filesystem::absolute(".").lexically_normal();
+    const auto root = std::filesystem::current_path().lexically_normal();
 
     file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
         .status = mirakana::FileDialogStatus::accepted,

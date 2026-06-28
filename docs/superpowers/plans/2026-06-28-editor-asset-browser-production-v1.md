@@ -1221,11 +1221,15 @@ Task 11 closeout evidence (2026-06-29):
 
 Task 11 hosted CI fix evidence (2026-06-29):
 
-- Hosted PR #880 head `ab1d3a90` failed `Linux CMake`, `Linux Clang ASan/UBSan`, `Linux Coverage`, and `macOS Metal CMake` on the same `MK_editor_native_shell_tests` assertion: `editor asset browser import source dialog rejects unsafe project paths` reported `!outside.dialog.accepted` as failed.
-- Root cause: native import-source path containment relied on the later `lexically_relative` / parent-segment check only. The fix adds an explicit component-prefix containment gate before deriving the retained project-relative path, so sibling paths outside `ProjectDocument::root_path` fail closed on POSIX and Windows paths.
-- Focused verification after the fix: `tools/cmake.ps1 --build --preset desktop-editor --target MK_editor_native_shell_tests` PASS; `tools/ctest.ps1 --preset desktop-editor --output-on-failure -R MK_editor_native_shell_tests` PASS with `100% tests passed, 0 tests failed out of 1`.
-- Static verification after the fix: `tools/check-format.ps1`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp`, and `git diff --check` PASS.
-- Full verification after the fix: `tools/build-editor.ps1` PASS with `100% tests passed, 0 tests failed out of 160`; `tools/validate.ps1` PASS with 50 static checks and `100% tests passed, 0 tests failed out of 159`.
+- Hosted PR #880 head `ab1d3a90` failed `Linux CMake`, `Linux Clang ASan/UBSan`, `Linux Coverage`, and `macOS Metal CMake` on `MK_editor_native_shell_tests`: `editor asset browser import source dialog rejects unsafe project paths` reported `!outside.dialog.accepted`.
+- First fix commit `2afa2861` added an explicit component-prefix containment gate before deriving retained project-relative import paths. Local Windows verification passed, but hosted PR #880 head `2afa2861` still failed Linux `MK_editor_native_shell_tests`: `editor asset browser import source dialog routes through native shell service` reported `review.dialog.accepted`, and the unsupported-source case received the project-root diagnostic instead of `supported import source`.
+- Final root cause: on POSIX, `std::filesystem::absolute(".").lexically_normal()` can retain a trailing empty path segment. The component-prefix helper compared that empty root segment with the first child segment and rejected valid project-child paths. The same trailing separator made the test fixture's `root.parent_path()` fail to leave the project root.
+- Final fix: strip trailing empty path segments from the normalized project root before component-prefix containment, and use `std::filesystem::current_path().lexically_normal()` in the native shell import-dialog tests so the outside-path fixture is actually a sibling outside the project root on POSIX and Windows.
+- POSIX-focused local evidence: WSL/GCC 13.3.0 standalone `std::filesystem` probe reproduced the trailing-empty-segment behavior before the fix and passed after the fix with `selected_strict=1` and `outside_strict=0`. Full WSL CMake unit reproduction was not run because local WSL CMake is 3.28.3 while this repository requires CMake 3.30 or newer.
+- Focused verification after the final fix: `tools/cmake.ps1 --build --preset desktop-editor --target MK_editor_native_shell_tests` PASS; `tools/ctest.ps1 --preset desktop-editor --output-on-failure -R MK_editor_native_shell_tests` PASS with `100% tests passed, 0 tests failed out of 1`.
+- Static verification after the final fix: `tools/check-format.ps1`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp`, `tools/check-tidy.ps1 -Preset desktop-editor -Files tests/unit/editor_native_shell_tests.cpp`, and `git diff --check` PASS.
+- Editor-lane verification after the final fix: `tools/build-editor.ps1` PASS with `100% tests passed, 0 tests failed out of 160`.
+- Full repository verification after the final fix: `tools/validate.ps1` PASS with 50 independent static checks and `100% tests passed, 0 tests failed out of 159`.
 
 ## Acceptance Checklist
 

@@ -735,8 +735,20 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return std::ranges::any_of(path, [](const std::filesystem::path& segment) { return segment == ".."; });
 }
 
+[[nodiscard]] std::filesystem::path strip_trailing_empty_path_segment(std::filesystem::path path) {
+    while (path.has_relative_path() && path.filename().empty()) {
+        const auto parent = path.parent_path();
+        if (parent.empty() || parent == path) {
+            break;
+        }
+        path = parent;
+    }
+    return path;
+}
+
 [[nodiscard]] std::filesystem::path normalized_project_root(std::string_view root_path) {
-    return std::filesystem::absolute(std::filesystem::path{std::string(root_path)}).lexically_normal();
+    return strip_trailing_empty_path_segment(
+        std::filesystem::absolute(std::filesystem::path{std::string(root_path)}).lexically_normal());
 }
 
 [[nodiscard]] bool is_strict_child_path(const std::filesystem::path& root, const std::filesystem::path& path) {
