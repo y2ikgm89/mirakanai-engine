@@ -166,6 +166,48 @@ namespace {
     return kind == EditorAssetBrowserCommandKind::execute_reviewed_import_plan;
 }
 
+[[nodiscard]] bool is_external_engine_material(const EditorAssetBrowserLegalProvenanceRow& row) {
+    if (row.external_engine_material) {
+        return true;
+    }
+    const std::string review_text =
+        lower_ascii(row.source_url + " " + row.modification_status + " " + row.asset_key_label);
+    return review_text.find("assetstore.unity.com") != std::string::npos ||
+           review_text.find("unity.com/packages") != std::string::npos ||
+           review_text.find("unrealengine.com/marketplace") != std::string::npos ||
+           review_text.find("fab.com") != std::string::npos ||
+           review_text.find("unreal marketplace") != std::string::npos ||
+           review_text.find("engine_sample_content") != std::string::npos ||
+           review_text.find("engine_logo_or_trademark") != std::string::npos ||
+           review_text.find("copied_editor_ui_expression") != std::string::npos ||
+           review_text.find("copied_editor_screenshot") != std::string::npos ||
+           review_text.find("copied_editor_icon") != std::string::npos ||
+           review_text.find("copied_editor_layout") != std::string::npos;
+}
+
+[[nodiscard]] bool is_restricted_license(std::string_view license_id) {
+    const std::string license = lower_ascii(license_id);
+    return license.find("cc-by-nc") != std::string::npos || license.find("cc-nc") != std::string::npos ||
+           license.find("-nc") != std::string::npos || license.find("cc-by-nd") != std::string::npos ||
+           license.find("cc-nd") != std::string::npos || license.find("-nd") != std::string::npos;
+}
+
+[[nodiscard]] bool supported_open_exr_compression(std::string_view compression) {
+    return equals_case_insensitive(compression, "none") || equals_case_insensitive(compression, "zip") ||
+           equals_case_insensitive(compression, "zips") || equals_case_insensitive(compression, "piz") ||
+           equals_case_insensitive(compression, "rle");
+}
+
+[[nodiscard]] bool unsupported_open_exr_policy(std::string_view value) {
+    return value.empty() || contains_case_insensitive(value, "unsupported") ||
+           contains_case_insensitive(value, "multipart") || contains_case_insensitive(value, "deep");
+}
+
+[[nodiscard]] bool missing_ktx2_metadata(const EditorAssetBrowserKtx2BasisSourceReviewRow& row) {
+    return row.source_path.empty() || row.basis_color_model.empty() || row.dimensions.empty() || row.levels.empty() ||
+           row.layers.empty() || row.faces.empty() || row.supercompression.empty() || row.payload_byte_count.empty();
+}
+
 void append_command_report_rows(EditorAssetBrowserCommandPlan& plan, EditorAssetBrowserCommandMode mode) {
     plan.report_rows.push_back("command_id=" + plan.command_id);
     plan.report_rows.push_back("mode=" + std::string(command_mode_label(mode)));
@@ -549,6 +591,123 @@ EditorAssetBrowserCommandPlan plan_editor_asset_browser_command(const EditorAsse
         plan.executes_import_tools = command_executes_import_tools(request.kind);
     }
     return plan;
+}
+
+EditorAssetBrowserLegalProvenanceRow
+review_editor_asset_browser_legal_provenance(const EditorAssetBrowserLegalProvenanceRow& row) {
+    EditorAssetBrowserLegalProvenanceRow reviewed = row;
+    reviewed.accepted_for_package = false;
+    reviewed.blocked = true;
+
+    if (is_external_engine_material(row)) {
+        reviewed.external_engine_material = true;
+        reviewed.status_label = "external_engine_material_rejected";
+        reviewed.diagnostic = "external engine material is blocked for clean-room asset browser package use";
+        return reviewed;
+    }
+    if (row.license_id.empty()) {
+        reviewed.status_label = "missing_license";
+        reviewed.diagnostic = "third-party material requires a license id";
+        return reviewed;
+    }
+    if (row.source_url.empty() || row.retrieved_date.empty() || row.copyright_holder.empty() ||
+        row.distribution_target.empty()) {
+        reviewed.status_label = "missing_provenance";
+        reviewed.diagnostic = "third-party material requires source URL, retrieval date, copyright holder, and target";
+        return reviewed;
+    }
+    if (!row.notice_complete) {
+        reviewed.status_label = "missing_notice";
+        reviewed.diagnostic = "third-party material requires a complete notice row";
+        return reviewed;
+    }
+    if (is_restricted_license(row.license_id)) {
+        reviewed.status_label = "license_restricted";
+        reviewed.diagnostic = "non-commercial or no-derivatives material is blocked for production package use";
+        return reviewed;
+    }
+
+    reviewed.blocked = false;
+    reviewed.accepted_for_package = true;
+    reviewed.status_label = "accepted_for_package";
+    reviewed.diagnostic = "legal provenance row is complete";
+    return reviewed;
+}
+
+EditorAssetBrowserOpenExrSourceReviewRow
+review_editor_asset_browser_open_exr_source(const EditorAssetBrowserOpenExrSourceReviewRow& row) {
+    EditorAssetBrowserOpenExrSourceReviewRow reviewed = row;
+    reviewed.blocked = true;
+
+    if (!row.optional_importer_feature) {
+        reviewed.status_label = "optional_importer_unavailable";
+        reviewed.diagnostic = "OpenEXR optional importer evidence is missing";
+        return reviewed;
+    }
+    if (row.source_path.empty() || !row.header_required_attributes_present || row.display_window.empty() ||
+        row.data_window.empty() || row.pixel_aspect_ratio.empty() || row.channels.empty() || row.compression.empty() ||
+        row.line_order.empty() || row.screen_window_width.empty() || row.screen_window_center.empty() ||
+        row.tiled_policy.empty()) {
+        reviewed.status_label = "missing_exr_required_metadata";
+        reviewed.diagnostic = "OpenEXR required header metadata is incomplete";
+        return reviewed;
+    }
+    if (!supported_open_exr_compression(row.compression) ||
+        contains_case_insensitive(row.pixel_type_rows, "unsupported") || row.pixel_type_rows.empty() ||
+        unsupported_open_exr_policy(row.tiled_policy) || unsupported_open_exr_policy(row.multipart_policy) ||
+        unsupported_open_exr_policy(row.deep_image_policy)) {
+        reviewed.status_label = "unsupported_exr_metadata";
+        reviewed.diagnostic = "OpenEXR metadata is outside the accepted package review subset";
+        return reviewed;
+    }
+    if (row.scene_linear_claimed && row.declared_color_intent.empty()) {
+        reviewed.status_label = "missing_exr_color_intent";
+        reviewed.diagnostic = "scene-linear OpenEXR claims require explicit color intent metadata";
+        return reviewed;
+    }
+
+    reviewed.blocked = false;
+    reviewed.status_label = "metadata_ready";
+    reviewed.diagnostic = "OpenEXR metadata review is ready";
+    return reviewed;
+}
+
+EditorAssetBrowserKtx2BasisSourceReviewRow
+review_editor_asset_browser_ktx2_basis_source(const EditorAssetBrowserKtx2BasisSourceReviewRow& row) {
+    EditorAssetBrowserKtx2BasisSourceReviewRow reviewed = row;
+    reviewed.blocked = true;
+    reviewed.editor_core_upload_executed = false;
+
+    if (!row.optional_importer_feature) {
+        reviewed.status_label = "optional_importer_unavailable";
+        reviewed.diagnostic = "KTX2/Basis optional importer evidence is missing";
+        return reviewed;
+    }
+    if (row.gpu_upload_requested || row.editor_core_upload_executed) {
+        reviewed.status_label = "editor_core_upload_rejected";
+        reviewed.diagnostic = "editor core must not upload KTX2/Basis textures";
+        return reviewed;
+    }
+    if (missing_ktx2_metadata(row) || !row.loaded_with_image_data) {
+        reviewed.status_label = "missing_ktx2_metadata";
+        reviewed.diagnostic = "KTX2/Basis texture metadata is incomplete";
+        return reviewed;
+    }
+    if (row.needs_transcoding && row.selected_transcode_target.empty()) {
+        reviewed.status_label = "ktx2_transcode_target_missing";
+        reviewed.diagnostic = "KTX2/Basis transcoding requires a selected target";
+        return reviewed;
+    }
+    if (row.needs_transcoding && row.backend_format_support_evidence_id.empty()) {
+        reviewed.status_label = "ktx2_backend_evidence_missing";
+        reviewed.diagnostic = "KTX2/Basis transcoding requires backend format-support evidence";
+        return reviewed;
+    }
+
+    reviewed.blocked = false;
+    reviewed.status_label = "metadata_ready";
+    reviewed.diagnostic = "KTX2/Basis metadata review is ready";
+    return reviewed;
 }
 
 } // namespace mirakana::editor

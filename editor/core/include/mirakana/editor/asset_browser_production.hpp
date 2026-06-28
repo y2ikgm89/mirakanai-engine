@@ -127,6 +127,73 @@ struct EditorAssetBrowserCommandPlan {
     std::vector<std::string> diagnostics;
 };
 
+struct EditorAssetBrowserLegalProvenanceRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string source_url;
+    std::string retrieved_date;
+    std::string version_or_commit;
+    std::string copyright_holder;
+    std::string license_id;
+    std::string modification_status;
+    std::string distribution_target;
+    std::string status_label;
+    std::string diagnostic;
+    bool notice_complete{false};
+    bool external_engine_material{false};
+    bool accepted_for_package{false};
+    bool blocked{false};
+};
+
+struct EditorAssetBrowserOpenExrSourceReviewRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string source_path;
+    std::string display_window;
+    std::string data_window;
+    std::string pixel_aspect_ratio;
+    std::string channels;
+    std::string pixel_type_rows;
+    std::string compression;
+    std::string line_order;
+    std::string screen_window_width;
+    std::string screen_window_center;
+    std::string tiled_policy;
+    std::string multipart_policy;
+    std::string deep_image_policy;
+    std::string declared_color_intent;
+    std::string status_label;
+    std::string diagnostic;
+    bool header_required_attributes_present{false};
+    bool chromaticities_present{false};
+    bool scene_linear_claimed{false};
+    bool optional_importer_feature{false};
+    bool blocked{true};
+};
+
+struct EditorAssetBrowserKtx2BasisSourceReviewRow {
+    std::string id;
+    std::string asset_key_label;
+    std::string source_path;
+    std::string basis_color_model;
+    std::string selected_transcode_target;
+    std::string backend_format_support_evidence_id;
+    std::string dimensions;
+    std::string levels;
+    std::string layers;
+    std::string faces;
+    std::string supercompression;
+    std::string payload_byte_count;
+    std::string status_label;
+    std::string diagnostic;
+    bool loaded_with_image_data{false};
+    bool needs_transcoding{false};
+    bool gpu_upload_requested{false};
+    bool editor_core_upload_executed{false};
+    bool optional_importer_feature{false};
+    bool blocked{true};
+};
+
 [[nodiscard]] std::string_view
 editor_asset_browser_production_status_label(EditorAssetBrowserProductionStatus status) noexcept;
 [[nodiscard]] std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind kind) noexcept;
@@ -137,5 +204,11 @@ make_editor_asset_browser_production_ui_model(const EditorAssetBrowserProduction
 [[nodiscard]] EditorAssetBrowserQueryResult plan_editor_asset_browser_query(const EditorAssetBrowserQueryDesc& desc);
 [[nodiscard]] EditorAssetBrowserCommandPlan
 plan_editor_asset_browser_command(const EditorAssetBrowserCommandRequest& request);
+[[nodiscard]] EditorAssetBrowserLegalProvenanceRow
+review_editor_asset_browser_legal_provenance(const EditorAssetBrowserLegalProvenanceRow& row);
+[[nodiscard]] EditorAssetBrowserOpenExrSourceReviewRow
+review_editor_asset_browser_open_exr_source(const EditorAssetBrowserOpenExrSourceReviewRow& row);
+[[nodiscard]] EditorAssetBrowserKtx2BasisSourceReviewRow
+review_editor_asset_browser_ktx2_basis_source(const EditorAssetBrowserKtx2BasisSourceReviewRow& row);
 
 } // namespace mirakana::editor

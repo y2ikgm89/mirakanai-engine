@@ -3104,6 +3104,194 @@ MK_TEST("editor asset browser command plans reject stale generations") {
     MK_REQUIRE(has_stale_diagnostic);
 }
 
+MK_TEST("editor asset browser legal provenance review blocks incomplete or restricted assets") {
+    const auto complete_mit_row = [] {
+        return mirakana::editor::EditorAssetBrowserLegalProvenanceRow{
+            .id = "asset_browser.legal.third_party.texture",
+            .asset_key_label = "assets/textures/third_party",
+            .source_url = "https://example.com/assets/texture.png",
+            .retrieved_date = "2026-06-29",
+            .version_or_commit = "v1",
+            .copyright_holder = "Example Author",
+            .license_id = "MIT",
+            .modification_status = "unmodified",
+            .distribution_target = "runtime_package",
+            .notice_complete = true,
+        };
+    };
+
+    auto missing = complete_mit_row();
+    missing.license_id.clear();
+    const auto missing_review = mirakana::editor::review_editor_asset_browser_legal_provenance(missing);
+    MK_REQUIRE(missing_review.blocked);
+    MK_REQUIRE(!missing_review.accepted_for_package);
+    MK_REQUIRE(missing_review.status_label == "missing_license");
+
+    auto non_commercial = complete_mit_row();
+    non_commercial.license_id = "CC-BY-NC-4.0";
+    const auto non_commercial_review = mirakana::editor::review_editor_asset_browser_legal_provenance(non_commercial);
+    MK_REQUIRE(non_commercial_review.blocked);
+    MK_REQUIRE(non_commercial_review.status_label == "license_restricted");
+
+    auto no_derivatives = complete_mit_row();
+    no_derivatives.license_id = "CC-BY-ND-4.0";
+    const auto no_derivatives_review = mirakana::editor::review_editor_asset_browser_legal_provenance(no_derivatives);
+    MK_REQUIRE(no_derivatives_review.blocked);
+    MK_REQUIRE(no_derivatives_review.status_label == "license_restricted");
+
+    auto external_engine = complete_mit_row();
+    external_engine.source_url = "https://assetstore.unity.com/packages/example";
+    const auto external_engine_review = mirakana::editor::review_editor_asset_browser_legal_provenance(external_engine);
+    MK_REQUIRE(external_engine_review.blocked);
+    MK_REQUIRE(external_engine_review.status_label == "external_engine_material_rejected");
+
+    auto external_marketplace = complete_mit_row();
+    external_marketplace.source_url = "https://www.unrealengine.com/marketplace/en-US/product/example";
+    const auto external_marketplace_review =
+        mirakana::editor::review_editor_asset_browser_legal_provenance(external_marketplace);
+    MK_REQUIRE(external_marketplace_review.blocked);
+    MK_REQUIRE(external_marketplace_review.status_label == "external_engine_material_rejected");
+
+    auto external_trademark = complete_mit_row();
+    external_trademark.modification_status = "engine_logo_or_trademark";
+    const auto external_trademark_review =
+        mirakana::editor::review_editor_asset_browser_legal_provenance(external_trademark);
+    MK_REQUIRE(external_trademark_review.blocked);
+    MK_REQUIRE(external_trademark_review.status_label == "external_engine_material_rejected");
+
+    auto godot_mit = complete_mit_row();
+    godot_mit.source_url = "https://github.com/godotengine/godot";
+    const auto godot_review = mirakana::editor::review_editor_asset_browser_legal_provenance(godot_mit);
+    MK_REQUIRE(!godot_review.blocked);
+    MK_REQUIRE(godot_review.accepted_for_package);
+    MK_REQUIRE(godot_review.status_label == "accepted_for_package");
+
+    auto copied_godot_ui = godot_mit;
+    copied_godot_ui.modification_status = "copied_editor_ui_expression";
+    const auto copied_godot_review = mirakana::editor::review_editor_asset_browser_legal_provenance(copied_godot_ui);
+    MK_REQUIRE(copied_godot_review.blocked);
+    MK_REQUIRE(copied_godot_review.status_label == "external_engine_material_rejected");
+}
+
+MK_TEST("editor asset browser openexr source review fails closed") {
+    const auto ready_exr = [] {
+        return mirakana::editor::EditorAssetBrowserOpenExrSourceReviewRow{
+            .id = "asset_browser.exr.assets.textures.hero",
+            .asset_key_label = "assets/textures/hero",
+            .source_path = "source/textures/hero.exr",
+            .display_window = "0,0 1023,1023",
+            .data_window = "0,0 1023,1023",
+            .pixel_aspect_ratio = "1.0",
+            .channels = "rgba",
+            .pixel_type_rows = "half",
+            .compression = "zip",
+            .line_order = "increasing_y",
+            .screen_window_width = "1.0",
+            .screen_window_center = "0,0",
+            .tiled_policy = "scanline",
+            .multipart_policy = "single_part",
+            .deep_image_policy = "flat_image",
+            .declared_color_intent = "scene_linear",
+            .header_required_attributes_present = true,
+            .chromaticities_present = true,
+            .scene_linear_claimed = true,
+            .optional_importer_feature = true,
+        };
+    };
+
+    auto missing_header = ready_exr();
+    missing_header.header_required_attributes_present = false;
+    const auto missing_header_review = mirakana::editor::review_editor_asset_browser_open_exr_source(missing_header);
+    MK_REQUIRE(missing_header_review.blocked);
+    MK_REQUIRE(missing_header_review.status_label == "missing_exr_required_metadata");
+
+    auto missing_importer = ready_exr();
+    missing_importer.optional_importer_feature = false;
+    const auto missing_importer_review =
+        mirakana::editor::review_editor_asset_browser_open_exr_source(missing_importer);
+    MK_REQUIRE(missing_importer_review.blocked);
+    MK_REQUIRE(missing_importer_review.status_label == "optional_importer_unavailable");
+
+    auto unsupported = ready_exr();
+    unsupported.compression = "unsupported_wavelet";
+    const auto unsupported_review = mirakana::editor::review_editor_asset_browser_open_exr_source(unsupported);
+    MK_REQUIRE(unsupported_review.blocked);
+    MK_REQUIRE(unsupported_review.status_label == "unsupported_exr_metadata");
+
+    auto unsupported_tiled = ready_exr();
+    unsupported_tiled.tiled_policy = "unsupported_tiled_levels";
+    const auto unsupported_tiled_review =
+        mirakana::editor::review_editor_asset_browser_open_exr_source(unsupported_tiled);
+    MK_REQUIRE(unsupported_tiled_review.blocked);
+    MK_REQUIRE(unsupported_tiled_review.status_label == "unsupported_exr_metadata");
+
+    const auto ready_review = mirakana::editor::review_editor_asset_browser_open_exr_source(ready_exr());
+    MK_REQUIRE(!ready_review.blocked);
+    MK_REQUIRE(ready_review.status_label == "metadata_ready");
+}
+
+MK_TEST("editor asset browser ktx2 basis source review fails closed") {
+    const auto ready_ktx = [] {
+        return mirakana::editor::EditorAssetBrowserKtx2BasisSourceReviewRow{
+            .id = "asset_browser.ktx2.assets.textures.hero",
+            .asset_key_label = "assets/textures/hero",
+            .source_path = "source/textures/hero.ktx2",
+            .basis_color_model = "etc1s",
+            .selected_transcode_target = "bc7_rgba",
+            .backend_format_support_evidence_id = "d3d12.bc7.ready",
+            .dimensions = "1024x1024",
+            .levels = "11",
+            .layers = "1",
+            .faces = "1",
+            .supercompression = "basis_lz",
+            .payload_byte_count = "4096",
+            .loaded_with_image_data = true,
+            .needs_transcoding = true,
+            .gpu_upload_requested = false,
+            .editor_core_upload_executed = false,
+            .optional_importer_feature = true,
+        };
+    };
+
+    auto missing_importer = ready_ktx();
+    missing_importer.optional_importer_feature = false;
+    const auto missing_importer_review =
+        mirakana::editor::review_editor_asset_browser_ktx2_basis_source(missing_importer);
+    MK_REQUIRE(missing_importer_review.blocked);
+    MK_REQUIRE(missing_importer_review.status_label == "optional_importer_unavailable");
+
+    auto missing_metadata = ready_ktx();
+    missing_metadata.loaded_with_image_data = false;
+    const auto missing_metadata_review =
+        mirakana::editor::review_editor_asset_browser_ktx2_basis_source(missing_metadata);
+    MK_REQUIRE(missing_metadata_review.blocked);
+    MK_REQUIRE(missing_metadata_review.status_label == "missing_ktx2_metadata");
+
+    auto missing_target = ready_ktx();
+    missing_target.selected_transcode_target.clear();
+    const auto missing_target_review = mirakana::editor::review_editor_asset_browser_ktx2_basis_source(missing_target);
+    MK_REQUIRE(missing_target_review.blocked);
+    MK_REQUIRE(missing_target_review.status_label == "ktx2_transcode_target_missing");
+
+    auto missing_backend = ready_ktx();
+    missing_backend.backend_format_support_evidence_id.clear();
+    const auto missing_backend_review =
+        mirakana::editor::review_editor_asset_browser_ktx2_basis_source(missing_backend);
+    MK_REQUIRE(missing_backend_review.blocked);
+    MK_REQUIRE(missing_backend_review.status_label == "ktx2_backend_evidence_missing");
+
+    auto upload_requested = ready_ktx();
+    upload_requested.gpu_upload_requested = true;
+    const auto upload_review = mirakana::editor::review_editor_asset_browser_ktx2_basis_source(upload_requested);
+    MK_REQUIRE(upload_review.blocked);
+    MK_REQUIRE(upload_review.status_label == "editor_core_upload_rejected");
+
+    const auto ready_review = mirakana::editor::review_editor_asset_browser_ktx2_basis_source(ready_ktx());
+    MK_REQUIRE(!ready_review.blocked);
+    MK_REQUIRE(!ready_review.editor_core_upload_executed);
+    MK_REQUIRE(ready_review.status_label == "metadata_ready");
+}
+
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
     const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
     const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};

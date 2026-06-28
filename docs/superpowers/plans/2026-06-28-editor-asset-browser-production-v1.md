@@ -131,7 +131,7 @@ An EXR source asset review row must contain:
 Rules:
 
 - `scene_linear_claimed=true` is allowed only when explicit source metadata or a reviewed source-side policy declares scene-linear intent.
-- Missing required header attributes, unsupported compression, unsupported pixel type, unsupported multipart/deep image mode, or absent optional importer evidence sets `blocked=true`.
+- Missing required header attributes, unsupported compression, unsupported pixel type, unsupported tiled/multipart/deep image mode, or absent optional importer evidence sets `blocked=true`.
 - Do not copy OpenEXR sample code, test images, or library examples into this repository as implementation material.
 
 ### KTX2/Basis Source Review Row
@@ -671,7 +671,7 @@ Task 3 guarantees:
 - Modify: `THIRD_PARTY_NOTICES.md` when new third-party material is actually shipped
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Add failing legal/provenance tests**
+- [x] **Step 1: Add failing legal/provenance tests**
 
 Add tests proving:
 
@@ -683,7 +683,7 @@ Add tests proving:
 - EXR rows with missing required header attributes, unsupported compression, unsupported pixel type, unsupported multipart/deep mode, or absent optional importer evidence are blocked.
 - KTX2/Basis rows with required transcoding but no selected target or no backend format-support evidence are blocked.
 
-- [ ] **Step 2: Add legal row types**
+- [x] **Step 2: Add legal row types**
 
 Add:
 
@@ -699,6 +699,7 @@ struct EditorAssetBrowserLegalProvenanceRow {
     std::string modification_status;
     std::string distribution_target;
     std::string status_label;
+    std::string diagnostic;
     bool notice_complete{false};
     bool external_engine_material{false};
     bool accepted_for_package{false};
@@ -706,7 +707,7 @@ struct EditorAssetBrowserLegalProvenanceRow {
 };
 ```
 
-- [ ] **Step 3: Add official source metadata review row types**
+- [x] **Step 3: Add official source metadata review row types**
 
 Add:
 
@@ -761,13 +762,13 @@ struct EditorAssetBrowserKtx2BasisSourceReviewRow {
 };
 ```
 
-- [ ] **Step 4: Implement fail-closed provenance and source metadata review**
+- [x] **Step 4: Implement fail-closed provenance and source metadata review**
 
 No asset with incomplete provenance can become `package_visible=true` in the production model. Public-doc category references from Unity, Unreal Engine, and Godot must be represented only as `reference_only` rows and must never become asset rows.
 
 EXR and KTX2/Basis rows must implement the Official Import Metadata Contracts exactly. Missing optional importer evidence is a blocked diagnostic row, not a soft warning. Editor core never decodes source payloads, uploads textures, or infers backend support.
 
-- [ ] **Step 5: Run legal validation**
+- [x] **Step 5: Run legal validation**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`
 
@@ -776,6 +777,43 @@ Expected: passes if no dependency metadata changed; otherwise reports the exact 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`
 
 Expected: legal/provenance tests pass.
+
+## Task 4 Evidence (2026-06-29)
+
+Implementation:
+
+- Added `EditorAssetBrowserLegalProvenanceRow`,
+  `EditorAssetBrowserOpenExrSourceReviewRow`, and
+  `EditorAssetBrowserKtx2BasisSourceReviewRow`.
+- Added fail-closed review functions for legal provenance, OpenEXR metadata, and KTX2/Basis metadata.
+- No third-party assets, source examples, OpenEXR snippets, KTX snippets, marketplace material, logos, screenshots, or sample content were copied into the repository.
+- `docs/legal-and-licensing.md` and `THIRD_PARTY_NOTICES.md` required no change because no external material or new dependency is shipped by this task.
+
+Official-source recheck:
+
+- Context7 `/academysoftwarefoundation/openexr`: rechecked required OpenEXR header attributes, display/data windows, channels, compression, line order, tiled handling, and the need to treat deep/multipart/tiled policy as explicit metadata before any package-ready claim.
+- Context7 `/khronosgroup/ktx-software`: rechecked KTX2/Basis transcode-required checks, backend-supported target selection, texture dimensions/levels/layers/faces metadata, and the sequencing that keeps editor core metadata-only with no upload.
+
+RED evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`: failed before implementation because the new legal/EXR/KTX2 review row types and functions did not exist.
+
+GREEN evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`: passed; `MK_editor_core_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/core/src/asset_browser_production.cpp,tests/unit/editor_core_tests.cpp`: passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed; 50 static checks and 159 CTest tests passed.
+
+Task 4 guarantees:
+
+- License-less, NC, ND, Unity Asset Store, Unreal Marketplace/Fab, engine trademark/sample/copy-expression rows fail closed.
+- MIT-licensed external engine source repositories are accepted only when notice/provenance rows are complete and no copied UI expression, trademark, sample, marketplace, or logo material is represented as an asset.
+- OpenEXR rows fail closed when optional importer evidence, required header metadata, supported compression/pixel types, tiled policy, multipart/deep policy, or declared scene-linear color intent is missing or unsupported.
+- KTX2/Basis rows fail closed when optional importer evidence, image metadata, selected transcode target, backend format-support evidence, or editor-core no-upload guarantees are missing.
 
 ## Task 5: Native Shell Replacement For The Assets Panel
 
