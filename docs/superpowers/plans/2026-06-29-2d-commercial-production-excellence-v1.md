@@ -120,10 +120,10 @@ Phase 0 validation evidence:
 Goal: make legal/originality constraints machine-checkable before deeper feature work.
 
 - [x] Add or extend a first-party `TwoDCommercialProductionSourceReview` value contract under `MK_tools` or reuse the existing originality review if it already covers this exact scope.
-- [ ] Record official-source rows for Context7 Vulkan/D3D12/MSL checks, official platform docs, repository legal policy, and legal/trademark source URLs.
-- [ ] Add static guards that reject public API, row id, sample, manifest, package, UI label, and schema usage of prohibited external-engine marks or compatibility claims.
+- [x] Record Context7 verification rows plus official-source rows for Vulkan/D3D12/MSL checks, official platform docs, repository legal policy, and legal/trademark source URLs.
+- [x] Add static guards that reject public engine headers, game/sample code and manifests, editor-core public headers, selected public schemas, and package-visible manifest rows using prohibited external-engine marks or compatibility claims.
 - [ ] Add fail-closed diagnostics for copied code/assets/docs prose, external engine schema names, trademark-surface use, missing notice records, and unapproved dependency sources.
-- [ ] Generate counsel-ready clean-room input records without drawing legal conclusions.
+- [x] Generate counsel-ready clean-room input records without drawing legal conclusions.
 
 Likely surfaces: `engine/tools/include/mirakana/tools/`, `engine/tools/asset/`, `tests/unit/`, `tools/check-ai-integration.ps1`, `tools/check-dependency-policy.ps1`, `docs/legal-and-licensing.md`, `docs/current-capabilities.md`, `THIRD_PARTY_NOTICES.md`.
 
@@ -134,8 +134,9 @@ Slice 1 validation evidence:
 - 2026-06-29 GREEN: `tools/cmake.ps1 --build --preset dev --target MK_tools_2d_originality_review_tests` succeeded and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_2d_originality_review_tests` passed.
 - 2026-06-29 review fix: C++ review found commercial diagnostics could leave `clean_room_ready` stale; `review_2d_commercial_production_sources` now recomputes it after commercial diagnostics and public result fields document which gate they represent.
 - 2026-06-29 closeout: `tools/check-tidy.ps1 -Files 'engine/tools/asset/2d_originality_review.cpp,tests/unit/tools_2d_originality_review_tests.cpp'`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-dependency-policy.ps1`, `tools/check-format.ps1`, and full `tools/validate.ps1` passed after the review fix.
+- 2026-06-30 scope: added `docs/specs/2026-06-30-2d-commercial-clean-room-source-ledger-v1.md`, `tools/check-2d-commercial-clean-room.ps1`, `tools/check-2d-commercial-clean-room-contract.ps1`, `tools/generate-2d-commercial-clean-room-review-input.ps1`, `schemas/2d-commercial-clean-room-review-input.schema.json`, and `schemas/2d-commercial-official-source-summary.schema.json` for official-source row retention, public/product-facing forbidden-token rejection, and counsel-ready review input generation.
 
-Done when: implementation phases can prove `external_code_copied=0`, `external_assets_copied=0`, `external_engine_schema_surface=0`, `third_party_trademark_public_surface=0`, `external_engine_claim_rows=0`, `official_source_ledger_ready=1`, `commercial_production_source_gate_ready=1`, `official_docs_category_only=1`, and `legal_counsel_review_required=1` without implying legal clearance.
+Done when: implementation phases can prove `external_code_copied=0`, `external_assets_copied=0`, `external_engine_schema_surface=0`, `third_party_trademark_public_surface=0`, `external_engine_claim_rows=0`, `official_source_ledger_ready=1`, `commercial_production_source_gate_ready=1`, `2d_commercial_clean_room_public_docs_only=1`, and `requires_legal_counsel_review=1` without implying legal clearance.
 
 ### Phase 2: First-Party 2D Asset Conditioning And Cooking
 
