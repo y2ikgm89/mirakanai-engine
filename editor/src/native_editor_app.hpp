@@ -28,6 +28,7 @@
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/process.hpp"
+#include "mirakana/tools/asset_import_tool.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <cstdint>
@@ -177,6 +178,53 @@ struct NativeEditorAssetBrowserImportExecutionResult {
     bool browser_refreshed{false};
 };
 
+struct NativeEditorAssetBrowserReimportExecutionRequest {
+    std::uint64_t expected_generation{0};
+    std::vector<AssetKeyV2> selected_asset_keys;
+    bool include_dependency_closure{false};
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserRecookExecutionRequest {
+    std::uint64_t expected_generation{0};
+    std::vector<AssetHotReloadRecookRequest> ready_recook_requests;
+    std::vector<EditorAssetRecookContentHashRow> content_hash_rows;
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserRecookExecutionResult {
+    EditorAssetBrowserCommandPlan command;
+    EditorAssetImportReviewedActionPlan review;
+    AssetRuntimeRecookExecutionResult recook;
+    std::string job_id;
+    std::string diagnostic;
+    std::size_t imported_count{0};
+    std::size_t import_failure_count{0};
+    std::size_t staged_runtime_replacement_count{0};
+    std::size_t pending_runtime_replacement_count{0};
+    bool executed{false};
+    bool import_tools_invoked{false};
+    bool committed_at_safe_point{false};
+};
+
+using NativeEditorAssetBrowserReimportExecutionResult = NativeEditorAssetBrowserRecookExecutionResult;
+
+struct NativeEditorAssetBrowserHotReloadStageRequest {
+    std::uint64_t expected_generation{0};
+    std::vector<AssetKeyV2> selected_asset_keys;
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserHotReloadStageResult {
+    EditorAssetBrowserCommandPlan command;
+    EditorAssetImportReviewedActionPlan review;
+    std::vector<AssetHotReloadApplyResult> apply_results;
+    std::string diagnostic;
+    std::size_t pending_runtime_replacement_count{0};
+    std::uint64_t generation_after_commit{0};
+    bool committed_at_safe_point{false};
+};
+
 struct NativeEditorAssetImportJobCommandRequest {
     std::uint64_t expected_generation{0};
     std::string job_id;
@@ -266,6 +314,12 @@ class NativeEditorApp {
     apply_reviewed_asset_browser_import_sources(NativeEditorAssetBrowserSourceRegistrationRequest request);
     [[nodiscard]] NativeEditorAssetBrowserImportExecutionResult
     execute_reviewed_asset_browser_import_plan(NativeEditorAssetBrowserImportExecutionRequest request);
+    [[nodiscard]] NativeEditorAssetBrowserReimportExecutionResult
+    execute_reviewed_asset_browser_reimport_selection(NativeEditorAssetBrowserReimportExecutionRequest request);
+    [[nodiscard]] NativeEditorAssetBrowserRecookExecutionResult
+    execute_reviewed_asset_browser_recook(NativeEditorAssetBrowserRecookExecutionRequest request);
+    [[nodiscard]] NativeEditorAssetBrowserHotReloadStageResult
+    commit_staged_asset_browser_hot_reload(NativeEditorAssetBrowserHotReloadStageRequest request);
     [[nodiscard]] NativeEditorAssetImportJobCommandResult
     cancel_asset_import_job(NativeEditorAssetImportJobCommandRequest request);
     [[nodiscard]] NativeEditorAssetImportJobCommandResult

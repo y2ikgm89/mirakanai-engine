@@ -3057,8 +3057,10 @@ MK_TEST("editor asset browser command plans expose reviewed dry runs") {
         mirakana::editor::EditorAssetBrowserCommandKind::register_import_sources,
         mirakana::editor::EditorAssetBrowserCommandKind::copy_external_sources,
         mirakana::editor::EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        mirakana::editor::EditorAssetBrowserCommandKind::reimport_selected,
+        mirakana::editor::EditorAssetBrowserCommandKind::recook_stale,
         mirakana::editor::EditorAssetBrowserCommandKind::preview_cooked_package,
-        mirakana::editor::EditorAssetBrowserCommandKind::stage_hot_reload_recook,
+        mirakana::editor::EditorAssetBrowserCommandKind::stage_hot_reload,
         mirakana::editor::EditorAssetBrowserCommandKind::inspect_selection,
         mirakana::editor::EditorAssetBrowserCommandKind::apply_package_registration,
     };
@@ -3146,6 +3148,335 @@ MK_TEST("editor asset browser command plans require confirmation for shell mutat
     MK_REQUIRE(!import.executes_package_scripts);
     MK_REQUIRE(!import.executes_validation_recipes);
     MK_REQUIRE(!import.exposes_native_handles);
+
+    const auto recook =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::recook_stale,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(recook.command_id == "asset_browser.import.recook_stale");
+    MK_REQUIRE(recook.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(recook.requires_user_confirmation);
+    MK_REQUIRE(recook.mutates_project_files);
+    MK_REQUIRE(recook.executes_import_tools);
+
+    const auto hot_reload =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::stage_hot_reload,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(hot_reload.command_id == "asset_browser.import.stage_hot_reload");
+    MK_REQUIRE(hot_reload.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(hot_reload.requires_user_confirmation);
+    MK_REQUIRE(!hot_reload.mutates_project_files);
+    MK_REQUIRE(!hot_reload.executes_import_tools);
+}
+
+MK_TEST("editor asset import reimport review defaults to selected assets only") {
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/player"};
+    const auto material_key = mirakana::AssetKeyV2{"assets/materials/player"};
+    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
+
+    const mirakana::SourceAssetRegistryDocumentV1 registry{
+        .assets =
+            {
+                mirakana::SourceAssetRegistryRowV1{
+                    .key = texture_key,
+                    .kind = mirakana::AssetKind::texture,
+                    .source_path = "source/textures/player.texture",
+                    .source_format =
+                        std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+                    .imported_path = "assets/textures/player.texture",
+                },
+                mirakana::SourceAssetRegistryRowV1{
+                    .key = material_key,
+                    .kind = mirakana::AssetKind::material,
+                    .source_path = "source/materials/player.material",
+                    .source_format =
+                        std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::material)},
+                    .imported_path = "assets/materials/player.material",
+                    .dependencies =
+                        {
+                            mirakana::SourceAssetDependencyRowV1{
+                                .kind = mirakana::AssetDependencyKind::material_texture,
+                                .key = texture_key,
+                            },
+                        },
+                },
+            },
+    };
+    const auto import_plan =
+        mirakana::build_asset_import_plan(mirakana::build_source_asset_import_metadata_registry(registry));
+
+    const auto review =
+        mirakana::editor::review_editor_asset_reimport_request(mirakana::editor::EditorAssetReimportReviewRequest{
+            .source_registry = registry,
+            .import_plan = import_plan,
+            .selected_asset_keys = {texture_key},
+        });
+
+    MK_REQUIRE(review.command_id == "asset_browser.import.reimport_selected");
+    MK_REQUIRE(review.ready);
+    MK_REQUIRE(!review.parses_runtime_sources);
+    MK_REQUIRE(review.recook_requests.size() == 1U);
+    MK_REQUIRE(review.recook_requests[0].asset == texture_id);
+    MK_REQUIRE(review.recook_requests[0].source_asset == texture_id);
+    MK_REQUIRE(review.recook_requests[0].reason == mirakana::AssetHotReloadRecookReason::source_modified);
+    MK_REQUIRE(review.import_plan.actions.size() == 1U);
+    MK_REQUIRE(review.import_plan.actions[0].id == texture_id);
+    MK_REQUIRE(std::ranges::none_of(
+        review.rows, [material_id](const auto& row) { return row.asset == material_id && row.can_recook; }));
+}
+
+MK_TEST("editor asset import reimport review expands dependency closure only when requested") {
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/player"};
+    const auto material_key = mirakana::AssetKeyV2{"assets/materials/player"};
+    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
+
+    const mirakana::SourceAssetRegistryDocumentV1 registry{
+        .assets =
+            {
+                mirakana::SourceAssetRegistryRowV1{
+                    .key = texture_key,
+                    .kind = mirakana::AssetKind::texture,
+                    .source_path = "source/textures/player.texture",
+                    .source_format =
+                        std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+                    .imported_path = "assets/textures/player.texture",
+                },
+                mirakana::SourceAssetRegistryRowV1{
+                    .key = material_key,
+                    .kind = mirakana::AssetKind::material,
+                    .source_path = "source/materials/player.material",
+                    .source_format =
+                        std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::material)},
+                    .imported_path = "assets/materials/player.material",
+                    .dependencies =
+                        {
+                            mirakana::SourceAssetDependencyRowV1{
+                                .kind = mirakana::AssetDependencyKind::material_texture,
+                                .key = texture_key,
+                            },
+                        },
+                },
+            },
+    };
+    const auto import_plan =
+        mirakana::build_asset_import_plan(mirakana::build_source_asset_import_metadata_registry(registry));
+
+    const auto review =
+        mirakana::editor::review_editor_asset_reimport_request(mirakana::editor::EditorAssetReimportReviewRequest{
+            .source_registry = registry,
+            .import_plan = import_plan,
+            .selected_asset_keys = {texture_key},
+            .include_dependency_closure = true,
+        });
+
+    MK_REQUIRE(review.ready);
+    MK_REQUIRE(review.recook_requests.size() == 2U);
+    MK_REQUIRE(review.import_plan.actions.size() == 2U);
+    const auto material_request = std::ranges::find_if(
+        review.recook_requests, [material_id](const auto& request) { return request.asset == material_id; });
+    MK_REQUIRE(material_request != review.recook_requests.end());
+    MK_REQUIRE(material_request->source_asset == texture_id);
+    MK_REQUIRE(material_request->reason == mirakana::AssetHotReloadRecookReason::dependency_invalidated);
+    const auto material_row =
+        std::ranges::find_if(review.rows, [material_id](const auto& row) { return row.asset == material_id; });
+    MK_REQUIRE(material_row != review.rows.end());
+    MK_REQUIRE(material_row->dependency_expanded);
+    MK_REQUIRE(material_row->can_recook);
+}
+
+MK_TEST("editor asset import recook review builds stale rows from hashes") {
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/player"};
+    const auto material_key = mirakana::AssetKeyV2{"assets/materials/player"};
+    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
+    const mirakana::AssetImportPlan import_plan{
+        .actions =
+            {
+                mirakana::AssetImportAction{
+                    .id = texture_id,
+                    .kind = mirakana::AssetImportActionKind::texture,
+                    .source_path = "source/textures/player.texture",
+                    .output_path = "assets/textures/player.texture",
+                },
+                mirakana::AssetImportAction{
+                    .id = material_id,
+                    .kind = mirakana::AssetImportActionKind::material,
+                    .source_path = "source/materials/player.material",
+                    .output_path = "assets/materials/player.material",
+                    .dependencies = {texture_id},
+                },
+            },
+        .dependencies =
+            {
+                mirakana::AssetDependencyEdge{
+                    .asset = material_id,
+                    .dependency = texture_id,
+                    .kind = mirakana::AssetDependencyKind::material_texture,
+                    .path = "assets/textures/player.texture",
+                },
+            },
+    };
+
+    const auto
+        review =
+            mirakana::editor::review_editor_asset_recook_request(
+                mirakana::editor::EditorAssetRecookReviewRequest{
+                    .import_plan = import_plan,
+                    .ready_recook_requests =
+                        {
+                            mirakana::AssetHotReloadRecookRequest{
+                                .asset = texture_id,
+                                .source_asset = texture_id,
+                                .trigger_path = "source/textures/player.texture",
+                                .trigger_event_kind = mirakana::AssetHotReloadEventKind::modified,
+                                .reason = mirakana::AssetHotReloadRecookReason::source_modified,
+                                .previous_revision = 10,
+                                .current_revision = 11,
+                                .ready_tick = 20,
+                            },
+                            mirakana::AssetHotReloadRecookRequest{
+                                .asset = material_id,
+                                .source_asset = texture_id,
+                                .trigger_path = "source/textures/player.texture",
+                                .trigger_event_kind = mirakana::AssetHotReloadEventKind::modified,
+                                .reason = mirakana::AssetHotReloadRecookReason::dependency_invalidated,
+                                .previous_revision = 10,
+                                .current_revision = 11,
+                                .ready_tick = 20,
+                            },
+                        },
+                    .content_hash_rows =
+                        {
+                            mirakana::editor::EditorAssetRecookContentHashRow{
+                                .asset_key = texture_key,
+                                .source_content_hash = "sha256:source-new",
+                                .output_content_hash = "sha256:output-old",
+                            },
+                            mirakana::editor::EditorAssetRecookContentHashRow{
+                                .asset_key = material_key,
+                                .source_content_hash = "sha256:material",
+                                .output_content_hash = "sha256:material",
+                            },
+                        },
+                });
+
+    MK_REQUIRE(review.command_id == "asset_browser.import.recook_stale");
+    MK_REQUIRE(review.ready);
+    MK_REQUIRE(!review.parses_runtime_sources);
+    MK_REQUIRE(review.rows.size() == 2U);
+    const auto texture_row =
+        std::ranges::find_if(review.rows, [texture_id](const auto& row) { return row.asset == texture_id; });
+    MK_REQUIRE(texture_row != review.rows.end());
+    MK_REQUIRE(texture_row->stale);
+    MK_REQUIRE(texture_row->source_content_hash == "sha256:source-new");
+    MK_REQUIRE(texture_row->output_content_hash == "sha256:output-old");
+    MK_REQUIRE(review.recook_requests.size() == 1U);
+    MK_REQUIRE(review.recook_requests[0].asset == texture_id);
+    MK_REQUIRE(review.import_plan.actions.size() == 1U);
+    MK_REQUIRE(review.import_plan.actions[0].id == texture_id);
+}
+
+MK_TEST("editor asset import recook review blocks malformed runtime recook requests") {
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/player"};
+    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const mirakana::AssetImportPlan import_plan{
+        .actions =
+            {
+                mirakana::AssetImportAction{
+                    .id = texture_id,
+                    .kind = mirakana::AssetImportActionKind::texture,
+                    .source_path = "source/textures/player.texture",
+                    .output_path = "assets/textures/player.texture",
+                },
+            },
+    };
+
+    const auto review =
+        mirakana::editor::review_editor_asset_recook_request(mirakana::editor::EditorAssetRecookReviewRequest{
+            .import_plan = import_plan,
+            .ready_recook_requests =
+                {
+                    mirakana::AssetHotReloadRecookRequest{
+                        .asset = texture_id,
+                        .source_asset = {},
+                        .trigger_path = {},
+                        .trigger_event_kind = mirakana::AssetHotReloadEventKind::unknown,
+                        .reason = mirakana::AssetHotReloadRecookReason::unknown,
+                        .previous_revision = 10,
+                        .current_revision = 11,
+                        .ready_tick = 20,
+                    },
+                },
+            .content_hash_rows =
+                {
+                    mirakana::editor::EditorAssetRecookContentHashRow{
+                        .asset_key = texture_key,
+                        .source_content_hash = "sha256:source-new",
+                        .output_content_hash = "sha256:output-old",
+                    },
+                },
+        });
+
+    MK_REQUIRE(!review.ready);
+    MK_REQUIRE(review.recook_requests.empty());
+    MK_REQUIRE(review.import_plan.actions.empty());
+    MK_REQUIRE(review.rows.size() == 1U);
+    MK_REQUIRE(!review.rows[0].can_recook);
+    MK_REQUIRE(review.rows[0].status_label == "blocked");
+    const bool has_invalid_request_diagnostic =
+        std::ranges::any_of(review.diagnostics, [](const std::string& diagnostic) {
+            return diagnostic.find("invalid runtime recook request") != std::string::npos;
+        });
+    MK_REQUIRE(has_invalid_request_diagnostic);
+}
+
+MK_TEST("editor asset import hot reload stage review waits for caller owned safe point") {
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/player"};
+    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const auto review = mirakana::editor::review_editor_asset_hot_reload_stage_request(
+        mirakana::editor::EditorAssetHotReloadStageReviewRequest{
+            .staged_results =
+                {
+                    mirakana::AssetHotReloadApplyResult{
+                        .kind = mirakana::AssetHotReloadApplyResultKind::staged,
+                        .asset = texture_id,
+                        .path = "assets/textures/player.texture",
+                        .requested_revision = 11,
+                        .active_revision = 10,
+                    },
+                },
+            .selected_asset_keys = {texture_key},
+            .commit_at_safe_point = false,
+        });
+
+    MK_REQUIRE(review.command_id == "asset_browser.import.stage_hot_reload");
+    MK_REQUIRE(review.ready);
+    MK_REQUIRE(review.runtime_stage_pending);
+    MK_REQUIRE(!review.commits_runtime_replacements);
+    MK_REQUIRE(!review.parses_runtime_sources);
+    MK_REQUIRE(review.safe_point_assets.empty());
+
+    const auto committed = mirakana::editor::review_editor_asset_hot_reload_stage_request(
+        mirakana::editor::EditorAssetHotReloadStageReviewRequest{
+            .staged_results = review.staged_results,
+            .selected_asset_keys = {texture_key},
+            .commit_at_safe_point = true,
+        });
+    MK_REQUIRE(committed.ready);
+    MK_REQUIRE(committed.commits_runtime_replacements);
+    MK_REQUIRE(committed.safe_point_assets.size() == 1U);
+    MK_REQUIRE(committed.safe_point_assets[0] == texture_id);
 }
 
 MK_TEST("editor asset browser command plans reject stale generations") {

@@ -6,9 +6,12 @@
 #include "mirakana/assets/source_asset_registry.hpp"
 
 #include <algorithm>
+#include <deque>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace mirakana::editor {
@@ -242,6 +245,186 @@ find_source_registry_row_by_key(const SourceAssetRegistryDocumentV1& document, c
     }
 }
 
+[[nodiscard]] std::string reviewed_row_id(std::string_view prefix, AssetId asset) {
+    return std::string{prefix} + "." + std::to_string(asset.value);
+}
+
+[[nodiscard]] const AssetImportAction* find_import_action(const AssetImportPlan& plan, AssetId asset) noexcept {
+    const auto it =
+        std::ranges::find_if(plan.actions, [asset](const AssetImportAction& action) { return action.id == asset; });
+    return it == plan.actions.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const SourceAssetRegistryRowV1*
+find_source_registry_row_by_asset(const SourceAssetRegistryDocumentV1& document, AssetId asset) noexcept {
+    const auto it = std::ranges::find_if(document.assets, [asset](const SourceAssetRegistryRowV1& row) {
+        return asset_id_from_key_v2(row.key) == asset;
+    });
+    return it == document.assets.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] AssetKeyV2 fallback_key_for_action(const AssetImportAction& action) {
+    return AssetKeyV2{asset_key_from_imported_path(action.output_path)};
+}
+
+[[nodiscard]] EditorAssetImportReviewedActionRow make_reviewed_action_row(std::string_view prefix,
+                                                                          const AssetImportAction& action,
+                                                                          AssetKeyV2 key, bool selected,
+                                                                          bool dependency_expanded) {
+    return EditorAssetImportReviewedActionRow{
+        .id = reviewed_row_id(prefix, action.id),
+        .asset_key = std::move(key),
+        .asset = action.id,
+        .action_kind = action.kind,
+        .source_path = action.source_path,
+        .output_path = action.output_path,
+        .status_label = "ready",
+        .diagnostic = {},
+        .selected = selected,
+        .dependency_expanded = dependency_expanded,
+        .stale = true,
+        .can_reimport = true,
+        .can_recook = true,
+    };
+}
+
+[[nodiscard]] bool recook_request_less(const AssetHotReloadRecookRequest& lhs,
+                                       const AssetHotReloadRecookRequest& rhs) noexcept {
+    if (lhs.ready_tick != rhs.ready_tick) {
+        return lhs.ready_tick < rhs.ready_tick;
+    }
+    if (lhs.trigger_path != rhs.trigger_path) {
+        return lhs.trigger_path < rhs.trigger_path;
+    }
+    return lhs.asset.value < rhs.asset.value;
+}
+
+[[nodiscard]] std::unordered_map<AssetId, std::vector<AssetId>, AssetIdHash>
+make_dependents_by_dependency(const AssetImportPlan& plan) {
+    std::unordered_map<AssetId, std::vector<AssetId>, AssetIdHash> dependents;
+    for (const auto& edge : plan.dependencies) {
+        dependents[edge.dependency].push_back(edge.asset);
+    }
+    for (auto& [_, assets] : dependents) {
+        std::ranges::sort(assets, [](AssetId lhs, AssetId rhs) { return lhs.value < rhs.value; });
+        assets.erase(std::ranges::unique(assets).begin(), assets.end());
+    }
+    return dependents;
+}
+
+struct PlannedRecookAsset {
+    AssetId asset;
+    AssetId source_asset;
+    std::string trigger_path;
+    bool selected{false};
+    bool dependency_expanded{false};
+};
+
+[[nodiscard]] AssetHotReloadRecookRequest
+make_reviewed_recook_request(const PlannedRecookAsset& planned, const AssetImportAction& action,
+                             const EditorAssetReimportReviewRequest& request) {
+    return AssetHotReloadRecookRequest{
+        .asset = planned.asset,
+        .source_asset = planned.source_asset,
+        .trigger_path = planned.trigger_path.empty() ? action.source_path : planned.trigger_path,
+        .trigger_event_kind = AssetHotReloadEventKind::modified,
+        .reason = planned.dependency_expanded ? AssetHotReloadRecookReason::dependency_invalidated
+                                              : AssetHotReloadRecookReason::source_modified,
+        .previous_revision = request.previous_revision,
+        .current_revision = request.current_revision,
+        .ready_tick = request.ready_tick,
+    };
+}
+
+[[nodiscard]] bool valid_content_hash(std::string_view value) noexcept {
+    return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos;
+}
+
+[[nodiscard]] bool valid_review_recook_event_kind(AssetHotReloadEventKind kind) noexcept {
+    switch (kind) {
+    case AssetHotReloadEventKind::added:
+    case AssetHotReloadEventKind::modified:
+    case AssetHotReloadEventKind::removed:
+        return true;
+    case AssetHotReloadEventKind::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_review_recook_reason(AssetHotReloadRecookReason reason) noexcept {
+    switch (reason) {
+    case AssetHotReloadRecookReason::source_added:
+    case AssetHotReloadRecookReason::source_modified:
+    case AssetHotReloadRecookReason::source_removed:
+    case AssetHotReloadRecookReason::dependency_invalidated:
+        return true;
+    case AssetHotReloadRecookReason::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_review_recook_path(std::string_view path) noexcept {
+    return !path.empty() && path.find('\n') == std::string_view::npos && path.find('\r') == std::string_view::npos &&
+           path.find('\0') == std::string_view::npos;
+}
+
+[[nodiscard]] bool is_valid_review_recook_request(const AssetHotReloadRecookRequest& request) noexcept {
+    return request.asset.value != 0 && request.source_asset.value != 0 &&
+           valid_review_recook_path(request.trigger_path) &&
+           valid_review_recook_event_kind(request.trigger_event_kind) && valid_review_recook_reason(request.reason);
+}
+
+[[nodiscard]] std::unordered_map<AssetId, EditorAssetRecookContentHashRow, AssetIdHash>
+make_content_hashes_by_asset(std::span<const EditorAssetRecookContentHashRow> rows) {
+    std::unordered_map<AssetId, EditorAssetRecookContentHashRow, AssetIdHash> hashes;
+    hashes.reserve(rows.size());
+    for (const auto& row : rows) {
+        const auto asset = asset_id_from_key_v2(row.asset_key);
+        if (asset.value == 0 || !valid_content_hash(row.source_content_hash) ||
+            !valid_content_hash(row.output_content_hash)) {
+            continue;
+        }
+        hashes.emplace(asset, row);
+    }
+    return hashes;
+}
+
+[[nodiscard]] EditorAssetImportReviewedActionRow make_recook_hash_row(const AssetImportAction& action,
+                                                                      const EditorAssetRecookContentHashRow& hash) {
+    const bool stale = hash.source_content_hash != hash.output_content_hash;
+    return EditorAssetImportReviewedActionRow{
+        .id = reviewed_row_id("asset_import.recook", action.id),
+        .asset_key = hash.asset_key,
+        .asset = action.id,
+        .action_kind = action.kind,
+        .source_path = action.source_path,
+        .output_path = action.output_path,
+        .source_content_hash = hash.source_content_hash,
+        .output_content_hash = hash.output_content_hash,
+        .status_label = stale ? "stale" : "current",
+        .diagnostic = stale ? "source and output content hashes differ" : "source and output content hashes match",
+        .selected = false,
+        .dependency_expanded = false,
+        .stale = stale,
+        .can_reimport = stale,
+        .can_recook = stale,
+    };
+}
+
+[[nodiscard]] std::unordered_set<std::uint64_t> make_selected_asset_values(std::span<const AssetKeyV2> keys) {
+    std::unordered_set<std::uint64_t> selected;
+    selected.reserve(keys.size());
+    for (const auto& key : keys) {
+        const auto asset = asset_id_from_key_v2(key);
+        if (asset.value != 0) {
+            selected.insert(asset.value);
+        }
+    }
+    return selected;
+}
+
 } // namespace
 
 AssetImportActionKind editor_asset_import_action_kind_for_asset_kind(AssetKind kind) noexcept {
@@ -424,6 +607,231 @@ EditorAssetImportReviewModel review_editor_asset_import_candidates(const EditorA
 
     model.ready = !model.rows.empty() && model.diagnostics.empty();
     return model;
+}
+
+EditorAssetImportReviewedActionPlan
+review_editor_asset_reimport_request(const EditorAssetReimportReviewRequest& request) {
+    EditorAssetImportReviewedActionPlan plan;
+    plan.command_id = "asset_browser.import.reimport_selected";
+    plan.executes_import_tools = true;
+
+    if (request.selected_asset_keys.empty()) {
+        plan.diagnostics.push_back("asset reimport requires at least one selected asset key");
+        return plan;
+    }
+    if (request.previous_revision == 0 || request.current_revision == 0) {
+        plan.diagnostics.push_back("asset reimport requires non-zero source revisions");
+        return plan;
+    }
+
+    const auto dependents_by_dependency = make_dependents_by_dependency(request.import_plan);
+    std::deque<PlannedRecookAsset> queue;
+    std::unordered_map<AssetId, PlannedRecookAsset, AssetIdHash> planned_by_asset;
+    planned_by_asset.reserve(request.selected_asset_keys.size());
+
+    for (const auto& key : request.selected_asset_keys) {
+        const auto asset = asset_id_from_key_v2(key);
+        const auto* action = find_import_action(request.import_plan, asset);
+        if (asset.value == 0 || action == nullptr) {
+            plan.diagnostics.push_back("selected asset key has no import action: " + key.value);
+            continue;
+        }
+
+        PlannedRecookAsset planned{
+            .asset = asset,
+            .source_asset = asset,
+            .trigger_path = action->source_path,
+            .selected = true,
+            .dependency_expanded = false,
+        };
+        if (planned_by_asset.emplace(asset, planned).second) {
+            queue.push_back(std::move(planned));
+        }
+    }
+
+    while (request.include_dependency_closure && !queue.empty()) {
+        const auto source = queue.front();
+        queue.pop_front();
+        const auto dependents = dependents_by_dependency.find(source.asset);
+        if (dependents == dependents_by_dependency.end()) {
+            continue;
+        }
+
+        for (const auto dependent : dependents->second) {
+            if (planned_by_asset.find(dependent) != planned_by_asset.end()) {
+                continue;
+            }
+            PlannedRecookAsset planned{
+                .asset = dependent,
+                .source_asset = source.source_asset,
+                .trigger_path = source.trigger_path,
+                .selected = false,
+                .dependency_expanded = true,
+            };
+            planned_by_asset.emplace(dependent, planned);
+            queue.push_back(std::move(planned));
+        }
+    }
+
+    std::vector<PlannedRecookAsset> planned_assets;
+    planned_assets.reserve(planned_by_asset.size());
+    for (const auto& [_, planned] : planned_by_asset) {
+        planned_assets.push_back(planned);
+    }
+    std::ranges::sort(planned_assets, [](const PlannedRecookAsset& lhs, const PlannedRecookAsset& rhs) {
+        if (lhs.dependency_expanded != rhs.dependency_expanded) {
+            return !lhs.dependency_expanded;
+        }
+        return lhs.asset.value < rhs.asset.value;
+    });
+
+    for (const auto& planned : planned_assets) {
+        const auto* action = find_import_action(request.import_plan, planned.asset);
+        if (action == nullptr) {
+            plan.diagnostics.push_back("planned asset has no import action");
+            continue;
+        }
+        const auto* registry_row = find_source_registry_row_by_asset(request.source_registry, planned.asset);
+        const AssetKeyV2 key = registry_row != nullptr ? registry_row->key : fallback_key_for_action(*action);
+        plan.rows.push_back(make_reviewed_action_row("asset_import.reimport", *action, key, planned.selected,
+                                                     planned.dependency_expanded));
+        plan.recook_requests.push_back(make_reviewed_recook_request(planned, *action, request));
+    }
+
+    std::ranges::sort(plan.recook_requests, recook_request_less);
+    try {
+        plan.import_plan = build_asset_recook_plan(request.import_plan, plan.recook_requests);
+    } catch (const std::exception& error) {
+        plan.diagnostics.push_back(std::string{"asset reimport recook plan failed: "} + error.what());
+    }
+
+    plan.ready = !plan.recook_requests.empty() && plan.diagnostics.empty();
+    return plan;
+}
+
+EditorAssetImportReviewedActionPlan review_editor_asset_recook_request(const EditorAssetRecookReviewRequest& request) {
+    EditorAssetImportReviewedActionPlan plan;
+    plan.command_id = "asset_browser.import.recook_stale";
+    plan.executes_import_tools = true;
+
+    const auto hashes_by_asset = make_content_hashes_by_asset(request.content_hash_rows);
+    for (const auto& recook_request : request.ready_recook_requests) {
+        const auto* action = find_import_action(request.import_plan, recook_request.asset);
+        if (action == nullptr) {
+            plan.diagnostics.push_back("ready recook request has no import action");
+            continue;
+        }
+        if (!is_valid_review_recook_request(recook_request)) {
+            EditorAssetImportReviewedActionRow row =
+                make_reviewed_action_row("asset_import.recook", *action, fallback_key_for_action(*action), false,
+                                         recook_request.reason == AssetHotReloadRecookReason::dependency_invalidated);
+            row.status_label = "blocked";
+            row.diagnostic = "invalid runtime recook request";
+            row.stale = false;
+            row.can_reimport = false;
+            row.can_recook = false;
+            plan.rows.push_back(std::move(row));
+            plan.diagnostics.push_back("invalid runtime recook request");
+            continue;
+        }
+        const auto hash = hashes_by_asset.find(recook_request.asset);
+        if (hash == hashes_by_asset.end()) {
+            EditorAssetImportReviewedActionRow row =
+                make_reviewed_action_row("asset_import.recook", *action, fallback_key_for_action(*action), false,
+                                         recook_request.reason == AssetHotReloadRecookReason::dependency_invalidated);
+            row.status_label = "blocked";
+            row.diagnostic = "missing reviewed content hashes";
+            row.stale = false;
+            row.can_reimport = false;
+            row.can_recook = false;
+            plan.rows.push_back(std::move(row));
+            plan.diagnostics.push_back("ready recook request is missing reviewed content hashes");
+            continue;
+        }
+
+        auto row = make_recook_hash_row(*action, hash->second);
+        row.dependency_expanded = recook_request.reason == AssetHotReloadRecookReason::dependency_invalidated;
+        if (row.stale) {
+            plan.recook_requests.push_back(recook_request);
+        }
+        plan.rows.push_back(std::move(row));
+    }
+
+    std::ranges::sort(plan.rows,
+                      [](const EditorAssetImportReviewedActionRow& lhs, const EditorAssetImportReviewedActionRow& rhs) {
+                          if (lhs.output_path != rhs.output_path) {
+                              return lhs.output_path < rhs.output_path;
+                          }
+                          return lhs.asset.value < rhs.asset.value;
+                      });
+    std::ranges::sort(plan.recook_requests, recook_request_less);
+
+    if (plan.recook_requests.empty() && plan.diagnostics.empty()) {
+        plan.diagnostics.push_back("no stale asset recook requests are ready");
+    }
+
+    if (!plan.recook_requests.empty()) {
+        try {
+            plan.import_plan = build_asset_recook_plan(request.import_plan, plan.recook_requests);
+        } catch (const std::exception& error) {
+            plan.diagnostics.push_back(std::string{"asset recook plan failed: "} + error.what());
+        }
+    }
+
+    plan.ready = !plan.recook_requests.empty() && plan.diagnostics.empty();
+    return plan;
+}
+
+EditorAssetImportReviewedActionPlan
+review_editor_asset_hot_reload_stage_request(const EditorAssetHotReloadStageReviewRequest& request) {
+    EditorAssetImportReviewedActionPlan plan;
+    plan.command_id = "asset_browser.import.stage_hot_reload";
+    plan.mutates_project_files = false;
+    plan.executes_import_tools = false;
+
+    const auto selected_assets = make_selected_asset_values(request.selected_asset_keys);
+    for (const auto& result : request.staged_results) {
+        if (result.kind != AssetHotReloadApplyResultKind::staged || result.asset.value == 0) {
+            plan.diagnostics.push_back("hot reload stage review accepts only staged runtime replacements");
+            continue;
+        }
+        const bool selected = selected_assets.empty() || selected_assets.contains(result.asset.value);
+        if (!selected) {
+            continue;
+        }
+
+        plan.runtime_stage_pending = true;
+        plan.staged_results.push_back(result);
+        plan.rows.push_back(EditorAssetImportReviewedActionRow{
+            .id = reviewed_row_id("asset_import.hot_reload", result.asset),
+            .asset_key = AssetKeyV2{result.path},
+            .asset = result.asset,
+            .action_kind = AssetImportActionKind::unknown,
+            .source_path = {},
+            .output_path = result.path,
+            .status_label = "staged",
+            .diagnostic = "runtime replacement staged until caller-owned safe point",
+            .selected = selected,
+            .dependency_expanded = false,
+            .stale = true,
+            .can_reimport = false,
+            .can_recook = false,
+        });
+        if (request.commit_at_safe_point) {
+            plan.safe_point_assets.push_back(result.asset);
+        }
+    }
+
+    std::ranges::sort(plan.safe_point_assets, [](AssetId lhs, AssetId rhs) { return lhs.value < rhs.value; });
+    plan.safe_point_assets.erase(std::ranges::unique(plan.safe_point_assets).begin(), plan.safe_point_assets.end());
+    plan.commits_runtime_replacements = request.commit_at_safe_point && !plan.safe_point_assets.empty();
+    if (!plan.runtime_stage_pending) {
+        plan.diagnostics.push_back("no staged runtime replacements are ready for hot reload");
+    } else if (request.commit_at_safe_point && plan.safe_point_assets.empty()) {
+        plan.diagnostics.push_back("safe point commit has no selected staged assets");
+    }
+    plan.ready = plan.runtime_stage_pending && plan.diagnostics.empty();
+    return plan;
 }
 
 } // namespace mirakana::editor

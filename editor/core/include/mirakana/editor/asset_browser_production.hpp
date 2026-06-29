@@ -29,8 +29,10 @@ enum class EditorAssetBrowserCommandKind : std::uint8_t {
     register_import_sources,
     copy_external_sources,
     execute_reviewed_import_plan,
+    reimport_selected,
+    recook_stale,
     preview_cooked_package,
-    stage_hot_reload_recook,
+    stage_hot_reload,
     inspect_selection,
     apply_package_registration,
 };
