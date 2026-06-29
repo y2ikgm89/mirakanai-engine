@@ -9117,11 +9117,27 @@ MK_TEST("default external gltf importer applies mesh preset coordinates to posit
     mirakana::MemoryFileSystem fs;
     const auto mesh_id = mirakana::AssetId::from_name("meshes/z-up-lit-triangle");
     std::string source_buffer;
+    std::string expected_vertices;
 
     const auto append_vec3 = [&](float x, float y, float z) {
         append_le_f32(source_buffer, x);
         append_le_f32(source_buffer, y);
         append_le_f32(source_buffer, z);
+    };
+    const auto append_expected_vertex = [&](float px, float py, float pz, float nx, float ny, float nz, float u,
+                                            float v, float tx, float ty, float tz, float tw) {
+        append_le_f32(expected_vertices, px);
+        append_le_f32(expected_vertices, py);
+        append_le_f32(expected_vertices, pz);
+        append_le_f32(expected_vertices, nx);
+        append_le_f32(expected_vertices, ny);
+        append_le_f32(expected_vertices, nz);
+        append_le_f32(expected_vertices, u);
+        append_le_f32(expected_vertices, v);
+        append_le_f32(expected_vertices, tx);
+        append_le_f32(expected_vertices, ty);
+        append_le_f32(expected_vertices, tz);
+        append_le_f32(expected_vertices, tw);
     };
     append_vec3(-1.0F, 0.0F, 0.0F);
     append_vec3(0.0F, 0.0F, 1.0F);
@@ -9144,6 +9160,9 @@ MK_TEST("default external gltf importer applies mesh preset coordinates to posit
     append_le_u16(source_buffer, 2U);
     append_le_u16(source_buffer, 1U);
     append_le_u16(source_buffer, 0U);
+    append_expected_vertex(-0.01F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F);
+    append_expected_vertex(0.0F, 0.01F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F);
+    append_expected_vertex(0.0F, 0.0F, -0.01F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, 0.0F, 0.0F, 1.0F);
 
     fs.write_text("source/meshes/z-up-lit-triangle.gltf",
                   std::string{"{\"asset\":{\"version\":\"2.0\"},"
@@ -9190,29 +9209,13 @@ MK_TEST("default external gltf importer applies mesh preset coordinates to posit
                                                          : result.failures[0].diagnostic);
     }
 
-    const auto mesh = mirakana::deserialize_mesh_source_document(fs.read_text("assets/meshes/z-up-lit-triangle.mesh"));
-    MK_REQUIRE(mesh.vertex_count == 3U);
-    MK_REQUIRE(mesh.has_normals);
-    MK_REQUIRE(mesh.has_uvs);
-    MK_REQUIRE(mesh.has_tangent_frame);
-    const auto component = [&](std::size_t vertex, std::size_t component_index) {
-        return read_le_f32(mesh.vertex_bytes, (vertex * 12U) + component_index);
-    };
-    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(0, 0), .y = component(0, 1), .z = component(0, 2)},
-                         mirakana::Vec3{.x = -0.01F, .y = 0.0F, .z = 0.0F}));
-    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(1, 0), .y = component(1, 1), .z = component(1, 2)},
-                         mirakana::Vec3{.x = 0.0F, .y = 0.01F, .z = 0.0F}));
-    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(2, 0), .y = component(2, 1), .z = component(2, 2)},
-                         mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -0.01F}));
-    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(0, 3), .y = component(0, 4), .z = component(0, 5)},
-                         mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
-    MK_REQUIRE(near_float(component(0, 6), 0.0F));
-    MK_REQUIRE(near_float(component(0, 7), 0.0F));
-    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(0, 8), .y = component(0, 9), .z = component(0, 10)},
-                         mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
-    MK_REQUIRE(near_float(component(0, 11), 1.0F));
-    MK_REQUIRE(hex_string(std::string{reinterpret_cast<const char*>(mesh.index_bytes.data()),
-                                      mesh.index_bytes.size()}) == "020000000100000000000000");
+    const auto cooked = fs.read_text("assets/meshes/z-up-lit-triangle.mesh");
+    MK_REQUIRE(cooked.find("mesh.vertex_count=3\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("mesh.has_normals=true\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("mesh.has_uvs=true\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("mesh.has_tangent_frame=true\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("mesh.vertex_data_hex=" + hex_string(expected_vertices) + "\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("mesh.index_data_hex=020000000100000000000000\n") != std::string::npos);
 }
 
 MK_TEST("default external gltf importer rejects partial lit vertex attributes when enabled") {
