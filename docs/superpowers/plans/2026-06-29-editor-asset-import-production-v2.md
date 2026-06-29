@@ -713,7 +713,7 @@ sample, UI expression, trademark, or marketplace material was added.
 - Test: `tests/unit/editor_core_tests.cpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Write failing result refresh tests**
+- [x] **Step 1: Write failing result refresh tests**
 
 Add:
 
@@ -724,7 +724,7 @@ MK_TEST("editor asset import execution keeps browser unchanged on failed import 
 
 The failure test includes one missing source and asserts no cooked outputs are written and no imported records are registered.
 
-- [ ] **Step 2: Extend result mapping**
+- [x] **Step 2: Extend result mapping**
 
 Use existing helpers:
 
@@ -743,7 +743,7 @@ If it succeeds, add imported records, refresh ContentBrowserState from the activ
 Preserve the all-or-nothing behavior of execute_asset_import_plan.
 ```
 
-- [ ] **Step 3: Verify default and optional importer lanes**
+- [x] **Step 3: Verify default and optional importer lanes**
 
 Run default focused tests:
 
@@ -760,6 +760,27 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 ```
 
 Expected: default tests pass without optional packages; optional importer lane passes or reports the exact missing bootstrap/toolchain blocker.
+
+Result on 2026-06-29: PASS for the default focused lane. RED failed first on the missing
+`NativeEditorAssetBrowserImportExecutionResult::registered_imported_count` and
+`browser_refreshed` fields. The implementation now keeps a native-shell imported asset
+registry and `AssetPipelineState`, maps successful import execution into imported asset
+records, Source Pulse `imported` labels, browser generation increments, and active
+`GameEngine.SourceAssetRegistry.v1` browser refresh. Failed batches apply diagnostics
+without visible registry mutation, keep Source Pulse generation unchanged, and preserve
+`execute_asset_import_plan` all-or-nothing writes. Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"
+```
+
+Optional importer lane blocker: `tools/build-asset-importers.ps1` reached CMake configure but
+failed because `SPNGConfig.cmake` / `spng-config.cmake` was not installed in the
+worktree vcpkg package root. The supported remediation is
+`tools/bootstrap-deps.ps1 -Feature asset-importers`; this session could not run that
+bootstrap command because the active approval policy rejected the dependency bootstrap
+operation before execution.
 
 ### Task 7: High-Priority Docs, Manifest, And Closeout Validation
 

@@ -3,6 +3,7 @@
 
 #include "native_editor_app.hpp"
 
+#include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/core/diagnostics.hpp"
@@ -221,10 +222,12 @@ make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& 
 [[nodiscard]] EditorAssetBrowserProductionModel
 make_default_asset_browser_model(const ProjectDocument& project, const ContentBrowserState& browser,
                                  const AssetImportPlan& import_plan, std::uint64_t generation = 1U,
-                                 const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr) {
+                                 const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr,
+                                 const AssetPipelineState* pipeline_state = nullptr) {
     return make_editor_asset_browser_production_model(EditorAssetBrowserProductionDesc{
         .browser = &browser,
         .import_plan = &import_plan,
+        .pipeline_state = pipeline_state,
         .project_root = project.root_path,
         .asset_root = project.asset_root,
         .source_registry_path = project.source_registry_path,
@@ -883,6 +886,7 @@ struct NativeEditorApp::Impl {
           text_input_state(
               make_native_editor_text_input_state(make_native_editor_project_name_text_input_target(project.name))),
           clipboard_text_adapter(memory_clipboard) {
+        asset_browser_asset_pipeline.set_import_plan(asset_browser_import_plan);
         refresh_asset_browser_preview_evidence();
         file_dialog_service = &memory_file_dialog_service;
         clipboard_adapter = &clipboard_text_adapter;
@@ -894,9 +898,9 @@ struct NativeEditorApp::Impl {
     void refresh_asset_browser_preview_evidence() {
         const auto preview_evidence =
             make_default_asset_browser_preview_evidence_desc(asset_browser_import_plan, material_preview);
-        asset_browser =
-            make_default_asset_browser_model(project, asset_browser_content_browser, asset_browser_import_plan,
-                                             asset_browser_generation, &preview_evidence);
+        asset_browser = make_default_asset_browser_model(project, asset_browser_content_browser,
+                                                         asset_browser_import_plan, asset_browser_generation,
+                                                         &preview_evidence, &asset_browser_asset_pipeline);
         asset_browser_command_plans = make_default_asset_browser_command_plans(asset_browser);
         asset_browser.command_rows = make_asset_browser_retained_command_rows(asset_browser_command_plans);
     }
@@ -905,6 +909,7 @@ struct NativeEditorApp::Impl {
         SourceAssetRegistryDocumentV1 source_registry;
         ContentBrowserState content_browser;
         AssetImportPlan import_plan;
+        AssetPipelineState asset_pipeline;
         EditorAssetBrowserProductionModel asset_browser;
         std::vector<EditorAssetBrowserCommandPlan> command_plans;
     };
@@ -915,10 +920,11 @@ struct NativeEditorApp::Impl {
         state.source_registry = std::move(source_registry);
         state.content_browser = make_default_asset_browser_content_browser(state.source_registry);
         state.import_plan = make_default_asset_browser_import_plan(state.source_registry);
+        state.asset_pipeline.set_import_plan(state.import_plan);
         const auto preview_evidence =
             make_default_asset_browser_preview_evidence_desc(state.import_plan, material_preview);
         state.asset_browser = make_default_asset_browser_model(project, state.content_browser, state.import_plan,
-                                                               generation, &preview_evidence);
+                                                               generation, &preview_evidence, &state.asset_pipeline);
         state.command_plans = make_default_asset_browser_command_plans(state.asset_browser);
         state.asset_browser.command_rows = make_asset_browser_retained_command_rows(state.command_plans);
         return state;
@@ -929,6 +935,7 @@ struct NativeEditorApp::Impl {
         swap(asset_browser_source_registry, state.source_registry);
         swap(asset_browser_content_browser, state.content_browser);
         swap(asset_browser_import_plan, state.import_plan);
+        swap(asset_browser_asset_pipeline, state.asset_pipeline);
         swap(asset_browser, state.asset_browser);
         swap(asset_browser_command_plans, state.command_plans);
         asset_browser_generation = asset_browser.generation;
@@ -943,6 +950,8 @@ struct NativeEditorApp::Impl {
     SourceAssetRegistryDocumentV1 asset_browser_source_registry;
     ContentBrowserState asset_browser_content_browser;
     AssetImportPlan asset_browser_import_plan;
+    AssetRegistry asset_browser_asset_registry;
+    AssetPipelineState asset_browser_asset_pipeline;
     std::uint64_t asset_browser_generation{1U};
     EditorAssetBrowserProductionModel asset_browser;
     std::vector<EditorAssetBrowserCommandPlan> asset_browser_command_plans;
@@ -1735,6 +1744,16 @@ NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBro
     result.import_failure_count = import_result.failures.size();
     result.diagnostic = import_result.failures.empty() ? "asset browser import execution succeeded"
                                                        : import_result.failures.front().diagnostic;
+    impl_->asset_browser_asset_pipeline.apply_import_execution_result(import_result);
+    if (import_result.succeeded()) {
+        result.registered_imported_count =
+            add_imported_asset_records(impl_->asset_browser_asset_registry, import_result);
+        impl_->asset_browser_content_browser =
+            make_default_asset_browser_content_browser(impl_->asset_browser_source_registry);
+        ++impl_->asset_browser_generation;
+        impl_->refresh_asset_browser_preview_evidence();
+        result.browser_refreshed = true;
+    }
     ++impl_->service_status.asset_import_executions;
     return result;
 }

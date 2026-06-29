@@ -170,6 +170,7 @@ struct EditorAssetBrowserPackageReviewModel {
 struct EditorAssetBrowserProductionDesc {
     const ContentBrowserState* browser{nullptr};
     const AssetImportPlan* import_plan{nullptr};
+    const AssetPipelineState* pipeline_state{nullptr};
     std::string project_root{"."};
     std::string asset_root{"assets"};
     std::string source_registry_path;

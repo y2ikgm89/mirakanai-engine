@@ -38,6 +38,37 @@ namespace {
     });
 }
 
+[[nodiscard]] const EditorAssetImportItem* find_import_pipeline_item(const AssetPipelineState* pipeline_state,
+                                                                     AssetId asset,
+                                                                     std::string_view output_path) noexcept {
+    if (pipeline_state == nullptr) {
+        return nullptr;
+    }
+    const auto& items = pipeline_state->items();
+    const auto item = std::ranges::find_if(items, [asset, output_path](const EditorAssetImportItem& candidate) {
+        return candidate.asset == asset && candidate.output_path == output_path;
+    });
+    return item == items.end() ? nullptr : &*item;
+}
+
+[[nodiscard]] std::string source_pulse_import_status_label(const AssetImportPlan* import_plan,
+                                                           const AssetPipelineState* pipeline_state, AssetId asset,
+                                                           std::string_view output_path) {
+    if (const auto* item = find_import_pipeline_item(pipeline_state, asset, output_path); item != nullptr) {
+        switch (item->status) {
+        case EditorAssetImportStatus::imported:
+            return "imported";
+        case EditorAssetImportStatus::failed:
+            return "failed";
+        case EditorAssetImportStatus::pending:
+            return "planned";
+        case EditorAssetImportStatus::unknown:
+            break;
+        }
+    }
+    return import_plan_contains(import_plan, asset, output_path) ? "planned" : "not_planned";
+}
+
 [[nodiscard]] char ascii_lower(char value) noexcept {
     return static_cast<char>(std::tolower(static_cast<unsigned char>(value)));
 }
@@ -628,8 +659,8 @@ void append_normalized_token(std::string& normalized_query, std::string_view tok
 
 [[nodiscard]] EditorAssetBrowserSourcePulseRow make_source_pulse_row(const ContentBrowserItem& item,
                                                                      const ContentBrowserItem* selected,
-                                                                     const AssetImportPlan* import_plan) {
-    const bool import_planned = import_plan_contains(import_plan, item.id, item.path);
+                                                                     const AssetImportPlan* import_plan,
+                                                                     const AssetPipelineState* pipeline_state) {
     EditorAssetBrowserSourcePulseRow row{
         .asset = item.id,
         .kind = item.kind,
@@ -641,7 +672,7 @@ void append_normalized_token(std::string& normalized_query, std::string_view tok
         .display_name = item.display_name,
         .scope_label = item.identity_source_path.empty() ? "cooked" : "source",
         .state_label = item.identity_backed ? "ready" : "missing_identity",
-        .import_status_label = import_planned ? "planned" : "not_planned",
+        .import_status_label = source_pulse_import_status_label(import_plan, pipeline_state, item.id, item.path),
         .package_status_label = "not_reviewed",
         .provenance_status_label = "not_reviewed",
         .preview_status_label = "not_requested",
@@ -909,7 +940,7 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
     model.visible_row_count = visible_items.size();
     model.rows.reserve(visible_items.size());
     for (const auto& item : visible_items) {
-        model.rows.push_back(make_source_pulse_row(item, selected, desc.import_plan));
+        model.rows.push_back(make_source_pulse_row(item, selected, desc.import_plan, desc.pipeline_state));
     }
     sort_rows(model.rows);
     if (desc.preview_evidence != nullptr) {

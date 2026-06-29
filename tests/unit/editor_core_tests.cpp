@@ -2832,6 +2832,51 @@ MK_TEST("editor asset browser production model builds source pulse rows") {
     MK_REQUIRE(ui_atlas_source->text.label == "source/ui/hud=blue.ui_atlas");
 }
 
+MK_TEST("editor asset browser source pulse reflects import execution diagnostics") {
+    const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
+    mirakana::SourceAssetRegistryDocumentV1 source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = texture_key,
+        .kind = mirakana::AssetKind::texture,
+        .source_path = "source/textures/player.png",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+        .imported_path = "assets/textures/player.texture",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+
+    mirakana::AssetImportPlan import_plan;
+    import_plan.actions.push_back(mirakana::AssetImportAction{
+        .id = mirakana::asset_id_from_key_v2(texture_key),
+        .kind = mirakana::AssetImportActionKind::texture,
+        .source_path = "source/textures/player.png",
+        .output_path = "assets/textures/player.texture",
+    });
+
+    mirakana::editor::AssetPipelineState pipeline;
+    pipeline.set_import_plan(import_plan);
+    mirakana::AssetImportExecutionResult execution;
+    execution.imported.push_back(mirakana::AssetImportedArtifact{
+        .asset = mirakana::asset_id_from_key_v2(texture_key),
+        .kind = mirakana::AssetImportActionKind::texture,
+        .output_path = "assets/textures/player.texture",
+    });
+    pipeline.apply_import_execution_result(execution);
+
+    const auto model =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .import_plan = &import_plan,
+            .pipeline_state = &pipeline,
+        });
+
+    const auto row = std::ranges::find_if(
+        model.rows, [&texture_key](const auto& candidate) { return candidate.asset_key_label == texture_key.value; });
+    MK_REQUIRE(row != model.rows.end());
+    MK_REQUIRE(row->import_status_label == "imported");
+}
+
 MK_TEST("editor asset browser production ui tolerates cooked rows without identity") {
     mirakana::AssetRegistry registry;
     registry.add(mirakana::AssetRecord{

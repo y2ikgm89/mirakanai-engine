@@ -21,6 +21,7 @@
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
 
+#include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
@@ -92,6 +93,15 @@ make_native_asset_import_test_provenance(std::string asset_key_label) {
         .distribution_target = "runtime_package",
         .notice_complete = true,
     };
+}
+
+void write_native_asset_import_texture_source(mirakana::IFileSystem& filesystem, std::string_view path) {
+    filesystem.write_text(path, mirakana::serialize_texture_source_document(mirakana::TextureSourceDocument{
+                                    .width = 1,
+                                    .height = 1,
+                                    .pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm,
+                                    .bytes = std::vector<std::uint8_t>{255, 64, 16, 255},
+                                }));
 }
 
 class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextAdapter {
@@ -886,6 +896,100 @@ MK_TEST("editor asset browser import execution requires reviewed confirmed gener
     MK_REQUIRE(app.services().asset_import_filesystem_id == "memory_import_fs");
     MK_REQUIRE(app.services().asset_import_filesystem_available);
     MK_REQUIRE(app.services().asset_import_executions == 1U);
+}
+
+MK_TEST("editor asset import execution registers imported cooked records and refreshes browser") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                  mirakana::SourceAssetRegistryDocumentV1{}));
+    write_native_asset_import_texture_source(filesystem, "assets/imported_sources/hero.png");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto registration_generation = app.asset_browser().generation;
+    const auto registration = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = registration_generation,
+            .project_source_paths = {"assets/imported_sources/hero.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero")},
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(registration.applied);
+    MK_REQUIRE(!filesystem.exists("assets/imported/hero.texture"));
+
+    const auto execution_generation = app.asset_browser().generation;
+    const auto execution =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = execution_generation,
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(execution.executed);
+    MK_REQUIRE(execution.import_tools_invoked);
+    MK_REQUIRE(execution.imported_count == 1U);
+    MK_REQUIRE(execution.import_failure_count == 0U);
+    MK_REQUIRE(execution.registered_imported_count == 1U);
+    MK_REQUIRE(execution.browser_refreshed);
+    MK_REQUIRE(execution.diagnostic == "asset browser import execution succeeded");
+    MK_REQUIRE(filesystem.exists("assets/imported/hero.texture"));
+    MK_REQUIRE(app.asset_browser().generation == execution_generation + 1U);
+
+    const auto* browser_row = find_asset_browser_row_by_key(app.asset_browser(), "assets/imported/hero");
+    MK_REQUIRE(browser_row != nullptr);
+    MK_REQUIRE(browser_row->import_status_label == "imported");
+}
+
+MK_TEST("editor asset import execution keeps browser unchanged on failed import batch") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                  mirakana::SourceAssetRegistryDocumentV1{}));
+    write_native_asset_import_texture_source(filesystem, "assets/imported_sources/hero.png");
+    write_native_asset_import_texture_source(filesystem, "assets/imported_sources/prop.png");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto registration = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = app.asset_browser().generation,
+            .project_source_paths = {"assets/imported_sources/hero.png", "assets/imported_sources/prop.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero"),
+                                make_native_asset_import_test_provenance("assets/imported/prop")},
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(registration.applied);
+
+    const auto execution_generation = app.asset_browser().generation;
+    const auto* hero_before = find_asset_browser_row_by_key(app.asset_browser(), "assets/imported/hero");
+    MK_REQUIRE(hero_before != nullptr);
+    MK_REQUIRE(hero_before->import_status_label == "planned");
+    filesystem.remove("assets/imported_sources/prop.png");
+
+    const auto execution =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = execution_generation,
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(execution.executed);
+    MK_REQUIRE(execution.import_tools_invoked);
+    MK_REQUIRE(execution.imported_count == 0U);
+    MK_REQUIRE(execution.import_failure_count == 1U);
+    MK_REQUIRE(execution.registered_imported_count == 0U);
+    MK_REQUIRE(!execution.browser_refreshed);
+    MK_REQUIRE(execution.diagnostic.contains("missing source file"));
+    MK_REQUIRE(!filesystem.exists("assets/imported/hero.texture"));
+    MK_REQUIRE(!filesystem.exists("assets/imported/prop.texture"));
+    MK_REQUIRE(app.asset_browser().generation == execution_generation);
+
+    const auto* hero_after = find_asset_browser_row_by_key(app.asset_browser(), "assets/imported/hero");
+    MK_REQUIRE(hero_after != nullptr);
+    MK_REQUIRE(hero_after->import_status_label == "planned");
 }
 
 MK_TEST("native asset browser applies reviewed import sources to source registry") {

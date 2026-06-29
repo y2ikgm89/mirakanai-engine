@@ -169,7 +169,9 @@ struct NativeEditorAssetBrowserImportExecutionResult {
     bool import_tools_invoked{false};
     std::size_t imported_count{0};
     std::size_t import_failure_count{0};
+    std::size_t registered_imported_count{0};
     std::string diagnostic;
+    bool browser_refreshed{false};
 };
 
 class NativeEditorApp {
