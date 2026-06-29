@@ -879,17 +879,46 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Test: `tests/unit/editor_core_tests.cpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] Add `EditorAssetImportJobSnapshot`, `EditorAssetImportJobRow`, `EditorAssetImportJobCommandKind`, and `make_editor_asset_import_job_model`.
-- [ ] Native shell starts one reviewed job per import batch after Task 6 gates pass.
-- [ ] Job rows expose `queued`, `copying`, `registering`, `importing`, `refreshing`, `succeeded`, `failed`, and `canceled` states.
-- [ ] Cancel requests are cooperative and stop before the next filesystem mutation boundary.
-- [ ] Retry creates a new generation-checked job and never mutates the completed job snapshot.
-- [ ] Tests prove deterministic job row ordering, cancellation before import writes, retry after failed source, and no native handles in job rows.
-- [ ] Verification:
+- [x] Add `EditorAssetImportJobSnapshot`, `EditorAssetImportJobRow`, `EditorAssetImportJobCommandKind`, and `make_editor_asset_import_job_model`.
+- [x] Native shell starts one reviewed job per import batch after Task 6 gates pass.
+- [x] Job rows expose `queued`, `copying`, `registering`, `importing`, `refreshing`, `succeeded`, `failed`, and `canceled` states.
+- [x] Cancel requests are cooperative and stop before the next filesystem mutation boundary.
+- [x] Retry creates a new generation-checked job and never mutates the completed job snapshot.
+- [x] Tests prove deterministic job row ordering, cancellation before import writes, retry after failed source, and no native handles in job rows.
+- [x] Verification:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"
+```
+
+Result on 2026-06-29: PASS for the focused build/test lane. RED failed first on the
+missing `mirakana/editor/asset_import_jobs.hpp` contract. The implementation adds
+value-only `EditorAssetImportJobSnapshot` / `EditorAssetImportJobRow` rows,
+generation-checked cancel/retry command planning, deterministic row ordering,
+progress/state labels, no native handle exposure, and retry rows that append a new
+queued job while preserving the completed failed/canceled job. The native shell now
+records one job per reviewed external-copy or import-execution batch after the
+existing legal/provenance, generation, user-confirmation, and filesystem gates pass;
+copy batches progress through `copying` / `registering`, import batches through
+`importing` / `refreshing`, and both finish as `succeeded` or `failed`. Cooperative
+cancel applies only to queued/active jobs before the next mutation boundary and retry
+creates a new generation-checked queued job. No new dependency, third-party asset,
+external engine material, compatibility claim, or legal-advice claim was added.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files "editor/core/src/asset_import_jobs.cpp,editor/src/native_editor_app.cpp,tests/unit/editor_core_tests.cpp,tests/unit/editor_native_shell_tests.cpp"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-license.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+git diff --check
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 ### Task 9: Reviewed Reimport, Recook, And Hot Reload

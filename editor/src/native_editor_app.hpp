@@ -13,6 +13,7 @@
 
 #include "mirakana/editor/ai_command_panel.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
+#include "mirakana/editor/asset_import_jobs.hpp"
 #include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
@@ -150,6 +151,7 @@ struct NativeEditorAssetBrowserExternalSourceCopyExecutionResult {
     NativeEditorAssetBrowserExternalSourceCopyReview review;
     NativeAssetImportExternalCopyResult copy;
     NativeEditorAssetBrowserSourceRegistrationResult source_registration;
+    std::string job_id;
     std::vector<std::string> target_project_paths;
     std::vector<std::string> diagnostics;
     std::size_t copied_count{0};
@@ -165,6 +167,7 @@ struct NativeEditorAssetBrowserImportExecutionRequest {
 
 struct NativeEditorAssetBrowserImportExecutionResult {
     EditorAssetBrowserCommandPlan command;
+    std::string job_id;
     bool executed{false};
     bool import_tools_invoked{false};
     std::size_t imported_count{0};
@@ -172,6 +175,18 @@ struct NativeEditorAssetBrowserImportExecutionResult {
     std::size_t registered_imported_count{0};
     std::string diagnostic;
     bool browser_refreshed{false};
+};
+
+struct NativeEditorAssetImportJobCommandRequest {
+    std::uint64_t expected_generation{0};
+    std::string job_id;
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetImportJobCommandResult {
+    EditorAssetImportJobCommandResult command;
+    std::vector<std::string> diagnostics;
+    bool applied{false};
 };
 
 class NativeEditorApp {
@@ -207,6 +222,7 @@ class NativeEditorApp {
     [[nodiscard]] std::span<const EditorPropertyRow> inspector_rows() const noexcept;
     [[nodiscard]] const EditorAssetBrowserProductionModel& asset_browser() const noexcept;
     [[nodiscard]] std::span<const EditorAssetBrowserCommandPlan> asset_browser_command_plans() const noexcept;
+    [[nodiscard]] const EditorAssetImportJobSnapshot& asset_import_jobs() const noexcept;
     [[nodiscard]] std::span<const EditorDiagnosticRow> console_rows() const noexcept;
     [[nodiscard]] const EditorResourcePanelModel& resources() const noexcept;
     [[nodiscard]] const EditorAiCommandPanelModel& ai_commands() const noexcept;
@@ -250,6 +266,10 @@ class NativeEditorApp {
     apply_reviewed_asset_browser_import_sources(NativeEditorAssetBrowserSourceRegistrationRequest request);
     [[nodiscard]] NativeEditorAssetBrowserImportExecutionResult
     execute_reviewed_asset_browser_import_plan(NativeEditorAssetBrowserImportExecutionRequest request);
+    [[nodiscard]] NativeEditorAssetImportJobCommandResult
+    cancel_asset_import_job(NativeEditorAssetImportJobCommandRequest request);
+    [[nodiscard]] NativeEditorAssetImportJobCommandResult
+    retry_asset_import_job(NativeEditorAssetImportJobCommandRequest request);
     [[nodiscard]] ui::ClipboardTextWriteResult write_clipboard_text(ui::ClipboardTextWriteRequest request);
     [[nodiscard]] ui::ClipboardTextReadResult read_clipboard_text(ui::ClipboardTextReadRequest request);
     [[nodiscard]] EditorAiReviewedValidationExecutionModel

@@ -10,6 +10,7 @@
 #include "mirakana/editor/ai_command_panel.hpp"
 #include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
+#include "mirakana/editor/asset_import_jobs.hpp"
 #include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/command.hpp"
@@ -3370,16 +3371,46 @@ MK_TEST("editor asset import review maps selected sources to registry requests")
         std::string_view asset_key;
     };
     const std::vector<ExpectedImportCandidate> expected = {
-        {"assets/imported_sources/hero.png", mirakana::AssetKind::texture, mirakana::AssetImportActionKind::texture,
-         "GameEngine.TextureSource.v1", "assets/imported/hero.texture", "assets/imported/hero"},
-        {"assets/imported_sources/robot.gltf", mirakana::AssetKind::mesh, mirakana::AssetImportActionKind::mesh,
-         "GameEngine.MeshSource.v2", "assets/imported/robot.mesh", "assets/imported/robot"},
-        {"assets/imported_sources/theme.wav", mirakana::AssetKind::audio, mirakana::AssetImportActionKind::audio,
-         "GameEngine.AudioSource.v1", "assets/imported/theme.audio", "assets/imported/theme"},
-        {"assets/materials/hero.material", mirakana::AssetKind::material, mirakana::AssetImportActionKind::material,
-         "GameEngine.Material.v1", "assets/materials/hero.material", "assets/materials/hero"},
-        {"assets/scenes/level.scene", mirakana::AssetKind::scene, mirakana::AssetImportActionKind::scene,
-         "GameEngine.Scene.v1", "assets/scenes/level.scene", "assets/scenes/level"},
+        ExpectedImportCandidate{
+            .source_path = "assets/imported_sources/hero.png",
+            .asset_kind = mirakana::AssetKind::texture,
+            .action_kind = mirakana::AssetImportActionKind::texture,
+            .source_format = "GameEngine.TextureSource.v1",
+            .imported_path = "assets/imported/hero.texture",
+            .asset_key = "assets/imported/hero",
+        },
+        ExpectedImportCandidate{
+            .source_path = "assets/imported_sources/robot.gltf",
+            .asset_kind = mirakana::AssetKind::mesh,
+            .action_kind = mirakana::AssetImportActionKind::mesh,
+            .source_format = "GameEngine.MeshSource.v2",
+            .imported_path = "assets/imported/robot.mesh",
+            .asset_key = "assets/imported/robot",
+        },
+        ExpectedImportCandidate{
+            .source_path = "assets/imported_sources/theme.wav",
+            .asset_kind = mirakana::AssetKind::audio,
+            .action_kind = mirakana::AssetImportActionKind::audio,
+            .source_format = "GameEngine.AudioSource.v1",
+            .imported_path = "assets/imported/theme.audio",
+            .asset_key = "assets/imported/theme",
+        },
+        ExpectedImportCandidate{
+            .source_path = "assets/materials/hero.material",
+            .asset_kind = mirakana::AssetKind::material,
+            .action_kind = mirakana::AssetImportActionKind::material,
+            .source_format = "GameEngine.Material.v1",
+            .imported_path = "assets/materials/hero.material",
+            .asset_key = "assets/materials/hero",
+        },
+        ExpectedImportCandidate{
+            .source_path = "assets/scenes/level.scene",
+            .asset_kind = mirakana::AssetKind::scene,
+            .action_kind = mirakana::AssetImportActionKind::scene,
+            .source_format = "GameEngine.Scene.v1",
+            .imported_path = "assets/scenes/level.scene",
+            .asset_key = "assets/scenes/level",
+        },
     };
 
     for (const auto& expected_row : expected) {
@@ -6065,6 +6096,114 @@ MK_TEST("editor content browser import external source copy review keeps copying
     MK_REQUIRE(!failed.can_copy);
     MK_REQUIRE(!failed.diagnostics.empty());
     MK_REQUIRE(failed.diagnostics[0] == "copy failed: access denied");
+}
+
+MK_TEST("editor asset import jobs model orders rows and exposes progress without native handles") {
+    mirakana::editor::EditorAssetImportJobSnapshot snapshot;
+    snapshot.generation = 7U;
+    snapshot.rows.push_back(mirakana::editor::EditorAssetImportJobRow{
+        .id = "asset_import_job.2",
+        .sequence = 2U,
+        .state = mirakana::editor::EditorAssetImportJobState::importing,
+        .source_count = 3U,
+        .total_steps = 4U,
+        .completed_steps = 2U,
+        .imported_count = 1U,
+    });
+    snapshot.rows.push_back(mirakana::editor::EditorAssetImportJobRow{
+        .id = "asset_import_job.1",
+        .sequence = 1U,
+        .state = mirakana::editor::EditorAssetImportJobState::queued,
+        .source_count = 2U,
+        .total_steps = 4U,
+    });
+
+    const auto model = mirakana::editor::make_editor_asset_import_job_model(snapshot);
+
+    MK_REQUIRE(model.generation == 7U);
+    MK_REQUIRE(model.rows.size() == 2U);
+    MK_REQUIRE(model.rows[0].id == "asset_import_job.1");
+    MK_REQUIRE(model.rows[0].state_label == "queued");
+    MK_REQUIRE(model.rows[0].can_cancel);
+    MK_REQUIRE(!model.rows[0].can_retry);
+    MK_REQUIRE(!model.rows[0].exposes_native_handles);
+    MK_REQUIRE(model.rows[1].id == "asset_import_job.2");
+    MK_REQUIRE(model.rows[1].state_label == "importing");
+    MK_REQUIRE(model.rows[1].progress_label == "2/4");
+    MK_REQUIRE(model.rows[1].can_cancel);
+    MK_REQUIRE(!model.rows[1].can_retry);
+    MK_REQUIRE(model.active_count == 2U);
+    MK_REQUIRE(model.completed_count == 0U);
+    MK_REQUIRE(model.failed_count == 0U);
+    MK_REQUIRE(!model.exposes_native_handles);
+}
+
+MK_TEST("editor asset import job commands enforce generation cancel and retry") {
+    mirakana::editor::EditorAssetImportJobSnapshot snapshot;
+    snapshot.generation = 11U;
+    snapshot.rows.push_back(mirakana::editor::EditorAssetImportJobRow{
+        .id = "asset_import_job.1",
+        .sequence = 1U,
+        .state = mirakana::editor::EditorAssetImportJobState::queued,
+        .source_count = 1U,
+        .total_steps = 3U,
+    });
+    snapshot.rows.push_back(mirakana::editor::EditorAssetImportJobRow{
+        .id = "asset_import_job.2",
+        .sequence = 2U,
+        .state = mirakana::editor::EditorAssetImportJobState::failed,
+        .diagnostic = "missing source file",
+        .source_count = 2U,
+        .total_steps = 3U,
+        .completed_steps = 1U,
+        .failed_count = 1U,
+    });
+    const auto model = mirakana::editor::make_editor_asset_import_job_model(snapshot);
+
+    const auto stale_retry = mirakana::editor::apply_editor_asset_import_job_command(
+        model, mirakana::editor::EditorAssetImportJobCommandRequest{
+                   .kind = mirakana::editor::EditorAssetImportJobCommandKind::retry,
+                   .job_id = "asset_import_job.2",
+                   .expected_generation = 10U,
+                   .current_generation = model.generation,
+                   .user_confirmed = true,
+               });
+    MK_REQUIRE(!stale_retry.applied);
+    MK_REQUIRE(stale_retry.plan.status ==
+               mirakana::editor::EditorAssetImportJobCommandStatus::rejected_stale_generation);
+    MK_REQUIRE(stale_retry.snapshot.rows.size() == model.rows.size());
+
+    const auto canceled = mirakana::editor::apply_editor_asset_import_job_command(
+        model, mirakana::editor::EditorAssetImportJobCommandRequest{
+                   .kind = mirakana::editor::EditorAssetImportJobCommandKind::cancel,
+                   .job_id = "asset_import_job.1",
+                   .expected_generation = model.generation,
+                   .current_generation = model.generation,
+                   .user_confirmed = true,
+               });
+    MK_REQUIRE(canceled.applied);
+    MK_REQUIRE(canceled.snapshot.generation == model.generation + 1U);
+    MK_REQUIRE(canceled.snapshot.rows[0].state == mirakana::editor::EditorAssetImportJobState::canceled);
+    MK_REQUIRE(canceled.snapshot.rows[0].state_label == "canceled");
+    MK_REQUIRE(canceled.snapshot.rows[0].completed_steps == 0U);
+
+    const auto retried = mirakana::editor::apply_editor_asset_import_job_command(
+        model, mirakana::editor::EditorAssetImportJobCommandRequest{
+                   .kind = mirakana::editor::EditorAssetImportJobCommandKind::retry,
+                   .job_id = "asset_import_job.2",
+                   .expected_generation = model.generation,
+                   .current_generation = model.generation,
+                   .user_confirmed = true,
+               });
+    MK_REQUIRE(retried.applied);
+    MK_REQUIRE(retried.snapshot.generation == model.generation + 1U);
+    MK_REQUIRE(retried.snapshot.rows.size() == 3U);
+    MK_REQUIRE(retried.snapshot.rows[1].id == "asset_import_job.2");
+    MK_REQUIRE(retried.snapshot.rows[1].state == mirakana::editor::EditorAssetImportJobState::failed);
+    MK_REQUIRE(retried.snapshot.rows[1].diagnostic == "missing source file");
+    MK_REQUIRE(retried.snapshot.rows[2].id == "asset_import_job.3");
+    MK_REQUIRE(retried.snapshot.rows[2].parent_job_id == "asset_import_job.2");
+    MK_REQUIRE(retried.snapshot.rows[2].state == mirakana::editor::EditorAssetImportJobState::queued);
 }
 
 MK_TEST("editor asset pipeline converts imported artifacts to asset records") {
