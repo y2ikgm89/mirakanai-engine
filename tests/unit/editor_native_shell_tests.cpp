@@ -57,6 +57,14 @@ find_resource_row(const mirakana::editor::EditorResourcePanelModel& model, std::
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::editor::EditorAssetBrowserSourcePulseRow*
+find_asset_browser_row_by_key(const mirakana::editor::EditorAssetBrowserProductionModel& model,
+                              std::string_view asset_key_label) noexcept {
+    const auto it = std::ranges::find_if(
+        model.rows, [asset_key_label](const auto& row) { return row.asset_key_label == asset_key_label; });
+    return it == model.rows.end() ? nullptr : &(*it);
+}
+
 class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextAdapter {
   public:
     void set_clipboard_text(std::string_view text) override {
@@ -330,6 +338,33 @@ MK_TEST("editor native shell exposes Source Pulse asset browser model") {
         MK_REQUIRE(!command.executes_package_scripts);
         MK_REQUIRE(!command.executes_validation_recipes);
         MK_REQUIRE(!command.exposes_native_handles);
+    }
+}
+
+MK_TEST("native asset browser import plan includes texture mesh audio material and scene rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto& asset_browser = app.asset_browser();
+
+    struct ExpectedImportRow {
+        std::string_view asset_key_label;
+        mirakana::AssetKind kind;
+    };
+    const std::array expected_rows{
+        ExpectedImportRow{"assets/textures/editor_preview", mirakana::AssetKind::texture},
+        ExpectedImportRow{"assets/meshes/editor_preview", mirakana::AssetKind::mesh},
+        ExpectedImportRow{"assets/audio/editor_preview", mirakana::AssetKind::audio},
+        ExpectedImportRow{"assets/materials/default", mirakana::AssetKind::material},
+        ExpectedImportRow{"assets/scenes/start", mirakana::AssetKind::scene},
+    };
+
+    for (const auto& expected : expected_rows) {
+        const auto* row = find_asset_browser_row_by_key(asset_browser, expected.asset_key_label);
+        MK_REQUIRE(row != nullptr);
+        MK_REQUIRE(row->kind == expected.kind);
+        MK_REQUIRE(row->source_visible);
+        MK_REQUIRE(row->identity_backed);
+        MK_REQUIRE(row->import_status_label == "planned");
     }
 }
 

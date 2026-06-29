@@ -6,6 +6,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/shader_compile.hpp"
 #include "mirakana/environment/environment_profile.hpp"
@@ -179,6 +180,12 @@ make_default_inspector_rows(const ProjectDocument& project, const EnvironmentAut
                 make_default_asset_browser_source_row(AssetKeyV2{"assets/materials/default"}, AssetKind::material,
                                                       "source/materials/default.material",
                                                       "assets/materials/default.material"),
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/meshes/editor_preview"}, AssetKind::mesh,
+                                                      "source/meshes/editor_preview.gltf",
+                                                      "assets/meshes/editor_preview.mesh"),
+                make_default_asset_browser_source_row(AssetKeyV2{"assets/audio/editor_preview"}, AssetKind::audio,
+                                                      "source/audio/editor_preview.wav",
+                                                      "assets/audio/editor_preview.audio"),
                 make_default_asset_browser_source_row(AssetKeyV2{"assets/textures/editor_preview"}, AssetKind::texture,
                                                       "source/textures/editor_preview.texture",
                                                       "assets/textures/editor_preview.texture"),
@@ -193,23 +200,10 @@ make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& 
     return browser;
 }
 
-[[nodiscard]] AssetImportActionKind asset_import_action_kind_for_asset_browser(AssetKind kind) noexcept {
-    switch (kind) {
-    case AssetKind::texture:
-        return AssetImportActionKind::texture;
-    case AssetKind::material:
-        return AssetImportActionKind::material;
-    case AssetKind::scene:
-        return AssetImportActionKind::scene;
-    default:
-        return AssetImportActionKind::unknown;
-    }
-}
-
 [[nodiscard]] AssetImportPlan make_default_asset_browser_import_plan(const SourceAssetRegistryDocumentV1& registry) {
     AssetImportPlan plan;
     for (const auto& row : registry.assets) {
-        const auto kind = asset_import_action_kind_for_asset_browser(row.kind);
+        const auto kind = editor_asset_import_action_kind_for_asset_kind(row.kind);
         if (kind == AssetImportActionKind::unknown) {
             continue;
         }

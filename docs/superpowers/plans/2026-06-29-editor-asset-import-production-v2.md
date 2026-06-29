@@ -279,7 +279,7 @@ Result on 2026-06-29: PASS. Read-only subagent re-review returned `SPEC_APPROVED
 - Modify: `editor/core/include/mirakana/editor/asset_import_review.hpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Write failing native-shell test**
+- [x] **Step 1: Write failing native-shell test**
 
 Add:
 
@@ -291,7 +291,7 @@ The test creates a `SourceAssetRegistryDocumentV1` with texture, mesh, audio, ma
 
 Expected before implementation: mesh and audio are missing because `asset_import_action_kind_for_asset_browser` returns `unknown`.
 
-- [ ] **Step 2: Replace the local incomplete mapping**
+- [x] **Step 2: Replace the local incomplete mapping**
 
 Remove the private three-kind switch from `editor/src/native_editor_app.cpp` and call `editor_asset_import_action_kind_for_asset_kind` from Task 1. The mapping must include:
 
@@ -301,7 +301,7 @@ texture, mesh, audio, material, scene
 
 Unsupported asset kinds stay excluded with no compatibility alias.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run:
 
@@ -311,6 +311,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: the new native-shell test passes; import execution still requires user confirmation and matching generation.
+
+Task 2 validation evidence:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+git diff --check
+```
+
+Result on 2026-06-29: PASS. The native default Source Pulse registry now exposes texture, mesh, audio, material, and scene rows, and all five are planned by the shared clean-break mapping from Task 1.
 
 ### Task 3: Reviewed Source Registry Registration
 
