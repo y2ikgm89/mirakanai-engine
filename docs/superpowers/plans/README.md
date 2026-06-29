@@ -346,6 +346,7 @@ Recent completed 2D Production Engine Capability Gap Cluster v1 Phase 6 evidence
 | Retained first-party UI runtime/editor production roadmap evidence | [First-Party UI Runtime And Editor Production Roadmap v1](2026-06-12-first-party-ui-runtime-editor-production-roadmap-v1.md) |
 | Completed highest-level runtime UI/editor platform production closeout | [First-Party Runtime UI And Editor Platform Production v1](2026-06-24-first-party-runtime-ui-and-editor-platform-production-v1.md) |
 | Completed original 2D commercial authoring/live-iteration evidence | [Original 2D Commercial Authoring And Live Iteration v1](2026-06-24-original-2d-commercial-authoring-live-iteration-v1.md) |
+| Candidate 2D commercial production excellence roadmap | [2D Commercial Production Excellence v1](2026-06-29-2d-commercial-production-excellence-v1.md) (candidate only; does not change `currentActivePlan`, readiness counters, or `unsupportedProductionGaps`) |
 | Historical Physics 1.0 Jolt exclusion evidence (`physics-jolt-adapter-gate-v1`) | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Engine save settings profile implementation evidence | [Engine Save Settings Profile v1](2026-05-23-engine-save-settings-profile-v1.md) |
 | Engine UI game menu HUD implementation evidence | [Engine UI Game Menu HUD v1](2026-05-23-engine-ui-game-menu-hud-v1.md) |
