@@ -1543,6 +1543,240 @@
         "broad-commercial-2d-readiness"
       ]
     },
+    "twoDCommercialProductionAtlasPacking": {
+      "schemaVersion": 1,
+      "capabilityId": "2d-commercial-production-atlas-packing-v1",
+      "packingSetId": "sample-2d-desktop-runtime-package-2d-commercial-production-atlas-packing",
+      "sourceAssetManifestSetId": "sample-2d-desktop-runtime-package-2d-commercial-source-assets",
+      "deterministicCookSetId": "sample-2d-desktop-runtime-package-2d-commercial-deterministic-cook",
+      "packageIndexPath": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+      "atlasRows": [
+        {
+          "id": "player-production-atlas",
+          "cookOutputId": "player-texture-cook",
+          "sourceManifestIds": [
+            "player-sprite-source",
+            "player-sprite-sheet-source",
+            "player-atlas-page-source"
+          ],
+          "runtimePackageFile": "runtime/assets/2d/player.texture.geasset",
+          "textureFormatTarget": "rgba8_unorm",
+          "maxSide": 2048,
+          "paddingPixels": 2,
+          "bleedPixels": 1,
+          "rotationPolicy": "disabled",
+          "powerOfTwoPolicy": "require-power-of-two-pages",
+          "mipPolicy": "base-level-only",
+          "deterministicPlacement": true,
+          "pages": [
+            {
+              "id": "player-production-page-0",
+              "pageIndex": 0,
+              "width": 1024,
+              "height": 1024,
+              "powerOfTwo": true,
+              "paddingPixels": 2,
+              "bleedPixels": 1
+            },
+            {
+              "id": "player-production-page-1",
+              "pageIndex": 1,
+              "width": 1024,
+              "height": 1024,
+              "powerOfTwo": true,
+              "paddingPixels": 2,
+              "bleedPixels": 1
+            }
+          ],
+          "placements": [
+            {
+              "id": "player-idle-production-placement",
+              "sourceManifestId": "player-sprite-source",
+              "pageId": "player-production-page-0",
+              "x": 2,
+              "y": 2,
+              "width": 64,
+              "height": 64,
+              "paddedX": 0,
+              "paddedY": 0,
+              "paddedWidth": 68,
+              "paddedHeight": 68,
+              "rotated": false
+            },
+            {
+              "id": "player-sheet-production-placement",
+              "sourceManifestId": "player-sprite-sheet-source",
+              "pageId": "player-production-page-0",
+              "x": 72,
+              "y": 2,
+              "width": 128,
+              "height": 64,
+              "paddedX": 70,
+              "paddedY": 0,
+              "paddedWidth": 132,
+              "paddedHeight": 68,
+              "rotated": false
+            },
+            {
+              "id": "player-atlas-page-production-placement",
+              "sourceManifestId": "player-atlas-page-source",
+              "pageId": "player-production-page-1",
+              "x": 2,
+              "y": 2,
+              "width": 256,
+              "height": 256,
+              "paddedX": 0,
+              "paddedY": 0,
+              "paddedWidth": 260,
+              "paddedHeight": 260,
+              "rotated": false
+            }
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-atlas-residency-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "hud-ui-production-atlas",
+          "cookOutputId": "hud-ui-atlas-cook",
+          "sourceManifestIds": [
+            "hud-localization-source",
+            "hud-ui-glyph-source"
+          ],
+          "runtimePackageFile": "runtime/assets/2d/hud.uiatlas",
+          "textureFormatTarget": "rgba8_unorm",
+          "maxSide": 1024,
+          "paddingPixels": 2,
+          "bleedPixels": 1,
+          "rotationPolicy": "disabled",
+          "powerOfTwoPolicy": "keep-tight-bounds",
+          "mipPolicy": "base-level-only",
+          "deterministicPlacement": true,
+          "pages": [
+            {
+              "id": "hud-ui-production-page-0",
+              "pageIndex": 0,
+              "width": 512,
+              "height": 256,
+              "powerOfTwo": true,
+              "paddingPixels": 2,
+              "bleedPixels": 1
+            }
+          ],
+          "placements": [
+            {
+              "id": "hud-localization-production-placement",
+              "sourceManifestId": "hud-localization-source",
+              "pageId": "hud-ui-production-page-0",
+              "x": 2,
+              "y": 2,
+              "width": 128,
+              "height": 32,
+              "paddedX": 0,
+              "paddedY": 0,
+              "paddedWidth": 132,
+              "paddedHeight": 36,
+              "rotated": false
+            },
+            {
+              "id": "hud-glyph-production-placement",
+              "sourceManifestId": "hud-ui-glyph-source",
+              "pageId": "hud-ui-production-page-0",
+              "x": 136,
+              "y": 2,
+              "width": 64,
+              "height": 64,
+              "paddedX": 134,
+              "paddedY": 0,
+              "paddedWidth": 68,
+              "paddedHeight": 68,
+              "rotated": false
+            }
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
+          ]
+        }
+      ],
+      "qualityGateRows": [
+        {
+          "id": "padding-and-bleed-control",
+          "status": "ready",
+          "evidence": "Selected production atlas rows record paddingPixels=2 and bleedPixels=1, and pack_production_sprite_atlas_rgba8 extrudes decoded RGBA8 edge pixels through padded rects."
+        },
+        {
+          "id": "rotation-policy-disabled",
+          "status": "ready",
+          "evidence": "Rotation is an explicit disabled policy and every selected placement records rotated=false."
+        },
+        {
+          "id": "power-of-two-policy-recorded",
+          "status": "ready",
+          "evidence": "Player atlas rows select require-power-of-two-pages with 1024x1024 pages; UI atlas rows record keep-tight-bounds."
+        },
+        {
+          "id": "multiple-pages",
+          "status": "ready",
+          "evidence": "The selected player texture cook output records two deterministic atlas pages."
+        },
+        {
+          "id": "deterministic-placement",
+          "status": "ready",
+          "evidence": "Placements are manifest rows keyed by source manifest ids and produced by deterministic decoded RGBA8 packing order."
+        },
+        {
+          "id": "texture-format-target",
+          "status": "ready",
+          "evidence": "Selected atlas rows target rgba8_unorm only."
+        },
+        {
+          "id": "mip-policy-base-level-only",
+          "status": "ready",
+          "evidence": "Selected atlas rows record base-level-only mip policy; generated mips remain outside this contract."
+        },
+        {
+          "id": "package-inclusion",
+          "status": "ready",
+          "evidence": "Atlas runtimePackageFile rows reference manifest runtimePackageFiles and deterministic cook output paths."
+        }
+      ],
+      "packageInclusion": {
+        "mode": "manifest-runtime-package-file-coverage",
+        "runtimePackageFiles": [
+          "runtime/assets/2d/player.texture.geasset",
+          "runtime/assets/2d/hud.uiatlas"
+        ],
+        "cookOutputIds": [
+          "player-texture-cook",
+          "hud-ui-atlas-cook"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-native-2d-sprite-smoke"
+        ],
+        "evidence": "Selected production atlas package inclusion is proved only through manifest runtimePackageFiles rows and deterministic cook output rows."
+      },
+      "unsupportedClaims": [
+        "runtime-source-parsing",
+        "runtime-source-image-decoding",
+        "external-engine-project-import",
+        "external-asset-download",
+        "marketplace-asset-ingestion",
+        "arbitrary-script-execution",
+        "renderer-rhi-residency",
+        "native-handle-access",
+        "broad-production-atlas-packing",
+        "broad-commercial-2d-readiness"
+      ]
+    },
     "generatedGamePlaytestLoop": {
       "schemaVersion": 1,
       "capabilityId": "ai-generated-game-playtest-loop-v1",

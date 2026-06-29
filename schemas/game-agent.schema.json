@@ -1641,6 +1641,408 @@
             }
           }
         },
+        "twoDCommercialProductionAtlasPacking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "packingSetId",
+            "sourceAssetManifestSetId",
+            "deterministicCookSetId",
+            "packageIndexPath",
+            "atlasRows",
+            "qualityGateRows",
+            "packageInclusion",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "2d-commercial-production-atlas-packing-v1"
+            },
+            "packingSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-production-atlas-packing$"
+            },
+            "sourceAssetManifestSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-source-assets$"
+            },
+            "deterministicCookSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-deterministic-cook$"
+            },
+            "packageIndexPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+            },
+            "atlasRows": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "cookOutputId",
+                  "sourceManifestIds",
+                  "runtimePackageFile",
+                  "textureFormatTarget",
+                  "maxSide",
+                  "paddingPixels",
+                  "bleedPixels",
+                  "rotationPolicy",
+                  "powerOfTwoPolicy",
+                  "mipPolicy",
+                  "deterministicPlacement",
+                  "pages",
+                  "placements",
+                  "validationRecipeIds"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "cookOutputId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "sourceManifestIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "runtimePackageFile": {
+                    "type": "string",
+                    "pattern": "^runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "textureFormatTarget": {
+                    "type": "string",
+                    "const": "rgba8_unorm"
+                  },
+                  "maxSide": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 16384
+                  },
+                  "paddingPixels": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "bleedPixels": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "rotationPolicy": {
+                    "type": "string",
+                    "const": "disabled"
+                  },
+                  "powerOfTwoPolicy": {
+                    "type": "string",
+                    "enum": ["keep-tight-bounds", "require-power-of-two-pages"]
+                  },
+                  "mipPolicy": {
+                    "type": "string",
+                    "const": "base-level-only"
+                  },
+                  "deterministicPlacement": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "pages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "pageIndex",
+                        "width",
+                        "height",
+                        "powerOfTwo",
+                        "paddingPixels",
+                        "bleedPixels"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]*$"
+                        },
+                        "pageIndex": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "width": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 16384
+                        },
+                        "height": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 16384
+                        },
+                        "powerOfTwo": {
+                          "type": "boolean"
+                        },
+                        "paddingPixels": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "bleedPixels": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  },
+                  "placements": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "sourceManifestId",
+                        "pageId",
+                        "x",
+                        "y",
+                        "width",
+                        "height",
+                        "paddedX",
+                        "paddedY",
+                        "paddedWidth",
+                        "paddedHeight",
+                        "rotated"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]*$"
+                        },
+                        "sourceManifestId": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]*$"
+                        },
+                        "pageId": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]*$"
+                        },
+                        "x": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "y": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "width": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "height": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "paddedX": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "paddedY": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "paddedWidth": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "paddedHeight": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "rotated": {
+                          "type": "boolean",
+                          "const": false
+                        }
+                      }
+                    }
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            },
+            "qualityGateRows": {
+              "type": "array",
+              "minItems": 8,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "status", "evidence"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "enum": [
+                      "padding-and-bleed-control",
+                      "rotation-policy-disabled",
+                      "power-of-two-policy-recorded",
+                      "multiple-pages",
+                      "deterministic-placement",
+                      "texture-format-target",
+                      "mip-policy-base-level-only",
+                      "package-inclusion"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "ready"
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "packageInclusion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "runtimePackageFiles", "cookOutputIds", "validationRecipeIds", "evidence"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "manifest-runtime-package-file-coverage"
+                },
+                "runtimePackageFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  }
+                },
+                "cookOutputIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "runtime-source-parsing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "runtime-source-image-decoding"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-engine-project-import"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-asset-download"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "marketplace-asset-ingestion"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "arbitrary-script-execution"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "renderer-rhi-residency"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "native-handle-access"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-production-atlas-packing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-commercial-2d-readiness"
+                  }
+                }
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "runtime-source-parsing",
+                  "runtime-source-image-decoding",
+                  "external-engine-project-import",
+                  "external-asset-download",
+                  "marketplace-asset-ingestion",
+                  "arbitrary-script-execution",
+                  "renderer-rhi-residency",
+                  "native-handle-access",
+                  "broad-production-atlas-packing",
+                  "broad-commercial-2d-readiness"
+                ]
+              }
+            }
+          }
+        },
         "generatedGamePlaytestLoop": {
           "type": "object",
           "additionalProperties": false,

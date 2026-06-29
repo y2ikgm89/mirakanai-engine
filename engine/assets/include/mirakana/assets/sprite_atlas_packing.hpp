@@ -66,4 +66,93 @@ struct SpriteAtlasRgba8PackingOutput {
 pack_sprite_atlas_rgba8_max_side(std::span<const SpriteAtlasPackingItemView> items,
                                  std::uint32_t max_side = sprite_atlas_packing_max_side);
 
+enum class ProductionSpriteAtlasPowerOfTwoPolicy : std::uint8_t {
+    keep_tight_bounds,
+    require_power_of_two_pages,
+};
+
+enum class ProductionSpriteAtlasRotationPolicy : std::uint8_t {
+    disabled,
+};
+
+enum class ProductionSpriteAtlasTextureFormat : std::uint8_t {
+    rgba8_unorm,
+};
+
+enum class ProductionSpriteAtlasMipPolicy : std::uint8_t {
+    base_level_only,
+};
+
+enum class ProductionSpriteAtlasPackingDiagnosticCode : std::uint8_t {
+    ok,
+    empty_items,
+    too_many_items,
+    zero_dimension,
+    dimension_exceeds_limit,
+    atlas_exceeds_max_side,
+    rgba_byte_size_mismatch,
+    invalid_padding,
+    invalid_bleed,
+    page_count_exceeds_limit,
+    unsupported_power_of_two_policy,
+    unsupported_rotation_policy,
+    unsupported_texture_format,
+    unsupported_mip_policy,
+};
+
+struct ProductionSpriteAtlasPackingDiagnostic {
+    ProductionSpriteAtlasPackingDiagnosticCode code{ProductionSpriteAtlasPackingDiagnosticCode::ok};
+    std::string message;
+};
+
+struct ProductionSpriteAtlasPackingPolicy {
+    std::uint32_t max_side{sprite_atlas_packing_max_side};
+    std::uint32_t padding_pixels{2};
+    std::uint32_t bleed_pixels{1};
+    std::uint32_t max_pages{1};
+    ProductionSpriteAtlasPowerOfTwoPolicy power_of_two_policy{ProductionSpriteAtlasPowerOfTwoPolicy::keep_tight_bounds};
+    ProductionSpriteAtlasRotationPolicy rotation_policy{ProductionSpriteAtlasRotationPolicy::disabled};
+    ProductionSpriteAtlasTextureFormat texture_format{ProductionSpriteAtlasTextureFormat::rgba8_unorm};
+    ProductionSpriteAtlasMipPolicy mip_policy{ProductionSpriteAtlasMipPolicy::base_level_only};
+};
+
+struct ProductionSpriteAtlasPage {
+    std::uint32_t page_index{0};
+    TextureSourceDocument atlas;
+    ProductionSpriteAtlasPowerOfTwoPolicy power_of_two_policy{ProductionSpriteAtlasPowerOfTwoPolicy::keep_tight_bounds};
+    ProductionSpriteAtlasRotationPolicy rotation_policy{ProductionSpriteAtlasRotationPolicy::disabled};
+    ProductionSpriteAtlasTextureFormat texture_format{ProductionSpriteAtlasTextureFormat::rgba8_unorm};
+    ProductionSpriteAtlasMipPolicy mip_policy{ProductionSpriteAtlasMipPolicy::base_level_only};
+    std::uint32_t padding_pixels{0};
+    std::uint32_t bleed_pixels{0};
+};
+
+struct ProductionSpriteAtlasPlacement {
+    std::uint32_t page_index{0};
+    std::uint32_t x{0};
+    std::uint32_t y{0};
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    std::uint32_t padded_x{0};
+    std::uint32_t padded_y{0};
+    std::uint32_t padded_width{0};
+    std::uint32_t padded_height{0};
+    bool rotated{false};
+};
+
+struct ProductionSpriteAtlasPackingOutput {
+    std::vector<ProductionSpriteAtlasPage> pages;
+    /// Parallel to the input `items` span (same length, same order).
+    std::vector<ProductionSpriteAtlasPlacement> placements;
+};
+
+/// Deterministic production sprite atlas packing for already-decoded RGBA8 frames.
+/// The first production policy supports explicit padding/bleed, multi-page output,
+/// optional power-of-two page expansion, disabled rotation, RGBA8 targets, and
+/// base-level-only mips. It does not decode source image files or create runtime
+/// renderer/RHI residency.
+[[nodiscard]] std::variant<ProductionSpriteAtlasPackingOutput, ProductionSpriteAtlasPackingDiagnostic>
+pack_production_sprite_atlas_rgba8(std::span<const SpriteAtlasPackingItemView> items,
+                                   const ProductionSpriteAtlasPackingPolicy& policy = {});
+
 } // namespace mirakana
