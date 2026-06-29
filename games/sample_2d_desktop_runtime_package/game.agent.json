@@ -1947,6 +1947,264 @@
         "broad-commercial-2d-readiness"
       ]
     },
+    "twoDCommercialLargeProjectFixtures": {
+      "schemaVersion": 1,
+      "capabilityId": "2d-commercial-large-project-fixtures-v1",
+      "fixtureSetId": "sample-2d-desktop-runtime-package-2d-commercial-large-project-fixtures",
+      "sourceAssetManifestSetId": "sample-2d-desktop-runtime-package-2d-commercial-source-assets",
+      "deterministicCookSetId": "sample-2d-desktop-runtime-package-2d-commercial-deterministic-cook",
+      "productionAtlasPackingSetId": "sample-2d-desktop-runtime-package-2d-commercial-production-atlas-packing",
+      "runtimeSourceParserExclusionSetId": "sample-2d-desktop-runtime-package-2d-commercial-runtime-source-parser-exclusion",
+      "packageIndexPath": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+      "scaleFixture": {
+        "mode": "first-party-large-project-fixture",
+        "assetCount": 512,
+        "sourceManifestRowCount": 512,
+        "cookOutputRowCount": 96,
+        "dependencyEdgeRowCount": 768,
+        "duplicateNameProbeCount": 4,
+        "invalidMetadataProbeCount": 4,
+        "deletionRenameChurnCycles": 3,
+        "runtimePackageFiles": [
+          "runtime/assets/2d/hud.uiatlas",
+          "runtime/assets/2d/jump.audio.geasset",
+          "runtime/assets/2d/level.tilemap",
+          "runtime/assets/2d/playable.scene",
+          "runtime/assets/2d/player.material",
+          "runtime/assets/2d/player.sprite_animation",
+          "runtime/assets/2d/player.texture.geasset",
+          "runtime/sample_2d_desktop_runtime_package.config",
+          "runtime/sample_2d_desktop_runtime_package.geindex",
+          "runtime/ui/default.uitheme",
+          "runtime/ui/main_menu.uidoc"
+        ],
+        "sampledSourceManifestIds": [
+          "player-sprite-source",
+          "player-sprite-sheet-source",
+          "player-atlas-page-source",
+          "level-tile-chunk-source",
+          "player-animation-clip-source",
+          "jump-audio-cue-source",
+          "hud-localization-source",
+          "hud-ui-glyph-source"
+        ],
+        "sampledCookOutputIds": [
+          "player-texture-cook",
+          "level-tilemap-cook",
+          "player-animation-cook",
+          "jump-audio-cook",
+          "hud-ui-atlas-cook"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-2d-sprite-atlas-residency-smoke",
+          "installed-native-2d-sprite-smoke"
+        ],
+        "evidence": "The selected first-party large-project fixture descriptor records a 512-asset synthetic source/cook graph, 96 cooked outputs, 768 dependency edges, duplicate-name probes, invalid-metadata probes, and deletion/rename churn cycles while sampling the committed source, cook, atlas, and runtime-package rows."
+      },
+      "edgeCaseRows": [
+        {
+          "id": "many-assets",
+          "caseKind": "many-assets",
+          "expectedOutcome": "stable-output",
+          "diagnosticId": "none",
+          "sourceManifestIds": [
+            "player-sprite-source",
+            "player-sprite-sheet-source",
+            "level-tile-chunk-source",
+            "hud-ui-glyph-source"
+          ],
+          "cookOutputIds": [
+            "player-texture-cook",
+            "level-tilemap-cook",
+            "hud-ui-atlas-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke"
+          ],
+          "evidence": "The fixture records deterministic replay coverage for many generated first-party asset rows without expanding the shipping runtime package surface."
+        },
+        {
+          "id": "duplicate-names",
+          "caseKind": "duplicate-names",
+          "expectedOutcome": "fail-closed-diagnostic",
+          "diagnosticId": "duplicate-asset-name",
+          "sourceManifestIds": [
+            "player-sprite-source",
+            "player-sprite-sheet-source"
+          ],
+          "cookOutputIds": [
+            "player-texture-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target"
+          ],
+          "evidence": "Duplicate source display-name probes must stop at reviewed diagnostics and never overwrite selected cooked outputs."
+        },
+        {
+          "id": "missing-dependencies",
+          "caseKind": "missing-dependencies",
+          "expectedOutcome": "fail-closed-diagnostic",
+          "diagnosticId": "missing-dependency",
+          "sourceManifestIds": [
+            "player-sprite-sheet-source",
+            "player-animation-clip-source"
+          ],
+          "cookOutputIds": [
+            "player-animation-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-animation-smoke"
+          ],
+          "evidence": "Missing declared dependency probes must reject the impacted cook row before package mutation."
+        },
+        {
+          "id": "invalid-metadata",
+          "caseKind": "invalid-metadata",
+          "expectedOutcome": "fail-closed-diagnostic",
+          "diagnosticId": "invalid-metadata",
+          "sourceManifestIds": [
+            "hud-localization-source",
+            "hud-ui-glyph-source"
+          ],
+          "cookOutputIds": [
+            "hud-ui-atlas-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
+          ],
+          "evidence": "Invalid metadata probes must produce deterministic diagnostics and keep UI atlas package rows unchanged."
+        },
+        {
+          "id": "asset-deletion-churn",
+          "caseKind": "asset-deletion-churn",
+          "expectedOutcome": "stable-output",
+          "diagnosticId": "asset-deletion-churn-reviewed",
+          "sourceManifestIds": [
+            "jump-audio-cue-source",
+            "level-tile-chunk-source"
+          ],
+          "cookOutputIds": [
+            "jump-audio-cook",
+            "level-tilemap-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke"
+          ],
+          "evidence": "Deletion churn is reviewed as manifest-keyed source removal and preserves deterministic package replay when unchanged keys remain valid."
+        },
+        {
+          "id": "asset-rename-churn",
+          "caseKind": "asset-rename-churn",
+          "expectedOutcome": "stable-output",
+          "diagnosticId": "asset-rename-churn-reviewed",
+          "sourceManifestIds": [
+            "player-atlas-page-source",
+            "hud-localization-source"
+          ],
+          "cookOutputIds": [
+            "player-texture-cook",
+            "hud-ui-atlas-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-atlas-residency-smoke"
+          ],
+          "evidence": "Rename churn is keyed by stable asset ids and source manifest ids, so display-name churn does not change replay hashes."
+        },
+        {
+          "id": "stable-output-replay",
+          "caseKind": "stable-output-replay",
+          "expectedOutcome": "stable-output",
+          "diagnosticId": "deterministic-replay",
+          "sourceManifestIds": [
+            "player-sprite-source",
+            "level-tile-chunk-source",
+            "hud-ui-glyph-source"
+          ],
+          "cookOutputIds": [
+            "player-texture-cook",
+            "level-tilemap-cook",
+            "hud-ui-atlas-cook"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-native-2d-sprite-smoke"
+          ],
+          "evidence": "Baseline and post-churn replay hashes are retained as equal hashes for selected first-party package rows."
+        }
+      ],
+      "stableOutput": {
+        "mode": "deterministic-large-project-replay",
+        "baselineReplayHash": "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        "postChurnReplayHash": "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        "deterministicReplayReady": true,
+        "unchangedCookOutputIds": [
+          "player-texture-cook",
+          "level-tilemap-cook",
+          "player-animation-cook",
+          "jump-audio-cook",
+          "hud-ui-atlas-cook"
+        ],
+        "changedCookOutputIds": [],
+        "deletedSourceManifestIds": [
+          "jump-audio-cue-source"
+        ],
+        "renamedSourceManifestIds": [
+          "player-atlas-page-source"
+        ],
+        "diagnosticIds": [
+          "duplicate-asset-name",
+          "missing-dependency",
+          "invalid-metadata",
+          "deterministic-replay"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-native-2d-sprite-smoke"
+        ],
+        "evidence": "The retained replay rows keep the selected package hash stable after reviewed deletion/rename churn and keep duplicate, missing-dependency, and invalid-metadata probes as fail-closed diagnostics."
+      },
+      "cleanRoomPolicy": {
+        "sourceMaterial": "first-party-fixture-descriptors-only",
+        "thirdPartyDependenciesAdded": false,
+        "externalEngineCodeAssetsSamplesUi": "blocked",
+        "compatibilityParityEndorsementClaims": "blocked",
+        "legalReviewStatus": "not-legal-advice-no-new-third-party-material",
+        "evidence": "The fixture descriptor adds no third-party dependency, no external engine material, no runtime parser, and no legal approval claim."
+      },
+      "unsupportedClaims": [
+        "runtime-source-parsing",
+        "runtime-source-image-decoding",
+        "external-engine-project-import",
+        "external-asset-download",
+        "marketplace-asset-ingestion",
+        "arbitrary-script-execution",
+        "package-script-execution",
+        "native-handle-access",
+        "renderer-rhi-residency",
+        "broad-large-project-readiness",
+        "external-engine-compatibility-claim",
+        "legal-approval-automation",
+        "broad-commercial-2d-readiness"
+      ]
+    },
     "generatedGamePlaytestLoop": {
       "schemaVersion": 1,
       "capabilityId": "ai-generated-game-playtest-loop-v1",

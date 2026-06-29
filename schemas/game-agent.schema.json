@@ -2433,6 +2433,472 @@
             }
           }
         },
+        "twoDCommercialLargeProjectFixtures": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "fixtureSetId",
+            "sourceAssetManifestSetId",
+            "deterministicCookSetId",
+            "productionAtlasPackingSetId",
+            "runtimeSourceParserExclusionSetId",
+            "packageIndexPath",
+            "scaleFixture",
+            "edgeCaseRows",
+            "stableOutput",
+            "cleanRoomPolicy",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "2d-commercial-large-project-fixtures-v1"
+            },
+            "fixtureSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-large-project-fixtures$"
+            },
+            "sourceAssetManifestSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-source-assets$"
+            },
+            "deterministicCookSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-deterministic-cook$"
+            },
+            "productionAtlasPackingSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-production-atlas-packing$"
+            },
+            "runtimeSourceParserExclusionSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-runtime-source-parser-exclusion$"
+            },
+            "packageIndexPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+            },
+            "scaleFixture": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "assetCount",
+                "sourceManifestRowCount",
+                "cookOutputRowCount",
+                "dependencyEdgeRowCount",
+                "duplicateNameProbeCount",
+                "invalidMetadataProbeCount",
+                "deletionRenameChurnCycles",
+                "runtimePackageFiles",
+                "sampledSourceManifestIds",
+                "sampledCookOutputIds",
+                "validationRecipeIds",
+                "evidence"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "first-party-large-project-fixture"
+                },
+                "assetCount": {
+                  "type": "integer",
+                  "minimum": 256
+                },
+                "sourceManifestRowCount": {
+                  "type": "integer",
+                  "minimum": 256
+                },
+                "cookOutputRowCount": {
+                  "type": "integer",
+                  "minimum": 64
+                },
+                "dependencyEdgeRowCount": {
+                  "type": "integer",
+                  "minimum": 256
+                },
+                "duplicateNameProbeCount": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "invalidMetadataProbeCount": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "deletionRenameChurnCycles": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "runtimePackageFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  }
+                },
+                "sampledSourceManifestIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "sampledCookOutputIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "edgeCaseRows": {
+              "type": "array",
+              "minItems": 7,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "caseKind",
+                  "expectedOutcome",
+                  "diagnosticId",
+                  "sourceManifestIds",
+                  "cookOutputIds",
+                  "validationRecipeIds",
+                  "evidence"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "enum": [
+                      "many-assets",
+                      "duplicate-names",
+                      "missing-dependencies",
+                      "invalid-metadata",
+                      "asset-deletion-churn",
+                      "asset-rename-churn",
+                      "stable-output-replay"
+                    ]
+                  },
+                  "caseKind": {
+                    "type": "string",
+                    "enum": [
+                      "many-assets",
+                      "duplicate-names",
+                      "missing-dependencies",
+                      "invalid-metadata",
+                      "asset-deletion-churn",
+                      "asset-rename-churn",
+                      "stable-output-replay"
+                    ]
+                  },
+                  "expectedOutcome": {
+                    "type": "string",
+                    "enum": [
+                      "stable-output",
+                      "fail-closed-diagnostic"
+                    ]
+                  },
+                  "diagnosticId": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "duplicate-asset-name",
+                      "missing-dependency",
+                      "invalid-metadata",
+                      "asset-deletion-churn-reviewed",
+                      "asset-rename-churn-reviewed",
+                      "deterministic-replay"
+                    ]
+                  },
+                  "sourceManifestIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "cookOutputIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "stableOutput": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "baselineReplayHash",
+                "postChurnReplayHash",
+                "deterministicReplayReady",
+                "unchangedCookOutputIds",
+                "changedCookOutputIds",
+                "deletedSourceManifestIds",
+                "renamedSourceManifestIds",
+                "diagnosticIds",
+                "validationRecipeIds",
+                "evidence"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "deterministic-large-project-replay"
+                },
+                "baselineReplayHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "postChurnReplayHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "deterministicReplayReady": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "unchangedCookOutputIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "changedCookOutputIds": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "deletedSourceManifestIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "renamedSourceManifestIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "diagnosticIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "duplicate-asset-name",
+                      "missing-dependency",
+                      "invalid-metadata",
+                      "deterministic-replay"
+                    ]
+                  }
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "cleanRoomPolicy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sourceMaterial",
+                "thirdPartyDependenciesAdded",
+                "externalEngineCodeAssetsSamplesUi",
+                "compatibilityParityEndorsementClaims",
+                "legalReviewStatus",
+                "evidence"
+              ],
+              "properties": {
+                "sourceMaterial": {
+                  "type": "string",
+                  "const": "first-party-fixture-descriptors-only"
+                },
+                "thirdPartyDependenciesAdded": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "externalEngineCodeAssetsSamplesUi": {
+                  "type": "string",
+                  "const": "blocked"
+                },
+                "compatibilityParityEndorsementClaims": {
+                  "type": "string",
+                  "const": "blocked"
+                },
+                "legalReviewStatus": {
+                  "type": "string",
+                  "const": "not-legal-advice-no-new-third-party-material"
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "runtime-source-parsing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "runtime-source-image-decoding"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-engine-project-import"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-asset-download"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "marketplace-asset-ingestion"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "arbitrary-script-execution"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "package-script-execution"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "native-handle-access"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "renderer-rhi-residency"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-large-project-readiness"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-engine-compatibility-claim"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "legal-approval-automation"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-commercial-2d-readiness"
+                  }
+                }
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "runtime-source-parsing",
+                  "runtime-source-image-decoding",
+                  "external-engine-project-import",
+                  "external-asset-download",
+                  "marketplace-asset-ingestion",
+                  "arbitrary-script-execution",
+                  "package-script-execution",
+                  "native-handle-access",
+                  "renderer-rhi-residency",
+                  "broad-large-project-readiness",
+                  "external-engine-compatibility-claim",
+                  "legal-approval-automation",
+                  "broad-commercial-2d-readiness"
+                ]
+              }
+            }
+          }
+        },
         "generatedGamePlaytestLoop": {
           "type": "object",
           "additionalProperties": false,
