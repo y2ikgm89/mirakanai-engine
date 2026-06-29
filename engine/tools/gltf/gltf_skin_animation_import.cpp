@@ -4,6 +4,7 @@
 #include "mirakana/tools/gltf_skin_animation_import.hpp"
 
 #include "mirakana/math/vec.hpp"
+#include "mirakana/tools/asset_coordinate_normalization.hpp"
 
 #include <algorithm>
 #include <array>
@@ -67,10 +68,9 @@ void require_loaded_buffer_view(const fastgltf::Asset& asset, std::size_t buffer
 
 void require_accessor_buffer_view(const fastgltf::Asset& asset, const fastgltf::Accessor& accessor,
                                   std::string_view name) {
-    if (!accessor.bufferViewIndex.has_value()) {
-        throw std::runtime_error(std::string(name) + " accessor does not contain loadable buffer data");
+    if (accessor.bufferViewIndex.has_value()) {
+        require_loaded_buffer_view(asset, accessor.bufferViewIndex.value(), name);
     }
-    require_loaded_buffer_view(asset, accessor.bufferViewIndex.value(), name);
 }
 
 [[nodiscard]] Mat4 mat4_from_fastgltf_column_major(const fastgltf::math::fmat4x4& source) noexcept {
@@ -125,8 +125,9 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
     return parents;
 }
 
-[[nodiscard]] bool joint_rest_from_gltf_node(const fastgltf::Node& node, JointLocalTransform& out_rest,
-                                             std::string& diagnostic) {
+[[nodiscard]] bool joint_rest_from_gltf_node(const fastgltf::Node& node,
+                                             const AssetCoordinateNormalizationPlan& normalization,
+                                             JointLocalTransform& out_rest, std::string& diagnostic) {
     const auto* trs = std::get_if<fastgltf::TRS>(&node.transform);
     if (trs == nullptr) {
         diagnostic =
@@ -161,9 +162,9 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
 
     const float rz = 2.0F * std::atan2(qz / quat_len, qw / quat_len);
 
-    out_rest.translation = Vec3{t[0], t[1], t[2]};
+    out_rest.translation = normalize_asset_position(normalization, Vec3{.x = t[0], .y = t[1], .z = t[2]});
     out_rest.rotation_z_radians = rz;
-    out_rest.scale = Vec3{s[0], s[1], s[2]};
+    out_rest.scale = normalize_asset_scale(normalization, Vec3{.x = s[0], .y = s[1], .z = s[2]});
 
     if (out_rest.scale.x <= 0.0F || out_rest.scale.y <= 0.0F || out_rest.scale.z <= 0.0F) {
         diagnostic =
@@ -199,6 +200,7 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
 }
 
 [[nodiscard]] bool build_skeleton_desc_from_gltf_skin(const fastgltf::Asset& gltf, const std::size_t skin_index,
+                                                      const AssetCoordinateNormalizationPlan& normalization,
                                                       AnimationSkeletonDesc& out_skeleton, std::string& diagnostic) {
     if (skin_index >= gltf.skins.size()) {
         diagnostic = "glTF skin index is out of range";
@@ -229,7 +231,7 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
         }
         JointLocalTransform rest{};
         std::string rest_diagnostic;
-        if (!joint_rest_from_gltf_node(gltf.nodes[node_index], rest, rest_diagnostic)) {
+        if (!joint_rest_from_gltf_node(gltf.nodes[node_index], normalization, rest, rest_diagnostic)) {
             diagnostic = std::move(rest_diagnostic);
             return false;
         }
@@ -304,7 +306,8 @@ void append_vertex_influences_from_indices_and_weights(const std::uint32_t j0, c
 
 GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_payload(
     const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
-    const std::size_t skin_index, const std::size_t mesh_index, const std::size_t primitive_index) {
+    const std::size_t skin_index, const std::size_t mesh_index, const std::size_t primitive_index,
+    const AssetImportMeshPresetV1& mesh_preset) {
     GltfSkinSkeletonAndSkinPayloadImportReport out;
 #if !MK_HAS_ASSET_IMPORTERS
     (void)document_bytes_utf8;
@@ -312,6 +315,7 @@ GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_pa
     (void)skin_index;
     (void)mesh_index;
     (void)primitive_index;
+    (void)mesh_preset;
     out.diagnostic = "asset importers are disabled for this MK_tools build";
     return out;
 #else
@@ -350,6 +354,13 @@ GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_pa
     }
 
     try {
+        const auto normalization = make_asset_coordinate_normalization_plan(mesh_preset);
+        if (mesh_preset.up_axis == AssetImportMeshUpAxis::z) {
+            out.diagnostic =
+                "z-up glTF skin import requires a 3D quaternion skin pipeline; rotation_z skeleton import cannot "
+                "represent baked project coordinates";
+            return out;
+        }
         const auto& skin = gltf.skins[skin_index];
         const std::size_t joint_count = skin.joints.size();
 
@@ -373,7 +384,7 @@ GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_pa
         require_accessor_buffer_view(gltf, joints_accessor, "glTF JOINTS_0");
         require_accessor_buffer_view(gltf, weights_accessor, "glTF WEIGHTS_0");
 
-        if (!build_skeleton_desc_from_gltf_skin(gltf, skin_index, out.skeleton, out.diagnostic)) {
+        if (!build_skeleton_desc_from_gltf_skin(gltf, skin_index, normalization, out.skeleton, out.diagnostic)) {
             return out;
         }
 
@@ -392,7 +403,8 @@ GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_pa
             require_accessor_buffer_view(gltf, accessor, "glTF inverseBindMatrices");
             std::size_t written = 0;
             for (const auto& matrix : fastgltf::iterateAccessor<fastgltf::math::fmat4x4>(gltf, accessor)) {
-                inverse_bind_matrices[written] = mat4_from_fastgltf_column_major(matrix);
+                inverse_bind_matrices[written] =
+                    normalize_asset_inverse_bind_matrix(normalization, mat4_from_fastgltf_column_major(matrix));
                 ++written;
             }
             if (written != joint_count) {
@@ -479,16 +491,16 @@ GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_pa
 #endif
 }
 
-GltfAnimationJointTracksImportReport
-import_gltf_animation_joint_tracks_for_skin(const std::string_view document_bytes_utf8,
-                                            const std::string_view source_path_for_external_buffers,
-                                            const std::size_t skin_index, const std::size_t animation_index) {
+GltfAnimationJointTracksImportReport import_gltf_animation_joint_tracks_for_skin(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t skin_index, const std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfAnimationJointTracksImportReport out;
 #if !MK_HAS_ASSET_IMPORTERS
     (void)document_bytes_utf8;
     (void)source_path_for_external_buffers;
     (void)skin_index;
     (void)animation_index;
+    (void)mesh_preset;
     out.diagnostic = "asset importers are disabled for this MK_tools build";
     return out;
 #else
@@ -515,6 +527,13 @@ import_gltf_animation_joint_tracks_for_skin(const std::string_view document_byte
     }
 
     try {
+        const auto normalization = make_asset_coordinate_normalization_plan(mesh_preset);
+        if (mesh_preset.up_axis == AssetImportMeshUpAxis::z) {
+            out.diagnostic =
+                "z-up glTF skin animation import requires a 3D quaternion skin pipeline; rotation_z joint tracks "
+                "cannot represent baked project coordinates";
+            return out;
+        }
         std::unordered_map<std::size_t, AnimationJointTrackDesc> tracks_by_joint;
 
         const auto& animation = gltf.animations[animation_index];
@@ -586,8 +605,10 @@ import_gltf_animation_joint_tracks_for_skin(const std::string_view document_byte
                 }
                 std::size_t index = 0;
                 for (const auto& value : fastgltf::iterateAccessor<fastgltf::math::fvec3>(gltf, output_accessor)) {
+                    const auto normalized_translation =
+                        normalize_asset_position(normalization, Vec3{.x = value[0], .y = value[1], .z = value[2]});
                     track.translation_keyframes.push_back(
-                        Vec3Keyframe{.time_seconds = times[index], .value = Vec3{value[0], value[1], value[2]}});
+                        Vec3Keyframe{.time_seconds = times[index], .value = normalized_translation});
                     ++index;
                 }
             } else if (channel.path == fastgltf::AnimationPath::Rotation) {
@@ -645,8 +666,10 @@ import_gltf_animation_joint_tracks_for_skin(const std::string_view document_byte
                         out.diagnostic = "glTF scale animation output must be strictly positive component-wise";
                         return out;
                     }
+                    const auto normalized_scale =
+                        normalize_asset_scale(normalization, Vec3{.x = value[0], .y = value[1], .z = value[2]});
                     track.scale_keyframes.push_back(
-                        Vec3Keyframe{.time_seconds = times[index], .value = Vec3{value[0], value[1], value[2]}});
+                        Vec3Keyframe{.time_seconds = times[index], .value = normalized_scale});
                     ++index;
                 }
             } else {
@@ -669,7 +692,7 @@ import_gltf_animation_joint_tracks_for_skin(const std::string_view document_byte
         }
 
         AnimationSkeletonDesc skeleton_for_tracks;
-        if (!build_skeleton_desc_from_gltf_skin(gltf, skin_index, skeleton_for_tracks, out.diagnostic)) {
+        if (!build_skeleton_desc_from_gltf_skin(gltf, skin_index, normalization, skeleton_for_tracks, out.diagnostic)) {
             return out;
         }
 

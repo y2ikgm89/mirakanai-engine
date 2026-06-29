@@ -67,6 +67,7 @@ struct AssetImportPresetsDocumentV1 {
 };
 
 struct AssetImportPresetReviewV1 {
+    AssetImportMeshPresetV1 mesh;
     std::vector<std::string> metadata;
     std::vector<std::string> diagnostics;
     bool ready{true};
@@ -83,6 +84,7 @@ asset_import_mesh_material_extraction_label(AssetImportMeshMaterialExtraction va
 [[nodiscard]] std::string_view asset_import_audio_decode_mode_label(AssetImportAudioDecodeMode value) noexcept;
 [[nodiscard]] std::string_view asset_import_audio_sample_format_label(AssetImportAudioSampleFormat value) noexcept;
 
+[[nodiscard]] bool is_valid_asset_import_mesh_preset_v1(const AssetImportMeshPresetV1& preset) noexcept;
 [[nodiscard]] std::vector<std::string>
 validate_asset_import_presets_document(const AssetImportPresetsDocumentV1& document);
 [[nodiscard]] std::string serialize_asset_import_presets_document(const AssetImportPresetsDocumentV1& document);

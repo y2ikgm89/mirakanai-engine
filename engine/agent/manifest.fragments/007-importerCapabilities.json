@@ -17,14 +17,14 @@
     ],
     "presetDocument": {
       "format": "GameEngine.AssetImportPresets.v1",
-      "status": "implemented-value-contract",
+      "status": "implemented-value-contract-selected-mesh-consumption",
       "ownerModule": "MK_assets",
       "reviewApis": [
         "mirakana::validate_asset_import_presets_document",
         "mirakana::review_asset_import_preset_for_asset",
         "mirakana::editor::review_editor_asset_import_candidates"
       ],
-      "policy": "Project defaults and per-AssetKeyV2 texture, mesh, and audio preset overrides are metadata only until a matching tool implementation consumes them; unsupported combinations block import review instead of being ignored."
+      "policy": "Project defaults and per-AssetKeyV2 texture, mesh, and audio preset overrides remain reviewed first-party intent rows. Selected MK_tools glTF mesh, morph mesh CPU, and node transform animation import paths consume mesh unit_scale/up_axis to bake supported data into the project right-handed +Y-up meter convention. Texture/audio presets and unsupported transform paths remain value-only or fail closed; unsupported combinations block import review instead of being ignored."
     },
     "optionalDependencyFeature": "asset-importers",
     "plannedExternalImporters": [

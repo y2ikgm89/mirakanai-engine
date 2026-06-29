@@ -4395,11 +4395,15 @@ MK_TEST("editor asset import review applies import presets and blocks unsupporte
                ready.rows[1].preset_metadata.end());
     MK_REQUIRE(std::ranges::find(ready.rows[1].preset_metadata, "mesh.generate_tangents=true") !=
                ready.rows[1].preset_metadata.end());
+    MK_REQUIRE(ready.rows[1].mesh_preset.unit_scale == 0.01F);
+    MK_REQUIRE(ready.rows[1].mesh_preset.up_axis == mirakana::AssetImportMeshUpAxis::z);
     MK_REQUIRE(ready.import_plan.actions.size() == 2U);
     MK_REQUIRE(std::ranges::find(ready.import_plan.actions[0].preset_metadata, "texture.color_space=srgb") !=
                ready.import_plan.actions[0].preset_metadata.end());
     MK_REQUIRE(std::ranges::find(ready.import_plan.actions[1].preset_metadata, "mesh.unit_scale=0.01") !=
                ready.import_plan.actions[1].preset_metadata.end());
+    MK_REQUIRE(ready.import_plan.actions[1].mesh_preset.unit_scale == 0.01F);
+    MK_REQUIRE(ready.import_plan.actions[1].mesh_preset.up_axis == mirakana::AssetImportMeshUpAxis::z);
 
     presets.overrides.push_back(mirakana::AssetImportPresetOverrideV1{
         .asset_key = mirakana::AssetKeyV2{"assets/imported/theme"},

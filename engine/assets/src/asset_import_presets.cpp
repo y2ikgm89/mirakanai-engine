@@ -705,6 +705,12 @@ std::string_view asset_import_audio_sample_format_label(AssetImportAudioSampleFo
     return "invalid";
 }
 
+bool is_valid_asset_import_mesh_preset_v1(const AssetImportMeshPresetV1& preset) noexcept {
+    return std::isfinite(preset.unit_scale) && preset.unit_scale > 0.0F && preset.unit_scale <= 1000000.0F &&
+           valid_mesh_up_axis(preset.up_axis) && valid_mesh_material_extraction(preset.material_extraction) &&
+           (!preset.generate_tangents || preset.generate_normals);
+}
+
 std::vector<std::string> validate_asset_import_presets_document(const AssetImportPresetsDocumentV1& document) {
     std::vector<std::string> diagnostics;
     validate_texture_preset(diagnostics, "defaults.texture", document.defaults.texture);
@@ -885,6 +891,7 @@ AssetImportPresetReviewV1 review_asset_import_preset_for_asset(const AssetImport
     } else if (asset_kind == AssetKind::mesh) {
         const auto preset =
             override != nullptr && override->mesh.has_value() ? *override->mesh : document.defaults.mesh;
+        review.mesh = preset;
         review.metadata = mesh_metadata(preset);
         validate_mesh_preset(review.diagnostics, "asset.mesh", preset);
     } else if (asset_kind == AssetKind::audio) {

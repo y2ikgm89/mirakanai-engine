@@ -5,6 +5,7 @@
 
 #include "mirakana/animation/skeleton.hpp"
 #include "mirakana/animation/skin.hpp"
+#include "mirakana/assets/asset_import_presets.hpp"
 
 #include <cstddef>
 #include <string>
@@ -35,16 +36,15 @@ struct GltfAnimationJointTracksImportReport {
 /// Builds `AnimationSkeletonDesc` from `skins[skin_index].joints` node local TRS (parent links inferred from glTF
 /// `nodes[].children`) and `AnimationSkinPayloadDesc` from the given triangle primitive (`JOINTS_0` + `WEIGHTS_0`).
 /// Joint names are deterministic (`j0`, `j1`, …) for stable tooling output.
-[[nodiscard]] GltfSkinSkeletonAndSkinPayloadImportReport
-import_gltf_skin_skeleton_and_skin_payload(std::string_view document_bytes_utf8,
-                                           std::string_view source_path_for_external_buffers, std::size_t skin_index,
-                                           std::size_t mesh_index, std::size_t primitive_index);
+[[nodiscard]] GltfSkinSkeletonAndSkinPayloadImportReport import_gltf_skin_skeleton_and_skin_payload(
+    std::string_view document_bytes_utf8, std::string_view source_path_for_external_buffers, std::size_t skin_index,
+    std::size_t mesh_index, std::size_t primitive_index, const AssetImportMeshPresetV1& mesh_preset);
 
 /// Builds joint tracks for nodes targeted by `animations[animation_index]` that appear in `skins[skin_index].joints`.
 /// Channels targeting other nodes are ignored. Fails on duplicate (joint, path) pairs or unsupported sampler/path data.
 [[nodiscard]] GltfAnimationJointTracksImportReport
 import_gltf_animation_joint_tracks_for_skin(std::string_view document_bytes_utf8,
                                             std::string_view source_path_for_external_buffers, std::size_t skin_index,
-                                            std::size_t animation_index);
+                                            std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset);
 
 } // namespace mirakana

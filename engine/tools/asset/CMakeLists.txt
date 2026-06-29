@@ -1,4 +1,5 @@
 add_library(MK_tools_asset OBJECT
+    asset_coordinate_normalization.cpp
     asset_file_scanner.cpp
     asset_import_adapters.cpp
     asset_runtime_package_hot_reload_tool.cpp

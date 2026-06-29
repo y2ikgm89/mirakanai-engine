@@ -4,6 +4,7 @@
 #include "mirakana/tools/gltf_node_animation_import.hpp"
 
 #include "mirakana/math/vec.hpp"
+#include "mirakana/tools/asset_coordinate_normalization.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -68,15 +69,8 @@ void require_loaded_buffer_view(const fastgltf::Asset& asset, const std::size_t 
 
 void require_accessor_buffer_view(const fastgltf::Asset& asset, const fastgltf::Accessor& accessor,
                                   const std::string_view name) {
-    if (!accessor.bufferViewIndex.has_value()) {
-        throw std::runtime_error(std::string(name) + " accessor does not contain loadable buffer data");
-    }
-    require_loaded_buffer_view(asset, accessor.bufferViewIndex.value(), name);
-}
-
-void reject_sparse_accessor(const fastgltf::Accessor& accessor, const std::string_view name) {
-    if (accessor.sparse.has_value()) {
-        throw std::runtime_error(std::string(name) + " sparse accessors are unsupported for node animation import");
+    if (accessor.bufferViewIndex.has_value()) {
+        require_loaded_buffer_view(asset, accessor.bufferViewIndex.value(), name);
     }
 }
 
@@ -111,7 +105,6 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
 
 [[nodiscard]] std::vector<float> read_time_keys(const fastgltf::Asset& gltf, const fastgltf::Accessor& accessor,
                                                 std::string& diagnostic) {
-    reject_sparse_accessor(accessor, "glTF animation sampler input");
     if (accessor.type != fastgltf::AccessorType::Scalar || accessor.componentType != fastgltf::ComponentType::Float) {
         diagnostic = "glTF animation sampler input must be float scalar time keys";
         return {};
@@ -281,15 +274,15 @@ void append_vec3_transform_bindings(AnimationTransformBindingSourceDocument& bin
 
 } // namespace
 
-GltfNodeTransformAnimationImportReport
-import_gltf_node_transform_animation_tracks(const std::string_view document_bytes_utf8,
-                                            const std::string_view source_path_for_external_buffers,
-                                            const std::size_t animation_index) {
+GltfNodeTransformAnimationImportReport import_gltf_node_transform_animation_tracks(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfNodeTransformAnimationImportReport out;
 #if !MK_HAS_ASSET_IMPORTERS
     (void)document_bytes_utf8;
     (void)source_path_for_external_buffers;
     (void)animation_index;
+    (void)mesh_preset;
     out.diagnostic = "asset importers are disabled for this MK_tools build";
     return out;
 #else
@@ -305,6 +298,7 @@ import_gltf_node_transform_animation_tracks(const std::string_view document_byte
     }
 
     try {
+        const auto normalization = make_asset_coordinate_normalization_plan(mesh_preset);
         std::unordered_map<std::size_t, GltfNodeTransformAnimationTrack> tracks_by_node;
         const auto& animation = gltf.animations[animation_index];
         for (const auto& channel : animation.channels) {
@@ -330,7 +324,6 @@ import_gltf_node_transform_animation_tracks(const std::string_view document_byte
             const auto& input_accessor = require_accessor(gltf, sampler.inputAccessor, "glTF animation sampler input");
             const auto& output_accessor =
                 require_accessor(gltf, sampler.outputAccessor, "glTF animation sampler output");
-            reject_sparse_accessor(output_accessor, "glTF animation sampler output");
             require_accessor_buffer_view(gltf, output_accessor, "glTF animation sampler output");
             const auto times = read_time_keys(gltf, input_accessor, out.diagnostic);
             if (!out.diagnostic.empty()) {
@@ -356,8 +349,10 @@ import_gltf_node_transform_animation_tracks(const std::string_view document_byte
                 }
                 std::size_t index = 0;
                 for (const auto& value : fastgltf::iterateAccessor<fastgltf::math::fvec3>(gltf, output_accessor)) {
+                    const auto normalized_translation =
+                        normalize_asset_position(normalization, Vec3{.x = value[0], .y = value[1], .z = value[2]});
                     track.translation_keyframes.push_back(
-                        Vec3Keyframe{.time_seconds = times[index], .value = Vec3{value[0], value[1], value[2]}});
+                        Vec3Keyframe{.time_seconds = times[index], .value = normalized_translation});
                     ++index;
                 }
                 if (track.translation_keyframes.size() != times.size() ||
@@ -368,6 +363,12 @@ import_gltf_node_transform_animation_tracks(const std::string_view document_byte
             } else if (channel.path == fastgltf::AnimationPath::Rotation) {
                 if (!track.rotation_z_keyframes.empty()) {
                     out.diagnostic = "glTF animation declares duplicate rotation channels for the same node";
+                    return out;
+                }
+                if (mesh_preset.up_axis == AssetImportMeshUpAxis::z) {
+                    out.diagnostic =
+                        "z-up glTF rotation conversion requires quaternion clip import; rotation_z scalar import "
+                        "cannot represent baked project coordinates";
                     return out;
                 }
                 if (output_accessor.type != fastgltf::AccessorType::Vec4 ||
@@ -428,8 +429,10 @@ import_gltf_node_transform_animation_tracks(const std::string_view document_byte
                         out.diagnostic = "glTF scale animation output must be finite and strictly positive";
                         return out;
                     }
+                    const auto normalized_scale =
+                        normalize_asset_scale(normalization, Vec3{.x = value[0], .y = value[1], .z = value[2]});
                     track.scale_keyframes.push_back(
-                        Vec3Keyframe{.time_seconds = times[index], .value = Vec3{value[0], value[1], value[2]}});
+                        Vec3Keyframe{.time_seconds = times[index], .value = normalized_scale});
                     ++index;
                 }
                 if (track.scale_keyframes.size() != times.size() || !is_valid_vec3_keyframes(track.scale_keyframes)) {
@@ -476,15 +479,15 @@ import_gltf_node_transform_animation_tracks(const std::string_view document_byte
 #endif
 }
 
-GltfNodeTransformAnimationImport3dReport
-import_gltf_node_transform_animation_tracks_3d(const std::string_view document_bytes_utf8,
-                                               const std::string_view source_path_for_external_buffers,
-                                               const std::size_t animation_index) {
+GltfNodeTransformAnimationImport3dReport import_gltf_node_transform_animation_tracks_3d(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfNodeTransformAnimationImport3dReport out;
 #if !MK_HAS_ASSET_IMPORTERS
     (void)document_bytes_utf8;
     (void)source_path_for_external_buffers;
     (void)animation_index;
+    (void)mesh_preset;
     out.diagnostic = "asset importers are disabled for this MK_tools build";
     return out;
 #else
@@ -500,6 +503,7 @@ import_gltf_node_transform_animation_tracks_3d(const std::string_view document_b
     }
 
     try {
+        const auto normalization = make_asset_coordinate_normalization_plan(mesh_preset);
         std::unordered_map<std::size_t, GltfNodeTransformAnimationTrack3d> tracks_by_node;
         const auto& animation = gltf.animations[animation_index];
         for (const auto& channel : animation.channels) {
@@ -525,7 +529,6 @@ import_gltf_node_transform_animation_tracks_3d(const std::string_view document_b
             const auto& input_accessor = require_accessor(gltf, sampler.inputAccessor, "glTF animation sampler input");
             const auto& output_accessor =
                 require_accessor(gltf, sampler.outputAccessor, "glTF animation sampler output");
-            reject_sparse_accessor(output_accessor, "glTF animation sampler output");
             require_accessor_buffer_view(gltf, output_accessor, "glTF animation sampler output");
             const auto times = read_time_keys(gltf, input_accessor, out.diagnostic);
             if (!out.diagnostic.empty()) {
@@ -551,8 +554,10 @@ import_gltf_node_transform_animation_tracks_3d(const std::string_view document_b
                 }
                 std::size_t index = 0;
                 for (const auto& value : fastgltf::iterateAccessor<fastgltf::math::fvec3>(gltf, output_accessor)) {
+                    const auto normalized_translation =
+                        normalize_asset_position(normalization, Vec3{.x = value[0], .y = value[1], .z = value[2]});
                     track.translation_keyframes.push_back(
-                        Vec3Keyframe{.time_seconds = times[index], .value = Vec3{value[0], value[1], value[2]}});
+                        Vec3Keyframe{.time_seconds = times[index], .value = normalized_translation});
                     ++index;
                 }
                 if (track.translation_keyframes.size() != times.size() ||
@@ -585,7 +590,9 @@ import_gltf_node_transform_animation_tracks_3d(const std::string_view document_b
                         out.diagnostic = "glTF animated rotation quaternion must be normalized";
                         return out;
                     }
-                    track.rotation_keyframes.push_back(QuatKeyframe{.time_seconds = times[index], .value = quat});
+                    const auto normalized_rotation = normalize_asset_rotation(normalization, quat);
+                    track.rotation_keyframes.push_back(
+                        QuatKeyframe{.time_seconds = times[index], .value = normalized_rotation});
                     ++index;
                 }
                 if (track.rotation_keyframes.size() != times.size() ||
@@ -613,8 +620,10 @@ import_gltf_node_transform_animation_tracks_3d(const std::string_view document_b
                         out.diagnostic = "glTF scale animation output must be finite and strictly positive";
                         return out;
                     }
+                    const auto normalized_scale =
+                        normalize_asset_scale(normalization, Vec3{.x = value[0], .y = value[1], .z = value[2]});
                     track.scale_keyframes.push_back(
-                        Vec3Keyframe{.time_seconds = times[index], .value = Vec3{value[0], value[1], value[2]}});
+                        Vec3Keyframe{.time_seconds = times[index], .value = normalized_scale});
                     ++index;
                 }
                 if (track.scale_keyframes.size() != times.size() || !is_valid_vec3_keyframes(track.scale_keyframes)) {
@@ -661,13 +670,12 @@ import_gltf_node_transform_animation_tracks_3d(const std::string_view document_b
 #endif
 }
 
-GltfNodeTransformAnimationFloatClipImportReport
-import_gltf_node_transform_animation_float_clip(const std::string_view document_bytes_utf8,
-                                                const std::string_view source_path_for_external_buffers,
-                                                const std::size_t animation_index) {
+GltfNodeTransformAnimationFloatClipImportReport import_gltf_node_transform_animation_float_clip(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfNodeTransformAnimationFloatClipImportReport out;
     const auto imported = import_gltf_node_transform_animation_tracks(
-        document_bytes_utf8, source_path_for_external_buffers, animation_index);
+        document_bytes_utf8, source_path_for_external_buffers, animation_index, mesh_preset);
     if (!imported.succeeded) {
         out.diagnostic = imported.diagnostic;
         return out;
@@ -695,13 +703,12 @@ import_gltf_node_transform_animation_float_clip(const std::string_view document_
     return out;
 }
 
-GltfNodeTransformAnimationQuaternionClipImportReport
-import_gltf_node_transform_animation_quaternion_clip(const std::string_view document_bytes_utf8,
-                                                     const std::string_view source_path_for_external_buffers,
-                                                     const std::size_t animation_index) {
+GltfNodeTransformAnimationQuaternionClipImportReport import_gltf_node_transform_animation_quaternion_clip(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfNodeTransformAnimationQuaternionClipImportReport out;
     const auto imported = import_gltf_node_transform_animation_tracks_3d(
-        document_bytes_utf8, source_path_for_external_buffers, animation_index);
+        document_bytes_utf8, source_path_for_external_buffers, animation_index, mesh_preset);
     if (!imported.succeeded) {
         out.diagnostic = imported.diagnostic;
         return out;
@@ -724,13 +731,12 @@ import_gltf_node_transform_animation_quaternion_clip(const std::string_view docu
     return out;
 }
 
-GltfNodeTransformAnimationBindingSourceImportReport
-import_gltf_node_transform_animation_binding_source(const std::string_view document_bytes_utf8,
-                                                    const std::string_view source_path_for_external_buffers,
-                                                    const std::size_t animation_index) {
+GltfNodeTransformAnimationBindingSourceImportReport import_gltf_node_transform_animation_binding_source(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfNodeTransformAnimationBindingSourceImportReport out;
     const auto imported = import_gltf_node_transform_animation_tracks(
-        document_bytes_utf8, source_path_for_external_buffers, animation_index);
+        document_bytes_utf8, source_path_for_external_buffers, animation_index, mesh_preset);
     if (!imported.succeeded) {
         out.diagnostic = imported.diagnostic;
         return out;

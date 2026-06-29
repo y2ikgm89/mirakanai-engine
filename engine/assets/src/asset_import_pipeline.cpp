@@ -136,7 +136,7 @@ void add_scene_dependency_edges(AssetImportPlan& plan, std::vector<AssetId>& act
 bool is_valid_asset_import_action(const AssetImportAction& action) noexcept {
     return action.id.value != 0 && valid_action_kind(action.kind) && valid_token(action.source_path) &&
            valid_token(action.output_path) && valid_dependencies(action.dependencies) &&
-           valid_preset_metadata(action.preset_metadata);
+           is_valid_asset_import_mesh_preset_v1(action.mesh_preset) && valid_preset_metadata(action.preset_metadata);
 }
 
 AssetImportPlan build_asset_import_plan(const AssetImportMetadataRegistry& imports) {

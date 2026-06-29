@@ -3,6 +3,7 @@
 
 #include "mirakana/tools/asset_import_adapters.hpp"
 
+#include "mirakana/tools/asset_coordinate_normalization.hpp"
 #include "mirakana/tools/source_image_decode.hpp"
 
 #include "mirakana/assets/asset_source_format.hpp"
@@ -165,13 +166,17 @@ void require_loaded_buffer_view(const fastgltf::Asset& asset, std::size_t buffer
 
 void require_accessor_buffer_view(const fastgltf::Asset& asset, const fastgltf::Accessor& accessor,
                                   std::string_view name) {
-    if (!accessor.bufferViewIndex.has_value()) {
-        throw std::runtime_error(std::string(name) + " accessor does not contain loadable buffer data");
+    if (accessor.bufferViewIndex.has_value()) {
+        require_loaded_buffer_view(asset, accessor.bufferViewIndex.value(), name);
     }
-    require_loaded_buffer_view(asset, accessor.bufferViewIndex.value(), name);
+}
+
+[[nodiscard]] Vec3 vec3_from_gltf(const fastgltf::math::fvec3& value) noexcept {
+    return Vec3{.x = value[0], .y = value[1], .z = value[2]};
 }
 
 void append_gltf_positions(const fastgltf::Asset& asset, const fastgltf::Accessor& accessor,
+                           const AssetCoordinateNormalizationPlan& normalization,
                            std::vector<std::uint8_t>& vertex_bytes) {
     if (accessor.type != fastgltf::AccessorType::Vec3 || accessor.componentType != fastgltf::ComponentType::Float) {
         throw std::runtime_error("glTF POSITION accessor must be float32 VEC3");
@@ -184,9 +189,10 @@ void append_gltf_positions(const fastgltf::Asset& asset, const fastgltf::Accesso
                           "glTF vertex payload");
 
     for (const auto position : fastgltf::iterateAccessor<fastgltf::math::fvec3>(asset, accessor)) {
-        append_le_f32(vertex_bytes, position[0]);
-        append_le_f32(vertex_bytes, position[1]);
-        append_le_f32(vertex_bytes, position[2]);
+        const auto normalized_position = normalize_asset_position(normalization, vec3_from_gltf(position));
+        append_le_f32(vertex_bytes, normalized_position.x);
+        append_le_f32(vertex_bytes, normalized_position.y);
+        append_le_f32(vertex_bytes, normalized_position.z);
     }
 }
 
@@ -194,6 +200,7 @@ void append_gltf_tangent_space_vertices(const fastgltf::Asset& asset, const fast
                                         const fastgltf::Accessor& normal_accessor,
                                         const fastgltf::Accessor& uv_accessor,
                                         const fastgltf::Accessor& tangent_accessor,
+                                        const AssetCoordinateNormalizationPlan& normalization,
                                         std::vector<std::uint8_t>& vertex_bytes) {
     if (position_accessor.type != fastgltf::AccessorType::Vec3 ||
         position_accessor.componentType != fastgltf::ComponentType::Float) {
@@ -246,20 +253,23 @@ void append_gltf_tangent_space_vertices(const fastgltf::Asset& asset, const fast
 
     std::size_t index = 0;
     for (const auto position : fastgltf::iterateAccessor<fastgltf::math::fvec3>(asset, position_accessor)) {
-        const auto& normal = normals[index];
+        const auto normal = normalize_asset_direction(normalization, vec3_from_gltf(normals[index]));
         const auto& uv = uvs[index];
         const auto& tangent = tangents[index];
-        append_le_f32(vertex_bytes, position[0]);
-        append_le_f32(vertex_bytes, position[1]);
-        append_le_f32(vertex_bytes, position[2]);
-        append_le_f32(vertex_bytes, normal[0]);
-        append_le_f32(vertex_bytes, normal[1]);
-        append_le_f32(vertex_bytes, normal[2]);
+        const auto normalized_position = normalize_asset_position(normalization, vec3_from_gltf(position));
+        const auto normalized_tangent =
+            normalize_asset_direction(normalization, Vec3{.x = tangent[0], .y = tangent[1], .z = tangent[2]});
+        append_le_f32(vertex_bytes, normalized_position.x);
+        append_le_f32(vertex_bytes, normalized_position.y);
+        append_le_f32(vertex_bytes, normalized_position.z);
+        append_le_f32(vertex_bytes, normal.x);
+        append_le_f32(vertex_bytes, normal.y);
+        append_le_f32(vertex_bytes, normal.z);
         append_le_f32(vertex_bytes, uv[0]);
         append_le_f32(vertex_bytes, uv[1]);
-        append_le_f32(vertex_bytes, tangent[0]);
-        append_le_f32(vertex_bytes, tangent[1]);
-        append_le_f32(vertex_bytes, tangent[2]);
+        append_le_f32(vertex_bytes, normalized_tangent.x);
+        append_le_f32(vertex_bytes, normalized_tangent.y);
+        append_le_f32(vertex_bytes, normalized_tangent.z);
         append_le_f32(vertex_bytes, tangent[3]);
         ++index;
     }
@@ -302,7 +312,8 @@ void append_generated_gltf_indices(std::uint32_t vertex_base, std::size_t primit
     }
 }
 
-[[nodiscard]] MeshSourceDocument mesh_document_from_gltf(std::string_view bytes, std::string_view source_path) {
+[[nodiscard]] MeshSourceDocument mesh_document_from_gltf(std::string_view bytes, std::string_view source_path,
+                                                         const AssetImportMeshPresetV1& mesh_preset) {
     const auto* data = reinterpret_cast<const std::byte*>(bytes.data());
     auto buffer = fastgltf::GltfDataBuffer::FromBytes(data, bytes.size());
     if (buffer.error() != fastgltf::Error::None) {
@@ -321,6 +332,7 @@ void append_generated_gltf_indices(std::uint32_t vertex_base, std::size_t primit
         throw std::runtime_error("failed to parse glTF: " + fastgltf_error_text(asset.error()));
     }
     const auto& gltf = asset.get();
+    const auto normalization = make_asset_coordinate_normalization_plan(mesh_preset);
 
     std::size_t vertex_count = 0;
     std::size_t index_count = 0;
@@ -375,12 +387,12 @@ void append_generated_gltf_indices(std::uint32_t vertex_base, std::size_t primit
                 const auto& uv_accessor = require_accessor(gltf, uv->accessorIndex, "glTF TEXCOORD_0");
                 const auto& tangent_accessor = require_accessor(gltf, tangent->accessorIndex, "glTF TANGENT");
                 append_gltf_tangent_space_vertices(gltf, position_accessor, normal_accessor, uv_accessor,
-                                                   tangent_accessor, vertex_bytes);
+                                                   tangent_accessor, normalization, vertex_bytes);
                 has_normals = true;
                 has_uvs = true;
                 has_tangent_frame = true;
             } else {
-                append_gltf_positions(gltf, position_accessor, vertex_bytes);
+                append_gltf_positions(gltf, position_accessor, normalization, vertex_bytes);
             }
             checked_add(vertex_count, primitive_vertex_count, "glTF vertex count");
 
@@ -442,7 +454,7 @@ std::string GltfMeshExternalAssetImporter::import_source_document(IFileSystem& f
     if (bytes.empty()) {
         throw std::invalid_argument("glTF source is empty");
     }
-    return serialize_mesh_source_document(mesh_document_from_gltf(bytes, action.source_path));
+    return serialize_mesh_source_document(mesh_document_from_gltf(bytes, action.source_path, action.mesh_preset));
 #else
     (void)filesystem;
     (void)action;
@@ -464,8 +476,8 @@ std::string GltfMorphMeshCpuExternalAssetImporter::import_source_document(IFileS
     for (std::size_t mesh_index = 0; mesh_index < 4096U; ++mesh_index) {
         bool mesh_exhausted = false;
         for (std::size_t primitive_index = 0; primitive_index < 4096U; ++primitive_index) {
-            const auto report =
-                import_gltf_morph_mesh_cpu_primitive(bytes, action.source_path, mesh_index, primitive_index);
+            const auto report = import_gltf_morph_mesh_cpu_primitive(bytes, action.source_path, mesh_index,
+                                                                     primitive_index, action.mesh_preset);
             if (report.succeeded) {
                 return serialize_morph_mesh_cpu_source_document(
                     morph_mesh_cpu_source_document_from_animation_desc(report.morph_mesh));

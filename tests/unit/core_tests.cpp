@@ -5893,6 +5893,13 @@ MK_TEST("asset import presets document serializes validates and round trips") {
     const auto precise_restored = mirakana::deserialize_asset_import_presets_document(precise_serialized);
     MK_REQUIRE(precise_restored.defaults.mesh.unit_scale == document.defaults.mesh.unit_scale);
     MK_REQUIRE(mirakana::serialize_asset_import_presets_document(precise_restored) == precise_serialized);
+
+    const auto mesh_review = mirakana::review_asset_import_preset_for_asset(
+        document, mirakana::AssetKeyV2{"assets/imported/robot"}, mirakana::AssetKind::mesh);
+    MK_REQUIRE(mesh_review.ready);
+    MK_REQUIRE(mesh_review.mesh.unit_scale == document.defaults.mesh.unit_scale);
+    MK_REQUIRE(mesh_review.mesh.up_axis == mirakana::AssetImportMeshUpAxis::z);
+    MK_REQUIRE(mirakana::is_valid_asset_import_mesh_preset_v1(mesh_review.mesh));
 }
 
 MK_TEST("asset import presets reject unsupported combinations and duplicate overrides") {
