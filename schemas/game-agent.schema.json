@@ -1249,6 +1249,398 @@
             }
           }
         },
+        "twoDCommercialDeterministicCookOutputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "cookSetId",
+            "sourceAssetManifestSetId",
+            "packageIndexPath",
+            "cookOutputs",
+            "dependencyGraphRows",
+            "incrementalRecook",
+            "packageBudget",
+            "replay",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "2d-commercial-deterministic-cook-outputs-v1"
+            },
+            "cookSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-deterministic-cook$"
+            },
+            "sourceAssetManifestSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-source-assets$"
+            },
+            "packageIndexPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+            },
+            "cookOutputs": {
+              "type": "array",
+              "minItems": 5,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "sourceManifestIds",
+                  "assetKey",
+                  "outputPath",
+                  "outputKind",
+                  "contentHash",
+                  "sourceProvenance",
+                  "licenseStatus",
+                  "packageBudgetRowId",
+                  "validationRecipeIds"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "sourceManifestIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "assetKey": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_./-]*$"
+                  },
+                  "outputPath": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "outputKind": {
+                    "type": "string",
+                    "enum": ["texture", "tilemap", "animation-clip", "audio", "ui-atlas"]
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  "sourceProvenance": {
+                    "type": "string",
+                    "const": "first-party-created"
+                  },
+                  "licenseStatus": {
+                    "type": "string",
+                    "const": "first-party-proprietary-reviewed"
+                  },
+                  "packageBudgetRowId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            },
+            "dependencyGraphRows": {
+              "type": "array",
+              "minItems": 6,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "fromCookOutputId", "toSourceManifestId", "dependencyKind", "replayRelevant"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "fromCookOutputId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "toSourceManifestId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "dependencyKind": {
+                    "type": "string",
+                    "enum": [
+                      "content-hash",
+                      "dependency-edge",
+                      "source-provenance",
+                      "license-status",
+                      "package-budget",
+                      "replay-hash"
+                    ]
+                  },
+                  "replayRelevant": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                }
+              }
+            },
+            "incrementalRecook": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "invalidationKey",
+                "invalidatedSourceManifestIds",
+                "impactedCookOutputIds",
+                "unchangedCookOutputIds",
+                "safePointRequired",
+                "packageMutation",
+                "evidence"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "content-hash-and-dependency-graph"
+                },
+                "invalidationKey": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "invalidatedSourceManifestIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "impactedCookOutputIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "unchangedCookOutputIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "safePointRequired": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "packageMutation": {
+                  "type": "string",
+                  "const": "reviewed-safe-package-handoff"
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "packageBudget": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "maxCookedBytes", "actualCookedBytes", "overBudgetRows", "budgetRows", "evidence"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "fail-closed-package-budget"
+                },
+                "maxCookedBytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "actualCookedBytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "overBudgetRows": {
+                  "type": "integer",
+                  "const": 0
+                },
+                "budgetRows": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["id", "cookOutputId", "budgetClass", "packageFile", "byteCount", "maxBytes"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$"
+                      },
+                      "cookOutputId": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$"
+                      },
+                      "budgetClass": {
+                        "type": "string",
+                        "enum": ["texture", "tilemap", "animation", "audio", "ui"]
+                      },
+                      "packageFile": {
+                        "type": "string",
+                        "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                      },
+                      "byteCount": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "maxBytes": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "replay": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "replayHash",
+                "deterministicReplayReady",
+                "dependencyGraphRowCount",
+                "validationRecipeIds",
+                "evidence"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "deterministic-cook-replay-hash"
+                },
+                "replayHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "deterministicReplayReady": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "dependencyGraphRowCount": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "runtime-source-parsing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-engine-project-import"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-asset-download"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "marketplace-asset-ingestion"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "arbitrary-script-execution"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "native-handle-access"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "nondeterministic-cook-output"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "runtime-package-mutation"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-production-atlas-packing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-commercial-2d-readiness"
+                  }
+                }
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "runtime-source-parsing",
+                  "external-engine-project-import",
+                  "external-asset-download",
+                  "marketplace-asset-ingestion",
+                  "arbitrary-script-execution",
+                  "native-handle-access",
+                  "nondeterministic-cook-output",
+                  "runtime-package-mutation",
+                  "broad-production-atlas-packing",
+                  "broad-commercial-2d-readiness"
+                ]
+              }
+            }
+          }
+        },
         "generatedGamePlaytestLoop": {
           "type": "object",
           "additionalProperties": false,
