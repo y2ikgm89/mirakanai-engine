@@ -114,6 +114,22 @@ struct NativeEditorAssetBrowserImportSourcesDialogReview {
     bool accepted{false};
 };
 
+struct NativeEditorAssetBrowserFolderImportScanRequest {
+    std::string folder_path;
+    EditorAssetBrowserLegalProvenanceRow provenance;
+    bool provenance_reviewed{false};
+    bool reviewed_large_file_override{false};
+};
+
+struct NativeEditorAssetBrowserFolderImportScanReview {
+    EditorContentBrowserImportFolderScanModel scan;
+    EditorAssetImportReviewModel review;
+    std::vector<std::string> diagnostics;
+    bool ready{false};
+    bool mutates_project_files{false};
+    bool executes_import_tools{false};
+};
+
 struct NativeEditorAssetBrowserExternalSourceCopyRequest {
     std::vector<std::string> source_paths;
     std::vector<std::string> existing_source_paths;
@@ -123,6 +139,25 @@ struct NativeEditorAssetBrowserExternalSourceCopyRequest {
 struct NativeEditorAssetBrowserExternalSourceCopyReview {
     EditorContentBrowserImportExternalSourceCopyModel copy;
     std::vector<std::string> diagnostics;
+};
+
+struct NativeEditorAssetBrowserDragDropImportReviewRequest {
+    std::vector<std::string> dropped_paths;
+    EditorAssetBrowserLegalProvenanceRow provenance;
+    bool provenance_reviewed{false};
+};
+
+struct NativeEditorAssetBrowserDragDropImportReview {
+    NativeEditorAssetBrowserImportSourcesDialogReview project_sources;
+    NativeEditorAssetBrowserExternalSourceCopyReview external_sources;
+    EditorAssetImportReviewModel project_review;
+    std::vector<std::string> external_source_paths;
+    std::vector<std::string> diagnostics;
+    bool ready{false};
+    bool has_project_sources{false};
+    bool has_external_sources{false};
+    bool mutates_project_files{false};
+    bool executes_import_tools{false};
 };
 
 struct NativeEditorAssetBrowserSourceRegistrationRequest {
@@ -306,6 +341,10 @@ class NativeEditorApp {
     [[nodiscard]] FileDialogId show_asset_browser_import_sources_dialog();
     [[nodiscard]] NativeEditorAssetBrowserImportSourcesDialogReview
     poll_asset_browser_import_sources_dialog(FileDialogId id);
+    [[nodiscard]] NativeEditorAssetBrowserFolderImportScanReview
+    review_asset_browser_folder_import_scan(NativeEditorAssetBrowserFolderImportScanRequest request) const;
+    [[nodiscard]] NativeEditorAssetBrowserDragDropImportReview
+    review_asset_browser_drag_drop_import_sources(NativeEditorAssetBrowserDragDropImportReviewRequest request) const;
     [[nodiscard]] NativeEditorAssetBrowserExternalSourceCopyReview
     review_asset_browser_external_source_copy(const NativeEditorAssetBrowserExternalSourceCopyRequest& request) const;
     [[nodiscard]] NativeEditorAssetBrowserExternalSourceCopyExecutionResult

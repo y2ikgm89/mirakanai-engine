@@ -6520,6 +6520,101 @@ MK_TEST("editor content browser import external source copy review keeps copying
     MK_REQUIRE(failed.diagnostics[0] == "copy failed: access denied");
 }
 
+MK_TEST("editor content browser import folder scan enforces limits before candidate review") {
+    std::vector<mirakana::editor::EditorContentBrowserImportFolderScanInput> scan_files;
+    scan_files.reserve(503U);
+    scan_files.push_back(mirakana::editor::EditorContentBrowserImportFolderScanInput{
+        .source_path = "assets/drop/hero.png",
+        .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+        .file_size_bytes = 128U,
+        .source_exists = true,
+    });
+    scan_files.push_back(mirakana::editor::EditorContentBrowserImportFolderScanInput{
+        .source_path = "assets/drop/props/Hero.PNG",
+        .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+        .file_size_bytes = 128U,
+        .source_exists = true,
+    });
+    scan_files.push_back(mirakana::editor::EditorContentBrowserImportFolderScanInput{
+        .source_path = "assets/drop/docs/readme.txt",
+        .provenance = make_editor_asset_import_test_provenance("assets/drop/readme"),
+        .file_size_bytes = 64U,
+        .source_exists = true,
+    });
+    scan_files.push_back(mirakana::editor::EditorContentBrowserImportFolderScanInput{
+        .source_path = "assets/drop/l1/l2/l3/l4/l5/deep.png",
+        .provenance = make_editor_asset_import_test_provenance("assets/imported/deep"),
+        .file_size_bytes = 128U,
+        .source_exists = true,
+    });
+    scan_files.push_back(mirakana::editor::EditorContentBrowserImportFolderScanInput{
+        .source_path = "assets/drop/large.png",
+        .provenance = make_editor_asset_import_test_provenance("assets/imported/large"),
+        .file_size_bytes = mirakana::editor::kEditorContentBrowserImportFolderScanMaxFileSizeBytes + 1U,
+        .source_exists = true,
+    });
+    for (std::size_t index = 0; index < 498U; ++index) {
+        scan_files.push_back(mirakana::editor::EditorContentBrowserImportFolderScanInput{
+            .source_path = "assets/drop/bulk/asset_" + std::to_string(index) + ".png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/asset_" + std::to_string(index)),
+            .file_size_bytes = 16U,
+            .source_exists = true,
+        });
+    }
+
+    const auto scan = mirakana::editor::make_content_browser_import_folder_scan_model(
+        mirakana::editor::EditorContentBrowserImportFolderScanRequest{
+            .root_path = "assets/drop",
+            .files = std::move(scan_files),
+        });
+
+    MK_REQUIRE(!scan.ready);
+    MK_REQUIRE(scan.rows.size() == 503U);
+    MK_REQUIRE(scan.candidates.size() == mirakana::editor::kEditorContentBrowserImportFolderScanMaxCandidateFiles);
+    MK_REQUIRE(scan.blocked_count == 3U);
+    MK_REQUIRE(std::ranges::any_of(scan.diagnostics, [](std::string_view diagnostic) {
+        return diagnostic == "folder_scan_directory_depth_limit_exceeded";
+    }));
+    MK_REQUIRE(std::ranges::any_of(scan.diagnostics, [](std::string_view diagnostic) {
+        return diagnostic == "folder_scan_file_size_limit_exceeded";
+    }));
+    MK_REQUIRE(std::ranges::any_of(scan.diagnostics, [](std::string_view diagnostic) {
+        return diagnostic == "folder_scan_candidate_limit_exceeded";
+    }));
+
+    const auto review = mirakana::editor::review_editor_asset_import_candidates(
+        mirakana::editor::EditorAssetImportReviewRequest{.sources = scan.candidates});
+    MK_REQUIRE(!review.ready);
+    MK_REQUIRE(find_editor_asset_import_candidate_row(review, "assets/drop/hero.png")->diagnostic ==
+               "duplicate_import_target_path");
+    MK_REQUIRE(find_editor_asset_import_candidate_row(review, "assets/drop/props/Hero.PNG")->diagnostic ==
+               "duplicate_import_target_path");
+    MK_REQUIRE(find_editor_asset_import_candidate_row(review, "assets/drop/docs/readme.txt")->diagnostic ==
+               "unsupported_import_source");
+}
+
+MK_TEST("editor content browser drag drop candidates reuse import dialog retained ids") {
+    const auto dialog = mirakana::editor::make_content_browser_import_open_dialog_model(mirakana::FileDialogResult{
+        .id = 20,
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {"assets/drop/hero.png", "assets/drop/robot.gltf"},
+        .selected_filter = 5,
+    });
+    const auto drag_drop = mirakana::editor::make_content_browser_import_drag_drop_model(
+        {"assets/drop/hero.png", "assets/drop/robot.gltf"});
+
+    MK_REQUIRE(dialog.accepted);
+    MK_REQUIRE(drag_drop.accepted);
+    const auto dialog_document = mirakana::editor::make_content_browser_import_open_dialog_ui_model(dialog);
+    const auto drop_document = mirakana::editor::make_content_browser_import_open_dialog_ui_model(drag_drop);
+    MK_REQUIRE(dialog_document.find(mirakana::ui::ElementId{"content_browser_import.open_dialog.paths.1"}) != nullptr);
+    MK_REQUIRE(drop_document.find(mirakana::ui::ElementId{"content_browser_import.open_dialog.paths.1"}) != nullptr);
+    MK_REQUIRE(drop_document.find(mirakana::ui::ElementId{"content_browser_import.open_dialog.paths.1"})->text.label ==
+               "assets/drop/hero.png");
+    MK_REQUIRE(drop_document.find(mirakana::ui::ElementId{"content_browser_import.open_dialog.paths.2"})->text.label ==
+               "assets/drop/robot.gltf");
+}
+
 MK_TEST("editor asset import jobs model orders rows and exposes progress without native handles") {
     mirakana::editor::EditorAssetImportJobSnapshot snapshot;
     snapshot.generation = 7U;

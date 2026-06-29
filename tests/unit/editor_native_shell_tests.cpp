@@ -1338,6 +1338,106 @@ MK_TEST("native asset browser source registration reviews unsafe paths before fi
     MK_REQUIRE(app.asset_browser().generation == initial_generation);
 }
 
+MK_TEST("native asset browser drag drop review normalizes project and external sources without execution") {
+    const auto root = std::filesystem::temp_directory_path() / "MK_native_asset_browser_drag_drop_review";
+    const auto project_root = root / "project";
+    const auto external_root = root / "external";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(project_root);
+    const auto external_source = external_root / "theme.wav";
+    write_test_file(external_source, "wav source placeholder");
+
+    {
+        const ScopedCurrentPath current_path{project_root};
+        mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+        mirakana::MemoryFileSystem filesystem;
+        filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                      mirakana::SourceAssetRegistryDocumentV1{}));
+        filesystem.write_text("assets/drop/hero.png", "png source placeholder");
+        app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+            .asset_import_filesystem = &filesystem,
+            .asset_import_filesystem_id = "memory_import_fs",
+        });
+
+        const auto initial_generation = app.asset_browser().generation;
+        const auto reviewed = app.review_asset_browser_drag_drop_import_sources(
+            mirakana::editor::NativeEditorAssetBrowserDragDropImportReviewRequest{
+                .dropped_paths = {"assets/drop/hero.png", external_source.string()},
+                .provenance = make_native_asset_import_test_provenance("assets/imported/hero"),
+                .provenance_reviewed = true,
+            });
+
+        MK_REQUIRE(reviewed.has_project_sources);
+        MK_REQUIRE(reviewed.has_external_sources);
+        MK_REQUIRE(!reviewed.mutates_project_files);
+        MK_REQUIRE(!reviewed.executes_import_tools);
+        MK_REQUIRE(reviewed.project_sources.accepted);
+        MK_REQUIRE(reviewed.project_sources.accepted_project_paths.size() == 1U);
+        MK_REQUIRE(reviewed.project_sources.accepted_project_paths[0] == "assets/drop/hero.png");
+        const auto drop_document =
+            mirakana::editor::make_content_browser_import_open_dialog_ui_model(reviewed.project_sources.dialog);
+        MK_REQUIRE(
+            drop_document.find(mirakana::ui::ElementId{"content_browser_import.open_dialog.paths.1"})->text.label ==
+            "assets/drop/hero.png");
+        MK_REQUIRE(reviewed.project_review.ready);
+        MK_REQUIRE(reviewed.project_review.import_plan.actions.size() == 1U);
+        MK_REQUIRE(reviewed.external_source_paths.size() == 1U);
+        MK_REQUIRE(reviewed.external_sources.copy.can_copy);
+        MK_REQUIRE(reviewed.external_sources.copy.target_project_paths[0] == "assets/imported_sources/theme.wav");
+        MK_REQUIRE(!filesystem.exists("assets/imported/hero.texture"));
+        MK_REQUIRE(!filesystem.exists("assets/imported_sources/theme.wav"));
+        MK_REQUIRE(app.asset_browser().generation == initial_generation);
+        MK_REQUIRE(app.asset_import_jobs().rows.empty());
+        MK_REQUIRE(app.services().asset_import_executions == 0U);
+    }
+
+    std::filesystem::remove_all(root);
+}
+
+MK_TEST("native asset browser folder scan reviews candidates and keeps import explicit") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                  mirakana::SourceAssetRegistryDocumentV1{}));
+    filesystem.write_text("assets/drop/hero.png", "png source placeholder");
+    filesystem.write_text("assets/drop/props/Hero.PNG", "png duplicate placeholder");
+    filesystem.write_text("assets/drop/docs/readme.txt", "not importable");
+    filesystem.write_text("assets/drop/l1/l2/l3/l4/l5/deep.png", "too deep");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto initial_generation = app.asset_browser().generation;
+    const auto reviewed =
+        app.review_asset_browser_folder_import_scan(mirakana::editor::NativeEditorAssetBrowserFolderImportScanRequest{
+            .folder_path = "assets/drop",
+            .provenance = make_native_asset_import_test_provenance("assets/imported/hero"),
+            .provenance_reviewed = true,
+        });
+
+    MK_REQUIRE(!reviewed.ready);
+    MK_REQUIRE(!reviewed.mutates_project_files);
+    MK_REQUIRE(!reviewed.executes_import_tools);
+    MK_REQUIRE(reviewed.scan.rows.size() == 4U);
+    MK_REQUIRE(reviewed.scan.candidates.size() == 3U);
+    MK_REQUIRE(std::ranges::any_of(reviewed.scan.diagnostics, [](std::string_view diagnostic) {
+        return diagnostic == "folder_scan_directory_depth_limit_exceeded";
+    }));
+    MK_REQUIRE(!reviewed.review.ready);
+    MK_REQUIRE(std::ranges::any_of(reviewed.review.diagnostics, [](std::string_view diagnostic) {
+        return diagnostic == "duplicate_import_target_path";
+    }));
+    MK_REQUIRE(std::ranges::any_of(reviewed.review.diagnostics, [](std::string_view diagnostic) {
+        return diagnostic == "unsupported_import_source";
+    }));
+    MK_REQUIRE(!filesystem.exists("assets/imported/hero.texture"));
+    MK_REQUIRE(!filesystem.exists("assets/imported_sources/hero.png"));
+    MK_REQUIRE(app.asset_browser().generation == initial_generation);
+    MK_REQUIRE(app.asset_import_jobs().rows.empty());
+    MK_REQUIRE(app.services().asset_import_executions == 0U);
+}
+
 MK_TEST("editor first party document exposes runtime UI editor authoring rows") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 

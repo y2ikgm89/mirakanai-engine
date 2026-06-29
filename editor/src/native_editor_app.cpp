@@ -22,6 +22,7 @@
 #include <exception>
 #include <filesystem>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -823,6 +824,54 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return project_path;
 }
 
+[[nodiscard]] bool project_source_exists_for_import_review(const IFileSystem* filesystem, std::string_view path) {
+    if (filesystem == nullptr || !is_safe_import_repository_path_for_query(path)) {
+        return false;
+    }
+    try {
+        return filesystem->exists(path);
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+[[nodiscard]] std::string read_source_registry_content_for_import_review(const IFileSystem* filesystem,
+                                                                         std::string_view source_registry_path) {
+    if (filesystem == nullptr) {
+        return {};
+    }
+    try {
+        return filesystem->exists(source_registry_path) ? filesystem->read_text(source_registry_path) : std::string{};
+    } catch (const std::exception&) {
+        return {};
+    }
+}
+
+[[nodiscard]] bool file_exceeds_folder_scan_size_limit(const IFileSystem& filesystem, std::string_view path,
+                                                       std::uint64_t max_file_size_bytes) {
+    try {
+        static_cast<void>(filesystem.read_binary_range(path, max_file_size_bytes, 1U));
+        return true;
+    } catch (const std::out_of_range&) {
+        return false;
+    }
+}
+
+[[nodiscard]] bool is_external_import_candidate_path(std::string_view path) {
+    if (contains_invalid_path_characters(path) || is_device_path(path)) {
+        return false;
+    }
+    return std::filesystem::path{std::string(path)}.is_absolute();
+}
+
+[[nodiscard]] EditorAssetBrowserLegalProvenanceRow
+provenance_for_import_review(const EditorAssetBrowserLegalProvenanceRow& provenance, bool provenance_reviewed) {
+    if (!provenance_reviewed) {
+        return {};
+    }
+    return provenance;
+}
+
 [[nodiscard]] std::string imported_source_target_path(std::string_view asset_root, std::string_view source_path,
                                                       std::string& diagnostic) {
     if (contains_invalid_path_characters(source_path)) {
@@ -1540,6 +1589,197 @@ NativeEditorApp::poll_asset_browser_import_sources_dialog(FileDialogId id) {
         review.accepted_project_paths = review.dialog.selected_paths;
     }
     return review;
+}
+
+NativeEditorAssetBrowserFolderImportScanReview NativeEditorApp::review_asset_browser_folder_import_scan(
+    NativeEditorAssetBrowserFolderImportScanRequest request) const {
+    NativeEditorAssetBrowserFolderImportScanReview result;
+    result.mutates_project_files = false;
+    result.executes_import_tools = false;
+
+    if (impl_->asset_import_filesystem == nullptr) {
+        result.diagnostics.push_back("asset browser folder import scan requires an asset import filesystem service");
+        impl_->service_status.asset_import_filesystem_available = false;
+        return result;
+    }
+
+    std::string diagnostic;
+    const auto folder_path = normalize_selected_import_path(impl_->project.root_path, request.folder_path, diagnostic);
+    if (!diagnostic.empty()) {
+        result.diagnostics.push_back(diagnostic);
+        return result;
+    }
+    if (!is_safe_import_repository_path_for_query(folder_path)) {
+        result.diagnostics.push_back("asset browser folder import scan requires a safe project-relative folder");
+        return result;
+    }
+
+    try {
+        if (!impl_->asset_import_filesystem->is_directory(folder_path)) {
+            result.diagnostics.push_back("asset browser folder import scan path is not a directory");
+            return result;
+        }
+    } catch (const std::exception& error) {
+        result.diagnostics.push_back(std::string{"asset browser folder import scan directory query failed: "} +
+                                     error.what());
+        return result;
+    }
+
+    std::vector<std::string> files;
+    try {
+        files = impl_->asset_import_filesystem->list_files(folder_path);
+    } catch (const std::exception& error) {
+        result.diagnostics.push_back(std::string{"asset browser folder import scan listing failed: "} + error.what());
+        return result;
+    }
+
+    std::vector<EditorContentBrowserImportFolderScanInput> scan_inputs;
+    scan_inputs.reserve(files.size());
+    const auto provenance = provenance_for_import_review(request.provenance, request.provenance_reviewed);
+    for (const auto& file : files) {
+        bool size_exceeds_limit = false;
+        try {
+            size_exceeds_limit = file_exceeds_folder_scan_size_limit(
+                *impl_->asset_import_filesystem, file, kEditorContentBrowserImportFolderScanMaxFileSizeBytes);
+        } catch (const std::exception&) {
+            size_exceeds_limit = true;
+        }
+
+        scan_inputs.push_back(EditorContentBrowserImportFolderScanInput{
+            .source_path = file,
+            .provenance = provenance,
+            .file_size_bytes = size_exceeds_limit ? kEditorContentBrowserImportFolderScanMaxFileSizeBytes + 1U : 0U,
+            .source_exists = project_source_exists_for_import_review(impl_->asset_import_filesystem, file),
+            .reviewed_large_file_override = request.reviewed_large_file_override,
+        });
+    }
+
+    result.scan = make_content_browser_import_folder_scan_model(EditorContentBrowserImportFolderScanRequest{
+        .root_path = folder_path,
+        .files = std::move(scan_inputs),
+    });
+    result.diagnostics = result.scan.diagnostics;
+
+    if (!result.scan.candidates.empty()) {
+        result.review = review_editor_asset_import_candidates(EditorAssetImportReviewRequest{
+            .asset_root = impl_->project.asset_root,
+            .imported_output_root = impl_->project.asset_root + "/imported",
+            .source_registry_path = impl_->project.source_registry_path,
+            .source_registry_content = read_source_registry_content_for_import_review(
+                impl_->asset_import_filesystem, impl_->project.source_registry_path),
+            .sources = result.scan.candidates,
+        });
+        result.diagnostics.insert(result.diagnostics.end(), result.review.diagnostics.begin(),
+                                  result.review.diagnostics.end());
+    }
+
+    result.ready = result.scan.ready && result.review.ready && result.diagnostics.empty();
+    return result;
+}
+
+NativeEditorAssetBrowserDragDropImportReview NativeEditorApp::review_asset_browser_drag_drop_import_sources(
+    NativeEditorAssetBrowserDragDropImportReviewRequest request) const {
+    NativeEditorAssetBrowserDragDropImportReview result;
+    result.mutates_project_files = false;
+    result.executes_import_tools = false;
+
+    std::vector<std::string> project_paths;
+    std::vector<std::string> external_paths;
+    project_paths.reserve(request.dropped_paths.size());
+    external_paths.reserve(request.dropped_paths.size());
+
+    for (const auto& dropped_path : request.dropped_paths) {
+        std::string diagnostic;
+        auto project_path = normalize_selected_import_path(impl_->project.root_path, dropped_path, diagnostic);
+        if (diagnostic.empty()) {
+            project_paths.push_back(std::move(project_path));
+            continue;
+        }
+
+        if (diagnostic.find("inside the project root") != std::string::npos &&
+            is_external_import_candidate_path(dropped_path)) {
+            external_paths.push_back(dropped_path);
+            continue;
+        }
+        result.diagnostics.push_back(std::move(diagnostic));
+    }
+
+    if (!project_paths.empty()) {
+        result.project_sources.dialog = make_content_browser_import_drag_drop_model(project_paths);
+        result.project_sources.diagnostics = result.project_sources.dialog.diagnostics;
+        result.project_sources.accepted = result.project_sources.dialog.accepted;
+        if (result.project_sources.accepted) {
+            result.project_sources.accepted_project_paths = result.project_sources.dialog.selected_paths;
+        }
+        result.has_project_sources = result.project_sources.accepted;
+        result.diagnostics.insert(result.diagnostics.end(), result.project_sources.diagnostics.begin(),
+                                  result.project_sources.diagnostics.end());
+
+        std::vector<EditorAssetImportCandidateInput> sources;
+        sources.reserve(result.project_sources.accepted_project_paths.size());
+        const auto provenance = provenance_for_import_review(request.provenance, request.provenance_reviewed);
+        for (const auto& project_path : result.project_sources.accepted_project_paths) {
+            sources.push_back(EditorAssetImportCandidateInput{
+                .source_path = project_path,
+                .provenance = provenance,
+                .source_exists = project_source_exists_for_import_review(impl_->asset_import_filesystem, project_path),
+            });
+        }
+        if (!sources.empty()) {
+            result.project_review = review_editor_asset_import_candidates(EditorAssetImportReviewRequest{
+                .asset_root = impl_->project.asset_root,
+                .imported_output_root = impl_->project.asset_root + "/imported",
+                .source_registry_path = impl_->project.source_registry_path,
+                .source_registry_content = read_source_registry_content_for_import_review(
+                    impl_->asset_import_filesystem, impl_->project.source_registry_path),
+                .sources = std::move(sources),
+            });
+            result.diagnostics.insert(result.diagnostics.end(), result.project_review.diagnostics.begin(),
+                                      result.project_review.diagnostics.end());
+        }
+    }
+
+    if (!external_paths.empty()) {
+        std::vector<std::string> existing_source_paths;
+        std::vector<std::string> existing_project_paths;
+        existing_source_paths.reserve(external_paths.size());
+        existing_project_paths.reserve(external_paths.size());
+
+        const auto project_root = normalized_project_root(impl_->project.root_path);
+        for (const auto& external_path : external_paths) {
+            std::error_code source_error;
+            if (std::filesystem::exists(std::filesystem::path{external_path}, source_error) && !source_error) {
+                existing_source_paths.push_back(external_path);
+            }
+            std::string target_diagnostic;
+            const auto target_path =
+                imported_source_target_path(impl_->project.asset_root, external_path, target_diagnostic);
+            if (!target_path.empty()) {
+                std::error_code target_error;
+                if (std::filesystem::exists((project_root / std::filesystem::path{target_path}).lexically_normal(),
+                                            target_error) &&
+                    !target_error) {
+                    existing_project_paths.push_back(target_path);
+                }
+            }
+        }
+
+        result.external_source_paths = external_paths;
+        result.external_sources =
+            review_asset_browser_external_source_copy(NativeEditorAssetBrowserExternalSourceCopyRequest{
+                .source_paths = std::move(external_paths),
+                .existing_source_paths = std::move(existing_source_paths),
+                .existing_project_paths = std::move(existing_project_paths)});
+        result.has_external_sources = !result.external_source_paths.empty();
+        result.diagnostics.insert(result.diagnostics.end(), result.external_sources.diagnostics.begin(),
+                                  result.external_sources.diagnostics.end());
+    }
+
+    const bool project_ready = !result.has_project_sources || result.project_review.ready;
+    const bool external_ready = !result.has_external_sources || result.external_sources.copy.can_copy;
+    result.ready = (result.has_project_sources || result.has_external_sources) && project_ready && external_ready &&
+                   result.diagnostics.empty();
+    return result;
 }
 
 NativeEditorAssetBrowserExternalSourceCopyReview NativeEditorApp::review_asset_browser_external_source_copy(

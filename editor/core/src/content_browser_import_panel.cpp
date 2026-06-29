@@ -6,6 +6,7 @@
 #include "mirakana/assets/asset_import_pipeline.hpp"
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/material.hpp"
+#include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/platform/file_dialog.hpp"
@@ -375,6 +376,18 @@ make_hot_reload_summary_rows(const AssetPipelineState& pipeline) {
     return "Asset import open dialog " + std::string(state);
 }
 
+[[nodiscard]] std::string folder_scan_status_label(EditorContentBrowserImportFolderScanStatus status) {
+    switch (status) {
+    case EditorContentBrowserImportFolderScanStatus::idle:
+        return "Asset import folder scan idle";
+    case EditorContentBrowserImportFolderScanStatus::ready:
+        return "Asset import folder scan ready";
+    case EditorContentBrowserImportFolderScanStatus::blocked:
+        return "Asset import folder scan blocked";
+    }
+    return "Asset import folder scan idle";
+}
+
 [[nodiscard]] std::string external_source_copy_status_label(EditorContentBrowserImportExternalSourceCopyStatus status) {
     switch (status) {
     case EditorContentBrowserImportExternalSourceCopyStatus::idle:
@@ -425,6 +438,99 @@ make_hot_reload_summary_rows(const AssetPipelineState& pipeline) {
         segment_start = segment_end + 1;
     }
     return true;
+}
+
+[[nodiscard]] std::string normalized_scan_root(std::string_view root_path) {
+    std::string root{root_path};
+    std::ranges::replace(root, '\\', '/');
+    while (!root.empty() && root.back() == '/') {
+        root.pop_back();
+    }
+    return root.empty() ? "assets" : root;
+}
+
+[[nodiscard]] bool path_is_under_scan_root(std::string_view root_path, std::string_view source_path) {
+    if (source_path == root_path) {
+        return false;
+    }
+    const auto prefix = std::string(root_path) + "/";
+    return source_path.starts_with(prefix);
+}
+
+[[nodiscard]] std::uint32_t folder_scan_directory_depth(std::string_view root_path, std::string_view source_path) {
+    if (!path_is_under_scan_root(root_path, source_path)) {
+        return kEditorContentBrowserImportFolderScanMaxDirectoryDepth + 1U;
+    }
+
+    const auto relative = source_path.substr(root_path.size() + 1U);
+    const auto last_slash = relative.find_last_of('/');
+    if (last_slash == std::string_view::npos) {
+        return 0U;
+    }
+
+    std::uint32_t depth = 1U;
+    for (const char character : relative.substr(0U, last_slash)) {
+        if (character == '/') {
+            ++depth;
+        }
+    }
+    return depth;
+}
+
+[[nodiscard]] std::string folder_scan_diagnostic(const EditorContentBrowserImportFolderScanRequest& request,
+                                                 const EditorContentBrowserImportFolderScanInput& input,
+                                                 std::string_view root_path, std::size_t accepted_count) {
+    if (!is_safe_project_relative_path(root_path)) {
+        return "folder_scan_unsafe_root_path";
+    }
+    if (!is_safe_project_relative_path(input.source_path)) {
+        return "folder_scan_unsafe_source_path";
+    }
+    if (!path_is_under_scan_root(root_path, input.source_path)) {
+        return "folder_scan_source_outside_root";
+    }
+    if (folder_scan_directory_depth(root_path, input.source_path) > request.max_directory_depth) {
+        return "folder_scan_directory_depth_limit_exceeded";
+    }
+    if (!input.source_exists) {
+        return "folder_scan_missing_source";
+    }
+    if (input.file_size_bytes > request.max_file_size_bytes && !input.reviewed_large_file_override) {
+        return "folder_scan_file_size_limit_exceeded";
+    }
+    if (accepted_count >= request.max_candidate_files) {
+        return "folder_scan_candidate_limit_exceeded";
+    }
+    return {};
+}
+
+void append_folder_scan_rows(mirakana::ui::UiDocument& document, const mirakana::ui::ElementId& root,
+                             const std::vector<EditorContentBrowserImportFolderScanRow>& rows) {
+    mirakana::ui::ElementDesc list =
+        make_child("content_browser_import.folder_scan.rows", root, mirakana::ui::SemanticRole::list);
+    list.text = make_text("Folder Scan");
+    add_or_throw(document, std::move(list));
+    const mirakana::ui::ElementId list_id{"content_browser_import.folder_scan.rows"};
+
+    for (const auto& row : rows) {
+        require_safe_field("folder_scan.id", row.id);
+        require_safe_optional_field("folder_scan.source_path", row.source_path);
+        require_safe_field("folder_scan.status", row.status_label);
+        require_safe_optional_field("folder_scan.diagnostic", row.diagnostic);
+
+        const auto prefix = "content_browser_import.folder_scan.rows." + row.id;
+        mirakana::ui::ElementDesc item = make_child(prefix, list_id, mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.source_path);
+        item.enabled = row.accepted;
+        add_or_throw(document, std::move(item));
+
+        const mirakana::ui::ElementId item_id{prefix};
+        append_label(document, item_id, prefix + ".status", row.status_label);
+        append_label(document, item_id, prefix + ".source", row.source_path);
+        if (!row.diagnostic.empty()) {
+            append_label(document, item_id, prefix + ".diagnostic", row.diagnostic);
+        }
+    }
 }
 
 [[nodiscard]] std::string
@@ -660,6 +766,69 @@ make_content_browser_import_open_dialog_model(const mirakana::FileDialogResult& 
     return model;
 }
 
+EditorContentBrowserImportOpenDialogModel
+make_content_browser_import_drag_drop_model(std::span<const std::string> project_paths) {
+    mirakana::FileDialogResult result;
+    result.id = 1U;
+    result.status = mirakana::FileDialogStatus::accepted;
+    result.paths.assign(project_paths.begin(), project_paths.end());
+    result.selected_filter = -1;
+    return make_content_browser_import_open_dialog_model(result);
+}
+
+EditorContentBrowserImportOpenDialogModel
+make_content_browser_import_drag_drop_model(std::initializer_list<std::string> project_paths) {
+    return make_content_browser_import_drag_drop_model(
+        std::span<const std::string>{project_paths.begin(), project_paths.size()});
+}
+
+EditorContentBrowserImportFolderScanModel
+make_content_browser_import_folder_scan_model(EditorContentBrowserImportFolderScanRequest request) {
+    EditorContentBrowserImportFolderScanModel model;
+    model.file_count = request.files.size();
+    const auto root_path = normalized_scan_root(request.root_path);
+    model.rows.reserve(request.files.size());
+    model.candidates.reserve(std::min(request.files.size(), request.max_candidate_files));
+
+    std::size_t index = 1U;
+    for (const auto& input : request.files) {
+        const auto diagnostic = folder_scan_diagnostic(request, input, root_path, model.candidates.size());
+        EditorContentBrowserImportFolderScanRow row;
+        row.id = std::to_string(index);
+        row.source_path = sanitize_text(input.source_path);
+        row.accepted = diagnostic.empty();
+        row.blocked = !diagnostic.empty();
+        row.status_label = row.accepted ? "accepted" : "blocked";
+        row.diagnostic = diagnostic;
+
+        if (row.accepted) {
+            model.candidates.push_back(EditorAssetImportCandidateInput{
+                .source_path = input.source_path,
+                .provenance = input.provenance,
+                .source_exists = input.source_exists,
+            });
+        } else {
+            model.diagnostics.push_back(diagnostic);
+            ++model.blocked_count;
+        }
+
+        model.rows.push_back(std::move(row));
+        ++index;
+    }
+
+    model.accepted_count = model.candidates.size();
+    if (model.file_count == 0U) {
+        model.status = EditorContentBrowserImportFolderScanStatus::idle;
+    } else if (!model.diagnostics.empty()) {
+        model.status = EditorContentBrowserImportFolderScanStatus::blocked;
+    } else {
+        model.status = EditorContentBrowserImportFolderScanStatus::ready;
+    }
+    model.status_label = folder_scan_status_label(model.status);
+    model.ready = model.status == EditorContentBrowserImportFolderScanStatus::ready && !model.candidates.empty();
+    return model;
+}
+
 EditorContentBrowserImportExternalSourceCopyModel make_content_browser_import_external_source_copy_model(
     std::span<const EditorContentBrowserImportExternalSourceCopyInput> inputs) {
     EditorContentBrowserImportExternalSourceCopyModel model;
@@ -787,6 +956,30 @@ make_content_browser_import_open_dialog_ui_model(const EditorContentBrowserImpor
     for (const auto& diagnostic : model.diagnostics) {
         append_label(document, root,
                      "content_browser_import.open_dialog.diagnostics." + std::to_string(diagnostic_index), diagnostic);
+        ++diagnostic_index;
+    }
+
+    return document;
+}
+
+mirakana::ui::UiDocument
+make_content_browser_import_folder_scan_ui_model(const EditorContentBrowserImportFolderScanModel& model) {
+    mirakana::ui::UiDocument document;
+    add_or_throw(document, make_root("content_browser_import.folder_scan", mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId root{"content_browser_import.folder_scan"};
+
+    append_label(document, root, "content_browser_import.folder_scan.status", model.status_label);
+    append_label(document, root, "content_browser_import.folder_scan.file_count", std::to_string(model.file_count));
+    append_label(document, root, "content_browser_import.folder_scan.accepted_count",
+                 std::to_string(model.accepted_count));
+    append_label(document, root, "content_browser_import.folder_scan.blocked_count",
+                 std::to_string(model.blocked_count));
+    append_folder_scan_rows(document, root, model.rows);
+
+    std::size_t diagnostic_index = 1;
+    for (const auto& diagnostic : model.diagnostics) {
+        append_label(document, root,
+                     "content_browser_import.folder_scan.diagnostics." + std::to_string(diagnostic_index), diagnostic);
         ++diagnostic_index;
     }
 

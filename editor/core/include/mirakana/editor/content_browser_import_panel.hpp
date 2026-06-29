@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/platform/file_dialog.hpp"
@@ -17,6 +18,10 @@
 #include <vector>
 
 namespace mirakana::editor {
+
+inline constexpr std::size_t kEditorContentBrowserImportFolderScanMaxCandidateFiles = 500U;
+inline constexpr std::uint32_t kEditorContentBrowserImportFolderScanMaxDirectoryDepth = 4U;
+inline constexpr std::uint64_t kEditorContentBrowserImportFolderScanMaxFileSizeBytes = 256ULL * 1024ULL * 1024ULL;
 
 enum class EditorContentBrowserImportPanelStatus : std::uint8_t { empty, ready, attention };
 
@@ -66,6 +71,47 @@ struct EditorContentBrowserImportOpenDialogModel {
     std::vector<std::string> diagnostics;
     std::vector<EditorContentBrowserImportOpenDialogRow> rows;
     bool accepted{false};
+};
+
+enum class EditorContentBrowserImportFolderScanStatus : std::uint8_t { idle, ready, blocked };
+
+struct EditorContentBrowserImportFolderScanInput {
+    std::string source_path;
+    EditorAssetBrowserLegalProvenanceRow provenance;
+    std::uint64_t file_size_bytes{0};
+    bool source_exists{false};
+    bool reviewed_large_file_override{false};
+};
+
+struct EditorContentBrowserImportFolderScanRow {
+    std::string id;
+    std::string source_path;
+    std::string status_label;
+    std::string diagnostic;
+    bool accepted{false};
+    bool blocked{false};
+};
+
+struct EditorContentBrowserImportFolderScanRequest {
+    std::string root_path{"assets"};
+    std::vector<EditorContentBrowserImportFolderScanInput> files;
+    std::size_t max_candidate_files{kEditorContentBrowserImportFolderScanMaxCandidateFiles};
+    std::uint32_t max_directory_depth{kEditorContentBrowserImportFolderScanMaxDirectoryDepth};
+    std::uint64_t max_file_size_bytes{kEditorContentBrowserImportFolderScanMaxFileSizeBytes};
+};
+
+struct EditorContentBrowserImportFolderScanModel {
+    EditorContentBrowserImportFolderScanStatus status{EditorContentBrowserImportFolderScanStatus::idle};
+    std::string status_label{"Asset import folder scan idle"};
+    std::vector<EditorContentBrowserImportFolderScanRow> rows;
+    std::vector<EditorAssetImportCandidateInput> candidates;
+    std::vector<std::string> diagnostics;
+    std::size_t file_count{0};
+    std::size_t accepted_count{0};
+    std::size_t blocked_count{0};
+    bool ready{false};
+    bool mutates_project_files{false};
+    bool executes_import_tools{false};
 };
 
 enum class EditorContentBrowserImportExternalSourceCopyStatus : std::uint8_t { idle, ready, copied, blocked, failed };
@@ -133,6 +179,12 @@ make_editor_content_browser_import_panel_model(const ContentBrowserState& browse
 make_content_browser_import_open_dialog_request(std::string_view default_location = "assets");
 [[nodiscard]] EditorContentBrowserImportOpenDialogModel
 make_content_browser_import_open_dialog_model(const mirakana::FileDialogResult& result);
+[[nodiscard]] EditorContentBrowserImportOpenDialogModel
+make_content_browser_import_drag_drop_model(std::span<const std::string> project_paths);
+[[nodiscard]] EditorContentBrowserImportOpenDialogModel
+make_content_browser_import_drag_drop_model(std::initializer_list<std::string> project_paths);
+[[nodiscard]] EditorContentBrowserImportFolderScanModel
+make_content_browser_import_folder_scan_model(EditorContentBrowserImportFolderScanRequest request);
 [[nodiscard]] EditorContentBrowserImportExternalSourceCopyModel make_content_browser_import_external_source_copy_model(
     std::span<const EditorContentBrowserImportExternalSourceCopyInput> inputs);
 [[nodiscard]] EditorContentBrowserImportExternalSourceCopyModel make_content_browser_import_external_source_copy_model(
@@ -141,6 +193,8 @@ make_content_browser_import_open_dialog_model(const mirakana::FileDialogResult& 
 make_content_browser_import_panel_ui_model(const EditorContentBrowserImportPanelModel& model);
 [[nodiscard]] mirakana::ui::UiDocument
 make_content_browser_import_open_dialog_ui_model(const EditorContentBrowserImportOpenDialogModel& model);
+[[nodiscard]] mirakana::ui::UiDocument
+make_content_browser_import_folder_scan_ui_model(const EditorContentBrowserImportFolderScanModel& model);
 [[nodiscard]] mirakana::ui::UiDocument make_content_browser_import_external_source_copy_ui_model(
     const EditorContentBrowserImportExternalSourceCopyModel& model);
 
