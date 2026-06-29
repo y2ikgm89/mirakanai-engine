@@ -182,6 +182,118 @@ MK_TEST("2d originality review treats godot mit notice as future notice only whe
     MK_REQUIRE(result.requires_legal_counsel_review);
 }
 
+MK_TEST("2d commercial production source review requires first party official docs and platform sdk rows") {
+    const std::vector<mirakana::TwoDOriginalitySourceRow> rows{
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "first-party-commercial-plan",
+            .kind = mirakana::TwoDOriginalitySourceKind::first_party_design,
+            .source_uri = "docs/superpowers/plans/2026-06-29-2d-commercial-production-excellence-v1.md",
+            .usage_scope = "first-party commercial production plan",
+        },
+    };
+
+    const auto result = mirakana::review_2d_commercial_production_sources(rows);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.clean_room_ready);
+    MK_REQUIRE(!result.official_source_ledger_ready);
+    MK_REQUIRE(!result.commercial_production_source_gate_ready);
+    MK_REQUIRE(result.first_party_design_rows == 1U);
+    MK_REQUIRE(result.official_documentation_category_rows == 0U);
+    MK_REQUIRE(result.official_platform_sdk_rows == 0U);
+    MK_REQUIRE(has_diagnostic(result.diagnostics, "missing_official_documentation_category_source"));
+    MK_REQUIRE(has_diagnostic(result.diagnostics, "missing_official_platform_sdk_source"));
+}
+
+MK_TEST("2d commercial production source review accepts official ledger while preserving counsel review") {
+    const std::vector<mirakana::TwoDOriginalitySourceRow> rows{
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "first-party-commercial-plan",
+            .kind = mirakana::TwoDOriginalitySourceKind::first_party_design,
+            .source_uri = "docs/superpowers/plans/2026-06-29-2d-commercial-production-excellence-v1.md",
+            .usage_scope = "first-party commercial production plan",
+        },
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "vulkan-official-sync-source",
+            .kind = mirakana::TwoDOriginalitySourceKind::official_platform_sdk,
+            .source_uri = "https://docs.vulkan.org/",
+            .usage_scope = "official graphics backend synchronization and timestamp-query guidance only",
+        },
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "unity-legal-boundary",
+            .kind = mirakana::TwoDOriginalitySourceKind::official_documentation_category,
+            .source_uri = "https://unity.com/legal/branding-trademarks",
+            .usage_scope = "legal and category boundary research only; no implementation source",
+        },
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "unreal-legal-boundary",
+            .kind = mirakana::TwoDOriginalitySourceKind::official_documentation_category,
+            .source_uri = "https://www.unrealengine.com/eula/unreal",
+            .usage_scope = "legal and category boundary research only; no implementation source",
+        },
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "godot-license-boundary",
+            .kind = mirakana::TwoDOriginalitySourceKind::official_documentation_category,
+            .source_uri = "https://godotengine.org/license/",
+            .usage_scope = "license boundary research only; no code or asset copied",
+        },
+    };
+
+    const auto result = mirakana::review_2d_commercial_production_sources(rows);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.clean_room_ready);
+    MK_REQUIRE(result.official_source_ledger_ready);
+    MK_REQUIRE(result.commercial_production_source_gate_ready);
+    MK_REQUIRE(result.requires_legal_counsel_review);
+    MK_REQUIRE(result.first_party_design_rows == 1U);
+    MK_REQUIRE(result.official_platform_sdk_rows == 1U);
+    MK_REQUIRE(result.official_documentation_category_rows == 3U);
+    MK_REQUIRE(result.external_engine_claim_rows == 0U);
+}
+
+MK_TEST("2d commercial production source review rejects compatibility equivalence and parity claims") {
+    const std::vector<mirakana::TwoDOriginalitySourceRow> rows{
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "unity-compatible-package-output",
+            .kind = mirakana::TwoDOriginalitySourceKind::official_documentation_category,
+            .source_uri = "https://unity.com/legal/branding-trademarks",
+            .usage_scope = "claims Unity compatibility in public package output",
+            .external_engine_compatibility_claim = true,
+        },
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "unreal-equivalent-editor-flow",
+            .kind = mirakana::TwoDOriginalitySourceKind::first_party_design,
+            .source_uri = "docs/superpowers/plans/2026-06-29-2d-commercial-production-excellence-v1.md",
+            .usage_scope = "claims Unreal equivalence in public editor flow",
+            .external_engine_equivalence_claim = true,
+        },
+        mirakana::TwoDOriginalitySourceRow{
+            .id = "godot-parity-runtime-api",
+            .kind = mirakana::TwoDOriginalitySourceKind::official_documentation_category,
+            .source_uri = "https://godotengine.org/license/",
+            .usage_scope = "claims Godot parity in public runtime API",
+            .external_engine_parity_claim = true,
+        },
+    };
+
+    const auto result = mirakana::review_2d_commercial_production_sources(rows);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.clean_room_ready);
+    MK_REQUIRE(!result.official_source_ledger_ready);
+    MK_REQUIRE(!result.commercial_production_source_gate_ready);
+    MK_REQUIRE(result.external_engine_claim_rows == 3U);
+    MK_REQUIRE(has_rejected_source(result, "unity-compatible-package-output"));
+    MK_REQUIRE(has_rejected_source(result, "unreal-equivalent-editor-flow"));
+    MK_REQUIRE(has_rejected_source(result, "godot-parity-runtime-api"));
+    MK_REQUIRE(
+        has_diagnostic(result.diagnostics, "external_engine_compatibility_claim", "unity-compatible-package-output"));
+    MK_REQUIRE(
+        has_diagnostic(result.diagnostics, "external_engine_equivalence_claim", "unreal-equivalent-editor-flow"));
+    MK_REQUIRE(has_diagnostic(result.diagnostics, "external_engine_parity_claim", "godot-parity-runtime-api"));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

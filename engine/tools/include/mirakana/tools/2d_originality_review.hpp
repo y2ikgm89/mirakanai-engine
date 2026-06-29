@@ -32,6 +32,9 @@ struct TwoDOriginalitySourceRow {
     bool copied_asset{false};
     bool copied_documentation_text{false};
     bool public_surface_uses_external_engine_mark{false};
+    bool external_engine_compatibility_claim{false};
+    bool external_engine_equivalence_claim{false};
+    bool external_engine_parity_claim{false};
 };
 
 struct TwoDOriginalityDiagnostic {
@@ -52,7 +55,14 @@ struct TwoDOriginalityReviewResult {
     std::size_t copied_code_rows{0};
     std::size_t copied_asset_rows{0};
     std::size_t trademark_surface_rows{0};
+    std::size_t external_engine_claim_rows{0};
+    // True when a commercial review has clean first-party, official-doc, and platform-SDK source evidence.
+    bool official_source_ledger_ready{false};
+    // True when the commercial production source ledger is ready and contains no external-engine product claims.
+    bool commercial_production_source_gate_ready{false};
+    // True when the selected review mode has no diagnostics.
     bool clean_room_ready{false};
+    // This review is an engineering gate; final release decisions still require counsel review.
     bool requires_legal_counsel_review{true};
 
     [[nodiscard]] bool succeeded() const noexcept {
@@ -61,5 +71,7 @@ struct TwoDOriginalityReviewResult {
 };
 
 [[nodiscard]] TwoDOriginalityReviewResult review_2d_originality_sources(std::span<const TwoDOriginalitySourceRow> rows);
+[[nodiscard]] TwoDOriginalityReviewResult
+review_2d_commercial_production_sources(std::span<const TwoDOriginalitySourceRow> rows);
 
 } // namespace mirakana
