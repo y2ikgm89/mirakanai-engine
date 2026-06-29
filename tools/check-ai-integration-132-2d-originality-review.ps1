@@ -17,7 +17,12 @@ foreach ($needle in @(
         "TwoDOriginalitySourceRow",
         "TwoDOriginalityDiagnostic",
         "TwoDOriginalityReviewResult",
-        "review_2d_originality_sources"
+        "review_2d_originality_sources",
+        "review_2d_commercial_production_sources",
+        "external_engine_compatibility_claim",
+        "external_engine_equivalence_claim",
+        "external_engine_parity_claim",
+        "commercial_production_source_gate_ready"
     )) {
     Assert-ContainsText $twoDOriginalityReviewHeaderText $needle "2D originality review public header"
 }
@@ -26,6 +31,11 @@ foreach ($needle in @(
         "prohibited_external_engine_code",
         "copied_documentation_text",
         "public_surface_uses_external_engine_mark",
+        "external_engine_compatibility_claim",
+        "external_engine_equivalence_claim",
+        "external_engine_parity_claim",
+        "missing_official_documentation_category_source",
+        "missing_official_platform_sdk_source",
         "missing_source_rows"
     )) {
     Assert-ContainsText $twoDOriginalityReviewSourceText $needle "2D originality review source"
@@ -35,7 +45,10 @@ foreach ($needle in @(
         "2d originality review accepts first party official category docs and platform sdk rows",
         "2d originality review rejects unity unreal godot code assets schema or copied docs",
         "2d originality review rejects external engine trademarks in public surfaces",
-        "2d originality review requires legal counsel review even when engineering gate is ready"
+        "2d originality review requires legal counsel review even when engineering gate is ready",
+        "2d commercial production source review requires first party official docs and platform sdk rows",
+        "2d commercial production source review accepts official ledger while preserving counsel review",
+        "2d commercial production source review rejects compatibility equivalence and parity claims"
     )) {
     Assert-ContainsText $twoDOriginalityReviewTestsText $needle "2D originality review tests"
 }
@@ -44,6 +57,9 @@ Assert-ContainsText $twoDOriginalityReviewRootCMakeText "MK_tools_2d_originality
 Assert-ContainsText $twoDOriginalityReviewToolsCMakeText "2d_originality_review.cpp" "MK_tools asset CMake 2D originality source"
 Assert-ContainsText $twoDOriginalityReviewManifestText "engine/tools/include/mirakana/tools/2d_originality_review.hpp" "engine manifest 2D originality review public header"
 Assert-ContainsText $twoDOriginalityReviewManifestText "review_2d_originality_sources" "engine manifest 2D originality review purpose"
+Assert-ContainsText $twoDOriginalityReviewManifestText "review_2d_commercial_production_sources" "engine manifest 2D commercial production review purpose"
+Assert-ContainsText $twoDOriginalityReviewManifestText "commercial_production_source_gate_ready" "engine manifest 2D commercial production gate"
 Assert-ContainsText $twoDOriginalityReviewCurrentCapabilitiesText "2D Originality Review v1" "docs/current-capabilities.md 2D originality review"
+Assert-ContainsText $twoDOriginalityReviewCurrentCapabilitiesText "review_2d_commercial_production_sources" "docs/current-capabilities.md 2D commercial production source review"
 Assert-ContainsText $twoDOriginalityReviewCurrentCapabilitiesText "legal clearance automation" "docs/current-capabilities.md 2D originality non-claim"
 Assert-ContainsText $twoDOriginalityReviewPlanText "Phase 1 validation evidence" "Original 2D authoring plan Phase 1 evidence"

@@ -16,13 +16,17 @@ if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/miraka
 $geToolsPurpose = [string]$geToolsModule[0].purpose
 foreach ($needle in @(
         "review_2d_originality_sources",
+        "review_2d_commercial_production_sources",
         "TwoDOriginalitySourceRow",
         "TwoDOriginalityReviewResult",
         "clean-room counters",
+        "official_source_ledger_ready",
+        "commercial_production_source_gate_ready",
         "counsel-review-required",
         "copied code/assets/documentation",
         "external engine schemas",
         "trademark surfaces",
+        "external engine compatibility/equivalence/parity claims",
         "legal clearance automation"
     )) {
     if (-not $geToolsPurpose.Contains($needle)) {
