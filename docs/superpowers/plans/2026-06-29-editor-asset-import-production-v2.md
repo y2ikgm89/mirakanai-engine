@@ -17,6 +17,7 @@
 - **Date:** 2026-06-29
 - **Scope:** Asset import workflow after Source Pulse asset browser production v1. This plan does not replace the active renderer commercial-readiness plan and does not reopen `unsupportedProductionGaps`.
 - **Priority buckets:** High priority implements a complete safe import path. Medium priority improves operator productivity and live iteration. Deferred work remains explicit non-scope until separate legal, dependency, and host evidence exists.
+- **Closeout:** High and medium priority Tasks 1-12 completed on 2026-06-29 through PR #881-#886. Deferred Tasks 13-15 remain non-scope gates and were not implemented.
 
 ## Locked Current Project Facts
 
@@ -1061,6 +1062,8 @@ Result on 2026-06-29: PASS. `EditorAssetImportCandidateInput`, `EditorAssetImpor
 
 ## Deferred Tasks
 
+Deferred gate status on 2026-06-29: NOT SELECTED. The checkboxes below are future-entry requirements, not incomplete work for this plan closeout. No broad codec dependency, marketplace connector, external-engine project importer, compatibility claim, third-party asset catalog, or additional legal/dependency record was added.
+
 ### Task 13: Broad Codec Expansion Gate
 
 **Deferred scope:** AVIF, JPEG, TIFF, USD, FBX, OBJ, Ogg/Vorbis, Opus, EXR-to-runtime import, KTX2 runtime transcode, and Assimp-based broad format import are not part of high or medium priority work.
@@ -1121,12 +1124,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 
 ## Final Acceptance Checklist
 
-- [ ] High-priority import can review source files, copy external files, require provenance, register source registry rows, import cooked artifacts, refresh browser state, and record diagnostics without automatic execution.
-- [ ] Mesh and audio rows are no longer dropped from the visible-shell default import plan.
-- [ ] External copy is transactional, root-contained, collision-safe, and leaves no temp files on success or known failure.
-- [ ] Provenance blocks license-less, NC/ND, external-engine, marketplace, trademark, copied UI expression, and incomplete notice rows.
-- [ ] Existing optional `asset-importers` dependency gate is reused; no new high-priority dependency is introduced.
-- [ ] Runtime/game code consumes cooked artifacts only and still does not parse external source formats.
-- [ ] `editor/core` remains GUI-independent and free of native handles, parser types, filesystem mutation, process execution, renderer/RHI work, package scripts, and validation recipe execution.
-- [ ] Unity, Unreal Engine, and Godot are not copied or mimicked; they remain official legal/category research sources only.
-- [ ] Current-truth docs, plan registry, and agent-surface contracts match the implemented behavior.
+- [x] High-priority import can review source files, copy external files, require provenance, register source registry rows, import cooked artifacts, refresh browser state, and record diagnostics without automatic execution.
+- [x] Mesh and audio rows are no longer dropped from the visible-shell default import plan.
+- [x] External copy is transactional, root-contained, collision-safe, and leaves no temp files on success or known failure.
+- [x] Provenance blocks license-less, NC/ND, external-engine, marketplace, trademark, copied UI expression, and incomplete notice rows.
+- [x] Existing optional `asset-importers` dependency gate is reused; no new high-priority dependency is introduced.
+- [x] Runtime/game code consumes cooked artifacts only and still does not parse external source formats.
+- [x] `editor/core` remains GUI-independent and free of native handles, parser types, filesystem mutation, process execution, renderer/RHI work, package scripts, and validation recipe execution.
+- [x] Unity, Unreal Engine, and Godot are not copied or mimicked; they remain official legal/category research sources only.
+- [x] Current-truth docs, plan registry, and agent-surface contracts match the implemented behavior.
+
+Final closeout result on 2026-06-29: PASS. Tasks 1-7 landed through PR #881, Task 8 through PR #882, Task 9 through PR #883, Task 10 through PR #884, Task 11 through PR #885, and Task 12 through PR #886. Local full `tools/validate.ps1` passed for the final behavior slice, hosted PR #886 passed `PR Gate`, `Windows MSVC`, `Windows C++23 Release Evaluation`, `Windows Native Desktop Editor`, Linux, macOS, iOS smoke, CodeQL, and static-analysis lanes, then merged at `3ecfda0b8d799cbd12adf14e455138bb6b35c973`. Deferred gates remain blocked until a separate plan supplies official-source research, legal/dependency records, clean-room approval, and validation recipes.
