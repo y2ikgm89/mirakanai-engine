@@ -573,7 +573,7 @@ Add tests for:
 - `asset_browser.import.copy_external_sources`
 - `asset_browser.import.execute_reviewed_plan`
 - `asset_browser.cook.package_preview`
-- `asset_browser.hot_reload.stage_recook`
+- `asset_browser.import.stage_hot_reload`
 - `asset_browser.selection.inspect`
 - `asset_browser.package.apply_registration`
 
@@ -590,7 +590,7 @@ enum class EditorAssetBrowserCommandKind : std::uint8_t {
     copy_external_sources,
     execute_reviewed_import_plan,
     preview_cooked_package,
-    stage_hot_reload_recook,
+    stage_hot_reload,
     inspect_selection,
     apply_package_registration
 };

@@ -263,10 +263,14 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
         return "Copy external sources";
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
         return "Execute reviewed import plan";
+    case EditorAssetBrowserCommandKind::reimport_selected:
+        return "Reimport selected assets";
+    case EditorAssetBrowserCommandKind::recook_stale:
+        return "Recook stale assets";
     case EditorAssetBrowserCommandKind::preview_cooked_package:
         return "Preview cooked package";
-    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
-        return "Stage hot-reload recook";
+    case EditorAssetBrowserCommandKind::stage_hot_reload:
+        return "Stage hot reload";
     case EditorAssetBrowserCommandKind::inspect_selection:
         return "Inspect selection";
     case EditorAssetBrowserCommandKind::apply_package_registration:
@@ -290,7 +294,9 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
     case EditorAssetBrowserCommandKind::copy_external_sources:
     case EditorAssetBrowserCommandKind::register_import_sources:
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
-    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
+    case EditorAssetBrowserCommandKind::reimport_selected:
+    case EditorAssetBrowserCommandKind::recook_stale:
+    case EditorAssetBrowserCommandKind::stage_hot_reload:
     case EditorAssetBrowserCommandKind::apply_package_registration:
         return true;
     case EditorAssetBrowserCommandKind::reload_source_registry:
@@ -307,9 +313,12 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
     case EditorAssetBrowserCommandKind::copy_external_sources:
     case EditorAssetBrowserCommandKind::register_import_sources:
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
-    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
+    case EditorAssetBrowserCommandKind::reimport_selected:
+    case EditorAssetBrowserCommandKind::recook_stale:
     case EditorAssetBrowserCommandKind::apply_package_registration:
         return true;
+    case EditorAssetBrowserCommandKind::stage_hot_reload:
+        return false;
     case EditorAssetBrowserCommandKind::reload_source_registry:
     case EditorAssetBrowserCommandKind::review_import_sources:
     case EditorAssetBrowserCommandKind::preview_cooked_package:
@@ -320,7 +329,9 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
 }
 
 [[nodiscard]] bool command_executes_import_tools(EditorAssetBrowserCommandKind kind) noexcept {
-    return kind == EditorAssetBrowserCommandKind::execute_reviewed_import_plan;
+    return kind == EditorAssetBrowserCommandKind::execute_reviewed_import_plan ||
+           kind == EditorAssetBrowserCommandKind::reimport_selected ||
+           kind == EditorAssetBrowserCommandKind::recook_stale;
 }
 
 [[nodiscard]] bool is_external_engine_material(const EditorAssetBrowserLegalProvenanceRow& row) {
@@ -800,10 +811,14 @@ std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind k
         return "asset_browser.import.copy_external_sources";
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
         return "asset_browser.import.execute_reviewed_plan";
+    case EditorAssetBrowserCommandKind::reimport_selected:
+        return "asset_browser.import.reimport_selected";
+    case EditorAssetBrowserCommandKind::recook_stale:
+        return "asset_browser.import.recook_stale";
     case EditorAssetBrowserCommandKind::preview_cooked_package:
         return "asset_browser.cook.package_preview";
-    case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
-        return "asset_browser.hot_reload.stage_recook";
+    case EditorAssetBrowserCommandKind::stage_hot_reload:
+        return "asset_browser.import.stage_hot_reload";
     case EditorAssetBrowserCommandKind::inspect_selection:
         return "asset_browser.selection.inspect";
     case EditorAssetBrowserCommandKind::apply_package_registration:

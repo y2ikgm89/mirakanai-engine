@@ -244,8 +244,10 @@ make_default_asset_browser_command_plans(const EditorAssetBrowserProductionModel
         EditorAssetBrowserCommandKind::register_import_sources,
         EditorAssetBrowserCommandKind::copy_external_sources,
         EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
+        EditorAssetBrowserCommandKind::reimport_selected,
+        EditorAssetBrowserCommandKind::recook_stale,
         EditorAssetBrowserCommandKind::preview_cooked_package,
-        EditorAssetBrowserCommandKind::stage_hot_reload_recook,
+        EditorAssetBrowserCommandKind::stage_hot_reload,
         EditorAssetBrowserCommandKind::inspect_selection,
         EditorAssetBrowserCommandKind::apply_package_registration,
     };
@@ -852,6 +854,36 @@ void append_source_registration_diagnostics(std::vector<std::string>& output,
     }
 }
 
+[[nodiscard]] std::size_t count_staged_runtime_replacements(std::span<const AssetHotReloadApplyResult> results) {
+    return static_cast<std::size_t>(std::ranges::count_if(results, [](const AssetHotReloadApplyResult& result) {
+        return result.kind == AssetHotReloadApplyResultKind::staged;
+    }));
+}
+
+[[nodiscard]] std::vector<AssetHotReloadApplyResult>
+make_selected_pending_hot_reload_stage_results(const AssetRuntimeReplacementState& replacements,
+                                               std::span<const AssetKeyV2> selected_asset_keys) {
+    std::vector<AssetHotReloadApplyResult> results;
+    results.reserve(selected_asset_keys.size());
+    for (const auto& key : selected_asset_keys) {
+        const auto asset = asset_id_from_key_v2(key);
+        const auto* pending = replacements.find_pending(asset);
+        if (pending == nullptr) {
+            continue;
+        }
+        const auto* active = replacements.find_active(asset);
+        results.push_back(AssetHotReloadApplyResult{
+            .kind = AssetHotReloadApplyResultKind::staged,
+            .asset = asset,
+            .path = pending->path,
+            .requested_revision = pending->requested_revision,
+            .active_revision = active != nullptr ? active->revision : 0,
+            .diagnostic = {},
+        });
+    }
+    return results;
+}
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -992,6 +1024,7 @@ struct NativeEditorApp::Impl {
     AssetImportPlan asset_browser_import_plan;
     AssetRegistry asset_browser_asset_registry;
     AssetPipelineState asset_browser_asset_pipeline;
+    AssetRuntimeReplacementState asset_browser_runtime_replacements;
     std::uint64_t asset_browser_generation{1U};
     EditorAssetImportJobSnapshot asset_import_jobs;
     std::uint64_t next_asset_import_job_sequence{1U};
@@ -1821,6 +1854,178 @@ NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBro
                                        import_result.failures.size(), result.diagnostic);
     }
     ++impl_->service_status.asset_import_executions;
+    return result;
+}
+
+NativeEditorAssetBrowserReimportExecutionResult NativeEditorApp::execute_reviewed_asset_browser_reimport_selection(
+    NativeEditorAssetBrowserReimportExecutionRequest request) {
+    NativeEditorAssetBrowserReimportExecutionResult result;
+    result.command = plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+        .kind = EditorAssetBrowserCommandKind::reimport_selected,
+        .mode = EditorAssetBrowserCommandMode::apply,
+        .expected_generation = request.expected_generation,
+        .current_generation = impl_->asset_browser.generation,
+        .user_confirmed = request.user_confirmed,
+    });
+
+    if (result.command.status != EditorAssetBrowserCommandStatus::ready || !result.command.executes_import_tools) {
+        result.diagnostic = result.command.diagnostics.empty()
+                                ? "asset browser reimport requires a reviewed ready command"
+                                : result.command.diagnostics.front();
+        return result;
+    }
+    if (impl_->asset_import_filesystem == nullptr) {
+        impl_->service_status.asset_import_filesystem_available = false;
+        result.diagnostic = "asset browser reimport requires an asset import filesystem service";
+        return result;
+    }
+
+    result.review = review_editor_asset_reimport_request(EditorAssetReimportReviewRequest{
+        .source_registry = impl_->asset_browser_source_registry,
+        .import_plan = impl_->asset_browser_import_plan,
+        .selected_asset_keys = std::move(request.selected_asset_keys),
+        .include_dependency_closure = request.include_dependency_closure,
+    });
+    if (!result.review.ready) {
+        result.diagnostic = result.review.diagnostics.empty() ? "asset browser reimport review has no ready assets"
+                                                              : result.review.diagnostics.front();
+        return result;
+    }
+
+    result.job_id = impl_->append_asset_import_job(result.review.recook_requests.size(), 2U, true, true);
+    impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::importing, 1U, 0U, 0U, {});
+
+    ExternalAssetImportAdapters adapters;
+    result.recook = execute_asset_runtime_recook(*impl_->asset_import_filesystem, impl_->asset_browser_import_plan,
+                                                 impl_->asset_browser_runtime_replacements,
+                                                 result.review.recook_requests, adapters.options());
+    result.executed = true;
+    result.import_tools_invoked = true;
+    result.imported_count = result.recook.import_result.imported.size();
+    result.import_failure_count = result.recook.import_result.failures.size();
+    result.staged_runtime_replacement_count = count_staged_runtime_replacements(result.recook.apply_results);
+    result.pending_runtime_replacement_count = impl_->asset_browser_runtime_replacements.pending_count();
+    result.diagnostic = result.recook.import_result.succeeded()
+                            ? "asset browser reimport staged runtime replacements"
+                            : result.recook.import_result.failures.front().diagnostic;
+    impl_->asset_browser_asset_pipeline.apply_hot_reload_results(result.recook.apply_results);
+    impl_->refresh_asset_browser_preview_evidence();
+    if (result.recook.succeeded()) {
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::succeeded, 2U, result.imported_count,
+                                       0U, {});
+    } else {
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::failed, 1U, 0U,
+                                       result.import_failure_count, result.diagnostic);
+    }
+    ++impl_->service_status.asset_import_executions;
+    return result;
+}
+
+NativeEditorAssetBrowserRecookExecutionResult
+NativeEditorApp::execute_reviewed_asset_browser_recook(NativeEditorAssetBrowserRecookExecutionRequest request) {
+    NativeEditorAssetBrowserRecookExecutionResult result;
+    result.command = plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+        .kind = EditorAssetBrowserCommandKind::recook_stale,
+        .mode = EditorAssetBrowserCommandMode::apply,
+        .expected_generation = request.expected_generation,
+        .current_generation = impl_->asset_browser.generation,
+        .user_confirmed = request.user_confirmed,
+    });
+
+    if (result.command.status != EditorAssetBrowserCommandStatus::ready || !result.command.executes_import_tools) {
+        result.diagnostic = result.command.diagnostics.empty()
+                                ? "asset browser recook requires a reviewed ready command"
+                                : result.command.diagnostics.front();
+        return result;
+    }
+    if (impl_->asset_import_filesystem == nullptr) {
+        impl_->service_status.asset_import_filesystem_available = false;
+        result.diagnostic = "asset browser recook requires an asset import filesystem service";
+        return result;
+    }
+
+    result.review = review_editor_asset_recook_request(EditorAssetRecookReviewRequest{
+        .import_plan = impl_->asset_browser_import_plan,
+        .ready_recook_requests = std::move(request.ready_recook_requests),
+        .content_hash_rows = std::move(request.content_hash_rows),
+    });
+    if (!result.review.ready) {
+        result.diagnostic = result.review.diagnostics.empty() ? "asset browser recook review has no stale assets"
+                                                              : result.review.diagnostics.front();
+        return result;
+    }
+
+    result.job_id = impl_->append_asset_import_job(result.review.recook_requests.size(), 2U, true, true);
+    impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::importing, 1U, 0U, 0U, {});
+
+    ExternalAssetImportAdapters adapters;
+    result.recook = execute_asset_runtime_recook(*impl_->asset_import_filesystem, impl_->asset_browser_import_plan,
+                                                 impl_->asset_browser_runtime_replacements,
+                                                 result.review.recook_requests, adapters.options());
+    result.executed = true;
+    result.import_tools_invoked = true;
+    result.imported_count = result.recook.import_result.imported.size();
+    result.import_failure_count = result.recook.import_result.failures.size();
+    result.staged_runtime_replacement_count = count_staged_runtime_replacements(result.recook.apply_results);
+    result.pending_runtime_replacement_count = impl_->asset_browser_runtime_replacements.pending_count();
+    result.diagnostic = result.recook.import_result.succeeded()
+                            ? "asset browser recook staged runtime replacements"
+                            : result.recook.import_result.failures.front().diagnostic;
+    impl_->asset_browser_asset_pipeline.apply_hot_reload_results(result.recook.apply_results);
+    impl_->refresh_asset_browser_preview_evidence();
+    if (result.recook.succeeded()) {
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::succeeded, 2U, result.imported_count,
+                                       0U, {});
+    } else {
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::failed, 1U, 0U,
+                                       result.import_failure_count, result.diagnostic);
+    }
+    ++impl_->service_status.asset_import_executions;
+    return result;
+}
+
+NativeEditorAssetBrowserHotReloadStageResult
+NativeEditorApp::commit_staged_asset_browser_hot_reload(NativeEditorAssetBrowserHotReloadStageRequest request) {
+    NativeEditorAssetBrowserHotReloadStageResult result;
+    result.command = plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+        .kind = EditorAssetBrowserCommandKind::stage_hot_reload,
+        .mode = EditorAssetBrowserCommandMode::apply,
+        .expected_generation = request.expected_generation,
+        .current_generation = impl_->asset_browser.generation,
+        .user_confirmed = request.user_confirmed,
+    });
+    result.generation_after_commit = impl_->asset_browser.generation;
+
+    if (result.command.status != EditorAssetBrowserCommandStatus::ready) {
+        result.diagnostic = result.command.diagnostics.empty()
+                                ? "asset browser hot reload requires a reviewed ready command"
+                                : result.command.diagnostics.front();
+        return result;
+    }
+
+    auto staged_results = make_selected_pending_hot_reload_stage_results(impl_->asset_browser_runtime_replacements,
+                                                                         request.selected_asset_keys);
+    result.review = review_editor_asset_hot_reload_stage_request(EditorAssetHotReloadStageReviewRequest{
+        .staged_results = std::move(staged_results),
+        .selected_asset_keys = std::move(request.selected_asset_keys),
+        .commit_at_safe_point = true,
+    });
+    if (!result.review.ready || !result.review.commits_runtime_replacements) {
+        result.diagnostic = result.review.diagnostics.empty()
+                                ? "asset browser hot reload has no selected staged runtime replacements"
+                                : result.review.diagnostics.front();
+        result.pending_runtime_replacement_count = impl_->asset_browser_runtime_replacements.pending_count();
+        return result;
+    }
+
+    result.apply_results = impl_->asset_browser_runtime_replacements.commit_safe_point(result.review.safe_point_assets);
+    result.committed_at_safe_point = !result.apply_results.empty();
+    result.pending_runtime_replacement_count = impl_->asset_browser_runtime_replacements.pending_count();
+    result.generation_after_commit = impl_->asset_browser.generation;
+    result.diagnostic = result.committed_at_safe_point ? "asset browser hot reload committed at safe point"
+                                                       : "asset browser hot reload commit produced no results";
+    impl_->asset_browser_asset_pipeline.apply_hot_reload_results(result.apply_results);
+    impl_->refresh_asset_browser_preview_evidence();
     return result;
 }
 

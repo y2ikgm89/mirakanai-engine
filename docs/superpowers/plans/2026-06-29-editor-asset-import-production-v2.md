@@ -931,17 +931,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Test: `tests/unit/editor_core_tests.cpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] Add reviewed command ids for `asset_browser.import.reimport_selected`, `asset_browser.import.recook_stale`, and `asset_browser.import.stage_hot_reload`.
-- [ ] Build stale rows from `AssetHotReloadTracker`, source content hash, output content hash, and `build_asset_recook_plan`.
-- [ ] Reimport selected assets by `AssetKeyV2`; dependency expansion is explicit and defaults to selected only.
-- [ ] Recook uses existing `execute_asset_runtime_recook` only after import plan review and user confirmation.
-- [ ] Hot reload stages replacements through `AssetRuntimeReplacementState` and commits only at a caller-owned safe point.
-- [ ] Tests prove selected-only reimport, dependency-closure reimport when explicitly requested, failed recook rollback, and no runtime source parsing.
-- [ ] Verification:
+- [x] Add reviewed command ids for `asset_browser.import.reimport_selected`, `asset_browser.import.recook_stale`, and `asset_browser.import.stage_hot_reload`.
+- [x] Build stale rows from reviewed source content hash / output content hash evidence and `build_asset_recook_plan`; `AssetHotReloadTracker` remains the producer of `AssetHotReloadRecookRequest` rows outside editor core.
+- [x] Reimport selected assets by `AssetKeyV2`; dependency expansion is explicit and defaults to selected only.
+- [x] Recook uses existing `execute_asset_runtime_recook` only after import plan review and user confirmation.
+- [x] Hot reload stages replacements through `AssetRuntimeReplacementState` and commits only at a caller-owned safe point.
+- [x] Tests prove selected-only reimport, dependency-closure reimport when explicitly requested, failed recook rollback, and no runtime source parsing.
+- [x] Verification:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests|MK_core_tests"
 ```
+
+Evidence: passed on 2026-06-29 with `MK_core_tests`, `MK_editor_core_tests`, and `MK_editor_native_shell_tests` all green; full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` also passed with 159/159 tests. No new dependency, third-party asset, external-engine material, compatibility claim, or legal-advice claim was added.
 
 ### Task 10: Import Presets
 

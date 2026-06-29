@@ -104,6 +104,22 @@ void write_native_asset_import_texture_source(mirakana::IFileSystem& filesystem,
                                 }));
 }
 
+[[nodiscard]] mirakana::AssetHotReloadRecookRequest
+make_native_texture_recook_request(const mirakana::AssetKeyV2& key, std::uint64_t previous_revision = 10,
+                                   std::uint64_t current_revision = 11) {
+    const auto asset = mirakana::asset_id_from_key_v2(key);
+    return mirakana::AssetHotReloadRecookRequest{
+        .asset = asset,
+        .source_asset = asset,
+        .trigger_path = "source/textures/editor_preview.texture",
+        .trigger_event_kind = mirakana::AssetHotReloadEventKind::modified,
+        .reason = mirakana::AssetHotReloadRecookReason::source_modified,
+        .previous_revision = previous_revision,
+        .current_revision = current_revision,
+        .ready_tick = 20,
+    };
+}
+
 class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextAdapter {
   public:
     void set_clipboard_text(std::string_view text) override {
@@ -478,7 +494,7 @@ MK_TEST("editor native shell exposes Source Pulse asset browser model") {
     MK_REQUIRE(!asset_browser.mutates);
     MK_REQUIRE(!asset_browser.executes);
     MK_REQUIRE(!asset_browser.exposes_native_handles);
-    MK_REQUIRE(command_plans.size() == 9U);
+    MK_REQUIRE(command_plans.size() == 11U);
     for (const auto& command : command_plans) {
         MK_REQUIRE(command.current_generation == asset_browser.generation);
         MK_REQUIRE(!command.executes_package_scripts);
@@ -1093,6 +1109,116 @@ MK_TEST("native asset import job retry and cancel keep completed snapshot immuta
     MK_REQUIRE(app.asset_import_jobs().rows[1].completed_steps == 0U);
     MK_REQUIRE(!filesystem.exists("assets/imported/hero.texture"));
     MK_REQUIRE(!filesystem.exists("assets/imported/prop.texture"));
+}
+
+MK_TEST("native asset browser reimport selection stages selected assets only") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/editor_preview"};
+    write_native_asset_import_texture_source(filesystem, "source/textures/editor_preview.texture");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto result = app.execute_reviewed_asset_browser_reimport_selection(
+        mirakana::editor::NativeEditorAssetBrowserReimportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .selected_asset_keys = {texture_key},
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(result.command.command_id == "asset_browser.import.reimport_selected");
+    MK_REQUIRE(result.review.ready);
+    MK_REQUIRE(result.review.recook_requests.size() == 1U);
+    MK_REQUIRE(result.executed);
+    MK_REQUIRE(result.import_tools_invoked);
+    MK_REQUIRE(result.imported_count == 1U);
+    MK_REQUIRE(result.staged_runtime_replacement_count == 1U);
+    MK_REQUIRE(result.pending_runtime_replacement_count == 1U);
+    MK_REQUIRE(!result.committed_at_safe_point);
+    MK_REQUIRE(filesystem.exists("assets/textures/editor_preview.texture"));
+}
+
+MK_TEST("native asset browser recook failure rolls back without staged runtime replacement") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/editor_preview"};
+    filesystem.write_text("source/textures/editor_preview.texture", "invalid texture source");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto result =
+        app.execute_reviewed_asset_browser_recook(mirakana::editor::NativeEditorAssetBrowserRecookExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .ready_recook_requests = {make_native_texture_recook_request(texture_key)},
+            .content_hash_rows =
+                {
+                    mirakana::editor::EditorAssetRecookContentHashRow{
+                        .asset_key = texture_key,
+                        .source_content_hash = "sha256:source-new",
+                        .output_content_hash = "sha256:output-old",
+                    },
+                },
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(result.command.command_id == "asset_browser.import.recook_stale");
+    MK_REQUIRE(result.review.ready);
+    MK_REQUIRE(result.executed);
+    MK_REQUIRE(result.import_tools_invoked);
+    MK_REQUIRE(result.import_failure_count == 1U);
+    MK_REQUIRE(result.recook.apply_results.size() == 1U);
+    MK_REQUIRE(result.recook.apply_results[0].kind == mirakana::AssetHotReloadApplyResultKind::failed_rolled_back);
+    MK_REQUIRE(result.pending_runtime_replacement_count == 0U);
+    MK_REQUIRE(!result.committed_at_safe_point);
+}
+
+MK_TEST("native asset browser hot reload commits staged replacements only at safe point") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    const auto texture_key = mirakana::AssetKeyV2{"assets/textures/editor_preview"};
+    write_native_asset_import_texture_source(filesystem, "source/textures/editor_preview.texture");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto recook =
+        app.execute_reviewed_asset_browser_recook(mirakana::editor::NativeEditorAssetBrowserRecookExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .ready_recook_requests = {make_native_texture_recook_request(texture_key)},
+            .content_hash_rows =
+                {
+                    mirakana::editor::EditorAssetRecookContentHashRow{
+                        .asset_key = texture_key,
+                        .source_content_hash = "sha256:source-new",
+                        .output_content_hash = "sha256:output-old",
+                    },
+                },
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(recook.executed);
+    MK_REQUIRE(recook.staged_runtime_replacement_count == 1U);
+    MK_REQUIRE(recook.pending_runtime_replacement_count == 1U);
+    MK_REQUIRE(!recook.committed_at_safe_point);
+
+    const auto committed =
+        app.commit_staged_asset_browser_hot_reload(mirakana::editor::NativeEditorAssetBrowserHotReloadStageRequest{
+            .expected_generation = app.asset_browser().generation,
+            .selected_asset_keys = {texture_key},
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(committed.command.command_id == "asset_browser.import.stage_hot_reload");
+    MK_REQUIRE(committed.review.ready);
+    MK_REQUIRE(committed.committed_at_safe_point);
+    MK_REQUIRE(committed.apply_results.size() == 1U);
+    MK_REQUIRE(committed.apply_results[0].kind == mirakana::AssetHotReloadApplyResultKind::applied);
+    MK_REQUIRE(committed.pending_runtime_replacement_count == 0U);
+    MK_REQUIRE(app.asset_browser().generation == committed.generation_after_commit);
 }
 
 MK_TEST("native asset browser applies reviewed import sources to source registry") {
