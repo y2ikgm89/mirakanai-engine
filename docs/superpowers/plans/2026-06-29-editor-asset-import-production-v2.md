@@ -434,7 +434,7 @@ Result on 2026-06-29: PASS. Source registration is now an explicit confirmation-
 - Modify: `editor/CMakeLists.txt`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Write failing copy execution tests**
+- [x] **Step 1: Write failing copy execution tests**
 
 Add:
 
@@ -459,7 +459,7 @@ copy_result.target_project_paths[0] == "assets/imported_sources/hero.png"
 temporary .copying file is absent after success
 ```
 
-- [ ] **Step 2: Add shell-private transaction API**
+- [x] **Step 2: Add shell-private transaction API**
 
 Create `editor/src/native_asset_import_copy.hpp`:
 
@@ -493,7 +493,7 @@ struct NativeAssetImportExternalCopyResult {
 } // namespace mirakana::editor
 ```
 
-- [ ] **Step 3: Implement fail-closed filesystem policy**
+- [x] **Step 3: Implement fail-closed filesystem policy**
 
 Rules:
 
@@ -504,18 +504,18 @@ Reject source symlinks and target symlinks.
 Reject source paths that are not regular files.
 Reject targets outside project_root.
 Reject existing targets unless a later rename-suggestion task has produced a reviewed alternate target.
-Copy to <target>.copying-<process-id-or-monotonic-counter>, then rename to the final target.
-On failure, remove only the exact temp file created by this function.
+Copy to <target>.copying-<process-id-or-monotonic-counter>, then promote to the final target with no-overwrite finalization.
+On failure, remove only exact temp files and final links created by this transaction.
 Never delete or overwrite the source file.
 ```
 
-- [ ] **Step 4: Wire explicit copy command**
+- [x] **Step 4: Wire explicit copy command**
 
 Add `NativeEditorAssetBrowserExternalSourceCopyExecutionRequest` / result structs to `native_editor_app.hpp`, call `plan_editor_asset_browser_command` with `copy_external_sources`, require `user_confirmed=true`, then call `copy_reviewed_external_asset_sources_to_project`.
 
 After success, feed returned `target_project_paths` into Task 3 registration. Do not automatically import cooked artifacts after copy.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -525,6 +525,22 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-e
 ```
 
 Expected: copy succeeds only for reviewed safe sources and leaves no temp file behind after success or failure.
+
+Result on 2026-06-29: PASS. The native shell now exposes a confirmed
+`copy_reviewed_asset_browser_external_sources` flow backed by shell-private
+`copy_reviewed_external_asset_sources_to_project`. External files copy into
+`assets/imported_sources` through `.copying-*` temp files with no-overwrite
+hard-link promotion, reject device paths, parent traversal, source/target
+symlinks, non-regular sources, status-query errors, and target collisions,
+require legal provenance before mutation, roll back exact temp/final files
+created by the transaction on failure, and feed copied project-relative targets
+into the reviewed `asset_browser.import.register_sources` registration path
+without invoking import tools. Verification run:
+`tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`,
+`tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`,
+`tools/check-format.ps1`, `tools/check-json-contracts.ps1`,
+`tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, and
+`git diff --check`.
 
 ### Task 5: Persistent Asset Import Provenance Gate
 

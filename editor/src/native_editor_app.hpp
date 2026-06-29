@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "native_asset_import_copy.hpp"
 #include "native_editor_launch.hpp"
 #include "native_editor_text_atlas_handoff.hpp"
 #include "native_editor_text_input.hpp"
@@ -122,20 +123,6 @@ struct NativeEditorAssetBrowserExternalSourceCopyReview {
     std::vector<std::string> diagnostics;
 };
 
-struct NativeEditorAssetBrowserImportExecutionRequest {
-    std::uint64_t expected_generation{0};
-    bool user_confirmed{false};
-};
-
-struct NativeEditorAssetBrowserImportExecutionResult {
-    EditorAssetBrowserCommandPlan command;
-    bool executed{false};
-    bool import_tools_invoked{false};
-    std::size_t imported_count{0};
-    std::size_t import_failure_count{0};
-    std::string diagnostic;
-};
-
 struct NativeEditorAssetBrowserSourceRegistrationRequest {
     std::uint64_t expected_generation{0};
     std::vector<std::string> project_source_paths;
@@ -149,6 +136,40 @@ struct NativeEditorAssetBrowserSourceRegistrationResult {
     bool applied{false};
     std::size_t registered_count{0};
     std::vector<std::string> diagnostics;
+};
+
+struct NativeEditorAssetBrowserExternalSourceCopyExecutionRequest {
+    std::uint64_t expected_generation{0};
+    std::vector<std::string> absolute_source_paths;
+    std::vector<EditorAssetBrowserLegalProvenanceRow> provenance_rows;
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserExternalSourceCopyExecutionResult {
+    EditorAssetBrowserCommandPlan command;
+    NativeEditorAssetBrowserExternalSourceCopyReview review;
+    NativeAssetImportExternalCopyResult copy;
+    NativeEditorAssetBrowserSourceRegistrationResult source_registration;
+    std::vector<std::string> target_project_paths;
+    std::vector<std::string> diagnostics;
+    std::size_t copied_count{0};
+    bool copied{false};
+    bool registered_sources{false};
+    bool succeeded{false};
+};
+
+struct NativeEditorAssetBrowserImportExecutionRequest {
+    std::uint64_t expected_generation{0};
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserImportExecutionResult {
+    EditorAssetBrowserCommandPlan command;
+    bool executed{false};
+    bool import_tools_invoked{false};
+    std::size_t imported_count{0};
+    std::size_t import_failure_count{0};
+    std::string diagnostic;
 };
 
 class NativeEditorApp {
@@ -221,6 +242,8 @@ class NativeEditorApp {
     poll_asset_browser_import_sources_dialog(FileDialogId id);
     [[nodiscard]] NativeEditorAssetBrowserExternalSourceCopyReview
     review_asset_browser_external_source_copy(const NativeEditorAssetBrowserExternalSourceCopyRequest& request) const;
+    [[nodiscard]] NativeEditorAssetBrowserExternalSourceCopyExecutionResult
+    copy_reviewed_asset_browser_external_sources(NativeEditorAssetBrowserExternalSourceCopyExecutionRequest request);
     [[nodiscard]] NativeEditorAssetBrowserSourceRegistrationResult
     apply_reviewed_asset_browser_import_sources(NativeEditorAssetBrowserSourceRegistrationRequest request);
     [[nodiscard]] NativeEditorAssetBrowserImportExecutionResult

@@ -54,6 +54,7 @@ MK_apply_common_target_options(MK_editor_core)
 
 add_library(MK_editor_shell_common
     src/first_party_editor_document.cpp
+    src/native_asset_import_copy.cpp
     src/native_editor_app.cpp
     src/native_editor_launch.cpp
     src/native_editor_text_atlas_handoff.cpp
@@ -72,6 +73,10 @@ target_include_directories(MK_editor_shell_common
 
 target_link_libraries(MK_editor_shell_common PUBLIC MK_editor_core)
 target_link_libraries(MK_editor_shell_common PRIVATE MK_renderer)
+
+if(BUILD_TESTING)
+    target_compile_definitions(MK_editor_shell_common PRIVATE MK_EDITOR_ASSET_IMPORT_COPY_TEST_HOOKS=1)
+endif()
 
 if(WIN32)
     target_sources(MK_editor_shell_common PRIVATE

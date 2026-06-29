@@ -967,6 +967,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(MK_editor_native_shell_tests PRIVATE MK_editor_shell_common MK_rhi)
     target_include_directories(MK_editor_native_shell_tests PRIVATE tests editor/src)
+    target_compile_definitions(MK_editor_native_shell_tests PRIVATE MK_EDITOR_ASSET_IMPORT_COPY_TEST_HOOKS=1)
     MK_apply_common_target_options(MK_editor_native_shell_tests)
     add_test(NAME MK_editor_native_shell_tests COMMAND MK_editor_native_shell_tests)
 
