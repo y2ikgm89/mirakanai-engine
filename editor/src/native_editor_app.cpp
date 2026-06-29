@@ -905,6 +905,46 @@ struct NativeEditorApp::Impl {
         asset_browser.command_rows = make_asset_browser_retained_command_rows(asset_browser_command_plans);
     }
 
+    [[nodiscard]] std::string append_asset_import_job(std::size_t source_count, std::size_t total_steps,
+                                                      bool mutates_project_files, bool executes_import_tools) {
+        const auto sequence = next_asset_import_job_sequence++;
+        EditorAssetImportJobRow row{
+            .id = "asset_import_job." + std::to_string(sequence),
+            .sequence = sequence,
+            .state = EditorAssetImportJobState::queued,
+            .source_count = source_count,
+            .total_steps = total_steps,
+            .mutates_project_files = mutates_project_files,
+            .executes_import_tools = executes_import_tools,
+        };
+        asset_import_jobs.rows.push_back(row);
+        ++asset_import_jobs.generation;
+        asset_import_jobs = make_editor_asset_import_job_model(asset_import_jobs);
+        return row.id;
+    }
+
+    void update_asset_import_job(std::string_view id, EditorAssetImportJobState state, std::size_t completed_steps,
+                                 std::size_t imported_count, std::size_t failed_count, std::string diagnostic) {
+        const auto it = std::ranges::find_if(asset_import_jobs.rows, [id](const auto& row) { return row.id == id; });
+        if (it == asset_import_jobs.rows.end()) {
+            return;
+        }
+        it->state = state;
+        it->completed_steps = completed_steps;
+        it->imported_count = imported_count;
+        it->failed_count = failed_count;
+        it->diagnostic = std::move(diagnostic);
+        ++asset_import_jobs.generation;
+        asset_import_jobs = make_editor_asset_import_job_model(asset_import_jobs);
+    }
+
+    void commit_asset_import_job_command_result(const EditorAssetImportJobCommandResult& result) {
+        asset_import_jobs = make_editor_asset_import_job_model(result.snapshot);
+        for (const auto& row : asset_import_jobs.rows) {
+            next_asset_import_job_sequence = std::max(next_asset_import_job_sequence, row.sequence + 1U);
+        }
+    }
+
     struct PreparedAssetBrowserState {
         SourceAssetRegistryDocumentV1 source_registry;
         ContentBrowserState content_browser;
@@ -953,6 +993,8 @@ struct NativeEditorApp::Impl {
     AssetRegistry asset_browser_asset_registry;
     AssetPipelineState asset_browser_asset_pipeline;
     std::uint64_t asset_browser_generation{1U};
+    EditorAssetImportJobSnapshot asset_import_jobs;
+    std::uint64_t next_asset_import_job_sequence{1U};
     EditorAssetBrowserProductionModel asset_browser;
     std::vector<EditorAssetBrowserCommandPlan> asset_browser_command_plans;
     std::vector<EditorDiagnosticRow> console_rows;
@@ -1085,6 +1127,10 @@ const EditorAssetBrowserProductionModel& NativeEditorApp::asset_browser() const 
 
 std::span<const EditorAssetBrowserCommandPlan> NativeEditorApp::asset_browser_command_plans() const noexcept {
     return impl_->asset_browser_command_plans;
+}
+
+const EditorAssetImportJobSnapshot& NativeEditorApp::asset_import_jobs() const noexcept {
+    return impl_->asset_import_jobs;
 }
 
 std::span<const EditorDiagnosticRow> NativeEditorApp::console_rows() const noexcept {
@@ -1573,6 +1619,9 @@ NativeEditorAssetBrowserExternalSourceCopyExecutionResult NativeEditorApp::copy_
         return result;
     }
 
+    result.job_id = impl_->append_asset_import_job(copy_inputs.size(), 3U, true, false);
+    impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::copying, 1U, 0U, 0U, {});
+
     result.copy = copy_reviewed_external_asset_sources_to_project(impl_->project.root_path, copy_inputs);
     result.target_project_paths = result.copy.target_project_paths;
     result.copied_count = result.copy.copied_count;
@@ -1582,9 +1631,12 @@ NativeEditorAssetBrowserExternalSourceCopyExecutionResult NativeEditorApp::copy_
         if (result.diagnostics.empty()) {
             result.diagnostics.push_back("asset browser external source copy failed");
         }
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::failed, 1U, 0U,
+                                       result.copy.rows.size(), result.diagnostics.front());
         return result;
     }
 
+    impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::registering, 2U, 0U, 0U, {});
     result.source_registration =
         apply_reviewed_asset_browser_import_sources(NativeEditorAssetBrowserSourceRegistrationRequest{
             .expected_generation = impl_->asset_browser.generation,
@@ -1598,10 +1650,14 @@ NativeEditorAssetBrowserExternalSourceCopyExecutionResult NativeEditorApp::copy_
         if (result.diagnostics.empty()) {
             result.diagnostics.push_back("asset browser external source copy source registration failed");
         }
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::failed, 2U, 0U,
+                                       result.copy.rows.size(), result.diagnostics.front());
         return result;
     }
 
     result.succeeded = true;
+    impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::succeeded, 3U,
+                                   result.source_registration.registered_count, 0U, {});
     return result;
 }
 
@@ -1735,6 +1791,9 @@ NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBro
         return result;
     }
 
+    result.job_id = impl_->append_asset_import_job(impl_->asset_browser_import_plan.actions.size(), 3U, true, true);
+    impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::importing, 1U, 0U, 0U, {});
+
     ExternalAssetImportAdapters adapters;
     const auto import_result = execute_asset_import_plan(*impl_->asset_import_filesystem,
                                                          impl_->asset_browser_import_plan, adapters.options());
@@ -1746,6 +1805,8 @@ NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBro
                                                        : import_result.failures.front().diagnostic;
     impl_->asset_browser_asset_pipeline.apply_import_execution_result(import_result);
     if (import_result.succeeded()) {
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::refreshing, 2U,
+                                       import_result.imported.size(), 0U, {});
         result.registered_imported_count =
             add_imported_asset_records(impl_->asset_browser_asset_registry, import_result);
         impl_->asset_browser_content_browser =
@@ -1753,8 +1814,51 @@ NativeEditorApp::execute_reviewed_asset_browser_import_plan(NativeEditorAssetBro
         ++impl_->asset_browser_generation;
         impl_->refresh_asset_browser_preview_evidence();
         result.browser_refreshed = true;
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::succeeded, 3U,
+                                       import_result.imported.size(), 0U, {});
+    } else {
+        impl_->update_asset_import_job(result.job_id, EditorAssetImportJobState::failed, 1U, 0U,
+                                       import_result.failures.size(), result.diagnostic);
     }
     ++impl_->service_status.asset_import_executions;
+    return result;
+}
+
+NativeEditorAssetImportJobCommandResult
+NativeEditorApp::cancel_asset_import_job(NativeEditorAssetImportJobCommandRequest request) {
+    NativeEditorAssetImportJobCommandResult result;
+    result.command = apply_editor_asset_import_job_command(
+        impl_->asset_import_jobs, EditorAssetImportJobCommandRequest{
+                                      .kind = EditorAssetImportJobCommandKind::cancel,
+                                      .job_id = std::move(request.job_id),
+                                      .expected_generation = request.expected_generation,
+                                      .current_generation = impl_->asset_import_jobs.generation,
+                                      .user_confirmed = request.user_confirmed,
+                                  });
+    result.applied = result.command.applied;
+    result.diagnostics = result.command.plan.diagnostics;
+    if (result.applied) {
+        impl_->commit_asset_import_job_command_result(result.command);
+    }
+    return result;
+}
+
+NativeEditorAssetImportJobCommandResult
+NativeEditorApp::retry_asset_import_job(NativeEditorAssetImportJobCommandRequest request) {
+    NativeEditorAssetImportJobCommandResult result;
+    result.command = apply_editor_asset_import_job_command(
+        impl_->asset_import_jobs, EditorAssetImportJobCommandRequest{
+                                      .kind = EditorAssetImportJobCommandKind::retry,
+                                      .job_id = std::move(request.job_id),
+                                      .expected_generation = request.expected_generation,
+                                      .current_generation = impl_->asset_import_jobs.generation,
+                                      .user_confirmed = request.user_confirmed,
+                                  });
+    result.applied = result.command.applied;
+    result.diagnostics = result.command.plan.diagnostics;
+    if (result.applied) {
+        impl_->commit_asset_import_job_command_result(result.command);
+    }
     return result;
 }
 

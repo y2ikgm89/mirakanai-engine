@@ -992,6 +992,109 @@ MK_TEST("editor asset import execution keeps browser unchanged on failed import 
     MK_REQUIRE(hero_after->import_status_label == "planned");
 }
 
+MK_TEST("native asset import execution records job progress rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                  mirakana::SourceAssetRegistryDocumentV1{}));
+    write_native_asset_import_texture_source(filesystem, "assets/imported_sources/hero.png");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto registration = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = app.asset_browser().generation,
+            .project_source_paths = {"assets/imported_sources/hero.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero")},
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(registration.applied);
+
+    const auto job_generation_before = app.asset_import_jobs().generation;
+    const auto execution =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(execution.executed);
+    MK_REQUIRE(!execution.job_id.empty());
+    MK_REQUIRE(app.asset_import_jobs().generation > job_generation_before);
+    MK_REQUIRE(app.asset_import_jobs().rows.size() == 1U);
+    const auto& job = app.asset_import_jobs().rows[0];
+    MK_REQUIRE(job.id == execution.job_id);
+    MK_REQUIRE(job.state == mirakana::editor::EditorAssetImportJobState::succeeded);
+    MK_REQUIRE(job.state_label == "succeeded");
+    MK_REQUIRE(job.source_count == 1U);
+    MK_REQUIRE(job.imported_count == 1U);
+    MK_REQUIRE(job.failed_count == 0U);
+    MK_REQUIRE(job.progress_label == "3/3");
+    MK_REQUIRE(!job.can_cancel);
+    MK_REQUIRE(!job.can_retry);
+    MK_REQUIRE(!job.exposes_native_handles);
+}
+
+MK_TEST("native asset import job retry and cancel keep completed snapshot immutable") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                  mirakana::SourceAssetRegistryDocumentV1{}));
+    write_native_asset_import_texture_source(filesystem, "assets/imported_sources/hero.png");
+    filesystem.write_text("assets/imported_sources/prop.png", "not a texture source document");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto registration = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = app.asset_browser().generation,
+            .project_source_paths = {"assets/imported_sources/hero.png", "assets/imported_sources/prop.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero"),
+                                make_native_asset_import_test_provenance("assets/imported/prop")},
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(registration.applied);
+
+    const auto failed_execution =
+        app.execute_reviewed_asset_browser_import_plan(mirakana::editor::NativeEditorAssetBrowserImportExecutionRequest{
+            .expected_generation = app.asset_browser().generation,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(failed_execution.executed);
+    MK_REQUIRE(failed_execution.import_failure_count == 1U);
+    MK_REQUIRE(app.asset_import_jobs().rows.size() == 1U);
+    const auto failed_job_id = app.asset_import_jobs().rows[0].id;
+    const auto failed_diagnostic = app.asset_import_jobs().rows[0].diagnostic;
+
+    const auto retried = app.retry_asset_import_job(mirakana::editor::NativeEditorAssetImportJobCommandRequest{
+        .expected_generation = app.asset_import_jobs().generation,
+        .job_id = failed_job_id,
+        .user_confirmed = true,
+    });
+    MK_REQUIRE(retried.applied);
+    MK_REQUIRE(app.asset_import_jobs().rows.size() == 2U);
+    MK_REQUIRE(app.asset_import_jobs().rows[0].id == failed_job_id);
+    MK_REQUIRE(app.asset_import_jobs().rows[0].state == mirakana::editor::EditorAssetImportJobState::failed);
+    MK_REQUIRE(app.asset_import_jobs().rows[0].diagnostic == failed_diagnostic);
+    const auto retry_job_id = app.asset_import_jobs().rows[1].id;
+    MK_REQUIRE(app.asset_import_jobs().rows[1].parent_job_id == failed_job_id);
+    MK_REQUIRE(app.asset_import_jobs().rows[1].state == mirakana::editor::EditorAssetImportJobState::queued);
+
+    const auto canceled = app.cancel_asset_import_job(mirakana::editor::NativeEditorAssetImportJobCommandRequest{
+        .expected_generation = app.asset_import_jobs().generation,
+        .job_id = retry_job_id,
+        .user_confirmed = true,
+    });
+    MK_REQUIRE(canceled.applied);
+    MK_REQUIRE(app.asset_import_jobs().rows[1].state == mirakana::editor::EditorAssetImportJobState::canceled);
+    MK_REQUIRE(app.asset_import_jobs().rows[1].completed_steps == 0U);
+    MK_REQUIRE(!filesystem.exists("assets/imported/hero.texture"));
+    MK_REQUIRE(!filesystem.exists("assets/imported/prop.texture"));
+}
+
 MK_TEST("native asset browser applies reviewed import sources to source registry") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     mirakana::MemoryFileSystem filesystem;

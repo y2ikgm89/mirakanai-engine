@@ -2,6 +2,7 @@ add_library(MK_editor_core
     core/src/ai_command_panel.cpp
     core/src/ai_operation_surface.cpp
     core/src/asset_browser_production.cpp
+    core/src/asset_import_jobs.cpp
     core/src/asset_import_review.cpp
     core/src/asset_pipeline.cpp
     core/src/command.cpp
