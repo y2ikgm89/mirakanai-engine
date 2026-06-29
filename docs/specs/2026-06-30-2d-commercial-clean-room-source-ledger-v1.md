@@ -48,9 +48,16 @@ The guard reports `2d-commercial-clean-room: ok` only when scanned public surfac
 
 No dependency enters through this ledger. Any future third-party dependency, distributable asset, font, icon, texture, shader, sample, or generated asset requires `license-audit`, dependency docs, legal docs, notices, bootstrap/policy checks where applicable, and a separate implementation slice before use.
 
+## Source Diagnostics Guard
+
+`tools/check-2d-commercial-source-diagnostics.ps1` adds the second fail-closed Phase 1 guard. It reports deterministic `2d_commercial_source_diagnostic=<kind>` rows for retained evidence markers or product-facing text that indicates copied external code, copied external assets, copied documentation prose, external engine schema/project surfaces, third-party trademark public surfaces, missing notice records, unapproved dependency sources, or external-engine compatibility/equivalence/parity claims. Successful output is scoped with `2d_commercial_source_diagnostics_scope=retained_markers_and_public_surface_tokens` and only proves the corresponding `*_marker_rows=0` / public-surface claim rows over scanned inputs.
+
+The guard is intentionally not a legal conclusion, plagiarism detector, or dependency approval engine. It verifies explicit retained markers and public/product-facing text under the same scanned surfaces as the clean-room guard, while allowing existing first-party fail-closed diagnostic ids such as `missing_third_party_notice` to remain public API names.
+
 ## Review Evidence
 
 | Date | Evidence | Result |
 | --- | --- | --- |
 | 2026-06-30 | Context7 queries against Vulkan, D3D12, and Metal Shading Language documentation plus official fallbacks. | Official platform/API sources are recorded as category and validation-boundary research only. |
 | 2026-06-30 | `tools/check-2d-commercial-clean-room.ps1` and `tools/generate-2d-commercial-clean-room-review-input.ps1` added with `tools/check-2d-commercial-clean-room-contract.ps1`. | Public/package/schema surfaces fail closed on forbidden external-engine names and claims; generated review input preserves legal and commercial non-claims. |
+| 2026-06-30 | `tools/check-2d-commercial-source-diagnostics.ps1` added with `tools/check-2d-commercial-source-diagnostics-contract.ps1`. | Copied-material, external-schema, trademark, missing-notice, unapproved-dependency, and external-engine claim markers fail closed while preserving legal and commercial non-claims. |
