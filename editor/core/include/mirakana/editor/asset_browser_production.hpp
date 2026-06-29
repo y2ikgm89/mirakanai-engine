@@ -25,6 +25,7 @@ enum class EditorAssetBrowserQueryStatus : std::uint8_t { empty, ready, blocked 
 enum class EditorAssetBrowserCommandKind : std::uint8_t {
     reload_source_registry,
     review_import_sources,
+    register_import_sources,
     copy_external_sources,
     execute_reviewed_import_plan,
     preview_cooked_package,

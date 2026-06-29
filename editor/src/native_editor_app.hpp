@@ -12,6 +12,7 @@
 
 #include "mirakana/editor/ai_command_panel.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
+#include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/editor/material_asset_preview_panel.hpp"
@@ -135,6 +136,21 @@ struct NativeEditorAssetBrowserImportExecutionResult {
     std::string diagnostic;
 };
 
+struct NativeEditorAssetBrowserSourceRegistrationRequest {
+    std::uint64_t expected_generation{0};
+    std::vector<std::string> project_source_paths;
+    std::vector<EditorAssetBrowserLegalProvenanceRow> provenance_rows;
+    bool user_confirmed{false};
+};
+
+struct NativeEditorAssetBrowserSourceRegistrationResult {
+    EditorAssetBrowserCommandPlan command;
+    EditorAssetImportReviewModel review;
+    bool applied{false};
+    std::size_t registered_count{0};
+    std::vector<std::string> diagnostics;
+};
+
 class NativeEditorApp {
   public:
     explicit NativeEditorApp(NativeEditorLaunchOptions options);
@@ -205,6 +221,8 @@ class NativeEditorApp {
     poll_asset_browser_import_sources_dialog(FileDialogId id);
     [[nodiscard]] NativeEditorAssetBrowserExternalSourceCopyReview
     review_asset_browser_external_source_copy(const NativeEditorAssetBrowserExternalSourceCopyRequest& request) const;
+    [[nodiscard]] NativeEditorAssetBrowserSourceRegistrationResult
+    apply_reviewed_asset_browser_import_sources(NativeEditorAssetBrowserSourceRegistrationRequest request);
     [[nodiscard]] NativeEditorAssetBrowserImportExecutionResult
     execute_reviewed_asset_browser_import_plan(NativeEditorAssetBrowserImportExecutionRequest request);
     [[nodiscard]] ui::ClipboardTextWriteResult write_clipboard_text(ui::ClipboardTextWriteRequest request);

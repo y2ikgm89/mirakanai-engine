@@ -207,6 +207,8 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
         return "Reload source registry";
     case EditorAssetBrowserCommandKind::review_import_sources:
         return "Review import sources";
+    case EditorAssetBrowserCommandKind::register_import_sources:
+        return "Register import sources";
     case EditorAssetBrowserCommandKind::copy_external_sources:
         return "Copy external sources";
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
@@ -236,6 +238,7 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
 [[nodiscard]] bool command_requires_confirmation(EditorAssetBrowserCommandKind kind) noexcept {
     switch (kind) {
     case EditorAssetBrowserCommandKind::copy_external_sources:
+    case EditorAssetBrowserCommandKind::register_import_sources:
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
     case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
     case EditorAssetBrowserCommandKind::apply_package_registration:
@@ -252,6 +255,7 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
 [[nodiscard]] bool command_mutates_project_files(EditorAssetBrowserCommandKind kind) noexcept {
     switch (kind) {
     case EditorAssetBrowserCommandKind::copy_external_sources:
+    case EditorAssetBrowserCommandKind::register_import_sources:
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
     case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
     case EditorAssetBrowserCommandKind::apply_package_registration:
@@ -726,6 +730,8 @@ std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind k
         return "asset_browser.source_registry.reload";
     case EditorAssetBrowserCommandKind::review_import_sources:
         return "asset_browser.import.review_sources";
+    case EditorAssetBrowserCommandKind::register_import_sources:
+        return "asset_browser.import.register_sources";
     case EditorAssetBrowserCommandKind::copy_external_sources:
         return "asset_browser.import.copy_external_sources";
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:

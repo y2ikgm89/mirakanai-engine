@@ -20,6 +20,7 @@
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
 
+#include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/environment_authoring.hpp"
@@ -32,6 +33,7 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -63,6 +65,30 @@ find_asset_browser_row_by_key(const mirakana::editor::EditorAssetBrowserProducti
     const auto it = std::ranges::find_if(
         model.rows, [asset_key_label](const auto& row) { return row.asset_key_label == asset_key_label; });
     return it == model.rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::SourceAssetRegistryRowV1*
+find_source_registry_row_by_key(const mirakana::SourceAssetRegistryDocumentV1& document,
+                                std::string_view asset_key_label) noexcept {
+    const auto it = std::ranges::find_if(
+        document.assets, [asset_key_label](const auto& row) { return row.key.value == asset_key_label; });
+    return it == document.assets.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] mirakana::editor::EditorAssetBrowserLegalProvenanceRow
+make_native_asset_import_test_provenance(std::string asset_key_label) {
+    return mirakana::editor::EditorAssetBrowserLegalProvenanceRow{
+        .id = "native_asset_import.legal." + asset_key_label,
+        .asset_key_label = asset_key_label,
+        .source_url = "project://assets/imported_sources",
+        .retrieved_date = "2026-06-29",
+        .version_or_commit = "working-tree",
+        .copyright_holder = "MIRAIKANAI contributors",
+        .license_id = "LicenseRef-Proprietary",
+        .modification_status = "unmodified",
+        .distribution_target = "runtime_package",
+        .notice_complete = true,
+    };
 }
 
 class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextAdapter {
@@ -104,6 +130,53 @@ class RecordingImeAdapter final : public mirakana::ui::IImeAdapter {
     }
 
     std::vector<mirakana::ui::ImeComposition> updates;
+};
+
+class ThrowingUnsafePathFileSystem final : public mirakana::IFileSystem {
+  public:
+    [[nodiscard]] bool exists(std::string_view path) const override {
+        throw_if_unsafe(path);
+        return files.exists(path);
+    }
+
+    [[nodiscard]] bool is_directory(std::string_view path) const override {
+        throw_if_unsafe(path);
+        return files.is_directory(path);
+    }
+
+    [[nodiscard]] std::string read_text(std::string_view path) const override {
+        throw_if_unsafe(path);
+        return files.read_text(path);
+    }
+
+    [[nodiscard]] std::vector<std::string> list_files(std::string_view root) const override {
+        throw_if_unsafe(root);
+        return files.list_files(root);
+    }
+
+    void write_text(std::string_view path, std::string_view text) override {
+        throw_if_unsafe(path);
+        files.write_text(path, text);
+    }
+
+    void remove(std::string_view path) override {
+        throw_if_unsafe(path);
+        files.remove(path);
+    }
+
+    void remove_empty_directory(std::string_view path) override {
+        throw_if_unsafe(path);
+        files.remove_empty_directory(path);
+    }
+
+    mirakana::MemoryFileSystem files;
+
+  private:
+    static void throw_if_unsafe(std::string_view path) {
+        if (path.find("..") != std::string_view::npos || path.find(':') != std::string_view::npos) {
+            throw std::invalid_argument("unsafe rooted path");
+        }
+    }
 };
 
 [[nodiscard]] mirakana::editor::EditorAiReviewedValidationExecutionDesc make_reviewed_validation_execution_desc() {
@@ -332,7 +405,7 @@ MK_TEST("editor native shell exposes Source Pulse asset browser model") {
     MK_REQUIRE(!asset_browser.mutates);
     MK_REQUIRE(!asset_browser.executes);
     MK_REQUIRE(!asset_browser.exposes_native_handles);
-    MK_REQUIRE(command_plans.size() == 8U);
+    MK_REQUIRE(command_plans.size() == 9U);
     for (const auto& command : command_plans) {
         MK_REQUIRE(command.current_generation == asset_browser.generation);
         MK_REQUIRE(!command.executes_package_scripts);
@@ -596,6 +669,122 @@ MK_TEST("editor asset browser import execution requires reviewed confirmed gener
     MK_REQUIRE(app.services().asset_import_filesystem_id == "memory_import_fs");
     MK_REQUIRE(app.services().asset_import_filesystem_available);
     MK_REQUIRE(app.services().asset_import_executions == 1U);
+}
+
+MK_TEST("native asset browser applies reviewed import sources to source registry") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_text(app.project().source_registry_path, mirakana::serialize_source_asset_registry_document(
+                                                                  mirakana::SourceAssetRegistryDocumentV1{}));
+    filesystem.write_text("assets/imported_sources/hero.png", "png source placeholder");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto initial_generation = app.asset_browser().generation;
+    const auto result = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = initial_generation,
+            .project_source_paths = {"assets/imported_sources/hero.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero")},
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(result.command.command_id == "asset_browser.import.register_sources");
+    MK_REQUIRE(result.command.mutates_project_files);
+    MK_REQUIRE(!result.command.executes_import_tools);
+    MK_REQUIRE(result.applied);
+    MK_REQUIRE(result.registered_count == 1U);
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(result.review.ready);
+    MK_REQUIRE(app.asset_browser().generation == initial_generation + 1U);
+
+    const auto updated_registry =
+        mirakana::deserialize_source_asset_registry_document(filesystem.read_text(app.project().source_registry_path));
+    const auto* registry_row = find_source_registry_row_by_key(updated_registry, "assets/imported/hero");
+    MK_REQUIRE(registry_row != nullptr);
+    MK_REQUIRE(registry_row->kind == mirakana::AssetKind::texture);
+    MK_REQUIRE(registry_row->source_path == "assets/imported_sources/hero.png");
+    MK_REQUIRE(registry_row->imported_path == "assets/imported/hero.texture");
+
+    const auto* browser_row = find_asset_browser_row_by_key(app.asset_browser(), "assets/imported/hero");
+    MK_REQUIRE(browser_row != nullptr);
+    MK_REQUIRE(browser_row->kind == mirakana::AssetKind::texture);
+    MK_REQUIRE(browser_row->import_status_label == "planned");
+}
+
+MK_TEST("native asset browser source registration rejects stale generation and legal blockers") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileSystem filesystem;
+    const auto initial_registry =
+        mirakana::serialize_source_asset_registry_document(mirakana::SourceAssetRegistryDocumentV1{});
+    filesystem.write_text(app.project().source_registry_path, initial_registry);
+    filesystem.write_text("assets/imported_sources/hero.png", "png source placeholder");
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "memory_import_fs",
+    });
+
+    const auto initial_generation = app.asset_browser().generation;
+    const auto stale = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = initial_generation + 1U,
+            .project_source_paths = {"assets/imported_sources/hero.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero")},
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(!stale.applied);
+    MK_REQUIRE(stale.command.status == mirakana::editor::EditorAssetBrowserCommandStatus::rejected_stale_generation);
+    MK_REQUIRE(filesystem.read_text(app.project().source_registry_path) == initial_registry);
+    MK_REQUIRE(app.asset_browser().generation == initial_generation);
+
+    auto blocked_provenance = make_native_asset_import_test_provenance("assets/imported/hero");
+    blocked_provenance.license_id.clear();
+    const auto blocked = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = initial_generation,
+            .project_source_paths = {"assets/imported_sources/hero.png"},
+            .provenance_rows = {blocked_provenance},
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(!blocked.applied);
+    MK_REQUIRE(blocked.command.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(!blocked.review.ready);
+    MK_REQUIRE(blocked.review.rows.size() == 1U);
+    MK_REQUIRE(blocked.review.rows[0].blocked_by_legal);
+    MK_REQUIRE(blocked.review.rows[0].diagnostic == "asset_import_provenance_blocked");
+    MK_REQUIRE(filesystem.read_text(app.project().source_registry_path) == initial_registry);
+    MK_REQUIRE(app.asset_browser().generation == initial_generation);
+}
+
+MK_TEST("native asset browser source registration reviews unsafe paths before filesystem queries escape") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    ThrowingUnsafePathFileSystem filesystem;
+    const auto initial_registry =
+        mirakana::serialize_source_asset_registry_document(mirakana::SourceAssetRegistryDocumentV1{});
+    filesystem.files.write_text(app.project().source_registry_path, initial_registry);
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .asset_import_filesystem = &filesystem,
+        .asset_import_filesystem_id = "throwing_unsafe_path_fs",
+    });
+
+    const auto initial_generation = app.asset_browser().generation;
+    const auto unsafe = app.apply_reviewed_asset_browser_import_sources(
+        mirakana::editor::NativeEditorAssetBrowserSourceRegistrationRequest{
+            .expected_generation = initial_generation,
+            .project_source_paths = {"assets/../outside/hero.png"},
+            .provenance_rows = {make_native_asset_import_test_provenance("assets/imported/hero")},
+            .user_confirmed = true,
+        });
+
+    MK_REQUIRE(!unsafe.applied);
+    MK_REQUIRE(unsafe.command.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(!unsafe.review.ready);
+    MK_REQUIRE(unsafe.review.rows.size() == 1U);
+    MK_REQUIRE(unsafe.review.rows[0].diagnostic == "unsafe_import_source_path");
+    MK_REQUIRE(filesystem.files.read_text(app.project().source_registry_path) == initial_registry);
+    MK_REQUIRE(app.asset_browser().generation == initial_generation);
 }
 
 MK_TEST("editor first party document exposes runtime UI editor authoring rows") {

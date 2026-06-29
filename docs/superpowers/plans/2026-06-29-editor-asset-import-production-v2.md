@@ -332,7 +332,7 @@ Result on 2026-06-29: PASS. The native default Source Pulse registry now exposes
 - Modify: `editor/core/src/asset_import_review.cpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Write failing registration tests**
+- [x] **Step 1: Write failing registration tests**
 
 Add:
 
@@ -357,7 +357,7 @@ asset browser generation increments by 1
 import plan contains one texture action
 ```
 
-- [ ] **Step 2: Add native API structs**
+- [x] **Step 2: Add native API structs**
 
 In `editor/src/native_editor_app.hpp` add:
 
@@ -385,7 +385,7 @@ Add method:
 apply_reviewed_asset_browser_import_sources(NativeEditorAssetBrowserSourceRegistrationRequest request);
 ```
 
-- [ ] **Step 3: Implement apply through existing source asset registration tool**
+- [x] **Step 3: Implement apply through existing source asset registration tool**
 
 Implementation rules:
 
@@ -399,7 +399,7 @@ After success, reload source registry content, refresh ContentBrowserState, rebu
 
 Do not write `.geindex`, package manifests, or cooked artifacts in this task.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -409,6 +409,20 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: registration success, stale-generation rejection, and legal-blocker tests pass.
+
+Task 3 validation evidence:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+git diff --check
+```
+
+Result on 2026-06-29: PASS. Source registration is now an explicit confirmation-gated `asset_browser.import.register_sources` command, legal/provenance blockers prevent mutation, and successful registration refreshes Source Pulse generation and import planning.
 
 ### Task 4: External Source Copy Transaction
 

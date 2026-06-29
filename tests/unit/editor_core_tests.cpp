@@ -3007,6 +3007,7 @@ MK_TEST("editor asset browser command plans expose reviewed dry runs") {
     const std::vector<mirakana::editor::EditorAssetBrowserCommandKind> commands{
         mirakana::editor::EditorAssetBrowserCommandKind::reload_source_registry,
         mirakana::editor::EditorAssetBrowserCommandKind::review_import_sources,
+        mirakana::editor::EditorAssetBrowserCommandKind::register_import_sources,
         mirakana::editor::EditorAssetBrowserCommandKind::copy_external_sources,
         mirakana::editor::EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
         mirakana::editor::EditorAssetBrowserCommandKind::preview_cooked_package,
@@ -3066,6 +3067,22 @@ MK_TEST("editor asset browser command plans require confirmation for shell mutat
     MK_REQUIRE(!copy.executes_package_scripts);
     MK_REQUIRE(!copy.executes_validation_recipes);
     MK_REQUIRE(!copy.exposes_native_handles);
+
+    const auto register_sources =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::register_import_sources,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(register_sources.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(register_sources.requires_user_confirmation);
+    MK_REQUIRE(register_sources.mutates_project_files);
+    MK_REQUIRE(!register_sources.executes_import_tools);
+    MK_REQUIRE(!register_sources.executes_package_scripts);
+    MK_REQUIRE(!register_sources.executes_validation_recipes);
+    MK_REQUIRE(!register_sources.exposes_native_handles);
 
     const auto import =
         mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{

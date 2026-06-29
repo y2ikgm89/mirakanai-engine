@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <span>
 #include <string_view>
@@ -219,7 +220,7 @@ make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& 
 
 [[nodiscard]] EditorAssetBrowserProductionModel
 make_default_asset_browser_model(const ProjectDocument& project, const ContentBrowserState& browser,
-                                 const AssetImportPlan& import_plan,
+                                 const AssetImportPlan& import_plan, std::uint64_t generation = 1U,
                                  const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr) {
     return make_editor_asset_browser_production_model(EditorAssetBrowserProductionDesc{
         .browser = &browser,
@@ -227,7 +228,7 @@ make_default_asset_browser_model(const ProjectDocument& project, const ContentBr
         .project_root = project.root_path,
         .asset_root = project.asset_root,
         .source_registry_path = project.source_registry_path,
-        .generation = 1U,
+        .generation = generation,
         .preview_evidence = preview_evidence,
     });
 }
@@ -237,6 +238,7 @@ make_default_asset_browser_command_plans(const EditorAssetBrowserProductionModel
     constexpr std::array kinds{
         EditorAssetBrowserCommandKind::reload_source_registry,
         EditorAssetBrowserCommandKind::review_import_sources,
+        EditorAssetBrowserCommandKind::register_import_sources,
         EditorAssetBrowserCommandKind::copy_external_sources,
         EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
         EditorAssetBrowserCommandKind::preview_cooked_package,
@@ -811,6 +813,13 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return std::ranges::any_of(values, [value](const std::string& candidate) { return candidate == value; });
 }
 
+void append_source_registration_diagnostics(std::vector<std::string>& output,
+                                            std::span<const SourceAssetRegistrationDiagnostic> diagnostics) {
+    for (const auto& diagnostic : diagnostics) {
+        output.push_back(diagnostic.code + ": " + diagnostic.message);
+    }
+}
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -822,8 +831,8 @@ struct NativeEditorApp::Impl {
           asset_browser_source_registry(make_default_asset_browser_source_registry()),
           asset_browser_content_browser(make_default_asset_browser_content_browser(asset_browser_source_registry)),
           asset_browser_import_plan(make_default_asset_browser_import_plan(asset_browser_source_registry)),
-          asset_browser(
-              make_default_asset_browser_model(project, asset_browser_content_browser, asset_browser_import_plan)),
+          asset_browser(make_default_asset_browser_model(project, asset_browser_content_browser,
+                                                         asset_browser_import_plan, asset_browser_generation)),
           asset_browser_command_plans(make_default_asset_browser_command_plans(asset_browser)),
           console_rows(make_default_console_rows()),
           environment_artist_workflow_command_plans(
@@ -856,10 +865,44 @@ struct NativeEditorApp::Impl {
     void refresh_asset_browser_preview_evidence() {
         const auto preview_evidence =
             make_default_asset_browser_preview_evidence_desc(asset_browser_import_plan, material_preview);
-        asset_browser = make_default_asset_browser_model(project, asset_browser_content_browser,
-                                                         asset_browser_import_plan, &preview_evidence);
+        asset_browser =
+            make_default_asset_browser_model(project, asset_browser_content_browser, asset_browser_import_plan,
+                                             asset_browser_generation, &preview_evidence);
         asset_browser_command_plans = make_default_asset_browser_command_plans(asset_browser);
         asset_browser.command_rows = make_asset_browser_retained_command_rows(asset_browser_command_plans);
+    }
+
+    struct PreparedAssetBrowserState {
+        SourceAssetRegistryDocumentV1 source_registry;
+        ContentBrowserState content_browser;
+        AssetImportPlan import_plan;
+        EditorAssetBrowserProductionModel asset_browser;
+        std::vector<EditorAssetBrowserCommandPlan> command_plans;
+    };
+
+    [[nodiscard]] PreparedAssetBrowserState prepare_asset_browser_state(SourceAssetRegistryDocumentV1 source_registry,
+                                                                        std::uint64_t generation) const {
+        PreparedAssetBrowserState state;
+        state.source_registry = std::move(source_registry);
+        state.content_browser = make_default_asset_browser_content_browser(state.source_registry);
+        state.import_plan = make_default_asset_browser_import_plan(state.source_registry);
+        const auto preview_evidence =
+            make_default_asset_browser_preview_evidence_desc(state.import_plan, material_preview);
+        state.asset_browser = make_default_asset_browser_model(project, state.content_browser, state.import_plan,
+                                                               generation, &preview_evidence);
+        state.command_plans = make_default_asset_browser_command_plans(state.asset_browser);
+        state.asset_browser.command_rows = make_asset_browser_retained_command_rows(state.command_plans);
+        return state;
+    }
+
+    void commit_asset_browser_state(PreparedAssetBrowserState state) noexcept {
+        using std::swap;
+        swap(asset_browser_source_registry, state.source_registry);
+        swap(asset_browser_content_browser, state.content_browser);
+        swap(asset_browser_import_plan, state.import_plan);
+        swap(asset_browser, state.asset_browser);
+        swap(asset_browser_command_plans, state.command_plans);
+        asset_browser_generation = asset_browser.generation;
     }
 
     ProjectDocument project;
@@ -871,6 +914,7 @@ struct NativeEditorApp::Impl {
     SourceAssetRegistryDocumentV1 asset_browser_source_registry;
     ContentBrowserState asset_browser_content_browser;
     AssetImportPlan asset_browser_import_plan;
+    std::uint64_t asset_browser_generation{1U};
     EditorAssetBrowserProductionModel asset_browser;
     std::vector<EditorAssetBrowserCommandPlan> asset_browser_command_plans;
     std::vector<EditorDiagnosticRow> console_rows;
@@ -1401,6 +1445,111 @@ NativeEditorAssetBrowserExternalSourceCopyReview NativeEditorApp::review_asset_b
     review.copy = make_content_browser_import_external_source_copy_model(inputs);
     review.diagnostics = review.copy.diagnostics;
     return review;
+}
+
+NativeEditorAssetBrowserSourceRegistrationResult NativeEditorApp::apply_reviewed_asset_browser_import_sources(
+    NativeEditorAssetBrowserSourceRegistrationRequest request) {
+    NativeEditorAssetBrowserSourceRegistrationResult result;
+    result.command = plan_editor_asset_browser_command(EditorAssetBrowserCommandRequest{
+        .kind = EditorAssetBrowserCommandKind::register_import_sources,
+        .mode = EditorAssetBrowserCommandMode::apply,
+        .expected_generation = request.expected_generation,
+        .current_generation = impl_->asset_browser.generation,
+        .user_confirmed = request.user_confirmed,
+    });
+
+    if (result.command.status != EditorAssetBrowserCommandStatus::ready || !result.command.mutates_project_files) {
+        result.diagnostics = result.command.diagnostics;
+        if (result.diagnostics.empty()) {
+            result.diagnostics.push_back("asset browser source registration requires a reviewed ready command");
+        }
+        return result;
+    }
+    if (impl_->asset_import_filesystem == nullptr) {
+        impl_->service_status.asset_import_filesystem_available = false;
+        result.diagnostics.push_back("asset browser source registration requires an asset import filesystem service");
+        return result;
+    }
+    if (request.project_source_paths.size() != request.provenance_rows.size()) {
+        result.diagnostics.push_back("asset browser source registration requires one provenance row per source path");
+        return result;
+    }
+
+    bool source_registry_exists = false;
+    std::string source_registry_content;
+    try {
+        source_registry_exists = impl_->asset_import_filesystem->exists(impl_->project.source_registry_path);
+        source_registry_content = source_registry_exists
+                                      ? impl_->asset_import_filesystem->read_text(impl_->project.source_registry_path)
+                                      : std::string{};
+    } catch (const std::exception& error) {
+        result.diagnostics.push_back(std::string{"asset browser source registry read failed: "} + error.what());
+        return result;
+    }
+
+    std::vector<EditorAssetImportCandidateInput> sources;
+    sources.reserve(request.project_source_paths.size());
+    for (std::size_t index = 0; index < request.project_source_paths.size(); ++index) {
+        const auto& source_path = request.project_source_paths[index];
+        bool source_exists = false;
+        try {
+            source_exists = impl_->asset_import_filesystem->exists(source_path);
+        } catch (const std::exception&) {
+            source_exists = false;
+        }
+        sources.push_back(EditorAssetImportCandidateInput{
+            .source_path = source_path,
+            .provenance = std::move(request.provenance_rows[index]),
+            .source_exists = source_exists,
+        });
+    }
+
+    result.review = review_editor_asset_import_candidates(EditorAssetImportReviewRequest{
+        .asset_root = impl_->project.asset_root,
+        .imported_output_root = impl_->project.asset_root + "/imported",
+        .source_registry_path = impl_->project.source_registry_path,
+        .source_registry_content = source_registry_content,
+        .sources = std::move(sources),
+    });
+    if (!result.review.ready) {
+        result.diagnostics = result.review.diagnostics;
+        if (result.diagnostics.empty()) {
+            result.diagnostics.push_back("asset browser source registration review has no ready sources");
+        }
+        return result;
+    }
+
+    MemoryFileSystem staged_filesystem;
+    if (source_registry_exists) {
+        staged_filesystem.write_text(impl_->project.source_registry_path, source_registry_content);
+    }
+    for (const auto& registration_request : result.review.registration_requests) {
+        const auto registration_result = apply_source_asset_registration(staged_filesystem, registration_request);
+        if (!registration_result.succeeded()) {
+            append_source_registration_diagnostics(result.diagnostics, registration_result.diagnostics);
+            if (result.diagnostics.empty()) {
+                result.diagnostics.push_back("asset browser source registration failed");
+            }
+            return result;
+        }
+    }
+
+    try {
+        const auto updated_source_registry_content = staged_filesystem.read_text(impl_->project.source_registry_path);
+        auto updated_source_registry = deserialize_source_asset_registry_document(updated_source_registry_content);
+        auto prepared_asset_browser = impl_->prepare_asset_browser_state(std::move(updated_source_registry),
+                                                                         impl_->asset_browser_generation + 1U);
+        impl_->asset_import_filesystem->write_text(impl_->project.source_registry_path,
+                                                   updated_source_registry_content);
+        impl_->commit_asset_browser_state(std::move(prepared_asset_browser));
+    } catch (const std::exception& error) {
+        result.diagnostics.push_back(std::string{"asset browser source registry refresh failed: "} + error.what());
+        return result;
+    }
+
+    result.applied = true;
+    result.registered_count = result.review.registration_requests.size();
+    return result;
 }
 
 NativeEditorAssetBrowserImportExecutionResult
