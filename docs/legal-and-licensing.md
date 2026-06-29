@@ -75,6 +75,10 @@ Do not copy from:
 
 `docs/specs/2026-06-24-first-party-ui-clean-room-source-ledger-v1.md` records the allowed source classes for runtime/editor UI platform work. `tools/check-first-party-ui-clean-room.ps1` enforces the matching public-token guard through `check-ai-integration`. This gate does not add third-party code, assets, fonts, icons, screenshots, themes, samples, package-manager dependencies, or redistribution obligations.
 
+## 2D Commercial Clean-Room Source Gate
+
+`docs/specs/2026-06-30-2d-commercial-clean-room-source-ledger-v1.md` records the allowed source classes for 2D commercial production work. `tools/check-2d-commercial-clean-room.ps1` enforces public/product-facing forbidden-token and compatibility-claim checks, while `tools/generate-2d-commercial-clean-room-review-input.ps1` emits `GameEngine.TwoDCommercialCleanRoomReviewInput.v1` and `GameEngine.TwoDCommercialOfficialSourceSummary.v1` records for counsel review. The retained schemas live in `schemas/2d-commercial-clean-room-review-input.schema.json` and `schemas/2d-commercial-official-source-summary.schema.json`. This gate does not add third-party code, assets, shaders, samples, package-manager dependencies, or redistribution obligations, and the generated records are engineering review inputs without legal conclusions or legal approval claims.
+
 Unity, Unreal Engine, Godot, UI middleware, Microsoft SDK, Apple SDK, HarfBuzz, FreeType, Fontconfig, AT-SPI2, Vulkan, and W3C references may be used only as official documentation for category research, host gates, or private adapter-boundary planning. They must not be copied into implementation source, sample assets, serialized UI imports, product-facing names, public API shapes, editor layouts, visual themes, or marketing compatibility/parity claims. Any future dependency, redistributable font/icon/image asset, UI middleware, or third-party adapter selection still requires `license-audit`, `vcpkg.json`, `docs/dependencies.md`, and `THIRD_PARTY_NOTICES.md` updates before use.
 
 ## AI Output
