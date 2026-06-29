@@ -23,6 +23,17 @@ struct EditorAssetImportCandidateInput {
     std::string source_path;
     EditorAssetBrowserLegalProvenanceRow provenance;
     bool source_exists{false};
+    std::string reviewed_imported_path;
+    std::string source_content_hash;
+    bool reuse_existing_source{false};
+};
+
+struct EditorAssetImportExistingSourceRow {
+    AssetKeyV2 asset_key;
+    std::string source_path;
+    std::string imported_path;
+    std::string source_content_hash;
+    EditorAssetBrowserLegalProvenanceRow provenance;
 };
 
 struct EditorAssetImportCandidateRow {
@@ -34,6 +45,12 @@ struct EditorAssetImportCandidateRow {
     std::string source_path;
     std::string source_format;
     std::string imported_path;
+    std::string source_content_hash;
+    std::string suggested_imported_path;
+    AssetKeyV2 suggested_asset_key;
+    std::string reusable_existing_source_path;
+    std::string reusable_existing_imported_path;
+    AssetKeyV2 reusable_existing_asset_key;
     std::vector<std::string> preset_metadata;
     std::string status_label;
     std::string diagnostic;
@@ -41,6 +58,8 @@ struct EditorAssetImportCandidateRow {
     bool can_import{false};
     bool blocked_by_legal{false};
     bool blocked_by_preset{false};
+    bool reuse_existing_source_selected{false};
+    bool reuses_existing_source{false};
 };
 
 struct EditorAssetImportReviewRequest {
@@ -50,6 +69,7 @@ struct EditorAssetImportReviewRequest {
     std::string source_registry_content;
     AssetImportPresetsDocumentV1 import_presets;
     std::vector<EditorAssetImportCandidateInput> sources;
+    std::vector<EditorAssetImportExistingSourceRow> existing_sources;
 };
 
 struct EditorAssetImportReviewModel {

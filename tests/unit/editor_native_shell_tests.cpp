@@ -795,6 +795,18 @@ MK_TEST("native asset browser copy rejects symlink device traversal and collisio
     MK_REQUIRE(!collision.diagnostics.empty());
     MK_REQUIRE(collision.diagnostics[0].contains("already exists"));
     MK_REQUIRE(!directory_has_copying_file(project_root / "assets" / "imported_sources"));
+    MK_REQUIRE(!std::filesystem::exists(project_root / "assets" / "imported_sources" / "hero_2.png"));
+
+    const std::array explicit_alternate_inputs{mirakana::editor::NativeAssetImportExternalCopyInput{
+        .absolute_source_path = source_path.string(),
+        .target_project_path = "assets/imported_sources/hero_2.png",
+    }};
+    const auto explicit_alternate = mirakana::editor::copy_reviewed_external_asset_sources_to_project(
+        project_root.string(), explicit_alternate_inputs);
+    MK_REQUIRE(explicit_alternate.succeeded);
+    MK_REQUIRE(explicit_alternate.target_project_paths.size() == 1U);
+    MK_REQUIRE(explicit_alternate.target_project_paths[0] == "assets/imported_sources/hero_2.png");
+    MK_REQUIRE(std::filesystem::exists(project_root / "assets" / "imported_sources" / "hero_2.png"));
 
     const std::array traversal_inputs{mirakana::editor::NativeAssetImportExternalCopyInput{
         .absolute_source_path = source_path.string(),
