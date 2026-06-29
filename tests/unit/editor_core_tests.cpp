@@ -3656,6 +3656,19 @@ find_editor_asset_import_registration_request(const mirakana::editor::EditorAsse
     return it == model.registration_requests.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] mirakana::SourceAssetRegistryRowV1 make_editor_asset_import_test_registry_row(std::string asset_key,
+                                                                                            mirakana::AssetKind kind,
+                                                                                            std::string source_path,
+                                                                                            std::string imported_path) {
+    return mirakana::SourceAssetRegistryRowV1{
+        .key = mirakana::AssetKeyV2{std::move(asset_key)},
+        .kind = kind,
+        .source_path = std::move(source_path),
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(kind)},
+        .imported_path = std::move(imported_path),
+    };
+}
+
 MK_TEST("editor asset import review maps selected sources to registry requests") {
     mirakana::editor::EditorAssetImportReviewRequest request;
     request.sources = {
@@ -3807,6 +3820,10 @@ MK_TEST("editor asset import review rejects duplicate target paths and unsupport
     MK_REQUIRE(second_duplicate->imported_path == "assets/imported/hero.texture");
     MK_REQUIRE(first_duplicate->diagnostic == "duplicate_import_target_path");
     MK_REQUIRE(second_duplicate->diagnostic == "duplicate_import_target_path");
+    MK_REQUIRE(first_duplicate->suggested_imported_path == "assets/imported/hero_2.texture");
+    MK_REQUIRE(first_duplicate->suggested_asset_key.value == "assets/imported/hero_2");
+    MK_REQUIRE(second_duplicate->suggested_imported_path == "assets/imported/hero_3.texture");
+    MK_REQUIRE(second_duplicate->suggested_asset_key.value == "assets/imported/hero_3");
     MK_REQUIRE(!first_duplicate->can_register);
     MK_REQUIRE(!first_duplicate->can_import);
     MK_REQUIRE(!second_duplicate->can_register);
@@ -3819,6 +3836,316 @@ MK_TEST("editor asset import review rejects duplicate target paths and unsupport
     MK_REQUIRE(unsupported->diagnostic == "unsupported_import_source");
     MK_REQUIRE(!unsupported->can_register);
     MK_REQUIRE(!unsupported->can_import);
+}
+
+MK_TEST("editor asset import review requires explicit alternate selection for registry collisions") {
+    mirakana::SourceAssetRegistryDocumentV1 existing_registry;
+    existing_registry.assets.push_back(make_editor_asset_import_test_registry_row(
+        "assets/imported/hero", mirakana::AssetKind::texture, "assets/imported_sources/legacy_hero.png",
+        "assets/imported/hero.texture"));
+    existing_registry.assets.push_back(make_editor_asset_import_test_registry_row(
+        "assets/imported/hero_2", mirakana::AssetKind::texture, "assets/imported_sources/legacy_hero_2.png",
+        "assets/imported/hero_2.texture"));
+
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.source_registry_content = mirakana::serialize_source_asset_registry_document(existing_registry);
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+    };
+
+    const auto blocked = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(!blocked.ready);
+    MK_REQUIRE(blocked.rows.size() == 1U);
+    MK_REQUIRE(blocked.registration_requests.empty());
+    MK_REQUIRE(blocked.import_plan.actions.empty());
+    MK_REQUIRE(blocked.rows[0].diagnostic == "duplicate_import_asset_key");
+    MK_REQUIRE(blocked.rows[0].suggested_imported_path == "assets/imported/hero_3.texture");
+    MK_REQUIRE(blocked.rows[0].suggested_asset_key.value == "assets/imported/hero_3");
+
+    request.sources[0].reviewed_imported_path = blocked.rows[0].suggested_imported_path;
+    request.sources[0].provenance = make_editor_asset_import_test_provenance("assets/imported/hero_3");
+
+    const auto selected = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(selected.ready);
+    MK_REQUIRE(selected.rows.size() == 1U);
+    MK_REQUIRE(selected.rows[0].imported_path == "assets/imported/hero_3.texture");
+    MK_REQUIRE(selected.rows[0].asset_key.value == "assets/imported/hero_3");
+    MK_REQUIRE(selected.rows[0].diagnostic.empty());
+    MK_REQUIRE(selected.registration_requests.size() == 1U);
+    MK_REQUIRE(selected.registration_requests[0].imported_path == "assets/imported/hero_3.texture");
+    MK_REQUIRE(selected.import_plan.actions.size() == 1U);
+    MK_REQUIRE(selected.import_plan.actions[0].output_path == "assets/imported/hero_3.texture");
+}
+
+MK_TEST("editor asset import review validates reviewed imported paths by kind") {
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+            .reviewed_imported_path = "assets/imported/hero.mesh",
+        },
+    };
+
+    const auto wrong_extension = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(!wrong_extension.ready);
+    MK_REQUIRE(wrong_extension.rows.size() == 1U);
+    MK_REQUIRE(wrong_extension.rows[0].diagnostic == "invalid_reviewed_imported_path");
+    MK_REQUIRE(wrong_extension.registration_requests.empty());
+    MK_REQUIRE(wrong_extension.import_plan.actions.empty());
+
+    request.sources[0].reviewed_imported_path = "assets/materials/hero.texture";
+    const auto wrong_root = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(!wrong_root.ready);
+    MK_REQUIRE(wrong_root.rows.size() == 1U);
+    MK_REQUIRE(wrong_root.rows[0].diagnostic == "invalid_reviewed_imported_path");
+    MK_REQUIRE(wrong_root.registration_requests.empty());
+    MK_REQUIRE(wrong_root.import_plan.actions.empty());
+
+    request.sources[0].reviewed_imported_path = "assets/imported/hero_7.texture";
+    request.sources[0].provenance = make_editor_asset_import_test_provenance("assets/imported/hero_7");
+    const auto valid_alternate = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(valid_alternate.ready);
+    MK_REQUIRE(valid_alternate.rows.size() == 1U);
+    MK_REQUIRE(valid_alternate.rows[0].diagnostic.empty());
+    MK_REQUIRE(valid_alternate.rows[0].imported_path == "assets/imported/hero_7.texture");
+    MK_REQUIRE(valid_alternate.rows[0].asset_key.value == "assets/imported/hero_7");
+    MK_REQUIRE(valid_alternate.registration_requests.size() == 1U);
+    MK_REQUIRE(valid_alternate.registration_requests[0].imported_path == "assets/imported/hero_7.texture");
+    MK_REQUIRE(valid_alternate.import_plan.actions.size() == 1U);
+    MK_REQUIRE(valid_alternate.import_plan.actions[0].output_path == "assets/imported/hero_7.texture");
+}
+
+MK_TEST("editor asset import review rename suggestions skip occupied asset keys") {
+    mirakana::SourceAssetRegistryDocumentV1 existing_registry;
+    existing_registry.assets.push_back(make_editor_asset_import_test_registry_row(
+        "assets/imported/hero", mirakana::AssetKind::texture, "assets/imported_sources/legacy_hero.png",
+        "assets/imported/hero.texture"));
+    existing_registry.assets.push_back(make_editor_asset_import_test_registry_row(
+        "assets/imported/hero_2", mirakana::AssetKind::texture, "assets/imported_sources/legacy_hero_2.png",
+        "assets/imported/legacy_hero_alias.texture"));
+
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.source_registry_content = mirakana::serialize_source_asset_registry_document(existing_registry);
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/Hero.PNG",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+    };
+
+    const auto blocked = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(!blocked.ready);
+    MK_REQUIRE(blocked.registration_requests.empty());
+    MK_REQUIRE(blocked.import_plan.actions.empty());
+
+    const auto* first = find_editor_asset_import_candidate_row(blocked, "assets/drop/hero.png");
+    const auto* second = find_editor_asset_import_candidate_row(blocked, "assets/drop/Hero.PNG");
+    MK_REQUIRE(first != nullptr);
+    MK_REQUIRE(second != nullptr);
+    MK_REQUIRE(first->suggested_imported_path == "assets/imported/hero_3.texture");
+    MK_REQUIRE(first->suggested_asset_key.value == "assets/imported/hero_3");
+    MK_REQUIRE(second->suggested_imported_path == "assets/imported/hero_4.texture");
+    MK_REQUIRE(second->suggested_asset_key.value == "assets/imported/hero_4");
+}
+
+MK_TEST("editor asset import review blocks source imported and content hash duplicates") {
+    mirakana::SourceAssetRegistryDocumentV1 existing_registry;
+    existing_registry.assets.push_back(make_editor_asset_import_test_registry_row(
+        "assets/imported/registered_source", mirakana::AssetKind::texture, "assets/imported_sources/registered.png",
+        "assets/imported/registered_source.texture"));
+    existing_registry.assets.push_back(make_editor_asset_import_test_registry_row(
+        "assets/imported/imported_owner", mirakana::AssetKind::texture, "assets/imported_sources/imported_owner.png",
+        "assets/imported/hero.texture"));
+    const auto existing_registry_content = mirakana::serialize_source_asset_registry_document(existing_registry);
+
+    mirakana::editor::EditorAssetImportReviewRequest duplicate_source_request;
+    duplicate_source_request.source_registry_content = existing_registry_content;
+    duplicate_source_request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/registered.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/registered_source_copy"),
+            .source_exists = true,
+        },
+    };
+
+    const auto duplicate_source = mirakana::editor::review_editor_asset_import_candidates(duplicate_source_request);
+    MK_REQUIRE(!duplicate_source.ready);
+    MK_REQUIRE(duplicate_source.rows.size() == 1U);
+    MK_REQUIRE(duplicate_source.rows[0].diagnostic == "duplicate_import_source_path");
+    MK_REQUIRE(duplicate_source.rows[0].suggested_imported_path.empty());
+    MK_REQUIRE(duplicate_source.rows[0].suggested_asset_key.value.empty());
+    MK_REQUIRE(duplicate_source.registration_requests.empty());
+    MK_REQUIRE(duplicate_source.import_plan.actions.empty());
+
+    duplicate_source_request.sources[0].reviewed_imported_path = "assets/imported/registered_source_copy.texture";
+    const auto duplicate_source_with_reviewed_path =
+        mirakana::editor::review_editor_asset_import_candidates(duplicate_source_request);
+    MK_REQUIRE(!duplicate_source_with_reviewed_path.ready);
+    MK_REQUIRE(duplicate_source_with_reviewed_path.rows.size() == 1U);
+    MK_REQUIRE(duplicate_source_with_reviewed_path.rows[0].diagnostic == "duplicate_import_source_path");
+    MK_REQUIRE(duplicate_source_with_reviewed_path.rows[0].suggested_imported_path.empty());
+    MK_REQUIRE(duplicate_source_with_reviewed_path.rows[0].suggested_asset_key.value.empty());
+    MK_REQUIRE(duplicate_source_with_reviewed_path.registration_requests.empty());
+    MK_REQUIRE(duplicate_source_with_reviewed_path.import_plan.actions.empty());
+
+    mirakana::editor::EditorAssetImportReviewRequest duplicate_imported_request;
+    duplicate_imported_request.source_registry_content = existing_registry_content;
+    duplicate_imported_request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+    };
+
+    const auto duplicate_imported = mirakana::editor::review_editor_asset_import_candidates(duplicate_imported_request);
+    MK_REQUIRE(!duplicate_imported.ready);
+    MK_REQUIRE(duplicate_imported.rows.size() == 1U);
+    MK_REQUIRE(duplicate_imported.rows[0].diagnostic == "duplicate_imported_path");
+    MK_REQUIRE(duplicate_imported.rows[0].suggested_imported_path == "assets/imported/hero_2.texture");
+    MK_REQUIRE(duplicate_imported.registration_requests.empty());
+    MK_REQUIRE(duplicate_imported.import_plan.actions.empty());
+
+    const auto matching_provenance = make_editor_asset_import_test_provenance("assets/imported/registered_source");
+    auto mismatch_provenance = matching_provenance;
+    mismatch_provenance.source_url = "https://example.invalid/different-source";
+
+    mirakana::editor::EditorAssetImportReviewRequest duplicate_hash_request;
+    duplicate_hash_request.existing_sources = {
+        mirakana::editor::EditorAssetImportExistingSourceRow{
+            .asset_key = mirakana::AssetKeyV2{"assets/imported/registered_source"},
+            .source_path = "assets/imported_sources/registered.png",
+            .imported_path = "assets/imported/registered_source.texture",
+            .source_content_hash = "sha256:duplicate-pixels",
+            .provenance = matching_provenance,
+        },
+    };
+    duplicate_hash_request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/dupe.png",
+            .provenance = matching_provenance,
+            .source_exists = true,
+            .source_content_hash = "sha256:duplicate-pixels",
+        },
+    };
+
+    const auto unselected_duplicate_hash =
+        mirakana::editor::review_editor_asset_import_candidates(duplicate_hash_request);
+    MK_REQUIRE(!unselected_duplicate_hash.ready);
+    MK_REQUIRE(unselected_duplicate_hash.rows.size() == 1U);
+    MK_REQUIRE(unselected_duplicate_hash.rows[0].diagnostic == "duplicate_import_content_hash");
+    MK_REQUIRE(unselected_duplicate_hash.registration_requests.empty());
+    MK_REQUIRE(unselected_duplicate_hash.import_plan.actions.empty());
+
+    duplicate_hash_request.sources[0].reuse_existing_source = true;
+    const auto selected_reuse = mirakana::editor::review_editor_asset_import_candidates(duplicate_hash_request);
+    MK_REQUIRE(selected_reuse.ready);
+    MK_REQUIRE(selected_reuse.rows.size() == 1U);
+    MK_REQUIRE(selected_reuse.rows[0].reuses_existing_source);
+    MK_REQUIRE(selected_reuse.rows[0].reusable_existing_source_path == "assets/imported_sources/registered.png");
+    MK_REQUIRE(selected_reuse.rows[0].reusable_existing_imported_path == "assets/imported/registered_source.texture");
+    MK_REQUIRE(selected_reuse.registration_requests.empty());
+    MK_REQUIRE(selected_reuse.import_plan.actions.empty());
+
+    duplicate_hash_request.sources[0].provenance = mismatch_provenance;
+    const auto duplicate_hash = mirakana::editor::review_editor_asset_import_candidates(duplicate_hash_request);
+    MK_REQUIRE(!duplicate_hash.ready);
+    MK_REQUIRE(duplicate_hash.rows.size() == 1U);
+    MK_REQUIRE(duplicate_hash.rows[0].diagnostic == "duplicate_import_content_hash_provenance_mismatch");
+    MK_REQUIRE(duplicate_hash.rows[0].reusable_existing_source_path == "assets/imported_sources/registered.png");
+    MK_REQUIRE(duplicate_hash.registration_requests.empty());
+    MK_REQUIRE(duplicate_hash.import_plan.actions.empty());
+
+    duplicate_hash_request.sources[0].provenance = matching_provenance;
+    duplicate_hash_request.existing_sources[0].imported_path = "assets/imported/registered_source.mesh";
+    const auto invalid_existing_extension =
+        mirakana::editor::review_editor_asset_import_candidates(duplicate_hash_request);
+    MK_REQUIRE(!invalid_existing_extension.ready);
+    MK_REQUIRE(invalid_existing_extension.rows.size() == 1U);
+    MK_REQUIRE(invalid_existing_extension.rows[0].diagnostic ==
+               "duplicate_import_content_hash_existing_source_invalid");
+    MK_REQUIRE(!invalid_existing_extension.rows[0].reuses_existing_source);
+    MK_REQUIRE(invalid_existing_extension.registration_requests.empty());
+    MK_REQUIRE(invalid_existing_extension.import_plan.actions.empty());
+
+    duplicate_hash_request.existing_sources[0].imported_path = "assets/imported/registered_source.texture";
+    duplicate_hash_request.existing_sources[0].asset_key = mirakana::AssetKeyV2{"assets/imported/wrong_key"};
+    const auto invalid_existing_key = mirakana::editor::review_editor_asset_import_candidates(duplicate_hash_request);
+    MK_REQUIRE(!invalid_existing_key.ready);
+    MK_REQUIRE(invalid_existing_key.rows.size() == 1U);
+    MK_REQUIRE(invalid_existing_key.rows[0].diagnostic == "duplicate_import_content_hash_existing_source_invalid");
+    MK_REQUIRE(!invalid_existing_key.rows[0].reuses_existing_source);
+    MK_REQUIRE(invalid_existing_key.registration_requests.empty());
+    MK_REQUIRE(invalid_existing_key.import_plan.actions.empty());
+}
+
+MK_TEST("editor asset import review blocks ambiguous content hash reuse") {
+    const auto matching_provenance = make_editor_asset_import_test_provenance("assets/imported/registered_source");
+    const auto review_ambiguous_reuse =
+        [&matching_provenance](std::vector<mirakana::editor::EditorAssetImportExistingSourceRow> existing_sources) {
+            mirakana::editor::EditorAssetImportReviewRequest request;
+            request.existing_sources = std::move(existing_sources);
+            request.sources = {
+                mirakana::editor::EditorAssetImportCandidateInput{
+                    .source_path = "assets/drop/dupe.png",
+                    .provenance = matching_provenance,
+                    .source_exists = true,
+                    .source_content_hash = "sha256:ambiguous-pixels",
+                    .reuse_existing_source = true,
+                },
+            };
+            return mirakana::editor::review_editor_asset_import_candidates(request);
+        };
+
+    std::vector<mirakana::editor::EditorAssetImportExistingSourceRow> existing_sources{
+        mirakana::editor::EditorAssetImportExistingSourceRow{
+            .asset_key = mirakana::AssetKeyV2{"assets/imported/registered_source"},
+            .source_path = "assets/imported_sources/registered.png",
+            .imported_path = "assets/imported/registered_source.texture",
+            .source_content_hash = "sha256:ambiguous-pixels",
+            .provenance = matching_provenance,
+        },
+        mirakana::editor::EditorAssetImportExistingSourceRow{
+            .asset_key = mirakana::AssetKeyV2{"assets/imported/registered_copy"},
+            .source_path = "assets/imported_sources/registered_copy.png",
+            .imported_path = "assets/imported/registered_copy.texture",
+            .source_content_hash = "sha256:ambiguous-pixels",
+            .provenance = matching_provenance,
+        },
+    };
+
+    const auto first_order = review_ambiguous_reuse(existing_sources);
+    MK_REQUIRE(!first_order.ready);
+    MK_REQUIRE(first_order.rows.size() == 1U);
+    MK_REQUIRE(first_order.rows[0].diagnostic == "duplicate_import_content_hash_ambiguous");
+    MK_REQUIRE(first_order.rows[0].reusable_existing_source_path.empty());
+    MK_REQUIRE(first_order.rows[0].reusable_existing_imported_path.empty());
+    MK_REQUIRE(first_order.rows[0].reusable_existing_asset_key.value.empty());
+    MK_REQUIRE(first_order.registration_requests.empty());
+    MK_REQUIRE(first_order.import_plan.actions.empty());
+
+    std::ranges::reverse(existing_sources);
+    const auto reverse_order = review_ambiguous_reuse(std::move(existing_sources));
+    MK_REQUIRE(!reverse_order.ready);
+    MK_REQUIRE(reverse_order.rows.size() == 1U);
+    MK_REQUIRE(reverse_order.rows[0].diagnostic == "duplicate_import_content_hash_ambiguous");
+    MK_REQUIRE(reverse_order.rows[0].reusable_existing_source_path.empty());
+    MK_REQUIRE(reverse_order.rows[0].reusable_existing_imported_path.empty());
+    MK_REQUIRE(reverse_order.rows[0].reusable_existing_asset_key.value.empty());
+    MK_REQUIRE(reverse_order.registration_requests.empty());
+    MK_REQUIRE(reverse_order.import_plan.actions.empty());
 }
 
 MK_TEST("editor asset import review blocks legal rows before registration") {
@@ -4014,7 +4341,9 @@ MK_TEST("editor asset import review preflights existing source registry conflict
     const auto conflict = mirakana::editor::review_editor_asset_import_candidates(conflicting_request);
     MK_REQUIRE(!conflict.ready);
     MK_REQUIRE(conflict.rows.size() == 1);
-    MK_REQUIRE(conflict.rows[0].diagnostic == "source_registry_preflight_failed");
+    MK_REQUIRE(conflict.rows[0].diagnostic == "duplicate_import_asset_key");
+    MK_REQUIRE(conflict.rows[0].suggested_imported_path == "assets/imported/hero_2.texture");
+    MK_REQUIRE(conflict.rows[0].suggested_asset_key.value == "assets/imported/hero_2");
     MK_REQUIRE(!conflict.rows[0].can_register);
     MK_REQUIRE(!conflict.rows[0].can_import);
     MK_REQUIRE(conflict.registration_requests.empty());

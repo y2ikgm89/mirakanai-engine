@@ -17,6 +17,8 @@
 namespace mirakana::editor {
 namespace {
 
+[[nodiscard]] bool is_safe_import_repository_path(std::string_view path) noexcept;
+
 [[nodiscard]] char lower_ascii(char value) noexcept {
     if (value >= 'A' && value <= 'Z') {
         return static_cast<char>(value - 'A' + 'a');
@@ -123,12 +125,108 @@ namespace {
     return {};
 }
 
+[[nodiscard]] std::string reviewed_imported_path_extension_for_kind(AssetKind kind) {
+    switch (kind) {
+    case AssetKind::material:
+        return ".material";
+    case AssetKind::scene:
+        return ".scene";
+    case AssetKind::texture:
+    case AssetKind::mesh:
+    case AssetKind::audio:
+        return output_extension_for_kind(kind);
+    case AssetKind::unknown:
+    case AssetKind::morph_mesh_cpu:
+    case AssetKind::animation_float_clip:
+    case AssetKind::animation_quaternion_clip:
+    case AssetKind::sprite_animation:
+    case AssetKind::skinned_mesh:
+    case AssetKind::script:
+    case AssetKind::shader:
+    case AssetKind::ui_atlas:
+    case AssetKind::tilemap:
+    case AssetKind::physics_collision_scene:
+    case AssetKind::environment_profile:
+    case AssetKind::environment_preset_pack:
+    case AssetKind::mavg_cluster_graph:
+        break;
+    }
+    return {};
+}
+
+[[nodiscard]] bool is_imported_root_constrained_kind(AssetKind kind) noexcept {
+    return kind == AssetKind::texture || kind == AssetKind::mesh || kind == AssetKind::audio;
+}
+
+[[nodiscard]] bool is_strict_child_repository_path(std::string_view root, std::string_view path) {
+    const auto normalized_root = trim_trailing_separators(root);
+    return !normalized_root.empty() && path.size() > normalized_root.size() + 1U &&
+           path.substr(0U, normalized_root.size()) == normalized_root && path[normalized_root.size()] == '/';
+}
+
+[[nodiscard]] bool is_valid_reviewed_imported_path(AssetKind kind, std::string_view imported_output_root,
+                                                   std::string_view path) {
+    const auto expected_extension = reviewed_imported_path_extension_for_kind(kind);
+    if (expected_extension.empty() || extension_view(path) != expected_extension) {
+        return false;
+    }
+    if (is_imported_root_constrained_kind(kind)) {
+        const auto normalized_root = trim_trailing_separators(imported_output_root);
+        return is_safe_import_repository_path(normalized_root) &&
+               is_strict_child_repository_path(normalized_root, path);
+    }
+    return true;
+}
+
 [[nodiscard]] std::string asset_key_from_imported_path(std::string_view imported_path) {
     const auto extension = extension_view(imported_path);
     if (extension.empty()) {
         return std::string{imported_path};
     }
     return std::string{imported_path.substr(0U, imported_path.size() - extension.size())};
+}
+
+[[nodiscard]] bool existing_source_reuse_target_valid(const EditorAssetImportExistingSourceRow& existing,
+                                                      AssetKind candidate_kind, std::string_view imported_output_root) {
+    return is_safe_import_repository_path(existing.imported_path) &&
+           asset_key_from_imported_path(existing.imported_path) == existing.asset_key.value &&
+           is_valid_reviewed_imported_path(candidate_kind, imported_output_root, existing.imported_path);
+}
+
+[[nodiscard]] std::string parent_path_with_separator(std::string_view path) {
+    const auto slash = path.find_last_of("/\\");
+    if (slash == std::string_view::npos) {
+        return {};
+    }
+    return std::string{path.substr(0U, slash + 1U)};
+}
+
+[[nodiscard]] std::string append_imported_path_suffix(std::string_view imported_path, int suffix) {
+    const auto filename = filename_view(imported_path);
+    const auto extension = extension_view(imported_path);
+    const auto stem_size = filename.size() - extension.size();
+    std::string candidate = parent_path_with_separator(imported_path);
+    candidate.append(filename.substr(0U, stem_size));
+    candidate.push_back('_');
+    candidate.append(std::to_string(suffix));
+    candidate.append(extension);
+    return candidate;
+}
+
+[[nodiscard]] std::string next_imported_path_suggestion(std::string_view imported_path,
+                                                        const std::unordered_set<std::string>& occupied_paths,
+                                                        const std::unordered_set<std::string>& occupied_asset_keys) {
+    if (imported_path.empty()) {
+        return {};
+    }
+    for (int suffix = 2; suffix <= 99; ++suffix) {
+        auto candidate = append_imported_path_suffix(imported_path, suffix);
+        if (!occupied_paths.contains(candidate) &&
+            !occupied_asset_keys.contains(asset_key_from_imported_path(candidate))) {
+            return candidate;
+        }
+    }
+    return {};
 }
 
 [[nodiscard]] std::string candidate_row_id(std::size_t index, std::string_view source_path) {
@@ -177,6 +275,34 @@ void block_row(EditorAssetImportCandidateRow& row, std::string diagnostic) {
     row.can_import = false;
     row.status_label = "blocked";
     row.diagnostic = std::move(diagnostic);
+}
+
+void assign_rename_suggestion(EditorAssetImportCandidateRow& row, std::unordered_set<std::string>& occupied_paths,
+                              std::unordered_set<std::string>& occupied_asset_keys) {
+    if (!row.suggested_imported_path.empty() || row.imported_path.empty()) {
+        return;
+    }
+
+    auto suggestion = next_imported_path_suggestion(row.imported_path, occupied_paths, occupied_asset_keys);
+    if (suggestion.empty()) {
+        return;
+    }
+
+    row.suggested_imported_path = std::move(suggestion);
+    row.suggested_asset_key = AssetKeyV2{asset_key_from_imported_path(row.suggested_imported_path)};
+    occupied_paths.insert(row.suggested_imported_path);
+    occupied_asset_keys.insert(row.suggested_asset_key.value);
+}
+
+void block_row_for_collision(EditorAssetImportCandidateRow& row, std::string diagnostic,
+                             std::unordered_set<std::string>& occupied_paths,
+                             std::unordered_set<std::string>& occupied_asset_keys) {
+    assign_rename_suggestion(row, occupied_paths, occupied_asset_keys);
+    if (row.suggested_imported_path.empty() && !row.imported_path.empty()) {
+        block_row(row, "asset_import_rename_suggestion_exhausted");
+        return;
+    }
+    block_row(row, std::move(diagnostic));
 }
 
 [[nodiscard]] SourceAssetRegistrationRequest
@@ -228,6 +354,55 @@ find_source_registry_row_by_key(const SourceAssetRegistryDocumentV1& document, c
     const auto it = std::ranges::find_if(
         document.assets, [&key](const SourceAssetRegistryRowV1& row) { return row.key.value == key.value; });
     return it == document.assets.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const SourceAssetRegistryRowV1*
+find_source_registry_row_by_source_path(const SourceAssetRegistryDocumentV1& document,
+                                        std::string_view source_path) noexcept {
+    const auto it = std::ranges::find_if(
+        document.assets, [source_path](const SourceAssetRegistryRowV1& row) { return row.source_path == source_path; });
+    return it == document.assets.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const SourceAssetRegistryRowV1*
+find_source_registry_row_by_imported_path(const SourceAssetRegistryDocumentV1& document,
+                                          std::string_view imported_path) noexcept {
+    const auto it = std::ranges::find_if(document.assets, [imported_path](const SourceAssetRegistryRowV1& row) {
+        return row.imported_path == imported_path;
+    });
+    return it == document.assets.end() ? nullptr : &(*it);
+}
+
+struct ExistingSourceContentHashMatches {
+    const EditorAssetImportExistingSourceRow* first{nullptr};
+    std::size_t count{0};
+};
+
+[[nodiscard]] ExistingSourceContentHashMatches
+find_existing_sources_by_content_hash(std::span<const EditorAssetImportExistingSourceRow> rows,
+                                      std::string_view content_hash) noexcept {
+    ExistingSourceContentHashMatches matches;
+    if (content_hash.empty()) {
+        return matches;
+    }
+    for (const auto& row : rows) {
+        if (row.source_content_hash == content_hash) {
+            if (matches.first == nullptr) {
+                matches.first = &row;
+            }
+            ++matches.count;
+        }
+    }
+    return matches;
+}
+
+[[nodiscard]] bool provenance_rows_match(const EditorAssetBrowserLegalProvenanceRow& lhs,
+                                         const EditorAssetBrowserLegalProvenanceRow& rhs) noexcept {
+    return lhs.id == rhs.id && lhs.asset_key_label == rhs.asset_key_label && lhs.source_url == rhs.source_url &&
+           lhs.retrieved_date == rhs.retrieved_date && lhs.version_or_commit == rhs.version_or_commit &&
+           lhs.copyright_holder == rhs.copyright_holder && lhs.license_id == rhs.license_id &&
+           lhs.modification_status == rhs.modification_status && lhs.distribution_target == rhs.distribution_target &&
+           lhs.notice_complete == rhs.notice_complete && lhs.external_engine_material == rhs.external_engine_material;
 }
 
 [[nodiscard]] bool parse_existing_source_registry(std::string_view content,
@@ -522,11 +697,15 @@ EditorAssetImportReviewModel review_editor_asset_import_candidates(const EditorA
         row.asset_kind = editor_asset_import_asset_kind_for_source_path(source.source_path);
         row.action_kind = editor_asset_import_action_kind_for_asset_kind(row.asset_kind);
         row.source_format = editor_asset_import_source_format_for_path(source.source_path);
-        row.imported_path = editor_asset_import_output_path_for_source_path(request.imported_output_root,
-                                                                            source.source_path, row.asset_kind);
+        row.imported_path = source.reviewed_imported_path.empty()
+                                ? editor_asset_import_output_path_for_source_path(request.imported_output_root,
+                                                                                  source.source_path, row.asset_kind)
+                                : source.reviewed_imported_path;
+        row.source_content_hash = source.source_content_hash;
         row.asset_key = AssetKeyV2{asset_key_from_imported_path(row.imported_path)};
         row.asset = asset_id_from_key_v2(row.asset_key);
         row.status_label = "ready";
+        row.reuse_existing_source_selected = source.reuse_existing_source;
 
         if (row.asset_kind == AssetKind::unknown || row.action_kind == AssetImportActionKind::unknown ||
             row.source_format.empty() || row.imported_path.empty()) {
@@ -535,6 +714,10 @@ EditorAssetImportReviewModel review_editor_asset_import_candidates(const EditorA
             block_row(row, "unsafe_import_source_path");
         } else if (!is_safe_import_repository_path(row.imported_path)) {
             block_row(row, "unsafe_import_target_path");
+        } else if (!source.reviewed_imported_path.empty() &&
+                   !is_valid_reviewed_imported_path(row.asset_kind, request.imported_output_root,
+                                                    source.reviewed_imported_path)) {
+            block_row(row, "invalid_reviewed_imported_path");
         } else if (!source_registry_path_safe) {
             block_row(row, "unsafe_source_registry_path");
         } else if (!source.source_exists) {
@@ -561,24 +744,118 @@ EditorAssetImportReviewModel review_editor_asset_import_candidates(const EditorA
         model.rows.push_back(std::move(row));
     }
 
-    std::unordered_map<std::string, std::size_t> output_path_counts;
-    output_path_counts.reserve(model.rows.size());
-    for (const auto& row : model.rows) {
-        if (!row.imported_path.empty()) {
-            ++output_path_counts[row.imported_path];
+    std::unordered_map<std::string, std::size_t> source_path_counts;
+    std::unordered_map<std::string, std::size_t> imported_path_counts;
+    std::unordered_map<std::string, std::size_t> asset_key_counts;
+    std::unordered_map<std::string, std::size_t> content_hash_counts;
+    source_path_counts.reserve(model.rows.size());
+    imported_path_counts.reserve(model.rows.size());
+    asset_key_counts.reserve(model.rows.size());
+    content_hash_counts.reserve(model.rows.size());
+
+    std::unordered_set<std::string> occupied_imported_paths;
+    occupied_imported_paths.reserve(planned_registry.assets.size() + model.rows.size());
+    std::unordered_set<std::string> occupied_asset_keys;
+    occupied_asset_keys.reserve(planned_registry.assets.size() + model.rows.size());
+    for (const auto& existing : planned_registry.assets) {
+        if (!existing.imported_path.empty()) {
+            occupied_imported_paths.insert(existing.imported_path);
+        }
+        if (!existing.key.value.empty()) {
+            occupied_asset_keys.insert(existing.key.value);
         }
     }
-    for (auto& row : model.rows) {
-        const auto count = output_path_counts.find(row.imported_path);
-        if (count != output_path_counts.end() && count->second > 1U && !row.blocked_by_legal &&
-            row.diagnostic != "unsupported_import_source") {
-            block_row(row, "duplicate_import_target_path");
+    for (const auto& row : model.rows) {
+        if (!row.source_path.empty()) {
+            ++source_path_counts[row.source_path];
+        }
+        if (!row.imported_path.empty()) {
+            ++imported_path_counts[row.imported_path];
+            occupied_imported_paths.insert(row.imported_path);
+        }
+        if (!row.asset_key.value.empty()) {
+            ++asset_key_counts[row.asset_key.value];
+            occupied_asset_keys.insert(row.asset_key.value);
+        }
+        if (!row.source_content_hash.empty()) {
+            ++content_hash_counts[row.source_content_hash];
+        }
+    }
+
+    for (std::size_t index = 0; index < model.rows.size(); ++index) {
+        auto& row = model.rows[index];
+        if (!row.diagnostic.empty()) {
+            continue;
+        }
+
+        if (const auto existing_matches =
+                find_existing_sources_by_content_hash(request.existing_sources, row.source_content_hash);
+            existing_matches.count > 0U) {
+            if (existing_matches.count > 1U) {
+                block_row(row, "duplicate_import_content_hash_ambiguous");
+                continue;
+            }
+
+            const auto& existing = *existing_matches.first;
+            row.reusable_existing_source_path = existing.source_path;
+            row.reusable_existing_imported_path = existing.imported_path;
+            row.reusable_existing_asset_key = existing.asset_key;
+            if (!row.reuse_existing_source_selected) {
+                block_row(row, "duplicate_import_content_hash");
+                continue;
+            }
+            if (!existing_source_reuse_target_valid(existing, row.asset_kind, request.imported_output_root)) {
+                block_row(row, "duplicate_import_content_hash_existing_source_invalid");
+                continue;
+            }
+            if (!provenance_rows_match(request.sources[index].provenance, existing.provenance)) {
+                block_row(row, "duplicate_import_content_hash_provenance_mismatch");
+                continue;
+            }
+
+            row.can_register = false;
+            row.can_import = false;
+            row.reuses_existing_source = true;
+            continue;
+        }
+
+        if (const auto count = content_hash_counts.find(row.source_content_hash);
+            count != content_hash_counts.end() && count->second > 1U) {
+            block_row(row, "duplicate_import_content_hash");
+            continue;
+        }
+
+        if (const auto count = source_path_counts.find(row.source_path);
+            (count != source_path_counts.end() && count->second > 1U) ||
+            find_source_registry_row_by_source_path(planned_registry, row.source_path) != nullptr) {
+            block_row(row, "duplicate_import_source_path");
+            continue;
+        }
+
+        if (const auto count = imported_path_counts.find(row.imported_path);
+            count != imported_path_counts.end() && count->second > 1U) {
+            block_row_for_collision(row, "duplicate_import_target_path", occupied_imported_paths, occupied_asset_keys);
+            continue;
+        }
+
+        if (const auto count = asset_key_counts.find(row.asset_key.value);
+            (count != asset_key_counts.end() && count->second > 1U) ||
+            find_source_registry_row_by_key(planned_registry, row.asset_key) != nullptr) {
+            block_row_for_collision(row, "duplicate_import_asset_key", occupied_imported_paths, occupied_asset_keys);
+            continue;
+        }
+
+        if (find_source_registry_row_by_imported_path(planned_registry, row.imported_path) != nullptr) {
+            block_row_for_collision(row, "duplicate_imported_path", occupied_imported_paths, occupied_asset_keys);
         }
     }
 
     std::vector<SourceAssetRegistrationRequest> registration_requests;
     AssetImportPlan import_plan;
     for (auto& row : model.rows) {
+        if (row.reuses_existing_source) {
+            continue;
+        }
         if (row.can_register && row.can_import) {
             if (!source_registry_content_valid) {
                 block_row(row, "source_registry_preflight_failed");

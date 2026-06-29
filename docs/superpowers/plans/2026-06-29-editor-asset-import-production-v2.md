@@ -1046,16 +1046,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Test: `tests/unit/editor_core_tests.cpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] Detect duplicate source path, duplicate output path, duplicate `AssetKeyV2`, duplicate imported path, and duplicate content hash.
-- [ ] Suggest deterministic alternates: `<stem>_2`, `<stem>_3`, up to `<stem>_99`.
-- [ ] The suggestion is a review row only. The operator must explicitly select it before copy or registration.
-- [ ] Content-hash duplicates can reuse an existing source only when provenance rows match and the operator selects `reuse_existing_source`.
-- [ ] Tests prove collision blocking, deterministic suggestions, hash reuse blocking on provenance mismatch, and no implicit overwrite.
-- [ ] Verification:
+- [x] Detect duplicate source path, duplicate output path, duplicate `AssetKeyV2`, duplicate imported path, and duplicate content hash.
+- [x] Suggest deterministic alternates: `<stem>_2`, `<stem>_3`, up to `<stem>_99`.
+- [x] The suggestion is a review row only. The operator must explicitly select it before copy or registration.
+- [x] Content-hash duplicates can reuse an existing source only when provenance rows match and the operator selects `reuse_existing_source`.
+- [x] Tests prove collision blocking, deterministic suggestions, hash reuse blocking on provenance mismatch, and no implicit overwrite.
+- [x] Verification:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"
 ```
+
+Result on 2026-06-29: PASS. `EditorAssetImportCandidateInput`, `EditorAssetImportExistingSourceRow`, and `EditorAssetImportCandidateRow` now carry reviewed alternate imported paths, source content hashes, explicit reuse selection, deterministic rename suggestions, and reusable existing-source evidence. `review_editor_asset_import_candidates` blocks duplicate source path, duplicate target/imported path, duplicate `AssetKeyV2`, and duplicate content hash rows before registration/import planning; output/key/imported-path collisions get `<stem>_2..99` suggestions that avoid both imported-path and `AssetKeyV2` collisions, while source-path collisions intentionally get no misleading output rename suggestion. Reviewed alternates are accepted only after the operator resubmits a valid `reviewed_imported_path`; content-hash reuse requires exactly one valid existing source, matching provenance, and explicit `reuse_existing_source`. Native copy remains explicit-target-only and does not infer rename alternates. Evidence: TDD RED compile/test failures for missing duplicate-review fields and invalid suggestion/reuse cases; focused build and CTest passed; `git diff --check` passed; spec review passed after two correction loops; code quality review approved after validating reviewed-path and existing-source reuse evidence.
 
 ## Deferred Tasks
 
