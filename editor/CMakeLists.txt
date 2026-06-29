@@ -2,6 +2,7 @@ add_library(MK_editor_core
     core/src/ai_command_panel.cpp
     core/src/ai_operation_surface.cpp
     core/src/asset_browser_production.cpp
+    core/src/asset_import_review.cpp
     core/src/asset_pipeline.cpp
     core/src/command.cpp
     core/src/content_browser.cpp
@@ -53,6 +54,7 @@ MK_apply_common_target_options(MK_editor_core)
 
 add_library(MK_editor_shell_common
     src/first_party_editor_document.cpp
+    src/native_asset_import_copy.cpp
     src/native_editor_app.cpp
     src/native_editor_launch.cpp
     src/native_editor_text_atlas_handoff.cpp
@@ -71,6 +73,10 @@ target_include_directories(MK_editor_shell_common
 
 target_link_libraries(MK_editor_shell_common PUBLIC MK_editor_core)
 target_link_libraries(MK_editor_shell_common PRIVATE MK_renderer)
+
+if(BUILD_TESTING)
+    target_compile_definitions(MK_editor_shell_common PRIVATE MK_EDITOR_ASSET_IMPORT_COPY_TEST_HOOKS=1)
+endif()
 
 if(WIN32)
     target_sources(MK_editor_shell_common PRIVATE

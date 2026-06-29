@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/assets/asset_import_pipeline.hpp"
+#include "mirakana/assets/asset_import_provenance.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/content_browser.hpp"
@@ -25,6 +26,7 @@ enum class EditorAssetBrowserQueryStatus : std::uint8_t { empty, ready, blocked 
 enum class EditorAssetBrowserCommandKind : std::uint8_t {
     reload_source_registry,
     review_import_sources,
+    register_import_sources,
     copy_external_sources,
     execute_reviewed_import_plan,
     preview_cooked_package,
@@ -168,6 +170,7 @@ struct EditorAssetBrowserPackageReviewModel {
 struct EditorAssetBrowserProductionDesc {
     const ContentBrowserState* browser{nullptr};
     const AssetImportPlan* import_plan{nullptr};
+    const AssetPipelineState* pipeline_state{nullptr};
     std::string project_root{"."};
     std::string asset_root{"assets"};
     std::string source_registry_path;
@@ -338,6 +341,8 @@ make_editor_asset_browser_production_ui_model(const EditorAssetBrowserProduction
 [[nodiscard]] EditorAssetBrowserQueryResult plan_editor_asset_browser_query(const EditorAssetBrowserQueryDesc& desc);
 [[nodiscard]] EditorAssetBrowserCommandPlan
 plan_editor_asset_browser_command(const EditorAssetBrowserCommandRequest& request);
+[[nodiscard]] EditorAssetBrowserLegalProvenanceRow
+make_editor_asset_browser_legal_provenance_row(const mirakana::AssetImportProvenanceRowV1& row);
 [[nodiscard]] EditorAssetBrowserLegalProvenanceRow
 review_editor_asset_browser_legal_provenance(const EditorAssetBrowserLegalProvenanceRow& row);
 [[nodiscard]] EditorAssetBrowserOpenExrSourceReviewRow

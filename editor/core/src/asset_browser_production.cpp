@@ -38,6 +38,37 @@ namespace {
     });
 }
 
+[[nodiscard]] const EditorAssetImportItem* find_import_pipeline_item(const AssetPipelineState* pipeline_state,
+                                                                     AssetId asset,
+                                                                     std::string_view output_path) noexcept {
+    if (pipeline_state == nullptr) {
+        return nullptr;
+    }
+    const auto& items = pipeline_state->items();
+    const auto item = std::ranges::find_if(items, [asset, output_path](const EditorAssetImportItem& candidate) {
+        return candidate.asset == asset && candidate.output_path == output_path;
+    });
+    return item == items.end() ? nullptr : &*item;
+}
+
+[[nodiscard]] std::string source_pulse_import_status_label(const AssetImportPlan* import_plan,
+                                                           const AssetPipelineState* pipeline_state, AssetId asset,
+                                                           std::string_view output_path) {
+    if (const auto* item = find_import_pipeline_item(pipeline_state, asset, output_path); item != nullptr) {
+        switch (item->status) {
+        case EditorAssetImportStatus::imported:
+            return "imported";
+        case EditorAssetImportStatus::failed:
+            return "failed";
+        case EditorAssetImportStatus::pending:
+            return "planned";
+        case EditorAssetImportStatus::unknown:
+            break;
+        }
+    }
+    return import_plan_contains(import_plan, asset, output_path) ? "planned" : "not_planned";
+}
+
 [[nodiscard]] char ascii_lower(char value) noexcept {
     return static_cast<char>(std::tolower(static_cast<unsigned char>(value)));
 }
@@ -53,6 +84,25 @@ namespace {
         lowered.push_back(ascii_lower(character));
     }
     return lowered;
+}
+
+[[nodiscard]] bool ascii_is_alnum(char value) noexcept {
+    return std::isalnum(static_cast<unsigned char>(value)) != 0;
+}
+
+[[nodiscard]] std::string legal_provenance_id_suffix(std::string_view asset_key) {
+    std::string suffix;
+    suffix.reserve(asset_key.size());
+    for (const char character : asset_key) {
+        if (ascii_is_alnum(character) || character == '_' || character == '-') {
+            suffix.push_back(ascii_lower(character));
+        } else if (character == '/' || character == '.') {
+            suffix.push_back('.');
+        } else {
+            suffix.push_back('_');
+        }
+    }
+    return suffix.empty() ? "unknown" : suffix;
 }
 
 [[nodiscard]] bool equals_case_insensitive(std::string_view lhs, std::string_view rhs) {
@@ -207,6 +257,8 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
         return "Reload source registry";
     case EditorAssetBrowserCommandKind::review_import_sources:
         return "Review import sources";
+    case EditorAssetBrowserCommandKind::register_import_sources:
+        return "Register import sources";
     case EditorAssetBrowserCommandKind::copy_external_sources:
         return "Copy external sources";
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
@@ -236,6 +288,7 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
 [[nodiscard]] bool command_requires_confirmation(EditorAssetBrowserCommandKind kind) noexcept {
     switch (kind) {
     case EditorAssetBrowserCommandKind::copy_external_sources:
+    case EditorAssetBrowserCommandKind::register_import_sources:
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
     case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
     case EditorAssetBrowserCommandKind::apply_package_registration:
@@ -252,6 +305,7 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
 [[nodiscard]] bool command_mutates_project_files(EditorAssetBrowserCommandKind kind) noexcept {
     switch (kind) {
     case EditorAssetBrowserCommandKind::copy_external_sources:
+    case EditorAssetBrowserCommandKind::register_import_sources:
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
     case EditorAssetBrowserCommandKind::stage_hot_reload_recook:
     case EditorAssetBrowserCommandKind::apply_package_registration:
@@ -277,22 +331,36 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
         lower_ascii(row.source_url + " " + row.modification_status + " " + row.asset_key_label);
     return review_text.find("assetstore.unity.com") != std::string::npos ||
            review_text.find("unity.com/packages") != std::string::npos ||
+           review_text.find(".unitypackage") != std::string::npos ||
+           review_text.find("unity asset store") != std::string::npos ||
            review_text.find("unrealengine.com/marketplace") != std::string::npos ||
+           review_text.find("marketplace.unrealengine.com") != std::string::npos ||
            review_text.find("fab.com") != std::string::npos ||
+           review_text.find("epicgames.com/fab") != std::string::npos ||
            review_text.find("unreal marketplace") != std::string::npos ||
+           review_text.find(".uproject") != std::string::npos || review_text.find(".uasset") != std::string::npos ||
+           review_text.find(".umap") != std::string::npos || review_text.find("project.godot") != std::string::npos ||
+           review_text.find("godot scene") != std::string::npos ||
+           review_text.find("godot editor ui") != std::string::npos ||
+           review_text.find("unity scene") != std::string::npos ||
+           review_text.find("unity meta file") != std::string::npos ||
            review_text.find("engine_sample_content") != std::string::npos ||
            review_text.find("engine_logo_or_trademark") != std::string::npos ||
            review_text.find("copied_editor_ui_expression") != std::string::npos ||
            review_text.find("copied_editor_screenshot") != std::string::npos ||
            review_text.find("copied_editor_icon") != std::string::npos ||
-           review_text.find("copied_editor_layout") != std::string::npos;
+           review_text.find("copied_editor_layout") != std::string::npos ||
+           review_text.find("external_engine_project_schema") != std::string::npos;
 }
 
 [[nodiscard]] bool is_restricted_license(std::string_view license_id) {
     const std::string license = lower_ascii(license_id);
     return license.find("cc-by-nc") != std::string::npos || license.find("cc-nc") != std::string::npos ||
            license.find("-nc") != std::string::npos || license.find("cc-by-nd") != std::string::npos ||
-           license.find("cc-nd") != std::string::npos || license.find("-nd") != std::string::npos;
+           license.find("cc-nd") != std::string::npos || license.find("-nd") != std::string::npos ||
+           license.find("marketplace") != std::string::npos || license.find("asset store") != std::string::npos ||
+           license.find("fab standard") != std::string::npos || license.find("unity asset") != std::string::npos ||
+           license.find("unreal marketplace") != std::string::npos || license.find("epic content") != std::string::npos;
 }
 
 [[nodiscard]] bool supported_open_exr_compression(std::string_view compression) {
@@ -591,8 +659,8 @@ void append_normalized_token(std::string& normalized_query, std::string_view tok
 
 [[nodiscard]] EditorAssetBrowserSourcePulseRow make_source_pulse_row(const ContentBrowserItem& item,
                                                                      const ContentBrowserItem* selected,
-                                                                     const AssetImportPlan* import_plan) {
-    const bool import_planned = import_plan_contains(import_plan, item.id, item.path);
+                                                                     const AssetImportPlan* import_plan,
+                                                                     const AssetPipelineState* pipeline_state) {
     EditorAssetBrowserSourcePulseRow row{
         .asset = item.id,
         .kind = item.kind,
@@ -604,7 +672,7 @@ void append_normalized_token(std::string& normalized_query, std::string_view tok
         .display_name = item.display_name,
         .scope_label = item.identity_source_path.empty() ? "cooked" : "source",
         .state_label = item.identity_backed ? "ready" : "missing_identity",
-        .import_status_label = import_planned ? "planned" : "not_planned",
+        .import_status_label = source_pulse_import_status_label(import_plan, pipeline_state, item.id, item.path),
         .package_status_label = "not_reviewed",
         .provenance_status_label = "not_reviewed",
         .preview_status_label = "not_requested",
@@ -726,6 +794,8 @@ std::string_view editor_asset_browser_command_id(EditorAssetBrowserCommandKind k
         return "asset_browser.source_registry.reload";
     case EditorAssetBrowserCommandKind::review_import_sources:
         return "asset_browser.import.review_sources";
+    case EditorAssetBrowserCommandKind::register_import_sources:
+        return "asset_browser.import.register_sources";
     case EditorAssetBrowserCommandKind::copy_external_sources:
         return "asset_browser.import.copy_external_sources";
     case EditorAssetBrowserCommandKind::execute_reviewed_import_plan:
@@ -870,7 +940,7 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
     model.visible_row_count = visible_items.size();
     model.rows.reserve(visible_items.size());
     for (const auto& item : visible_items) {
-        model.rows.push_back(make_source_pulse_row(item, selected, desc.import_plan));
+        model.rows.push_back(make_source_pulse_row(item, selected, desc.import_plan, desc.pipeline_state));
     }
     sort_rows(model.rows);
     if (desc.preview_evidence != nullptr) {
@@ -1135,10 +1205,47 @@ EditorAssetBrowserCommandPlan plan_editor_asset_browser_command(const EditorAsse
 }
 
 EditorAssetBrowserLegalProvenanceRow
+make_editor_asset_browser_legal_provenance_row(const mirakana::AssetImportProvenanceRowV1& row) {
+    EditorAssetBrowserLegalProvenanceRow projected{
+        .id = "asset_browser.legal.asset_import." + legal_provenance_id_suffix(row.asset_key.value),
+        .asset_key_label = row.asset_key.value,
+        .source_url = row.source_url,
+        .retrieved_date = row.retrieved_date,
+        .version_or_commit = row.version_or_commit,
+        .copyright_holder = row.copyright_holder,
+        .license_id = row.license_id,
+        .modification_status = row.modification_status,
+        .distribution_target = row.distribution_target,
+        .status_label = "not_reviewed",
+        .diagnostic = {},
+        .notice_complete = row.notice_complete,
+        .external_engine_material = row.external_engine_material,
+        .accepted_for_package = false,
+        .blocked = false,
+    };
+
+    const auto diagnostics =
+        mirakana::validate_asset_import_provenance_document(mirakana::AssetImportProvenanceDocumentV1{.rows = {row}});
+    if (!diagnostics.empty()) {
+        projected.status_label = "asset_import_provenance_invalid";
+        projected.diagnostic = diagnostics.front();
+        projected.accepted_for_package = false;
+        projected.blocked = true;
+    }
+    return projected;
+}
+
+EditorAssetBrowserLegalProvenanceRow
 review_editor_asset_browser_legal_provenance(const EditorAssetBrowserLegalProvenanceRow& row) {
     EditorAssetBrowserLegalProvenanceRow reviewed = row;
     reviewed.accepted_for_package = false;
     reviewed.blocked = true;
+
+    if (row.blocked && !row.accepted_for_package) {
+        reviewed.status_label = row.status_label.empty() ? "asset_import_provenance_invalid" : row.status_label;
+        reviewed.diagnostic = row.diagnostic.empty() ? "legal provenance row was pre-blocked" : row.diagnostic;
+        return reviewed;
+    }
 
     if (is_external_engine_material(row)) {
         reviewed.external_engine_material = true;

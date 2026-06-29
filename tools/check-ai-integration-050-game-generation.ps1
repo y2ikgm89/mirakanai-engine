@@ -1721,7 +1721,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
     @{
         Path = "docs/current-capabilities.md"
         Needles = @(
-            "Editor Content Browser Import Diagnostics v1, Native Dialog v1, External Copy Review v1, and Codec Adapter Review v1",
+            "Editor Content Browser Import Diagnostics v1, Native Dialog v1, External Copy Review v1, External Copy Transaction v1, and Codec Adapter Review v1",
             "EditorContentBrowserImportOpenDialogModel",
             "content_browser_import.open_dialog",
             "Browse Import Sources",
@@ -1863,7 +1863,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
     @{
         Path = "docs/current-capabilities.md"
         Needles = @(
-            "Editor Content Browser Import Diagnostics v1, Native Dialog v1, External Copy Review v1, and Codec Adapter Review v1",
+            "Editor Content Browser Import Diagnostics v1, Native Dialog v1, External Copy Review v1, External Copy Transaction v1, and Codec Adapter Review v1",
             "EditorContentBrowserImportExternalSourceCopyModel",
             "content_browser_import.external_copy",
             "Copy External Sources",

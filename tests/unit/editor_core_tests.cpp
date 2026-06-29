@@ -3,12 +3,14 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/asset_import_provenance.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/material_graph.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
 #include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
+#include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/command.hpp"
 #include "mirakana/editor/content_browser.hpp"
@@ -2830,6 +2832,51 @@ MK_TEST("editor asset browser production model builds source pulse rows") {
     MK_REQUIRE(ui_atlas_source->text.label == "source/ui/hud=blue.ui_atlas");
 }
 
+MK_TEST("editor asset browser source pulse reflects import execution diagnostics") {
+    const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
+    mirakana::SourceAssetRegistryDocumentV1 source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = texture_key,
+        .kind = mirakana::AssetKind::texture,
+        .source_path = "source/textures/player.png",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+        .imported_path = "assets/textures/player.texture",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+
+    mirakana::AssetImportPlan import_plan;
+    import_plan.actions.push_back(mirakana::AssetImportAction{
+        .id = mirakana::asset_id_from_key_v2(texture_key),
+        .kind = mirakana::AssetImportActionKind::texture,
+        .source_path = "source/textures/player.png",
+        .output_path = "assets/textures/player.texture",
+    });
+
+    mirakana::editor::AssetPipelineState pipeline;
+    pipeline.set_import_plan(import_plan);
+    mirakana::AssetImportExecutionResult execution;
+    execution.imported.push_back(mirakana::AssetImportedArtifact{
+        .asset = mirakana::asset_id_from_key_v2(texture_key),
+        .kind = mirakana::AssetImportActionKind::texture,
+        .output_path = "assets/textures/player.texture",
+    });
+    pipeline.apply_import_execution_result(execution);
+
+    const auto model =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .import_plan = &import_plan,
+            .pipeline_state = &pipeline,
+        });
+
+    const auto row = std::ranges::find_if(
+        model.rows, [&texture_key](const auto& candidate) { return candidate.asset_key_label == texture_key.value; });
+    MK_REQUIRE(row != model.rows.end());
+    MK_REQUIRE(row->import_status_label == "imported");
+}
+
 MK_TEST("editor asset browser production ui tolerates cooked rows without identity") {
     mirakana::AssetRegistry registry;
     registry.add(mirakana::AssetRecord{
@@ -3006,6 +3053,7 @@ MK_TEST("editor asset browser command plans expose reviewed dry runs") {
     const std::vector<mirakana::editor::EditorAssetBrowserCommandKind> commands{
         mirakana::editor::EditorAssetBrowserCommandKind::reload_source_registry,
         mirakana::editor::EditorAssetBrowserCommandKind::review_import_sources,
+        mirakana::editor::EditorAssetBrowserCommandKind::register_import_sources,
         mirakana::editor::EditorAssetBrowserCommandKind::copy_external_sources,
         mirakana::editor::EditorAssetBrowserCommandKind::execute_reviewed_import_plan,
         mirakana::editor::EditorAssetBrowserCommandKind::preview_cooked_package,
@@ -3065,6 +3113,22 @@ MK_TEST("editor asset browser command plans require confirmation for shell mutat
     MK_REQUIRE(!copy.executes_package_scripts);
     MK_REQUIRE(!copy.executes_validation_recipes);
     MK_REQUIRE(!copy.exposes_native_handles);
+
+    const auto register_sources =
+        mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
+            .kind = mirakana::editor::EditorAssetBrowserCommandKind::register_import_sources,
+            .mode = mirakana::editor::EditorAssetBrowserCommandMode::apply,
+            .expected_generation = 3U,
+            .current_generation = 3U,
+            .user_confirmed = true,
+        });
+    MK_REQUIRE(register_sources.status == mirakana::editor::EditorAssetBrowserCommandStatus::ready);
+    MK_REQUIRE(register_sources.requires_user_confirmation);
+    MK_REQUIRE(register_sources.mutates_project_files);
+    MK_REQUIRE(!register_sources.executes_import_tools);
+    MK_REQUIRE(!register_sources.executes_package_scripts);
+    MK_REQUIRE(!register_sources.executes_validation_recipes);
+    MK_REQUIRE(!register_sources.exposes_native_handles);
 
     const auto import =
         mirakana::editor::plan_editor_asset_browser_command(mirakana::editor::EditorAssetBrowserCommandRequest{
@@ -3171,6 +3235,427 @@ MK_TEST("editor asset browser legal provenance review blocks incomplete or restr
     const auto copied_godot_review = mirakana::editor::review_editor_asset_browser_legal_provenance(copied_godot_ui);
     MK_REQUIRE(copied_godot_review.blocked);
     MK_REQUIRE(copied_godot_review.status_label == "external_engine_material_rejected");
+}
+
+MK_TEST("editor legal provenance row projects persistent provenance document") {
+    const auto document = mirakana::deserialize_asset_import_provenance_document(
+        "format=GameEngine.AssetImportProvenance.v1\n"
+        "row.count=1\n"
+        "row.0.asset_key=assets/imported/hero\n"
+        "row.0.origin=first_party\n"
+        "row.0.source_url=project://assets/imported_sources/hero.png\n"
+        "row.0.retrieved_date=2026-06-29\n"
+        "row.0.version_or_commit=working-tree\n"
+        "row.0.copyright_holder=MIRAIKANAI contributors\n"
+        "row.0.license_id=LicenseRef-Proprietary\n"
+        "row.0.modification_status=unmodified\n"
+        "row.0.distribution_target=editor_source\n"
+        "row.0.notice_id=LICENSES/LicenseRef-Proprietary.txt\n"
+        "row.0.notice_complete=true\n"
+        "row.0.external_engine_material=false\n");
+
+    const auto projected = mirakana::editor::make_editor_asset_browser_legal_provenance_row(document.rows.front());
+    MK_REQUIRE(projected.id == "asset_browser.legal.asset_import.assets.imported.hero");
+    MK_REQUIRE(projected.asset_key_label == "assets/imported/hero");
+    MK_REQUIRE(projected.license_id == "LicenseRef-Proprietary");
+    MK_REQUIRE(!projected.blocked);
+
+    const auto reviewed = mirakana::editor::review_editor_asset_browser_legal_provenance(projected);
+    MK_REQUIRE(!reviewed.blocked);
+    MK_REQUIRE(reviewed.accepted_for_package);
+    MK_REQUIRE(reviewed.status_label == "accepted_for_package");
+}
+
+MK_TEST("editor legal provenance projection keeps invalid persistent provenance blocked") {
+    mirakana::AssetImportProvenanceRowV1 invalid;
+    invalid.asset_key = mirakana::AssetKeyV2{.value = "assets/imported/hero"};
+    invalid.origin = static_cast<mirakana::AssetImportProvenanceOrigin>(255);
+    invalid.source_url = "project://assets/imported_sources/hero.png";
+    invalid.retrieved_date = "2026-06-29";
+    invalid.version_or_commit = "working-tree";
+    invalid.copyright_holder = "MIRAIKANAI contributors";
+    invalid.license_id = "LicenseRef-Proprietary";
+    invalid.modification_status = "unmodified";
+    invalid.distribution_target = "editor_source";
+    invalid.notice_id = "LICENSES/LicenseRef-Proprietary.txt";
+    invalid.notice_complete = true;
+
+    const auto projected = mirakana::editor::make_editor_asset_browser_legal_provenance_row(invalid);
+    MK_REQUIRE(projected.blocked);
+    MK_REQUIRE(!projected.accepted_for_package);
+    MK_REQUIRE(projected.status_label == "asset_import_provenance_invalid");
+
+    const auto reviewed = mirakana::editor::review_editor_asset_browser_legal_provenance(projected);
+    MK_REQUIRE(reviewed.blocked);
+    MK_REQUIRE(!reviewed.accepted_for_package);
+    MK_REQUIRE(reviewed.status_label == "asset_import_provenance_invalid");
+}
+
+[[nodiscard]] mirakana::editor::EditorAssetBrowserLegalProvenanceRow
+make_editor_asset_import_test_provenance(std::string asset_key_label) {
+    return mirakana::editor::EditorAssetBrowserLegalProvenanceRow{
+        .id = "asset_import.legal." + asset_key_label,
+        .asset_key_label = std::move(asset_key_label),
+        .source_url = "project://assets/imported_sources",
+        .retrieved_date = "2026-06-29",
+        .version_or_commit = "working-tree",
+        .copyright_holder = "MIRAIKANAI contributors",
+        .license_id = "LicenseRef-Proprietary",
+        .modification_status = "unmodified",
+        .distribution_target = "runtime_package",
+        .notice_complete = true,
+    };
+}
+
+[[nodiscard]] const mirakana::editor::EditorAssetImportCandidateRow*
+find_editor_asset_import_candidate_row(const mirakana::editor::EditorAssetImportReviewModel& model,
+                                       std::string_view source_path) noexcept {
+    const auto it =
+        std::ranges::find_if(model.rows, [source_path](const auto& row) { return row.source_path == source_path; });
+    return it == model.rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::SourceAssetRegistrationRequest*
+find_editor_asset_import_registration_request(const mirakana::editor::EditorAssetImportReviewModel& model,
+                                              std::string_view source_path) noexcept {
+    const auto it = std::ranges::find_if(
+        model.registration_requests, [source_path](const auto& request) { return request.source_path == source_path; });
+    return it == model.registration_requests.end() ? nullptr : &(*it);
+}
+
+MK_TEST("editor asset import review maps selected sources to registry requests") {
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/robot.gltf",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/robot"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/theme.wav",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/theme"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/materials/hero.material",
+            .provenance = make_editor_asset_import_test_provenance("assets/materials/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/scenes/level.scene",
+            .provenance = make_editor_asset_import_test_provenance("assets/scenes/level"),
+            .source_exists = true,
+        },
+    };
+
+    const auto model = mirakana::editor::review_editor_asset_import_candidates(request);
+
+    MK_REQUIRE(model.ready);
+    MK_REQUIRE(model.diagnostics.empty());
+    MK_REQUIRE(model.rows.size() == 5);
+    MK_REQUIRE(model.registration_requests.size() == 5);
+    MK_REQUIRE(model.import_plan.actions.size() == 5);
+
+    struct ExpectedImportCandidate {
+        std::string_view source_path;
+        mirakana::AssetKind asset_kind;
+        mirakana::AssetImportActionKind action_kind;
+        std::string_view source_format;
+        std::string_view imported_path;
+        std::string_view asset_key;
+    };
+    const std::vector<ExpectedImportCandidate> expected = {
+        {"assets/imported_sources/hero.png", mirakana::AssetKind::texture, mirakana::AssetImportActionKind::texture,
+         "GameEngine.TextureSource.v1", "assets/imported/hero.texture", "assets/imported/hero"},
+        {"assets/imported_sources/robot.gltf", mirakana::AssetKind::mesh, mirakana::AssetImportActionKind::mesh,
+         "GameEngine.MeshSource.v2", "assets/imported/robot.mesh", "assets/imported/robot"},
+        {"assets/imported_sources/theme.wav", mirakana::AssetKind::audio, mirakana::AssetImportActionKind::audio,
+         "GameEngine.AudioSource.v1", "assets/imported/theme.audio", "assets/imported/theme"},
+        {"assets/materials/hero.material", mirakana::AssetKind::material, mirakana::AssetImportActionKind::material,
+         "GameEngine.Material.v1", "assets/materials/hero.material", "assets/materials/hero"},
+        {"assets/scenes/level.scene", mirakana::AssetKind::scene, mirakana::AssetImportActionKind::scene,
+         "GameEngine.Scene.v1", "assets/scenes/level.scene", "assets/scenes/level"},
+    };
+
+    for (const auto& expected_row : expected) {
+        const auto* row = find_editor_asset_import_candidate_row(model, expected_row.source_path);
+        MK_REQUIRE(row != nullptr);
+        MK_REQUIRE(row->asset_kind == expected_row.asset_kind);
+        MK_REQUIRE(row->action_kind == expected_row.action_kind);
+        MK_REQUIRE(row->source_format == expected_row.source_format);
+        MK_REQUIRE(row->imported_path == expected_row.imported_path);
+        MK_REQUIRE(row->asset_key.value == expected_row.asset_key);
+        MK_REQUIRE(row->asset == mirakana::asset_id_from_key_v2(row->asset_key));
+        MK_REQUIRE(row->can_register);
+        MK_REQUIRE(row->can_import);
+        MK_REQUIRE(!row->blocked_by_legal);
+        MK_REQUIRE(row->diagnostic.empty());
+
+        const auto* registration = find_editor_asset_import_registration_request(model, expected_row.source_path);
+        MK_REQUIRE(registration != nullptr);
+        MK_REQUIRE(registration->asset_key.value == expected_row.asset_key);
+        MK_REQUIRE(registration->asset_kind == expected_row.asset_kind);
+        MK_REQUIRE(registration->source_format == expected_row.source_format);
+        MK_REQUIRE(registration->imported_path == expected_row.imported_path);
+        MK_REQUIRE(registration->source_registry_path == request.source_registry_path);
+
+        const auto registration_plan = mirakana::plan_source_asset_registration(*registration);
+        MK_REQUIRE(registration_plan.succeeded());
+    }
+}
+
+MK_TEST("editor asset import review rejects duplicate target paths and unsupported sources") {
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/Hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/hero.PNG",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/drop/readme.txt",
+            .provenance = make_editor_asset_import_test_provenance("assets/drop/readme"),
+            .source_exists = true,
+        },
+    };
+
+    const auto model = mirakana::editor::review_editor_asset_import_candidates(request);
+
+    MK_REQUIRE(!model.ready);
+    MK_REQUIRE(model.rows.size() == 3);
+    MK_REQUIRE(model.registration_requests.empty());
+    MK_REQUIRE(model.import_plan.actions.empty());
+
+    const auto* first_duplicate = find_editor_asset_import_candidate_row(model, "assets/drop/Hero.png");
+    const auto* second_duplicate = find_editor_asset_import_candidate_row(model, "assets/drop/hero.PNG");
+    MK_REQUIRE(first_duplicate != nullptr);
+    MK_REQUIRE(second_duplicate != nullptr);
+    MK_REQUIRE(first_duplicate->imported_path == "assets/imported/hero.texture");
+    MK_REQUIRE(second_duplicate->imported_path == "assets/imported/hero.texture");
+    MK_REQUIRE(first_duplicate->diagnostic == "duplicate_import_target_path");
+    MK_REQUIRE(second_duplicate->diagnostic == "duplicate_import_target_path");
+    MK_REQUIRE(!first_duplicate->can_register);
+    MK_REQUIRE(!first_duplicate->can_import);
+    MK_REQUIRE(!second_duplicate->can_register);
+    MK_REQUIRE(!second_duplicate->can_import);
+
+    const auto* unsupported = find_editor_asset_import_candidate_row(model, "assets/drop/readme.txt");
+    MK_REQUIRE(unsupported != nullptr);
+    MK_REQUIRE(unsupported->asset_kind == mirakana::AssetKind::unknown);
+    MK_REQUIRE(unsupported->action_kind == mirakana::AssetImportActionKind::unknown);
+    MK_REQUIRE(unsupported->diagnostic == "unsupported_import_source");
+    MK_REQUIRE(!unsupported->can_register);
+    MK_REQUIRE(!unsupported->can_import);
+}
+
+MK_TEST("editor asset import review blocks legal rows before registration") {
+    auto blocked_provenance = make_editor_asset_import_test_provenance("assets/imported/hero");
+    blocked_provenance.license_id.clear();
+
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/hero.png",
+            .provenance = std::move(blocked_provenance),
+            .source_exists = true,
+        },
+    };
+
+    const auto model = mirakana::editor::review_editor_asset_import_candidates(request);
+
+    MK_REQUIRE(!model.ready);
+    MK_REQUIRE(model.rows.size() == 1);
+    MK_REQUIRE(model.registration_requests.empty());
+    MK_REQUIRE(model.import_plan.actions.empty());
+
+    const auto& row = model.rows[0];
+    MK_REQUIRE(row.source_path == "assets/imported_sources/hero.png");
+    MK_REQUIRE(row.asset_kind == mirakana::AssetKind::texture);
+    MK_REQUIRE(row.action_kind == mirakana::AssetImportActionKind::texture);
+    MK_REQUIRE(row.imported_path == "assets/imported/hero.texture");
+    MK_REQUIRE(row.blocked_by_legal);
+    MK_REQUIRE(!row.can_register);
+    MK_REQUIRE(!row.can_import);
+    MK_REQUIRE(row.diagnostic == "asset_import_provenance_blocked");
+}
+
+MK_TEST("editor import candidates require accepted provenance before registration") {
+    auto restricted_provenance = make_editor_asset_import_test_provenance("assets/imported/restricted");
+    restricted_provenance.license_id = "CC-BY-NC-4.0";
+    auto external_engine_provenance = make_editor_asset_import_test_provenance("assets/imported/external_engine");
+    external_engine_provenance.source_url = "https://assetstore.unity.com/packages/example";
+    external_engine_provenance.external_engine_material = true;
+
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/restricted.png",
+            .provenance = std::move(restricted_provenance),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/external_engine.png",
+            .provenance = std::move(external_engine_provenance),
+            .source_exists = true,
+        },
+    };
+
+    const auto model = mirakana::editor::review_editor_asset_import_candidates(request);
+
+    MK_REQUIRE(!model.ready);
+    MK_REQUIRE(model.rows.size() == 2U);
+    MK_REQUIRE(model.registration_requests.empty());
+    MK_REQUIRE(model.import_plan.actions.empty());
+    for (const auto& row : model.rows) {
+        MK_REQUIRE(row.blocked_by_legal);
+        MK_REQUIRE(!row.can_register);
+        MK_REQUIRE(!row.can_import);
+        MK_REQUIRE(row.diagnostic == "asset_import_provenance_blocked");
+    }
+}
+
+MK_TEST("editor asset import review rejects unsafe project paths before registration") {
+    auto review_one_source = [](std::string source_path, std::string imported_output_root,
+                                std::string source_registry_path) {
+        mirakana::editor::EditorAssetImportReviewRequest request;
+        request.imported_output_root = std::move(imported_output_root);
+        request.source_registry_path = std::move(source_registry_path);
+        request.sources = {
+            mirakana::editor::EditorAssetImportCandidateInput{
+                .source_path = std::move(source_path),
+                .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+                .source_exists = true,
+            },
+        };
+        return mirakana::editor::review_editor_asset_import_candidates(request);
+    };
+
+    const auto unsafe_source =
+        review_one_source("assets/../secrets/hero.png", "assets/imported", "source/assets/package.geassets");
+    MK_REQUIRE(!unsafe_source.ready);
+    MK_REQUIRE(unsafe_source.rows.size() == 1);
+    MK_REQUIRE(unsafe_source.rows[0].diagnostic == "unsafe_import_source_path");
+    MK_REQUIRE(!unsafe_source.rows[0].can_register);
+    MK_REQUIRE(!unsafe_source.rows[0].can_import);
+    MK_REQUIRE(unsafe_source.registration_requests.empty());
+    MK_REQUIRE(unsafe_source.import_plan.actions.empty());
+
+    const auto unsafe_colon_source =
+        review_one_source("assets/drop:hero.png", "assets/imported", "source/assets/package.geassets");
+    MK_REQUIRE(!unsafe_colon_source.ready);
+    MK_REQUIRE(unsafe_colon_source.rows.size() == 1);
+    MK_REQUIRE(unsafe_colon_source.rows[0].diagnostic == "unsafe_import_source_path");
+    MK_REQUIRE(!unsafe_colon_source.rows[0].can_register);
+    MK_REQUIRE(!unsafe_colon_source.rows[0].can_import);
+    MK_REQUIRE(unsafe_colon_source.registration_requests.empty());
+    MK_REQUIRE(unsafe_colon_source.import_plan.actions.empty());
+
+    const auto unsafe_target =
+        review_one_source("assets/imported_sources/hero.png", "C:/outside/imported", "source/assets/package.geassets");
+    MK_REQUIRE(!unsafe_target.ready);
+    MK_REQUIRE(unsafe_target.rows.size() == 1);
+    MK_REQUIRE(unsafe_target.rows[0].diagnostic == "unsafe_import_target_path");
+    MK_REQUIRE(!unsafe_target.rows[0].can_register);
+    MK_REQUIRE(!unsafe_target.rows[0].can_import);
+    MK_REQUIRE(unsafe_target.registration_requests.empty());
+    MK_REQUIRE(unsafe_target.import_plan.actions.empty());
+
+    const auto unsafe_colon_target =
+        review_one_source("assets/imported_sources/hero.png", "assets/imported:root", "source/assets/package.geassets");
+    MK_REQUIRE(!unsafe_colon_target.ready);
+    MK_REQUIRE(unsafe_colon_target.rows.size() == 1);
+    MK_REQUIRE(unsafe_colon_target.rows[0].diagnostic == "unsafe_import_target_path");
+    MK_REQUIRE(!unsafe_colon_target.rows[0].can_register);
+    MK_REQUIRE(!unsafe_colon_target.rows[0].can_import);
+    MK_REQUIRE(unsafe_colon_target.registration_requests.empty());
+    MK_REQUIRE(unsafe_colon_target.import_plan.actions.empty());
+
+    const auto unsafe_registry =
+        review_one_source("assets/imported_sources/hero.png", "assets/imported", "source//assets/package.geassets");
+    MK_REQUIRE(!unsafe_registry.ready);
+    MK_REQUIRE(unsafe_registry.rows.size() == 1);
+    MK_REQUIRE(unsafe_registry.rows[0].diagnostic == "unsafe_source_registry_path");
+    MK_REQUIRE(!unsafe_registry.rows[0].can_register);
+    MK_REQUIRE(!unsafe_registry.rows[0].can_import);
+    MK_REQUIRE(unsafe_registry.registration_requests.empty());
+    MK_REQUIRE(unsafe_registry.import_plan.actions.empty());
+
+    const auto unsafe_colon_registry =
+        review_one_source("assets/imported_sources/hero.png", "assets/imported", "source/assets:package.geassets");
+    MK_REQUIRE(!unsafe_colon_registry.ready);
+    MK_REQUIRE(unsafe_colon_registry.rows.size() == 1);
+    MK_REQUIRE(unsafe_colon_registry.rows[0].diagnostic == "unsafe_source_registry_path");
+    MK_REQUIRE(!unsafe_colon_registry.rows[0].can_register);
+    MK_REQUIRE(!unsafe_colon_registry.rows[0].can_import);
+    MK_REQUIRE(unsafe_colon_registry.registration_requests.empty());
+    MK_REQUIRE(unsafe_colon_registry.import_plan.actions.empty());
+
+    const auto unsupported_registry_extension =
+        review_one_source("assets/imported_sources/hero.png", "assets/imported", "assets/source_assets.txt");
+    MK_REQUIRE(!unsupported_registry_extension.ready);
+    MK_REQUIRE(unsupported_registry_extension.rows.size() == 1);
+    MK_REQUIRE(unsupported_registry_extension.rows[0].diagnostic == "unsafe_source_registry_path");
+    MK_REQUIRE(!unsupported_registry_extension.rows[0].can_register);
+    MK_REQUIRE(!unsupported_registry_extension.rows[0].can_import);
+    MK_REQUIRE(unsupported_registry_extension.registration_requests.empty());
+    MK_REQUIRE(unsupported_registry_extension.import_plan.actions.empty());
+}
+
+MK_TEST("editor asset import review preflights existing source registry conflicts") {
+    mirakana::editor::EditorAssetImportReviewRequest invalid_registry_request;
+    invalid_registry_request.source_registry_content = "not a source asset registry";
+    invalid_registry_request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+    };
+
+    const auto invalid_registry = mirakana::editor::review_editor_asset_import_candidates(invalid_registry_request);
+    MK_REQUIRE(!invalid_registry.ready);
+    MK_REQUIRE(invalid_registry.rows.size() == 1);
+    MK_REQUIRE(invalid_registry.rows[0].diagnostic == "source_registry_preflight_failed");
+    MK_REQUIRE(invalid_registry.registration_requests.empty());
+    MK_REQUIRE(invalid_registry.import_plan.actions.empty());
+
+    mirakana::SourceAssetRegistryDocumentV1 existing_registry;
+    existing_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = mirakana::AssetKeyV2{"assets/imported/hero"},
+        .kind = mirakana::AssetKind::texture,
+        .source_path = "assets/legacy/hero.png",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+        .imported_path = "assets/imported/hero.texture",
+    });
+
+    mirakana::editor::EditorAssetImportReviewRequest conflicting_request;
+    conflicting_request.source_registry_content = mirakana::serialize_source_asset_registry_document(existing_registry);
+    conflicting_request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+    };
+
+    const auto conflict = mirakana::editor::review_editor_asset_import_candidates(conflicting_request);
+    MK_REQUIRE(!conflict.ready);
+    MK_REQUIRE(conflict.rows.size() == 1);
+    MK_REQUIRE(conflict.rows[0].diagnostic == "source_registry_preflight_failed");
+    MK_REQUIRE(!conflict.rows[0].can_register);
+    MK_REQUIRE(!conflict.rows[0].can_import);
+    MK_REQUIRE(conflict.registration_requests.empty());
+    MK_REQUIRE(conflict.import_plan.actions.empty());
 }
 
 MK_TEST("editor asset browser openexr source review fails closed") {

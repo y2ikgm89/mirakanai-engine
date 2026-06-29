@@ -4,6 +4,7 @@ add_library(mirakana_assets
     src/asset_identity.cpp
     src/asset_import_metadata.cpp
     src/asset_import_pipeline.cpp
+    src/asset_import_provenance.cpp
     src/asset_import_production_review.cpp
     src/asset_package.cpp
     src/asset_registry.cpp
