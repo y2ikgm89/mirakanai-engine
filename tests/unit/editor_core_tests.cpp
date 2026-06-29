@@ -58,6 +58,7 @@
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/assets/asset_import_metadata.hpp"
 #include "mirakana/assets/asset_import_pipeline.hpp"
+#include "mirakana/assets/asset_import_presets.hpp"
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/assets/shader_metadata.hpp"
@@ -4018,6 +4019,96 @@ MK_TEST("editor asset import review preflights existing source registry conflict
     MK_REQUIRE(!conflict.rows[0].can_import);
     MK_REQUIRE(conflict.registration_requests.empty());
     MK_REQUIRE(conflict.import_plan.actions.empty());
+}
+
+MK_TEST("editor asset import review applies import presets and blocks unsupported preset combinations") {
+    mirakana::AssetImportPresetsDocumentV1 presets;
+    presets.defaults.texture.color_space = mirakana::AssetImportTextureColorSpace::srgb;
+    presets.defaults.texture.mipmap_policy = mirakana::AssetImportTextureMipmapPolicy::generate_offline;
+    presets.defaults.texture.alpha_policy = mirakana::AssetImportTextureAlphaPolicy::straight;
+    presets.defaults.texture.compression_intent = mirakana::AssetImportTextureCompressionIntent::none;
+    presets.overrides.push_back(mirakana::AssetImportPresetOverrideV1{
+        .asset_key = mirakana::AssetKeyV2{"assets/imported/robot"},
+        .mesh =
+            mirakana::AssetImportMeshPresetV1{
+                .unit_scale = 0.01F,
+                .up_axis = mirakana::AssetImportMeshUpAxis::z,
+                .triangulate = true,
+                .generate_normals = true,
+                .generate_tangents = true,
+                .material_extraction = mirakana::AssetImportMeshMaterialExtraction::source_references,
+            },
+    });
+
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.import_presets = presets;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/robot.gltf",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/robot"),
+            .source_exists = true,
+        },
+    };
+
+    const auto ready = mirakana::editor::review_editor_asset_import_candidates(request);
+    MK_REQUIRE(ready.ready);
+    MK_REQUIRE(ready.rows.size() == 2U);
+    MK_REQUIRE(std::ranges::find(ready.rows[0].preset_metadata, "texture.color_space=srgb") !=
+               ready.rows[0].preset_metadata.end());
+    MK_REQUIRE(std::ranges::find(ready.rows[0].preset_metadata, "texture.mipmap_policy=generate_offline") !=
+               ready.rows[0].preset_metadata.end());
+    MK_REQUIRE(std::ranges::find(ready.rows[1].preset_metadata, "mesh.unit_scale=0.01") !=
+               ready.rows[1].preset_metadata.end());
+    MK_REQUIRE(std::ranges::find(ready.rows[1].preset_metadata, "mesh.generate_tangents=true") !=
+               ready.rows[1].preset_metadata.end());
+    MK_REQUIRE(ready.import_plan.actions.size() == 2U);
+    MK_REQUIRE(std::ranges::find(ready.import_plan.actions[0].preset_metadata, "texture.color_space=srgb") !=
+               ready.import_plan.actions[0].preset_metadata.end());
+    MK_REQUIRE(std::ranges::find(ready.import_plan.actions[1].preset_metadata, "mesh.unit_scale=0.01") !=
+               ready.import_plan.actions[1].preset_metadata.end());
+
+    presets.overrides.push_back(mirakana::AssetImportPresetOverrideV1{
+        .asset_key = mirakana::AssetKeyV2{"assets/imported/theme"},
+        .audio =
+            mirakana::AssetImportAudioPresetV1{
+                .decode_mode = mirakana::AssetImportAudioDecodeMode::streaming_source_review,
+                .sample_format = mirakana::AssetImportAudioSampleFormat::pcm16,
+                .loop = false,
+                .normalize_peak = true,
+            },
+    });
+
+    mirakana::editor::EditorAssetImportReviewRequest blocked_request;
+    blocked_request.import_presets = presets;
+    blocked_request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/hero.png",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/hero"),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/theme.wav",
+            .provenance = make_editor_asset_import_test_provenance("assets/imported/theme"),
+            .source_exists = true,
+        },
+    };
+
+    const auto blocked = mirakana::editor::review_editor_asset_import_candidates(blocked_request);
+    MK_REQUIRE(!blocked.ready);
+    MK_REQUIRE(blocked.rows.size() == 2U);
+    MK_REQUIRE(!blocked.rows[0].blocked_by_preset);
+    MK_REQUIRE(blocked.rows[0].diagnostic.empty());
+    MK_REQUIRE(blocked.rows[0].can_register);
+    MK_REQUIRE(blocked.rows[0].can_import);
+    MK_REQUIRE(blocked.rows[1].blocked_by_preset);
+    MK_REQUIRE(blocked.rows[1].diagnostic == "asset_import_preset_unsupported");
+    MK_REQUIRE(blocked.registration_requests.empty());
+    MK_REQUIRE(blocked.import_plan.actions.empty());
 }
 
 MK_TEST("editor asset browser openexr source review fails closed") {

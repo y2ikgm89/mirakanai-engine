@@ -15,6 +15,17 @@
       "GameEngine.Material.v1",
       "GameEngine.Scene.v1"
     ],
+    "presetDocument": {
+      "format": "GameEngine.AssetImportPresets.v1",
+      "status": "implemented-value-contract",
+      "ownerModule": "MK_assets",
+      "reviewApis": [
+        "mirakana::validate_asset_import_presets_document",
+        "mirakana::review_asset_import_preset_for_asset",
+        "mirakana::editor::review_editor_asset_import_candidates"
+      ],
+      "policy": "Project defaults and per-AssetKeyV2 texture, mesh, and audio preset overrides are metadata only until a matching tool implementation consumes them; unsupported combinations block import review instead of being ignored."
+    },
     "optionalDependencyFeature": "asset-importers",
     "plannedExternalImporters": [
       {

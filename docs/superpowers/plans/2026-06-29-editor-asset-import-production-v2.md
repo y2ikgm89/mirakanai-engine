@@ -955,17 +955,42 @@ Evidence: passed on 2026-06-29 with `MK_core_tests`, `MK_editor_core_tests`, and
 - Test: `tests/unit/core_tests.cpp`
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] Add `GameEngine.AssetImportPresets.v1` with project defaults and per-asset overrides keyed by `AssetKeyV2`.
-- [ ] Texture preset fields: `color_space` (`srgb`, `linear`), `mipmap_policy` (`none`, `generate_offline`), `alpha_policy` (`opaque`, `premultiplied`, `straight`), `compression_intent` (`none`, `bc7`, `astc`, `basis_reviewed`).
-- [ ] Mesh preset fields: `unit_scale`, `up_axis`, `triangulate`, `generate_normals`, `generate_tangents`, `material_extraction`.
-- [ ] Audio preset fields: `decode_mode` (`static_pcm`, `streaming_source_review`), `sample_format`, `loop`, `normalize_peak`.
-- [ ] Presets influence action metadata and review rows only until a matching tool implementation consumes the field.
-- [ ] Tests prove unsupported preset combinations block import rather than being ignored.
-- [ ] Verification:
+- [x] Add `GameEngine.AssetImportPresets.v1` with project defaults and per-asset overrides keyed by `AssetKeyV2`.
+- [x] Texture preset fields: `color_space` (`srgb`, `linear`), `mipmap_policy` (`none`, `generate_offline`), `alpha_policy` (`opaque`, `premultiplied`, `straight`), `compression_intent` (`none`, `bc7`, `astc`, `basis_reviewed`).
+- [x] Mesh preset fields: `unit_scale`, `up_axis`, `triangulate`, `generate_normals`, `generate_tangents`, `material_extraction`.
+- [x] Audio preset fields: `decode_mode` (`static_pcm`, `streaming_source_review`), `sample_format`, `loop`, `normalize_peak`.
+- [x] Presets influence action metadata and review rows only until a matching tool implementation consumes the field.
+- [x] Tests prove unsupported preset combinations block import rather than being ignored.
+- [x] Verification:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_core_tests|MK_editor_core_tests"
 ```
+
+Result on 2026-06-29: PASS for the focused build/test lane. RED failed first on the missing
+`mirakana/assets/asset_import_presets.hpp` contract. The implementation adds
+`GameEngine.AssetImportPresets.v1` locale-independent deterministic text IO, validation,
+defaults, per-asset overrides keyed by `AssetKeyV2`, value-only preset review metadata, and
+editor import review blocking for unsupported preset combinations such as tangent generation
+without normals or streaming source review with peak normalization. Per-asset review only blocks
+the matching `AssetKeyV2` row for unsupported override settings; unrelated rows keep their own
+review state. Presets are copied into
+`EditorAssetImportCandidateRow::preset_metadata` and `AssetImportAction::preset_metadata`
+only; no importer consumes them yet. No new dependency, third-party asset, external-engine
+material, compatibility claim, runtime source parsing, parser type exposure, or legal-advice
+claim was added.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_core_tests|MK_editor_core_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files "engine/assets/src/asset_import_presets.cpp,engine/assets/src/asset_import_pipeline.cpp,editor/core/src/asset_import_review.cpp,tests/unit/core_tests.cpp,tests/unit/editor_core_tests.cpp"
+git diff --check
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+Final slice validation on 2026-06-29: PASS, including `tools/validate.ps1` with 159/159 tests.
 
 ### Task 11: Folder And Drag-Drop Batch Review
 

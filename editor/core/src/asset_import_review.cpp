@@ -201,6 +201,7 @@ make_registration_request(const EditorAssetImportReviewRequest& review_request,
         .source_path = row.source_path,
         .output_path = row.imported_path,
         .dependencies = {},
+        .preset_metadata = row.preset_metadata,
     };
 }
 
@@ -544,8 +545,16 @@ EditorAssetImportReviewModel review_editor_asset_import_candidates(const EditorA
                 row.blocked_by_legal = true;
                 block_row(row, "asset_import_provenance_blocked");
             } else {
-                row.can_register = true;
-                row.can_import = true;
+                const auto preset_review =
+                    review_asset_import_preset_for_asset(request.import_presets, row.asset_key, row.asset_kind);
+                row.preset_metadata = preset_review.metadata;
+                if (!preset_review.ready) {
+                    row.blocked_by_preset = true;
+                    block_row(row, "asset_import_preset_unsupported");
+                } else {
+                    row.can_register = true;
+                    row.can_import = true;
+                }
             }
         }
 

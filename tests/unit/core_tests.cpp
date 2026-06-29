@@ -29,6 +29,7 @@
 #include "mirakana/assets/asset_hot_reload.hpp"
 #include "mirakana/assets/asset_import_metadata.hpp"
 #include "mirakana/assets/asset_import_pipeline.hpp"
+#include "mirakana/assets/asset_import_presets.hpp"
 #include "mirakana/assets/asset_import_provenance.hpp"
 #include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/asset_registry.hpp"
@@ -5838,6 +5839,95 @@ MK_TEST("asset import provenance rejects missing license restricted licenses and
     MK_REQUIRE(std::ranges::any_of(invalid_origin_diagnostics, [](const std::string& diagnostic) {
         return diagnostic.contains("invalid_origin");
     }));
+}
+
+MK_TEST("asset import presets document serializes validates and round trips") {
+    mirakana::AssetImportPresetsDocumentV1 document;
+    document.defaults.texture.color_space = mirakana::AssetImportTextureColorSpace::srgb;
+    document.defaults.texture.mipmap_policy = mirakana::AssetImportTextureMipmapPolicy::generate_offline;
+    document.defaults.texture.alpha_policy = mirakana::AssetImportTextureAlphaPolicy::straight;
+    document.defaults.texture.compression_intent = mirakana::AssetImportTextureCompressionIntent::none;
+    document.defaults.mesh.unit_scale = 0.01F;
+    document.defaults.mesh.up_axis = mirakana::AssetImportMeshUpAxis::z;
+    document.defaults.mesh.triangulate = true;
+    document.defaults.mesh.generate_normals = true;
+    document.defaults.mesh.generate_tangents = true;
+    document.defaults.mesh.material_extraction = mirakana::AssetImportMeshMaterialExtraction::source_references;
+    document.defaults.audio.decode_mode = mirakana::AssetImportAudioDecodeMode::static_pcm;
+    document.defaults.audio.sample_format = mirakana::AssetImportAudioSampleFormat::float32;
+    document.defaults.audio.loop = true;
+    document.defaults.audio.normalize_peak = false;
+    document.overrides.push_back(mirakana::AssetImportPresetOverrideV1{
+        .asset_key = mirakana::AssetKeyV2{"assets/imported/hero"},
+        .texture =
+            mirakana::AssetImportTexturePresetV1{
+                .color_space = mirakana::AssetImportTextureColorSpace::linear,
+                .mipmap_policy = mirakana::AssetImportTextureMipmapPolicy::none,
+                .alpha_policy = mirakana::AssetImportTextureAlphaPolicy::opaque,
+                .compression_intent = mirakana::AssetImportTextureCompressionIntent::bc7,
+            },
+    });
+
+    const auto diagnostics = mirakana::validate_asset_import_presets_document(document);
+    MK_REQUIRE(diagnostics.empty());
+
+    const auto serialized = mirakana::serialize_asset_import_presets_document(document);
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.AssetImportPresets.v1\n"));
+    MK_REQUIRE(serialized.contains("defaults.texture.color_space=srgb\n"));
+    MK_REQUIRE(serialized.contains("defaults.mesh.unit_scale=0.01\n"));
+    MK_REQUIRE(serialized.contains("defaults.audio.sample_format=float32\n"));
+    MK_REQUIRE(serialized.contains("override.0.asset_key=assets/imported/hero\n"));
+    MK_REQUIRE(serialized.contains("override.0.texture.compression_intent=bc7\n"));
+
+    const auto restored = mirakana::deserialize_asset_import_presets_document(serialized);
+    MK_REQUIRE(restored.defaults.texture.mipmap_policy == mirakana::AssetImportTextureMipmapPolicy::generate_offline);
+    MK_REQUIRE(restored.defaults.mesh.up_axis == mirakana::AssetImportMeshUpAxis::z);
+    MK_REQUIRE(restored.defaults.audio.loop);
+    MK_REQUIRE(restored.overrides.size() == 1U);
+    MK_REQUIRE(restored.overrides[0].asset_key.value == "assets/imported/hero");
+    MK_REQUIRE(restored.overrides[0].texture.has_value());
+    MK_REQUIRE(restored.overrides[0].texture->compression_intent == mirakana::AssetImportTextureCompressionIntent::bc7);
+
+    document.defaults.mesh.unit_scale = 123.456789F;
+    const auto precise_serialized = mirakana::serialize_asset_import_presets_document(document);
+    const auto precise_restored = mirakana::deserialize_asset_import_presets_document(precise_serialized);
+    MK_REQUIRE(precise_restored.defaults.mesh.unit_scale == document.defaults.mesh.unit_scale);
+    MK_REQUIRE(mirakana::serialize_asset_import_presets_document(precise_restored) == precise_serialized);
+}
+
+MK_TEST("asset import presets reject unsupported combinations and duplicate overrides") {
+    mirakana::AssetImportPresetsDocumentV1 document;
+    document.defaults.mesh.generate_normals = false;
+    document.defaults.mesh.generate_tangents = true;
+    document.defaults.audio.decode_mode = mirakana::AssetImportAudioDecodeMode::streaming_source_review;
+    document.defaults.audio.normalize_peak = true;
+    document.overrides.push_back(mirakana::AssetImportPresetOverrideV1{
+        .asset_key = mirakana::AssetKeyV2{"assets/imported/hero"},
+        .texture = mirakana::AssetImportTexturePresetV1{},
+    });
+    document.overrides.push_back(mirakana::AssetImportPresetOverrideV1{
+        .asset_key = mirakana::AssetKeyV2{"assets/imported/hero"},
+        .audio = mirakana::AssetImportAudioPresetV1{},
+    });
+
+    const auto diagnostics = mirakana::validate_asset_import_presets_document(document);
+    MK_REQUIRE(std::ranges::any_of(diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.contains("defaults.mesh.tangent_generation_requires_normals");
+    }));
+    MK_REQUIRE(std::ranges::any_of(diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.contains("defaults.audio.streaming_decode_cannot_normalize_peak");
+    }));
+    MK_REQUIRE(std::ranges::any_of(diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.contains("override.1.duplicate_asset_key");
+    }));
+
+    bool rejected = false;
+    try {
+        (void)mirakana::serialize_asset_import_presets_document(document);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    MK_REQUIRE(rejected);
 }
 
 MK_TEST("asset hot reload tracker emits added modified and removed events") {
