@@ -4,12 +4,12 @@
 #include "mirakana/assets/asset_import_presets.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cctype>
-#include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <iomanip>
 #include <limits>
+#include <locale>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -245,14 +245,15 @@ void validate_audio_preset(std::vector<std::string>& diagnostics, std::string_vi
 }
 
 [[nodiscard]] float parse_float(std::string_view value) {
-    if (value.empty() || !clean_text(value)) {
+    if (value.empty() || !clean_text(value) || contains_ascii_whitespace(value)) {
         throw std::invalid_argument("asset import presets float value is invalid");
     }
+
+    std::istringstream input{std::string{value}};
+    input.imbue(std::locale::classic());
     float parsed = 0.0F;
-    const auto* first = value.data();
-    const auto* last = value.data() + value.size();
-    const auto result = std::from_chars(first, last, parsed, std::chars_format::general);
-    if (result.ec != std::errc{} || result.ptr != last || !std::isfinite(parsed)) {
+    input >> parsed;
+    if (input.fail() || !input.eof() || !std::isfinite(parsed)) {
         throw std::invalid_argument("asset import presets float value is invalid");
     }
     return parsed;
@@ -276,12 +277,20 @@ void validate_audio_preset(std::vector<std::string>& diagnostics, std::string_vi
     if (!std::isfinite(value)) {
         throw std::invalid_argument("asset import presets float value is invalid");
     }
-    std::array<char, 32> output{};
-    const auto result = std::to_chars(output.data(), output.data() + output.size(), value);
-    if (result.ec != std::errc{}) {
-        throw std::invalid_argument("asset import presets float value is invalid");
+    for (int precision = 1; precision <= std::numeric_limits<float>::max_digits10; ++precision) {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(precision) << value;
+        const auto text = output.str();
+        if (parse_float(text) == value) {
+            return text;
+        }
     }
-    return std::string{output.data(), result.ptr};
+
+    std::ostringstream fallback;
+    fallback.imbue(std::locale::classic());
+    fallback << std::setprecision(std::numeric_limits<float>::max_digits10) << value;
+    return fallback.str();
 }
 
 [[nodiscard]] AssetImportTextureColorSpace parse_texture_color_space(std::string_view value) {
