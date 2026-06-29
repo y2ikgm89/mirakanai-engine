@@ -1002,14 +1002,38 @@ Final slice validation on 2026-06-29: PASS, including `tools/validate.ps1` with 
 - Test: `tests/unit/editor_core_tests.cpp`
 - Test: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] Add a folder scan request that lists files through shell-owned filesystem services and then feeds the same `EditorAssetImportCandidateInput` rows from Task 1.
-- [ ] Scan limits: maximum 500 candidate files, maximum 4 directory levels, maximum 256 MiB per file unless a reviewed override exists.
-- [ ] Drag/drop is normalized to the same reviewed project/external source selection path.
-- [ ] No drag/drop or folder scan executes copy, registration, or import automatically.
-- [ ] Tests prove scan limits, unsupported file diagnostics, duplicate target blocking, and same retained UI ids for dialog and drag/drop candidates.
-- [ ] Verification:
+- [x] Add a folder scan request that lists files through shell-owned filesystem services and then feeds the same `EditorAssetImportCandidateInput` rows from Task 1.
+- [x] Scan limits: maximum 500 candidate files, maximum 4 directory levels, maximum 256 MiB per file unless a reviewed override exists.
+- [x] Drag/drop is normalized to the same reviewed project/external source selection path.
+- [x] No drag/drop or folder scan executes copy, registration, or import automatically.
+- [x] Tests prove scan limits, unsupported file diagnostics, duplicate target blocking, and same retained UI ids for dialog and drag/drop candidates.
+- [x] Verification:
 
 ```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"
+```
+
+Result on 2026-06-29: PASS for the focused build/test lane. RED failed first on the
+missing `EditorContentBrowserImportFolderScanInput`,
+`make_content_browser_import_folder_scan_model`,
+`make_content_browser_import_drag_drop_model`,
+`NativeEditorAssetBrowserFolderImportScanRequest`, and
+`NativeEditorAssetBrowserDragDropImportReviewRequest` contracts. The implementation adds
+value-only folder scan rows under retained `content_browser_import.folder_scan` ids,
+limits folder scan candidates to 500 files, 4 directory levels from the scan root, and
+256 MiB per file unless a reviewed override is supplied, and feeds accepted rows into the
+existing `EditorAssetImportCandidateInput` / `review_editor_asset_import_candidates`
+pipeline. The native shell owns `IFileSystem` listing, existence probes, and size probes
+through `NativeEditorApp::review_asset_browser_folder_import_scan`; drag/drop review
+normalizes project-root-contained paths to the same retained
+`content_browser_import.open_dialog` ids as dialog selection and routes external absolute
+file paths to the existing external-copy review. Neither path copies files, writes
+`GameEngine.SourceAssetRegistry.v1`, starts import jobs, invokes import tools, exposes
+native drag/drop handles, adds dependencies, provides legal advice, or claims
+Unity/Unreal/Godot compatibility.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"
 ```
 
