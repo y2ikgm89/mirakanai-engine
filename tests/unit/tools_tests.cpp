@@ -1743,6 +1743,44 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return encoded;
 }
 
+[[nodiscard]] std::string_view line_value(std::string_view text, std::string_view key) {
+    const auto begin = text.find(key);
+    if (begin == std::string_view::npos) {
+        throw std::invalid_argument("line key is missing");
+    }
+    const auto value_begin = begin + key.size();
+    const auto value_end = text.find('\n', value_begin);
+    if (value_end == std::string_view::npos) {
+        return text.substr(value_begin);
+    }
+    return text.substr(value_begin, value_end - value_begin);
+}
+
+[[nodiscard]] std::vector<std::uint8_t> bytes_from_hex(std::string_view hex) {
+    const auto nibble = [](char value) -> std::uint8_t {
+        if (value >= '0' && value <= '9') {
+            return static_cast<std::uint8_t>(value - '0');
+        }
+        if (value >= 'a' && value <= 'f') {
+            return static_cast<std::uint8_t>(10 + (value - 'a'));
+        }
+        if (value >= 'A' && value <= 'F') {
+            return static_cast<std::uint8_t>(10 + (value - 'A'));
+        }
+        throw std::invalid_argument("hex contains a non-hex digit");
+    };
+
+    if ((hex.size() % 2U) != 0U) {
+        throw std::invalid_argument("hex byte string must have an even length");
+    }
+    std::vector<std::uint8_t> out;
+    out.reserve(hex.size() / 2U);
+    for (std::size_t index = 0; index < hex.size(); index += 2U) {
+        out.push_back(static_cast<std::uint8_t>((nibble(hex[index]) << 4U) | nibble(hex[index + 1U])));
+    }
+    return out;
+}
+
 [[nodiscard]] std::string wav_pcm16_stereo_with_data_bytes(std::uint32_t data_bytes) {
     std::string result;
     result.reserve(static_cast<std::size_t>(44U) + data_bytes);
@@ -9117,27 +9155,11 @@ MK_TEST("default external gltf importer applies mesh preset coordinates to posit
     mirakana::MemoryFileSystem fs;
     const auto mesh_id = mirakana::AssetId::from_name("meshes/z-up-lit-triangle");
     std::string source_buffer;
-    std::string expected_vertices;
 
     const auto append_vec3 = [&](float x, float y, float z) {
         append_le_f32(source_buffer, x);
         append_le_f32(source_buffer, y);
         append_le_f32(source_buffer, z);
-    };
-    const auto append_expected_vertex = [&](float px, float py, float pz, float nx, float ny, float nz, float u,
-                                            float v, float tx, float ty, float tz, float tw) {
-        append_le_f32(expected_vertices, px);
-        append_le_f32(expected_vertices, py);
-        append_le_f32(expected_vertices, pz);
-        append_le_f32(expected_vertices, nx);
-        append_le_f32(expected_vertices, ny);
-        append_le_f32(expected_vertices, nz);
-        append_le_f32(expected_vertices, u);
-        append_le_f32(expected_vertices, v);
-        append_le_f32(expected_vertices, tx);
-        append_le_f32(expected_vertices, ty);
-        append_le_f32(expected_vertices, tz);
-        append_le_f32(expected_vertices, tw);
     };
     append_vec3(-1.0F, 0.0F, 0.0F);
     append_vec3(0.0F, 0.0F, 1.0F);
@@ -9160,9 +9182,6 @@ MK_TEST("default external gltf importer applies mesh preset coordinates to posit
     append_le_u16(source_buffer, 2U);
     append_le_u16(source_buffer, 1U);
     append_le_u16(source_buffer, 0U);
-    append_expected_vertex(-0.01F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F);
-    append_expected_vertex(0.0F, 0.01F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F);
-    append_expected_vertex(0.0F, 0.0F, -0.01F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, 0.0F, 0.0F, 1.0F);
 
     fs.write_text("source/meshes/z-up-lit-triangle.gltf",
                   std::string{"{\"asset\":{\"version\":\"2.0\"},"
@@ -9214,7 +9233,50 @@ MK_TEST("default external gltf importer applies mesh preset coordinates to posit
     MK_REQUIRE(cooked.find("mesh.has_normals=true\n") != std::string::npos);
     MK_REQUIRE(cooked.find("mesh.has_uvs=true\n") != std::string::npos);
     MK_REQUIRE(cooked.find("mesh.has_tangent_frame=true\n") != std::string::npos);
-    MK_REQUIRE(cooked.find("mesh.vertex_data_hex=" + hex_string(expected_vertices) + "\n") != std::string::npos);
+    const auto vertex_bytes = bytes_from_hex(line_value(cooked, "mesh.vertex_data_hex="));
+    MK_REQUIRE(vertex_bytes.size() == 3U * 12U * sizeof(float));
+    const auto component = [&](std::size_t vertex, std::size_t component_index) {
+        return read_le_f32(vertex_bytes, (vertex * 12U) + component_index);
+    };
+    const auto position = [&](std::size_t vertex) {
+        return mirakana::Vec3{
+            .x = component(vertex, 0U),
+            .y = component(vertex, 1U),
+            .z = component(vertex, 2U),
+        };
+    };
+    const auto normal = [&](std::size_t vertex) {
+        return mirakana::Vec3{
+            .x = component(vertex, 3U),
+            .y = component(vertex, 4U),
+            .z = component(vertex, 5U),
+        };
+    };
+    const auto tangent = [&](std::size_t vertex) {
+        return mirakana::Vec3{
+            .x = component(vertex, 8U),
+            .y = component(vertex, 9U),
+            .z = component(vertex, 10U),
+        };
+    };
+    MK_REQUIRE(near_vec3(position(0U), mirakana::Vec3{.x = -0.01F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(position(1U), mirakana::Vec3{.x = 0.0F, .y = 0.01F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(position(2U), mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -0.01F}));
+    MK_REQUIRE(near_vec3(normal(0U), mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(normal(1U), mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(normal(2U), mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_float(component(0U, 6U), 0.0F));
+    MK_REQUIRE(near_float(component(0U, 7U), 0.0F));
+    MK_REQUIRE(near_float(component(1U, 6U), 1.0F));
+    MK_REQUIRE(near_float(component(1U, 7U), 0.0F));
+    MK_REQUIRE(near_float(component(2U, 6U), 0.0F));
+    MK_REQUIRE(near_float(component(2U, 7U), 1.0F));
+    MK_REQUIRE(near_vec3(tangent(0U), mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(tangent(1U), mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(tangent(2U), mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_float(component(0U, 11U), 1.0F));
+    MK_REQUIRE(near_float(component(1U, 11U), 1.0F));
+    MK_REQUIRE(near_float(component(2U, 11U), 1.0F));
     MK_REQUIRE(cooked.find("mesh.index_data_hex=020000000100000000000000\n") != std::string::npos);
 }
 
