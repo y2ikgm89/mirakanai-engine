@@ -9827,6 +9827,7 @@ MK_TEST("gltf skin skeleton and skin payload import succeeds for single-joint sk
     append_le_f32(buf, 0.0F);
     append_le_f32(buf, 0.1F);
     append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
     const std::string document =
         std::string{"{\"asset\":{\"version\":\"2.0\"},"
                     "\"buffers\":[{\"byteLength\":"} +
