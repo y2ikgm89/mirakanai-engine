@@ -1777,6 +1777,176 @@
         "broad-commercial-2d-readiness"
       ]
     },
+    "twoDCommercialRuntimeSourceParserExclusion": {
+      "schemaVersion": 1,
+      "capabilityId": "2d-commercial-runtime-source-parser-exclusion-v1",
+      "exclusionSetId": "sample-2d-desktop-runtime-package-2d-commercial-runtime-source-parser-exclusion",
+      "sourceAssetManifestSetId": "sample-2d-desktop-runtime-package-2d-commercial-source-assets",
+      "deterministicCookSetId": "sample-2d-desktop-runtime-package-2d-commercial-deterministic-cook",
+      "productionAtlasPackingSetId": "sample-2d-desktop-runtime-package-2d-commercial-production-atlas-packing",
+      "packageIndexPath": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+      "runtimePackagePolicy": {
+        "mode": "cooked-runtime-package-only",
+        "runtimeSourceParsing": "unsupported",
+        "sourceImageDecoding": "unsupported",
+        "sourceAudioDecoding": "unsupported",
+        "sourceFontLoading": "unsupported",
+        "sourceRegistryRuntimeParsing": "unsupported",
+        "packageScriptExecution": "unsupported",
+        "runtimePackageFilesContainCookedOnly": true,
+        "evidence": "Shipping runtime package rows consume reviewed cooked payloads only; source decoding remains in reviewed tools/editor lanes."
+      },
+      "parserExclusionRows": [
+        {
+          "id": "png-source-image-decoder",
+          "sourceCategory": "png",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "PNG source image decoding is excluded from the shipping runtime package surface."
+        },
+        {
+          "id": "jpeg-source-image-decoder",
+          "sourceCategory": "jpeg",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "JPEG source image decoding is excluded from the shipping runtime package surface."
+        },
+        {
+          "id": "source-audio-codec-decoder",
+          "sourceCategory": "source-audio",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "Source WAV/OGG/MP3/FLAC parsing is not part of the shipping runtime package surface."
+        },
+        {
+          "id": "source-font-loader",
+          "sourceCategory": "project-font",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "Project font file parsing stays out of the shipping runtime until a separate dependency, license, and security plan promotes it."
+        },
+        {
+          "id": "source-asset-registry-parser",
+          "sourceCategory": "source-asset-registry",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "GameEngine.SourceAssetRegistry.v1 remains an authoring/cook input and is not shipped as a runtime package file."
+        },
+        {
+          "id": "external-engine-project-importer",
+          "sourceCategory": "external-engine-project",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "External engine project importers are not runtime package inputs."
+        },
+        {
+          "id": "marketplace-asset-ingestion",
+          "sourceCategory": "marketplace-asset",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "Marketplace or downloaded asset ingestion is blocked from the shipping runtime."
+        },
+        {
+          "id": "arbitrary-package-script",
+          "sourceCategory": "package-script",
+          "runtimeSurface": "shipping-runtime",
+          "status": "unsupported",
+          "promotionRequirement": "separate-dependency-license-security-plan",
+          "evidence": "Runtime package scripts and arbitrary command execution are excluded from the package surface."
+        }
+      ],
+      "runtimePackageCoverage": {
+        "mode": "manifest-runtime-package-files-are-cooked-only",
+        "runtimePackageFiles": [
+          "runtime/assets/2d/hud.uiatlas",
+          "runtime/assets/2d/jump.audio.geasset",
+          "runtime/assets/2d/level.tilemap",
+          "runtime/assets/2d/playable.scene",
+          "runtime/assets/2d/player.material",
+          "runtime/assets/2d/player.sprite_animation",
+          "runtime/assets/2d/player.texture.geasset",
+          "runtime/sample_2d_desktop_runtime_package.config",
+          "runtime/sample_2d_desktop_runtime_package.geindex",
+          "runtime/ui/default.uitheme",
+          "runtime/ui/main_menu.uidoc"
+        ],
+        "deterministicCookOutputIds": [
+          "player-texture-cook",
+          "level-tilemap-cook",
+          "player-animation-cook",
+          "jump-audio-cook",
+          "hud-ui-atlas-cook"
+        ],
+        "atlasRuntimePackageFiles": [
+          "runtime/assets/2d/player.texture.geasset",
+          "runtime/assets/2d/hud.uiatlas"
+        ],
+        "forbiddenSourceExtensions": [
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".wav",
+          ".ogg",
+          ".mp3",
+          ".flac",
+          ".ttf",
+          ".otf",
+          ".woff",
+          ".woff2",
+          ".texture_source",
+          ".sprite_sheet_source",
+          ".atlas_page_source",
+          ".tile_chunk_source",
+          ".animation_clip_source",
+          ".audio_cue_source",
+          ".localization_text_source",
+          ".ui_glyph_input_source",
+          ".geassets"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-2d-sprite-atlas-residency-smoke",
+          "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+          "installed-native-2d-sprite-smoke"
+        ],
+        "evidence": "All manifest runtimePackageFiles are runtime/ cooked or runtime-authored package payloads, while every first-party source manifest path stays under source/ and every deterministic cook output maps back to a declared runtime package file."
+      },
+      "cleanRoomPolicy": {
+        "sourceMaterial": "first-party-cooked-runtime-only",
+        "thirdPartyDependenciesAdded": false,
+        "externalEngineCodeAssetsSamplesUi": "blocked",
+        "compatibilityParityEndorsementClaims": "blocked",
+        "legalReviewStatus": "not-legal-advice-no-new-third-party-material",
+        "evidence": "This descriptor adds no third-party dependency or external engine material, and it does not claim legal approval, compatibility, equivalence, parity, replacement, or endorsement."
+      },
+      "unsupportedClaims": [
+        "runtime-source-parsing",
+        "runtime-source-image-decoding",
+        "runtime-source-audio-decoding",
+        "runtime-source-font-loading",
+        "runtime-source-registry-parsing",
+        "external-engine-project-import",
+        "external-asset-download",
+        "marketplace-asset-ingestion",
+        "arbitrary-script-execution",
+        "package-script-execution",
+        "native-handle-access",
+        "renderer-rhi-residency",
+        "broad-codec-readiness",
+        "external-engine-compatibility-claim",
+        "legal-approval-automation",
+        "broad-commercial-2d-readiness"
+      ]
+    },
     "generatedGamePlaytestLoop": {
       "schemaVersion": 1,
       "capabilityId": "ai-generated-game-playtest-loop-v1",
