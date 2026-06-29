@@ -49,6 +49,10 @@ namespace {
     return true;
 }
 
+[[nodiscard]] bool valid_preset_metadata(const std::vector<std::string>& metadata) noexcept {
+    return std::ranges::all_of(metadata, [](const std::string& row) { return valid_token(row); });
+}
+
 void add_unique_dependency(std::vector<AssetId>& dependencies, AssetId dependency) {
     if (std::ranges::find(dependencies, dependency) == dependencies.end()) {
         dependencies.push_back(dependency);
@@ -131,7 +135,8 @@ void add_scene_dependency_edges(AssetImportPlan& plan, std::vector<AssetId>& act
 
 bool is_valid_asset_import_action(const AssetImportAction& action) noexcept {
     return action.id.value != 0 && valid_action_kind(action.kind) && valid_token(action.source_path) &&
-           valid_token(action.output_path) && valid_dependencies(action.dependencies);
+           valid_token(action.output_path) && valid_dependencies(action.dependencies) &&
+           valid_preset_metadata(action.preset_metadata);
 }
 
 AssetImportPlan build_asset_import_plan(const AssetImportMetadataRegistry& imports) {

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/assets/asset_import_presets.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
 #include "mirakana/tools/source_asset_registration_tool.hpp"
 
@@ -33,11 +34,13 @@ struct EditorAssetImportCandidateRow {
     std::string source_path;
     std::string source_format;
     std::string imported_path;
+    std::vector<std::string> preset_metadata;
     std::string status_label;
     std::string diagnostic;
     bool can_register{false};
     bool can_import{false};
     bool blocked_by_legal{false};
+    bool blocked_by_preset{false};
 };
 
 struct EditorAssetImportReviewRequest {
@@ -45,6 +48,7 @@ struct EditorAssetImportReviewRequest {
     std::string imported_output_root{"assets/imported"};
     std::string source_registry_path{"source/assets/package.geassets"};
     std::string source_registry_content;
+    AssetImportPresetsDocumentV1 import_presets;
     std::vector<EditorAssetImportCandidateInput> sources;
 };
 

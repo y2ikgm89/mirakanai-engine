@@ -32,6 +32,7 @@ struct AssetImportAction {
     std::string source_path;
     std::string output_path;
     std::vector<AssetId> dependencies;
+    std::vector<std::string> preset_metadata;
 };
 
 struct AssetImportPlan {
