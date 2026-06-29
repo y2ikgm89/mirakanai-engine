@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/animation/keyframe_animation.hpp"
+#include "mirakana/assets/asset_import_presets.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 
 #include <cstddef>
@@ -80,7 +81,7 @@ struct GltfNodeTransformAnimationBindingSourceImportReport {
 [[nodiscard]] GltfNodeTransformAnimationImportReport
 import_gltf_node_transform_animation_tracks(std::string_view document_bytes_utf8,
                                             std::string_view source_path_for_external_buffers,
-                                            std::size_t animation_index);
+                                            std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset);
 
 /// Imports all node transform channels in the selected glTF animation into 3D local-pose-friendly keyframes. Channels
 /// are grouped by target node and sorted by `node_index`. glTF `weights` channels stay on the morph-weight importer
@@ -88,27 +89,24 @@ import_gltf_node_transform_animation_tracks(std::string_view document_bytes_utf8
 [[nodiscard]] GltfNodeTransformAnimationImport3dReport
 import_gltf_node_transform_animation_tracks_3d(std::string_view document_bytes_utf8,
                                                std::string_view source_path_for_external_buffers,
-                                               std::size_t animation_index);
+                                               std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset);
 
 /// Imports the selected glTF node transform animation as `GameEngine.AnimationFloatClipSource.v1` rows so ordinary TRS
 /// animation can use the existing `AssetKind::animation_float_clip` cook/package/runtime path.
-[[nodiscard]] GltfNodeTransformAnimationFloatClipImportReport
-import_gltf_node_transform_animation_float_clip(std::string_view document_bytes_utf8,
-                                                std::string_view source_path_for_external_buffers,
-                                                std::size_t animation_index);
+[[nodiscard]] GltfNodeTransformAnimationFloatClipImportReport import_gltf_node_transform_animation_float_clip(
+    std::string_view document_bytes_utf8, std::string_view source_path_for_external_buffers,
+    std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset);
 
 /// Imports the selected glTF node transform animation as `GameEngine.AnimationQuaternionClipSource.v1` rows so 3D
 /// local-pose workflows can use the `AssetKind::animation_quaternion_clip` cook/package/runtime path.
-[[nodiscard]] GltfNodeTransformAnimationQuaternionClipImportReport
-import_gltf_node_transform_animation_quaternion_clip(std::string_view document_bytes_utf8,
-                                                     std::string_view source_path_for_external_buffers,
-                                                     std::size_t animation_index);
+[[nodiscard]] GltfNodeTransformAnimationQuaternionClipImportReport import_gltf_node_transform_animation_quaternion_clip(
+    std::string_view document_bytes_utf8, std::string_view source_path_for_external_buffers,
+    std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset);
 
 /// Imports the selected glTF node transform animation as `GameEngine.AnimationTransformBindingSource.v1` rows that can
 /// be resolved by `mirakana_runtime_scene` against loaded scene node names.
-[[nodiscard]] GltfNodeTransformAnimationBindingSourceImportReport
-import_gltf_node_transform_animation_binding_source(std::string_view document_bytes_utf8,
-                                                    std::string_view source_path_for_external_buffers,
-                                                    std::size_t animation_index);
+[[nodiscard]] GltfNodeTransformAnimationBindingSourceImportReport import_gltf_node_transform_animation_binding_source(
+    std::string_view document_bytes_utf8, std::string_view source_path_for_external_buffers,
+    std::size_t animation_index, const AssetImportMeshPresetV1& mesh_preset);
 
 } // namespace mirakana

@@ -328,6 +328,7 @@ make_registration_request(const EditorAssetImportReviewRequest& review_request,
         .output_path = row.imported_path,
         .dependencies = {},
         .preset_metadata = row.preset_metadata,
+        .mesh_preset = row.mesh_preset,
     };
 }
 
@@ -730,6 +731,7 @@ EditorAssetImportReviewModel review_editor_asset_import_candidates(const EditorA
             } else {
                 const auto preset_review =
                     review_asset_import_preset_for_asset(request.import_presets, row.asset_key, row.asset_kind);
+                row.mesh_preset = preset_review.mesh;
                 row.preset_metadata = preset_review.metadata;
                 if (!preset_review.ready) {
                     row.blocked_by_preset = true;

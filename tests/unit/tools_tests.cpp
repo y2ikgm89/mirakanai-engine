@@ -18,6 +18,7 @@
 #include "mirakana/platform/process.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
+#include "mirakana/tools/asset_coordinate_normalization.hpp"
 #include "mirakana/tools/asset_file_scanner.hpp"
 #include "mirakana/tools/asset_import_adapters.hpp"
 #include "mirakana/tools/asset_import_tool.hpp"
@@ -66,12 +67,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <initializer_list>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -163,6 +166,25 @@ class CountingShaderToolRunner final : public mirakana::IShaderToolRunner {
     bool fail{false};
     mirakana::ShaderCompileCommand last_command;
 };
+
+[[nodiscard]] bool near_float(float lhs, float rhs, float epsilon = 0.0001F) noexcept {
+    return std::abs(lhs - rhs) <= epsilon;
+}
+
+[[nodiscard]] bool near_vec3(mirakana::Vec3 lhs, mirakana::Vec3 rhs, float epsilon = 0.0001F) noexcept {
+    return near_float(lhs.x, rhs.x, epsilon) && near_float(lhs.y, rhs.y, epsilon) && near_float(lhs.z, rhs.z, epsilon);
+}
+
+[[nodiscard]] bool near_mat4(const mirakana::Mat4& lhs, const mirakana::Mat4& rhs, float epsilon = 0.0001F) noexcept {
+    for (std::size_t row = 0; row < 4U; ++row) {
+        for (std::size_t column = 0; column < 4U; ++column) {
+            if (!near_float(lhs.at(row, column), rhs.at(row, column), epsilon)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 class CountingShaderArtifactValidatorRunner final : public mirakana::IShaderArtifactValidatorRunner {
   public:
@@ -434,6 +456,20 @@ void append_le_f32(std::string& output, float value) {
     std::uint32_t bits = 0;
     std::memcpy(&bits, &value, sizeof(float));
     append_le_u32(output, bits);
+}
+
+[[nodiscard]] float read_le_f32(std::span<const std::uint8_t> bytes, std::size_t float_index) {
+    const std::size_t offset = float_index * sizeof(float);
+    if (offset + sizeof(float) > bytes.size()) {
+        throw std::out_of_range("float byte index is out of range");
+    }
+    std::uint32_t bits = static_cast<std::uint32_t>(bytes[offset]) |
+                         (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U) |
+                         (static_cast<std::uint32_t>(bytes[offset + 2U]) << 16U) |
+                         (static_cast<std::uint32_t>(bytes[offset + 3U]) << 24U);
+    float value = 0.0F;
+    std::memcpy(&value, &bits, sizeof(float));
+    return value;
 }
 
 [[nodiscard]] mirakana::CookedUiAtlasAuthoringDesc make_cooked_ui_atlas_authoring_desc() {
@@ -1677,6 +1713,24 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return "data:application/octet-stream;base64," + base64_encode(bytes);
 }
 
+[[nodiscard]] constexpr mirakana::AssetImportMeshPresetV1 default_mesh_import_preset() noexcept {
+    return mirakana::AssetImportMeshPresetV1{};
+}
+
+[[nodiscard]] constexpr mirakana::AssetImportMeshPresetV1 z_up_centimeter_mesh_import_preset() noexcept {
+    return mirakana::AssetImportMeshPresetV1{
+        .unit_scale = 0.01F,
+        .up_axis = mirakana::AssetImportMeshUpAxis::z,
+    };
+}
+
+[[nodiscard]] constexpr mirakana::AssetImportMeshPresetV1 y_up_centimeter_mesh_import_preset() noexcept {
+    return mirakana::AssetImportMeshPresetV1{
+        .unit_scale = 0.01F,
+        .up_axis = mirakana::AssetImportMeshUpAxis::y,
+    };
+}
+
 [[nodiscard]] std::string hex_string(std::string_view bytes) {
     constexpr auto digits = std::string_view{"0123456789abcdef"};
     std::string encoded;
@@ -1813,6 +1867,43 @@ void write_fullscreen_shader_sources(mirakana::MemoryFileSystem& fs) {
 }
 
 } // namespace
+
+MK_TEST("asset coordinate normalization maps mesh presets into project convention") {
+    const auto identity = mirakana::make_asset_coordinate_normalization_plan(mirakana::AssetImportMeshPresetV1{});
+    MK_REQUIRE(!identity.changes_coordinates);
+    MK_REQUIRE(near_vec3(mirakana::normalize_asset_position(identity, mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F}),
+                         mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F}));
+    MK_REQUIRE(near_vec3(mirakana::normalize_asset_direction(identity, mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 1.0F}),
+                         mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 1.0F}));
+
+    const auto z_up = mirakana::make_asset_coordinate_normalization_plan(mirakana::AssetImportMeshPresetV1{
+        .unit_scale = 0.01F,
+        .up_axis = mirakana::AssetImportMeshUpAxis::z,
+        .triangulate = true,
+        .generate_normals = false,
+        .generate_tangents = false,
+        .material_extraction = mirakana::AssetImportMeshMaterialExtraction::source_references,
+    });
+    MK_REQUIRE(z_up.changes_coordinates);
+    MK_REQUIRE(near_vec3(mirakana::normalize_asset_position(z_up, mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F}),
+                         mirakana::Vec3{.x = 0.01F, .y = 0.03F, .z = -0.02F}));
+    MK_REQUIRE(near_vec3(mirakana::normalize_asset_direction(z_up, mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 1.0F}),
+                         mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(mirakana::normalize_asset_scale(z_up, mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F}),
+                         mirakana::Vec3{.x = 1.0F, .y = 3.0F, .z = 2.0F}));
+
+    const auto source_z_quarter =
+        mirakana::Quat::from_axis_angle(mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 1.0F}, 1.57079637F);
+    const auto project_rotation = mirakana::normalize_asset_rotation(z_up, source_z_quarter);
+    MK_REQUIRE(mirakana::is_normalized_quat(project_rotation));
+    MK_REQUIRE(near_vec3(mirakana::rotate(project_rotation, mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}),
+                         mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -1.0F}));
+
+    const auto source_inverse_bind = mirakana::Mat4::translation(mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F});
+    const auto expected_inverse_bind = z_up.project_from_source * source_inverse_bind * z_up.source_from_project;
+    MK_REQUIRE(
+        near_mat4(mirakana::normalize_asset_inverse_bind_matrix(z_up, source_inverse_bind), expected_inverse_bind));
+}
 
 MK_TEST("material graph shader export serializes emits hlsl and plans shader compile execution requests") {
     const auto material_id = mirakana::AssetId::from_name("materials/pipeline_graph");
@@ -9018,6 +9109,112 @@ MK_TEST("default external gltf importer cooks interleaved position normal uv ver
     MK_REQUIRE(cooked.find("mesh.index_data_hex=020000000100000000000000\n") != std::string::npos);
 }
 
+MK_TEST("default external gltf importer applies mesh preset coordinates to position normal and tangent payloads") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+
+    mirakana::MemoryFileSystem fs;
+    const auto mesh_id = mirakana::AssetId::from_name("meshes/z-up-lit-triangle");
+    std::string source_buffer;
+
+    const auto append_vec3 = [&](float x, float y, float z) {
+        append_le_f32(source_buffer, x);
+        append_le_f32(source_buffer, y);
+        append_le_f32(source_buffer, z);
+    };
+    append_vec3(-1.0F, 0.0F, 0.0F);
+    append_vec3(0.0F, 0.0F, 1.0F);
+    append_vec3(0.0F, 1.0F, 0.0F);
+    for (int normal_vertex = 0; normal_vertex < 3; ++normal_vertex) {
+        append_vec3(0.0F, 0.0F, 1.0F);
+    }
+    append_le_f32(source_buffer, 0.0F);
+    append_le_f32(source_buffer, 0.0F);
+    append_le_f32(source_buffer, 1.0F);
+    append_le_f32(source_buffer, 0.0F);
+    append_le_f32(source_buffer, 0.0F);
+    append_le_f32(source_buffer, 1.0F);
+    for (int tangent_vertex = 0; tangent_vertex < 3; ++tangent_vertex) {
+        append_le_f32(source_buffer, 1.0F);
+        append_le_f32(source_buffer, 0.0F);
+        append_le_f32(source_buffer, 0.0F);
+        append_le_f32(source_buffer, 1.0F);
+    }
+    append_le_u16(source_buffer, 2U);
+    append_le_u16(source_buffer, 1U);
+    append_le_u16(source_buffer, 0U);
+
+    fs.write_text("source/meshes/z-up-lit-triangle.gltf",
+                  std::string{"{\"asset\":{\"version\":\"2.0\"},"
+                              "\"buffers\":[{\"byteLength\":"} +
+                      std::to_string(source_buffer.size()) + R"(,"uri":")" + gltf_data_uri(source_buffer) +
+                      "\"}],"
+                      "\"bufferViews\":[{\"buffer\":0,\"byteOffset\":0,\"byteLength\":36},"
+                      "{\"buffer\":0,\"byteOffset\":36,\"byteLength\":36},"
+                      "{\"buffer\":0,\"byteOffset\":72,\"byteLength\":24},"
+                      "{\"buffer\":0,\"byteOffset\":96,\"byteLength\":48},"
+                      "{\"buffer\":0,\"byteOffset\":144,\"byteLength\":6}],"
+                      "\"accessors\":[{\"bufferView\":0,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},"
+                      "{\"bufferView\":1,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},"
+                      "{\"bufferView\":2,\"componentType\":5126,\"count\":3,\"type\":\"VEC2\"},"
+                      "{\"bufferView\":3,\"componentType\":5126,\"count\":3,\"type\":\"VEC4\"},"
+                      "{\"bufferView\":4,\"componentType\":5123,\"count\":3,\"type\":\"SCALAR\"}],"
+                      "\"meshes\":[{\"primitives\":[{\"attributes\":{\"POSITION\":0,\"NORMAL\":1,"
+                      "\"TEXCOORD_0\":2,\"TANGENT\":3},\"indices\":4}]}]}");
+
+    mirakana::AssetImportPlan plan;
+    plan.actions.push_back(mirakana::AssetImportAction{
+        .id = mesh_id,
+        .kind = mirakana::AssetImportActionKind::mesh,
+        .source_path = "source/meshes/z-up-lit-triangle.gltf",
+        .output_path = "assets/meshes/z-up-lit-triangle.mesh",
+        .dependencies = {},
+        .preset_metadata = {},
+        .mesh_preset =
+            mirakana::AssetImportMeshPresetV1{
+                .unit_scale = 0.01F,
+                .up_axis = mirakana::AssetImportMeshUpAxis::z,
+                .triangulate = true,
+                .generate_normals = false,
+                .generate_tangents = false,
+                .material_extraction = mirakana::AssetImportMeshMaterialExtraction::source_references,
+            },
+    });
+
+    mirakana::ExternalAssetImportAdapters adapters;
+    const auto result = mirakana::execute_asset_import_plan(fs, plan, adapters.options());
+
+    if (!result.succeeded()) {
+        throw std::runtime_error(result.failures.empty() ? "external z-up glTF import failed without diagnostics"
+                                                         : result.failures[0].diagnostic);
+    }
+
+    const auto mesh = mirakana::deserialize_mesh_source_document(fs.read_text("assets/meshes/z-up-lit-triangle.mesh"));
+    MK_REQUIRE(mesh.vertex_count == 3U);
+    MK_REQUIRE(mesh.has_normals);
+    MK_REQUIRE(mesh.has_uvs);
+    MK_REQUIRE(mesh.has_tangent_frame);
+    const auto component = [&](std::size_t vertex, std::size_t component_index) {
+        return read_le_f32(mesh.vertex_bytes, (vertex * 12U) + component_index);
+    };
+    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(0, 0), .y = component(0, 1), .z = component(0, 2)},
+                         mirakana::Vec3{.x = -0.01F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(1, 0), .y = component(1, 1), .z = component(1, 2)},
+                         mirakana::Vec3{.x = 0.0F, .y = 0.01F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(2, 0), .y = component(2, 1), .z = component(2, 2)},
+                         mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -0.01F}));
+    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(0, 3), .y = component(0, 4), .z = component(0, 5)},
+                         mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_float(component(0, 6), 0.0F));
+    MK_REQUIRE(near_float(component(0, 7), 0.0F));
+    MK_REQUIRE(near_vec3(mirakana::Vec3{.x = component(0, 8), .y = component(0, 9), .z = component(0, 10)},
+                         mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_float(component(0, 11), 1.0F));
+    MK_REQUIRE(hex_string(std::string{reinterpret_cast<const char*>(mesh.index_bytes.data()),
+                                      mesh.index_bytes.size()}) == "020000000100000000000000");
+}
+
 MK_TEST("default external gltf importer rejects partial lit vertex attributes when enabled") {
     if (!mirakana::external_asset_importers_available()) {
         return;
@@ -9658,8 +9855,8 @@ MK_TEST("gltf skin skeleton and skin payload import succeeds for single-joint sk
         "\"animations\":[{\"channels\":[{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"translation\"}}],"
         "\"samplers\":[{\"input\":5,\"output\":6,\"interpolation\":\"LINEAR\"}]}]}";
 
-    const auto skin_import =
-        mirakana::import_gltf_skin_skeleton_and_skin_payload(document, "source/meshes/skin_import_tri.gltf", 0, 0, 0);
+    const auto skin_import = mirakana::import_gltf_skin_skeleton_and_skin_payload(
+        document, "source/meshes/skin_import_tri.gltf", 0, 0, 0, y_up_centimeter_mesh_import_preset());
     MK_REQUIRE(skin_import.succeeded);
     MK_REQUIRE(skin_import.diagnostic.empty());
     MK_REQUIRE(skin_import.skeleton.joints.size() == 1);
@@ -9668,13 +9865,24 @@ MK_TEST("gltf skin skeleton and skin payload import succeeds for single-joint sk
     MK_REQUIRE(skin_import.skin_payload.vertices.size() == 3);
     MK_REQUIRE(mirakana::is_valid_animation_skin_payload(skin_import.skeleton, skin_import.skin_payload));
 
-    const auto anim_import =
-        mirakana::import_gltf_animation_joint_tracks_for_skin(document, "source/meshes/skin_import_tri.gltf", 0, 0);
+    const auto anim_import = mirakana::import_gltf_animation_joint_tracks_for_skin(
+        document, "source/meshes/skin_import_tri.gltf", 0, 0, y_up_centimeter_mesh_import_preset());
     MK_REQUIRE(anim_import.succeeded);
     MK_REQUIRE(anim_import.joint_tracks.size() == 1);
     MK_REQUIRE(anim_import.joint_tracks[0].joint_index == 0);
     MK_REQUIRE(anim_import.joint_tracks[0].translation_keyframes.size() == 2);
+    MK_REQUIRE(near_vec3(anim_import.joint_tracks[0].translation_keyframes[1].value,
+                         mirakana::Vec3{.x = 0.001F, .y = 0.0F, .z = 0.0F}));
     MK_REQUIRE(mirakana::is_valid_animation_joint_tracks(skin_import.skeleton, anim_import.joint_tracks));
+
+    const auto z_up_skin_import = mirakana::import_gltf_skin_skeleton_and_skin_payload(
+        document, "source/meshes/skin_import_tri.gltf", 0, 0, 0, z_up_centimeter_mesh_import_preset());
+    MK_REQUIRE(!z_up_skin_import.succeeded);
+    MK_REQUIRE(z_up_skin_import.diagnostic.find("3D quaternion skin pipeline") != std::string::npos);
+    const auto z_up_anim_import = mirakana::import_gltf_animation_joint_tracks_for_skin(
+        document, "source/meshes/skin_import_tri.gltf", 0, 0, z_up_centimeter_mesh_import_preset());
+    MK_REQUIRE(!z_up_anim_import.succeeded);
+    MK_REQUIRE(z_up_anim_import.diagnostic.find("3D quaternion skin pipeline") != std::string::npos);
 }
 
 MK_TEST("gltf skin skeleton import rejects non z-axis-only joint rotation when importers are enabled") {
@@ -9732,8 +9940,8 @@ MK_TEST("gltf skin skeleton import rejects non z-axis-only joint rotation when i
                                  "\"meshes\":[{\"primitives\":[{\"attributes\":{\"POSITION\":1,\"JOINTS_0\":2,"
                                  "\"WEIGHTS_0\":3},\"indices\":4}]}]}";
 
-    const auto skin_import =
-        mirakana::import_gltf_skin_skeleton_and_skin_payload(document, "source/meshes/bad_rot_skin.gltf", 0, 0, 0);
+    const auto skin_import = mirakana::import_gltf_skin_skeleton_and_skin_payload(
+        document, "source/meshes/bad_rot_skin.gltf", 0, 0, 0, default_mesh_import_preset());
     MK_REQUIRE(!skin_import.succeeded);
     MK_REQUIRE(skin_import.diagnostic.find("z-axis-only") != std::string::npos);
 }
@@ -9790,8 +9998,8 @@ MK_TEST("gltf node transform animation import reads LINEAR translation rotation 
                                  "{\"input\":0,\"output\":2,\"interpolation\":\"LINEAR\"},"
                                  "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
 
-    const auto imported =
-        mirakana::import_gltf_node_transform_animation_tracks(document, "source/animations/node_transform.gltf", 0);
+    const auto imported = mirakana::import_gltf_node_transform_animation_tracks(
+        document, "source/animations/node_transform.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(imported.succeeded);
     MK_REQUIRE(imported.diagnostic.empty());
     MK_REQUIRE(imported.node_tracks.size() == 2);
@@ -9864,13 +10072,13 @@ MK_TEST("gltf node transform animation 3D import reads full quaternion rotation 
                                  "{\"input\":0,\"output\":2,\"interpolation\":\"LINEAR\"},"
                                  "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
 
-    const auto legacy =
-        mirakana::import_gltf_node_transform_animation_tracks(document, "source/animations/node_transform_3d.gltf", 0);
+    const auto legacy = mirakana::import_gltf_node_transform_animation_tracks(
+        document, "source/animations/node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!legacy.succeeded);
     MK_REQUIRE(legacy.diagnostic.find("z-axis-only") != std::string::npos);
 
     const auto imported = mirakana::import_gltf_node_transform_animation_tracks_3d(
-        document, "source/animations/node_transform_3d.gltf", 0);
+        document, "source/animations/node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(imported.succeeded);
     MK_REQUIRE(imported.diagnostic.empty());
     MK_REQUIRE(imported.node_tracks.size() == 2);
@@ -9909,6 +10117,81 @@ MK_TEST("gltf node transform animation 3D import reads full quaternion rotation 
     MK_REQUIRE(std::abs(pose.joints[1].translation.y - 2.0F) < 0.0001F);
     MK_REQUIRE(std::abs(pose.joints[1].translation.z - 3.0F) < 0.0001F);
     MK_REQUIRE(mirakana::is_normalized_quat(pose.joints[1].rotation));
+}
+
+MK_TEST("gltf node transform animation import applies z-up centimeter mesh preset to 3D transform channels") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+    std::string buf;
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 1.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 100.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 1.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.70710677F);
+    append_le_f32(buf, 0.70710677F);
+    append_le_f32(buf, 1.0F);
+    append_le_f32(buf, 2.0F);
+    append_le_f32(buf, 3.0F);
+    append_le_f32(buf, 2.0F);
+    append_le_f32(buf, 4.0F);
+    append_le_f32(buf, 6.0F);
+    const std::string document = std::string{"{\"asset\":{\"version\":\"2.0\"},"
+                                             "\"buffers\":[{\"byteLength\":"} +
+                                 std::to_string(buf.size()) + R"(,"uri":")" + gltf_data_uri(buf) +
+                                 "\"}],"
+                                 "\"bufferViews\":["
+                                 "{\"buffer\":0,\"byteOffset\":0,\"byteLength\":8},"
+                                 "{\"buffer\":0,\"byteOffset\":8,\"byteLength\":24},"
+                                 "{\"buffer\":0,\"byteOffset\":32,\"byteLength\":32},"
+                                 "{\"buffer\":0,\"byteOffset\":64,\"byteLength\":24}],"
+                                 "\"accessors\":["
+                                 "{\"bufferView\":0,\"componentType\":5126,\"count\":2,\"type\":\"SCALAR\"},"
+                                 "{\"bufferView\":1,\"componentType\":5126,\"count\":2,\"type\":\"VEC3\"},"
+                                 "{\"bufferView\":2,\"componentType\":5126,\"count\":2,\"type\":\"VEC4\"},"
+                                 "{\"bufferView\":3,\"componentType\":5126,\"count\":2,\"type\":\"VEC3\"}],"
+                                 "\"nodes\":[{\"name\":\"animated_node\"}],"
+                                 "\"animations\":[{\"channels\":["
+                                 "{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"translation\"}},"
+                                 "{\"sampler\":1,\"target\":{\"node\":0,\"path\":\"rotation\"}},"
+                                 "{\"sampler\":2,\"target\":{\"node\":0,\"path\":\"scale\"}}],"
+                                 "\"samplers\":["
+                                 "{\"input\":0,\"output\":1,\"interpolation\":\"LINEAR\"},"
+                                 "{\"input\":0,\"output\":2,\"interpolation\":\"LINEAR\"},"
+                                 "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
+
+    const auto scalar_import = mirakana::import_gltf_node_transform_animation_float_clip(
+        document, "source/animations/z_up_node_transform_scalar.gltf", 0, z_up_centimeter_mesh_import_preset());
+    MK_REQUIRE(!scalar_import.succeeded);
+    MK_REQUIRE(scalar_import.diagnostic.find("quaternion clip") != std::string::npos);
+
+    const auto imported = mirakana::import_gltf_node_transform_animation_tracks_3d(
+        document, "source/animations/z_up_node_transform_3d.gltf", 0, z_up_centimeter_mesh_import_preset());
+    MK_REQUIRE(imported.succeeded);
+    MK_REQUIRE(imported.diagnostic.empty());
+    MK_REQUIRE(imported.node_tracks.size() == 1);
+    MK_REQUIRE(imported.node_tracks[0].translation_keyframes.size() == 2);
+    MK_REQUIRE(imported.node_tracks[0].rotation_keyframes.size() == 2);
+    MK_REQUIRE(imported.node_tracks[0].scale_keyframes.size() == 2);
+
+    const auto translation = mirakana::sample_vec3_keyframes(imported.node_tracks[0].translation_keyframes, 0.5F);
+    MK_REQUIRE(near_vec3(translation, mirakana::Vec3{.x = 0.0F, .y = 0.5F, .z = 0.0F}));
+    const auto scale = mirakana::sample_vec3_keyframes(imported.node_tracks[0].scale_keyframes, 0.5F);
+    MK_REQUIRE(near_vec3(scale, mirakana::Vec3{.x = 1.5F, .y = 4.5F, .z = 3.0F}));
+    const auto rotation = mirakana::sample_quat_keyframes(imported.node_tracks[0].rotation_keyframes, 1.0F);
+    MK_REQUIRE(mirakana::is_normalized_quat(rotation));
+    const auto rotated_x = mirakana::rotate(rotation, mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F});
+    MK_REQUIRE(near_vec3(rotated_x, mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -1.0F}, 0.0005F));
 }
 
 MK_TEST("gltf node transform animation 3D import rejects invalid quaternion channels when importers are enabled") {
@@ -9964,14 +10247,14 @@ MK_TEST("gltf node transform animation 3D import rejects invalid quaternion chan
         invalid_prefix +
             "\"animations\":[{\"channels\":[{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"rotation\"}}],"
             "\"samplers\":[{\"input\":0,\"output\":1,\"interpolation\":\"LINEAR\"}]}]}",
-        "source/animations/bad_quat_node_transform_3d.gltf", 0);
+        "source/animations/bad_quat_node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!invalid_quat.succeeded);
     MK_REQUIRE(invalid_quat.diagnostic.find("normalized") != std::string::npos);
 
     const auto unsupported_interpolation = mirakana::import_gltf_node_transform_animation_tracks_3d(
         base_prefix + "\"animations\":[{\"channels\":[{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"rotation\"}}],"
                       "\"samplers\":[{\"input\":0,\"output\":1,\"interpolation\":\"STEP\"}]}]}",
-        "source/animations/step_quat_node_transform_3d.gltf", 0);
+        "source/animations/step_quat_node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!unsupported_interpolation.succeeded);
     MK_REQUIRE(unsupported_interpolation.diagnostic.find("LINEAR") != std::string::npos);
 
@@ -9979,7 +10262,7 @@ MK_TEST("gltf node transform animation 3D import rejects invalid quaternion chan
         base_prefix + "\"animations\":[{\"channels\":[{\"sampler\":1,\"target\":{\"node\":0,\"path\":\"scale\"}}],"
                       "\"samplers\":[{\"input\":0,\"output\":1,\"interpolation\":\"LINEAR\"},"
                       "{\"input\":0,\"output\":2,\"interpolation\":\"LINEAR\"}]}]}",
-        "source/animations/bad_scale_count_node_transform_3d.gltf", 0);
+        "source/animations/bad_scale_count_node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!mismatched_scale_count.succeeded);
     MK_REQUIRE(mismatched_scale_count.diagnostic.find("count") != std::string::npos);
 
@@ -9987,7 +10270,7 @@ MK_TEST("gltf node transform animation 3D import rejects invalid quaternion chan
         base_prefix + "\"animations\":[{\"channels\":[{\"sampler\":1,\"target\":{\"node\":0,\"path\":\"scale\"}}],"
                       "\"samplers\":[{\"input\":0,\"output\":1,\"interpolation\":\"LINEAR\"},"
                       "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}",
-        "source/animations/bad_scale_node_transform_3d.gltf", 0);
+        "source/animations/bad_scale_node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!invalid_scale.succeeded);
     MK_REQUIRE(invalid_scale.diagnostic.find("positive") != std::string::npos);
 
@@ -9996,7 +10279,7 @@ MK_TEST("gltf node transform animation 3D import rejects invalid quaternion chan
                       "{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"rotation\"}},"
                       "{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"rotation\"}}],"
                       "\"samplers\":[{\"input\":0,\"output\":1,\"interpolation\":\"LINEAR\"}]}]}",
-        "source/animations/duplicate_quat_node_transform_3d.gltf", 0);
+        "source/animations/duplicate_quat_node_transform_3d.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!duplicate_rotation.succeeded);
     MK_REQUIRE(duplicate_rotation.diagnostic.find("duplicate rotation") != std::string::npos);
 }
@@ -10031,7 +10314,7 @@ MK_TEST("gltf node transform animation import rejects duplicate transform channe
                                  "\"samplers\":[{\"input\":0,\"output\":1,\"interpolation\":\"LINEAR\"}]}]}";
 
     const auto imported = mirakana::import_gltf_node_transform_animation_tracks(
-        document, "source/animations/duplicate_node_transform.gltf", 0);
+        document, "source/animations/duplicate_node_transform.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(!imported.succeeded);
     MK_REQUIRE(imported.diagnostic.find("duplicate translation") != std::string::npos);
 }
@@ -10088,7 +10371,7 @@ MK_TEST("gltf node transform animation imports as cooked quaternion clip and sam
                                  "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
 
     const auto imported = mirakana::import_gltf_node_transform_animation_quaternion_clip(
-        document, "source/animations/node_transform_quaternion_clip.gltf", 0);
+        document, "source/animations/node_transform_quaternion_clip.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(imported.succeeded);
     MK_REQUIRE(imported.diagnostic.empty());
     MK_REQUIRE(mirakana::is_valid_animation_quaternion_clip_source_document(imported.clip));
@@ -10221,7 +10504,7 @@ MK_TEST("gltf node transform animation imports as cooked float clip and samples 
                                  "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
 
     const auto imported = mirakana::import_gltf_node_transform_animation_float_clip(
-        document, "source/animations/node_transform_clip.gltf", 0);
+        document, "source/animations/node_transform_clip.gltf", 0, default_mesh_import_preset());
     MK_REQUIRE(imported.succeeded);
     MK_REQUIRE(imported.diagnostic.empty());
     MK_REQUIRE(imported.clip.tracks.size() == 7);
@@ -10349,7 +10632,7 @@ MK_TEST("gltf node transform animation imports transform binding source rows") {
                                  "{\"input\":0,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
 
     const auto imported = mirakana::import_gltf_node_transform_animation_binding_source(
-        document, "source/animations/node_transform_binding_source.gltf", 0);
+        document, "source/animations/node_transform_binding_source.gltf", 0, default_mesh_import_preset());
 
     MK_REQUIRE(imported.succeeded);
     MK_REQUIRE(imported.diagnostic.empty());
@@ -10484,7 +10767,8 @@ MK_TEST("gltf morph mesh and weights animation import succeeds when importers ar
         "\"animations\":[{\"channels\":[{\"sampler\":0,\"target\":{\"node\":0,\"path\":\"weights\"}}],"
         "\"samplers\":[{\"input\":2,\"output\":3,\"interpolation\":\"LINEAR\"}]}]}";
 
-    const auto morph = mirakana::import_gltf_morph_mesh_cpu_primitive(document, "source/meshes/morph_tri.gltf", 0, 0);
+    const auto morph = mirakana::import_gltf_morph_mesh_cpu_primitive(document, "source/meshes/morph_tri.gltf", 0, 0,
+                                                                      default_mesh_import_preset());
     MK_REQUIRE(morph.succeeded);
     MK_REQUIRE(morph.diagnostic.empty());
     MK_REQUIRE(morph.morph_mesh.targets.size() == 1);
@@ -10544,6 +10828,87 @@ MK_TEST("gltf morph mesh and weights animation import succeeds when importers ar
     MK_REQUIRE(morph_payload.succeeded());
     MK_REQUIRE(morph_payload.payload.morph.vertex_count == 3U);
     MK_REQUIRE(morph_payload.payload.morph.targets.size() == 1U);
+}
+
+MK_TEST("gltf morph mesh import applies z-up centimeter preset to bind streams and deltas") {
+    if (!mirakana::external_asset_importers_available()) {
+        return;
+    }
+    std::string buf;
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 100.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 0.0F);
+    append_le_f32(buf, 100.0F);
+    for (int i = 0; i < 3; ++i) {
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 1.0F);
+    }
+    for (int i = 0; i < 3; ++i) {
+        append_le_f32(buf, 1.0F);
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 1.0F);
+    }
+    for (int i = 0; i < 3; ++i) {
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 10.0F);
+    }
+    for (int i = 0; i < 3; ++i) {
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 1.0F);
+        append_le_f32(buf, 0.0F);
+    }
+    for (int i = 0; i < 3; ++i) {
+        append_le_f32(buf, 1.0F);
+        append_le_f32(buf, 0.0F);
+        append_le_f32(buf, 0.0F);
+    }
+
+    const std::string document =
+        std::string{"{\"asset\":{\"version\":\"2.0\"},"
+                    "\"buffers\":[{\"byteLength\":"} +
+        std::to_string(buf.size()) + R"(,"uri":")" + gltf_data_uri(buf) +
+        "\"}],"
+        "\"bufferViews\":["
+        "{\"buffer\":0,\"byteOffset\":0,\"byteLength\":36},"
+        "{\"buffer\":0,\"byteOffset\":36,\"byteLength\":36},"
+        "{\"buffer\":0,\"byteOffset\":72,\"byteLength\":48},"
+        "{\"buffer\":0,\"byteOffset\":120,\"byteLength\":36},"
+        "{\"buffer\":0,\"byteOffset\":156,\"byteLength\":36},"
+        "{\"buffer\":0,\"byteOffset\":192,\"byteLength\":36}],"
+        "\"accessors\":["
+        "{\"bufferView\":0,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},"
+        "{\"bufferView\":1,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},"
+        "{\"bufferView\":2,\"componentType\":5126,\"count\":3,\"type\":\"VEC4\"},"
+        "{\"bufferView\":3,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},"
+        "{\"bufferView\":4,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},"
+        "{\"bufferView\":5,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"}],"
+        "\"meshes\":[{\"primitives\":[{\"attributes\":{\"POSITION\":0,\"NORMAL\":1,\"TANGENT\":2},"
+        "\"targets\":[{\"POSITION\":3,\"NORMAL\":4,\"TANGENT\":5}]}]}]}";
+
+    const auto imported = mirakana::import_gltf_morph_mesh_cpu_primitive(document, "source/meshes/z_up_morph_tri.gltf",
+                                                                         0, 0, z_up_centimeter_mesh_import_preset());
+    MK_REQUIRE(imported.succeeded);
+    MK_REQUIRE(imported.diagnostic.empty());
+    MK_REQUIRE(imported.morph_mesh.bind_positions.size() == 3);
+    MK_REQUIRE(near_vec3(imported.morph_mesh.bind_positions[1], mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(imported.morph_mesh.bind_positions[2], mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(imported.morph_mesh.bind_normals[0], mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F}));
+    MK_REQUIRE(near_vec3(imported.morph_mesh.bind_tangents[0], mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
+    MK_REQUIRE(imported.morph_mesh.targets.size() == 1);
+    MK_REQUIRE(
+        near_vec3(imported.morph_mesh.targets[0].position_deltas[0], mirakana::Vec3{.x = 0.0F, .y = 0.1F, .z = 0.0F}));
+    MK_REQUIRE(
+        near_vec3(imported.morph_mesh.targets[0].normal_deltas[0], mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -1.0F}));
+    MK_REQUIRE(
+        near_vec3(imported.morph_mesh.targets[0].tangent_deltas[0], mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}));
 }
 
 MK_TEST("gltf morph weights animation imports as cooked float clip and samples at runtime") {

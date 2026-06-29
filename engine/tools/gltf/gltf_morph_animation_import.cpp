@@ -4,6 +4,7 @@
 #include "mirakana/tools/gltf_morph_animation_import.hpp"
 
 #include "mirakana/math/vec.hpp"
+#include "mirakana/tools/asset_coordinate_normalization.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -105,7 +106,6 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
 
 [[nodiscard]] std::vector<Vec3> read_vec3_f32_accessor(const fastgltf::Asset& gltf, const fastgltf::Accessor& accessor,
                                                        std::string_view name) {
-    reject_sparse_accessor(accessor, name);
     if (accessor.type != fastgltf::AccessorType::Vec3 || accessor.componentType != fastgltf::ComponentType::Float) {
         throw std::runtime_error(std::string(name) + " accessor must be float32 VEC3");
     }
@@ -119,6 +119,35 @@ load_gltf_asset(const std::string_view document_bytes_utf8, const std::string_vi
         throw std::runtime_error(std::string(name) + " accessor iteration count mismatch");
     }
     return out;
+}
+
+[[nodiscard]] std::vector<Vec3>
+read_tangent_xyz_f32_accessor(const fastgltf::Asset& gltf, const fastgltf::Accessor& accessor, std::string_view name) {
+    if (accessor.type != fastgltf::AccessorType::Vec4 || accessor.componentType != fastgltf::ComponentType::Float) {
+        throw std::runtime_error(std::string(name) + " accessor must be float32 VEC4");
+    }
+    require_accessor_buffer_view(gltf, accessor, name);
+    std::vector<Vec3> out;
+    out.reserve(static_cast<std::size_t>(accessor.count));
+    for (const auto& value : fastgltf::iterateAccessor<fastgltf::math::fvec4>(gltf, accessor)) {
+        out.push_back(Vec3{.x = value[0], .y = value[1], .z = value[2]});
+    }
+    if (out.size() != accessor.count) {
+        throw std::runtime_error(std::string(name) + " accessor iteration count mismatch");
+    }
+    return out;
+}
+
+void normalize_positions(std::vector<Vec3>& values, const AssetCoordinateNormalizationPlan& normalization) noexcept {
+    for (auto& value : values) {
+        value = normalize_asset_position(normalization, value);
+    }
+}
+
+void normalize_directions(std::vector<Vec3>& values, const AssetCoordinateNormalizationPlan& normalization) noexcept {
+    for (auto& value : values) {
+        value = normalize_asset_direction(normalization, value);
+    }
 }
 
 [[nodiscard]] bool finite_unit_interval(float value) noexcept {
@@ -138,16 +167,16 @@ void append_f32_le(std::vector<std::uint8_t>& bytes, float value) {
 
 } // namespace
 
-GltfMorphMeshCpuImportReport
-import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
-                                     const std::string_view source_path_for_external_buffers,
-                                     const std::size_t mesh_index, const std::size_t primitive_index) {
+GltfMorphMeshCpuImportReport import_gltf_morph_mesh_cpu_primitive(
+    const std::string_view document_bytes_utf8, const std::string_view source_path_for_external_buffers,
+    const std::size_t mesh_index, const std::size_t primitive_index, const AssetImportMeshPresetV1& mesh_preset) {
     GltfMorphMeshCpuImportReport out;
 #if !MK_HAS_ASSET_IMPORTERS
     (void)document_bytes_utf8;
     (void)source_path_for_external_buffers;
     (void)mesh_index;
     (void)primitive_index;
+    (void)mesh_preset;
     out.diagnostic = "asset importers are disabled for this MK_tools build";
     return out;
 #else
@@ -188,13 +217,13 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
     }
 
     try {
+        const auto normalization = make_asset_coordinate_normalization_plan(mesh_preset);
         const auto position = primitive.findAttribute("POSITION");
         if (position == primitive.attributes.end()) {
             out.diagnostic = "glTF morph import requires POSITION on the base primitive";
             return out;
         }
         const auto& position_accessor = require_accessor(gltf, position->accessorIndex, "glTF POSITION");
-        reject_sparse_accessor(position_accessor, "glTF POSITION");
         if (position_accessor.type != fastgltf::AccessorType::Vec3 ||
             position_accessor.componentType != fastgltf::ComponentType::Float) {
             out.diagnostic = "glTF POSITION must be float32 VEC3 for morph import";
@@ -208,6 +237,7 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
         }
 
         out.morph_mesh.bind_positions = read_vec3_f32_accessor(gltf, position_accessor, "glTF POSITION");
+        normalize_positions(out.morph_mesh.bind_positions, normalization);
 
         const auto normal = primitive.findAttribute("NORMAL");
         if (normal != primitive.attributes.end()) {
@@ -217,6 +247,7 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
                 return out;
             }
             out.morph_mesh.bind_normals = read_vec3_f32_accessor(gltf, accessor, "glTF NORMAL");
+            normalize_directions(out.morph_mesh.bind_normals, normalization);
         }
 
         const auto tangent = primitive.findAttribute("TANGENT");
@@ -226,7 +257,8 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
                 out.diagnostic = "glTF TANGENT accessor count must match POSITION for morph import";
                 return out;
             }
-            out.morph_mesh.bind_tangents = read_vec3_f32_accessor(gltf, accessor, "glTF TANGENT");
+            out.morph_mesh.bind_tangents = read_tangent_xyz_f32_accessor(gltf, accessor, "glTF TANGENT");
+            normalize_directions(out.morph_mesh.bind_tangents, normalization);
         }
 
         const std::size_t morph_target_count = primitive.targets.size();
@@ -244,6 +276,7 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
                     return out;
                 }
                 target_desc.position_deltas = read_vec3_f32_accessor(gltf, accessor, "glTF morph POSITION");
+                normalize_positions(target_desc.position_deltas, normalization);
             }
 
             const auto nrm_attr = primitive.findTargetAttribute(target_index, "NORMAL");
@@ -254,6 +287,7 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
                     return out;
                 }
                 target_desc.normal_deltas = read_vec3_f32_accessor(gltf, accessor, "glTF morph NORMAL");
+                normalize_directions(target_desc.normal_deltas, normalization);
             }
 
             const auto tan_attr = primitive.findTargetAttribute(target_index, "TANGENT");
@@ -264,6 +298,7 @@ import_gltf_morph_mesh_cpu_primitive(const std::string_view document_bytes_utf8,
                     return out;
                 }
                 target_desc.tangent_deltas = read_vec3_f32_accessor(gltf, accessor, "glTF morph TANGENT");
+                normalize_directions(target_desc.tangent_deltas, normalization);
             }
 
             if (target_desc.position_deltas.empty() && target_desc.normal_deltas.empty() &&

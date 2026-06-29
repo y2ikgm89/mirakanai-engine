@@ -6,6 +6,7 @@
 #include "mirakana/assets/asset_dependency_graph.hpp"
 #include "mirakana/assets/asset_hot_reload.hpp"
 #include "mirakana/assets/asset_import_metadata.hpp"
+#include "mirakana/assets/asset_import_presets.hpp"
 
 #include <cstdint>
 #include <string>
@@ -33,6 +34,7 @@ struct AssetImportAction {
     std::string output_path;
     std::vector<AssetId> dependencies;
     std::vector<std::string> preset_metadata;
+    AssetImportMeshPresetV1 mesh_preset;
 };
 
 struct AssetImportPlan {

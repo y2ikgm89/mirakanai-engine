@@ -51,6 +51,7 @@ struct EditorAssetImportCandidateRow {
     std::string reusable_existing_source_path;
     std::string reusable_existing_imported_path;
     AssetKeyV2 reusable_existing_asset_key;
+    AssetImportMeshPresetV1 mesh_preset;
     std::vector<std::string> preset_metadata;
     std::string status_label;
     std::string diagnostic;

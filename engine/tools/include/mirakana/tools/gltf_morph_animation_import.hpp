@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/animation/morph.hpp"
+#include "mirakana/assets/asset_import_presets.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 
 #include <cstddef>
@@ -13,8 +14,7 @@
 namespace mirakana {
 
 /// Result of importing one glTF triangle primitive morph target stack into `AnimationMorphMeshCpuDesc` (Khronos glTF
-/// 2.0). Draco, sparse accessors, and skinning attributes are rejected with stable diagnostics (no exceptions on
-/// failure).
+/// 2.0). Draco and skinning attributes are rejected with stable diagnostics (no exceptions on failure).
 struct GltfMorphMeshCpuImportReport {
     bool succeeded{false};
     std::string diagnostic;
@@ -42,7 +42,7 @@ struct GltfAnimationFloatClipImportReport {
 [[nodiscard]] GltfMorphMeshCpuImportReport
 import_gltf_morph_mesh_cpu_primitive(std::string_view document_bytes_utf8,
                                      std::string_view source_path_for_external_buffers, std::size_t mesh_index,
-                                     std::size_t primitive_index);
+                                     std::size_t primitive_index, const AssetImportMeshPresetV1& mesh_preset);
 
 /// Imports the single `weights` animation channel targeting `animated_node_index`, which must reference `mesh_index`.
 /// Only `LINEAR` interpolation is supported. Output accessor must store `times.size() * morph_target_count` float
