@@ -19,15 +19,15 @@
 - **Priority buckets:** High priority implements a complete safe import path. Medium priority improves operator productivity and live iteration. Deferred work remains explicit non-scope until separate legal, dependency, and host evidence exists.
 - **Closeout:** High and medium priority Tasks 1-12 completed on 2026-06-29 through PR #881-#886. Deferred Tasks 13-15 remain non-scope gates and were not implemented.
 
-## Locked Current Project Facts
+## Locked Plan-Start Facts And Closeout Truth
 
-- `editor/src/native_editor_app.cpp` currently routes `Browse Import Sources` through `IFileDialogService`, normalizes accepted paths to project-relative paths, rejects outside-project/device/invalid paths, and invokes `execute_asset_import_plan` only after `asset_browser.import.execute_reviewed_plan` passes generation and user-confirmation review.
+- `editor/src/native_editor_app.cpp` routes `Browse Import Sources` through `IFileDialogService`, normalizes accepted paths to project-relative paths, rejects outside-project/device/invalid paths, and invokes `execute_asset_import_plan` only after `asset_browser.import.execute_reviewed_plan` passes generation and user-confirmation review.
 - `editor/core/src/content_browser_import_panel.cpp` accepts `.texture`, `.mesh`, `.material`, `.scene`, `.audio_source`, `.png`, `.gltf`, `.glb`, `.wav`, `.mp3`, and `.flac` as reviewed source selections.
-- `editor/src/native_editor_app.cpp::make_default_asset_browser_import_plan` currently maps source-registry rows for `AssetKind::texture`, `AssetKind::material`, and `AssetKind::scene` only; mesh and audio rows can be visible but not imported through the default visible-shell plan.
-- `engine/tools/asset/asset_import_adapters.cpp` already contains optional `PngTextureExternalAssetImporter`, `GltfMeshExternalAssetImporter`, `GltfMorphMeshCpuExternalAssetImporter`, and `AudioExternalAssetImporter` behind `MK_HAS_ASSET_IMPORTERS`.
-- `engine/tools/asset/source_asset_registration_tool.cpp` already provides reviewed `plan_source_asset_registration` / `apply_source_asset_registration` for `GameEngine.SourceAssetRegistry.v1`, but the visible editor import handoff does not yet apply selected sources into the registry.
-- `editor/core/src/asset_browser_production.cpp::review_editor_asset_browser_legal_provenance` already rejects missing licenses, incomplete provenance, NC/ND licenses, and external-engine material, but this is not yet a mandatory gate for source registration, external copy, import execution, and package readiness.
-- `vcpkg.json` already has the optional `asset-importers` feature with `libspng`, `fastgltf`, `openexr`, `ktx`, and `miniaudio`; this plan does not add a new third-party dependency in high or medium priority work.
+- Plan-start gap closed by Task 2: `editor/src/native_editor_app.cpp::make_default_asset_browser_import_plan` no longer drops mesh or audio rows; the default visible-shell plan maps texture, mesh, audio, material, and scene rows through the shared review pipeline.
+- `engine/tools/asset/asset_import_adapters.cpp` contains optional `PngTextureExternalAssetImporter`, `GltfMeshExternalAssetImporter`, `GltfMorphMeshCpuExternalAssetImporter`, and `AudioExternalAssetImporter` behind `MK_HAS_ASSET_IMPORTERS`.
+- Plan-start gap closed by Task 3: visible editor import applies selected, reviewed, legal-gated sources into `GameEngine.SourceAssetRegistry.v1` through `plan_source_asset_registration` / `apply_source_asset_registration`.
+- Plan-start gap closed by Task 5: persistent provenance/legal review is mandatory before source registration, external copy, import execution, and package readiness.
+- `vcpkg.json` has the optional `asset-importers` feature with `libspng`, `fastgltf`, `openexr`, `ktx`, and `miniaudio`; this plan did not add a new third-party dependency in high or medium priority work.
 
 ## Official Source Ledger
 
