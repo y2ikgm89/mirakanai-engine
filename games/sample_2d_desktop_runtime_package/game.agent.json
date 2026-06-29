@@ -1249,6 +1249,300 @@
         "broad-commercial-2d-readiness"
       ]
     },
+    "twoDCommercialDeterministicCookOutputs": {
+      "schemaVersion": 1,
+      "capabilityId": "2d-commercial-deterministic-cook-outputs-v1",
+      "cookSetId": "sample-2d-desktop-runtime-package-2d-commercial-deterministic-cook",
+      "sourceAssetManifestSetId": "sample-2d-desktop-runtime-package-2d-commercial-source-assets",
+      "packageIndexPath": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+      "cookOutputs": [
+        {
+          "id": "player-texture-cook",
+          "sourceManifestIds": [
+            "player-sprite-source",
+            "player-sprite-sheet-source",
+            "player-atlas-page-source"
+          ],
+          "assetKey": "sample/2d-commercial/player-texture",
+          "outputPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.texture.geasset",
+          "outputKind": "texture",
+          "contentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sourceProvenance": "first-party-created",
+          "licenseStatus": "first-party-proprietary-reviewed",
+          "packageBudgetRowId": "player-texture-budget",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-atlas-residency-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "level-tilemap-cook",
+          "sourceManifestIds": [
+            "level-tile-chunk-source"
+          ],
+          "assetKey": "sample/2d-commercial/level-tilemap",
+          "outputPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/level.tilemap",
+          "outputKind": "tilemap",
+          "contentHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "sourceProvenance": "first-party-created",
+          "licenseStatus": "first-party-proprietary-reviewed",
+          "packageBudgetRowId": "level-tilemap-budget",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-production-tile-renderer-smoke"
+          ]
+        },
+        {
+          "id": "player-animation-cook",
+          "sourceManifestIds": [
+            "player-sprite-sheet-source",
+            "player-animation-clip-source"
+          ],
+          "assetKey": "sample/2d-commercial/player-animation",
+          "outputPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.sprite_animation",
+          "outputKind": "animation-clip",
+          "contentHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "sourceProvenance": "first-party-created",
+          "licenseStatus": "first-party-proprietary-reviewed",
+          "packageBudgetRowId": "player-animation-budget",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-animation-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "jump-audio-cook",
+          "sourceManifestIds": [
+            "jump-audio-cue-source"
+          ],
+          "assetKey": "sample/2d-commercial/jump-audio",
+          "outputPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/jump.audio.geasset",
+          "outputKind": "audio",
+          "contentHash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "sourceProvenance": "first-party-created",
+          "licenseStatus": "first-party-proprietary-reviewed",
+          "packageBudgetRowId": "jump-audio-budget",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-audio-gameplay-mixer-smoke",
+            "installed-2d-audio-production-smoke"
+          ]
+        },
+        {
+          "id": "hud-ui-atlas-cook",
+          "sourceManifestIds": [
+            "hud-localization-source",
+            "hud-ui-glyph-source"
+          ],
+          "assetKey": "sample/2d-commercial/hud-ui-atlas",
+          "outputPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/hud.uiatlas",
+          "outputKind": "ui-atlas",
+          "contentHash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "sourceProvenance": "first-party-created",
+          "licenseStatus": "first-party-proprietary-reviewed",
+          "packageBudgetRowId": "hud-ui-atlas-budget",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
+          ]
+        }
+      ],
+      "dependencyGraphRows": [
+        {
+          "id": "player-sprite-content-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-sprite-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-sheet-content-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-sprite-sheet-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-atlas-content-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-atlas-page-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "level-tile-content-edge",
+          "fromCookOutputId": "level-tilemap-cook",
+          "toSourceManifestId": "level-tile-chunk-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-animation-content-edge",
+          "fromCookOutputId": "player-animation-cook",
+          "toSourceManifestId": "player-animation-clip-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "jump-audio-content-edge",
+          "fromCookOutputId": "jump-audio-cook",
+          "toSourceManifestId": "jump-audio-cue-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "hud-localization-content-edge",
+          "fromCookOutputId": "hud-ui-atlas-cook",
+          "toSourceManifestId": "hud-localization-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "hud-glyph-content-edge",
+          "fromCookOutputId": "hud-ui-atlas-cook",
+          "toSourceManifestId": "hud-ui-glyph-source",
+          "dependencyKind": "content-hash",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-sheet-animation-dependency",
+          "fromCookOutputId": "player-animation-cook",
+          "toSourceManifestId": "player-sprite-sheet-source",
+          "dependencyKind": "dependency-edge",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-texture-provenance-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-sprite-source",
+          "dependencyKind": "source-provenance",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-texture-license-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-sprite-source",
+          "dependencyKind": "license-status",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-texture-budget-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-sprite-source",
+          "dependencyKind": "package-budget",
+          "replayRelevant": true
+        },
+        {
+          "id": "player-texture-replay-edge",
+          "fromCookOutputId": "player-texture-cook",
+          "toSourceManifestId": "player-sprite-source",
+          "dependencyKind": "replay-hash",
+          "replayRelevant": true
+        }
+      ],
+      "incrementalRecook": {
+        "mode": "content-hash-and-dependency-graph",
+        "invalidationKey": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "invalidatedSourceManifestIds": [
+          "player-sprite-sheet-source"
+        ],
+        "impactedCookOutputIds": [
+          "player-texture-cook",
+          "player-animation-cook"
+        ],
+        "unchangedCookOutputIds": [
+          "level-tilemap-cook",
+          "jump-audio-cook",
+          "hud-ui-atlas-cook"
+        ],
+        "safePointRequired": true,
+        "packageMutation": "reviewed-safe-package-handoff",
+        "evidence": "Incremental recook invalidation is driven only by content hashes and declared dependency graph rows, then stops at a reviewed package safe point."
+      },
+      "packageBudget": {
+        "mode": "fail-closed-package-budget",
+        "maxCookedBytes": 262144,
+        "actualCookedBytes": 180224,
+        "overBudgetRows": 0,
+        "budgetRows": [
+          {
+            "id": "player-texture-budget",
+            "cookOutputId": "player-texture-cook",
+            "budgetClass": "texture",
+            "packageFile": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.texture.geasset",
+            "byteCount": 65536,
+            "maxBytes": 131072
+          },
+          {
+            "id": "level-tilemap-budget",
+            "cookOutputId": "level-tilemap-cook",
+            "budgetClass": "tilemap",
+            "packageFile": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/level.tilemap",
+            "byteCount": 32768,
+            "maxBytes": 65536
+          },
+          {
+            "id": "player-animation-budget",
+            "cookOutputId": "player-animation-cook",
+            "budgetClass": "animation",
+            "packageFile": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.sprite_animation",
+            "byteCount": 24576,
+            "maxBytes": 65536
+          },
+          {
+            "id": "jump-audio-budget",
+            "cookOutputId": "jump-audio-cook",
+            "budgetClass": "audio",
+            "packageFile": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/jump.audio.geasset",
+            "byteCount": 16384,
+            "maxBytes": 32768
+          },
+          {
+            "id": "hud-ui-atlas-budget",
+            "cookOutputId": "hud-ui-atlas-cook",
+            "budgetClass": "ui",
+            "packageFile": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/hud.uiatlas",
+            "byteCount": 40960,
+            "maxBytes": 65536
+          }
+        ],
+        "evidence": "Package budget rows fail closed when selected cooked outputs exceed per-class or aggregate byte budgets."
+      },
+      "replay": {
+        "mode": "deterministic-cook-replay-hash",
+        "replayHash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "deterministicReplayReady": true,
+        "dependencyGraphRowCount": 13,
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-native-2d-sprite-smoke"
+        ],
+        "evidence": "Replay hashing covers selected deterministic cook outputs, content hashes, dependency graph rows, source provenance, license status, package budgets, and invalidation rows."
+      },
+      "unsupportedClaims": [
+        "runtime-source-parsing",
+        "external-engine-project-import",
+        "external-asset-download",
+        "marketplace-asset-ingestion",
+        "arbitrary-script-execution",
+        "native-handle-access",
+        "nondeterministic-cook-output",
+        "runtime-package-mutation",
+        "broad-production-atlas-packing",
+        "broad-commercial-2d-readiness"
+      ]
+    },
     "generatedGamePlaytestLoop": {
       "schemaVersion": 1,
       "capabilityId": "ai-generated-game-playtest-loop-v1",

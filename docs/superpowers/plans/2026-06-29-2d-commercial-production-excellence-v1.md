@@ -144,7 +144,7 @@ Done when: implementation phases can prove `2d_commercial_source_diagnostics_sco
 Goal: move from selected package proof to a production-quality 2D asset conditioning path while keeping shipping runtime cooked-only.
 
 - [x] Define first-party source asset manifests for sprites, sprite sheets, atlas pages, tile chunks, animation clips, audio cues, localization text, UI glyph inputs, and package provenance.
-- [ ] Build deterministic cook outputs with content hashes, dependency graph rows, incremental recook invalidation, source provenance, license status, package budget rows, and replay hashes.
+- [x] Build deterministic cook outputs with content hashes, dependency graph rows, incremental recook invalidation, source provenance, license status, package budget rows, and replay hashes.
 - [ ] Promote production atlas packing only after padding/bleed control, rotation policy, power-of-two policy where selected, multiple pages, deterministic placement, texture-format targets, mip policy, and package inclusion are validated.
 - [ ] Keep runtime source PNG/JPEG/audio/font parsing out of shipping runtime unless a separate dependency/license/security plan explicitly promotes it.
 - [ ] Add large-project fixtures that prove stable output under many assets, duplicate names, missing dependencies, invalid metadata, and asset deletion/rename churn.
@@ -152,6 +152,7 @@ Goal: move from selected package proof to a production-quality 2D asset conditio
 Phase 2 validation evidence:
 
 - 2026-06-30 source manifest contract: added `aiWorkflow.twoDCommercialSourceAssetManifests` / `2d-commercial-source-asset-manifests-v1` to `schemas/game-agent.schema.json`, `games/sample_2d_desktop_runtime_package/game.agent.json`, and `tools/check-json-contracts-076-2d-commercial-source-asset-manifests.ps1`. The descriptor records first-party source asset manifests for sprite sheets, atlas pages, tile chunks, animation clips, audio cues, localization text, UI glyph inputs, and package provenance. It keeps `runtime source parsing remains unsupported`, source decoding in reviewed tools/editor lanes, package mutation behind reviewed handoff, and broad commercial 2D readiness unclaimed.
+- 2026-06-30 deterministic cook output contract: added `aiWorkflow.twoDCommercialDeterministicCookOutputs` / `2d-commercial-deterministic-cook-outputs-v1` to `schemas/game-agent.schema.json`, `games/sample_2d_desktop_runtime_package/game.agent.json`, and `tools/check-json-contracts-077-2d-commercial-deterministic-cook-outputs.ps1`. The descriptor records deterministic cook outputs, content hashes, dependency graph rows, incremental recook invalidation, source provenance, license status, package budget rows, and replay hashes for selected reviewed 2D runtime package files. It keeps `runtime package mutation remains unsupported`, runtime source parsing unsupported, nondeterministic cook output unsupported, and broad commercial 2D readiness unclaimed.
 
 Likely surfaces: `engine/assets/include/mirakana/assets/`, `engine/tools/include/mirakana/tools/`, `engine/tools/asset/`, `engine/runtime/include/mirakana/runtime/`, `games/sample_2d_desktop_runtime_package/`, `schemas/game-agent.schema.json`, package tools, validation scripts.
 
