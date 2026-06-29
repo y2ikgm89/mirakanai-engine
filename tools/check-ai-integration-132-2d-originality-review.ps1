@@ -15,6 +15,8 @@ $twoDCommercialPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-2
 $twoDCommercialCleanRoomSpecText = Get-AgentSurfaceText "docs/specs/2026-06-30-2d-commercial-clean-room-source-ledger-v1.md"
 $twoDCommercialCleanRoomCheckText = Get-AgentSurfaceText "tools/check-2d-commercial-clean-room.ps1"
 $twoDCommercialCleanRoomContractText = Get-AgentSurfaceText "tools/check-2d-commercial-clean-room-contract.ps1"
+$twoDCommercialSourceDiagnosticsText = Get-AgentSurfaceText "tools/check-2d-commercial-source-diagnostics.ps1"
+$twoDCommercialSourceDiagnosticsContractText = Get-AgentSurfaceText "tools/check-2d-commercial-source-diagnostics-contract.ps1"
 $twoDCommercialCleanRoomGeneratorText = Get-AgentSurfaceText "tools/generate-2d-commercial-clean-room-review-input.ps1"
 $twoDCommercialCleanRoomReviewInputSchemaText = Get-AgentSurfaceText "schemas/2d-commercial-clean-room-review-input.schema.json"
 $twoDCommercialOfficialSourceSummarySchemaText = Get-AgentSurfaceText "schemas/2d-commercial-official-source-summary.schema.json"
@@ -93,6 +95,36 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "2d_commercial_source_diagnostic",
+        "2d_commercial_source_diagnostics_scope=retained_markers_and_public_surface_tokens",
+        "external_code_copied_marker_rows=0",
+        "external_assets_copied_marker_rows=0",
+        "copied_documentation_text_marker_rows=0",
+        "external_engine_schema_surface_rows=0",
+        "third_party_trademark_public_surface_rows=0",
+        "missing_notice_marker_rows=0",
+        "unapproved_dependency_source_marker_rows=0",
+        "external_engine_compatibility_claim_rows=0",
+        "external_engine_equivalence_claim_rows=0",
+        "external_engine_parity_claim_rows=0",
+        "2d-commercial-source-diagnostics: ok"
+    )) {
+    Assert-ContainsText $twoDCommercialSourceDiagnosticsText $needle "2D commercial source diagnostics guard"
+}
+
+foreach ($needle in @(
+        "tools/check-2d-commercial-source-diagnostics.ps1 must exist",
+        "2d_commercial_source_diagnostics_ready=1",
+        "2d_commercial_source_diagnostic=external_code_copied",
+        "2d_commercial_source_diagnostic=missing_notice_record",
+        "external_engine_equivalence_claim",
+        "external_engine_parity_claim",
+        "2d-commercial-source-diagnostics-contract-check: ok"
+    )) {
+    Assert-ContainsText $twoDCommercialSourceDiagnosticsContractText $needle "2D commercial source diagnostics contract"
+}
+
+foreach ($needle in @(
         "tools/check-2d-commercial-clean-room.ps1 must exist",
         "schemas/2d-commercial-clean-room-review-input.schema.json",
         "schemas/2d-commercial-official-source-summary.schema.json",
@@ -144,6 +176,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "tools/check-2d-commercial-clean-room.ps1",
+        "tools/check-2d-commercial-source-diagnostics.ps1",
         "tools/generate-2d-commercial-clean-room-review-input.ps1",
         "schemas/2d-commercial-clean-room-review-input.schema.json",
         "without drawing legal conclusions"
@@ -153,6 +186,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "tools/check-2d-commercial-clean-room.ps1",
+        "tools/check-2d-commercial-source-diagnostics.ps1",
         "tools/generate-2d-commercial-clean-room-review-input.ps1",
         "docs/specs/2026-06-30-2d-commercial-clean-room-source-ledger-v1.md",
         "does not add third-party code, assets"
@@ -163,7 +197,15 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "2d_commercial_clean_room_public_docs_only=1",
-        "external_engine_schema_surface=0",
+        "external_code_copied_marker_rows=0",
+        "external_assets_copied_marker_rows=0",
+        "copied_documentation_text_marker_rows=0",
+        "external_engine_schema_surface_rows=0",
+        "missing_notice_marker_rows=0",
+        "unapproved_dependency_source_marker_rows=0",
+        "external_engine_compatibility_claim_rows=0",
+        "external_engine_equivalence_claim_rows=0",
+        "external_engine_parity_claim_rows=0",
         "requires_legal_counsel_review=1",
         "without implying legal clearance"
     )) {
