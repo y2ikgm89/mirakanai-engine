@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/2d-commercial-clean-room-review-input.schema.json",
+  "title": "GameEngine 2D Commercial Clean-Room Review Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_id",
+    "validation_recipe",
+    "generated_utc",
+    "fixture_only",
+    "legal_advice",
+    "official_sources",
+    "reference_sources",
+    "clean_room_rows",
+    "human_review",
+    "non_claims"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.TwoDCommercialCleanRoomReviewInput.v1" },
+    "claim_id": { "const": "2d-commercial-clean-room-source-gate-v1" },
+    "validation_recipe": { "const": "2d-commercial-clean-room-review-input" },
+    "generated_utc": {
+      "type": "string",
+      "pattern": "^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "fixture_only": { "const": false },
+    "legal_advice": { "const": false },
+    "official_sources": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/official_source_row" }
+    },
+    "reference_sources": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/reference_source_row" }
+    },
+    "clean_room_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "official_docs_only",
+        "external_engine_zero_material_review",
+        "third_party_notices",
+        "forbidden_material_rows"
+      ],
+      "properties": {
+        "official_docs_only": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ready",
+            "context7_verified",
+            "official_fallback_documented",
+            "public_documentation_only",
+            "implementation_source_copied",
+            "documentation_expression_copied"
+          ],
+          "properties": {
+            "ready": { "const": true },
+            "context7_verified": { "const": true },
+            "official_fallback_documented": { "const": true },
+            "public_documentation_only": { "const": true },
+            "implementation_source_copied": { "const": false },
+            "documentation_expression_copied": { "const": false }
+          }
+        },
+        "external_engine_zero_material_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ready",
+            "external_engine_code_used",
+            "external_engine_sample_used",
+            "external_engine_shader_used",
+            "external_engine_asset_used",
+            "external_engine_trademark_used",
+            "external_engine_ui_expression_used",
+            "external_engine_project_import_used",
+            "external_engine_schema_surface",
+            "external_engine_api_used",
+            "external_engine_compatibility_claim",
+            "external_engine_equivalence_claim",
+            "external_engine_parity_claim"
+          ],
+          "properties": {
+            "ready": { "const": true },
+            "external_engine_code_used": { "const": false },
+            "external_engine_sample_used": { "const": false },
+            "external_engine_shader_used": { "const": false },
+            "external_engine_asset_used": { "const": false },
+            "external_engine_trademark_used": { "const": false },
+            "external_engine_ui_expression_used": { "const": false },
+            "external_engine_project_import_used": { "const": false },
+            "external_engine_schema_surface": { "const": false },
+            "external_engine_api_used": { "const": false },
+            "external_engine_compatibility_claim": { "const": false },
+            "external_engine_equivalence_claim": { "const": false },
+            "external_engine_parity_claim": { "const": false }
+          }
+        },
+        "third_party_notices": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [ "ready", "complete", "notices_path" ],
+          "properties": {
+            "ready": { "const": true },
+            "complete": { "const": true },
+            "notices_path": { "const": "THIRD_PARTY_NOTICES.md" }
+          }
+        },
+        "forbidden_material_rows": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "human_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legal_counsel_review_required",
+        "legal_review_id",
+        "legal_approval",
+        "external_material_selected",
+        "external_material_approved"
+      ],
+      "properties": {
+        "legal_counsel_review_required": { "const": true },
+        "legal_review_id": { "type": "string" },
+        "legal_approval": { "const": false },
+        "external_material_selected": { "const": false },
+        "external_material_approved": { "const": false }
+      }
+    },
+    "non_claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commercial_ready",
+        "legal_approval",
+        "all_platform_ready",
+        "external_engine_compatibility",
+        "external_engine_equivalence",
+        "external_engine_parity",
+        "external_engine_project_import",
+        "external_engine_schema_import",
+        "external_engine_api_clone",
+        "copied_source",
+        "copied_asset",
+        "copied_documentation_text"
+      ],
+      "properties": {
+        "commercial_ready": { "const": false },
+        "legal_approval": { "const": false },
+        "all_platform_ready": { "const": false },
+        "external_engine_compatibility": { "const": false },
+        "external_engine_equivalence": { "const": false },
+        "external_engine_parity": { "const": false },
+        "external_engine_project_import": { "const": false },
+        "external_engine_schema_import": { "const": false },
+        "external_engine_api_clone": { "const": false },
+        "copied_source": { "const": false },
+        "copied_asset": { "const": false },
+        "copied_documentation_text": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "official_source_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "url",
+        "source_class",
+        "use",
+        "implementation_input",
+        "copied_expression_allowed"
+      ],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "minLength": 1 },
+        "source_class": {
+          "enum": [
+            "first_party_design",
+            "official_platform_sdk",
+            "official_documentation_category",
+            "permissive_dependency_notice_record"
+          ]
+        },
+        "use": { "type": "string", "minLength": 1 },
+        "implementation_input": { "const": false },
+        "copied_expression_allowed": { "const": false }
+      }
+    },
+    "reference_source_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "url",
+        "source_class",
+        "use",
+        "official_fallback_url",
+        "implementation_input",
+        "copied_expression_allowed"
+      ],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "minLength": 1 },
+        "source_class": { "const": "context7_documentation_mirror" },
+        "use": { "type": "string", "minLength": 1 },
+        "official_fallback_url": { "type": "string", "minLength": 1 },
+        "implementation_input": { "const": false },
+        "copied_expression_allowed": { "const": false }
+      }
+    }
+  }
+}
