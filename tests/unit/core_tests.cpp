@@ -29,6 +29,7 @@
 #include "mirakana/assets/asset_hot_reload.hpp"
 #include "mirakana/assets/asset_import_metadata.hpp"
 #include "mirakana/assets/asset_import_pipeline.hpp"
+#include "mirakana/assets/asset_import_provenance.hpp"
 #include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
@@ -5750,6 +5751,93 @@ MK_TEST("asset source documents reject malformed byte payloads") {
         rejected_audio_size = true;
     }
     MK_REQUIRE(rejected_audio_size);
+}
+
+MK_TEST("asset import provenance document serializes validates and round trips") {
+    mirakana::AssetImportProvenanceDocumentV1 document;
+    document.rows.push_back(mirakana::AssetImportProvenanceRowV1{
+        .asset_key = mirakana::AssetKeyV2{.value = "assets/imported/hero"},
+        .origin = mirakana::AssetImportProvenanceOrigin::first_party,
+        .source_url = "project://assets/imported_sources/hero.png",
+        .retrieved_date = "2026-06-29",
+        .version_or_commit = "working-tree",
+        .copyright_holder = "MIRAIKANAI contributors",
+        .license_id = "LicenseRef-Proprietary",
+        .modification_status = "unmodified",
+        .distribution_target = "editor_source",
+        .notice_id = "LICENSES/LicenseRef-Proprietary.txt",
+        .notice_complete = true,
+    });
+
+    const auto diagnostics = mirakana::validate_asset_import_provenance_document(document);
+    MK_REQUIRE(diagnostics.empty());
+
+    const auto serialized = mirakana::serialize_asset_import_provenance_document(document);
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.AssetImportProvenance.v1\n"));
+    MK_REQUIRE(serialized.contains("row.0.asset_key=assets/imported/hero\n"));
+    MK_REQUIRE(serialized.contains("row.0.origin=first_party\n"));
+    MK_REQUIRE(serialized.contains("row.0.license_id=LicenseRef-Proprietary\n"));
+
+    const auto restored = mirakana::deserialize_asset_import_provenance_document(serialized);
+    MK_REQUIRE(restored.rows.size() == 1U);
+    MK_REQUIRE(restored.rows[0].asset_key.value == "assets/imported/hero");
+    MK_REQUIRE(restored.rows[0].origin == mirakana::AssetImportProvenanceOrigin::first_party);
+    MK_REQUIRE(restored.rows[0].source_url == "project://assets/imported_sources/hero.png");
+    MK_REQUIRE(restored.rows[0].notice_complete);
+}
+
+MK_TEST("asset import provenance rejects missing license restricted licenses and external engine material") {
+    auto make_valid_third_party = [] {
+        return mirakana::AssetImportProvenanceDocumentV1{
+            .rows = {
+                mirakana::AssetImportProvenanceRowV1{
+                    .asset_key = mirakana::AssetKeyV2{.value = "assets/imported/third_party_hero"},
+                    .origin = mirakana::AssetImportProvenanceOrigin::third_party,
+                    .source_url = "https://example.com/assets/hero.png",
+                    .retrieved_date = "2026-06-29",
+                    .version_or_commit = "v1",
+                    .copyright_holder = "Example Artist",
+                    .license_id = "CC-BY-4.0",
+                    .modification_status = "unmodified",
+                    .distribution_target = "runtime_package",
+                    .notice_id = "THIRD_PARTY_NOTICES.md#example-artist",
+                    .notice_complete = true,
+                },
+            }};
+    };
+
+    auto missing_license = make_valid_third_party();
+    missing_license.rows[0].license_id.clear();
+    const auto missing_license_diagnostics = mirakana::validate_asset_import_provenance_document(missing_license);
+    MK_REQUIRE(!missing_license_diagnostics.empty());
+    MK_REQUIRE(missing_license_diagnostics[0].contains("missing_license"));
+
+    auto restricted_license = make_valid_third_party();
+    restricted_license.rows[0].license_id = "CC-BY-NC-4.0";
+    const auto restricted_license_diagnostics = mirakana::validate_asset_import_provenance_document(restricted_license);
+    MK_REQUIRE(!restricted_license_diagnostics.empty());
+    MK_REQUIRE(restricted_license_diagnostics[0].contains("license_restricted"));
+
+    auto external_engine = make_valid_third_party();
+    external_engine.rows[0].source_url = "https://assetstore.unity.com/packages/example";
+    external_engine.rows[0].external_engine_material = true;
+    const auto external_engine_diagnostics = mirakana::validate_asset_import_provenance_document(external_engine);
+    MK_REQUIRE(!external_engine_diagnostics.empty());
+    MK_REQUIRE(external_engine_diagnostics[0].contains("external_engine_material_rejected"));
+
+    auto invalid_version = make_valid_third_party();
+    invalid_version.rows[0].version_or_commit = "v1\nrow.1.asset_key=injected";
+    const auto invalid_version_diagnostics = mirakana::validate_asset_import_provenance_document(invalid_version);
+    MK_REQUIRE(std::ranges::any_of(invalid_version_diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.contains("invalid_version_or_commit");
+    }));
+
+    auto invalid_origin = make_valid_third_party();
+    invalid_origin.rows[0].origin = static_cast<mirakana::AssetImportProvenanceOrigin>(255);
+    const auto invalid_origin_diagnostics = mirakana::validate_asset_import_provenance_document(invalid_origin);
+    MK_REQUIRE(std::ranges::any_of(invalid_origin_diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.contains("invalid_origin");
+    }));
 }
 
 MK_TEST("asset hot reload tracker emits added modified and removed events") {

@@ -3,6 +3,7 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/asset_import_provenance.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/material_graph.hpp"
 
@@ -3191,6 +3192,60 @@ MK_TEST("editor asset browser legal provenance review blocks incomplete or restr
     MK_REQUIRE(copied_godot_review.status_label == "external_engine_material_rejected");
 }
 
+MK_TEST("editor legal provenance row projects persistent provenance document") {
+    const auto document = mirakana::deserialize_asset_import_provenance_document(
+        "format=GameEngine.AssetImportProvenance.v1\n"
+        "row.count=1\n"
+        "row.0.asset_key=assets/imported/hero\n"
+        "row.0.origin=first_party\n"
+        "row.0.source_url=project://assets/imported_sources/hero.png\n"
+        "row.0.retrieved_date=2026-06-29\n"
+        "row.0.version_or_commit=working-tree\n"
+        "row.0.copyright_holder=MIRAIKANAI contributors\n"
+        "row.0.license_id=LicenseRef-Proprietary\n"
+        "row.0.modification_status=unmodified\n"
+        "row.0.distribution_target=editor_source\n"
+        "row.0.notice_id=LICENSES/LicenseRef-Proprietary.txt\n"
+        "row.0.notice_complete=true\n"
+        "row.0.external_engine_material=false\n");
+
+    const auto projected = mirakana::editor::make_editor_asset_browser_legal_provenance_row(document.rows.front());
+    MK_REQUIRE(projected.id == "asset_browser.legal.asset_import.assets.imported.hero");
+    MK_REQUIRE(projected.asset_key_label == "assets/imported/hero");
+    MK_REQUIRE(projected.license_id == "LicenseRef-Proprietary");
+    MK_REQUIRE(!projected.blocked);
+
+    const auto reviewed = mirakana::editor::review_editor_asset_browser_legal_provenance(projected);
+    MK_REQUIRE(!reviewed.blocked);
+    MK_REQUIRE(reviewed.accepted_for_package);
+    MK_REQUIRE(reviewed.status_label == "accepted_for_package");
+}
+
+MK_TEST("editor legal provenance projection keeps invalid persistent provenance blocked") {
+    mirakana::AssetImportProvenanceRowV1 invalid;
+    invalid.asset_key = mirakana::AssetKeyV2{.value = "assets/imported/hero"};
+    invalid.origin = static_cast<mirakana::AssetImportProvenanceOrigin>(255);
+    invalid.source_url = "project://assets/imported_sources/hero.png";
+    invalid.retrieved_date = "2026-06-29";
+    invalid.version_or_commit = "working-tree";
+    invalid.copyright_holder = "MIRAIKANAI contributors";
+    invalid.license_id = "LicenseRef-Proprietary";
+    invalid.modification_status = "unmodified";
+    invalid.distribution_target = "editor_source";
+    invalid.notice_id = "LICENSES/LicenseRef-Proprietary.txt";
+    invalid.notice_complete = true;
+
+    const auto projected = mirakana::editor::make_editor_asset_browser_legal_provenance_row(invalid);
+    MK_REQUIRE(projected.blocked);
+    MK_REQUIRE(!projected.accepted_for_package);
+    MK_REQUIRE(projected.status_label == "asset_import_provenance_invalid");
+
+    const auto reviewed = mirakana::editor::review_editor_asset_browser_legal_provenance(projected);
+    MK_REQUIRE(reviewed.blocked);
+    MK_REQUIRE(!reviewed.accepted_for_package);
+    MK_REQUIRE(reviewed.status_label == "asset_import_provenance_invalid");
+}
+
 [[nodiscard]] mirakana::editor::EditorAssetBrowserLegalProvenanceRow
 make_editor_asset_import_test_provenance(std::string asset_key_label) {
     return mirakana::editor::EditorAssetBrowserLegalProvenanceRow{
@@ -3387,6 +3442,41 @@ MK_TEST("editor asset import review blocks legal rows before registration") {
     MK_REQUIRE(!row.can_register);
     MK_REQUIRE(!row.can_import);
     MK_REQUIRE(row.diagnostic == "asset_import_provenance_blocked");
+}
+
+MK_TEST("editor import candidates require accepted provenance before registration") {
+    auto restricted_provenance = make_editor_asset_import_test_provenance("assets/imported/restricted");
+    restricted_provenance.license_id = "CC-BY-NC-4.0";
+    auto external_engine_provenance = make_editor_asset_import_test_provenance("assets/imported/external_engine");
+    external_engine_provenance.source_url = "https://assetstore.unity.com/packages/example";
+    external_engine_provenance.external_engine_material = true;
+
+    mirakana::editor::EditorAssetImportReviewRequest request;
+    request.sources = {
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/restricted.png",
+            .provenance = std::move(restricted_provenance),
+            .source_exists = true,
+        },
+        mirakana::editor::EditorAssetImportCandidateInput{
+            .source_path = "assets/imported_sources/external_engine.png",
+            .provenance = std::move(external_engine_provenance),
+            .source_exists = true,
+        },
+    };
+
+    const auto model = mirakana::editor::review_editor_asset_import_candidates(request);
+
+    MK_REQUIRE(!model.ready);
+    MK_REQUIRE(model.rows.size() == 2U);
+    MK_REQUIRE(model.registration_requests.empty());
+    MK_REQUIRE(model.import_plan.actions.empty());
+    for (const auto& row : model.rows) {
+        MK_REQUIRE(row.blocked_by_legal);
+        MK_REQUIRE(!row.can_register);
+        MK_REQUIRE(!row.can_import);
+        MK_REQUIRE(row.diagnostic == "asset_import_provenance_blocked");
+    }
 }
 
 MK_TEST("editor asset import review rejects unsafe project paths before registration") {

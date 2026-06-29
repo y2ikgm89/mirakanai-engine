@@ -55,6 +55,25 @@ namespace {
     return lowered;
 }
 
+[[nodiscard]] bool ascii_is_alnum(char value) noexcept {
+    return std::isalnum(static_cast<unsigned char>(value)) != 0;
+}
+
+[[nodiscard]] std::string legal_provenance_id_suffix(std::string_view asset_key) {
+    std::string suffix;
+    suffix.reserve(asset_key.size());
+    for (const char character : asset_key) {
+        if (ascii_is_alnum(character) || character == '_' || character == '-') {
+            suffix.push_back(ascii_lower(character));
+        } else if (character == '/' || character == '.') {
+            suffix.push_back('.');
+        } else {
+            suffix.push_back('_');
+        }
+    }
+    return suffix.empty() ? "unknown" : suffix;
+}
+
 [[nodiscard]] bool equals_case_insensitive(std::string_view lhs, std::string_view rhs) {
     if (lhs.size() != rhs.size()) {
         return false;
@@ -281,22 +300,36 @@ map_scene_package_draft_status(ScenePackageRegistrationDraftStatus status) noexc
         lower_ascii(row.source_url + " " + row.modification_status + " " + row.asset_key_label);
     return review_text.find("assetstore.unity.com") != std::string::npos ||
            review_text.find("unity.com/packages") != std::string::npos ||
+           review_text.find(".unitypackage") != std::string::npos ||
+           review_text.find("unity asset store") != std::string::npos ||
            review_text.find("unrealengine.com/marketplace") != std::string::npos ||
+           review_text.find("marketplace.unrealengine.com") != std::string::npos ||
            review_text.find("fab.com") != std::string::npos ||
+           review_text.find("epicgames.com/fab") != std::string::npos ||
            review_text.find("unreal marketplace") != std::string::npos ||
+           review_text.find(".uproject") != std::string::npos || review_text.find(".uasset") != std::string::npos ||
+           review_text.find(".umap") != std::string::npos || review_text.find("project.godot") != std::string::npos ||
+           review_text.find("godot scene") != std::string::npos ||
+           review_text.find("godot editor ui") != std::string::npos ||
+           review_text.find("unity scene") != std::string::npos ||
+           review_text.find("unity meta file") != std::string::npos ||
            review_text.find("engine_sample_content") != std::string::npos ||
            review_text.find("engine_logo_or_trademark") != std::string::npos ||
            review_text.find("copied_editor_ui_expression") != std::string::npos ||
            review_text.find("copied_editor_screenshot") != std::string::npos ||
            review_text.find("copied_editor_icon") != std::string::npos ||
-           review_text.find("copied_editor_layout") != std::string::npos;
+           review_text.find("copied_editor_layout") != std::string::npos ||
+           review_text.find("external_engine_project_schema") != std::string::npos;
 }
 
 [[nodiscard]] bool is_restricted_license(std::string_view license_id) {
     const std::string license = lower_ascii(license_id);
     return license.find("cc-by-nc") != std::string::npos || license.find("cc-nc") != std::string::npos ||
            license.find("-nc") != std::string::npos || license.find("cc-by-nd") != std::string::npos ||
-           license.find("cc-nd") != std::string::npos || license.find("-nd") != std::string::npos;
+           license.find("cc-nd") != std::string::npos || license.find("-nd") != std::string::npos ||
+           license.find("marketplace") != std::string::npos || license.find("asset store") != std::string::npos ||
+           license.find("fab standard") != std::string::npos || license.find("unity asset") != std::string::npos ||
+           license.find("unreal marketplace") != std::string::npos || license.find("epic content") != std::string::npos;
 }
 
 [[nodiscard]] bool supported_open_exr_compression(std::string_view compression) {
@@ -1141,10 +1174,47 @@ EditorAssetBrowserCommandPlan plan_editor_asset_browser_command(const EditorAsse
 }
 
 EditorAssetBrowserLegalProvenanceRow
+make_editor_asset_browser_legal_provenance_row(const mirakana::AssetImportProvenanceRowV1& row) {
+    EditorAssetBrowserLegalProvenanceRow projected{
+        .id = "asset_browser.legal.asset_import." + legal_provenance_id_suffix(row.asset_key.value),
+        .asset_key_label = row.asset_key.value,
+        .source_url = row.source_url,
+        .retrieved_date = row.retrieved_date,
+        .version_or_commit = row.version_or_commit,
+        .copyright_holder = row.copyright_holder,
+        .license_id = row.license_id,
+        .modification_status = row.modification_status,
+        .distribution_target = row.distribution_target,
+        .status_label = "not_reviewed",
+        .diagnostic = {},
+        .notice_complete = row.notice_complete,
+        .external_engine_material = row.external_engine_material,
+        .accepted_for_package = false,
+        .blocked = false,
+    };
+
+    const auto diagnostics =
+        mirakana::validate_asset_import_provenance_document(mirakana::AssetImportProvenanceDocumentV1{.rows = {row}});
+    if (!diagnostics.empty()) {
+        projected.status_label = "asset_import_provenance_invalid";
+        projected.diagnostic = diagnostics.front();
+        projected.accepted_for_package = false;
+        projected.blocked = true;
+    }
+    return projected;
+}
+
+EditorAssetBrowserLegalProvenanceRow
 review_editor_asset_browser_legal_provenance(const EditorAssetBrowserLegalProvenanceRow& row) {
     EditorAssetBrowserLegalProvenanceRow reviewed = row;
     reviewed.accepted_for_package = false;
     reviewed.blocked = true;
+
+    if (row.blocked && !row.accepted_for_package) {
+        reviewed.status_label = row.status_label.empty() ? "asset_import_provenance_invalid" : row.status_label;
+        reviewed.diagnostic = row.diagnostic.empty() ? "legal provenance row was pre-blocked" : row.diagnostic;
+        return reviewed;
+    }
 
     if (is_external_engine_material(row)) {
         reviewed.external_engine_material = true;

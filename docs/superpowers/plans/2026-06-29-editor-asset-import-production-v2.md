@@ -548,12 +548,12 @@ without invoking import tools. Verification run:
 - Create: `engine/assets/include/mirakana/assets/asset_import_provenance.hpp`
 - Create: `engine/assets/src/asset_import_provenance.cpp`
 - Modify: `engine/assets/CMakeLists.txt`
-- Modify: `editor/core/src/asset_import_review.cpp`
+- Existing gate verified: `editor/core/src/asset_import_review.cpp`
 - Modify: `editor/core/src/asset_browser_production.cpp`
 - Test: `tests/unit/core_tests.cpp`
 - Test: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Write failing provenance tests**
+- [x] **Step 1: Write failing provenance tests**
 
 Add:
 
@@ -563,9 +563,12 @@ MK_TEST("asset import provenance rejects missing license restricted licenses and
 MK_TEST("editor import candidates require accepted provenance before registration");
 ```
 
-Expected before implementation: missing symbols.
+Result on 2026-06-29: PASS. `MK_core_tests` failed before implementation because
+`mirakana/assets/asset_import_provenance.hpp` was missing; `MK_editor_core_tests`
+already compiled and the new editor review test captured the existing mandatory
+legal gate.
 
-- [ ] **Step 2: Add first-party provenance document**
+- [x] **Step 2: Add first-party provenance document**
 
 Declare:
 
@@ -612,7 +615,12 @@ Format header:
 format=GameEngine.AssetImportProvenance.v1
 ```
 
-- [ ] **Step 3: Connect provenance to existing legal review**
+Result on 2026-06-29: PASS. `MK_assets` now owns
+`AssetImportProvenanceDocumentV1`, `AssetImportProvenanceRowV1`,
+`AssetImportProvenanceOrigin`, deterministic text IO, and fail-closed validation
+for `GameEngine.AssetImportProvenance.v1`.
+
+- [x] **Step 3: Connect provenance to existing legal review**
 
 Rules:
 
@@ -625,7 +633,24 @@ CC-BY-NC, CC-BY-ND, CC-NC, CC-ND, unknown marketplace licenses, license-less mat
 Unity Asset Store, Epic/Fab/Unreal Marketplace, copied editor UI expression, engine logos/trademarks, and external engine project schemas are blocked by default.
 ```
 
-- [ ] **Step 4: Make provenance mandatory for registration**
+Result on 2026-06-29: PASS. Validation accepts documented first-party
+`LicenseRef-Proprietary` rows, selected allowed SPDX ids and simple `AND`/`OR`
+expressions, and `LicenseRef-*` only with a `LICENSES/` or
+`THIRD_PARTY_NOTICES.md` notice reference. It rejects missing/unknown licenses,
+NC/ND licenses, marketplace-only license labels, and external-engine project,
+asset, UI, trademark, or schema markers. The existing editor legal review was
+extended with the same external-engine and marketplace markers while preserving
+the existing clean-room Godot-reference test.
+
+Review follow-up on 2026-06-29: PASS. `version_or_commit` is now validated before
+serialization, invalid `AssetImportProvenanceOrigin` values produce
+`invalid_origin`, `asset_import_provenance_origin_label` no longer silently maps
+invalid enum values to `third_party`, and editor-core projection uses
+`make_editor_asset_browser_legal_provenance_row` so persistent
+`GameEngine.AssetImportProvenance.v1` rows become legal review rows through one
+fail-closed path. Pre-blocked projected rows remain blocked when reviewed.
+
+- [x] **Step 4: Make provenance mandatory for registration**
 
 `review_editor_asset_import_candidates` must set:
 
@@ -638,7 +663,13 @@ diagnostic=asset_import_provenance_blocked
 
 when the matching provenance row does not pass `review_editor_asset_browser_legal_provenance`.
 
-- [ ] **Step 5: Verify legal and dependency checks**
+Result on 2026-06-29: PASS. `review_editor_asset_import_candidates` already
+blocked source registration/import planning through the legal review. The new
+test proves restricted and external-engine provenance rows produce
+`asset_import_provenance_blocked`, empty registration requests, and empty import
+actions.
+
+- [x] **Step 5: Verify legal and dependency checks**
 
 Run:
 
@@ -650,6 +681,27 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
 ```
 
 Expected: tests pass; no new dependency records are required because high priority adds no third-party packages or distributable assets.
+
+Result on 2026-06-29: PASS.
+
+```text
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_core_tests|MK_editor_core_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-license.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files "engine/assets/src/asset_import_provenance.cpp,editor/core/src/asset_browser_production.cpp"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+git diff --check
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+No new third-party package, copied asset, external code, Unity/Unreal/Godot
+sample, UI expression, trademark, or marketplace material was added.
 
 ### Task 6: Import Execution Refresh And Diagnostics
 
