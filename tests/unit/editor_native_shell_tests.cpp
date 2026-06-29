@@ -197,7 +197,7 @@ class ThrowingUnsafePathFileSystem final : public mirakana::IFileSystem {
 class ScopedCurrentPath final {
   public:
     explicit ScopedCurrentPath(std::filesystem::path next_path) : previous_path_(std::filesystem::current_path()) {
-        std::filesystem::current_path(std::move(next_path));
+        std::filesystem::current_path(next_path);
     }
 
     ~ScopedCurrentPath() {
@@ -497,11 +497,11 @@ MK_TEST("native asset browser import plan includes texture mesh audio material a
         mirakana::AssetKind kind;
     };
     const std::array expected_rows{
-        ExpectedImportRow{"assets/textures/editor_preview", mirakana::AssetKind::texture},
-        ExpectedImportRow{"assets/meshes/editor_preview", mirakana::AssetKind::mesh},
-        ExpectedImportRow{"assets/audio/editor_preview", mirakana::AssetKind::audio},
-        ExpectedImportRow{"assets/materials/default", mirakana::AssetKind::material},
-        ExpectedImportRow{"assets/scenes/start", mirakana::AssetKind::scene},
+        ExpectedImportRow{.asset_key_label = "assets/textures/editor_preview", .kind = mirakana::AssetKind::texture},
+        ExpectedImportRow{.asset_key_label = "assets/meshes/editor_preview", .kind = mirakana::AssetKind::mesh},
+        ExpectedImportRow{.asset_key_label = "assets/audio/editor_preview", .kind = mirakana::AssetKind::audio},
+        ExpectedImportRow{.asset_key_label = "assets/materials/default", .kind = mirakana::AssetKind::material},
+        ExpectedImportRow{.asset_key_label = "assets/scenes/start", .kind = mirakana::AssetKind::scene},
     };
 
     for (const auto& expected : expected_rows) {

@@ -5,20 +5,39 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
 namespace mirakana::editor {
 namespace {
 
-std::atomic_uint64_t next_copy_counter{1U};
 #if defined(MK_EDITOR_ASSET_IMPORT_COPY_TEST_HOOKS)
-std::atomic_uint64_t fail_after_finalized_count{0U};
+class CopyFailureInjectionForTests final {
+  public:
+    [[nodiscard]] std::uint64_t fail_after_finalized_count() const noexcept {
+        return fail_after_finalized_count_.load();
+    }
+
+    void set_fail_after_finalized_count(std::size_t count) const noexcept {
+        fail_after_finalized_count_.store(count);
+    }
+
+  private:
+    mutable std::atomic_uint64_t fail_after_finalized_count_{0U};
+};
+
+[[nodiscard]] const CopyFailureInjectionForTests& copy_failure_injection_for_tests() noexcept {
+    static const CopyFailureInjectionForTests injection;
+    return injection;
+}
 #endif
 
 [[nodiscard]] bool contains_line_separator(std::string_view value) noexcept {
@@ -95,8 +114,11 @@ void push_diagnostic(NativeAssetImportExternalCopyResult& result, NativeAssetImp
     return false;
 }
 
-[[nodiscard]] std::filesystem::path next_temp_path(const std::filesystem::path& target) {
-    const auto suffix = ".copying-" + std::to_string(next_copy_counter.fetch_add(1U));
+[[nodiscard]] std::filesystem::path next_temp_path(const std::filesystem::path& target, int attempt) {
+    const auto timestamp = static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    const auto thread_id = static_cast<std::uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    const auto suffix =
+        ".copying-" + std::to_string(timestamp) + "-" + std::to_string(thread_id) + "-" + std::to_string(attempt);
     return std::filesystem::path{target.generic_string() + suffix};
 }
 
@@ -253,7 +275,7 @@ copy_reviewed_external_asset_sources_to_project(std::string_view project_root,
         }
 
         for (int attempt = 0; attempt < 32; ++attempt) {
-            copy.temp = next_temp_path(copy.target);
+            copy.temp = next_temp_path(copy.target, attempt);
             std::error_code temp_exists_error;
             const auto temp_exists = std::filesystem::exists(copy.temp, temp_exists_error);
             if (temp_exists_error) {
@@ -330,7 +352,7 @@ copy_reviewed_external_asset_sources_to_project(std::string_view project_root,
         }
         finalized_targets.push_back(copy.target);
 #if defined(MK_EDITOR_ASSET_IMPORT_COPY_TEST_HOOKS)
-        if (const auto fail_after = fail_after_finalized_count.load();
+        if (const auto fail_after = copy_failure_injection_for_tests().fail_after_finalized_count();
             fail_after > 0U && finalized_targets.size() >= fail_after) {
             result.diagnostics.push_back("external import source copy injected finalization failure");
             for (const auto& staged : prepared) {
@@ -359,7 +381,7 @@ copy_reviewed_external_asset_sources_to_project(std::string_view project_root,
 
 #if defined(MK_EDITOR_ASSET_IMPORT_COPY_TEST_HOOKS)
 void set_native_asset_import_external_copy_fail_after_finalized_count_for_tests(std::size_t count) noexcept {
-    fail_after_finalized_count.store(count);
+    copy_failure_injection_for_tests().set_fail_after_finalized_count(count);
 }
 #endif
 
