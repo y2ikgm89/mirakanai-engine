@@ -15,6 +15,30 @@
 #include <variant>
 #include <vector>
 
+namespace {
+
+[[nodiscard]] std::vector<std::uint8_t> solid_rgba8(std::uint32_t width, std::uint32_t height, std::uint8_t red,
+                                                    std::uint8_t green, std::uint8_t blue) {
+    std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U, 0xFF);
+    for (std::size_t offset = 0; offset < pixels.size(); offset += 4U) {
+        pixels[offset + 0U] = red;
+        pixels[offset + 1U] = green;
+        pixels[offset + 2U] = blue;
+        pixels[offset + 3U] = 0xFF;
+    }
+    return pixels;
+}
+
+[[nodiscard]] std::array<std::uint8_t, 4> pixel_at(const mirakana::TextureSourceDocument& texture, std::uint32_t x,
+                                                   std::uint32_t y) {
+    const auto offset =
+        (static_cast<std::size_t>(y) * static_cast<std::size_t>(texture.width) + static_cast<std::size_t>(x)) * 4U;
+    return {texture.bytes[offset + 0U], texture.bytes[offset + 1U], texture.bytes[offset + 2U],
+            texture.bytes[offset + 3U]};
+}
+
+} // namespace
+
 MK_TEST("sprite atlas packing rejects empty input") {
     const std::vector<mirakana::SpriteAtlasPackingItemView> items;
     const auto result = mirakana::pack_sprite_atlas_rgba8_max_side(items);
@@ -51,6 +75,80 @@ MK_TEST("sprite atlas packing places two 1x1 sprites side by side") {
     MK_REQUIRE(out.placements[1].x == 1 && out.placements[1].y == 0);
     MK_REQUIRE(out.atlas.bytes[0] == 0xFF && out.atlas.bytes[1] == 0x00);
     MK_REQUIRE(out.atlas.bytes[4] == 0x00 && out.atlas.bytes[5] == 0xFF);
+}
+
+MK_TEST("production sprite atlas packing creates deterministic padded power-of-two pages") {
+    const auto red = solid_rgba8(3, 3, 0xCC, 0x00, 0x00);
+    const auto green = solid_rgba8(3, 3, 0x00, 0xCC, 0x00);
+    const auto items = std::array<mirakana::SpriteAtlasPackingItemView, 2>{{
+        {.width = 3, .height = 3, .rgba8_pixels = red},
+        {.width = 3, .height = 3, .rgba8_pixels = green},
+    }};
+
+    const auto policy = mirakana::ProductionSpriteAtlasPackingPolicy{
+        .max_side = 8,
+        .padding_pixels = 1,
+        .bleed_pixels = 1,
+        .max_pages = 2,
+        .power_of_two_policy = mirakana::ProductionSpriteAtlasPowerOfTwoPolicy::require_power_of_two_pages,
+        .rotation_policy = mirakana::ProductionSpriteAtlasRotationPolicy::disabled,
+        .texture_format = mirakana::ProductionSpriteAtlasTextureFormat::rgba8_unorm,
+        .mip_policy = mirakana::ProductionSpriteAtlasMipPolicy::base_level_only,
+    };
+
+    const auto result = mirakana::pack_production_sprite_atlas_rgba8(items, policy);
+
+    MK_REQUIRE(std::holds_alternative<mirakana::ProductionSpriteAtlasPackingOutput>(result));
+    const auto& out = std::get<mirakana::ProductionSpriteAtlasPackingOutput>(result);
+    MK_REQUIRE(out.pages.size() == 2U);
+    MK_REQUIRE(out.placements.size() == 2U);
+    MK_REQUIRE(out.pages[0].atlas.width == 8U);
+    MK_REQUIRE(out.pages[0].atlas.height == 8U);
+    MK_REQUIRE(out.pages[0].texture_format == mirakana::ProductionSpriteAtlasTextureFormat::rgba8_unorm);
+    MK_REQUIRE(out.pages[0].mip_policy == mirakana::ProductionSpriteAtlasMipPolicy::base_level_only);
+    MK_REQUIRE(out.placements[0].page_index == 0U);
+    MK_REQUIRE(out.placements[0].x == 1U);
+    MK_REQUIRE(out.placements[0].y == 1U);
+    MK_REQUIRE(out.placements[0].width == 3U);
+    MK_REQUIRE(out.placements[0].height == 3U);
+    MK_REQUIRE(!out.placements[0].rotated);
+    MK_REQUIRE(out.placements[1].page_index == 1U);
+    const auto expected_red = std::array<std::uint8_t, 4>{0xCC, 0x00, 0x00, 0xFF};
+    const auto expected_green = std::array<std::uint8_t, 4>{0x00, 0xCC, 0x00, 0xFF};
+    MK_REQUIRE(pixel_at(out.pages[0].atlas, 0, 0) == expected_red);
+    MK_REQUIRE(pixel_at(out.pages[1].atlas, 0, 0) == expected_green);
+}
+
+MK_TEST("production sprite atlas packing fails closed for invalid bleed and page count") {
+    const auto red = solid_rgba8(3, 3, 0xCC, 0x00, 0x00);
+    const auto green = solid_rgba8(3, 3, 0x00, 0xCC, 0x00);
+    const auto items = std::array<mirakana::SpriteAtlasPackingItemView, 2>{{
+        {.width = 3, .height = 3, .rgba8_pixels = red},
+        {.width = 3, .height = 3, .rgba8_pixels = green},
+    }};
+
+    auto invalid_bleed = mirakana::ProductionSpriteAtlasPackingPolicy{
+        .max_side = 8,
+        .padding_pixels = 0,
+        .bleed_pixels = 1,
+        .max_pages = 2,
+    };
+    const auto invalid_bleed_result = mirakana::pack_production_sprite_atlas_rgba8(items, invalid_bleed);
+    MK_REQUIRE(std::holds_alternative<mirakana::ProductionSpriteAtlasPackingDiagnostic>(invalid_bleed_result));
+    MK_REQUIRE(std::get<mirakana::ProductionSpriteAtlasPackingDiagnostic>(invalid_bleed_result).code ==
+               mirakana::ProductionSpriteAtlasPackingDiagnosticCode::invalid_bleed);
+
+    auto too_few_pages = mirakana::ProductionSpriteAtlasPackingPolicy{
+        .max_side = 8,
+        .padding_pixels = 1,
+        .bleed_pixels = 1,
+        .max_pages = 1,
+        .power_of_two_policy = mirakana::ProductionSpriteAtlasPowerOfTwoPolicy::require_power_of_two_pages,
+    };
+    const auto too_few_pages_result = mirakana::pack_production_sprite_atlas_rgba8(items, too_few_pages);
+    MK_REQUIRE(std::holds_alternative<mirakana::ProductionSpriteAtlasPackingDiagnostic>(too_few_pages_result));
+    MK_REQUIRE(std::get<mirakana::ProductionSpriteAtlasPackingDiagnostic>(too_few_pages_result).code ==
+               mirakana::ProductionSpriteAtlasPackingDiagnosticCode::page_count_exceeds_limit);
 }
 
 MK_TEST("source asset registry accepts environment profile package rows") {
