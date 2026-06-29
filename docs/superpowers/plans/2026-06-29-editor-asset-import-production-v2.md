@@ -792,7 +792,7 @@ operation before execution.
 - Modify when active plan status changes: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify only if dependencies or notices change: `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, `vcpkg.json`
 
-- [ ] **Step 1: Update current-truth docs**
+- [x] **Step 1: Update current-truth docs**
 
 Document exact ready surface:
 
@@ -817,7 +817,7 @@ marketplace connector readiness
 legal advice
 ```
 
-- [ ] **Step 2: Run agent-surface drift checks**
+- [x] **Step 2: Run agent-surface drift checks**
 
 Run:
 
@@ -834,7 +834,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
-- [ ] **Step 3: Run slice validation**
+- [x] **Step 3: Run slice validation**
 
 Run:
 
@@ -845,6 +845,27 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 Expected: full validation passes or records an exact toolchain/host blocker with all focused checks above.
+
+Result on 2026-06-29: PASS. `docs/editor.md`, `docs/current-capabilities.md`,
+`engine/agent/manifest.fragments/004-modules.json`,
+`engine/agent/manifest.fragments/014-gameCodeGuidance.json`, and composed
+`engine/agent/manifest.json` now state the exact Source Pulse import ready surface:
+reviewed source selection, external copy, provenance-gated registration, reviewed
+import execution, success-only imported record registration/browser refresh/generation
+advance, failure all-or-nothing/no-visible-registry mutation, and Unity/Unreal/Godot
+compatibility non-claims. Validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files "editor/core/src/asset_browser_production.cpp,editor/src/native_editor_app.cpp"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-license.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
 
 ## Medium Priority Tasks
 
