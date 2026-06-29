@@ -958,6 +958,297 @@
             }
           }
         },
+        "twoDCommercialSourceAssetManifests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "manifestSetId",
+            "sourceRegistryPath",
+            "packageIndexPath",
+            "assetManifests",
+            "packageProvenance",
+            "cookingPolicy",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "2d-commercial-source-asset-manifests-v1"
+            },
+            "manifestSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-2d-commercial-source-assets$"
+            },
+            "sourceRegistryPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/source/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geassets$"
+            },
+            "packageIndexPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+            },
+            "assetManifests": {
+              "type": "array",
+              "minItems": 8,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "kind",
+                  "designAssetRequestId",
+                  "assetKey",
+                  "sourcePath",
+                  "sourceFormat",
+                  "delivery",
+                  "license",
+                  "provenance",
+                  "contentHash",
+                  "validationRecipeIds"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "sprite",
+                      "sprite-sheet",
+                      "atlas-page",
+                      "tile-chunk",
+                      "animation-clip",
+                      "audio-cue",
+                      "localization-text",
+                      "ui-glyph-input"
+                    ]
+                  },
+                  "designAssetRequestId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "assetKey": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_./-]*$"
+                  },
+                  "sourcePath": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/source/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "sourceFormat": {
+                    "type": "string",
+                    "enum": [
+                      "texture-source",
+                      "sprite-sheet-source",
+                      "atlas-page-source",
+                      "tile-chunk-source",
+                      "animation-clip-source",
+                      "audio-cue-source",
+                      "localization-text-source",
+                      "ui-glyph-input-source"
+                    ]
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": ["reviewed-source-authoring", "reviewed-cook-package"]
+                  },
+                  "license": {
+                    "type": "string",
+                    "const": "LicenseRef-Proprietary"
+                  },
+                  "provenance": {
+                    "type": "string",
+                    "const": "first-party-created"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            },
+            "packageProvenance": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "assetManifestCount",
+                "provenanceRowCount",
+                "licenseStatus",
+                "runtimePackageFiles",
+                "validationRecipeIds",
+                "evidence"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "reviewed-first-party-source-to-cooked-package"
+                },
+                "assetManifestCount": {
+                  "type": "integer",
+                  "minimum": 8
+                },
+                "provenanceRowCount": {
+                  "type": "integer",
+                  "minimum": 8
+                },
+                "licenseStatus": {
+                  "type": "string",
+                  "const": "first-party-proprietary-reviewed"
+                },
+                "runtimePackageFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  }
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "cookingPolicy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "runtimeSourceParsing",
+                "sourceDecodingLane",
+                "packageMutation",
+                "externalDownloads",
+                "arbitraryScripts",
+                "nativeHandles",
+                "dependencyExpansion",
+                "evidence"
+              ],
+              "properties": {
+                "runtimeSourceParsing": {
+                  "type": "string",
+                  "const": "unsupported"
+                },
+                "sourceDecodingLane": {
+                  "type": "string",
+                  "const": "tools-editor-only-reviewed"
+                },
+                "packageMutation": {
+                  "type": "string",
+                  "const": "reviewed-safe-package-handoff"
+                },
+                "externalDownloads": {
+                  "type": "string",
+                  "const": "unsupported"
+                },
+                "arbitraryScripts": {
+                  "type": "string",
+                  "const": "unsupported"
+                },
+                "nativeHandles": {
+                  "type": "string",
+                  "const": "unsupported"
+                },
+                "dependencyExpansion": {
+                  "type": "string",
+                  "const": "manifest-declared-source-closure"
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "runtime-source-parsing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-engine-project-import"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "external-asset-download"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "marketplace-asset-ingestion"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "arbitrary-script-execution"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "native-handle-access"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-production-atlas-packing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-commercial-2d-readiness"
+                  }
+                }
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "runtime-source-parsing",
+                  "external-engine-project-import",
+                  "external-asset-download",
+                  "marketplace-asset-ingestion",
+                  "arbitrary-script-execution",
+                  "native-handle-access",
+                  "broad-production-atlas-packing",
+                  "broad-audio-codec-readiness",
+                  "broad-localization-platform-parity",
+                  "broad-commercial-2d-readiness"
+                ]
+              }
+            }
+          }
+        },
         "generatedGamePlaytestLoop": {
           "type": "object",
           "additionalProperties": false,

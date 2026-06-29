@@ -1054,6 +1054,201 @@
         "broad-commercial-quality"
       ]
     },
+    "twoDCommercialSourceAssetManifests": {
+      "schemaVersion": 1,
+      "capabilityId": "2d-commercial-source-asset-manifests-v1",
+      "manifestSetId": "sample-2d-desktop-runtime-package-2d-commercial-source-assets",
+      "sourceRegistryPath": "games/sample_2d_desktop_runtime_package/source/assets/package.geassets",
+      "packageIndexPath": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+      "assetManifests": [
+        {
+          "id": "player-sprite-source",
+          "kind": "sprite",
+          "designAssetRequestId": "player-sprite-atlas",
+          "assetKey": "sample/2d-commercial/player-sprite",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/player_sprite.texture_source",
+          "sourceFormat": "texture-source",
+          "delivery": "reviewed-source-authoring",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "player-sprite-sheet-source",
+          "kind": "sprite-sheet",
+          "designAssetRequestId": "player-sprite-atlas",
+          "assetKey": "sample/2d-commercial/player-sprite-sheet",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/player_sprite_sheet.sprite_sheet_source",
+          "sourceFormat": "sprite-sheet-source",
+          "delivery": "reviewed-source-authoring",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-animation-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "player-atlas-page-source",
+          "kind": "atlas-page",
+          "designAssetRequestId": "player-sprite-atlas",
+          "assetKey": "sample/2d-commercial/player-atlas-page",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/player_atlas_page.atlas_page_source",
+          "sourceFormat": "atlas-page-source",
+          "delivery": "reviewed-cook-package",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-atlas-residency-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "level-tile-chunk-source",
+          "kind": "tile-chunk",
+          "designAssetRequestId": "level-tilemap",
+          "assetKey": "sample/2d-commercial/level-tile-chunk",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/level_tile_chunk.tile_chunk_source",
+          "sourceFormat": "tile-chunk-source",
+          "delivery": "reviewed-cook-package",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-production-tile-renderer-smoke"
+          ]
+        },
+        {
+          "id": "player-animation-clip-source",
+          "kind": "animation-clip",
+          "designAssetRequestId": "player-sprite-atlas",
+          "assetKey": "sample/2d-commercial/player-animation-clip",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/player_animation.animation_clip_source",
+          "sourceFormat": "animation-clip-source",
+          "delivery": "reviewed-cook-package",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-sprite-animation-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "jump-audio-cue-source",
+          "kind": "audio-cue",
+          "designAssetRequestId": "jump-audio",
+          "assetKey": "sample/2d-commercial/jump-audio-cue",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/jump_audio.audio_cue_source",
+          "sourceFormat": "audio-cue-source",
+          "delivery": "reviewed-cook-package",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-audio-gameplay-mixer-smoke",
+            "installed-2d-audio-production-smoke"
+          ]
+        },
+        {
+          "id": "hud-localization-source",
+          "kind": "localization-text",
+          "designAssetRequestId": "hud-ui-atlas",
+          "assetKey": "sample/2d-commercial/hud-localization",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/hud_localization.localization_text_source",
+          "sourceFormat": "localization-text-source",
+          "delivery": "reviewed-source-authoring",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-production-stack-smoke"
+          ]
+        },
+        {
+          "id": "hud-ui-glyph-source",
+          "kind": "ui-glyph-input",
+          "designAssetRequestId": "hud-ui-atlas",
+          "assetKey": "sample/2d-commercial/hud-ui-glyph",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/commercial/hud_ui_glyph.ui_glyph_input_source",
+          "sourceFormat": "ui-glyph-input-source",
+          "delivery": "reviewed-source-authoring",
+          "license": "LicenseRef-Proprietary",
+          "provenance": "first-party-created",
+          "contentHash": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+            "installed-2d-runtime-ui-platform-package-smoke"
+          ]
+        }
+      ],
+      "packageProvenance": {
+        "mode": "reviewed-first-party-source-to-cooked-package",
+        "assetManifestCount": 8,
+        "provenanceRowCount": 8,
+        "licenseStatus": "first-party-proprietary-reviewed",
+        "runtimePackageFiles": [
+          "runtime/assets/2d/player.texture.geasset",
+          "runtime/assets/2d/level.tilemap",
+          "runtime/assets/2d/player.sprite_animation",
+          "runtime/assets/2d/jump.audio.geasset",
+          "runtime/assets/2d/hud.uiatlas"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-native-2d-sprite-smoke"
+        ],
+        "evidence": "First-party source manifest rows map selected 2D source categories to manifest-listed cooked package outputs while keeping source files out of runtimePackageFiles."
+      },
+      "cookingPolicy": {
+        "runtimeSourceParsing": "unsupported",
+        "sourceDecodingLane": "tools-editor-only-reviewed",
+        "packageMutation": "reviewed-safe-package-handoff",
+        "externalDownloads": "unsupported",
+        "arbitraryScripts": "unsupported",
+        "nativeHandles": "unsupported",
+        "dependencyExpansion": "manifest-declared-source-closure",
+        "evidence": "The descriptor is a clean-break first-party source contract; runtime source parsing remains unsupported and package mutation stays behind reviewed cook/package handoff."
+      },
+      "unsupportedClaims": [
+        "runtime-source-parsing",
+        "external-engine-project-import",
+        "external-asset-download",
+        "marketplace-asset-ingestion",
+        "arbitrary-script-execution",
+        "native-handle-access",
+        "broad-production-atlas-packing",
+        "broad-audio-codec-readiness",
+        "broad-localization-platform-parity",
+        "broad-commercial-2d-readiness"
+      ]
+    },
     "generatedGamePlaytestLoop": {
       "schemaVersion": 1,
       "capabilityId": "ai-generated-game-playtest-loop-v1",
