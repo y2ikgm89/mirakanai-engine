@@ -13,15 +13,16 @@
 ## Authoring Status
 
 - Date: 2026-07-01.
-- Status: candidate implementation plan with Tasks 1-14 implemented as the host-independent foundation plus Task 16 implemented as the visible native Assets panel smoke. Task 13 real-corpus `-RequireReady` execution, Task 15 real-corpus reimport/diff/preview loops, and Task 17 commercial evidence promotion remain the commercial-operation closeout and are not selected by `currentActivePlan`.
+- Status: candidate implementation plan with Tasks 1-14 implemented as the host-independent foundation, Task 15 partially implemented for retained report intake/operator-loop corpus gating, and Task 16 implemented as the visible native Assets panel smoke. Task 13 real-corpus `-RequireReady` execution, Task 15 real-corpus reimport/diff/preview evidence, and Task 17 commercial evidence promotion remain the commercial-operation closeout and are not selected by `currentActivePlan`.
 - Selected project coordinate convention: right-handed, `+Y` up, meters, matching the current `AssetImportPresets.v1` and `AssetCoordinateNormalizationPlan` implementation.
-- Current readiness estimate after the 2026-07-01 Task 16 implementation: core design and safe import contract about 90%, visible Assets panel integration 80-85%, whole commercial asset browser/import regression product about 60%. These are planning estimates only; no readiness counter changes until Task 17 real-corpus evidence lands.
+- Current readiness estimate after the 2026-07-01 retained operator-loop corpus-gate implementation: core design and safe import contract about 90%, visible Assets panel integration 80-85%, whole commercial asset browser/import regression product about 60-62%. These are planning estimates only; no readiness counter changes until Task 17 real-corpus evidence lands.
 - Current hard blocker: no approved large real-asset corpus has been run through `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady`, and the optional `asset-importers` lane still needs a dependency-ready host where `tools/bootstrap-deps.ps1 -Feature asset-importers` and `tools/build-asset-importers.ps1` pass.
 
 ## Sources Reviewed
 
 - Project files: `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/007-importerCapabilities.json`, `engine/assets/include/mirakana/assets/asset_import_presets.hpp`, `engine/assets/include/mirakana/assets/asset_import_pipeline.hpp`, `engine/assets/include/mirakana/assets/asset_import_provenance.hpp`, `engine/assets/include/mirakana/assets/asset_import_production_review.hpp`, `engine/tools/include/mirakana/tools/asset_coordinate_normalization.hpp`, `engine/tools/include/mirakana/tools/asset_import_tool.hpp`, `engine/tools/include/mirakana/tools/asset_import_adapters.hpp`, `engine/tools/include/mirakana/tools/gltf_*`, `editor/core/include/mirakana/editor/asset_browser_production.hpp`, `tests/unit/tools_tests.cpp`, and `tests/unit/editor_core_tests.cpp`.
 - 2026-07-01 project re-audit files for Task 14: `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`, `engine/assets/src/asset_import_regression_corpus.cpp`, `engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp`, `engine/tools/asset/asset_import_regression_runner.cpp`, `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`, `editor/core/src/asset_import_regression_workflow.cpp`, `tests/unit/asset_import_regression_tests.cpp`, `tests/unit/editor_core_tests.cpp`, `tools/run-asset-import-regression-corpus.ps1`, and `tools/validate-asset-import-regression-corpus.ps1`.
+- 2026-07-01 Task 15 retained report intake files: `tools/check-asset-import-regression-operator-loop.ps1`, `tools/check-asset-import-regression-corpus.ps1`, `tools/check-ai-integration-147-asset-import-regression-corpus.ps1`, `engine/agent/manifest.fragments/007-importerCapabilities.json`, and `engine/agent/manifest.fragments/009-validationRecipes.json`.
 - 2026-07-01 Task 16 implementation files: `editor/src/native_editor_launch.*`, `editor/src/native_editor_app.cpp`, `editor/src/first_party_editor_document.*`, `editor/src/main.cpp`, and `tests/unit/editor_native_shell_tests.cpp`.
 - Context7 `/spnda/fastgltf`: `fastgltf::Parser`, `GltfDataBuffer`, `Options::LoadExternalBuffers`, `Options::LoadExternalImages`, `Options::DecomposeNodeMatrices`, `Options::GenerateMeshIndices`, `fastgltf::validate`, accessor iteration, material/image inspection, and parser reuse constraints.
 - Context7 `/kitware/cmake`: add focused executables/tests with `add_executable`, `target_link_libraries(... PRIVATE ...)`, and `add_test`; use imported/library targets where dependency packages already exist and do not make CMake configure install external packages.
@@ -39,7 +40,7 @@
 - OpenEXR documentation: scene-linear HDR semantics and EXR metadata/window/channel concepts. Official references: `https://openexr.com/en/latest/SceneLinear.html` and `https://openexr.com/en/latest/TechnicalIntroduction.html`.
 - Audio format references: IETF FLAC RFC 9639 for FLAC stream/metadata/frame diagnostics, Microsoft RIFF services documentation for chunked WAV container diagnostics, and miniaudio Context7 docs for private source decode lifecycle. Official references: `https://www.rfc-editor.org/rfc/rfc9639.html` and `https://learn.microsoft.com/en-us/windows/win32/multimedia/resource-interchange-file-format-services`.
 - License/corpus references: SPDX License List identifiers, Creative Commons license terms, Poly Haven CC0 asset license page, and Khronos glTF Sample Assets per-model license README requirements. Official references: `https://spdx.org/licenses/`, `https://creativecommons.org/share-your-work/cclicenses/`, `https://polyhaven.com/license`, and `https://github.com/KhronosGroup/glTF-Sample-Assets`.
-- Legal/trademark category references: Unity trademark guidelines `https://unity.com/legal/trademarks`, Epic Content License Agreement `https://www.unrealengine.com/eula/content`, Epic non-licensee trademark guidelines `https://www.epic.com/epic/page/trademark-usage-guidelines-non-licensee/`, Godot license documentation `https://godotengine.org/license/`, and Godot license compliance documentation `https://docs.godotengine.org/en/stable/about/complying_with_licenses.html`.
+- Legal/trademark category references rechecked on 2026-07-01: Unity trademark guidelines `https://unity.com/legal/trademarks`; Epic Content License Agreement `https://www.unrealengine.com/eula/content`; Unreal Engine commercial deployment guidelines `https://www.unrealengine.com/release`, including the trademark-license requirement for Unreal Engine marks; Epic Developer Portal Unreal Engine trademark-license request page `https://dev.epicgames.com/docs/dev-portal/unreal-engine/ue-trademark-license`; Godot license documentation `https://godotengine.org/license/`; and Godot license compliance documentation `https://docs.godotengine.org/en/stable/about/complying_with_licenses.html`.
 
 ## Current Baseline
 
@@ -739,7 +740,7 @@ Slice completion rules:
 
 ### Task 15: Batch Reimport, Preset Diff, And Axis/Unit Preview On Real Corpus
 
-**Status:** planned, host-gated by the approved large corpus and optional `asset-importers` dependency host. Task 14 already added retained triage command enablement for synthetic reports; this task is limited to real-corpus retained evidence and apply/diff/preview closeout.
+**Status:** partially implemented for host-independent retained report intake and operator-loop corpus gating; still host-gated by the approved large corpus and optional `asset-importers` dependency host for real-corpus reimport/diff/preview evidence. Task 14 already added retained triage command enablement for synthetic reports; this task is limited to real-corpus retained evidence and apply/diff/preview closeout before any commercial promotion.
 
 **Files:**
 - Modify: `engine/assets/include/mirakana/assets/asset_import_batch_reimport.hpp`
@@ -749,9 +750,12 @@ Slice completion rules:
 - Modify: `engine/tools/include/mirakana/tools/asset_axis_unit_preview.hpp`
 - Modify: `engine/tools/asset/asset_axis_unit_preview.cpp`
 - Modify: `tools/check-asset-import-regression-operator-loop.ps1`
+- Modify: `tools/check-asset-import-regression-corpus.ps1`
+- Modify: `tools/check-ai-integration-147-asset-import-regression-corpus.ps1`
 - Test: `tests/unit/asset_import_regression_tests.cpp`
 
-- [ ] Extend the Task 14 operator-loop validation script with `-CorpusRoot` and `-RequireReady` so it consumes one retained successful run and one retained failure run from the large corpus. The script must prove:
+- [x] Extend the Task 14 operator-loop validation script with `-CorpusRoot` and `-RequireReady` so it consumes retained successful and failed `retained/**/report.gereport` text reports, rejects inconsistent counters, requires at least one retained success and one retained failure report under `-RequireReady`, writes triage only under the supplied output root, emits aggregate operator-loop counters, and fails closed with `require_ready.retained_success_report_missing` / `require_ready.retained_failure_report_missing` diagnostics when evidence is incomplete. Host-independent synthetic retained reports in `tools/check-asset-import-regression-corpus.ps1` prove `failed`, `legal_blocked`, and `nondeterministic` classification plus editor-core value-only and external-engine zero-claim counters.
+- [ ] Execute the same `-CorpusRoot` / `-RequireReady` operator-loop gate against the approved large corpus, retaining one successful and one failed real-corpus run. The retained evidence must prove:
   - batch reimport dry-run rejects stale hashes and legal blockers;
   - apply writes only to `out/asset-import-regression/staging/<run-id>/` until every selected row validates;
   - preset diff lists all affected outputs for `mesh.unit_scale`, `mesh.up_axis`, texture color/compression policy, and audio decode mode changes;
@@ -763,7 +767,7 @@ Slice completion rules:
 Required validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
@@ -866,7 +870,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Tool/script/agent hygiene slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Public C++ API slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -SyntheticSmoke` | Task 14 operator triage loop | Pass; emitted `asset_import_regression_operator_loop_report_rows=6`, `failed_rows=5`, `legal_blocked_rows=1`, `nondeterministic_rows=1`, `reimport_candidates=2`, `blocked_rows=3`, `preset_diff_required=1`, `axis_unit_preview_required=1`, `editor_core_value_only=1`, and `external_engine_claim=0` |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; existing generator/runner/fresh-process checks passed and the integrated operator-loop synthetic smoke passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; existing generator/runner/fresh-process checks passed, the integrated retained success/failure operator-loop corpus gate asserted `corpus_retained_reports=2`, `corpus_success_reports=1`, `corpus_failure_reports=1`, `require_ready=1`, `report_rows=5`, `failed_rows=4`, `legal_blocked_rows=1`, `nondeterministic_rows=1`, `reimport_candidates=1`, `blocked_rows=3`, `axis_unit_preview_required=1`, `editor_core_value_only=1`, `external_engine_claim=0`, and `corpus_ready=1`, and the integrated operator-loop synthetic smoke passed |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_editor_core_tests` | Asset triage and editor-core retained row C++ contract | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_regression_tests|MK_editor_core_tests"` | Asset triage and editor-core retained row C++ contract | Pass; 2/2 tests passed |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_regression_triage.cpp,editor/core/src/asset_import_regression_workflow.cpp,tests/unit/asset_import_regression_tests.cpp,tests/unit/editor_core_tests.cpp` | Focused C++ static analysis | Pass; 4 files checked |
@@ -878,5 +882,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 161/161 tests passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 162/162 tests passed after merging current `origin/main` |
 | Tasks 13 real-corpus `-RequireReady` remainder, Task 15 real-corpus loops, and Task 17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |
