@@ -45,7 +45,7 @@
     "buildAssetImporters": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
     "generateAssetImportRegressionCorpusManifest": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-asset-import-regression-corpus-manifest.ps1 -CorpusRoot \u003Cpath\u003E -SourcesRoot \u003Cpath\u003E -NoticesPath \u003Cpath\u003E -OutputManifest \u003Cpath\u003E [-FailOnMissingNotice]",
     "checkAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 [-CorpusRoot \u003Cpath\u003E] [-RequireReady]",
-    "checkAssetImportRegressionOperatorLoop": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 [-ReportPath \u003Cpath\u003E] [-OutputRoot \u003Cpath\u003E] [-SyntheticSmoke]",
+    "checkAssetImportRegressionOperatorLoop": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 [-ReportPath \u003Cpath\u003E] [-CorpusRoot \u003Cpath\u003E] [-OutputRoot \u003Cpath\u003E] [-SyntheticSmoke] [-RequireReady]",
     "runAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot \u003Cpath\u003E -OutputRoot \u003Cpath\u003E [-Presets \u003Cpath\u003E] [-RowBudget \u003Cn\u003E] [-WriteCookedOutputs] [-CompareExpectedHashes] [-CollectPreviewRows] [-RequireReady]",
     "validateAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 [-CorpusRoot \u003Cpath\u003E] [-RequireReady]",
     "validatePhysicsJolt": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
