@@ -511,10 +511,17 @@ $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-a
 $requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresRuntimeUiStandardWidgets = @($SmokeArgs) -contains "--require-runtime-ui-standard-widgets"
+$requiresRuntimeUiWidgets = @($SmokeArgs) -contains "--require-runtime-ui-widgets"
 $requiresRuntimeUiBinding = @($SmokeArgs) -contains "--require-runtime-ui-binding"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
+$requiresRuntimeUiPlatformPackage = @($SmokeArgs) -contains "--require-runtime-ui-platform-package"
+$requiresRuntimeUiFontRasterization = @($SmokeArgs) -contains "--require-runtime-ui-font-rasterization"
+$requiresRuntimeUiTsfSession = @($SmokeArgs) -contains "--require-runtime-ui-tsf-session"
+$requiresRuntimeUiUiaPublication = @($SmokeArgs) -contains "--require-runtime-ui-uia-publication"
+$requiresRuntimeUiAtlasUpload = @($SmokeArgs) -contains "--require-runtime-ui-atlas-upload"
 $requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runtime-ui-renderer-atlas-handoff"
+$requiresRuntimeUiPackageSmokeScenes = @($SmokeArgs) -contains "--require-runtime-ui-package-smoke-scenes"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $requiresAudioProduction = @($SmokeArgs) -contains "--require-audio-production"
@@ -913,6 +920,19 @@ if ($requiresSandboxPackageBudgets) {
     $requiresProductionTileRenderer = $true
     $requiresSandboxAuthoringReview = $true
     $requiresProductionAuthoringWorkflows = $true
+    $requiresRuntimeUiRendererAtlasHandoff = $true
+}
+if ($requiresRuntimeUiPackageSmokeScenes) {
+    $requiresRuntimeUiStandardWidgets = $true
+    $requiresRuntimeUiWidgets = $true
+    $requiresRuntimeUiBinding = $true
+    $requiresRuntimeUiWorkbench = $true
+    $requiresRuntimeUiProductionStack = $true
+    $requiresRuntimeUiPlatformPackage = $true
+    $requiresRuntimeUiFontRasterization = $true
+    $requiresRuntimeUiTsfSession = $true
+    $requiresRuntimeUiUiaPublication = $true
+    $requiresRuntimeUiAtlasUpload = $true
     $requiresRuntimeUiRendererAtlasHandoff = $true
 }
 if ($requiresPlayable3dSlice) {
@@ -4886,6 +4906,20 @@ if ($requiresRuntimeUiStandardWidgets) {
         }
     }
 }
+if ($requiresRuntimeUiWidgets) {
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -Context "runtime UI widgets" `
+        -ExpectedFields @{
+            "runtime_ui_widgets_status" = "ready"
+            "runtime_ui_widgets_ready" = "1"
+            "runtime_ui_widget_rows" = "10"
+            "runtime_ui_widget_command_rows" = "2"
+            "runtime_ui_widget_focusable_rows" = "6"
+            "runtime_ui_widget_diagnostics" = "0"
+        }
+}
 if ($requiresRuntimeUiBinding) {
     foreach ($field in @(
             "runtime_ui_binding_status",
@@ -4894,6 +4928,7 @@ if ($requiresRuntimeUiBinding) {
             "runtime_ui_command_rows",
             "runtime_ui_focus_scopes",
             "runtime_ui_navigation_edges",
+            "runtime_ui_controller_glyph_refs",
             "runtime_ui_input_routing_ready",
             "runtime_ui_binding_gameplay_commands_executed",
             "runtime_ui_binding_diagnostics"
@@ -4909,6 +4944,7 @@ if ($requiresRuntimeUiBinding) {
         "runtime_ui_command_rows" = "2"
         "runtime_ui_focus_scopes" = "2"
         "runtime_ui_navigation_edges" = "3"
+        "runtime_ui_controller_glyph_refs" = "1"
         "runtime_ui_input_routing_ready" = "1"
         "runtime_ui_binding_gameplay_commands_executed" = "0"
         "runtime_ui_binding_diagnostics" = "0"
@@ -5024,6 +5060,97 @@ if ($requiresRuntimeUiProductionStack) {
         Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI production stack replay hash."
     }
 }
+if ($requiresRuntimeUiFontRasterization) {
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -Context "runtime UI font rasterization" `
+        -ExpectedFields @{
+            "runtime_ui_font_loading_rows" = "1"
+            "runtime_ui_glyph_raster_rows" = "1"
+            "runtime_ui_glyph_bitmap_rows" = "1"
+            "runtime_ui_glyph_metrics_rows" = "1"
+            "runtime_ui_font_license_rows" = "1"
+            "runtime_ui_font_native_handles_exposed" = "0"
+            "runtime_ui_font_rasterization_diagnostics" = "0"
+        }
+}
+if ($requiresRuntimeUiTsfSession) {
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -Context "runtime UI TSF session" `
+        -ExpectedFields @{
+            "runtime_ui_tsf_session_ready" = "1"
+            "runtime_ui_tsf_composition_rows" = "3"
+            "runtime_ui_tsf_candidate_intent_rows" = "1"
+            "runtime_ui_tsf_text_area_rows" = "1"
+            "runtime_ui_ime_native_candidate_ui_ready" = "0"
+            "runtime_ui_ime_cross_platform_ready" = "0"
+            "runtime_ui_tsf_diagnostics" = "0"
+        }
+}
+if ($requiresRuntimeUiUiaPublication) {
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -Context "runtime UI UIA publication" `
+        -ExpectedFields @{
+            "runtime_ui_uia_provider_ready" = "1"
+            "runtime_ui_accessibility_nodes" = "2"
+            "runtime_ui_accessibility_action_rows" = "1"
+            "runtime_ui_accessibility_event_rows" = "1"
+            "runtime_ui_accessibility_cross_platform_ready" = "0"
+            "runtime_ui_accessibility_native_handles_exposed" = "0"
+            "runtime_ui_uia_diagnostics" = "0"
+        }
+}
+if ($requiresRuntimeUiAtlasUpload) {
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -Context "runtime UI atlas upload" `
+        -ExpectedFields @{
+            "runtime_ui_atlas_upload_ready" = "1"
+            "runtime_ui_atlas_upload_succeeded" = "1"
+            "runtime_ui_atlas_upload_backend" = "d3d12"
+            "runtime_ui_atlas_upload_atlas_page_payload_rows" = "1"
+            "runtime_ui_atlas_upload_texture_payload_rows" = "1"
+            "runtime_ui_atlas_upload_readback_invoked" = "1"
+            "runtime_ui_atlas_upload_readback_checksum_matched" = "1"
+            "runtime_ui_atlas_upload_sampled_descriptor_written" = "1"
+            "runtime_ui_atlas_upload_d3d12_selected_proof_ready" = "1"
+            "runtime_ui_atlas_upload_vulkan_host_gated" = "1"
+            "runtime_ui_atlas_upload_metal_host_gated" = "1"
+            "runtime_ui_renderer_texture_upload_public_api" = "0"
+            "runtime_ui_atlas_upload_native_handle_accessed" = "0"
+            "runtime_ui_atlas_upload_diagnostics" = "0"
+        }
+}
+if ($requiresRuntimeUiPlatformPackage) {
+    Assert-InstalledDesktopRuntimeStatusFields `
+        -SmokeOutput $smokeOutput `
+        -EscapedGameTarget $escapedGameTarget `
+        -Context "runtime UI platform package" `
+        -ExpectedFields @{
+            "runtime_ui_platform_production_ready" = "0"
+            "runtime_ui_platform_runtime_package_ready" = "1"
+            "runtime_ui_platform_clean_room_ready" = "1"
+            "runtime_ui_platform_external_engine_parity_claim" = "0"
+            "runtime_ui_platform_public_native_handles_exposed" = "0"
+            "runtime_ui_text_shaping_selected_adapter" = "directwrite"
+            "runtime_ui_font_rasterization_selected_adapter" = "directwrite"
+            "runtime_ui_ime_selected_adapter" = "tsf"
+            "runtime_ui_accessibility_selected_adapter" = "uia"
+            "runtime_ui_renderer_upload_selected_backend" = "d3d12"
+            "runtime_ui_platform_selected_rows" = "7"
+            "runtime_ui_platform_ready_rows" = "7"
+            "runtime_ui_platform_host_gated_rows" = "0"
+            "runtime_ui_platform_dependency_gated_rows" = "0"
+            "runtime_ui_platform_unsupported_non_claim_rows" = "1"
+            "runtime_ui_platform_diagnostics" = "0"
+        }
+}
 if ($requiresRuntimeUiRendererAtlasHandoff) {
     foreach ($field in @(
             "runtime_ui_renderer_atlas_handoff_status",
@@ -5112,6 +5239,62 @@ if ($requiresRuntimeUiRendererAtlasHandoff) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bruntime_ui_renderer_atlas_handoff_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI renderer atlas handoff replay hash."
+    }
+}
+if ($requiresRuntimeUiPackageSmokeScenes) {
+    foreach ($field in @(
+            "runtime_ui_package_smoke_scene_ready",
+            "runtime_ui_package_smoke_scene_rows",
+            "runtime_ui_package_smoke_scene_selected_rows",
+            "runtime_ui_package_smoke_scene_ready_rows",
+            "runtime_ui_package_smoke_scene_language_rows",
+            "runtime_ui_package_smoke_scene_glyph_fallback_rows",
+            "runtime_ui_package_smoke_scene_long_label_rows",
+            "runtime_ui_package_smoke_scene_long_label_max_code_units",
+            "runtime_ui_package_smoke_scene_controller_only_rows",
+            "runtime_ui_package_smoke_scene_controller_navigation_edges",
+            "runtime_ui_package_smoke_scene_controller_glyph_rows",
+            "runtime_ui_package_smoke_scene_accessibility_tree_rows",
+            "runtime_ui_package_smoke_scene_accessibility_nodes",
+            "runtime_ui_package_smoke_scene_accessibility_action_rows",
+            "runtime_ui_package_smoke_scene_accessibility_reading_order_rows",
+            "runtime_ui_package_smoke_scene_supporting_evidence_rows",
+            "runtime_ui_package_smoke_scene_native_handle_rows",
+            "runtime_ui_package_smoke_scene_ui_middleware_claim_rows",
+            "runtime_ui_package_smoke_scene_external_engine_compatibility_claim_rows",
+            "runtime_ui_package_smoke_scene_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI package smoke scene field: $field"
+        }
+    }
+    $expectedRuntimeUiPackageSmokeSceneFields = @{
+        "runtime_ui_package_smoke_scene_ready" = "1"
+        "runtime_ui_package_smoke_scene_rows" = "4"
+        "runtime_ui_package_smoke_scene_selected_rows" = "4"
+        "runtime_ui_package_smoke_scene_ready_rows" = "4"
+        "runtime_ui_package_smoke_scene_language_rows" = "3"
+        "runtime_ui_package_smoke_scene_glyph_fallback_rows" = "2"
+        "runtime_ui_package_smoke_scene_long_label_rows" = "1"
+        "runtime_ui_package_smoke_scene_long_label_max_code_units" = "96"
+        "runtime_ui_package_smoke_scene_controller_only_rows" = "1"
+        "runtime_ui_package_smoke_scene_controller_navigation_edges" = "3"
+        "runtime_ui_package_smoke_scene_controller_glyph_rows" = "1"
+        "runtime_ui_package_smoke_scene_accessibility_tree_rows" = "1"
+        "runtime_ui_package_smoke_scene_accessibility_nodes" = "2"
+        "runtime_ui_package_smoke_scene_accessibility_action_rows" = "1"
+        "runtime_ui_package_smoke_scene_accessibility_reading_order_rows" = "2"
+        "runtime_ui_package_smoke_scene_supporting_evidence_rows" = "10"
+        "runtime_ui_package_smoke_scene_native_handle_rows" = "0"
+        "runtime_ui_package_smoke_scene_ui_middleware_claim_rows" = "0"
+        "runtime_ui_package_smoke_scene_external_engine_compatibility_claim_rows" = "0"
+        "runtime_ui_package_smoke_scene_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiPackageSmokeSceneFields.Keys) {
+        $expectedValue = $expectedRuntimeUiPackageSmokeSceneFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI package smoke scene field $field=$expectedValue."
+        }
     }
 }
 if ($requiresPackageUploadStaging) {

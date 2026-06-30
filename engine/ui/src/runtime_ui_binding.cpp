@@ -323,6 +323,7 @@ RuntimeUiBindingPlan plan_runtime_ui_binding(RuntimeUiBindingDocument document) 
         .command_rows = document.command_rows.size(),
         .focus_scopes = document.focus_scopes.size(),
         .navigation_edges = document.navigation_edges.size(),
+        .controller_glyph_refs = 0U,
         .gameplay_commands_executed = 0U,
         .diagnostics = {},
     };
@@ -372,6 +373,7 @@ RuntimeUiBindingPlan plan_runtime_ui_binding(RuntimeUiBindingDocument document) 
     const auto routing_plan = plan_runtime_ui_input_routing(document);
     append_diagnostics(plan.diagnostics, routing_plan.diagnostics);
     plan.input_routing_ready = routing_plan.input_routing_ready;
+    plan.controller_glyph_refs = routing_plan.controller_glyph_refs;
     plan.gameplay_commands_executed = routing_plan.gameplay_commands_executed;
     plan.document = std::move(document.document);
     plan.ready = plan.diagnostics.empty();

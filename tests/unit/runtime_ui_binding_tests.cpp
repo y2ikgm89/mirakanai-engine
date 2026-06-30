@@ -148,6 +148,7 @@ MK_TEST("runtime ui binding applies typed values to document without executing g
     MK_REQUIRE(plan.command_rows == 2U);
     MK_REQUIRE(plan.focus_scopes == 2U);
     MK_REQUIRE(plan.navigation_edges == 3U);
+    MK_REQUIRE(plan.controller_glyph_refs == 1U);
     MK_REQUIRE(plan.input_routing_ready);
     MK_REQUIRE(plan.gameplay_commands_executed == 0U);
     MK_REQUIRE(plan.diagnostics.empty());
