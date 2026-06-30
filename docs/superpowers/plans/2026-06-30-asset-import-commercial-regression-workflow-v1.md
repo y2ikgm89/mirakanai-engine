@@ -290,7 +290,12 @@ Candidate 3 validation evidence: `tools/check-format.ps1`, `tools/check-ai-integ
 
 - [x] Extend `AssetImportExecutionResult` mapping through a new helper in `asset_import_regression_runner.cpp`.
 - [x] Add deterministic diagnostic code labels in `asset_import_regression_corpus.cpp`.
-- [ ] Add report-row tests for every diagnostic code listed in Task 1.
+- [x] Add report-row tests for every diagnostic code listed in Task 1.
+
+Slice 2026-06-30 candidate 4 adds direct report-row round-trip coverage for every
+`AssetImportRegressionDiagnosticCode` value, including label uniqueness and deterministic report text assertions.
+Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests`
+and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests`.
 
 Each failure row must include `asset_id`, `source_path`, `source_sha256`, `preset_sha256`, `importer_id`, `phase`, `code`, `message`, and deterministic output hash when available.
 
