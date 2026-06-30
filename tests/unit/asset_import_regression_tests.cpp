@@ -4,6 +4,8 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/asset_import_regression_corpus.hpp"
+#include "mirakana/platform/filesystem.hpp"
+#include "mirakana/tools/asset_import_regression_runner.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -251,6 +253,106 @@ MK_TEST("asset import regression committed first-party corpus fixture validates 
         MK_REQUIRE(contains(asset_ids, asset_id));
     }
     MK_REQUIRE(saw_mesh_fixture);
+}
+
+MK_TEST("asset import regression runner rejects invalid manifests without touching source files") {
+    mirakana::MemoryFileSystem fs;
+    auto corpus = good_corpus();
+    corpus.assets[0].source_path = "../outside.gltf";
+
+    const auto report =
+        mirakana::run_asset_import_regression_corpus(fs, corpus,
+                                                     mirakana::AssetImportRegressionRunnerOptions{
+                                                         .corpus_root = "tests/fixtures/asset_import_regression",
+                                                         .output_root = "out/asset-import-regression/tests",
+                                                     });
+
+    MK_REQUIRE(report.corpus_id == "GameEngine.AssetImportRegressionCorpus.v1");
+    MK_REQUIRE(report.asset_count == 1U);
+    MK_REQUIRE(report.rows.size() == 1U);
+    MK_REQUIRE(report.failed_count == 1U);
+    MK_REQUIRE(!report.ready);
+    MK_REQUIRE(report.rows[0].asset_id == "manifest");
+    MK_REQUIRE(report.rows[0].phase == "manifest");
+    MK_REQUIRE(report.rows[0].code == mirakana::AssetImportRegressionDiagnosticCode::invalid_manifest);
+    MK_REQUIRE(report.rows[0].message.contains("asset.0.unsafe_source_path"));
+}
+
+MK_TEST("asset import regression runner maps corpus assets to deterministic success and failure rows") {
+    mirakana::MemoryFileSystem fs;
+    fs.write_text("corpus/sources/gltf/hero.gltf",
+                  "format=GameEngine.MeshSource.v2\nmesh.vertex_count=3\nmesh.index_count=3\n"
+                  "mesh.has_normals=false\nmesh.has_uvs=false\nmesh.has_tangent_frame=false\n"
+                  "mesh.vertex_data_hex=000102000000000000000000000000000000000000000000000000000000000000000000\n"
+                  "mesh.index_data_hex=000000000100000002000000\n");
+    fs.write_text("corpus/sources/materials/player.material",
+                  "format=GameEngine.Material.v1\nmaterial.id=1\nmaterial.name=Player\nmaterial.shading=lit\n"
+                  "material.surface=opaque\nmaterial.double_sided=false\nfactor.base_color=1,1,1,1\n"
+                  "factor.emissive=0,0,0\nfactor.metallic=0\nfactor.roughness=1\ntexture.count=0\n");
+
+    auto corpus = good_corpus();
+    corpus.root_path = "corpus";
+    corpus.assets[0].source_path = "sources/gltf/hero.gltf";
+    corpus.assets[0].expected_sha256 = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    corpus.assets[0].expected_output_kinds = {"GameEngine.CookedMesh.v2"};
+    corpus.assets[0].required_features = {"gltf_valid_mesh"};
+    corpus.assets[0].preset_metadata = {"mesh.unit_scale=0.01", "mesh.up_axis=z"};
+
+    auto material = good_corpus_asset();
+    material.asset_id = "material.player";
+    material.kind = mirakana::AssetImportRegressionCorpusAssetKind::material_document;
+    material.asset_key.value = "materials/player";
+    material.source_path = "sources/materials/player.material";
+    material.expected_sha256 = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    material.expected_output_kinds = {"GameEngine.Material.v1"};
+    material.required_features = {"material_document"};
+    material.provenance.asset_key = material.asset_key;
+    corpus.assets.push_back(material);
+
+    auto missing = good_corpus_asset();
+    missing.asset_id = "texture.missing";
+    missing.kind = mirakana::AssetImportRegressionCorpusAssetKind::png_texture;
+    missing.asset_key.value = "textures/missing";
+    missing.source_path = "sources/textures/missing.png";
+    missing.expected_sha256 = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    missing.expected_output_kinds = {"GameEngine.CookedTexture.v1"};
+    missing.required_features = {"png_decode"};
+    missing.provenance.asset_key = missing.asset_key;
+    corpus.assets.push_back(missing);
+    corpus.row_budget = 8U;
+    std::ranges::sort(corpus.assets, {}, &mirakana::AssetImportRegressionCorpusAssetV1::asset_id);
+
+    const auto report =
+        mirakana::run_asset_import_regression_corpus(fs, corpus,
+                                                     mirakana::AssetImportRegressionRunnerOptions{
+                                                         .corpus_root = "corpus",
+                                                         .output_root = "out/asset-import-regression/tests",
+                                                         .write_cooked_outputs = true,
+                                                         .compare_expected_hashes = false,
+                                                     });
+    const auto text = mirakana::serialize_asset_import_regression_report_v1(report);
+    const auto parsed = mirakana::deserialize_asset_import_regression_report_v1(text);
+
+    MK_REQUIRE(text == mirakana::serialize_asset_import_regression_report_v1(parsed));
+    MK_REQUIRE(report.asset_count == 3U);
+    MK_REQUIRE(report.rows.size() == 3U);
+    MK_REQUIRE(report.succeeded_count == 2U);
+    MK_REQUIRE(report.failed_count == 1U);
+    MK_REQUIRE(!report.ready);
+    MK_REQUIRE(report.rows[0].asset_id == "material.player");
+    MK_REQUIRE(report.rows[0].phase == "cook");
+    MK_REQUIRE(report.rows[0].code == mirakana::AssetImportRegressionDiagnosticCode::none);
+    MK_REQUIRE(report.rows[0].succeeded);
+    MK_REQUIRE(!report.rows[0].preset_sha256.empty());
+    MK_REQUIRE(!report.rows[0].deterministic_output_hash.empty());
+    MK_REQUIRE(report.rows[1].asset_id == "mesh.hero");
+    MK_REQUIRE(report.rows[1].importer_id == "mirakana.importer.gltf_mesh");
+    MK_REQUIRE(report.rows[2].asset_id == "texture.missing");
+    MK_REQUIRE(report.rows[2].phase == "source");
+    MK_REQUIRE(report.rows[2].code == mirakana::AssetImportRegressionDiagnosticCode::missing_source_file);
+    MK_REQUIRE(!report.rows[2].succeeded);
+    MK_REQUIRE(fs.exists("out/asset-import-regression/tests/material.player.cooked"));
+    MK_REQUIRE(fs.exists("out/asset-import-regression/tests/mesh.hero.cooked"));
 }
 
 int main() {

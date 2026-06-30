@@ -239,10 +239,10 @@ out/host-artifacts/asset-import-regression-corpus/
 
 ### Task 4: `MK_tools` Corpus Runner
 
-- [ ] Add `engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp`.
-- [ ] Add `engine/tools/asset/asset_import_regression_runner.cpp`.
-- [ ] Add `asset_import_regression_runner.cpp` to `engine/tools/asset/CMakeLists.txt`.
-- [ ] Add tests in `tests/unit/asset_import_regression_tests.cpp`.
+- [x] Add `engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp`.
+- [x] Add `engine/tools/asset/asset_import_regression_runner.cpp`.
+- [x] Add `asset_import_regression_runner.cpp` to `engine/tools/asset/CMakeLists.txt`.
+- [x] Add tests in `tests/unit/asset_import_regression_tests.cpp`.
 
 Required execution API:
 
@@ -282,10 +282,14 @@ Runner rules:
 - Hash deterministic first-party source documents and cooked outputs twice in one run to detect nondeterminism.
 - On any failure, record a row and continue unless manifest validation failed. Do not write partial selected project outputs.
 
+Slice 2026-06-30 candidate 3 adds `run_asset_import_regression_corpus` in `MK_tools`. The runner validates the manifest before execution, resolves `AssetImportPresets.v1` per asset, records source SHA-256 and preset SHA-256, executes existing `execute_asset_import_plan` paths and optional `ExternalAssetImportAdapters` through a private overlay filesystem twice for deterministic output evidence, writes only caller-selected `output_root` staging artifacts when requested, and returns first-party `GameEngine.AssetImportRegressionReport.v1` rows without parser/native/third-party type leakage. Large real-asset commercial promotion still requires host-owned corpus evidence and `validate-asset-import-regression-corpus.ps1 -RequireReady`.
+
+Candidate 3 validation evidence: `tools/check-format.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-asset-import-regression-corpus.ps1`, and full `tools/validate.ps1` pass. `tools/build-asset-importers.ps1` is blocked in this session before optional importer execution because `SPNG` is not installed in `vcpkg_installed` and `tools/bootstrap-deps.ps1 -Feature asset-importers` requires an approval prompt that is unavailable under the current `never` approval policy.
+
 ### Task 5: Failure Diagnostics And Repro Commands
 
-- [ ] Extend `AssetImportExecutionResult` mapping through a new helper in `asset_import_regression_runner.cpp`.
-- [ ] Add deterministic diagnostic code labels in `asset_import_regression_corpus.cpp`.
+- [x] Extend `AssetImportExecutionResult` mapping through a new helper in `asset_import_regression_runner.cpp`.
+- [x] Add deterministic diagnostic code labels in `asset_import_regression_corpus.cpp`.
 - [ ] Add report-row tests for every diagnostic code listed in Task 1.
 
 Each failure row must include `asset_id`, `source_path`, `source_sha256`, `preset_sha256`, `importer_id`, `phase`, `code`, `message`, and deterministic output hash when available.
