@@ -6,6 +6,7 @@
 #include "mirakana/assets/asset_import_batch_reimport.hpp"
 #include "mirakana/assets/asset_import_preset_diff.hpp"
 #include "mirakana/assets/asset_import_regression_corpus.hpp"
+#include "mirakana/assets/asset_import_regression_triage.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
 #include "mirakana/tools/asset_axis_unit_preview.hpp"
 
@@ -29,6 +30,7 @@ enum class EditorAssetImportRegressionWorkflowCommandKind : std::uint8_t {
 struct EditorAssetImportRegressionWorkflowDesc {
     const AssetImportRegressionCorpusDocumentV1* corpus{nullptr};
     const AssetImportRegressionReportV1* latest_report{nullptr};
+    const AssetImportRegressionTriageDocumentV1* triage{nullptr};
     const AssetImportBatchReimportPlan* batch_reimport{nullptr};
     const AssetImportPresetDiff* preset_diff{nullptr};
     std::vector<AssetAxisUnitPreview> axis_unit_previews;
