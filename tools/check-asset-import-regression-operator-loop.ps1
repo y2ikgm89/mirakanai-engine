@@ -4,8 +4,10 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string]$ReportPath = "",
+    [string]$CorpusRoot = "",
     [string]$OutputRoot = "",
-    [switch]$SyntheticSmoke
+    [switch]$SyntheticSmoke,
+    [switch]$RequireReady
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,6 +25,36 @@ function ConvertTo-LocalPath {
     }
 
     return Join-Path $repoRoot ($Path -replace "/", [System.IO.Path]::DirectorySeparatorChar)
+}
+
+function Test-ReparsePointPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    return (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)
+}
+
+function Test-PathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $rootFull = [System.IO.Path]::GetFullPath($Root)
+    $pathFull = [System.IO.Path]::GetFullPath($Path)
+    $rootWithSeparator = $rootFull.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+
+    return $pathFull.StartsWith($rootWithSeparator, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Write-RequireReadyDiagnostic {
+    param([Parameter(Mandatory = $true)][string]$Code)
+
+    Write-Output "asset_import_regression_operator_loop_diagnostic=$Code"
+    Write-Error "asset import regression operator loop require-ready diagnostic: $Code"
 }
 
 function Write-Utf8TextFile {
@@ -249,6 +281,68 @@ function Test-PresetDiffCode {
     return $Code -in @("material_extraction_failed", "texture_decode_failed", "texture_transcode_failed")
 }
 
+function Assert-AssetImportReportCounterConsistency {
+    param(
+        [Parameter(Mandatory = $true)]$Report,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    $succeededCount = 0
+    $failedCount = 0
+    $legalBlockedCount = 0
+    $nondeterministicCount = 0
+    foreach ($row in $Report.Rows) {
+        if ($row.Succeeded) {
+            $succeededCount++
+        } else {
+            $failedCount++
+        }
+        if (Test-LegalBlockedCode -Code $row.Code) {
+            $legalBlockedCount++
+        }
+        if ($row.Code -eq "nondeterministic_output") {
+            $nondeterministicCount++
+        }
+    }
+
+    if ($Report.AssetCount -ne $Report.Rows.Count) {
+        Write-Error "$Context asset_count must match row.count."
+    }
+    if ($Report.SucceededCount -ne $succeededCount) {
+        Write-Error "$Context succeeded_count must match succeeded rows."
+    }
+    if ($Report.FailedCount -ne $failedCount) {
+        Write-Error "$Context failed_count must match failed rows."
+    }
+    if ($Report.LegalBlockedCount -ne $legalBlockedCount) {
+        Write-Error "$Context legal_blocked_count must match legal blocked rows."
+    }
+    if ($Report.NondeterministicCount -ne $nondeterministicCount) {
+        Write-Error "$Context nondeterministic_count must match nondeterministic rows."
+    }
+    if ($Report.Ready -and ($failedCount -ne 0 -or $legalBlockedCount -ne 0 -or $nondeterministicCount -ne 0)) {
+        Write-Error "$Context ready=true is invalid when failed, legal-blocked, or nondeterministic rows exist."
+    }
+}
+
+function Test-OperatorLoopSuccessReport {
+    param([Parameter(Mandatory = $true)]$Report)
+
+    return $Report.Ready -and
+        $Report.FailedCount -eq 0 -and
+        $Report.LegalBlockedCount -eq 0 -and
+        $Report.NondeterministicCount -eq 0
+}
+
+function Test-OperatorLoopFailureReport {
+    param([Parameter(Mandatory = $true)]$Report)
+
+    return (-not $Report.Ready) -or
+        $Report.FailedCount -gt 0 -or
+        $Report.LegalBlockedCount -gt 0 -or
+        $Report.NondeterministicCount -gt 0
+}
+
 function Read-AssetImportRegressionReport {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -455,6 +549,31 @@ function ConvertTo-TriageText {
     return (($lines -join "`n") + "`n")
 }
 
+function Assert-TriageTextSafe {
+    param([Parameter(Mandatory = $true)][string]$TriageText)
+
+    if ($TriageText.Contains("\") -or $TriageText.Contains("C:") -or $TriageText.Contains("Users/") -or
+        $TriageText.Contains("https://") -or $TriageText.Contains("http://") -or $TriageText.Contains("Unity") -or
+        $TriageText.Contains("Unreal") -or $TriageText.Contains("Godot")) {
+        Write-Error "asset import regression operator loop triage text contains forbidden source, URL, or external-engine material."
+    }
+}
+
+function Write-OperatorTriageFile {
+    param(
+        [Parameter(Mandatory = $true)]$Triage,
+        [Parameter(Mandatory = $true)][string]$TriageOutputRoot
+    )
+
+    $triageText = ConvertTo-TriageText -Triage $Triage
+    Assert-TriageTextSafe -TriageText $triageText
+
+    $triagePath = Join-Path $TriageOutputRoot "triage.geoperator"
+    if ($PSCmdlet.ShouldProcess($triagePath, "Write asset import regression operator triage")) {
+        Write-Utf8TextFile -Path $triagePath -Text $triageText
+    }
+}
+
 function Invoke-RepoScript {
     param(
         [Parameter(Mandatory = $true)][string]$RelativeScript,
@@ -602,18 +721,9 @@ function Invoke-OperatorLoopReport {
     )
 
     $report = Read-AssetImportRegressionReport -Path $InputReportPath
+    Assert-AssetImportReportCounterConsistency -Report $report -Context "asset import regression operator loop report"
     $triage = New-OperatorTriage -Report $report
-    $triageText = ConvertTo-TriageText -Triage $triage
-    if ($triageText.Contains("\") -or $triageText.Contains("C:") -or $triageText.Contains("Users/") -or
-        $triageText.Contains("https://") -or $triageText.Contains("http://") -or $triageText.Contains("Unity") -or
-        $triageText.Contains("Unreal") -or $triageText.Contains("Godot")) {
-        Write-Error "asset import regression operator loop triage text contains forbidden source, URL, or external-engine material."
-    }
-
-    $triagePath = Join-Path $TriageOutputRoot "triage.geoperator"
-    if ($PSCmdlet.ShouldProcess($triagePath, "Write asset import regression operator triage")) {
-        Write-Utf8TextFile -Path $triagePath -Text $triageText
-    }
+    Write-OperatorTriageFile -Triage $triage -TriageOutputRoot $TriageOutputRoot
 
     "asset_import_regression_operator_loop_triage_format=$($triage.Format)"
     "asset_import_regression_operator_loop_report_rows=$($triage.RowCount)"
@@ -629,6 +739,140 @@ function Invoke-OperatorLoopReport {
     "asset_import_regression_operator_loop_external_engine_claim=0"
 }
 
+function Get-OperatorLoopRetainedReports {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedCorpusRoot,
+        [Parameter(Mandatory = $true)][bool]$RequireReadyGate
+    )
+
+    if (Test-ReparsePointPath -Path $ResolvedCorpusRoot) {
+        if ($RequireReadyGate) {
+            Write-RequireReadyDiagnostic -Code "require_ready.corpus_root_reparse_point"
+        }
+        Write-Error "asset import regression operator loop corpus root must not be a reparse point."
+    }
+
+    $retainedRoot = Join-Path $ResolvedCorpusRoot "retained"
+    if (-not (Test-Path -LiteralPath $retainedRoot -PathType Container)) {
+        if ($RequireReadyGate) {
+            Write-RequireReadyDiagnostic -Code "require_ready.retained_reports_missing"
+        }
+        Write-Error "asset import regression operator loop retained report root is missing: $retainedRoot"
+    }
+    if (Test-ReparsePointPath -Path $retainedRoot) {
+        if ($RequireReadyGate) {
+            Write-RequireReadyDiagnostic -Code "require_ready.retained_root_reparse_point"
+        }
+        Write-Error "asset import regression operator loop retained root must not be a reparse point."
+    }
+
+    $reportFiles = @(Get-ChildItem -LiteralPath $retainedRoot -Recurse -Filter "report.gereport" -File | Sort-Object FullName)
+    if ($reportFiles.Count -eq 0) {
+        if ($RequireReadyGate) {
+            Write-RequireReadyDiagnostic -Code "require_ready.retained_reports_missing"
+        }
+        Write-Error "asset import regression operator loop retained report files are missing."
+    }
+
+    foreach ($reportFile in $reportFiles) {
+        if ((Test-ReparsePointPath -Path $reportFile.FullName) -or -not (Test-PathUnderRoot -Root $ResolvedCorpusRoot -Path $reportFile.FullName)) {
+            if ($RequireReadyGate) {
+                Write-RequireReadyDiagnostic -Code "require_ready.retained_report_path_rejected"
+            }
+            Write-Error "asset import regression operator loop retained report path is unsafe: $($reportFile.FullName)"
+        }
+    }
+
+    return $reportFiles
+}
+
+function Invoke-OperatorLoopCorpusRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedCorpusRoot,
+        [Parameter(Mandatory = $true)][string]$TriageOutputRoot,
+        [Parameter(Mandatory = $true)][bool]$RequireReadyGate
+    )
+
+    $reportFiles = @(Get-OperatorLoopRetainedReports -ResolvedCorpusRoot $ResolvedCorpusRoot -RequireReadyGate $RequireReadyGate)
+    $successReportCount = 0
+    $failureReportCount = 0
+    $rowCount = 0
+    $failedCount = 0
+    $legalBlockedCount = 0
+    $nondeterministicCount = 0
+    $reimportCandidateCount = 0
+    $blockedCount = 0
+    $presetDiffRequiredCount = 0
+    $axisUnitPreviewRequiredCount = 0
+    $triageEntries = [System.Collections.Generic.List[object]]::new()
+
+    for ($index = 0; $index -lt $reportFiles.Count; $index++) {
+        $reportFile = $reportFiles[$index]
+        $report = Read-AssetImportRegressionReport -Path $reportFile.FullName
+        Assert-AssetImportReportCounterConsistency -Report $report -Context "asset import regression operator loop retained report"
+        if (Test-OperatorLoopSuccessReport -Report $report) {
+            $successReportCount++
+        }
+        if (Test-OperatorLoopFailureReport -Report $report) {
+            $failureReportCount++
+        }
+
+        $triage = New-OperatorTriage -Report $report
+        $runId = ConvertTo-SafeToken -Value $report.RunId
+        $triageEntries.Add([pscustomobject]@{
+                Index  = $index
+                RunId  = $runId
+                Triage = $triage
+            }) | Out-Null
+
+        $rowCount += $triage.RowCount
+        $failedCount += $report.FailedCount
+        $legalBlockedCount += $triage.LegalBlockedCount
+        $nondeterministicCount += $triage.NondeterministicCount
+        $reimportCandidateCount += $triage.ReimportCandidateCount
+        $blockedCount += $triage.BlockedCount
+        $presetDiffRequiredCount += $triage.PresetDiffRequiredCount
+        $axisUnitPreviewRequiredCount += $triage.AxisUnitPreviewRequiredCount
+    }
+
+    if ($RequireReadyGate) {
+        if ($successReportCount -eq 0) {
+            Write-RequireReadyDiagnostic -Code "require_ready.retained_success_report_missing"
+        }
+        if ($failureReportCount -eq 0) {
+            Write-RequireReadyDiagnostic -Code "require_ready.retained_failure_report_missing"
+        }
+    }
+
+    foreach ($triageEntry in $triageEntries) {
+        $triageRoot = Join-Path $TriageOutputRoot "retained-$($triageEntry.Index)-$($triageEntry.RunId)"
+        Write-OperatorTriageFile -Triage $triageEntry.Triage -TriageOutputRoot $triageRoot
+    }
+
+    $corpusReady = $successReportCount -gt 0 -and $failureReportCount -gt 0
+    "asset_import_regression_operator_loop_corpus_retained_reports=$($reportFiles.Count)"
+    "asset_import_regression_operator_loop_corpus_success_reports=$successReportCount"
+    "asset_import_regression_operator_loop_corpus_failure_reports=$failureReportCount"
+    "asset_import_regression_operator_loop_require_ready=$([int]$RequireReadyGate)"
+    "asset_import_regression_operator_loop_triage_format=GameEngine.AssetImportRegressionTriage.v1"
+    "asset_import_regression_operator_loop_report_rows=$rowCount"
+    "asset_import_regression_operator_loop_failed_rows=$failedCount"
+    "asset_import_regression_operator_loop_legal_blocked_rows=$legalBlockedCount"
+    "asset_import_regression_operator_loop_nondeterministic_rows=$nondeterministicCount"
+    "asset_import_regression_operator_loop_reimport_candidates=$reimportCandidateCount"
+    "asset_import_regression_operator_loop_blocked_rows=$blockedCount"
+    "asset_import_regression_operator_loop_preset_diff_required=$presetDiffRequiredCount"
+    "asset_import_regression_operator_loop_axis_unit_preview_required=$axisUnitPreviewRequiredCount"
+    "asset_import_regression_operator_loop_ready=$([int]($rowCount -gt 0))"
+    "asset_import_regression_operator_loop_editor_core_value_only=1"
+    "asset_import_regression_operator_loop_external_engine_claim=0"
+    "asset_import_regression_operator_loop_corpus_ready=$([int]$corpusReady)"
+}
+
+if ($SyntheticSmoke -and ((-not [string]::IsNullOrWhiteSpace($ReportPath)) -or (-not [string]::IsNullOrWhiteSpace($CorpusRoot)) -or $RequireReady)) {
+    Write-Error "-SyntheticSmoke cannot be combined with -ReportPath, -CorpusRoot, or -RequireReady."
+}
+
 if ($SyntheticSmoke) {
     $syntheticRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
         ConvertTo-LocalPath "out/tmp/asset-import-regression-operator-loop-$PID"
@@ -637,6 +881,34 @@ if ($SyntheticSmoke) {
     }
     Invoke-OperatorLoopSyntheticSmoke -SyntheticRoot $syntheticRoot
     Write-Information "asset-import-regression-operator-loop-check: synthetic smoke ok" -InformationAction Continue
+    exit 0
+}
+
+if ((-not [string]::IsNullOrWhiteSpace($CorpusRoot)) -and (-not [string]::IsNullOrWhiteSpace($ReportPath))) {
+    Write-Error "-CorpusRoot and -ReportPath are mutually exclusive."
+}
+
+if ($RequireReady -and [string]::IsNullOrWhiteSpace($CorpusRoot)) {
+    Write-Error "-RequireReady requires -CorpusRoot."
+}
+
+if (-not [string]::IsNullOrWhiteSpace($CorpusRoot)) {
+    $resolvedCorpusRoot = ConvertTo-LocalPath $CorpusRoot
+    if (-not (Test-Path -LiteralPath $resolvedCorpusRoot -PathType Container)) {
+        if ($RequireReady) {
+            Write-RequireReadyDiagnostic -Code "require_ready.corpus_root_missing"
+        }
+        Write-Error "asset import regression operator loop corpus root is missing: $resolvedCorpusRoot"
+    }
+    $resolvedCorpusRoot = [System.IO.Path]::GetFullPath((Resolve-Path -LiteralPath $resolvedCorpusRoot -ErrorAction Stop).ProviderPath)
+    $resolvedOutputRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+        ConvertTo-LocalPath "out/asset-import-regression/operator-loop"
+    } else {
+        ConvertTo-LocalPath $OutputRoot
+    }
+
+    Invoke-OperatorLoopCorpusRoot -ResolvedCorpusRoot $resolvedCorpusRoot -TriageOutputRoot $resolvedOutputRoot -RequireReadyGate ([bool]$RequireReady)
+    Write-Information "asset-import-regression-operator-loop-check: corpus ok" -InformationAction Continue
     exit 0
 }
 
