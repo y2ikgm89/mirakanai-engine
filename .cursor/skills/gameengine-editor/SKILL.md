@@ -37,7 +37,7 @@ Environment authoring row and command contracts live in the Claude/Codex editor 
 `environment.readiness.unsupported.environment_aaa_preset_library_ready`, and `environment.readiness.*` rows editor-core value-only;
 do not claim backend execution, validation recipe execution, package scripts, native handles, Dear ImGui, SDL3, broad
 `environment_ready`, or broad AAA preset-library readiness.
-
+Asset import regression workflow ids live in the Claude/Codex skills; keep `asset_browser.import_workflow.*` and `asset_browser.importer_corpus.*` / `asset_browser.import.*` command ids editor-core value-only without execution, mutation, native handles, or Unity/Unreal/Godot compatibility claims.
 When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 
 Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows; do not claim HarfBuzz/FreeType/ICU-class adapter readiness from Windows-only evidence.
