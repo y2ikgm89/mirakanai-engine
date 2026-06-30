@@ -7,6 +7,7 @@ add_library(mirakana_assets
     src/asset_import_presets.cpp
     src/asset_import_provenance.cpp
     src/asset_import_production_review.cpp
+    src/asset_import_regression_corpus.cpp
     src/asset_package.cpp
     src/asset_registry.cpp
     src/asset_source_format.cpp
