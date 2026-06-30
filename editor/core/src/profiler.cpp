@@ -422,6 +422,11 @@ void append_telemetry_rows(EditorProfilerTelemetryHandoffModel& model, std::uint
         EditorProfilerKeyValueRow{.id = "status", .label = "Status", .value = row_value(model.status_label)},
         EditorProfilerKeyValueRow{.id = "producer", .label = "Producer", .value = row_value(model.producer)},
         EditorProfilerKeyValueRow{.id = "format", .label = "Format", .value = row_value(model.format)},
+        EditorProfilerKeyValueRow{.id = "schema_id", .label = "Schema", .value = row_value(model.schema_id)},
+        EditorProfilerKeyValueRow{.id = "backend_id", .label = "Backend", .value = row_value(model.backend_id)},
+        EditorProfilerKeyValueRow{.id = "service_name", .label = "Service", .value = row_value(model.service_name)},
+        EditorProfilerKeyValueRow{
+            .id = "payload_contract", .label = "Payload", .value = row_value(model.payload_contract)},
         EditorProfilerKeyValueRow{.id = "blocker", .label = "Blocker", .value = row_value(model.blocker)},
         EditorProfilerKeyValueRow{.id = "events", .label = "Events", .value = format_integer(event_count)},
         EditorProfilerKeyValueRow{.id = "counters", .label = "Counters", .value = format_integer(counter_count)},
@@ -657,6 +662,10 @@ make_editor_profiler_telemetry_handoff_model(const mirakana::DiagnosticCapture& 
     model.producer = artifact.producer;
     model.format = artifact.format;
     model.blocker = artifact.blocker;
+    model.schema_id = artifact.schema_id;
+    model.backend_id = artifact.backend_id;
+    model.service_name = artifact.service_name;
+    model.payload_contract = artifact.payload_contract;
 
     if (!model.blocker.empty()) {
         model.diagnostics.push_back(model.blocker);

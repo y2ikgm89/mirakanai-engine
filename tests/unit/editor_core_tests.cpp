@@ -18991,25 +18991,41 @@ MK_TEST("editor profiler telemetry handoff reports backend readiness") {
     MK_REQUIRE(!model.ready);
     MK_REQUIRE(model.status_label == "unsupported");
     MK_REQUIRE(model.kind == "telemetry_upload");
-    MK_REQUIRE(model.format == "caller-defined telemetry payload");
+    MK_REQUIRE(model.format == "OpenTelemetry OTLP trace JSON handoff");
+    MK_REQUIRE(model.schema_id == "GameEngine.DiagnosticsTelemetryHandoff.v1");
+    MK_REQUIRE(model.payload_contract.contains("service.name"));
     MK_REQUIRE(model.blocker.contains("No telemetry backend"));
     MK_REQUIRE(model.diagnostics.size() == 1U);
     MK_REQUIRE(model.diagnostics[0].contains("No telemetry backend"));
     MK_REQUIRE(find_row(model, "kind") != nullptr);
     MK_REQUIRE(find_row(model, "status") != nullptr);
     MK_REQUIRE(find_row(model, "format") != nullptr);
+    MK_REQUIRE(find_row(model, "schema_id") != nullptr);
+    MK_REQUIRE(find_row(model, "backend_id") != nullptr);
+    MK_REQUIRE(find_row(model, "service_name") != nullptr);
+    MK_REQUIRE(find_row(model, "payload_contract") != nullptr);
     MK_REQUIRE(find_row(model, "blocker") != nullptr);
     MK_REQUIRE(find_row(model, "events") != nullptr);
     MK_REQUIRE(find_row(model, "counters") != nullptr);
     MK_REQUIRE(find_row(model, "profiles") != nullptr);
 
     mirakana::DiagnosticsOpsPlanOptions options;
-    options.host_status.telemetry_backend_configured = true;
+    options.adapters.telemetry_backend = mirakana::DiagnosticsTelemetryBackendDesc{
+        .backend_id = "editor-otel-collector",
+        .producer = "editor OpenTelemetry collector",
+        .service_name = "mirakanai.editor",
+        .open_telemetry_trace_contract_reviewed = true,
+        .redacts_local_paths = true,
+        .redacts_secrets = true,
+        .operator_handoff_ready = true,
+    };
     const auto ready_model = mirakana::editor::make_editor_profiler_telemetry_handoff_model(capture, options);
 
     MK_REQUIRE(ready_model.ready);
     MK_REQUIRE(ready_model.status_label == "ready");
-    MK_REQUIRE(ready_model.producer == "caller-provided telemetry backend");
+    MK_REQUIRE(ready_model.producer == "editor OpenTelemetry collector");
+    MK_REQUIRE(ready_model.backend_id == "editor-otel-collector");
+    MK_REQUIRE(ready_model.service_name == "mirakanai.editor");
     MK_REQUIRE(ready_model.diagnostics.empty());
     MK_REQUIRE(find_row(ready_model, "producer") != nullptr);
 }
