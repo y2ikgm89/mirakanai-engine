@@ -21,6 +21,7 @@
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
 
+#include "mirakana/assets/asset_import_regression_corpus.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/editor/ai_operation_surface.hpp"
@@ -368,6 +369,25 @@ MK_TEST("editor native shell launch options accept deterministic smoke resize") 
     MK_REQUIRE(validation.valid);
 }
 
+MK_TEST("editor native shell launch options accept project relative asset import regression report") {
+    const auto launch = parse_args(
+        {"MK_editor", "--asset-import-regression-report", "retained/asset-import-regression/report.gereport"});
+
+    MK_REQUIRE(launch.options.asset_import_regression_report_path ==
+               "retained/asset-import-regression/report.gereport");
+
+    const auto validation = mirakana::editor::validate_native_editor_launch(launch);
+    MK_REQUIRE(validation.valid);
+}
+
+MK_TEST("editor native shell launch options reject unsafe asset import regression report path") {
+    const auto launch = parse_args({"MK_editor", "--asset-import-regression-report", "../outside/report.gereport"});
+
+    const auto validation = mirakana::editor::validate_native_editor_launch(launch);
+    MK_REQUIRE(!validation.valid);
+    MK_REQUIRE(validation.diagnostic.find("asset import regression report path") != std::string::npos);
+}
+
 MK_TEST("editor native shell launch options reject smoke resize without enough frames") {
     const auto launch = parse_args({"MK_editor", "--smoke-frames", "1", "--smoke-resize"});
 
@@ -549,6 +569,115 @@ MK_TEST("editor first party document renders Source Pulse assets instead of lega
     MK_REQUIRE(counters.editor_asset_browser_source_pulse_rows == asset_browser.rows.size());
     MK_REQUIRE(counters.editor_asset_browser_hardcoded_rows == 0U);
     MK_REQUIRE(!counters.editor_asset_browser_native_handles_exposed);
+}
+
+MK_TEST("editor first party document exposes retained asset import regression workflow from report path") {
+    const auto project_root = std::filesystem::temp_directory_path() / "MK_native_asset_import_regression_workflow";
+    std::filesystem::remove_all(project_root);
+    std::filesystem::create_directories(project_root / "retained" / "asset-import-regression");
+
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "first_party_synthetic_corpus",
+        .run_id = "visible-shell-smoke",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.axis",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId{1001U},
+                    .source_path = "C:/Users/operator/assets/axis.gltf",
+                    .source_sha256 = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    .preset_sha256 = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    .importer_id = "MK_tools.gltf",
+                    .importer_version = "test",
+                    .phase = "coordinate_normalization",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::coordinate_normalization_failed,
+                    .message = "synthetic axis failure",
+                    .succeeded = false,
+                    .ready_for_commercial_evidence = false,
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "texture.codec",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::png_texture,
+                    .asset = mirakana::AssetId{1002U},
+                    .source_path = "sources/textures/codec.png",
+                    .source_sha256 = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    .preset_sha256 = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    .importer_id = "MK_tools.texture",
+                    .importer_version = "test",
+                    .phase = "texture_decode",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::texture_decode_failed,
+                    .message = "synthetic texture decode failure",
+                    .succeeded = false,
+                    .ready_for_commercial_evidence = false,
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.legal",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId{1003U},
+                    .source_path = "sources/gltf/legal.gltf",
+                    .source_sha256 = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                    .preset_sha256 = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                    .importer_id = "MK_tools.gltf",
+                    .importer_version = "test",
+                    .phase = "legal",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::rejected_license,
+                    .message = "synthetic rejected license",
+                    .succeeded = false,
+                    .ready_for_commercial_evidence = false,
+                },
+            },
+        .asset_count = 3U,
+        .failed_count = 3U,
+        .legal_blocked_count = 1U,
+        .ready = false,
+    };
+
+    mirakana::RootedFileSystem filesystem{project_root};
+    filesystem.write_text("retained/asset-import-regression/report.gereport",
+                          mirakana::serialize_asset_import_regression_report_v1(report));
+
+    auto old_current_path = std::filesystem::current_path();
+    std::filesystem::current_path(project_root);
+    try {
+        const mirakana::editor::NativeEditorLaunchOptions options{
+            .asset_import_regression_report_path = "retained/asset-import-regression/report.gereport"};
+        mirakana::editor::NativeEditorApp app{options};
+
+        const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+        const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+        MK_REQUIRE(contains_element(shell_document.document, "asset_browser.import_workflow"));
+        MK_REQUIRE(contains_element(shell_document.document, "asset_browser.import_workflow.failure.mesh.axis"));
+        MK_REQUIRE(
+            contains_element(shell_document.document, "asset_browser.import_workflow.failure.mesh.axis.source_path"));
+        MK_REQUIRE(
+            contains_element(shell_document.document, "asset_browser.commands.asset_browser.import.preset_diff"));
+        MK_REQUIRE(
+            contains_element(shell_document.document, "asset_browser.commands.asset_browser.import.axis_unit_preview"));
+
+        MK_REQUIRE(counters.editor_asset_import_regression_workflow_visible);
+        MK_REQUIRE(counters.editor_asset_import_regression_workflow_rows == 6U);
+        MK_REQUIRE(counters.editor_asset_import_regression_failed_rows == 3U);
+        MK_REQUIRE(!counters.editor_asset_import_regression_reimport_command_enabled);
+        MK_REQUIRE(counters.editor_asset_import_regression_preset_diff_command_enabled);
+        MK_REQUIRE(counters.editor_asset_import_regression_axis_unit_preview_command_enabled);
+        MK_REQUIRE(!counters.editor_asset_import_regression_importers_executed_in_core);
+        MK_REQUIRE(!counters.editor_asset_import_regression_native_handles_exposed);
+        MK_REQUIRE(!counters.editor_asset_import_regression_external_engine_claim);
+
+        for (const auto& element : shell_document.document.traverse()) {
+            MK_REQUIRE(element.id.value.find("C:/Users/operator") == std::string::npos);
+            MK_REQUIRE(element.text.label.find("C:/Users/operator") == std::string::npos);
+            MK_REQUIRE(element.accessibility_label.find("C:/Users/operator") == std::string::npos);
+        }
+    } catch (...) {
+        std::filesystem::current_path(old_current_path);
+        std::filesystem::remove_all(project_root);
+        throw;
+    }
+    std::filesystem::current_path(old_current_path);
+    std::filesystem::remove_all(project_root);
 }
 
 MK_TEST("editor native UIA provider publishes asset browser retained rows") {

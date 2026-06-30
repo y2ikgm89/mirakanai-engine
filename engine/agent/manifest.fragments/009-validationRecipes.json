@@ -715,6 +715,11 @@
         "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -SyntheticSmoke",
         "purpose": "Validate the host-independent operator triage loop for GameEngine.AssetImportRegressionReport.v1 by generating a synthetic first-party report, classifying failed, legal-blocked, nondeterministic, preset-diff, and axis/unit-preview rows into GameEngine.AssetImportRegressionTriage.v1 counters, proving editor-core retained rows remain value-only, and running focused MK_asset_import_regression_tests plus MK_editor_core_tests."
       },
+      {
+        "name": "asset-import-regression-visible-shell-smoke",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests",
+        "purpose": "Validate the visible native Assets panel asset import regression workflow smoke by parsing safe --asset-import-regression-report project-relative paths, rejecting unsafe report paths, projecting sanitized retained GameEngine.AssetImportRegressionReport.v1 and triage rows into asset_browser.import_workflow.*, emitting editor_asset_import_regression_* smoke counters, enabling preset-diff and axis/unit preview command rows, disabling reimport when legal-blocked rows exist, and proving no editor-core importer execution, native handle exposure, absolute host path leakage, or external-engine compatibility claim."
+      },
     {
       "name": "physics-jolt",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",

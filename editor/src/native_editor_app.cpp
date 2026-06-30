@@ -7,6 +7,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/editor/asset_import_regression_workflow.hpp"
 #include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/shader_compile.hpp"
@@ -21,6 +22,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -220,11 +222,10 @@ make_default_asset_browser_content_browser(const SourceAssetRegistryDocumentV1& 
     return plan;
 }
 
-[[nodiscard]] EditorAssetBrowserProductionModel
-make_default_asset_browser_model(const ProjectDocument& project, const ContentBrowserState& browser,
-                                 const AssetImportPlan& import_plan, std::uint64_t generation = 1U,
-                                 const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr,
-                                 const AssetPipelineState* pipeline_state = nullptr) {
+[[nodiscard]] EditorAssetBrowserProductionModel make_default_asset_browser_model(
+    const ProjectDocument& project, const ContentBrowserState& browser, const AssetImportPlan& import_plan,
+    std::uint64_t generation = 1U, const EditorAssetBrowserPreviewEvidenceDesc* preview_evidence = nullptr,
+    const AssetPipelineState* pipeline_state = nullptr, const EditorAssetBrowserRetainedUiDesc* retained_ui = nullptr) {
     return make_editor_asset_browser_production_model(EditorAssetBrowserProductionDesc{
         .browser = &browser,
         .import_plan = &import_plan,
@@ -234,6 +235,7 @@ make_default_asset_browser_model(const ProjectDocument& project, const ContentBr
         .source_registry_path = project.source_registry_path,
         .generation = generation,
         .preview_evidence = preview_evidence,
+        .retained_ui = retained_ui,
     });
 }
 
@@ -285,6 +287,14 @@ make_asset_browser_retained_command_rows(std::span<const EditorAssetBrowserComma
         });
     }
     return rows;
+}
+
+void append_retained_asset_browser_command_rows(std::vector<EditorAssetBrowserRetainedCommandRow>& rows,
+                                                const EditorAssetBrowserRetainedUiDesc* retained_ui) {
+    if (retained_ui == nullptr) {
+        return;
+    }
+    rows.insert(rows.end(), retained_ui->command_rows.begin(), retained_ui->command_rows.end());
 }
 
 [[nodiscard]] NativeEditorEnvironmentArtistWorkflowCommandPlanRow
@@ -782,6 +792,87 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
         std::filesystem::absolute(std::filesystem::path{std::string(root_path)}).lexically_normal());
 }
 
+[[nodiscard]] std::string visible_asset_import_regression_token(std::string_view value) {
+    std::string token;
+    token.reserve(value.size());
+    for (const char character : value) {
+        if ((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+            (character >= '0' && character <= '9') || character == '_' || character == '-' || character == '.') {
+            token.push_back(character);
+        } else {
+            token.push_back('_');
+        }
+    }
+    return token.empty() ? "unknown" : token;
+}
+
+[[nodiscard]] std::string visible_asset_import_regression_source_path(std::string_view path) {
+    return is_safe_import_repository_path_for_query(path) ? std::string{path}
+                                                          : std::string{"unsafe_source_path_redacted"};
+}
+
+[[nodiscard]] AssetImportRegressionReportV1
+make_visible_sanitized_asset_import_regression_report(AssetImportRegressionReportV1 report) {
+    report.corpus_id = visible_asset_import_regression_token(report.corpus_id);
+    report.run_id = visible_asset_import_regression_token(report.run_id);
+    for (auto& row : report.rows) {
+        row.asset_id = visible_asset_import_regression_token(row.asset_id);
+        row.source_path = visible_asset_import_regression_source_path(row.source_path);
+        row.importer_id = visible_asset_import_regression_token(row.importer_id);
+        row.importer_version = visible_asset_import_regression_token(row.importer_version);
+        row.phase = visible_asset_import_regression_token(row.phase);
+        row.message = "retained report row reviewed";
+    }
+    return report;
+}
+
+[[nodiscard]] EditorAssetBrowserRetainedUiDesc
+make_asset_import_regression_load_error_retained_ui(std::string_view safe_report_path) {
+    EditorAssetBrowserRetainedUiDesc retained;
+    retained.query_text = std::string{safe_report_path};
+    retained.query_status_label = "Asset import regression report blocked";
+    retained.import_workflow_rows.push_back(EditorAssetBrowserImportWorkflowRow{
+        .id = "asset_browser.import_workflow.report_load_error",
+        .category_label = "report_load_error",
+        .asset_id = "retained_report",
+        .source_path = std::string{safe_report_path},
+        .status_label = "blocked",
+        .detail_label = "project_relative_report_path",
+        .diagnostic = "retained asset import regression report could not be read",
+        .ready = false,
+        .blocked = true,
+        .host_owned = true,
+    });
+    return retained;
+}
+
+[[nodiscard]] std::optional<EditorAssetBrowserRetainedUiDesc>
+make_asset_import_regression_retained_ui_from_report(const ProjectDocument& project, std::string_view report_path) {
+    if (report_path.empty()) {
+        return std::nullopt;
+    }
+    if (!is_safe_import_repository_path_for_query(report_path)) {
+        return make_asset_import_regression_load_error_retained_ui("unsafe_report_path_redacted");
+    }
+
+    try {
+        RootedFileSystem filesystem{normalized_project_root(project.root_path)};
+        if (!filesystem.exists(report_path)) {
+            return make_asset_import_regression_load_error_retained_ui(report_path);
+        }
+        auto report = make_visible_sanitized_asset_import_regression_report(
+            deserialize_asset_import_regression_report_v1(filesystem.read_text(report_path)));
+        auto triage = make_asset_import_regression_triage_v1(report);
+        const auto model = make_editor_asset_import_regression_workflow_model(EditorAssetImportRegressionWorkflowDesc{
+            .latest_report = &report,
+            .triage = &triage,
+        });
+        return make_editor_asset_import_regression_workflow_retained_ui_desc(model);
+    } catch (const std::exception&) {
+        return make_asset_import_regression_load_error_retained_ui(report_path);
+    }
+}
+
 [[nodiscard]] bool is_strict_child_path(const std::filesystem::path& root, const std::filesystem::path& path) {
     auto root_it = root.begin();
     auto path_it = path.begin();
@@ -968,6 +1059,11 @@ struct NativeEditorApp::Impl {
               make_native_editor_text_input_state(make_native_editor_project_name_text_input_target(project.name))),
           clipboard_text_adapter(memory_clipboard) {
         asset_browser_asset_pipeline.set_import_plan(asset_browser_import_plan);
+        if (auto retained = make_asset_import_regression_retained_ui_from_report(
+                project, options.asset_import_regression_report_path)) {
+            asset_import_regression_retained_ui = std::move(*retained);
+            asset_import_regression_retained_ui_available = true;
+        }
         refresh_asset_browser_preview_evidence();
         file_dialog_service = &memory_file_dialog_service;
         clipboard_adapter = &clipboard_text_adapter;
@@ -979,11 +1075,14 @@ struct NativeEditorApp::Impl {
     void refresh_asset_browser_preview_evidence() {
         const auto preview_evidence =
             make_default_asset_browser_preview_evidence_desc(asset_browser_import_plan, material_preview);
+        const auto* retained_ui =
+            asset_import_regression_retained_ui_available ? &asset_import_regression_retained_ui : nullptr;
         asset_browser = make_default_asset_browser_model(project, asset_browser_content_browser,
                                                          asset_browser_import_plan, asset_browser_generation,
-                                                         &preview_evidence, &asset_browser_asset_pipeline);
+                                                         &preview_evidence, &asset_browser_asset_pipeline, retained_ui);
         asset_browser_command_plans = make_default_asset_browser_command_plans(asset_browser);
         asset_browser.command_rows = make_asset_browser_retained_command_rows(asset_browser_command_plans);
+        append_retained_asset_browser_command_rows(asset_browser.command_rows, retained_ui);
     }
 
     [[nodiscard]] std::string append_asset_import_job(std::size_t source_count, std::size_t total_steps,
@@ -1044,10 +1143,14 @@ struct NativeEditorApp::Impl {
         state.asset_pipeline.set_import_plan(state.import_plan);
         const auto preview_evidence =
             make_default_asset_browser_preview_evidence_desc(state.import_plan, material_preview);
-        state.asset_browser = make_default_asset_browser_model(project, state.content_browser, state.import_plan,
-                                                               generation, &preview_evidence, &state.asset_pipeline);
+        const auto* retained_ui =
+            asset_import_regression_retained_ui_available ? &asset_import_regression_retained_ui : nullptr;
+        state.asset_browser =
+            make_default_asset_browser_model(project, state.content_browser, state.import_plan, generation,
+                                             &preview_evidence, &state.asset_pipeline, retained_ui);
         state.command_plans = make_default_asset_browser_command_plans(state.asset_browser);
         state.asset_browser.command_rows = make_asset_browser_retained_command_rows(state.command_plans);
+        append_retained_asset_browser_command_rows(state.asset_browser.command_rows, retained_ui);
         return state;
     }
 
@@ -1079,6 +1182,8 @@ struct NativeEditorApp::Impl {
     std::uint64_t next_asset_import_job_sequence{1U};
     EditorAssetBrowserProductionModel asset_browser;
     std::vector<EditorAssetBrowserCommandPlan> asset_browser_command_plans;
+    EditorAssetBrowserRetainedUiDesc asset_import_regression_retained_ui;
+    bool asset_import_regression_retained_ui_available{false};
     std::vector<EditorDiagnosticRow> console_rows;
     std::vector<NativeEditorEnvironmentArtistWorkflowCommandPlanRow> environment_artist_workflow_command_plans;
     EnvironmentArtistWorkflowExecutionReviewModel environment_artist_workflow_execution_review;
@@ -1118,7 +1223,7 @@ struct NativeEditorApp::Impl {
 };
 
 NativeEditorApp::NativeEditorApp(NativeEditorLaunchOptions options)
-    : options_{options}, impl_{std::make_unique<Impl>(options_)} {}
+    : options_{std::move(options)}, impl_{std::make_unique<Impl>(options_)} {}
 
 NativeEditorApp::~NativeEditorApp() = default;
 

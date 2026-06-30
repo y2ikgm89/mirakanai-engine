@@ -37,7 +37,8 @@ template <typename T> [[nodiscard]] bool parse_integer(std::string_view text, T&
 }
 
 [[nodiscard]] bool token_requires_value(std::string_view token) noexcept {
-    return token == "--width" || token == "--height" || token == "--smoke-frames";
+    return token == "--width" || token == "--height" || token == "--smoke-frames" ||
+           token == "--asset-import-regression-report";
 }
 
 [[nodiscard]] std::string missing_value_diagnostic(std::string_view option_name) {
@@ -58,6 +59,30 @@ template <typename T> [[nodiscard]] bool parse_integer(std::string_view text, T&
     std::string diagnostic{"unknown option: "};
     diagnostic.append(token);
     return diagnostic;
+}
+
+[[nodiscard]] bool is_safe_project_relative_path(std::string_view path) noexcept {
+    if (path.empty() || path == "." || path == "..") {
+        return false;
+    }
+    if (path.starts_with('/') || path.starts_with('\\') || path.contains(':') || path.contains('\\') ||
+        path.contains("://")) {
+        return false;
+    }
+
+    std::size_t begin = 0U;
+    while (begin <= path.size()) {
+        const auto end = path.find('/', begin);
+        const auto segment = path.substr(begin, end == std::string_view::npos ? std::string_view::npos : end - begin);
+        if (segment.empty() || segment == "." || segment == "..") {
+            return false;
+        }
+        if (end == std::string_view::npos) {
+            break;
+        }
+        begin = end + 1U;
+    }
+    return true;
 }
 
 } // namespace
@@ -99,6 +124,8 @@ NativeEditorLaunchParseResult parse_native_editor_launch(int argc, char** argv) 
                 } else {
                     result.diagnostics.push_back(invalid_value_diagnostic(token, value));
                 }
+            } else if (token == "--asset-import-regression-report") {
+                result.options.asset_import_regression_report_path = std::string{value};
             }
         } else if (!token.empty()) {
             result.diagnostics.push_back(unknown_option_diagnostic(token));
@@ -120,6 +147,12 @@ NativeEditorLaunchValidation validate_native_editor_launch_options(const NativeE
     if (options.smoke_resize && options.smoke_frames < 2) {
         return NativeEditorLaunchValidation{.valid = false,
                                             .diagnostic = "native editor smoke resize requires at least two frames"};
+    }
+    if (!options.asset_import_regression_report_path.empty() &&
+        !is_safe_project_relative_path(options.asset_import_regression_report_path)) {
+        return NativeEditorLaunchValidation{
+            .valid = false,
+            .diagnostic = "native editor asset import regression report path must be project-relative and safe"};
     }
     return NativeEditorLaunchValidation{.valid = true, .diagnostic = {}};
 }
@@ -144,8 +177,8 @@ std::string native_editor_launch_usage(std::string_view executable_name) {
     usage.reserve(executable_name.size() + 128U);
     usage.append("usage: ");
     usage.append(executable_name);
-    usage.append(
-        " [--width <pixels>] [--height <pixels>] [--smoke-frames <count>] [--smoke-resize] [--no-user-config]");
+    usage.append(" [--width <pixels>] [--height <pixels>] [--smoke-frames <count>] [--smoke-resize]"
+                 " [--no-user-config] [--asset-import-regression-report <project-relative-report>]");
     return usage;
 }
 

@@ -20,6 +20,13 @@ $assetRegressionOperatorLoopScript = Get-AgentSurfaceText "tools/check-asset-imp
 $editorAssetRegressionWorkflowHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp"
 $editorAssetRegressionWorkflowSource = Get-AgentSurfaceText "editor/core/src/asset_import_regression_workflow.cpp"
 $editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
+$nativeEditorLaunchHeader = Get-AgentSurfaceText "editor/src/native_editor_launch.hpp"
+$nativeEditorLaunchSource = Get-AgentSurfaceText "editor/src/native_editor_launch.cpp"
+$nativeEditorAppSource = Get-AgentSurfaceText "editor/src/native_editor_app.cpp"
+$firstPartyEditorDocumentHeader = Get-AgentSurfaceText "editor/src/first_party_editor_document.hpp"
+$firstPartyEditorDocumentSource = Get-AgentSurfaceText "editor/src/first_party_editor_document.cpp"
+$nativeEditorMainSource = Get-AgentSurfaceText "editor/src/main.cpp"
+$editorNativeShellTests = Get-AgentSurfaceText "tests/unit/editor_native_shell_tests.cpp"
 $assetRegressionFixtureReadme = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/README.md"
 $assetRegressionFixtureCorpus = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/first_party_corpus.gecorpus"
 $assetCMake = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
@@ -294,6 +301,28 @@ foreach ($needle in @(
         "out/host-artifacts/asset-import-regression-corpus"
     )) {
     Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionRunScript + "`n" + $assetRegressionOperatorLoopScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
+}
+
+foreach ($needle in @(
+        "asset_import_regression_report_path",
+        "--asset-import-regression-report",
+        "make_visible_sanitized_asset_import_regression_report",
+        "unsafe_source_path_redacted",
+        "asset_import_regression_retained_ui_available",
+        "editor_asset_import_regression_workflow_visible",
+        "editor_asset_import_regression_workflow_rows",
+        "editor_asset_import_regression_failed_rows",
+        "editor_asset_import_regression_reimport_command_enabled",
+        "editor_asset_import_regression_preset_diff_command_enabled",
+        "editor_asset_import_regression_axis_unit_preview_command_enabled",
+        "editor_asset_import_regression_importers_executed_in_core",
+        "editor_asset_import_regression_native_handles_exposed",
+        "editor_asset_import_regression_external_engine_claim",
+        "editor first party document exposes retained asset import regression workflow from report path",
+        "MK_editor_native_shell_tests",
+        "asset-import-regression-visible-shell-smoke"
+    )) {
+    Assert-ContainsText ($nativeEditorLaunchHeader + "`n" + $nativeEditorLaunchSource + "`n" + $nativeEditorAppSource + "`n" + $firstPartyEditorDocumentHeader + "`n" + $firstPartyEditorDocumentSource + "`n" + $nativeEditorMainSource + "`n" + $editorNativeShellTests + "`n" + $importerManifest + "`n" + $validationRecipesManifest + "`n" + $planText + "`n" + $planReadme) $needle "asset import regression visible native shell smoke"
 }
 
 foreach ($needle in @(

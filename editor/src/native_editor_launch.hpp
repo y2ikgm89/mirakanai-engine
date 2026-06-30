@@ -16,6 +16,7 @@ struct NativeEditorLaunchOptions {
     std::int32_t smoke_frames{-1};
     bool smoke_resize{false};
     bool no_user_config{false};
+    std::string asset_import_regression_report_path;
 };
 
 struct NativeEditorLaunchValidation {
