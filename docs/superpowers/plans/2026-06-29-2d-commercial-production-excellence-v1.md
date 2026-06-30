@@ -169,7 +169,7 @@ Goal: provide production-grade authoring models without copying third-party edit
 - [x] Keep editor-core state value-only; visible shell widgets must use first-party `mirakana_ui` / `mirakana::ui` and project styling.
 - [x] Provide undo/redo revision safety, safe package mutation previews, selected package smoke review, and rejection diagnostics before applying any package update.
 - [x] Add large-scene navigation and filtering primitives for asset browser/import flows if missing.
-- [ ] Prove authoring workflows using first-party sample content and generated fixtures only.
+- [x] Prove authoring workflows using first-party sample content and generated fixtures only.
 
 Likely surfaces: `editor/core/include/mirakana/editor/`, `editor/core/`, `editor/tests/`, `engine/ui/`, `games/sample_2d_desktop_runtime_package/`, editor validation scripts.
 
@@ -188,6 +188,10 @@ Phase 3 validation evidence:
 - 2026-06-30 GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` and `tools/ctest.ps1 --preset dev -R MK_editor_core_tests --output-on-failure` passed for the large-scene asset navigation primitive.
 - 2026-06-30 overflow RED/GREEN: an added `std::numeric_limits<std::size_t>::max()` next-page request first failed `tools/ctest.ps1 --preset dev -R MK_editor_core_tests --output-on-failure`, then passed after saturating large page-offset addition before final-page clamping.
 - 2026-06-30 closeout: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files 'editor/core/src/content_browser.cpp,tests/unit/editor_core_tests.cpp'`, `git diff --check`, and full `tools/validate.ps1` passed.
+- 2026-06-30 authoring workflow proof: added `Editor2DCommercialAuthoringWorkflowProofStatus`, `Editor2DCommercialAuthoringWorkflowProofSourceOrigin`, `Editor2DCommercialAuthoringWorkflowProofSourceRowInput`, `Editor2DCommercialAuthoringWorkflowProofSourceRow`, `Editor2DCommercialAuthoringWorkflowProofDesc`, `Editor2DCommercialAuthoringWorkflowProofModel`, `make_editor_2d_commercial_authoring_workflow_proof_model`, and `make_editor_2d_commercial_authoring_workflow_proof_ui_model` in `MK_editor_core`. The value-only proof aggregates 2D commercial authoring review, package update review, large-scene asset navigation, and `review_production_authoring_workflow` evidence while requiring first-party sample or generated fixture source rows. It rejects external assets, external-engine project/schema rows, copied material, command/file/package IO execution, runtime source parsing, native handles, external engine API parity, and legal-approval claims.
+- 2026-06-30 RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed on missing `mirakana/editor/two_d_commercial_authoring_workflow_proof.hpp`.
+- 2026-06-30 GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` and `tools/ctest.ps1 --preset dev -R MK_editor_core_tests --output-on-failure` passed for the authoring workflow proof model.
+- 2026-06-30 closeout: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files 'editor/core/src/two_d_commercial_authoring_workflow_proof.cpp,tests/unit/editor_core_tests.cpp'`, `git diff --check`, and full `tools/validate.ps1` passed.
 
 Done when: a reviewer can inspect, edit, validate, and package a non-trivial 2D atlas/tilemap scene through first-party editor models and retained evidence without external engine UI/layout/schema influence.
 
