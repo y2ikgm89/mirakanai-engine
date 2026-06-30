@@ -44,6 +44,7 @@
 #include "mirakana/editor/shader_tool_discovery.hpp"
 #include "mirakana/editor/source_registry_browser.hpp"
 #include "mirakana/editor/two_d_commercial_authoring_review.hpp"
+#include "mirakana/editor/two_d_commercial_package_update_review.hpp"
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/editor/viewport.hpp"
 #include "mirakana/editor/viewport_shader_artifacts.hpp"
@@ -356,6 +357,15 @@ find_2d_commercial_authoring_review_row(const std::vector<mirakana::editor::Edit
                                         std::string_view id) noexcept {
     const auto it = std::ranges::find_if(
         rows, [id](const mirakana::editor::Editor2DCommercialAuthoringReviewRow& row) { return row.id == id; });
+    return it == rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::editor::Editor2DCommercialPackageUpdatePreviewRow*
+find_2d_commercial_package_update_preview_row(
+    const std::vector<mirakana::editor::Editor2DCommercialPackageUpdatePreviewRow>& rows,
+    std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        rows, [id](const mirakana::editor::Editor2DCommercialPackageUpdatePreviewRow& row) { return row.id == id; });
     return it == rows.end() ? nullptr : &(*it);
 }
 
@@ -14882,6 +14892,191 @@ MK_TEST("editor 2d commercial authoring review fails closed on unsafe claims dup
     MK_REQUIRE(has_unsupported_claim("native handle exposure"));
     MK_REQUIRE(has_unsupported_claim("external engine project import"));
     MK_REQUIRE(has_unsupported_claim("external engine API parity"));
+}
+
+MK_TEST("editor 2d commercial package update review gates apply with revision smoke preview and undo redo") {
+    const mirakana::editor::ScenePackageRegistrationApplyPlan plan{
+        .game_manifest_path = "games/sample/game.agent.json",
+        .runtime_package_files = {"runtime/scenes/start.scene", "runtime/atlases/player.geatlas"},
+        .can_apply = true,
+        .diagnostic = "ready to apply runtimePackageFiles entries",
+    };
+
+    const auto model = mirakana::editor::make_editor_2d_commercial_package_update_review_model(
+        mirakana::editor::Editor2DCommercialPackageUpdateReviewDesc{
+            .apply_plan = plan,
+            .expected_manifest_revision = 7U,
+            .active_manifest_revision = 7U,
+            .undo_stack_count = 2U,
+            .redo_stack_count = 0U,
+            .smoke_reviews =
+                {
+                    mirakana::editor::Editor2DCommercialPackageUpdateSmokeReviewInput{
+                        .id = "desktop_smoke",
+                        .recipe_id = "desktop-runtime-2d-package-smoke",
+                        .status = mirakana::editor::Editor2DCommercialPackageSmokeReviewStatus::passed,
+                        .diagnostic = "selected package smoke passed from host evidence",
+                    },
+                },
+            .selected_smoke_review_id = "desktop_smoke",
+            .rejection_diagnostics =
+                {
+                    mirakana::editor::Editor2DCommercialPackageUpdateRejectionDiagnosticInput{
+                        .id = "source_scene",
+                        .candidate_path = "games/sample/assets/scenes/start.scene",
+                        .status_label = "source_only",
+                        .diagnostic = "source scene stays out of runtimePackageFiles",
+                        .blocks_apply = false,
+                    },
+                },
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DCommercialPackageUpdateReviewStatus::ready);
+    MK_REQUIRE(model.ready_for_reviewed_apply);
+    MK_REQUIRE(model.revision_checked);
+    MK_REQUIRE(model.undo_redo_safe);
+    MK_REQUIRE(model.safe_package_mutation_preview_available);
+    MK_REQUIRE(model.selected_package_smoke_reviewed);
+    MK_REQUIRE(model.rejection_diagnostics_ready);
+    MK_REQUIRE(model.preview_rows.size() == 2U);
+    MK_REQUIRE(model.smoke_reviews.size() == 1U);
+    MK_REQUIRE(model.rejection_diagnostics.size() == 1U);
+    MK_REQUIRE(!model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(find_2d_commercial_package_update_preview_row(
+                   model.preview_rows, "2d_commercial_package_update_review.preview.0") != nullptr);
+
+    const auto ui = mirakana::editor::make_editor_2d_commercial_package_update_review_ui_model(model);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_package_update_review"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_package_update_review.revision.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_package_update_review.preview.0.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_package_update_review.smoke.desktop_smoke.status"}) !=
+               nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_package_update_review.rejection.source_scene.status"}) !=
+               nullptr);
+
+    mirakana::editor::MemoryTextStore store;
+    store.write_text("games/sample/game.agent.json", "{\n"
+                                                     "  \"schemaVersion\": 1,\n"
+                                                     "  \"name\": \"sample\",\n"
+                                                     "  \"runtimePackageFiles\": [\n"
+                                                     "    \"runtime/start.geindex\"\n"
+                                                     "  ],\n"
+                                                     "  \"validationRecipes\": []\n"
+                                                     "}\n");
+    const auto before = store.read_text("games/sample/game.agent.json");
+    mirakana::editor::UndoStack history;
+    auto action = mirakana::editor::make_editor_2d_commercial_package_update_apply_action(store, plan, model);
+    MK_REQUIRE(history.execute(std::move(action)));
+    MK_REQUIRE(history.can_undo());
+    MK_REQUIRE(history.undo_label() == "Apply reviewed 2D package update");
+    const auto after = store.read_text("games/sample/game.agent.json");
+    MK_REQUIRE(after.contains("\"runtime/scenes/start.scene\""));
+    MK_REQUIRE(after.contains("\"runtime/atlases/player.geatlas\""));
+    MK_REQUIRE(history.undo());
+    MK_REQUIRE(store.read_text("games/sample/game.agent.json") == before);
+    MK_REQUIRE(history.redo());
+    MK_REQUIRE(store.read_text("games/sample/game.agent.json") == after);
+
+    auto mismatched_plan = plan;
+    mismatched_plan.runtime_package_files = {"runtime/scenes/other.scene"};
+    mirakana::editor::MemoryTextStore mismatch_store;
+    mismatch_store.write_text("games/sample/game.agent.json", before);
+    mirakana::editor::UndoStack mismatch_history;
+    auto mismatched_action =
+        mirakana::editor::make_editor_2d_commercial_package_update_apply_action(mismatch_store, mismatched_plan, model);
+    MK_REQUIRE(!mismatch_history.execute(std::move(mismatched_action)));
+    MK_REQUIRE(mismatch_store.read_text("games/sample/game.agent.json") == before);
+}
+
+MK_TEST("editor 2d commercial package update review fails closed before unsafe or stale apply") {
+    const mirakana::editor::ScenePackageRegistrationApplyPlan plan{
+        .game_manifest_path = "games/sample/game.agent.json",
+        .runtime_package_files = {"runtime/scenes/start.scene"},
+        .can_apply = true,
+        .diagnostic = "ready to apply runtimePackageFiles entries",
+    };
+
+    const auto model = mirakana::editor::make_editor_2d_commercial_package_update_review_model(
+        mirakana::editor::Editor2DCommercialPackageUpdateReviewDesc{
+            .apply_plan = plan,
+            .expected_manifest_revision = 8U,
+            .active_manifest_revision = 9U,
+            .undo_stack_count = 1U,
+            .redo_stack_count = 1U,
+            .smoke_reviews =
+                {
+                    mirakana::editor::Editor2DCommercialPackageUpdateSmokeReviewInput{
+                        .id = "desktop_smoke",
+                        .recipe_id = "desktop-runtime-2d-package-smoke",
+                        .status = mirakana::editor::Editor2DCommercialPackageSmokeReviewStatus::failed,
+                        .diagnostic = "host smoke failed",
+                        .executes = true,
+                        .exposes_native_handles = true,
+                    },
+                },
+            .selected_smoke_review_id = "desktop_smoke",
+            .rejection_diagnostics =
+                {
+                    mirakana::editor::Editor2DCommercialPackageUpdateRejectionDiagnosticInput{
+                        .id = "unsafe_path",
+                        .candidate_path = "../outside.scene",
+                        .status_label = "unsafe_path",
+                        .diagnostic = {},
+                        .blocks_apply = true,
+                    },
+                },
+            .request_package_script_execution = true,
+            .request_validation_execution = true,
+            .request_runtime_source_parsing = true,
+            .request_native_handle_exposure = true,
+            .request_external_engine_project_import = true,
+            .request_external_engine_api_parity_claim = true,
+        });
+
+    auto has_diagnostic = [&model](std::string_view text) {
+        return std::ranges::any_of(model.diagnostics,
+                                   [text](const std::string& diagnostic) { return diagnostic.contains(text); });
+    };
+    auto has_unsupported_claim = [&model](std::string_view text) {
+        return std::ranges::any_of(model.unsupported_claims,
+                                   [text](const std::string& claim) { return claim.contains(text); });
+    };
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DCommercialPackageUpdateReviewStatus::blocked);
+    MK_REQUIRE(!model.ready_for_reviewed_apply);
+    MK_REQUIRE(!model.revision_checked);
+    MK_REQUIRE(!model.undo_redo_safe);
+    MK_REQUIRE(model.safe_package_mutation_preview_available);
+    MK_REQUIRE(!model.selected_package_smoke_reviewed);
+    MK_REQUIRE(!model.rejection_diagnostics_ready);
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(has_diagnostic("stale manifest revision"));
+    MK_REQUIRE(has_diagnostic("selected package smoke"));
+    MK_REQUIRE(has_diagnostic("rejection diagnostic is required"));
+    MK_REQUIRE(has_unsupported_claim("package script execution"));
+    MK_REQUIRE(has_unsupported_claim("validation execution"));
+    MK_REQUIRE(has_unsupported_claim("runtime source parsing"));
+    MK_REQUIRE(has_unsupported_claim("native handle exposure"));
+    MK_REQUIRE(has_unsupported_claim("external engine project import"));
+    MK_REQUIRE(has_unsupported_claim("external engine API parity"));
+
+    mirakana::editor::MemoryTextStore store;
+    store.write_text("games/sample/game.agent.json", "{\n"
+                                                     "  \"schemaVersion\": 1,\n"
+                                                     "  \"name\": \"sample\",\n"
+                                                     "  \"runtimePackageFiles\": []\n"
+                                                     "}\n");
+    const auto before = store.read_text("games/sample/game.agent.json");
+    mirakana::editor::UndoStack history;
+    auto action = mirakana::editor::make_editor_2d_commercial_package_update_apply_action(store, plan, model);
+    MK_REQUIRE(!history.execute(std::move(action)));
+    MK_REQUIRE(store.read_text("games/sample/game.agent.json") == before);
 }
 
 MK_TEST("editor ai package authoring diagnostics reject mutation and execution claims") {
