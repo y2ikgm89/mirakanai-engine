@@ -77,6 +77,15 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `environment.command.weather_keyframe.edit`, `environment.command.quality_preset.select`, and
   `environment.command.capture.cubemap.request` are editor-core value rows only. Do not treat them as backend/package/validation
   execution, public handle exposure, broad `environment_ready`, or broad AAA preset-library readiness.
+- Asset import regression workflow rows live in GUI-independent `MK_editor_core` as
+  `EditorAssetImportRegressionWorkflowDesc`, `EditorAssetImportRegressionWorkflowModel`,
+  `make_editor_asset_import_regression_workflow_model`, and
+  `make_editor_asset_import_regression_workflow_retained_ui_desc`; retained rows use
+  `asset_browser.import_workflow.*`, and reviewed command ids are `asset_browser.importer_corpus.run`,
+  `asset_browser.importer_corpus.open_report`, `asset_browser.import.batch_reimport`,
+  `asset_browser.import.preset_diff`, and `asset_browser.import.axis_unit_preview`. Keep these value-only:
+  no editor-core importer execution, package scripts, validation recipes, package mutation, native handles,
+  arbitrary importer plugins, external downloads, or Unity/Unreal/Godot compatibility claims.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.

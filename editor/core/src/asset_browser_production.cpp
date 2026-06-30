@@ -969,6 +969,18 @@ make_editor_asset_browser_production_model(const EditorAssetBrowserProductionDes
         model.query_status_label = desc.retained_ui->query_status_label;
         model.command_rows = desc.retained_ui->command_rows;
         model.legal_rows = desc.retained_ui->legal_rows;
+        model.import_workflow_rows = desc.retained_ui->import_workflow_rows;
+        model.mutates =
+            std::ranges::any_of(model.import_workflow_rows, [](const auto& row) { return row.mutates_project_files; });
+        model.executes =
+            std::ranges::any_of(model.import_workflow_rows, [](const auto& row) { return row.executes_import_tools; });
+        model.exposes_native_handles =
+            model.exposes_native_handles ||
+            std::ranges::any_of(model.import_workflow_rows, [](const auto& row) { return row.exposes_native_handles; });
+        model.executes_package_scripts = std::ranges::any_of(
+            model.import_workflow_rows, [](const auto& row) { return row.executes_package_scripts; });
+        model.executes_validation_recipes = std::ranges::any_of(
+            model.import_workflow_rows, [](const auto& row) { return row.executes_validation_recipes; });
     }
     if (desc.package_review != nullptr) {
         model.package_review = make_editor_asset_browser_package_review_model(*desc.package_review);
@@ -1098,6 +1110,37 @@ mirakana::ui::UiDocument make_editor_asset_browser_production_ui_model(const Edi
                      : model.package_review.apply_plan.game_manifest_path);
     append_label(document, package_root_id, "asset_browser.package.apply_plan.runtime_package_files",
                  std::to_string(model.package_review.apply_plan.runtime_package_files.size()));
+
+    auto import_workflow_root = make_child("asset_browser.import_workflow", root, mirakana::ui::SemanticRole::list);
+    import_workflow_root.accessibility_label = "Asset Browser Import Workflow";
+    add_or_throw(document, std::move(import_workflow_root));
+    const mirakana::ui::ElementId import_workflow_root_id{"asset_browser.import_workflow"};
+    for (const auto& row : model.import_workflow_rows) {
+        require_safe_field("import_workflow_id", row.id);
+        require_safe_label("import_workflow_status_label", row.status_label);
+        mirakana::ui::ElementDesc item =
+            make_child(row.id, import_workflow_root_id, mirakana::ui::SemanticRole::list_item);
+        item.text = make_text(row.asset_id.empty() ? row.category_label : row.asset_id);
+        item.accessibility_label = item.text.label.empty() ? row.id : item.text.label;
+        item.enabled = !row.blocked;
+        add_or_throw(document, std::move(item));
+        const mirakana::ui::ElementId item_id{row.id};
+        append_label(document, item_id, row.id + ".category", row.category_label.empty() ? "-" : row.category_label);
+        append_label(document, item_id, row.id + ".asset_id", row.asset_id.empty() ? "-" : row.asset_id);
+        append_label(document, item_id, row.id + ".asset_key", row.asset_key_label.empty() ? "-" : row.asset_key_label);
+        append_label(document, item_id, row.id + ".source_path", row.source_path.empty() ? "-" : row.source_path);
+        append_label(document, item_id, row.id + ".status", row.status_label);
+        append_label(document, item_id, row.id + ".detail", row.detail_label.empty() ? "-" : row.detail_label);
+        append_label(document, item_id, row.id + ".diagnostic", row.diagnostic.empty() ? "-" : row.diagnostic);
+        append_label(document, item_id, row.id + ".selected", bool_label(row.selected));
+        append_label(document, item_id, row.id + ".host_owned", bool_label(row.host_owned));
+        append_label(document, item_id, row.id + ".mutates_project_files", bool_label(row.mutates_project_files));
+        append_label(document, item_id, row.id + ".executes_import_tools", bool_label(row.executes_import_tools));
+        append_label(document, item_id, row.id + ".executes_package_scripts", bool_label(row.executes_package_scripts));
+        append_label(document, item_id, row.id + ".executes_validation_recipes",
+                     bool_label(row.executes_validation_recipes));
+        append_label(document, item_id, row.id + ".native_handles_exposed", bool_label(row.exposes_native_handles));
+    }
 
     auto commands_root = make_child("asset_browser.commands", root, mirakana::ui::SemanticRole::list);
     commands_root.accessibility_label = "Asset Browser Commands";

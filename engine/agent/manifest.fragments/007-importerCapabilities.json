@@ -30,6 +30,7 @@
       "format": "GameEngine.AssetImportRegressionCorpus.v1",
       "reportFormat": "GameEngine.AssetImportRegressionReport.v1",
       "status": "implemented-value-contract-and-mk-tools-runner-foundation",
+      "workflowStatus": "implemented-batch-diff-preview-editor-workflow",
       "ownerModule": "MK_assets",
       "runnerOwnerModule": "MK_tools",
       "schemas": [
@@ -46,6 +47,20 @@
       "runnerApis": [
         "mirakana::run_asset_import_regression_corpus"
       ],
+      "planningApis": [
+        "mirakana::plan_asset_import_batch_reimport",
+        "mirakana::diff_asset_import_presets",
+        "mirakana::build_asset_axis_unit_preview",
+        "mirakana::editor::make_editor_asset_import_regression_workflow_model",
+        "mirakana::editor::make_editor_asset_import_regression_workflow_retained_ui_desc"
+      ],
+      "editorCommandIds": [
+        "asset_browser.importer_corpus.run",
+        "asset_browser.importer_corpus.open_report",
+        "asset_browser.import.batch_reimport",
+        "asset_browser.import.preset_diff",
+        "asset_browser.import.axis_unit_preview"
+      ],
       "assetKinds": [
         "gltf_scene",
         "gltf_mesh",
@@ -58,7 +73,7 @@
       ],
       "legalPolicy": "Corpus rows are commercial evidence candidates only when source paths are safe relative paths, expected hashes are present, third-party rows include expected_sha256, GameEngine.AssetImportProvenance.v1 validation passes, notice_complete=true, external_engine_material=false, and license_policy is accepted_for_source_tree or accepted_for_host_corpus_only. Rejected, unknown, non-commercial, no-derivatives, missing-notice, external-engine, duplicate, and row-budget-overrun rows fail closed.",
       "presetPolicy": "Mesh corpus rows carry the reviewed mesh unit_scale/up_axis/triangulate/normal/tangent/material-extraction preset intent. The MK_tools runner resolves AssetImportPresets.v1 project defaults/overrides through review_asset_import_preset_for_asset before execution and records a preset SHA-256 row for diagnosis.",
-      "runnerPolicy": "run_asset_import_regression_corpus validates the corpus before importer execution, resolves source paths under a caller-supplied corpus root, records source SHA-256 and preset SHA-256, executes existing first-party import plans and optional ExternalAssetImportAdapters through an overlay filesystem for deterministic double-run evidence, writes only to caller-supplied output_root when requested, and returns value-only GameEngine.AssetImportRegressionReport.v1 rows without leaking parser, KTX, OpenEXR, miniaudio, GPU, native handle, or third-party types.",
+      "runnerPolicy": "run_asset_import_regression_corpus validates the corpus before importer execution, resolves source paths under a caller-supplied corpus root, records source SHA-256 and preset SHA-256, executes existing first-party import plans and optional ExternalAssetImportAdapters through an overlay filesystem for deterministic double-run evidence, writes only to caller-supplied output_root when requested, and returns value-only GameEngine.AssetImportRegressionReport.v1 rows without leaking parser, KTX, OpenEXR, miniaudio, GPU, native handle, or third-party types. Batch reimport planning, preset diff review, and axis/unit preview rows are value-only planner surfaces; the editor workflow projects those rows into Source Pulse retained UI without executing importers, mutating packages, exposing native handles, or claiming external-engine compatibility.",
       "unsupportedClaims": [
         "runtime source parsing",
         "external network fetch",
@@ -66,6 +81,7 @@
         "Unity/Unreal/Godot compatibility",
         "arbitrary importer plugin execution",
         "automatic package mutation",
+        "editor-core importer execution",
         "commercial readiness promotion without real corpus run evidence"
       ]
     },

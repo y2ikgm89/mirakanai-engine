@@ -2,8 +2,10 @@ add_library(mirakana_assets
     src/asset_dependency_graph.cpp
     src/asset_hot_reload.cpp
     src/asset_identity.cpp
+    src/asset_import_batch_reimport.cpp
     src/asset_import_metadata.cpp
     src/asset_import_pipeline.cpp
+    src/asset_import_preset_diff.cpp
     src/asset_import_presets.cpp
     src/asset_import_provenance.cpp
     src/asset_import_production_review.cpp
