@@ -90,6 +90,8 @@ Assert-FileContainsText "tools/smoke-ios-package.ps1" @(
     "ios_metal_evidence",
     "ios-smoke: selected device=",
     "ios-smoke: install start",
+    "ios-smoke: install retry after failure",
+    "Invoke-IosSimulatorInstall",
     "TimeoutSeconds",
     "ios_metal_command_queue_ready=1",
     "ios_metal_pipeline_ready=1",
@@ -110,6 +112,13 @@ Assert-FileContainsText ".github/workflows/ios-validate.yml" @(
     "./tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator",
     "./tools/validate-apple-metal-platform-host.ps1 -Platform ios -RequireReady -SkipIosBuild -ExpectedEvidenceCounters `$expected",
     "ios_metal_command_buffer_ready=1"
+)
+
+Assert-FileContainsText "tools/validate-apple-metal-platform-host.ps1" @(
+    "ios-metal-smoke-output: exit_code=",
+    "ios-metal-smoke-output: <empty>",
+    "ios-metal-smoke-output-begin",
+    "ios-metal-smoke-output-end"
 )
 
 Assert-FileContainsText ".github/workflows/validate.yml" @(

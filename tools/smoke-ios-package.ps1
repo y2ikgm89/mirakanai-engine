@@ -224,6 +224,33 @@ function Wait-IosSimulatorBoot {
     Write-Error "iOS Simulator did not finish booting after $BootAttempts attempt(s) of $BootTimeoutSeconds seconds: $Udid"
 }
 
+function Invoke-IosSimulatorInstall {
+    param(
+        [Parameter(Mandatory = $true)]$Device,
+        [Parameter(Mandatory = $true)][string]$AppBundle
+    )
+
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        try {
+            if ($attempt -gt 1) {
+                Write-Information "ios-smoke: install retry start" -InformationAction Continue
+            }
+            [void](Invoke-XcrunCapture -Arguments @("simctl", "install", $Device.Udid, $AppBundle) -TimeoutSeconds 240)
+            return
+        } catch {
+            if ($attempt -ge 2) {
+                throw
+            }
+
+            Write-Information "ios-smoke: install retry after failure: $($_.Exception.Message)" -InformationAction Continue
+            [void](Invoke-XcrunAllowFailure @("simctl", "shutdown", $Device.Udid))
+            Invoke-CheckedCommand $script:xcrun "simctl" "boot" $Device.Udid
+            $script:bootedByScript = $true
+            Wait-IosSimulatorBoot $Device.Udid -AllowRestart
+        }
+    }
+}
+
 function Find-IosAppBundle {
     $buildDir = Join-Path $root "out\build\ios-Simulator-$Game-$Configuration"
     if (-not (Test-Path -LiteralPath $buildDir -PathType Container)) {
@@ -287,7 +314,7 @@ try {
     Wait-IosSimulatorBoot $selectedDevice.Udid -AllowRestart:($selectedDevice.State -ne "Booted")
 
     Write-Information "ios-smoke: install start" -InformationAction Continue
-    [void](Invoke-XcrunCapture -Arguments @("simctl", "install", $selectedDevice.Udid, $appBundle) -TimeoutSeconds 240)
+    Invoke-IosSimulatorInstall -Device $selectedDevice -AppBundle $appBundle
     Write-Information "ios-smoke: install done" -InformationAction Continue
     Write-Information "ios-smoke: verify app container start" -InformationAction Continue
     [void](Invoke-XcrunCapture -Arguments @("simctl", "get_app_container", $selectedDevice.Udid, $BundleIdentifier, "app") -TimeoutSeconds 60)
