@@ -205,6 +205,37 @@ function Assert-JsonGeneratedGamePlaytestLoop {
         -not $selectedRecipeIds.ContainsKey("installed-2d-package-smoke")) {
         Write-Error "$Label aiWorkflow.generatedGamePlaytestLoop selectedRecipes missing installed-2d-package-smoke"
     }
+    if ($Game.gameplayContract.productionRecipe -eq "2d-desktop-runtime-package") {
+        foreach ($requiredClassification in @("long-run-budget-exceeded", "retained-artifact-missing")) {
+            if (-not $classificationIds.ContainsKey($requiredClassification)) {
+                Write-Error "$Label aiWorkflow.generatedGamePlaytestLoop failureClassifications missing $requiredClassification"
+            }
+        }
+
+        $productizationRecipes = @($loop.selectedRecipes | Where-Object {
+                [string]$_.validationRecipeId -eq "installed-2d-package-playtest-productization-smoke"
+            })
+        if ($productizationRecipes.Count -ne 1) {
+            Write-Error "$Label aiWorkflow.generatedGamePlaytestLoop selectedRecipes must declare exactly one installed-2d-package-playtest-productization-smoke row"
+        } else {
+            $productizationRecipe = $productizationRecipes[0]
+            foreach ($requiredSignal in @(
+                    "2d_package_playtest_productization_long_run_frames=3",
+                    "2d_package_playtest_productization_long_run_over_budget_frames=0",
+                    "2d_package_playtest_productization_retained_profile_artifact_hashes=1",
+                    "2d_package_playtest_productization_retained_profile_artifact_hash"
+                )) {
+                if (@($productizationRecipe.expectedSignals) -notcontains $requiredSignal) {
+                    Write-Error "$Label 2D package playtest productization expectedSignals missing $requiredSignal"
+                }
+            }
+            foreach ($requiredClassification in @("long-run-budget-exceeded", "retained-artifact-missing")) {
+                if (@($productizationRecipe.failureClassificationIds) -notcontains $requiredClassification) {
+                    Write-Error "$Label 2D package playtest productization failureClassificationIds missing $requiredClassification"
+                }
+            }
+        }
+    }
     if ($Game.gameplayContract.productionRecipe -eq "3d-playable-desktop-package") {
         $hasD3d12PackageSmoke = $false
         foreach ($recipeId in $selectedRecipeIds.Keys) {

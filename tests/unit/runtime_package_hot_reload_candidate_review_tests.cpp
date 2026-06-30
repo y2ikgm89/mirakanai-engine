@@ -284,9 +284,15 @@ MK_TEST("runtime 2D package playtest productization composes reviewed recipe and
                                         Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
                                         Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
                                         Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                                        Runtime2DPackagePlaytestFailureClassification::long_run_budget_exceeded,
+                                        Runtime2DPackagePlaytestFailureClassification::retained_artifact_missing,
                                     },
                                 .runtime_host_launch_row_id = "desktop-game-runtime-playtest",
                                 .hot_reload_safe_point_evidence_id = "hot-reload-package-playtest-evidence",
+                                .required_frame_count = 3U,
+                                .require_zero_over_budget_frames = true,
+                                .require_memory_high_water = true,
+                                .require_retained_profile_artifact = true,
                             },
                         },
                     .evidence_rows =
@@ -301,6 +307,10 @@ MK_TEST("runtime 2D package playtest productization composes reviewed recipe and
                                 .profile_artifacts =
                                     {"reports/playtest/latest/installed-2d-package-smoke.profile.json"},
                                 .remediation_handoff_ids = {"mutation-ledger-remediation"},
+                                .frame_count = 3U,
+                                .over_budget_frame_count = 0U,
+                                .memory_high_water_bytes = 4096U,
+                                .retained_artifact_hash = 9157U,
                                 .externally_supplied = true,
                             },
                         },
@@ -319,7 +329,12 @@ MK_TEST("runtime 2D package playtest productization composes reviewed recipe and
     MK_REQUIRE(result.package_smoke_counter_count == 2);
     MK_REQUIRE(result.profile_artifact_count == 1);
     MK_REQUIRE(result.remediation_handoff_count == 1);
-    MK_REQUIRE(result.failure_classification_count == 8);
+    MK_REQUIRE(result.failure_classification_count == 10);
+    MK_REQUIRE(result.long_run_frame_count == 3U);
+    MK_REQUIRE(result.long_run_over_budget_frame_count == 0U);
+    MK_REQUIRE(result.long_run_memory_high_water_bytes == 4096U);
+    MK_REQUIRE(result.retained_profile_artifact_hash_count == 1U);
+    MK_REQUIRE(result.retained_profile_artifact_hash == 9157U);
     MK_REQUIRE(!result.invoked_editor_core_execution);
     MK_REQUIRE(!result.invoked_validation_recipe_execution);
     MK_REQUIRE(!result.invoked_arbitrary_shell);
@@ -371,6 +386,79 @@ MK_TEST("runtime 2D package playtest productization requires all failure classif
                result.diagnostics.end());
 }
 
+MK_TEST("runtime 2D package playtest productization fails closed on long run evidence gaps") {
+    using mirakana::runtime::Runtime2DPackagePlaytestEvidenceStatus;
+    using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
+
+    const auto
+        result =
+            mirakana::runtime::plan_runtime_2d_package_playtest_productization(
+                mirakana::runtime::Runtime2DPackagePlaytestDesc{
+                    .manifest_validation_recipe_ids = {"installed-2d-package-playtest-productization-smoke"},
+                    .generated_playtest_recipe_ids = {"installed-2d-package-playtest-productization-smoke-playtest"},
+                    .runtime_host_launch_recipe_ids = {"desktop-game-runtime-playtest"},
+                    .hot_reload_safe_point_evidence_ids = {"packaged-2d-residency-budget"},
+                    .recipe_rows =
+                        {
+                            mirakana::runtime::Runtime2DPackagePlaytestRecipeRow{
+                                .id = "installed-2d-package-playtest-productization-smoke-playtest",
+                                .validation_recipe_id = "installed-2d-package-playtest-productization-smoke",
+                                .reviewed_recipe_surface_id = "package-smoke-evidence-review",
+                                .evidence_kind = "package-smoke-counter-import",
+                                .expected_signals = {"2d_package_playtest_productization_status=ready"},
+                                .failure_classifications =
+                                    {
+                                        Runtime2DPackagePlaytestFailureClassification::missing_package_file,
+                                        Runtime2DPackagePlaytestFailureClassification::invalid_scene_binding,
+                                        Runtime2DPackagePlaytestFailureClassification::package_load_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::shader_tool_gap,
+                                        Runtime2DPackagePlaytestFailureClassification::counter_mismatch,
+                                        Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
+                                        Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                                        Runtime2DPackagePlaytestFailureClassification::long_run_budget_exceeded,
+                                        Runtime2DPackagePlaytestFailureClassification::retained_artifact_missing,
+                                    },
+                                .runtime_host_launch_row_id = "desktop-game-runtime-playtest",
+                                .hot_reload_safe_point_evidence_id = "packaged-2d-residency-budget",
+                                .required_frame_count = 3U,
+                                .require_zero_over_budget_frames = true,
+                                .require_memory_high_water = true,
+                                .require_retained_profile_artifact = true,
+                            },
+                        },
+                    .evidence_rows =
+                        {
+                            mirakana::runtime::Runtime2DPackagePlaytestEvidenceRow{
+                                .recipe_id = "installed-2d-package-playtest-productization-smoke-playtest",
+                                .status = Runtime2DPackagePlaytestEvidenceStatus::passed,
+                                .stdout_summary = "package_smoke_status=passed",
+                                .package_smoke_counters = {"package_smoke_status=passed"},
+                                .profile_artifacts = {"reports/playtest/latest/package-smoke.summary.txt"},
+                                .remediation_handoff_ids = {"counter-mismatch-remediation"},
+                                .frame_count = 2U,
+                                .over_budget_frame_count = 1U,
+                                .memory_high_water_bytes = 0U,
+                                .retained_artifact_hash = 0U,
+                                .externally_supplied = true,
+                            },
+                        },
+                });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::Runtime2DPackagePlaytestStatus::blocked);
+    MK_REQUIRE(result.long_run_frame_count == 2U);
+    MK_REQUIRE(result.long_run_over_budget_frame_count == 1U);
+    MK_REQUIRE(result.long_run_memory_high_water_bytes == 0U);
+    MK_REQUIRE(result.retained_profile_artifact_hash_count == 0U);
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "long-run-frame-count-below-required") !=
+               result.diagnostics.end());
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "long-run-over-budget-frames") != result.diagnostics.end());
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "missing-long-run-memory-high-water") != result.diagnostics.end());
+    MK_REQUIRE(std::ranges::find(result.diagnostics, "missing-retained-profile-artifact-hash") !=
+               result.diagnostics.end());
+}
+
 MK_TEST("runtime 2D package playtest productization blocks unsupported execution claims") {
     using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
 
@@ -397,6 +485,8 @@ MK_TEST("runtime 2D package playtest productization blocks unsupported execution
                                 Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
                                 Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
                                 Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                                Runtime2DPackagePlaytestFailureClassification::long_run_budget_exceeded,
+                                Runtime2DPackagePlaytestFailureClassification::retained_artifact_missing,
                             },
                         .runtime_host_launch_row_id = "desktop-game-runtime-playtest",
                         .hot_reload_safe_point_evidence_id = "hot-reload-package-playtest-evidence",
