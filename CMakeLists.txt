@@ -749,6 +749,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(MK_asset_import_regression_tests PRIVATE MK_assets)
     target_include_directories(MK_asset_import_regression_tests PRIVATE tests)
+    target_compile_definitions(MK_asset_import_regression_tests PRIVATE MK_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     MK_apply_common_target_options(MK_asset_import_regression_tests)
     add_test(NAME MK_asset_import_regression_tests COMMAND MK_asset_import_regression_tests)
 

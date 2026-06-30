@@ -43,6 +43,8 @@
     "buildEditor": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1",
     "desktopGameRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
     "buildAssetImporters": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
+    "checkAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 [-CorpusRoot \u003Cpath\u003E] [-RequireReady]",
+    "validateAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 [-CorpusRoot \u003Cpath\u003E] [-RequireReady]",
     "validatePhysicsJolt": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
     "validateNetworkEnet": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
     "package": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1",
@@ -2317,6 +2319,11 @@
       "name": "asset-importers",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
       "purpose": "Validate optional PNG, glTF, OpenEXR source metadata review, KTX/Basis, and common audio source importer adapters behind MK_tools."
+    },
+    {
+      "name": "asset-import-regression-corpus",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1",
+      "purpose": "Validate the Asset Import Regression Corpus v1 schema, first-party fixture corpus, source SHA-256 hashes, legal/provenance blockers, and focused MK_asset_import_regression_tests target. Host-owned large corpora use validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady after approved assets and report evidence exist."
     },
     {
       "name": "physics-jolt",

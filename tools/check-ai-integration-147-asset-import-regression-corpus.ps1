@@ -7,15 +7,22 @@
 $assetRegressionHeader = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp"
 $assetRegressionSource = Get-AgentSurfaceText "engine/assets/src/asset_import_regression_corpus.cpp"
 $assetRegressionTests = Get-AgentSurfaceText "tests/unit/asset_import_regression_tests.cpp"
+$assetRegressionCheckScript = Get-AgentSurfaceText "tools/check-asset-import-regression-corpus.ps1"
+$assetRegressionValidateScript = Get-AgentSurfaceText "tools/validate-asset-import-regression-corpus.ps1"
+$assetRegressionFixtureReadme = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/README.md"
+$assetRegressionFixtureCorpus = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/first_party_corpus.gecorpus"
 $assetCMake = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
 $rootCMake = Get-AgentSurfaceText "CMakeLists.txt"
+$commandsManifest = Get-AgentSurfaceText "engine/agent/manifest.fragments/002-commands.json"
 $modulesManifest = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $importerManifest = Get-AgentSurfaceText "engine/agent/manifest.fragments/007-importerCapabilities.json"
+$validationRecipesManifest = Get-AgentSurfaceText "engine/agent/manifest.fragments/009-validationRecipes.json"
 $guidanceManifest = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
 $composedManifest = Get-AgentSurfaceText "engine/agent/manifest.json"
 $corpusSchema = Get-AgentSurfaceText "schemas/asset-import-regression-corpus.schema.json"
 $reportSchema = Get-AgentSurfaceText "schemas/asset-import-regression-report.schema.json"
 $jsonContractChapter = Get-AgentSurfaceText "tools/check-json-contracts-081-asset-import-regression-corpus.ps1"
+$legalDoc = Get-AgentSurfaceText "docs/legal-and-licensing.md"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-30-asset-import-commercial-regression-workflow-v1.md"
 $planReadme = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 
@@ -52,8 +59,10 @@ foreach ($needle in @(
         "asset import regression corpus rejects unsafe paths and legal blockers",
         "asset import regression corpus deserialize rejects duplicate keys",
         "asset import regression report serializes deterministic failure rows",
+        "asset import regression committed first-party corpus fixture validates expected coverage",
         "asset.0.mesh.unit_scale=0.01",
-        "asset.2.third_party_missing_expected_sha256"
+        "asset.2.third_party_missing_expected_sha256",
+        "first_party_corpus.gecorpus"
     )) {
     Assert-ContainsText $assetRegressionTests $needle "asset_import_regression_tests.cpp"
 }
@@ -67,6 +76,11 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "checkAssetImportRegressionCorpus",
+        "validateAssetImportRegressionCorpus",
+        "asset-import-regression-corpus",
+        "tools/check-asset-import-regression-corpus.ps1",
+        "tools/validate-asset-import-regression-corpus.ps1",
         "asset_import_regression_corpus.hpp",
         "Asset Import Regression Corpus v1",
         "GameEngine.AssetImportRegressionCorpus.v1",
@@ -77,7 +91,36 @@ foreach ($needle in @(
         "external_engine_material=false",
         "currentAssetImportRegressionCorpus"
     )) {
-    Assert-ContainsText ($modulesManifest + "`n" + $importerManifest + "`n" + $guidanceManifest + "`n" + $composedManifest) $needle "asset import regression manifest surfaces"
+    Assert-ContainsText ($commandsManifest + "`n" + $modulesManifest + "`n" + $importerManifest + "`n" + $validationRecipesManifest + "`n" + $guidanceManifest + "`n" + $composedManifest) $needle "asset import regression manifest surfaces"
+}
+
+foreach ($needle in @(
+        "first_party_corpus.gecorpus",
+        "gltf.mesh.valid",
+        "gltf.animation.valid",
+        "diagnostic_unsafe_external_path",
+        "diagnostic_unsupported_skin_morph_combination",
+        "material.first_party",
+        "expected_sha256=sha256:",
+        "LicenseRef-Proprietary",
+        "external_engine_material=false"
+    )) {
+    Assert-ContainsText ($assetRegressionFixtureCorpus + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression first-party fixture corpus"
+}
+
+foreach ($needle in @(
+        "asset_import_regression_corpus_ready",
+        "asset_import_regression_large_corpus_present",
+        "asset_import_regression_legal_blocked_count",
+        "asset_import_regression_failed_count",
+        "asset_import_regression_replay_hash",
+        "Get-FileHash",
+        "Resolve-Path -LiteralPath",
+        "ReparsePoint",
+        "require_ready.large_corpus_missing",
+        "out/host-artifacts/asset-import-regression-corpus"
+    )) {
+    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
 }
 
 foreach ($needle in @(
@@ -94,7 +137,7 @@ foreach ($needle in @(
         "Unreal",
         "Godot"
     )) {
-    Assert-ContainsText ($corpusSchema + "`n" + $reportSchema + "`n" + $jsonContractChapter + "`n" + $planText) $needle "asset import regression schema/plan surfaces"
+    Assert-ContainsText ($corpusSchema + "`n" + $reportSchema + "`n" + $jsonContractChapter + "`n" + $planText + "`n" + $legalDoc) $needle "asset import regression schema/plan/legal surfaces"
 }
 
 foreach ($needle in @(

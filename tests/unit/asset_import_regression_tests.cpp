@@ -6,6 +6,9 @@
 #include "mirakana/assets/asset_import_regression_corpus.hpp"
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -67,6 +70,35 @@ namespace {
 
 [[nodiscard]] bool contains(const std::vector<std::string>& values, const std::string& expected) {
     return std::ranges::find(values, expected) != values.end();
+}
+
+[[nodiscard]] std::filesystem::path find_repo_root() {
+#ifdef MK_SOURCE_DIR
+    return std::filesystem::path{MK_SOURCE_DIR};
+#else
+    auto path = std::filesystem::current_path();
+    while (!path.empty()) {
+        if (std::filesystem::exists(path / "CMakeLists.txt") && std::filesystem::exists(path / "tests")) {
+            return path;
+        }
+        const auto parent = path.parent_path();
+        if (parent == path) {
+            break;
+        }
+        path = parent;
+    }
+    throw std::runtime_error("repo root was not found");
+#endif
+}
+
+[[nodiscard]] std::string read_text_file(const std::filesystem::path& path) {
+    std::ifstream input{path, std::ios::binary};
+    if (!input) {
+        throw std::runtime_error("failed to read text file: " + path.generic_string());
+    }
+    std::ostringstream output;
+    output << input.rdbuf();
+    return output.str();
 }
 
 } // namespace
@@ -175,6 +207,50 @@ MK_TEST("asset import regression report serializes deterministic failure rows") 
     MK_REQUIRE(parsed.rows[0].asset.value == 42U);
     MK_REQUIRE(parsed.rows[0].code == mirakana::AssetImportRegressionDiagnosticCode::parser_error);
     MK_REQUIRE(!parsed.ready);
+}
+
+MK_TEST("asset import regression committed first-party corpus fixture validates expected coverage") {
+    const auto fixture = find_repo_root() / "tests/fixtures/asset_import_regression/first_party_corpus.gecorpus";
+    MK_REQUIRE(std::filesystem::exists(fixture));
+
+    const auto parsed = mirakana::deserialize_asset_import_regression_corpus_v1(read_text_file(fixture));
+    const auto diagnostics = mirakana::validate_asset_import_regression_corpus_v1(parsed);
+
+    MK_REQUIRE(diagnostics.empty());
+    MK_REQUIRE(parsed.root_path == "tests/fixtures/asset_import_regression");
+
+    const std::vector<std::string> required_asset_ids{
+        "gltf.animation.valid",
+        "gltf.invalid.duplicate_animation_channel",
+        "gltf.invalid.invalid_quaternion",
+        "gltf.invalid.malformed_material_texture_index",
+        "gltf.invalid.mismatched_accessor_counts",
+        "gltf.invalid.missing_buffer",
+        "gltf.invalid.unsafe_external_path",
+        "gltf.invalid.unsupported_extension",
+        "gltf.invalid.unsupported_interpolation",
+        "gltf.invalid.unsupported_skin_morph_combination",
+        "gltf.mesh.valid",
+        "material.first_party",
+    };
+
+    std::vector<std::string> asset_ids;
+    bool saw_mesh_fixture = false;
+    for (const auto& asset : parsed.assets) {
+        asset_ids.push_back(asset.asset_id);
+        if (asset.asset_id == "gltf.mesh.valid") {
+            saw_mesh_fixture = true;
+            MK_REQUIRE(contains(asset.required_features, "gltf_valid_mesh"));
+        }
+        MK_REQUIRE(asset.license_policy == mirakana::AssetImportRegressionLicensePolicy::accepted_for_source_tree);
+        MK_REQUIRE(asset.allow_checked_in_distribution);
+        MK_REQUIRE(!asset.provenance.external_engine_material);
+    }
+
+    for (const auto& asset_id : required_asset_ids) {
+        MK_REQUIRE(contains(asset_ids, asset_id));
+    }
+    MK_REQUIRE(saw_mesh_fixture);
 }
 
 int main() {

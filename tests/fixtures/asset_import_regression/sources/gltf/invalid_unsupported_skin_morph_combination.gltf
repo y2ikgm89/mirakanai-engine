@@ -1,0 +1,40 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "GameEngine first-party asset import regression fixture"
+  },
+  "nodes": [
+    {
+      "mesh": 0,
+      "skin": 0,
+      "weights": [0.0, 1.0]
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0
+          },
+          "targets": [
+            {
+              "POSITION": 1
+            },
+            {
+              "POSITION": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "skins": [
+    {
+      "joints": [0]
+    }
+  ],
+  "extras": {
+    "expected_diagnostic": "unsupported_skin_or_morph_combination"
+  }
+}

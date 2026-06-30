@@ -1,0 +1,29 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "GameEngine first-party asset import regression fixture"
+  },
+  "animations": [
+    {
+      "samplers": [
+        {
+          "input": 0,
+          "output": 1,
+          "interpolation": "GAMEENGINE_UNSUPPORTED"
+        }
+      ],
+      "channels": [
+        {
+          "sampler": 0,
+          "target": {
+            "node": 0,
+            "path": "translation"
+          }
+        }
+      ]
+    }
+  ],
+  "extras": {
+    "expected_diagnostic": "unsupported_interpolation"
+  }
+}

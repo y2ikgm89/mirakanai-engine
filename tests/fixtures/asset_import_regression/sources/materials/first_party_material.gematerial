@@ -1,0 +1,6 @@
+format=GameEngine.FirstPartyMaterialFixture.v1
+material.id=material.first_party
+texture_dependency.count=2
+texture_dependency.0=sources/textures/first_party_albedo.png
+texture_dependency.1=sources/textures/missing_normal.png
+diagnostic_intent=missing_texture_dependency
