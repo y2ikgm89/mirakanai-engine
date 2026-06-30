@@ -135,6 +135,10 @@ struct EditorProfilerTelemetryHandoffModel {
     std::string producer;
     std::string format;
     std::string blocker;
+    std::string schema_id;
+    std::string backend_id;
+    std::string service_name;
+    std::string payload_contract;
     std::vector<EditorProfilerKeyValueRow> rows;
     std::vector<std::string> diagnostics;
 };
