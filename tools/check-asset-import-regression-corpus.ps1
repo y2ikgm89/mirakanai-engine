@@ -370,6 +370,172 @@ THIRD_PARTY_ASSET_NOTICES.md#runner-material
     }
 }
 
+function Write-OperatorLoopRetainedReportFixtures {
+    param([Parameter(Mandatory = $true)][string]$CorpusRoot)
+
+    $successReportPath = Join-Path $CorpusRoot "retained/success/report.gereport"
+    $failureReportPath = Join-Path $CorpusRoot "retained/failure/report.gereport"
+
+    Write-Utf8TextFile -Path $successReportPath -Text @'
+format=GameEngine.AssetImportRegressionReport.v1
+corpus_id=GameEngine.AssetImportRegressionCorpus.v1
+run_id=operator-loop-success
+asset_count=1
+succeeded_count=1
+failed_count=0
+legal_blocked_count=0
+nondeterministic_count=0
+ready=true
+row.count=1
+row.0.asset_id=material.ok
+row.0.kind=material_document
+row.0.asset=201
+row.0.source_path=sources/materials/operator_ok.material
+row.0.source_sha256=sha256:operator-ok
+row.0.preset_sha256=sha256:preset-ok
+row.0.importer_id=mirakana.importer.material_document
+row.0.importer_version=asset-import-regression-v1
+row.0.phase=cook
+row.0.code=none
+row.0.message=asset import succeeded
+row.0.deterministic_output_hash=fnv64:1111111111111111
+row.0.succeeded=true
+row.0.ready_for_commercial_evidence=true
+'@
+
+    Write-Utf8TextFile -Path $failureReportPath -Text @'
+format=GameEngine.AssetImportRegressionReport.v1
+corpus_id=GameEngine.AssetImportRegressionCorpus.v1
+run_id=operator-loop-failure
+asset_count=4
+succeeded_count=0
+failed_count=4
+legal_blocked_count=1
+nondeterministic_count=1
+ready=false
+row.count=4
+row.0.asset_id=mesh.legal
+row.0.kind=gltf_mesh
+row.0.asset=301
+row.0.source_path=sources/gltf/legal.gltf
+row.0.source_sha256=sha256:legal
+row.0.preset_sha256=sha256:preset-legal
+row.0.importer_id=mirakana.importer.gltf_mesh
+row.0.importer_version=asset-import-regression-v1
+row.0.phase=legal
+row.0.code=rejected_license
+row.0.message=license row rejected after source review
+row.0.deterministic_output_hash=
+row.0.succeeded=false
+row.0.ready_for_commercial_evidence=false
+row.1.asset_id=mesh.hash
+row.1.kind=gltf_mesh
+row.1.asset=302
+row.1.source_path=sources/gltf/hash.gltf
+row.1.source_sha256=sha256:actual
+row.1.preset_sha256=sha256:preset-hash
+row.1.importer_id=mirakana.importer.gltf_mesh
+row.1.importer_version=asset-import-regression-v1
+row.1.phase=source
+row.1.code=source_hash_mismatch
+row.1.message=source hash mismatch
+row.1.deterministic_output_hash=
+row.1.succeeded=false
+row.1.ready_for_commercial_evidence=false
+row.2.asset_id=mesh.axis
+row.2.kind=gltf_mesh
+row.2.asset=303
+row.2.source_path=sources/gltf/axis.gltf
+row.2.source_sha256=sha256:axis
+row.2.preset_sha256=sha256:preset-axis
+row.2.importer_id=mirakana.importer.gltf_mesh
+row.2.importer_version=asset-import-regression-v1
+row.2.phase=normalization
+row.2.code=coordinate_normalization_failed
+row.2.message=axis or unit preview required
+row.2.deterministic_output_hash=
+row.2.succeeded=false
+row.2.ready_for_commercial_evidence=false
+row.3.asset_id=texture.codec
+row.3.kind=png_texture
+row.3.asset=304
+row.3.source_path=sources/textures/codec.png
+row.3.source_sha256=sha256:codec
+row.3.preset_sha256=sha256:preset-codec
+row.3.importer_id=mirakana.importer.png_texture
+row.3.importer_version=asset-import-regression-v1
+row.3.phase=determinism
+row.3.code=nondeterministic_output
+row.3.message=fresh process hash mismatch
+row.3.deterministic_output_hash=
+row.3.succeeded=false
+row.3.ready_for_commercial_evidence=false
+'@
+}
+
+function Invoke-AssetImportRegressionOperatorLoopCorpusGateSmoke {
+    $operatorLoopScript = Join-Path $PSScriptRoot "check-asset-import-regression-operator-loop.ps1"
+    $contractRootRelative = "out/tmp/asset-import-regression-operator-loop-corpus-gate-$PID"
+    $contractRoot = ConvertTo-LocalPath $contractRootRelative
+    if (Test-Path -LiteralPath $contractRoot) {
+        Remove-Item -LiteralPath $contractRoot -Recurse -Force
+    }
+
+    try {
+        Write-OperatorLoopRetainedReportFixtures -CorpusRoot $contractRoot
+
+        $operatorLines = @(& $pwshCommand `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $operatorLoopScript `
+                -CorpusRoot $contractRootRelative `
+                -RequireReady `
+                -OutputRoot "$contractRootRelative/operator-loop" 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "asset import regression operator-loop corpus gate smoke failed: $($operatorLines -join "`n")"
+        }
+        foreach ($expectedLine in @(
+                "asset_import_regression_operator_loop_corpus_retained_reports=2",
+                "asset_import_regression_operator_loop_corpus_success_reports=1",
+                "asset_import_regression_operator_loop_corpus_failure_reports=1",
+                "asset_import_regression_operator_loop_require_ready=1",
+                "asset_import_regression_operator_loop_report_rows=5",
+                "asset_import_regression_operator_loop_failed_rows=4",
+                "asset_import_regression_operator_loop_legal_blocked_rows=1",
+                "asset_import_regression_operator_loop_nondeterministic_rows=1",
+                "asset_import_regression_operator_loop_reimport_candidates=1",
+                "asset_import_regression_operator_loop_blocked_rows=3",
+                "asset_import_regression_operator_loop_preset_diff_required=0",
+                "asset_import_regression_operator_loop_axis_unit_preview_required=1",
+                "asset_import_regression_operator_loop_editor_core_value_only=1",
+                "asset_import_regression_operator_loop_external_engine_claim=0",
+                "asset_import_regression_operator_loop_corpus_ready=1"
+            )) {
+            Assert-LinePresent $operatorLines $expectedLine "asset import regression operator-loop corpus gate smoke"
+        }
+
+        $missingFailureRoot = Join-Path $contractRoot "missing-failure"
+        Copy-Item -LiteralPath (Join-Path $contractRoot "retained/success") -Destination (Join-Path $missingFailureRoot "retained/success") -Recurse -Force
+        $missingFailureLines = @(& $pwshCommand `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $operatorLoopScript `
+                -CorpusRoot $missingFailureRoot `
+                -RequireReady `
+                -OutputRoot (Join-Path $missingFailureRoot "operator-loop") 2>&1)
+        if ($LASTEXITCODE -eq 0) {
+            Write-Error "asset import regression operator-loop corpus gate must fail when a retained failure report is missing."
+        }
+        if (-not (($missingFailureLines -join "`n") -like "*require_ready.retained_failure_report_missing*")) {
+            Write-Error "asset import regression operator-loop corpus gate missing failure diagnostic: $($missingFailureLines -join "`n")"
+        }
+    } finally {
+        if (Test-Path -LiteralPath $contractRoot) {
+            Remove-Item -LiteralPath $contractRoot -Recurse -Force
+        }
+    }
+}
+
 Invoke-AssetImportRegressionGeneratorSmoke
 Invoke-AssetImportRegressionRequireReadyLayoutSmoke
 Invoke-RepoPwshScript -RelativeScript "check-json-contracts.ps1"
@@ -401,6 +567,7 @@ Invoke-RepoPwshScript -RelativeScript "ctest.ps1" -ScriptArguments @(
     "MK_asset_import_regression_tests"
 )
 Invoke-AssetImportRegressionRunnerCliSmoke
+Invoke-AssetImportRegressionOperatorLoopCorpusGateSmoke
 Invoke-RepoPwshScript -RelativeScript "check-asset-import-regression-operator-loop.ps1" -ScriptArguments @("-SyntheticSmoke")
 
 Write-Information "asset-import-regression-corpus-check: ok" -InformationAction Continue

@@ -88,6 +88,10 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor_asset_import_regression_*` smoke counters. Keep these value-only: no editor-core importer execution,
   package scripts, validation recipes, package mutation, native handles, arbitrary importer plugins, absolute host path
   leakage, external downloads, or Unity/Unreal/Godot compatibility claims.
+- `tools/check-asset-import-regression-operator-loop.ps1 -CorpusRoot <host-corpus> -RequireReady` reads only retained
+  `retained/**/report.gereport` text evidence, requires at least one successful and one failed retained report, and
+  fails closed with `require_ready.retained_success_report_missing` / `require_ready.retained_failure_report_missing`.
+  Do not treat this gate as editor-core importer execution or commercial readiness promotion by itself.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.
