@@ -11,6 +11,7 @@ $assetRegressionRunnerSource = Get-AgentSurfaceText "engine/tools/asset/asset_im
 $assetRegressionTests = Get-AgentSurfaceText "tests/unit/asset_import_regression_tests.cpp"
 $assetRegressionCheckScript = Get-AgentSurfaceText "tools/check-asset-import-regression-corpus.ps1"
 $assetRegressionValidateScript = Get-AgentSurfaceText "tools/validate-asset-import-regression-corpus.ps1"
+$assetRegressionGenerateScript = Get-AgentSurfaceText "tools/generate-asset-import-regression-corpus-manifest.ps1"
 $assetRegressionFixtureReadme = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/README.md"
 $assetRegressionFixtureCorpus = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/first_party_corpus.gecorpus"
 $assetCMake = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
@@ -110,9 +111,11 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "checkAssetImportRegressionCorpus",
+        "generateAssetImportRegressionCorpusManifest",
         "validateAssetImportRegressionCorpus",
         "asset-import-regression-corpus",
         "tools/check-asset-import-regression-corpus.ps1",
+        "tools/generate-asset-import-regression-corpus-manifest.ps1",
         "tools/validate-asset-import-regression-corpus.ps1",
         "asset_import_regression_corpus.hpp",
         "Asset Import Regression Corpus v1",
@@ -145,18 +148,49 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "generate-asset-import-regression-corpus-manifest.ps1",
+        "FailOnMissingNotice",
+        "asset_import_regression_manifest_generator_ready",
+        "asset_import_regression_manifest_generator_downloaded_assets=0",
+        "asset_import_regression_manifest_generator_license_inference=0",
         "asset_import_regression_corpus_ready",
+        "asset_import_regression_corpus_manifest_present",
         "asset_import_regression_large_corpus_present",
         "asset_import_regression_legal_blocked_count",
         "asset_import_regression_failed_count",
+        "asset_import_regression_expected_hashes_present",
+        "asset_import_regression_notices_present",
+        "asset_import_regression_sources_gltf_present",
+        "asset_import_regression_sources_textures_present",
+        "asset_import_regression_sources_materials_present",
+        "asset_import_regression_sources_audio_present",
+        "asset_import_regression_source_paths_canonical",
+        "asset_import_regression_official_source_ledger_present",
+        "asset_import_regression_selection_summary_present",
+        "asset_import_regression_minimum_composition_ready",
+        "asset_import_regression_required_feature_categories_ready",
         "asset_import_regression_replay_hash",
         "Get-FileHash",
         "Resolve-Path -LiteralPath",
         "ReparsePoint",
+        "require_ready.corpus_manifest_missing",
+        "require_ready.notices_missing",
+        "require_ready.sources_textures_missing",
+        "require_ready.source_paths_noncanonical",
+        "require_ready.official_source_ledger_missing",
+        "require_ready.selection_summary_missing",
+        "require_ready.minimum_composition_not_met",
+        "require_ready.required_feature_categories_missing",
         "require_ready.large_corpus_missing",
+        "gltf.mesh_only",
+        "texture.ktx2_basis",
+        "animation.invalid_quaternion",
+        "audio.loop_normalization_preset",
+        "retained/official-source-ledger.md",
+        "retained/corpus-selection-summary.md",
         "out/host-artifacts/asset-import-regression-corpus"
     )) {
-    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
+    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
 }
 
 foreach ($needle in @(
