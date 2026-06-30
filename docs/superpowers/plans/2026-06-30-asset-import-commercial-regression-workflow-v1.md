@@ -59,12 +59,12 @@
 
 ### Task 1: Corpus Manifest And Report Contracts In `MK_assets`
 
-- [ ] Add `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`.
-- [ ] Add `engine/assets/src/asset_import_regression_corpus.cpp`.
-- [ ] Add the new header/source to `engine/assets/CMakeLists.txt`.
-- [ ] Add `schemas/asset-import-regression-corpus.schema.json`.
-- [ ] Add `schemas/asset-import-regression-report.schema.json`.
-- [ ] Add focused tests in `tests/unit/asset_import_regression_tests.cpp` and register a new CMake test target `MK_asset_import_regression_tests`.
+- [x] Add `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`.
+- [x] Add `engine/assets/src/asset_import_regression_corpus.cpp`.
+- [x] Add the new header/source to `engine/assets/CMakeLists.txt`.
+- [x] Add `schemas/asset-import-regression-corpus.schema.json`.
+- [x] Add `schemas/asset-import-regression-report.schema.json`.
+- [x] Add focused tests in `tests/unit/asset_import_regression_tests.cpp` and register a new CMake test target `MK_asset_import_regression_tests`.
 
 Required public value types:
 
@@ -189,9 +189,11 @@ Contract rules:
 
 ### Task 2: First-Party Tiny Fixture Corpus
 
-- [ ] Add tiny generated fixture builders to `tests/unit/asset_import_regression_tests.cpp` instead of committing unreviewed binary assets.
-- [ ] Add `tests/fixtures/asset_import_regression/README.md`.
-- [ ] Add `tests/fixtures/asset_import_regression/first_party_corpus.gecorpus` only if it is text-only and references generated or tiny first-party assets.
+- [x] Add tiny generated fixture builders to `tests/unit/asset_import_regression_tests.cpp` instead of committing unreviewed binary assets.
+- [x] Add `tests/fixtures/asset_import_regression/README.md`.
+- [x] Add `tests/fixtures/asset_import_regression/first_party_corpus.gecorpus` only if it is text-only and references generated or tiny first-party assets.
+
+Slice 2026-06-30 candidate 2 completes the source-tree text fixture corpus for glTF mesh, glTF animation, glTF diagnostic intent cases, and a first-party material document. PNG, OpenEXR, KTX2/Basis, audio, and large real-asset importer execution remain gated by Task 4 and the optional `asset-importers` host corpus; no binary third-party assets are tracked in this slice.
 
 Required fixture coverage:
 
@@ -204,10 +206,12 @@ Required fixture coverage:
 
 ### Task 3: Host-Owned Large Corpus Intake Policy
 
-- [ ] Add `tools/check-asset-import-regression-corpus.ps1` for default static/schema/test checks.
-- [ ] Add `tools/validate-asset-import-regression-corpus.ps1`.
-- [ ] Add ignored output folders through existing ignore policy only if needed: `out/asset-import-regression/` and `out/host-artifacts/asset-import-regression-corpus/`.
-- [ ] Document host corpus layout in `tests/fixtures/asset_import_regression/README.md`.
+- [x] Add `tools/check-asset-import-regression-corpus.ps1` for default static/schema/test checks.
+- [x] Add `tools/validate-asset-import-regression-corpus.ps1`.
+- [x] Add ignored output folders through existing ignore policy only if needed: `out/asset-import-regression/` and `out/host-artifacts/asset-import-regression-corpus/`.
+- [x] Document host corpus layout in `tests/fixtures/asset_import_regression/README.md`.
+
+The root `.gitignore` already ignores `out/`, so no narrower ignore rule is required for `out/asset-import-regression/` or `out/host-artifacts/asset-import-regression-corpus/`.
 
 Required host corpus layout:
 
@@ -326,11 +330,11 @@ Required editor command ids: `asset_browser.importer_corpus.run`, `asset_browser
 
 ### Task 10: CI, Static Guards, And Validation Recipes
 
-- [ ] Add `tools/check-asset-import-regression-corpus.ps1`.
-- [ ] Add `tools/validate-asset-import-regression-corpus.ps1`.
-- [ ] Add a static-contract chapter after code lands.
-- [ ] Update `tools/check-ai-integration.ps1` discovery/needles if a new chapter is added.
-- [ ] Update JSON/static schema checks only when new schema entrypoints are added.
+- [x] Add `tools/check-asset-import-regression-corpus.ps1`.
+- [x] Add `tools/validate-asset-import-regression-corpus.ps1`.
+- [x] Add a static-contract chapter after code lands.
+- [x] Update `tools/check-ai-integration.ps1` discovery/needles if a new chapter is added.
+- [x] Update JSON/static schema checks only when new schema entrypoints are added.
 
 Required validation commands for implementation closeout:
 
@@ -345,10 +349,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 ### Task 11: Docs, Manifest, And Legal Records
 
-- [ ] Update `docs/dependencies.md` only if a new dependency, feature flag, or optional package is added.
-- [ ] Update `docs/legal-and-licensing.md` with corpus policy, allowed licenses, rejected licenses, and external-engine clean-room restrictions.
-- [ ] Update `THIRD_PARTY_NOTICES.md` only if third-party corpus assets are tracked or distributed by the repository.
-- [ ] Update current capabilities, roadmap, game-development docs, plan registry, manifest fragments, and skills only after implementation evidence exists.
+- [x] Update `docs/dependencies.md` only if a new dependency, feature flag, or optional package is added.
+- [x] Update `docs/legal-and-licensing.md` with corpus policy, allowed licenses, rejected licenses, and external-engine clean-room restrictions.
+- [x] Update `THIRD_PARTY_NOTICES.md` only if third-party corpus assets are tracked or distributed by the repository.
+- [x] Update current capabilities, roadmap, game-development docs, plan registry, manifest fragments, and skills only after implementation evidence exists.
+
+No dependency, feature flag, optional package, or third-party corpus asset was added in candidate 2, so `docs/dependencies.md` and `THIRD_PARTY_NOTICES.md` intentionally remain unchanged.
 
 ## Acceptance Criteria
 

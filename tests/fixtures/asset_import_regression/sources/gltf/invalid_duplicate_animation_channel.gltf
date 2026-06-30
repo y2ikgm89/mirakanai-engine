@@ -1,0 +1,36 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "GameEngine first-party asset import regression fixture"
+  },
+  "animations": [
+    {
+      "channels": [
+        {
+          "sampler": 0,
+          "target": {
+            "node": 0,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 0,
+          "target": {
+            "node": 0,
+            "path": "translation"
+          }
+        }
+      ],
+      "samplers": [
+        {
+          "input": 0,
+          "output": 1,
+          "interpolation": "LINEAR"
+        }
+      ]
+    }
+  ],
+  "extras": {
+    "expected_diagnostic": "duplicate_animation_channel"
+  }
+}

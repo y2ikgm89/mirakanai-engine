@@ -696,6 +696,11 @@
       "purpose": "Validate optional PNG, glTF, OpenEXR source metadata review, KTX/Basis, and common audio source importer adapters behind MK_tools."
     },
     {
+      "name": "asset-import-regression-corpus",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1",
+      "purpose": "Validate the Asset Import Regression Corpus v1 schema, first-party fixture corpus, source SHA-256 hashes, legal/provenance blockers, and focused MK_asset_import_regression_tests target. Host-owned large corpora use validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady after approved assets and report evidence exist."
+    },
+    {
       "name": "physics-jolt",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
       "purpose": "Validate the optional Jolt Physics adapter lane behind MK_physics_jolt, including physics-jolt configure/build/CTest, install/export, and an installed SDK consumer that links mirakana::physics_jolt when Mirakanai_HAS_PHYSICS_JOLT is true."
