@@ -74,6 +74,35 @@ namespace {
     return std::ranges::find(values, expected) != values.end();
 }
 
+[[nodiscard]] std::vector<mirakana::AssetImportRegressionDiagnosticCode> all_diagnostic_codes() {
+    return {
+        mirakana::AssetImportRegressionDiagnosticCode::none,
+        mirakana::AssetImportRegressionDiagnosticCode::invalid_manifest,
+        mirakana::AssetImportRegressionDiagnosticCode::duplicate_asset_id,
+        mirakana::AssetImportRegressionDiagnosticCode::unsafe_source_path,
+        mirakana::AssetImportRegressionDiagnosticCode::missing_source_file,
+        mirakana::AssetImportRegressionDiagnosticCode::source_hash_mismatch,
+        mirakana::AssetImportRegressionDiagnosticCode::missing_license_provenance,
+        mirakana::AssetImportRegressionDiagnosticCode::rejected_license,
+        mirakana::AssetImportRegressionDiagnosticCode::external_engine_material,
+        mirakana::AssetImportRegressionDiagnosticCode::unsupported_format,
+        mirakana::AssetImportRegressionDiagnosticCode::parser_error,
+        mirakana::AssetImportRegressionDiagnosticCode::validator_error,
+        mirakana::AssetImportRegressionDiagnosticCode::missing_external_resource,
+        mirakana::AssetImportRegressionDiagnosticCode::unsafe_external_resource_path,
+        mirakana::AssetImportRegressionDiagnosticCode::unsupported_extension,
+        mirakana::AssetImportRegressionDiagnosticCode::unsupported_animation_channel,
+        mirakana::AssetImportRegressionDiagnosticCode::unsupported_skin_or_morph_combination,
+        mirakana::AssetImportRegressionDiagnosticCode::coordinate_normalization_failed,
+        mirakana::AssetImportRegressionDiagnosticCode::material_extraction_failed,
+        mirakana::AssetImportRegressionDiagnosticCode::texture_decode_failed,
+        mirakana::AssetImportRegressionDiagnosticCode::texture_transcode_failed,
+        mirakana::AssetImportRegressionDiagnosticCode::cooked_output_mismatch,
+        mirakana::AssetImportRegressionDiagnosticCode::nondeterministic_output,
+        mirakana::AssetImportRegressionDiagnosticCode::row_budget_exceeded,
+    };
+}
+
 [[nodiscard]] std::filesystem::path find_repo_root() {
 #ifdef MK_SOURCE_DIR
     return std::filesystem::path{MK_SOURCE_DIR};
@@ -209,6 +238,62 @@ MK_TEST("asset import regression report serializes deterministic failure rows") 
     MK_REQUIRE(parsed.rows[0].asset.value == 42U);
     MK_REQUIRE(parsed.rows[0].code == mirakana::AssetImportRegressionDiagnosticCode::parser_error);
     MK_REQUIRE(!parsed.ready);
+}
+
+MK_TEST("asset import regression report round trips every diagnostic code row") {
+    const auto codes = all_diagnostic_codes();
+    mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .run_id = "run-all-diagnostic-codes",
+        .asset_count = codes.size(),
+        .succeeded_count = 1U,
+        .failed_count = codes.size() - 1U,
+        .legal_blocked_count = 3U,
+        .nondeterministic_count = 1U,
+        .ready = false,
+    };
+    report.rows.reserve(codes.size());
+
+    for (std::size_t index = 0U; index < codes.size(); ++index) {
+        const auto code = codes[index];
+        const auto label = mirakana::asset_import_regression_diagnostic_code_label(code);
+        report.rows.push_back(mirakana::AssetImportRegressionReportRowV1{
+            .asset_id = "diagnostic." + std::to_string(index),
+            .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+            .asset = mirakana::AssetId{100U + index},
+            .source_path = "sources/gltf/diagnostic-" + std::to_string(index) + ".gltf",
+            .source_sha256 = "sha256:source-" + std::to_string(index),
+            .preset_sha256 = "sha256:preset-" + std::to_string(index),
+            .importer_id = "mirakana.importer.test",
+            .importer_version = "asset-import-regression-v1",
+            .phase = code == mirakana::AssetImportRegressionDiagnosticCode::none ? "cook" : "diagnostic",
+            .code = code,
+            .message = "diagnostic code row: " + std::string{label},
+            .deterministic_output_hash =
+                code == mirakana::AssetImportRegressionDiagnosticCode::none ? "fnv64:1234" : "",
+            .succeeded = code == mirakana::AssetImportRegressionDiagnosticCode::none,
+            .ready_for_commercial_evidence = code == mirakana::AssetImportRegressionDiagnosticCode::none,
+        });
+    }
+
+    const auto text = mirakana::serialize_asset_import_regression_report_v1(report);
+    const auto parsed = mirakana::deserialize_asset_import_regression_report_v1(text);
+
+    MK_REQUIRE(parsed.rows.size() == codes.size());
+    MK_REQUIRE(text == mirakana::serialize_asset_import_regression_report_v1(parsed));
+
+    std::vector<std::string> labels;
+    labels.reserve(codes.size());
+    for (std::size_t index = 0U; index < codes.size(); ++index) {
+        const auto label = std::string{mirakana::asset_import_regression_diagnostic_code_label(codes[index])};
+        labels.push_back(label);
+        MK_REQUIRE(label != "invalid");
+        MK_REQUIRE(text.contains("row." + std::to_string(index) + ".code=" + label + "\n"));
+        MK_REQUIRE(parsed.rows[index].code == codes[index]);
+        MK_REQUIRE(parsed.rows[index].message.contains(label));
+    }
+    std::ranges::sort(labels);
+    MK_REQUIRE(std::ranges::adjacent_find(labels) == labels.end());
 }
 
 MK_TEST("asset import regression committed first-party corpus fixture validates expected coverage") {
