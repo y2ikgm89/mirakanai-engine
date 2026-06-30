@@ -4,7 +4,7 @@
 
 **Plan ID:** `2d-commercial-production-excellence-v1`
 **Date:** `2026-06-29`
-**Status:** Candidate milestone. This plan is not selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Active.
 
 **Goal:** Define a clean-break, first-party, legally safe, official-recommendation-aligned path from the selected ready 2D desktop runtime package proof to a highest-level commercial 2D game-production engine surface. The plan must keep the current ready claims honest, close the remaining 2D authoring/runtime/renderer/UI/package/performance gaps with exact evidence, and avoid copying or implying compatibility with Unity, Unreal Engine, Godot, or any other engine.
 
@@ -16,12 +16,12 @@
 
 ## Selection Policy
 
-This is a candidate plan for a future milestone. Do not activate it implicitly while `Renderer Commercial Readiness Evidence Promotion v1` is active.
+This is the active milestone after `Diagnostics Backend Adapter Handoff v1` returned the live pointer to the production-completion selection gate.
 
-- Do not change `currentActivePlan`, `recommendedNextPlan`, `unsupportedProductionGaps`, renderer readiness counters, or package readiness counters merely by adding this plan.
+- Keep `currentActivePlan` and `recommendedNextPlan.id` aligned with this plan while it is active. Do not change `unsupportedProductionGaps`, renderer readiness counters, or package readiness counters merely by selecting or extending this plan.
 - Do not reopen completed 2D plans. Treat `2d-production-engine-capability-gap-cluster-v1`, `original-2d-commercial-authoring-live-iteration-v1`, selected package/playtest productization, and completed Source Pulse evidence as dependencies.
 - Do not implement all phases in one branch. Each phase must be a reviewable slice with a behavior/API boundary, focused tests, docs/manifest/static-check synchronization, and validation evidence.
-- Select this plan only after the current active renderer work is closed or the operator explicitly switches the active milestone.
+- Return `currentActivePlan` to the production-completion master plan only when this milestone is completed, blocked with evidence, or explicitly superseded.
 
 ## Current Repository Baseline
 
@@ -225,11 +225,11 @@ Done when: selected 2D packages can stream cooked payloads under measured CPU/me
 
 Goal: close the 2D game UI production gap through official platform adapters and first-party UI contracts.
 
-- [ ] Promote real text shaping/font fallback/glyph rasterization/glyph atlas upload through audited dependency or official platform adapter decisions.
-- [ ] Add IME, keyboard layout, text input, caret/selection, focus traversal, controller navigation, screen-reader/accessibility publication, high contrast, and localization evidence where selected.
-- [ ] Keep first-party widget contracts and UI styling; do not vendor UI middleware or copy external engine inspector/game UI patterns.
+- [x] Promote real text shaping/font fallback/glyph rasterization/glyph atlas upload through audited dependency or official platform adapter decisions.
+- [x] Add IME, keyboard layout, text input, caret/selection, focus traversal, controller navigation, screen-reader/accessibility publication, high contrast, and localization evidence where selected.
+- [x] Keep first-party widget contracts and UI styling; do not vendor UI middleware or copy external engine inspector/game UI patterns.
 - [x] Add package-visible UI smoke scenes with multiple languages, glyph fallback, long labels, controller-only operation, and accessibility tree review.
-- [ ] Separate Windows-ready proof from Linux/macOS/mobile proof unless each platform host lane supplies evidence.
+- [x] Separate Windows-ready proof from Linux/macOS/mobile proof unless each platform host lane supplies evidence.
 
 Likely surfaces: `engine/ui/`, `engine/platform/`, `editor/core/`, runtime package samples, UI/text validators, docs/legal/dependency records if a shaping/raster dependency is selected.
 
@@ -240,6 +240,8 @@ Phase 5 validation evidence:
 - 2026-06-30 Runtime UI Package Smoke Scenes v1 slice: added `RuntimeUiPackageSmokeSceneKind`, `RuntimeUiPackageSmokeSceneRow`, `RuntimeUiPackageSmokeSceneReview`, `RuntimeUiPackageSmokeSceneDiagnosticCode`, `runtime_ui_package_smoke_scene_kind_name`, and `review_runtime_ui_package_smoke_scenes` in `MK_ui`. The value-only review requires selected ready multilingual glyph fallback, long-label wrapping, controller-only navigation, accessibility tree review, and supporting evidence rows; rejects native handles, UI middleware claims, external-engine compatibility claims, and row-budget overflow; and does not add dependencies or claim broad runtime UI parity.
 - 2026-06-30 selected package integration: `sample_2d_desktop_runtime_package` aggregates explicitly requested first-party standard widget, widget vocabulary, binding/input-routing, workbench, platform production, Windows DirectWrite, Windows TSF, Windows UIA, D3D12 atlas upload, and renderer atlas handoff evidence into four selected package-visible scene rows with zero unsafe claim rows. `runtime_ui_controller_glyph_refs` is derived from `RuntimeUiBindingPlan` instead of a hard-coded sample counter. Non-Windows UI readiness, native candidate UI, full screen-reader parity, UI middleware, native handles, and Unity/Unreal/Godot compatibility/parity remain unclaimed.
 - 2026-06-30 closeout validation: `tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_package_smoke_scene_tests MK_runtime_ui_binding_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_(package_smoke_scene|binding)_tests"`, `tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package`, source-tree `sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex` plus explicit `--require-runtime-ui-standard-widgets`, `--require-runtime-ui-widgets`, `--require-runtime-ui-binding`, `--require-runtime-ui-workbench`, `--require-runtime-ui-production-stack`, `--require-runtime-ui-platform-package`, `--require-runtime-ui-font-rasterization`, `--require-runtime-ui-tsf-session`, `--require-runtime-ui-uia-publication`, `--require-runtime-ui-atlas-upload`, `--require-runtime-ui-renderer-atlas-handoff`, and `--require-runtime-ui-package-smoke-scenes`, `tools/check-tidy.ps1 -Files 'engine/ui/src/runtime_ui_binding.cpp,engine/ui/src/runtime_ui_package_smoke_scene.cpp,tests/unit/runtime_ui_binding_tests.cpp,tests/unit/runtime_ui_package_smoke_scene_tests.cpp'`, `tools/check-tidy.ps1 -Preset desktop-runtime -Files 'games/sample_2d_desktop_runtime_package/main.cpp'`, `tools/validate-2d-production-workloads.ps1 -RequireReady`, and full `tools/validate.ps1` passed. The installed 2D workload gate reported `runtime_ui_package_smoke_scene_ready=1`, four selected ready rows, `runtime_ui_package_smoke_scene_supporting_evidence_rows=10`, zero unsafe claim rows, and `runtime_ui_renderer_atlas_handoff_ready=1`, with explicit prerequisite flags guarded by `tools/check-ai-integration.ps1`.
+- 2026-07-01 Phase 5 closeout: added `TwoDCommercialRuntimeUiOfficialSourceKind`, `TwoDCommercialRuntimeUiOfficialSourceRow`, `TwoDCommercialRuntimeUiCloseoutDesc`, `TwoDCommercialRuntimeUiCloseoutResult`, and `evaluate_2d_commercial_runtime_ui_closeout` in `MK_ui`. The value contract aggregates the selected `RuntimeUiPlatformProductionResult`, selected package-visible `RuntimeUiPackageSmokeSceneReview`, refreshed Context7/official-source rows for DirectWrite, Win32 TSF/UIA, D3D12, and repository legal policy, and the exact runtime UI adapter gate rows. It can become ready only for the selected Windows/D3D12 proof with DirectWrite text/font/rasterization, TSF IME/text input, UIA accessibility publication, D3D12 glyph/image atlas upload, first-party widget/package smoke, and clean-room non-claims; it rejects public native handles, UI middleware, external-engine compatibility, cross-platform parity, legal-approval claims, non-Windows ready claims, and any promoted Linux/macOS/iOS/Android/Vulkan/Metal adapter gate.
+- 2026-07-01 RED/GREEN: `tools/cmake.ps1 --build --preset dev --target MK_two_d_commercial_runtime_ui_closeout_tests` first failed on missing `mirakana/ui/two_d_commercial_runtime_ui_closeout.hpp`, then passed after adding the value contract, source, CMake source entry, and focused tests. `tools/ctest.ps1 --preset dev --output-on-failure -R MK_two_d_commercial_runtime_ui_closeout_tests` passed.
 
 ### Phase 6: Renderer/RHI 2D Commercial Quality
 
