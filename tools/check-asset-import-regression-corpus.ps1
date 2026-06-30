@@ -401,5 +401,6 @@ Invoke-RepoPwshScript -RelativeScript "ctest.ps1" -ScriptArguments @(
     "MK_asset_import_regression_tests"
 )
 Invoke-AssetImportRegressionRunnerCliSmoke
+Invoke-RepoPwshScript -RelativeScript "check-asset-import-regression-operator-loop.ps1" -ScriptArguments @("-SyntheticSmoke")
 
 Write-Information "asset-import-regression-corpus-check: ok" -InformationAction Continue

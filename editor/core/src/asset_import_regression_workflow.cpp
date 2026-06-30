@@ -132,6 +132,40 @@ namespace {
     };
 }
 
+[[nodiscard]] EditorAssetBrowserImportWorkflowRow make_triage_row(const AssetImportRegressionTriageRowV1& row) {
+    const bool blocked = row.reimport_decision == AssetImportRegressionReimportDecision::blocked;
+    std::string detail =
+        "phase=" + row.phase + " code=" + std::string{asset_import_regression_diagnostic_code_label(row.code)} +
+        " severity=" + std::string{asset_import_regression_triage_severity_label(row.severity)} +
+        " recommended_action=" + std::string{asset_import_regression_recommended_action_label(row.recommended_action)} +
+        " reimport_decision=" + std::string{asset_import_regression_reimport_decision_label(row.reimport_decision)} +
+        " repro=" + row.repro_command_id;
+    if (row.preset_diff_required) {
+        detail += " preset_diff_required=true";
+    }
+    if (row.axis_unit_preview_required) {
+        detail += " axis_unit_preview_required=true";
+    }
+    if (row.legal_blocked) {
+        detail += " legal_blocked=true";
+    }
+    if (row.nondeterministic) {
+        detail += " nondeterministic=true";
+    }
+    return EditorAssetBrowserImportWorkflowRow{
+        .id = workflow_row_id("failure", row.asset_id),
+        .category_label = "triage_failure",
+        .asset_id = row.asset_id,
+        .asset_key_label = std::to_string(row.asset.value),
+        .source_path = row.source_path,
+        .status_label = std::string{asset_import_regression_triage_severity_label(row.severity)},
+        .detail_label = std::move(detail),
+        .diagnostic = "operator triage row reviewed",
+        .ready = !blocked,
+        .blocked = blocked,
+    };
+}
+
 [[nodiscard]] EditorAssetBrowserImportWorkflowRow make_batch_row(const AssetImportBatchReimportPlanRow& batch) {
     const bool blocked = batch.status == AssetImportBatchReimportRowStatus::blocked;
     return EditorAssetBrowserImportWorkflowRow{
@@ -301,6 +335,22 @@ make_editor_asset_import_regression_workflow_model(const EditorAssetImportRegres
         }
     }
 
+    bool triage_reimport_ready = false;
+    bool triage_has_legal_blocker = false;
+    bool triage_preset_diff_ready = false;
+    bool triage_axis_preview_ready = false;
+    if (desc.triage != nullptr) {
+        model.rows.reserve(model.rows.size() + desc.triage->rows.size());
+        for (const auto& row : desc.triage->rows) {
+            model.rows.push_back(make_triage_row(row));
+            triage_reimport_ready = triage_reimport_ready ||
+                                    row.reimport_decision == AssetImportRegressionReimportDecision::dry_run_allowed;
+            triage_has_legal_blocker = triage_has_legal_blocker || row.legal_blocked;
+            triage_preset_diff_ready = triage_preset_diff_ready || row.preset_diff_required;
+            triage_axis_preview_ready = triage_axis_preview_ready || row.axis_unit_preview_required;
+        }
+    }
+
     bool batch_ready = false;
     if (desc.batch_reimport != nullptr) {
         model.rows.reserve(model.rows.size() + desc.batch_reimport->rows.size());
@@ -335,12 +385,12 @@ make_editor_asset_import_regression_workflow_model(const EditorAssetImportRegres
     append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::run_corpus, corpus_ready, true);
     append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::open_report,
                    desc.latest_report != nullptr, false);
-    append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::batch_reimport, batch_ready,
-                   true);
-    append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::preset_diff, preset_diff_ready,
-                   false);
-    append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::axis_unit_preview, preview_ready,
-                   false);
+    append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::batch_reimport,
+                   batch_ready || (triage_reimport_ready && !triage_has_legal_blocker), true);
+    append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::preset_diff,
+                   preset_diff_ready || triage_preset_diff_ready, false);
+    append_command(model.command_rows, EditorAssetImportRegressionWorkflowCommandKind::axis_unit_preview,
+                   preview_ready || triage_axis_preview_ready, false);
 
     refresh_summary(model);
     return model;

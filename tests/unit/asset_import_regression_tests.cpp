@@ -6,6 +6,7 @@
 #include "mirakana/assets/asset_import_batch_reimport.hpp"
 #include "mirakana/assets/asset_import_preset_diff.hpp"
 #include "mirakana/assets/asset_import_regression_corpus.hpp"
+#include "mirakana/assets/asset_import_regression_triage.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/tools/asset_axis_unit_preview.hpp"
 #include "mirakana/tools/asset_import_batch_reimport_tool.hpp"
@@ -312,6 +313,151 @@ MK_TEST("asset import regression report round trips every diagnostic code row") 
     }
     std::ranges::sort(labels);
     MK_REQUIRE(std::ranges::adjacent_find(labels) == labels.end());
+}
+
+MK_TEST("asset import regression triage maps every diagnostic to a deterministic operator action") {
+    const auto codes = all_diagnostic_codes();
+    for (const auto code : codes) {
+        const auto action = mirakana::recommended_action_for_asset_import_regression_code(code);
+        const auto action_label = mirakana::asset_import_regression_recommended_action_label(action);
+        MK_REQUIRE(action_label != "invalid");
+        MK_REQUIRE(!action_label.empty());
+        if (code == mirakana::AssetImportRegressionDiagnosticCode::none) {
+            MK_REQUIRE(action == mirakana::AssetImportRegressionRecommendedAction::none);
+        } else {
+            MK_REQUIRE(action != mirakana::AssetImportRegressionRecommendedAction::none);
+        }
+    }
+}
+
+MK_TEST("asset import regression triage serializes safe deterministic operator rows") {
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .run_id = "run-triage-smoke",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.legal",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.legal"),
+                    .source_path = "sources/gltf/legal.gltf",
+                    .source_sha256 = "sha256:legal",
+                    .preset_sha256 = "sha256:preset-legal",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "legal",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::rejected_license,
+                    .message = "license row rejected after source review",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.hash",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.hash"),
+                    .source_path = "sources/gltf/hash.gltf",
+                    .source_sha256 = "sha256:hash",
+                    .preset_sha256 = "sha256:preset-hash",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "source_hash",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::source_hash_mismatch,
+                    .message = "source hash changed",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.axis",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.axis"),
+                    .source_path = "sources/gltf/axis.gltf",
+                    .source_sha256 = "sha256:axis",
+                    .preset_sha256 = "sha256:preset-axis",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "normalization",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::coordinate_normalization_failed,
+                    .message = "coordinate normalization failed",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "texture.codec",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::png_texture,
+                    .asset = mirakana::AssetId::from_name("texture.codec"),
+                    .source_path = "sources/textures/codec.png",
+                    .source_sha256 = "sha256:codec",
+                    .preset_sha256 = "sha256:preset-codec",
+                    .importer_id = "mirakana.importer.png_texture",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "decode",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::texture_decode_failed,
+                    .message = "texture decode failed",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.nondeterministic",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.nondeterministic"),
+                    .source_path = "sources/gltf/nondeterministic.gltf",
+                    .source_sha256 = "sha256:nondeterministic",
+                    .preset_sha256 = "sha256:preset-nondeterministic",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "determinism",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::nondeterministic_output,
+                    .message = "cooked output changed between two executions",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "material.ready",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::material_document,
+                    .asset = mirakana::AssetId::from_name("material.ready"),
+                    .source_path = "sources/materials/ready.material",
+                    .source_sha256 = "sha256:ready",
+                    .preset_sha256 = "sha256:preset-ready",
+                    .importer_id = "mirakana.importer.material_document",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "cook",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::none,
+                    .message = "asset import succeeded",
+                    .deterministic_output_hash = "fnv64:1234",
+                    .succeeded = true,
+                    .ready_for_commercial_evidence = true,
+                },
+            },
+        .asset_count = 6U,
+        .succeeded_count = 1U,
+        .failed_count = 5U,
+        .legal_blocked_count = 1U,
+        .nondeterministic_count = 1U,
+    };
+
+    const auto triage = mirakana::make_asset_import_regression_triage_v1(report);
+    const auto text = mirakana::serialize_asset_import_regression_triage_v1(triage);
+    const auto parsed = mirakana::deserialize_asset_import_regression_triage_v1(text);
+
+    MK_REQUIRE(text == mirakana::serialize_asset_import_regression_triage_v1(parsed));
+    MK_REQUIRE(text.contains("format=GameEngine.AssetImportRegressionTriage.v1\n"));
+    MK_REQUIRE(text.contains("row.0.recommended_action=fix_notice_or_remove_asset\n"));
+    MK_REQUIRE(text.contains("row.2.axis_unit_preview_required=true\n"));
+    MK_REQUIRE(text.contains("row.3.preset_diff_required=true\n"));
+    MK_REQUIRE(text.contains("row.4.nondeterministic=true\n"));
+    MK_REQUIRE(!text.contains('\\'));
+    MK_REQUIRE(!text.contains("C:"));
+    MK_REQUIRE(!text.contains("Users/"));
+    MK_REQUIRE(!text.contains("https://"));
+    MK_REQUIRE(!text.contains("Unity"));
+    MK_REQUIRE(!text.contains("Unreal"));
+    MK_REQUIRE(!text.contains("Godot"));
+    MK_REQUIRE(!text.contains("fastgltf::"));
+    MK_REQUIRE(parsed.rows.size() == 6U);
+    MK_REQUIRE(parsed.blocked_count == 3U);
+    MK_REQUIRE(parsed.reimport_candidate_count == 2U);
+    MK_REQUIRE(parsed.preset_diff_required_count == 1U);
+    MK_REQUIRE(parsed.axis_unit_preview_required_count == 1U);
+    MK_REQUIRE(parsed.rows[0].legal_blocked);
+    MK_REQUIRE(parsed.rows[0].reimport_decision == mirakana::AssetImportRegressionReimportDecision::blocked);
+    MK_REQUIRE(parsed.rows[2].axis_unit_preview_required);
+    MK_REQUIRE(parsed.rows[2].reimport_decision == mirakana::AssetImportRegressionReimportDecision::dry_run_allowed);
+    MK_REQUIRE(parsed.rows[4].nondeterministic);
+    MK_REQUIRE(parsed.rows[4].reimport_decision == mirakana::AssetImportRegressionReimportDecision::blocked);
+    MK_REQUIRE(parsed.rows[5].recommended_action == mirakana::AssetImportRegressionRecommendedAction::none);
+    MK_REQUIRE(parsed.rows[5].reimport_decision == mirakana::AssetImportRegressionReimportDecision::not_needed);
+    MK_REQUIRE(parsed.rows[0].source_excerpt_hash.starts_with("sha256:"));
+    MK_REQUIRE(parsed.rows[0].repro_command.contains("tools/run-asset-import-regression-corpus.ps1"));
 }
 
 MK_TEST("asset import regression committed first-party corpus fixture validates expected coverage") {
