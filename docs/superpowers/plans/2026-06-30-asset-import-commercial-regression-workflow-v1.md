@@ -427,7 +427,7 @@ No dependency, feature flag, optional package, or third-party corpus asset was a
 
 ### Task 12: Approved Large Corpus Intake And Dependency-Ready Host
 
-**Status:** planned, not implemented.
+**Status:** implemented as the host-intake and dependency-ready host gate foundation. Real large-corpus execution remains blocked until an approved host-owned corpus and `asset-importers` dependency evidence exist.
 
 **Files:**
 - Create: `tools/generate-asset-import-regression-corpus-manifest.ps1`
@@ -436,8 +436,8 @@ No dependency, feature flag, optional package, or third-party corpus asset was a
 - Modify: `tests/fixtures/asset_import_regression/README.md`
 - Modify only if third-party assets are tracked or redistributed: `THIRD_PARTY_NOTICES.md`, `docs/legal-and-licensing.md`, `docs/dependencies.md`
 
-- [ ] Add `tools/generate-asset-import-regression-corpus-manifest.ps1` with `-CorpusRoot`, `-SourcesRoot`, `-NoticesPath`, `-OutputManifest`, and `-FailOnMissingNotice` parameters. The script must not download assets or infer licenses; it only reads already-local source files and operator-supplied notice rows.
-- [ ] Require this host layout before execution:
+- [x] Add `tools/generate-asset-import-regression-corpus-manifest.ps1` with `-CorpusRoot`, `-SourcesRoot`, `-NoticesPath`, `-OutputManifest`, and `-FailOnMissingNotice` parameters. The script must not download assets or infer licenses; it only reads already-local source files and operator-supplied notice rows.
+- [x] Require this host layout before execution:
 
 ```text
 out/host-artifacts/asset-import-regression-corpus/
@@ -457,14 +457,14 @@ out/host-artifacts/asset-import-regression-corpus/
     corpus-selection-summary.md
 ```
 
-- [ ] Lock minimum corpus composition in `corpus-selection-summary.md`:
+- [x] Lock minimum corpus composition in `corpus-selection-summary.md`:
   - at least 40 glTF rows, including mesh-only, scene, skin, morph, material, external buffer, external image, animation TRS, quaternion animation, invalid external path, invalid extension, invalid accessor, and unsupported interpolation cases;
   - at least 30 texture rows across PNG, OpenEXR, and KTX2/Basis, including color-management, alpha, HDR metadata, mip/array/cubemap, needs-transcoding, and backend-target-policy cases;
   - at least 20 material rows covering factor-only, texture-backed, missing dependency, duplicated texture reference, unsupported graph/export, and package-output cases;
   - at least 20 animation rows covering node TRS, skin, morph weight, valid/invalid quaternion, unit/up-axis conversion, and unsupported scalar z-up rotation cases;
   - at least 20 audio rows across WAV, MP3, and FLAC, including static PCM, streaming-source-review, invalid/truncated decode, channel/sample-rate variance, and loop/normalization preset cases.
-- [ ] Allow Khronos glTF Sample Assets, glTF Asset Generator output, Poly Haven CC0 assets, or other public assets only when each asset row has a direct source URL, retrieved date, version or commit, author/copyright holder, SPDX/custom license id, modification status, distribution target, expected SHA-256, and notice id. The top-level project license alone is not enough when the asset directory has its own README/license.
-- [ ] Keep Unity, Unreal Engine, Godot, Fab, Asset Store, Starter Content, templates, marketplace packages, sample projects, serialized schemas, editor UI screenshots/icons, and trademark-heavy assets out of the corpus unless a separate legal approval artifact exists before execution.
+- [x] Allow Khronos glTF Sample Assets, glTF Asset Generator output, Poly Haven CC0 assets, or other public assets only when each asset row has a direct source URL, retrieved date, version or commit, author/copyright holder, SPDX/custom license id, modification status, distribution target, expected SHA-256, and notice id. The top-level project license alone is not enough when the asset directory has its own README/license.
+- [x] Keep Unity, Unreal Engine, Godot, Fab, Asset Store, Starter Content, templates, marketplace packages, sample projects, serialized schemas, editor UI screenshots/icons, and trademark-heavy assets out of the corpus unless a separate legal approval artifact exists before execution.
 - [ ] Run dependency bootstrap on an approval-capable dependency host:
 
 ```powershell
@@ -473,6 +473,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 ```
 
 Expected ready evidence: `asset-importers` configure/build passes and does not add default-build dependencies or runtime source parsing claims. If bootstrap is blocked, record the exact missing vcpkg package or host error and do not attempt Task 13.
+
+Slice 2026-06-30 candidate 12 adds the host-corpus intake generator and fail-closed `-RequireReady` layout gate. `tools/generate-asset-import-regression-corpus-manifest.ps1` accepts only canonical local `sources/`, `notices/THIRD_PARTY_ASSET_NOTICES.md`, and `corpus.gecorpus` paths plus operator-supplied notice rows, writes deterministic `corpus.gecorpus` and `expected/hashes.gehashes`, checks notice anchors with `-FailOnMissingNotice`, emits no download or license-inference counters, and leaves legal approval to retained notices. `tools/validate-asset-import-regression-corpus.ps1 -RequireReady` now also requires `report.gereport`, `expected/hashes.gehashes`, `notices/THIRD_PARTY_ASSET_NOTICES.md`, `sources/gltf`, `sources/textures`, `sources/materials`, `sources/audio`, `retained/official-source-ledger.md`, `retained/corpus-selection-summary.md`, notice-anchor completeness, minimum large-corpus composition evidence, and matching summary/category `required_feature` coverage before `asset_import_regression_corpus_ready=1` can be emitted. This does not add third-party assets, dependencies, or external-engine compatibility claims; real corpus execution remains Task 13+.
+
+Dependency host evidence is still blocked in this session: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` was blocked by the approval policy, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` failed configure because `SPNGConfig.cmake` / `spng-config.cmake` is missing from `vcpkg_installed`. Do not attempt Task 13 real importer execution until an approval-capable host completes `asset-importers` bootstrap and build.
+
+Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1`.
 
 ### Task 13: Real Corpus Runner CLI And Retained Report
 
@@ -679,10 +685,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Every slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Schema/manifest/static-contract slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Manifest/docs/agent-surface slice | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; first-party fixture corpus has 12 assets, `large_corpus_present=0`, `corpus_ready=0` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; generator smoke passed, first-party fixture corpus has 12 assets, `corpus_manifest_present=0`, `large_corpus_present=0`, `expected_hashes_present=0`, `notices_present=0`, `sources_gltf_present=1`, `sources_textures_present=0`, `sources_materials_present=1`, `sources_audio_present=0`, `source_paths_canonical=1`, `official_source_ledger_present=0`, `selection_summary_present=0`, `minimum_composition_ready=0`, `required_feature_categories_ready=0`, `corpus_ready=0` |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 160/160 tests passed |
-| Tasks 12-17 real-corpus closeout | Commercial regression workflow promotion | Planned; no readiness counter change |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 161/161 tests passed |
+| Tasks 13-17 real-corpus closeout | Commercial regression workflow promotion | Planned; no readiness counter change |
