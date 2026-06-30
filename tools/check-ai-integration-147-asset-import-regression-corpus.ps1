@@ -8,10 +8,12 @@ $assetRegressionHeader = Get-AgentSurfaceText "engine/assets/include/mirakana/as
 $assetRegressionSource = Get-AgentSurfaceText "engine/assets/src/asset_import_regression_corpus.cpp"
 $assetRegressionRunnerHeader = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp"
 $assetRegressionRunnerSource = Get-AgentSurfaceText "engine/tools/asset/asset_import_regression_runner.cpp"
+$assetRegressionRunnerCli = Get-AgentSurfaceText "engine/tools/asset/asset_import_regression_runner_cli.cpp"
 $assetRegressionTests = Get-AgentSurfaceText "tests/unit/asset_import_regression_tests.cpp"
 $assetRegressionCheckScript = Get-AgentSurfaceText "tools/check-asset-import-regression-corpus.ps1"
 $assetRegressionValidateScript = Get-AgentSurfaceText "tools/validate-asset-import-regression-corpus.ps1"
 $assetRegressionGenerateScript = Get-AgentSurfaceText "tools/generate-asset-import-regression-corpus-manifest.ps1"
+$assetRegressionRunScript = Get-AgentSurfaceText "tools/run-asset-import-regression-corpus.ps1"
 $assetRegressionFixtureReadme = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/README.md"
 $assetRegressionFixtureCorpus = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/first_party_corpus.gecorpus"
 $assetCMake = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
@@ -100,9 +102,25 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "--corpus-root",
+        "--output-root",
+        "--write-report",
+        "--row-budget",
+        "network_url_rejected",
+        "reparse_point_rejected",
+        "asset_import_regression_replay_hash",
+        "serialize_asset_import_regression_report_v1",
+        "run_asset_import_regression_corpus"
+    )) {
+    Assert-ContainsText $assetRegressionRunnerCli $needle "asset_import_regression_runner_cli.cpp"
+}
+
+foreach ($needle in @(
         "asset_import_regression_corpus.cpp",
         "asset_import_regression_runner.cpp",
+        "asset_import_regression_runner_cli.cpp",
         "MK_asset_import_regression_tests",
+        "MK_asset_import_regression_runner",
         "tests/unit/asset_import_regression_tests.cpp",
         "MK_tools"
     )) {
@@ -112,10 +130,12 @@ foreach ($needle in @(
 foreach ($needle in @(
         "checkAssetImportRegressionCorpus",
         "generateAssetImportRegressionCorpusManifest",
+        "runAssetImportRegressionCorpus",
         "validateAssetImportRegressionCorpus",
         "asset-import-regression-corpus",
         "tools/check-asset-import-regression-corpus.ps1",
         "tools/generate-asset-import-regression-corpus-manifest.ps1",
+        "tools/run-asset-import-regression-corpus.ps1",
         "tools/validate-asset-import-regression-corpus.ps1",
         "asset_import_regression_corpus.hpp",
         "Asset Import Regression Corpus v1",
@@ -125,6 +145,7 @@ foreach ($needle in @(
         "schemas/asset-import-regression-report.schema.json",
         "implemented-value-contract-and-mk-tools-runner-foundation",
         "runnerOwnerModule",
+        "MK_asset_import_regression_runner",
         "mirakana::run_asset_import_regression_corpus",
         "commercial-license policy",
         "external_engine_material=false",
@@ -153,6 +174,7 @@ foreach ($needle in @(
         "asset_import_regression_manifest_generator_ready",
         "asset_import_regression_manifest_generator_downloaded_assets=0",
         "asset_import_regression_manifest_generator_license_inference=0",
+        "asset_import_regression_fresh_process_match",
         "asset_import_regression_corpus_ready",
         "asset_import_regression_corpus_manifest_present",
         "asset_import_regression_large_corpus_present",
@@ -170,6 +192,8 @@ foreach ($needle in @(
         "asset_import_regression_minimum_composition_ready",
         "asset_import_regression_required_feature_categories_ready",
         "asset_import_regression_replay_hash",
+        "retained-hashes.gehashes",
+        "SkipCorpusCheck",
         "Get-FileHash",
         "Resolve-Path -LiteralPath",
         "ReparsePoint",
@@ -190,7 +214,7 @@ foreach ($needle in @(
         "retained/corpus-selection-summary.md",
         "out/host-artifacts/asset-import-regression-corpus"
     )) {
-    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
+    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionRunScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
 }
 
 foreach ($needle in @(

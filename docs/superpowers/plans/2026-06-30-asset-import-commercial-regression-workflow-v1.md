@@ -13,7 +13,7 @@
 ## Authoring Status
 
 - Date: 2026-06-30.
-- Status: candidate implementation plan with Tasks 1-11 implemented as the foundation. Tasks 12-17 are the remaining real-corpus commercial-operation closeout and are not selected by `currentActivePlan`.
+- Status: candidate implementation plan with Tasks 1-12 implemented as the foundation and Task 13 host-independent runner CLI/wrapper gate implemented. Task 13 real-corpus `-RequireReady` execution plus Tasks 14-17 remain the commercial-operation closeout and are not selected by `currentActivePlan`.
 - Selected project coordinate convention: right-handed, `+Y` up, meters, matching the current `AssetImportPresets.v1` and `AssetCoordinateNormalizationPlan` implementation.
 - Current readiness estimate after the 2026-06-30 re-audit: core design and safe import contract 85-90%, visible Assets panel integration 70-80%, whole commercial asset browser/import regression product 55-60%. These are planning estimates only; no readiness counter changes until Task 17 evidence lands.
 - Current hard blocker: no approved large real-asset corpus has been run through `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady`, and the optional `asset-importers` lane still needs a dependency-ready host where `tools/bootstrap-deps.ps1 -Feature asset-importers` and `tools/build-asset-importers.ps1` pass.
@@ -482,16 +482,19 @@ Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-a
 
 ### Task 13: Real Corpus Runner CLI And Retained Report
 
-**Status:** planned, not implemented.
+**Status:** partially implemented. The host-independent reviewed CLI/wrapper gate is implemented and validated with a tiny generated corpus. Real large-corpus `-RequireReady` execution remains blocked until an approved host-owned corpus exists and the optional `asset-importers` dependency lane builds on a dependency-ready host.
 
 **Files:**
-- Create: `engine/tools/asset/asset_import_regression_runner_cli.cpp`
-- Modify: `engine/tools/asset/CMakeLists.txt`
-- Create: `tools/run-asset-import-regression-corpus.ps1`
-- Modify: `tools/check-asset-import-regression-corpus.ps1`
-- Test: `tests/unit/asset_import_regression_tests.cpp`
+- [x] Create: `engine/tools/asset/asset_import_regression_runner_cli.cpp`
+- [x] Modify: `CMakeLists.txt`
+- [x] Create: `tools/run-asset-import-regression-corpus.ps1`
+- [x] Modify: `tools/check-asset-import-regression-corpus.ps1`
+- [x] Modify: `tools/generate-asset-import-regression-corpus-manifest.ps1`
+- [x] Modify: `tests/fixtures/asset_import_regression/README.md`
+- [x] Modify: agent manifest/static surfaces
+- [ ] Run on approved large real-asset corpus with dependency-ready `asset-importers` host evidence
 
-- [ ] Add a narrow `MK_asset_import_regression_runner` executable that accepts only reviewed arguments:
+- [x] Add a narrow `MK_asset_import_regression_runner` executable that accepts only reviewed arguments:
 
 ```text
 --corpus-root <path>
@@ -506,8 +509,8 @@ Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-a
 
 It must reject network URLs, absolute source paths from the manifest, parent traversal, reparse points, native handle requests, parser object dumping, and arbitrary importer plugin ids.
 
-- [ ] `tools/run-asset-import-regression-corpus.ps1` must call `tools/check-asset-import-regression-corpus.ps1 -CorpusRoot <path>` first, then run `MK_asset_import_regression_runner`, then run `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot <path>`. With `-RequireReady`, it must pass through `-RequireReady` to the final validator and fail unless `asset_import_regression_corpus_ready=1`.
-- [ ] Runner output must include only first-party deterministic rows:
+- [x] `tools/run-asset-import-regression-corpus.ps1` must call `tools/check-asset-import-regression-corpus.ps1 -CorpusRoot <path>` first, then run `MK_asset_import_regression_runner`, then run `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot <path>`. With `-RequireReady`, it must pass through `-RequireReady` to the final validator and fail unless `asset_import_regression_corpus_ready=1`.
+- [x] Runner output must include only first-party deterministic rows:
 
 ```text
 asset_import_regression_report=<relative report path>
@@ -519,9 +522,11 @@ asset_import_regression_nondeterministic_count=<n>
 asset_import_regression_replay_hash=sha256:<64 hex>
 ```
 
-- [ ] Report rows must include `asset_id`, `kind`, `source_path`, `source_sha256`, `preset_sha256`, `importer_id`, `importer_version`, `phase`, `code`, `message`, `deterministic_output_hash`, `succeeded`, and `ready_for_commercial_evidence`.
-- [ ] Run each accepted asset twice in one process and once in a fresh process. Any output hash mismatch must set `nondeterministic_output` and block commercial promotion.
-- [ ] Retain `report.gereport`, runner stdout, runner stderr, dependency versions, corpus manifest hash, notices hash, and `asset-importers` build log under `out/host-artifacts/asset-import-regression-corpus/retained/<run-id>/`.
+- [x] Report rows include `asset_id`, `kind`, `source_path`, `source_sha256`, `preset_sha256`, `importer_id`, `importer_version`, `phase`, `code`, `message`, `deterministic_output_hash`, `succeeded`, and `ready_for_commercial_evidence`.
+- [x] Run each accepted asset twice in one process and once in a fresh process. Any same-process output hash mismatch sets `nondeterministic_output`; the wrapper fails on fresh-process report mismatch before final validation.
+- [ ] Retain complete real-run evidence under `out/host-artifacts/asset-import-regression-corpus/retained/<run-id>/`. The host-independent wrapper currently retains `report.gereport`, runner stdout/stderr, fresh runner stdout/stderr, replay/report/manifest/notices hashes, and runner version evidence. Dependency versions and `asset-importers` build log remain dependency-host gated and must be captured with the real large-corpus run.
+
+Slice 2026-06-30 candidate 13 adds `MK_asset_import_regression_runner`, `tools/run-asset-import-regression-corpus.ps1`, and static/manifest/docs sync. The CLI rejects network URLs, absolute/backslash/drive paths, parent traversal, reparse-point prefixes, missing required arguments, unknown arguments, and zero row budgets before execution; it writes deterministic `GameEngine.AssetImportRegressionReport.v1` rows and machine-readable counters including `asset_import_regression_replay_hash`. The wrapper runs the existing corpus check first, invokes the CLI, reruns it in a fresh process with a separate retained report, requires report text equality, retains stdout/stderr/hash evidence, and runs the final validator. `tools/generate-asset-import-regression-corpus-manifest.ps1` and the local smoke helper now write deterministic LF UTF-8 text so C++ parsers do not need CRLF tolerance. This does not add third-party assets, dependency installs, external-engine compatibility claims, or commercial corpus readiness.
 
 Required validation:
 
@@ -530,6 +535,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -OutputRoot out/asset-import-regression/staging/large-corpus -RequireReady
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
 ```
+
+Current validation evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` passes and covers generator smoke, fixture validator, CMake configure/build for `MK_asset_import_regression_tests` and `MK_asset_import_regression_runner`, focused CTest, reviewed CLI counter smoke, wrapper fresh-process determinism, and URL rejection. Real-corpus `-RequireReady` remains not run because `out/host-artifacts/asset-import-regression-corpus` is absent and `tools/build-asset-importers.ps1` is blocked by missing `SPNGConfig.cmake` / `spng-config.cmake` until `asset-importers` bootstrap can run on an approval-capable dependency host.
 
 ### Task 14: Failure Diagnosis And Operator Triage Loop
 
@@ -685,11 +692,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Every slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Schema/manifest/static-contract slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Manifest/docs/agent-surface slice | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; generator smoke passed, first-party fixture corpus has 12 assets, `corpus_manifest_present=0`, `large_corpus_present=0`, `expected_hashes_present=0`, `notices_present=0`, `sources_gltf_present=1`, `sources_textures_present=0`, `sources_materials_present=1`, `sources_audio_present=0`, `source_paths_canonical=1`, `official_source_ledger_present=0`, `selection_summary_present=0`, `minimum_composition_ready=0`, `required_feature_categories_ready=0`, `corpus_ready=0` |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; generator smoke passed, first-party fixture corpus has 12 assets, `MK_asset_import_regression_tests` and `MK_asset_import_regression_runner` built, runner CLI smoke emitted one succeeded material row, wrapper emitted `asset_import_regression_fresh_process_match=1`, URL rejection emitted `network_url_rejected`, and fixture validation remained non-ready with `corpus_ready=0` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_asset_import_regression_runner` | Asset workflow C++ contract | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 161/161 tests passed |
-| Tasks 13-17 real-corpus closeout | Commercial regression workflow promotion | Planned; no readiness counter change |
+| Tasks 13 real-corpus `-RequireReady` remainder and Tasks 14-17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |

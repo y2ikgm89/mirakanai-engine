@@ -172,6 +172,12 @@ add_subdirectory(engine/scene_renderer)
 add_subdirectory(engine/runtime_scene_rhi)
 add_subdirectory(editor)
 
+add_executable(MK_asset_import_regression_runner
+    engine/tools/asset/asset_import_regression_runner_cli.cpp
+)
+target_link_libraries(MK_asset_import_regression_runner PRIVATE MK_tools)
+MK_apply_common_target_options(MK_asset_import_regression_runner)
+
 add_executable(MK_sandbox examples/sandbox/main.cpp)
 target_link_libraries(MK_sandbox PRIVATE
     MK_ai

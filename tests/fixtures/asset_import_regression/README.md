@@ -65,6 +65,16 @@ evidence: at least 40 glTF rows, 30 texture rows, 20 material rows, 20 animation
 rows, and 20 audio rows. `-RequireReady` is reserved for hosts with an approved
 large corpus plus a ready report.
 
+`tools/run-asset-import-regression-corpus.ps1 -CorpusRoot
+out/host-artifacts/asset-import-regression-corpus -OutputRoot
+out/asset-import-regression/staging/large-corpus` is the reviewed runner wrapper.
+It calls the corpus check first, runs `MK_asset_import_regression_runner`, runs a
+fresh-process replay for report equality, writes `report.gereport`, retains
+runner stdout/stderr/hash evidence under `retained/runner-<pid>/`, and finally
+calls the validator. Add `-RequireReady` only when the host corpus has approved
+large real assets, notices, expected hashes, retained ledger/summary files, and
+dependency-ready importer evidence.
+
 `retained/corpus-selection-summary.md` is `key=value` metadata. Required count
 keys are `gltf_rows`, `texture_rows`, `material_rows`, `animation_rows`, and
 `audio_rows`. Required category flags must be set to `true`: `gltf.mesh_only`,

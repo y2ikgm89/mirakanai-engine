@@ -30,7 +30,7 @@ function Write-Utf8TextFile {
     if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
         $null = New-Item -ItemType Directory -Path $parent -Force
     }
-    Set-Content -LiteralPath $Path -Value $Text -Encoding utf8NoBOM
+    Set-Content -LiteralPath $Path -Value $Text -Encoding utf8NoBOM -NoNewline
 }
 
 function New-Directory {
@@ -252,6 +252,124 @@ function Invoke-RepoPwshScript {
     Invoke-CheckedCommand -FilePath $pwshCommand -Arguments $arguments
 }
 
+function Invoke-AssetImportRegressionRunnerCliSmoke {
+    $runnerScript = Join-Path $PSScriptRoot "run-asset-import-regression-corpus.ps1"
+    if (-not (Test-Path -LiteralPath $runnerScript -PathType Leaf)) {
+        Write-Error "tools/run-asset-import-regression-corpus.ps1 must exist for retained corpus runner execution."
+    }
+
+    $runnerExe = Join-Path $repoRoot "out/build/dev/Debug/MK_asset_import_regression_runner.exe"
+    if (-not (Test-Path -LiteralPath $runnerExe -PathType Leaf)) {
+        Write-Error "MK_asset_import_regression_runner executable must be built for corpus runner smoke."
+    }
+
+    $contractRootRelative = "out/tmp/asset-import-regression-runner-$PID"
+    $contractRoot = ConvertTo-LocalPath $contractRootRelative
+    if (Test-Path -LiteralPath $contractRoot) {
+        Remove-Item -LiteralPath $contractRoot -Recurse -Force
+    }
+
+    try {
+        $sourcesRoot = Join-Path $contractRoot "sources"
+        $sourcePath = Join-Path $sourcesRoot "materials/player.material"
+        $noticesPath = Join-Path $contractRoot "notices/THIRD_PARTY_ASSET_NOTICES.md"
+        $outputManifest = Join-Path $contractRoot "corpus.gecorpus"
+        $reportPath = Join-Path $contractRoot "report.gereport"
+        $outputRootRelative = "$contractRootRelative/staging"
+
+        Write-Utf8TextFile -Path $sourcePath -Text @'
+format=GameEngine.Material.v1
+material.id=7
+material.name=Player
+material.shading=lit
+material.surface=opaque
+material.double_sided=false
+factor.base_color=1,1,1,1
+factor.emissive=0,0,0
+factor.metallic=0
+factor.roughness=1
+texture.count=0
+'@
+        Write-Utf8TextFile -Path $noticesPath -Text @'
+asset.count=1
+asset.0.asset_id=material.player
+asset.0.kind=material_document
+asset.0.asset_key=materials/player
+asset.0.source_path=materials/player.material
+asset.0.expected_output_kinds=GameEngine.Material.v1
+asset.0.required_features=material_document
+asset.0.preset_metadata=mesh.unit_scale=1,mesh.up_axis=y
+asset.0.mesh.unit_scale=1
+asset.0.mesh.up_axis=y
+asset.0.mesh.triangulate=true
+asset.0.mesh.generate_normals=true
+asset.0.mesh.generate_tangents=true
+asset.0.mesh.material_extraction=source_references
+asset.0.license_policy=accepted_for_host_corpus_only
+asset.0.allow_external_resources=false
+asset.0.allow_checked_in_distribution=false
+asset.0.provenance.origin=third_party
+asset.0.provenance.source_url=https://example.invalid/gameengine/player.material
+asset.0.provenance.retrieved_date=2026-06-30
+asset.0.provenance.version_or_commit=fixture-runner
+asset.0.provenance.copyright_holder=GameEngine runner fixture
+asset.0.provenance.license_id=CC0-1.0
+asset.0.provenance.modification_status=unmodified
+asset.0.provenance.distribution_target=host-only regression corpus
+asset.0.provenance.notice_id=THIRD_PARTY_ASSET_NOTICES.md#runner-material
+asset.0.provenance.notice_complete=true
+asset.0.provenance.external_engine_material=false
+
+THIRD_PARTY_ASSET_NOTICES.md#runner-material
+'@
+        $null = & (Join-Path $PSScriptRoot "generate-asset-import-regression-corpus-manifest.ps1") `
+            -CorpusRoot $contractRoot `
+            -SourcesRoot $sourcesRoot `
+            -NoticesPath $noticesPath `
+            -OutputManifest $outputManifest `
+            -FailOnMissingNotice
+
+        $runnerLines = @(& $runnerExe `
+                --corpus-root $contractRootRelative `
+                --output-root $outputRootRelative `
+                --write-report "$contractRootRelative/report.gereport" `
+                --compare-expected-hashes `
+                --collect-preview-rows `
+                --row-budget 8)
+        Assert-LinePresent $runnerLines "asset_import_regression_asset_count=1" "asset import regression runner smoke"
+        Assert-LinePresent $runnerLines "asset_import_regression_succeeded_count=1" "asset import regression runner smoke"
+        Assert-LinePresent $runnerLines "asset_import_regression_failed_count=0" "asset import regression runner smoke"
+        if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
+            Write-Error "asset import regression runner did not write report.gereport."
+        }
+
+        $wrapperLines = @(& $pwshCommand `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $runnerScript `
+                -CorpusRoot $contractRootRelative `
+                -OutputRoot $outputRootRelative `
+                -RowBudget 8 `
+                -SkipCorpusCheck)
+        Assert-LinePresent $wrapperLines "asset_import_regression_fresh_process_match=1" "asset import regression wrapper smoke"
+
+        $badUrlLines = @(& $runnerExe `
+                --corpus-root "https://example.invalid/corpus" `
+                --output-root $outputRootRelative `
+                --write-report "$contractRootRelative/bad.gereport" 2>&1)
+        if ($LASTEXITCODE -eq 0) {
+            Write-Error "asset import regression runner must reject network URL corpus roots."
+        }
+        if (-not (($badUrlLines -join "`n") -like "*network_url_rejected*")) {
+            Write-Error "asset import regression runner URL rejection must emit network_url_rejected."
+        }
+    } finally {
+        if (Test-Path -LiteralPath $contractRoot) {
+            Remove-Item -LiteralPath $contractRoot -Recurse -Force
+        }
+    }
+}
+
 Invoke-AssetImportRegressionGeneratorSmoke
 Invoke-AssetImportRegressionRequireReadyLayoutSmoke
 Invoke-RepoPwshScript -RelativeScript "check-json-contracts.ps1"
@@ -272,7 +390,8 @@ Invoke-RepoPwshScript -RelativeScript "cmake.ps1" -ScriptArguments @(
     "--preset",
     "dev",
     "--target",
-    "MK_asset_import_regression_tests"
+    "MK_asset_import_regression_tests",
+    "MK_asset_import_regression_runner"
 )
 Invoke-RepoPwshScript -RelativeScript "ctest.ps1" -ScriptArguments @(
     "--preset",
@@ -281,5 +400,6 @@ Invoke-RepoPwshScript -RelativeScript "ctest.ps1" -ScriptArguments @(
     "-R",
     "MK_asset_import_regression_tests"
 )
+Invoke-AssetImportRegressionRunnerCliSmoke
 
 Write-Information "asset-import-regression-corpus-check: ok" -InformationAction Continue
