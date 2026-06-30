@@ -882,5 +882,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 161/161 tests passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 162/162 tests passed after merging current `origin/main` |
 | Tasks 13 real-corpus `-RequireReady` remainder, Task 15 real-corpus loops, and Task 17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |
