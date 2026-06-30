@@ -1,0 +1,182 @@
+// SPDX-FileCopyrightText: 2026 GameEngine contributors
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+#include "test_framework.hpp"
+
+#include "mirakana/assets/asset_import_regression_corpus.hpp"
+
+#include <algorithm>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+namespace {
+
+[[nodiscard]] mirakana::AssetImportProvenanceRowV1 first_party_provenance() {
+    return mirakana::AssetImportProvenanceRowV1{
+        .asset_key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+        .origin = mirakana::AssetImportProvenanceOrigin::first_party,
+        .source_url = "first-party://asset-import-regression/hero",
+        .retrieved_date = "2026-06-30",
+        .version_or_commit = "generated-fixture-v1",
+        .copyright_holder = "GameEngine contributors",
+        .license_id = "LicenseRef-Proprietary",
+        .modification_status = "generated first-party fixture",
+        .distribution_target = "source-tree regression fixture",
+        .notice_id = "THIRD_PARTY_NOTICES.md#first-party",
+        .notice_complete = true,
+        .external_engine_material = false,
+    };
+}
+
+[[nodiscard]] mirakana::AssetImportRegressionCorpusAssetV1 good_corpus_asset() {
+    return mirakana::AssetImportRegressionCorpusAssetV1{
+        .asset_id = "mesh.hero",
+        .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+        .asset_key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+        .source_path = "sources/gltf/hero.gltf",
+        .expected_sha256 = "sha256:hero-source",
+        .expected_output_kinds = {"GameEngine.MeshSource.v2", "GameEngine.CookedMesh.v2"},
+        .required_features = {"gltf_geometry", "parser_validation"},
+        .mesh_preset =
+            mirakana::AssetImportMeshPresetV1{
+                .unit_scale = 0.01F,
+                .up_axis = mirakana::AssetImportMeshUpAxis::z,
+                .triangulate = true,
+                .generate_normals = true,
+                .generate_tangents = true,
+                .material_extraction = mirakana::AssetImportMeshMaterialExtraction::source_references,
+            },
+        .preset_metadata = {"mesh.unit_scale=0.01", "mesh.up_axis=z"},
+        .provenance = first_party_provenance(),
+        .license_policy = mirakana::AssetImportRegressionLicensePolicy::accepted_for_source_tree,
+        .allow_external_resources = true,
+        .allow_checked_in_distribution = true,
+    };
+}
+
+[[nodiscard]] mirakana::AssetImportRegressionCorpusDocumentV1 good_corpus() {
+    return mirakana::AssetImportRegressionCorpusDocumentV1{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .corpus_version = "1",
+        .root_path = "tests/fixtures/asset_import_regression",
+        .assets = {good_corpus_asset()},
+        .row_budget = 100U,
+    };
+}
+
+[[nodiscard]] bool contains(const std::vector<std::string>& values, const std::string& expected) {
+    return std::ranges::find(values, expected) != values.end();
+}
+
+} // namespace
+
+MK_TEST("asset import regression corpus serializes deterministically and round trips") {
+    const auto corpus = good_corpus();
+
+    const auto text = mirakana::serialize_asset_import_regression_corpus_v1(corpus);
+    const auto parsed = mirakana::deserialize_asset_import_regression_corpus_v1(text);
+    const auto text_again = mirakana::serialize_asset_import_regression_corpus_v1(parsed);
+
+    MK_REQUIRE(text == text_again);
+    MK_REQUIRE(text.contains("format=GameEngine.AssetImportRegressionCorpus.v1\n"));
+    MK_REQUIRE(text.contains("asset.count=1\n"));
+    MK_REQUIRE(text.contains("asset.0.mesh.unit_scale=0.01\n"));
+    MK_REQUIRE(parsed.assets.size() == 1U);
+    MK_REQUIRE(parsed.assets[0].asset_id == "mesh.hero");
+    MK_REQUIRE(parsed.assets[0].kind == mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh);
+    MK_REQUIRE(parsed.assets[0].mesh_preset.up_axis == mirakana::AssetImportMeshUpAxis::z);
+    MK_REQUIRE(parsed.assets[0].provenance.license_id == "LicenseRef-Proprietary");
+}
+
+MK_TEST("asset import regression corpus rejects unsafe paths and legal blockers") {
+    auto corpus = good_corpus();
+    auto duplicate = good_corpus_asset();
+    duplicate.source_path = "../outside.gltf";
+    duplicate.license_policy = mirakana::AssetImportRegressionLicensePolicy::rejected;
+    duplicate.provenance.external_engine_material = true;
+    corpus.assets.push_back(duplicate);
+
+    auto third_party = good_corpus_asset();
+    third_party.asset_id = "mesh.third_party";
+    third_party.asset_key.value = "meshes/third_party";
+    third_party.expected_sha256.clear();
+    third_party.provenance.origin = mirakana::AssetImportProvenanceOrigin::third_party;
+    third_party.provenance.asset_key = third_party.asset_key;
+    third_party.provenance.license_id = "CC-BY-NC-4.0";
+    third_party.provenance.notice_complete = false;
+    corpus.assets.push_back(third_party);
+    corpus.row_budget = 2U;
+
+    const auto diagnostics = mirakana::validate_asset_import_regression_corpus_v1(corpus);
+
+    MK_REQUIRE(contains(diagnostics, "asset.1.duplicate_asset_id"));
+    MK_REQUIRE(contains(diagnostics, "asset.1.unsafe_source_path"));
+    MK_REQUIRE(contains(diagnostics, "asset.1.rejected_license"));
+    MK_REQUIRE(contains(diagnostics, "asset.1.external_engine_material"));
+    MK_REQUIRE(contains(diagnostics, "asset.2.third_party_missing_expected_sha256"));
+    MK_REQUIRE(contains(diagnostics, "asset.2.rejected_license"));
+    MK_REQUIRE(contains(diagnostics, "corpus.row_budget_exceeded"));
+}
+
+MK_TEST("asset import regression corpus deserialize rejects duplicate keys") {
+    const auto corpus = good_corpus();
+    auto text = mirakana::serialize_asset_import_regression_corpus_v1(corpus);
+    text += "asset.0.asset_id=duplicate\n";
+
+    bool threw = false;
+    try {
+        (void)mirakana::deserialize_asset_import_regression_corpus_v1(text);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+
+    MK_REQUIRE(threw);
+}
+
+MK_TEST("asset import regression report serializes deterministic failure rows") {
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .run_id = "run-001",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.hero",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId{42U},
+                    .source_path = "sources/gltf/hero.gltf",
+                    .source_sha256 = "sha256:hero-source",
+                    .preset_sha256 = "sha256:hero-preset",
+                    .importer_id = "reviewed.gltf-mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "parser",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::parser_error,
+                    .message = "failed to parse glTF",
+                    .deterministic_output_hash = "",
+                    .succeeded = false,
+                    .ready_for_commercial_evidence = false,
+                },
+            },
+        .asset_count = 1U,
+        .succeeded_count = 0U,
+        .failed_count = 1U,
+        .legal_blocked_count = 0U,
+        .nondeterministic_count = 0U,
+        .ready = false,
+    };
+
+    const auto text = mirakana::serialize_asset_import_regression_report_v1(report);
+    const auto parsed = mirakana::deserialize_asset_import_regression_report_v1(text);
+
+    MK_REQUIRE(text == mirakana::serialize_asset_import_regression_report_v1(parsed));
+    MK_REQUIRE(text.contains("format=GameEngine.AssetImportRegressionReport.v1\n"));
+    MK_REQUIRE(text.contains("row.0.code=parser_error\n"));
+    MK_REQUIRE(parsed.rows.size() == 1U);
+    MK_REQUIRE(parsed.rows[0].asset.value == 42U);
+    MK_REQUIRE(parsed.rows[0].code == mirakana::AssetImportRegressionDiagnosticCode::parser_error);
+    MK_REQUIRE(!parsed.ready);
+}
+
+int main() {
+    return mirakana::test::run_all();
+}

@@ -26,6 +26,45 @@
       ],
       "policy": "Project defaults and per-AssetKeyV2 texture, mesh, and audio preset overrides remain reviewed first-party intent rows. Selected MK_tools glTF mesh, morph mesh CPU, and node transform animation import paths consume mesh unit_scale/up_axis to bake supported data into the project right-handed +Y-up meter convention. Texture/audio presets and unsupported transform paths remain value-only or fail closed; unsupported combinations block import review instead of being ignored."
     },
+    "regressionCorpus": {
+      "format": "GameEngine.AssetImportRegressionCorpus.v1",
+      "reportFormat": "GameEngine.AssetImportRegressionReport.v1",
+      "status": "implemented-value-contract",
+      "ownerModule": "MK_assets",
+      "schemas": [
+        "schemas/asset-import-regression-corpus.schema.json",
+        "schemas/asset-import-regression-report.schema.json"
+      ],
+      "publicApis": [
+        "mirakana::validate_asset_import_regression_corpus_v1",
+        "mirakana::serialize_asset_import_regression_corpus_v1",
+        "mirakana::deserialize_asset_import_regression_corpus_v1",
+        "mirakana::validate_asset_import_regression_report_v1",
+        "mirakana::serialize_asset_import_regression_report_v1",
+        "mirakana::deserialize_asset_import_regression_report_v1"
+      ],
+      "assetKinds": [
+        "gltf_scene",
+        "gltf_mesh",
+        "gltf_animation",
+        "png_texture",
+        "openexr_texture",
+        "ktx2_basis_texture",
+        "material_document",
+        "audio_source"
+      ],
+      "legalPolicy": "Corpus rows are commercial evidence candidates only when source paths are safe relative paths, expected hashes are present, third-party rows include expected_sha256, GameEngine.AssetImportProvenance.v1 validation passes, notice_complete=true, external_engine_material=false, and license_policy is accepted_for_source_tree or accepted_for_host_corpus_only. Rejected, unknown, non-commercial, no-derivatives, missing-notice, external-engine, duplicate, and row-budget-overrun rows fail closed.",
+      "presetPolicy": "Mesh corpus rows carry the reviewed mesh unit_scale/up_axis/triangulate/normal/tangent/material-extraction preset intent used by later MK_tools importer regression runners; this value contract does not itself execute codecs, cook outputs, mutate packages, or preview axis/unit transforms.",
+      "unsupportedClaims": [
+        "runtime source parsing",
+        "external network fetch",
+        "external engine material ingestion",
+        "Unity/Unreal/Godot compatibility",
+        "arbitrary importer plugin execution",
+        "automatic package mutation",
+        "commercial readiness promotion without real corpus run evidence"
+      ]
+    },
     "optionalDependencyFeature": "asset-importers",
     "plannedExternalImporters": [
       {

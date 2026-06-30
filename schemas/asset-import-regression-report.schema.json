@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/asset-import-regression-report.schema.json",
+  "title": "GameEngine Asset Import Regression Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "corpus_id",
+    "run_id",
+    "asset_count",
+    "succeeded_count",
+    "failed_count",
+    "legal_blocked_count",
+    "nondeterministic_count",
+    "ready",
+    "rows"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.AssetImportRegressionReport.v1" },
+    "corpus_id": { "const": "GameEngine.AssetImportRegressionCorpus.v1" },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "asset_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+    "succeeded_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+    "failed_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+    "legal_blocked_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+    "nondeterministic_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+    "ready": { "type": "boolean" },
+    "rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/report_row" },
+      "maxItems": 100000
+    }
+  },
+  "$defs": {
+    "safe_relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|/)\\.\\.($|/))(?!.*\\\\)[A-Za-z0-9_./-]+$",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "sha256_label": {
+      "type": "string",
+      "pattern": "^sha256:[A-Za-z0-9_.:-]+$",
+      "minLength": 0,
+      "maxLength": 160
+    },
+    "report_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "kind",
+        "asset",
+        "source_path",
+        "source_sha256",
+        "preset_sha256",
+        "importer_id",
+        "importer_version",
+        "phase",
+        "code",
+        "message",
+        "deterministic_output_hash",
+        "succeeded",
+        "ready_for_commercial_evidence"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "kind": {
+          "enum": [
+            "gltf_scene",
+            "gltf_mesh",
+            "gltf_animation",
+            "png_texture",
+            "openexr_texture",
+            "ktx2_basis_texture",
+            "material_document",
+            "audio_source"
+          ]
+        },
+        "asset": { "type": "integer", "minimum": 0 },
+        "source_path": { "$ref": "#/$defs/safe_relative_path" },
+        "source_sha256": { "$ref": "#/$defs/sha256_label" },
+        "preset_sha256": { "$ref": "#/$defs/sha256_label" },
+        "importer_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "importer_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "phase": {
+          "enum": [
+            "manifest",
+            "legal",
+            "source_hash",
+            "parser",
+            "validator",
+            "external_resource",
+            "preset_review",
+            "source_document_import",
+            "cook",
+            "output_hash",
+            "preview"
+          ]
+        },
+        "code": {
+          "enum": [
+            "none",
+            "invalid_manifest",
+            "duplicate_asset_id",
+            "unsafe_source_path",
+            "missing_source_file",
+            "source_hash_mismatch",
+            "missing_license_provenance",
+            "rejected_license",
+            "external_engine_material",
+            "unsupported_format",
+            "parser_error",
+            "validator_error",
+            "missing_external_resource",
+            "unsafe_external_resource_path",
+            "unsupported_extension",
+            "unsupported_animation_channel",
+            "unsupported_skin_or_morph_combination",
+            "coordinate_normalization_failed",
+            "material_extraction_failed",
+            "texture_decode_failed",
+            "texture_transcode_failed",
+            "cooked_output_mismatch",
+            "nondeterministic_output",
+            "row_budget_exceeded"
+          ]
+        },
+        "message": { "type": "string", "maxLength": 2048 },
+        "deterministic_output_hash": { "$ref": "#/$defs/sha256_label" },
+        "succeeded": { "type": "boolean" },
+        "ready_for_commercial_evidence": { "type": "boolean" }
+      }
+    }
+  }
+}

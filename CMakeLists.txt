@@ -744,6 +744,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_asset_import_production_review_tests)
     add_test(NAME MK_asset_import_production_review_tests COMMAND MK_asset_import_production_review_tests)
 
+    add_executable(MK_asset_import_regression_tests
+        tests/unit/asset_import_regression_tests.cpp
+    )
+    target_link_libraries(MK_asset_import_regression_tests PRIVATE MK_assets)
+    target_include_directories(MK_asset_import_regression_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_asset_import_regression_tests)
+    add_test(NAME MK_asset_import_regression_tests COMMAND MK_asset_import_regression_tests)
+
     add_executable(MK_asset_environment_source_pipeline_tests
         tests/unit/asset_environment_source_pipeline_tests.cpp
     )
