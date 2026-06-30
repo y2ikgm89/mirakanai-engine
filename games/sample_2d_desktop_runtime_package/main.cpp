@@ -214,6 +214,9 @@ constexpr std::string_view kSpriteThroughputTraceArtifactPath{
 constexpr std::string_view kSpriteThroughputProfileArtifactPath{
     "out/performance/sample_2d_desktop_runtime_package/2d-sprite-throughput.profile.json"};
 constexpr std::uint64_t kSpriteThroughputRetainedArtifactHash{9'817U};
+constexpr std::string_view kPackagePlaytestLongRunProfileArtifactPath{
+    "games/sample_2d_desktop_runtime_package/reports/playtest/latest/package-long-run.summary.txt"};
+constexpr std::uint64_t kPackagePlaytestLongRunRetainedArtifactHash{19'973U};
 
 enum class Gameplay2DSystemsStatus : std::uint8_t {
     not_started,
@@ -365,6 +368,11 @@ struct PackagePlaytestProductizationProbeResult {
     std::uint64_t declared_generated_playtest_rows{0U};
     std::uint64_t declared_runtime_host_launch_rows{0U};
     std::uint64_t declared_hot_reload_safe_point_rows{0U};
+    std::uint64_t long_run_frame_count{0U};
+    std::uint64_t long_run_over_budget_frame_count{0U};
+    std::uint64_t long_run_memory_high_water_bytes{0U};
+    std::uint64_t retained_profile_artifact_hash_count{0U};
+    std::uint64_t retained_profile_artifact_hash{0U};
     bool invoked_editor_core_execution{false};
     bool invoked_validation_recipe_execution{false};
     bool invoked_arbitrary_shell{false};
@@ -6067,7 +6075,8 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
 }
 
 [[nodiscard]] PackagePlaytestProductizationProbeResult validate_2d_package_playtest_productization_package_evidence(
-    const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
+    const LongRunReadinessProbeResult& long_run_readiness_probe) {
     using mirakana::runtime::Runtime2DPackagePlaytestEvidenceStatus;
     using mirakana::runtime::Runtime2DPackagePlaytestFailureClassification;
 
@@ -6126,9 +6135,15 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
                                         Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
                                         Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
                                         Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+                                        Runtime2DPackagePlaytestFailureClassification::long_run_budget_exceeded,
+                                        Runtime2DPackagePlaytestFailureClassification::retained_artifact_missing,
                                     },
                                 .runtime_host_launch_row_id = std::string{kRuntimeHostLaunchRowId},
                                 .hot_reload_safe_point_evidence_id = std::string{kHotReloadSafePointEvidenceId},
+                                .required_frame_count = long_run_readiness_probe.frames,
+                                .require_zero_over_budget_frames = true,
+                                .require_memory_high_water = true,
+                                .require_retained_profile_artifact = true,
                             },
                         },
                     .evidence_rows =
@@ -6147,17 +6162,27 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
                                         "2d_package_playtest_productization_recipe_rows=1",
                                         "2d_package_playtest_productization_evidence_rows=1",
                                         "2d_package_playtest_productization_imported_evidence_rows=1",
-                                        "2d_package_playtest_productization_failure_classification_rows=8",
+                                        "2d_package_playtest_productization_failure_classification_rows=10",
                                         "2d_package_playtest_productization_editor_core_execution=0",
                                         "2d_package_playtest_productization_validation_recipe_execution=0",
                                         "2d_package_playtest_productization_arbitrary_shell_execution=0",
                                         "2d_package_playtest_productization_active_session_hot_reload=0",
                                         "2d_package_playtest_productization_native_handle_exposure=0",
+                                        std::string{"long_run_readiness_frames="} +
+                                            std::to_string(long_run_readiness_probe.frames),
+                                        std::string{"long_run_readiness_over_budget_frames="} +
+                                            std::to_string(long_run_readiness_probe.over_budget_frames),
+                                        std::string{"long_run_readiness_memory_high_water_bytes="} +
+                                            std::to_string(long_run_readiness_probe.memory_high_water_bytes),
+                                        std::string{"long_run_readiness_memory_growth_bytes="} +
+                                            std::to_string(long_run_readiness_probe.memory_growth_bytes),
+                                        std::string{
+                                            "2d_package_playtest_productization_retained_profile_artifact_hash="} +
+                                            std::to_string(kPackagePlaytestLongRunRetainedArtifactHash),
                                     },
                                 .profile_artifacts =
                                     {
-                                        "games/sample_2d_desktop_runtime_package/reports/playtest/latest/"
-                                        "package-smoke.summary.txt",
+                                        std::string{kPackagePlaytestLongRunProfileArtifactPath},
                                     },
                                 .remediation_handoff_ids =
                                     {
@@ -6166,6 +6191,10 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
                                         "runtime-package-load-remediation",
                                         "unsafe-mutation-request-remediation",
                                     },
+                                .frame_count = long_run_readiness_probe.frames,
+                                .over_budget_frame_count = long_run_readiness_probe.over_budget_frames,
+                                .memory_high_water_bytes = long_run_readiness_probe.memory_high_water_bytes,
+                                .retained_artifact_hash = kPackagePlaytestLongRunRetainedArtifactHash,
                                 .externally_supplied = true,
                             },
                         },
@@ -6181,6 +6210,11 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
     result.remediation_handoff_rows = plan.remediation_handoff_count;
     result.failure_classification_rows = plan.failure_classification_count;
     result.diagnostics = plan.diagnostics.size();
+    result.long_run_frame_count = plan.long_run_frame_count;
+    result.long_run_over_budget_frame_count = plan.long_run_over_budget_frame_count;
+    result.long_run_memory_high_water_bytes = plan.long_run_memory_high_water_bytes;
+    result.retained_profile_artifact_hash_count = static_cast<std::uint64_t>(plan.retained_profile_artifact_hash_count);
+    result.retained_profile_artifact_hash = plan.retained_profile_artifact_hash;
     result.invoked_editor_core_execution = plan.invoked_editor_core_execution;
     result.invoked_validation_recipe_execution = plan.invoked_validation_recipe_execution;
     result.invoked_arbitrary_shell = plan.invoked_arbitrary_shell;
@@ -6193,11 +6227,15 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
         result.declared_hot_reload_safe_point_rows += row.hot_reload_safe_point_review_declared ? 1U : 0U;
     }
     result.ready = plan.succeeded() && result.recipe_rows == 1U && result.evidence_rows == 1U &&
-                   result.imported_evidence_rows == 1U && result.package_smoke_counter_rows == 11U &&
+                   result.imported_evidence_rows == 1U && result.package_smoke_counter_rows == 16U &&
                    result.profile_artifact_rows == 1U && result.remediation_handoff_rows == 4U &&
-                   result.failure_classification_rows == 8U && result.diagnostics == 0U &&
+                   result.failure_classification_rows == 10U && result.diagnostics == 0U &&
                    result.declared_validation_recipe_rows == 1U && result.declared_generated_playtest_rows == 1U &&
                    result.declared_runtime_host_launch_rows == 1U && result.declared_hot_reload_safe_point_rows == 1U &&
+                   result.long_run_frame_count == long_run_readiness_probe.frames &&
+                   result.long_run_over_budget_frame_count == 0U && result.long_run_memory_high_water_bytes != 0U &&
+                   result.retained_profile_artifact_hash_count == 1U &&
+                   result.retained_profile_artifact_hash == kPackagePlaytestLongRunRetainedArtifactHash &&
                    !result.invoked_editor_core_execution && !result.invoked_validation_recipe_execution &&
                    !result.invoked_arbitrary_shell && !result.invoked_active_session_hot_reload &&
                    !result.exposed_native_handles;
@@ -12507,10 +12545,6 @@ int main(int argc, char** argv) {
     const auto input_device_production_ux_probe = options.require_2d_input_device_production_ux
                                                       ? validate_2d_input_device_production_ux_package_evidence()
                                                       : InputDeviceProductionUxProbeResult{};
-    const auto package_playtest_productization_probe =
-        options.require_2d_package_playtest_productization
-            ? validate_2d_package_playtest_productization_package_evidence(runtime_package)
-            : PackagePlaytestProductizationProbeResult{};
     const auto source_pulse_package_probe = options.require_2d_source_pulse
                                                 ? validate_2d_source_pulse_package_evidence(runtime_package)
                                                 : SourcePulsePackageSmokeProbeResult{};
@@ -12721,6 +12755,10 @@ int main(int argc, char** argv) {
     const auto long_run_readiness_probe = evaluate_long_run_readiness(
         options.max_frames, sandbox_package_budget_probe.chunk_bytes, 0U, long_run_shutdown_clean);
     const auto long_run_numa_locality_evidence = build_long_run_numa_locality_evidence();
+    const auto package_playtest_productization_probe =
+        options.require_2d_package_playtest_productization
+            ? validate_2d_package_playtest_productization_package_evidence(runtime_package, long_run_readiness_probe)
+            : PackagePlaytestProductizationProbeResult{};
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -13412,6 +13450,16 @@ int main(int argc, char** argv) {
         << package_playtest_productization_probe.declared_runtime_host_launch_rows
         << " 2d_package_playtest_productization_declared_hot_reload_safe_point_rows="
         << package_playtest_productization_probe.declared_hot_reload_safe_point_rows
+        << " 2d_package_playtest_productization_long_run_frames="
+        << package_playtest_productization_probe.long_run_frame_count
+        << " 2d_package_playtest_productization_long_run_over_budget_frames="
+        << package_playtest_productization_probe.long_run_over_budget_frame_count
+        << " 2d_package_playtest_productization_long_run_memory_high_water_bytes="
+        << package_playtest_productization_probe.long_run_memory_high_water_bytes
+        << " 2d_package_playtest_productization_retained_profile_artifact_hashes="
+        << package_playtest_productization_probe.retained_profile_artifact_hash_count
+        << " 2d_package_playtest_productization_retained_profile_artifact_hash="
+        << package_playtest_productization_probe.retained_profile_artifact_hash
         << " 2d_package_playtest_productization_editor_core_execution="
         << (package_playtest_productization_probe.invoked_editor_core_execution ? 1 : 0)
         << " 2d_package_playtest_productization_validation_recipe_execution="
@@ -14879,6 +14927,16 @@ int main(int argc, char** argv) {
                   << package_playtest_productization_probe.failure_classification_rows
                   << " 2d_package_playtest_productization_diagnostics="
                   << package_playtest_productization_probe.diagnostics
+                  << " 2d_package_playtest_productization_long_run_frames="
+                  << package_playtest_productization_probe.long_run_frame_count
+                  << " 2d_package_playtest_productization_long_run_over_budget_frames="
+                  << package_playtest_productization_probe.long_run_over_budget_frame_count
+                  << " 2d_package_playtest_productization_long_run_memory_high_water_bytes="
+                  << package_playtest_productization_probe.long_run_memory_high_water_bytes
+                  << " 2d_package_playtest_productization_retained_profile_artifact_hashes="
+                  << package_playtest_productization_probe.retained_profile_artifact_hash_count
+                  << " 2d_package_playtest_productization_retained_profile_artifact_hash="
+                  << package_playtest_productization_probe.retained_profile_artifact_hash
                   << " 2d_package_playtest_productization_editor_core_execution="
                   << (package_playtest_productization_probe.invoked_editor_core_execution ? 1 : 0)
                   << " 2d_package_playtest_productization_validation_recipe_execution="
