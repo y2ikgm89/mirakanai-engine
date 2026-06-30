@@ -44,6 +44,7 @@
 #include "mirakana/editor/shader_tool_discovery.hpp"
 #include "mirakana/editor/source_registry_browser.hpp"
 #include "mirakana/editor/two_d_commercial_authoring_review.hpp"
+#include "mirakana/editor/two_d_commercial_authoring_workflow_proof.hpp"
 #include "mirakana/editor/two_d_commercial_package_update_review.hpp"
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/editor/viewport.hpp"
@@ -15208,6 +15209,258 @@ MK_TEST("editor 2d commercial package update review fails closed before unsafe o
     auto action = mirakana::editor::make_editor_2d_commercial_package_update_apply_action(store, plan, model);
     MK_REQUIRE(!history.execute(std::move(action)));
     MK_REQUIRE(store.read_text("games/sample/game.agent.json") == before);
+}
+
+MK_TEST("editor 2d commercial authoring workflow proof accepts first-party samples and generated fixtures only") {
+    const auto workflow_review =
+        mirakana::review_production_authoring_workflow(mirakana::ProductionAuthoringWorkflowRequest{
+            .supported_capability_ids = {"2d-commercial-authoring-review-v1",
+                                         "2d-commercial-large-project-fixtures-v1"},
+            .validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+            .package_evidence_ids = {"sample-2d-desktop-runtime-package-2d-commercial-large-project-fixtures"},
+            .reviewed_surface_ids = {"2d_commercial_authoring_review", "2d_commercial_package_update_review"},
+            .workflow_rows =
+                {
+                    mirakana::ProductionAuthoringWorkflowRow{
+                        .workflow_id = "sample-scene-placement",
+                        .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+                        .target_path = "games/sample_2d_desktop_runtime_package/src/sample_scene.cpp",
+                        .required_capability_ids = {"2d-commercial-authoring-review-v1"},
+                        .validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+                        .package_evidence_ids =
+                            {"sample-2d-desktop-runtime-package-2d-commercial-large-project-fixtures"},
+                        .reviewed_surface_ids = {"2d_commercial_authoring_review"},
+                        .source_index = 0U,
+                    },
+                    mirakana::ProductionAuthoringWorkflowRow{
+                        .workflow_id = "sample-validation-repair",
+                        .kind = mirakana::ProductionAuthoringWorkflowKind::validation_repair,
+                        .target_path = "games/sample_2d_desktop_runtime_package/game.agent.json",
+                        .required_capability_ids = {"2d-commercial-large-project-fixtures-v1"},
+                        .validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+                        .package_evidence_ids =
+                            {"sample-2d-desktop-runtime-package-2d-commercial-large-project-fixtures"},
+                        .reviewed_surface_ids = {"2d_commercial_package_update_review"},
+                        .source_index = 1U,
+                    },
+                },
+        });
+    MK_REQUIRE(workflow_review.succeeded());
+
+    const mirakana::editor::Editor2DCommercialAuthoringReviewModel authoring_review{
+        .rows =
+            {
+                mirakana::editor::Editor2DCommercialAuthoringReviewRow{
+                    .id = "2d_commercial_authoring_review.atlas_inspection",
+                    .surface = mirakana::editor::Editor2DCommercialAuthoringReviewSurface::atlas_inspection,
+                    .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+                    .status_label = "ready",
+                    .source_model = "EditorSpritePreviewDiagnosticsModel",
+                    .source_row_count = 4U,
+                    .retained_ui_row_ids = {"sprite_preview_diagnostics.atlas"},
+                    .diagnostic = "first-party atlas inspection rows are ready",
+                },
+            },
+        .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+        .status_label = "ready",
+        .ready_for_authoring_review = true,
+    };
+    const mirakana::editor::Editor2DCommercialPackageUpdateReviewModel package_update_review{
+        .preview_rows =
+            {
+                mirakana::editor::Editor2DCommercialPackageUpdatePreviewRow{
+                    .id = "2d_commercial_package_update_review.preview.0",
+                    .runtime_package_path = "runtime/atlases/player.geatlas",
+                    .status = mirakana::editor::Editor2DCommercialPackageUpdateReviewStatus::ready,
+                    .status_label = "ready",
+                    .diagnostic = "reviewed generated fixture runtime package row",
+                    .will_add = true,
+                },
+            },
+        .smoke_reviews =
+            {
+                mirakana::editor::Editor2DCommercialPackageUpdateSmokeReviewRow{
+                    .id = "desktop-runtime-2d-package-smoke",
+                    .recipe_id = "desktop-runtime-2d-package-smoke",
+                    .status = mirakana::editor::Editor2DCommercialPackageSmokeReviewStatus::passed,
+                    .status_label = "passed",
+                    .diagnostic = "selected first-party package smoke evidence is retained",
+                },
+            },
+        .status = mirakana::editor::Editor2DCommercialPackageUpdateReviewStatus::ready,
+        .status_label = "ready",
+        .game_manifest_path = "games/sample_2d_desktop_runtime_package/game.agent.json",
+        .expected_manifest_revision = 11U,
+        .active_manifest_revision = 11U,
+        .undo_stack_count = 2U,
+        .redo_stack_count = 0U,
+        .ready_for_reviewed_apply = true,
+        .revision_checked = true,
+        .undo_redo_safe = true,
+        .safe_package_mutation_preview_available = true,
+        .selected_package_smoke_reviewed = true,
+        .rejection_diagnostics_ready = true,
+    };
+    const mirakana::editor::ContentBrowserNavigationModel navigation{
+        .total_item_count = 256U,
+        .visible_item_count = 240U,
+        .page_offset = 0U,
+        .page_size = 100U,
+        .page_index = 0U,
+        .page_count = 3U,
+        .has_next_page = true,
+        .rows =
+            {
+                mirakana::editor::ContentBrowserNavigationRow{
+                    .asset = mirakana::AssetId::from_name("textures/player-atlas.texture"),
+                    .kind = mirakana::AssetKind::texture,
+                    .id = "content_browser.navigation.0",
+                    .path = "games/sample_2d_desktop_runtime_package/assets/textures/player-atlas.texture",
+                    .display_name = "player-atlas.texture",
+                    .asset_key_label = "sample_2d/player-atlas",
+                    .visible_index = 0U,
+                    .selected = true,
+                },
+            },
+    };
+
+    const auto model = mirakana::editor::make_editor_2d_commercial_authoring_workflow_proof_model(
+        mirakana::editor::Editor2DCommercialAuthoringWorkflowProofDesc{
+            .authoring_review = authoring_review,
+            .package_update_review = package_update_review,
+            .asset_navigation = navigation,
+            .production_workflow_review = workflow_review,
+            .source_rows =
+                {
+                    mirakana::editor::Editor2DCommercialAuthoringWorkflowProofSourceRowInput{
+                        .id = "sample_manifest",
+                        .origin =
+                            mirakana::editor::Editor2DCommercialAuthoringWorkflowProofSourceOrigin::first_party_sample,
+                        .path = "games/sample_2d_desktop_runtime_package/game.agent.json",
+                        .evidence_id = "sample-2d-desktop-runtime-package-2d-commercial-large-project-fixtures",
+                        .diagnostic = "selected sample manifest is first-party",
+                    },
+                    mirakana::editor::Editor2DCommercialAuthoringWorkflowProofSourceRowInput{
+                        .id = "generated_atlas_fixture",
+                        .origin =
+                            mirakana::editor::Editor2DCommercialAuthoringWorkflowProofSourceOrigin::generated_fixture,
+                        .path = "games/sample_2d_desktop_runtime_package/generated/fixtures/player-atlas.fixture.json",
+                        .evidence_id = "2d-commercial-large-project-fixtures-v1",
+                        .diagnostic = "generated fixture is deterministic and first-party",
+                    },
+                },
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DCommercialAuthoringWorkflowProofStatus::ready);
+    MK_REQUIRE(model.ready_for_first_party_authoring_workflow);
+    MK_REQUIRE(model.source_rows.size() == 2U);
+    MK_REQUIRE(model.first_party_sample_source_count == 1U);
+    MK_REQUIRE(model.generated_fixture_source_count == 1U);
+    MK_REQUIRE(model.accepted_workflow_count == 2U);
+    MK_REQUIRE(model.mutation_ledger_count == 2U);
+    MK_REQUIRE(model.validation_repair_workflow_count == 1U);
+    MK_REQUIRE(model.navigation_visible_item_count == 240U);
+    MK_REQUIRE(model.navigation_page_count == 3U);
+    MK_REQUIRE(!model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.has_host_gates);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.unsupported_claims.empty());
+
+    const auto ui = mirakana::editor::make_editor_2d_commercial_authoring_workflow_proof_ui_model(model);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_workflow_proof"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{
+                   "2d_commercial_authoring_workflow_proof.source.sample_manifest.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{
+                   "2d_commercial_authoring_workflow_proof.source.generated_atlas_fixture.status"}) != nullptr);
+}
+
+MK_TEST("editor 2d commercial authoring workflow proof blocks external sources execution and legal claims") {
+    mirakana::ProductionAuthoringWorkflowReviewResult workflow_review;
+    workflow_review.invoked_command_execution = true;
+    workflow_review.diagnostics.push_back(mirakana::ProductionAuthoringWorkflowDiagnostic{
+        .code = "arbitrary_shell",
+        .message = "production authoring workflows must not execute arbitrary shell commands",
+        .workflow_id = "unsafe",
+        .referenced_id = "powershell",
+    });
+
+    const mirakana::editor::Editor2DCommercialAuthoringReviewModel authoring_review{
+        .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+        .status_label = "ready",
+        .ready_for_authoring_review = true,
+    };
+    const mirakana::editor::Editor2DCommercialPackageUpdateReviewModel package_update_review{
+        .status = mirakana::editor::Editor2DCommercialPackageUpdateReviewStatus::ready,
+        .status_label = "ready",
+        .ready_for_reviewed_apply = true,
+        .revision_checked = true,
+        .undo_redo_safe = true,
+        .safe_package_mutation_preview_available = true,
+        .selected_package_smoke_reviewed = true,
+        .rejection_diagnostics_ready = true,
+    };
+
+    const auto model = mirakana::editor::make_editor_2d_commercial_authoring_workflow_proof_model(
+        mirakana::editor::Editor2DCommercialAuthoringWorkflowProofDesc{
+            .authoring_review = authoring_review,
+            .package_update_review = package_update_review,
+            .asset_navigation = mirakana::editor::ContentBrowserNavigationModel{},
+            .production_workflow_review = workflow_review,
+            .source_rows =
+                {
+                    mirakana::editor::Editor2DCommercialAuthoringWorkflowProofSourceRowInput{
+                        .id = "external_scene",
+                        .origin = mirakana::editor::Editor2DCommercialAuthoringWorkflowProofSourceOrigin::
+                            external_engine_project,
+                        .path = "external/UnityProject/Assets/scene.unity",
+                        .evidence_id = "unity-project",
+                        .diagnostic = "must be rejected",
+                        .copied_external_material = true,
+                        .uses_external_engine_schema = true,
+                        .claims_legal_approval = true,
+                    },
+                },
+            .request_file_mutation = true,
+            .request_package_io = true,
+            .request_command_execution = true,
+            .request_runtime_source_parsing = true,
+            .request_native_handle_exposure = true,
+            .request_external_engine_project_import = true,
+            .request_external_engine_api_parity_claim = true,
+            .request_legal_approval_claim = true,
+        });
+
+    auto has_diagnostic = [&model](std::string_view text) {
+        return std::ranges::any_of(model.diagnostics,
+                                   [text](const std::string& diagnostic) { return diagnostic.contains(text); });
+    };
+    auto has_unsupported_claim = [&model](std::string_view text) {
+        return std::ranges::any_of(model.unsupported_claims,
+                                   [text](const std::string& claim) { return claim.contains(text); });
+    };
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DCommercialAuthoringWorkflowProofStatus::blocked);
+    MK_REQUIRE(!model.ready_for_first_party_authoring_workflow);
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(has_diagnostic("asset navigation proof requires visible rows"));
+    MK_REQUIRE(has_diagnostic("production authoring workflow diagnostics"));
+    MK_REQUIRE(has_diagnostic("source origin must be first-party sample or generated fixture"));
+    MK_REQUIRE(has_diagnostic("source path must be game-owned"));
+    MK_REQUIRE(has_diagnostic("external material"));
+    MK_REQUIRE(has_diagnostic("external engine schema"));
+    MK_REQUIRE(has_unsupported_claim("file mutation"));
+    MK_REQUIRE(has_unsupported_claim("package IO"));
+    MK_REQUIRE(has_unsupported_claim("command execution"));
+    MK_REQUIRE(has_unsupported_claim("runtime source parsing"));
+    MK_REQUIRE(has_unsupported_claim("native handle exposure"));
+    MK_REQUIRE(has_unsupported_claim("external engine project import"));
+    MK_REQUIRE(has_unsupported_claim("external engine API parity"));
+    MK_REQUIRE(has_unsupported_claim("legal approval"));
 }
 
 MK_TEST("editor ai package authoring diagnostics reject mutation and execution claims") {
