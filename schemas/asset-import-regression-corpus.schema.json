@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/asset-import-regression-corpus.schema.json",
+  "title": "GameEngine Asset Import Regression Corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "corpus_id",
+    "corpus_version",
+    "root_path",
+    "row_budget",
+    "assets"
+  ],
+  "properties": {
+    "schema_version": { "const": "GameEngine.AssetImportRegressionCorpus.v1" },
+    "corpus_id": { "const": "GameEngine.AssetImportRegressionCorpus.v1" },
+    "corpus_version": { "const": "1" },
+    "root_path": { "$ref": "#/$defs/safe_relative_path" },
+    "row_budget": { "type": "integer", "minimum": 1, "maximum": 100000 },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": { "$ref": "#/$defs/corpus_asset" }
+    }
+  },
+  "$defs": {
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "asset_key": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\\\)(?!.*:)[A-Za-z0-9_./-]+$",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "safe_relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|/)\\.\\.($|/))(?!.*\\\\)[A-Za-z0-9_./-]+$",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "sha256_label": {
+      "type": "string",
+      "pattern": "^sha256:[A-Za-z0-9_.:-]+$",
+      "minLength": 8,
+      "maxLength": 160
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "mesh_preset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_scale",
+        "up_axis",
+        "triangulate",
+        "generate_normals",
+        "generate_tangents",
+        "material_extraction"
+      ],
+      "properties": {
+        "unit_scale": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000000 },
+        "up_axis": { "enum": [ "y", "z" ] },
+        "triangulate": { "type": "boolean" },
+        "generate_normals": { "type": "boolean" },
+        "generate_tangents": { "type": "boolean" },
+        "material_extraction": { "enum": [ "none", "source_references" ] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_key",
+        "origin",
+        "source_url",
+        "retrieved_date",
+        "version_or_commit",
+        "copyright_holder",
+        "license_id",
+        "modification_status",
+        "distribution_target",
+        "notice_id",
+        "notice_complete",
+        "external_engine_material"
+      ],
+      "properties": {
+        "asset_key": { "$ref": "#/$defs/asset_key" },
+        "origin": { "enum": [ "first_party", "third_party", "generated_ai" ] },
+        "source_url": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "retrieved_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "version_or_commit": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "copyright_holder": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "license_id": {
+          "type": "string",
+          "not": { "pattern": "(CC-BY-NC|CC-NC|-NC|CC-BY-ND|CC-ND|-ND|UNKNOWN|NOASSERTION|UNLICENSED)" },
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "modification_status": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "distribution_target": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "notice_id": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "notice_complete": { "const": true },
+        "external_engine_material": { "const": false }
+      }
+    },
+    "corpus_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "kind",
+        "asset_key",
+        "source_path",
+        "expected_sha256",
+        "expected_output_kinds",
+        "required_features",
+        "mesh_preset",
+        "preset_metadata",
+        "provenance",
+        "license_policy",
+        "allow_external_resources",
+        "allow_checked_in_distribution"
+      ],
+      "properties": {
+        "asset_id": { "$ref": "#/$defs/asset_id" },
+        "kind": {
+          "enum": [
+            "gltf_scene",
+            "gltf_mesh",
+            "gltf_animation",
+            "png_texture",
+            "openexr_texture",
+            "ktx2_basis_texture",
+            "material_document",
+            "audio_source"
+          ]
+        },
+        "asset_key": { "$ref": "#/$defs/asset_key" },
+        "source_path": { "$ref": "#/$defs/safe_relative_path" },
+        "expected_sha256": { "$ref": "#/$defs/sha256_label" },
+        "expected_output_kinds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/token" },
+          "uniqueItems": true
+        },
+        "required_features": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/token" },
+          "uniqueItems": true
+        },
+        "mesh_preset": { "$ref": "#/$defs/mesh_preset" },
+        "preset_metadata": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/token" },
+          "uniqueItems": true
+        },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "license_policy": {
+          "enum": [
+            "accepted_for_source_tree",
+            "accepted_for_host_corpus_only"
+          ]
+        },
+        "allow_external_resources": { "type": "boolean" },
+        "allow_checked_in_distribution": { "type": "boolean" }
+      }
+    }
+  }
+}
