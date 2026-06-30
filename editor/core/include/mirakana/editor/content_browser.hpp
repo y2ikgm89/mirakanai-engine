@@ -8,11 +8,14 @@
 #include "mirakana/assets/source_asset_registry.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
+
+inline constexpr std::size_t kContentBrowserNavigationMaxPageSize = 200U;
 
 struct ContentBrowserItem {
     AssetId id;
@@ -24,6 +27,51 @@ struct ContentBrowserItem {
     std::string asset_key_label;
     std::string identity_source_path;
     bool identity_backed{false};
+};
+
+enum class ContentBrowserNavigationAction : std::uint8_t {
+    stay,
+    first_page,
+    previous_page,
+    next_page,
+    last_page,
+    selected_page,
+};
+
+struct ContentBrowserNavigationRequest {
+    std::size_t page_offset{0U};
+    std::size_t page_size{100U};
+    ContentBrowserNavigationAction action{ContentBrowserNavigationAction::stay};
+};
+
+struct ContentBrowserNavigationRow {
+    AssetId asset;
+    AssetKind kind{AssetKind::unknown};
+    std::string id;
+    std::string path;
+    std::string display_name;
+    std::string asset_key_label;
+    std::size_t visible_index{0U};
+    bool selected{false};
+};
+
+struct ContentBrowserNavigationModel {
+    std::size_t total_item_count{0U};
+    std::size_t visible_item_count{0U};
+    std::size_t page_offset{0U};
+    std::size_t page_size{100U};
+    std::size_t page_index{0U};
+    std::size_t page_count{0U};
+    std::size_t selected_visible_index{0U};
+    std::size_t selected_page_index{0U};
+    bool has_previous_page{false};
+    bool has_next_page{false};
+    bool has_selected_visible_asset{false};
+    bool clamped{false};
+    bool mutates{false};
+    bool executes{false};
+    std::vector<ContentBrowserNavigationRow> rows;
+    std::vector<std::string> diagnostics;
 };
 
 class ContentBrowserState {
@@ -56,5 +104,7 @@ class ContentBrowserState {
 };
 
 [[nodiscard]] std::string_view asset_kind_label(AssetKind kind) noexcept;
+[[nodiscard]] ContentBrowserNavigationModel
+plan_content_browser_navigation(const ContentBrowserState& browser, const ContentBrowserNavigationRequest& request);
 
 } // namespace mirakana::editor

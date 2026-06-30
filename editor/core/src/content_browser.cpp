@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -115,6 +116,70 @@ void refresh_items(std::vector<ContentBrowserItem>& items, const SourceAssetRegi
     }
 
     sort_items(items);
+}
+
+[[nodiscard]] std::size_t page_count_for(std::size_t visible_item_count, std::size_t page_size) noexcept {
+    if (visible_item_count == 0U) {
+        return 0U;
+    }
+    return ((visible_item_count - 1U) / page_size) + 1U;
+}
+
+[[nodiscard]] std::size_t last_page_offset_for(std::size_t visible_item_count, std::size_t page_size) noexcept {
+    const auto page_count = page_count_for(visible_item_count, page_size);
+    return page_count == 0U ? 0U : (page_count - 1U) * page_size;
+}
+
+[[nodiscard]] std::size_t clamp_page_offset(std::size_t requested_offset, std::size_t visible_item_count,
+                                            std::size_t page_size, bool& clamped) noexcept {
+    if (visible_item_count == 0U) {
+        if (requested_offset != 0U) {
+            clamped = true;
+        }
+        return 0U;
+    }
+
+    const auto aligned = (requested_offset / page_size) * page_size;
+    const auto last_offset = last_page_offset_for(visible_item_count, page_size);
+    const auto clamped_offset = std::min(aligned, last_offset);
+    if (clamped_offset != requested_offset) {
+        clamped = true;
+    }
+    return clamped_offset;
+}
+
+[[nodiscard]] std::size_t next_page_offset(std::size_t page_offset, std::size_t page_size, bool& clamped) noexcept {
+    const auto max_offset = std::numeric_limits<std::size_t>::max();
+    if (page_offset > max_offset - page_size) {
+        clamped = true;
+        return max_offset;
+    }
+    return page_offset + page_size;
+}
+
+[[nodiscard]] std::size_t selected_visible_index(const std::vector<ContentBrowserItem>& visible_items,
+                                                 const ContentBrowserItem* selected) noexcept {
+    if (selected == nullptr) {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    const auto it = std::ranges::find_if(
+        visible_items, [selected](const ContentBrowserItem& item) { return item.id == selected->id; });
+    return it == visible_items.end() ? std::numeric_limits<std::size_t>::max()
+                                     : static_cast<std::size_t>(std::distance(visible_items.begin(), it));
+}
+
+[[nodiscard]] ContentBrowserNavigationRow make_navigation_row(const ContentBrowserItem& item, std::size_t visible_index,
+                                                              bool selected) {
+    return ContentBrowserNavigationRow{
+        .asset = item.id,
+        .kind = item.kind,
+        .id = "content_browser.navigation." + std::to_string(visible_index),
+        .path = item.path,
+        .display_name = item.display_name,
+        .asset_key_label = item.asset_key_label,
+        .visible_index = visible_index,
+        .selected = selected,
+    };
 }
 
 } // namespace
@@ -238,6 +303,89 @@ std::string_view asset_kind_label(AssetKind kind) noexcept {
         break;
     }
     return "Unknown";
+}
+
+ContentBrowserNavigationModel plan_content_browser_navigation(const ContentBrowserState& browser,
+                                                              const ContentBrowserNavigationRequest& request) {
+    auto visible_items = browser.visible_items();
+    ContentBrowserNavigationModel model{
+        .total_item_count = browser.item_count(),
+        .visible_item_count = visible_items.size(),
+        .page_offset = request.page_offset,
+        .page_size = request.page_size,
+        .mutates = false,
+        .executes = false,
+    };
+
+    if (model.page_size == 0U) {
+        model.page_size = 1U;
+        model.clamped = true;
+        model.diagnostics.push_back("page size must be greater than zero");
+    }
+    if (model.page_size > kContentBrowserNavigationMaxPageSize) {
+        model.page_size = kContentBrowserNavigationMaxPageSize;
+        model.clamped = true;
+        model.diagnostics.push_back("page size exceeded content browser navigation maximum");
+    }
+
+    const auto selected_index = selected_visible_index(visible_items, browser.selected_asset());
+    model.has_selected_visible_asset = selected_index != std::numeric_limits<std::size_t>::max();
+    if (model.has_selected_visible_asset) {
+        model.selected_visible_index = selected_index;
+        model.selected_page_index = selected_index / model.page_size;
+    }
+
+    switch (request.action) {
+    case ContentBrowserNavigationAction::stay:
+        break;
+    case ContentBrowserNavigationAction::first_page:
+        if (model.page_offset != 0U) {
+            model.clamped = true;
+        }
+        model.page_offset = 0U;
+        break;
+    case ContentBrowserNavigationAction::previous_page:
+        if (model.page_offset <= model.page_size) {
+            if (model.page_offset != 0U) {
+                model.clamped = true;
+            }
+            model.page_offset = 0U;
+        } else {
+            model.page_offset -= model.page_size;
+        }
+        break;
+    case ContentBrowserNavigationAction::next_page:
+        model.page_offset = next_page_offset(model.page_offset, model.page_size, model.clamped);
+        break;
+    case ContentBrowserNavigationAction::last_page:
+        model.page_offset = last_page_offset_for(model.visible_item_count, model.page_size);
+        break;
+    case ContentBrowserNavigationAction::selected_page:
+        if (model.has_selected_visible_asset) {
+            model.page_offset = model.selected_page_index * model.page_size;
+        } else {
+            model.diagnostics.push_back("selected asset is not visible");
+        }
+        break;
+    }
+
+    model.page_offset = clamp_page_offset(model.page_offset, model.visible_item_count, model.page_size, model.clamped);
+    model.page_count = page_count_for(model.visible_item_count, model.page_size);
+    model.page_index = model.page_count == 0U ? 0U : model.page_offset / model.page_size;
+    model.has_previous_page = model.page_offset > 0U;
+    model.has_next_page = model.page_count > 0U && (model.page_offset + model.page_size) < model.visible_item_count;
+
+    if (model.visible_item_count == 0U) {
+        return model;
+    }
+
+    const auto end = std::min(model.page_offset + model.page_size, model.visible_item_count);
+    model.rows.reserve(end - model.page_offset);
+    for (std::size_t index = model.page_offset; index < end; ++index) {
+        const bool selected = model.has_selected_visible_asset && index == model.selected_visible_index;
+        model.rows.push_back(make_navigation_row(visible_items[index], index, selected));
+    }
+    return model;
 }
 
 } // namespace mirakana::editor
