@@ -38,6 +38,7 @@ add_library(MK_editor_core
     core/src/shader_tool_discovery.cpp
     core/src/source_registry_browser.cpp
     core/src/two_d_commercial_authoring_review.cpp
+    core/src/two_d_commercial_authoring_workflow_proof.cpp
     core/src/two_d_commercial_package_update_review.cpp
     core/src/ui_model.cpp
     core/src/viewport.cpp
