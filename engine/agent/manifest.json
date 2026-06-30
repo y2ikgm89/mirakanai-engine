@@ -1436,12 +1436,24 @@
       "reportFormat": "GameEngine.AssetImportRegressionReport.v1",
       "triageFormat": "GameEngine.AssetImportRegressionTriage.v1",
       "status": "implemented-value-contract-and-mk-tools-runner-foundation",
-      "workflowStatus": "implemented-operator-triage-retained-rows",
+      "workflowStatus": "implemented-operator-triage-and-visible-native-shell-retained-report-smoke",
       "ownerModule": "MK_assets",
       "runnerOwnerModule": "MK_tools",
       "runnerCli": "MK_asset_import_regression_runner",
       "runnerScript": "tools/run-asset-import-regression-corpus.ps1",
       "operatorLoopScript": "tools/check-asset-import-regression-operator-loop.ps1",
+      "visibleShellLaunchOption": "--asset-import-regression-report \u003Cproject-relative-report\u003E",
+      "visibleShellSmokeCounters": [
+        "editor_asset_import_regression_workflow_visible",
+        "editor_asset_import_regression_workflow_rows",
+        "editor_asset_import_regression_failed_rows",
+        "editor_asset_import_regression_reimport_command_enabled",
+        "editor_asset_import_regression_preset_diff_command_enabled",
+        "editor_asset_import_regression_axis_unit_preview_command_enabled",
+        "editor_asset_import_regression_importers_executed_in_core",
+        "editor_asset_import_regression_native_handles_exposed",
+        "editor_asset_import_regression_external_engine_claim"
+      ],
       "schemas": [
         "schemas/asset-import-regression-corpus.schema.json",
         "schemas/asset-import-regression-report.schema.json"
@@ -1486,7 +1498,7 @@
       ],
       "legalPolicy": "Corpus rows are commercial evidence candidates only when source paths are safe relative paths, expected hashes are present, third-party rows include expected_sha256, GameEngine.AssetImportProvenance.v1 validation passes, notice_complete=true, external_engine_material=false, and license_policy is accepted_for_source_tree or accepted_for_host_corpus_only. Rejected, unknown, non-commercial, no-derivatives, missing-notice, external-engine, duplicate, and row-budget-overrun rows fail closed.",
       "presetPolicy": "Mesh corpus rows carry the reviewed mesh unit_scale/up_axis/triangulate/normal/tangent/material-extraction preset intent. The MK_tools runner resolves AssetImportPresets.v1 project defaults/overrides through review_asset_import_preset_for_asset before execution and records a preset SHA-256 row for diagnosis.",
-      "runnerPolicy": "run_asset_import_regression_corpus validates the corpus before importer execution, resolves source paths under a caller-supplied corpus root, records source SHA-256 and preset SHA-256, executes existing first-party import plans and optional ExternalAssetImportAdapters through an overlay filesystem for deterministic double-run evidence, writes only to caller-supplied output_root when requested, and returns value-only GameEngine.AssetImportRegressionReport.v1 rows without leaking parser, KTX, OpenEXR, miniaudio, GPU, native handle, or third-party types. MK_asset_import_regression_runner is a reviewed CLI for repository-relative corpus/output/presets/report paths only; it rejects network URLs, absolute paths, parent traversal, reparse points, unknown arguments, and zero row budgets before execution. tools/run-asset-import-regression-corpus.ps1 runs the existing corpus check first, invokes the CLI, reruns it in a fresh process for report equality, retains report/stdout/stderr/hash evidence, and passes -RequireReady only to the final validator. GameEngine.AssetImportRegressionTriage.v1 maps failed/legal-blocked/nondeterministic report rows to first-party recommended actions, blocked or dry_run_allowed reimport decisions, preset diff and axis/unit preview flags, and sanitized repro command ids without serializing third-party source snippets. tools/check-asset-import-regression-operator-loop.ps1 reads retained report text or synthetic reports, emits operator-loop counters, and invokes focused asset/editor-core tests under -SyntheticSmoke. Batch reimport planning, preset diff review, axis/unit preview, and operator triage rows are value-only planner surfaces; the editor workflow projects them into Source Pulse retained UI without executing importers, mutating packages, exposing native handles, or claiming external-engine compatibility.",
+      "runnerPolicy": "run_asset_import_regression_corpus validates the corpus before importer execution, resolves source paths under a caller-supplied corpus root, records source SHA-256 and preset SHA-256, executes existing first-party import plans and optional ExternalAssetImportAdapters through an overlay filesystem for deterministic double-run evidence, writes only to caller-supplied output_root when requested, and returns value-only GameEngine.AssetImportRegressionReport.v1 rows without leaking parser, KTX, OpenEXR, miniaudio, GPU, native handle, or third-party types. MK_asset_import_regression_runner is a reviewed CLI for repository-relative corpus/output/presets/report paths only; it rejects network URLs, absolute paths, parent traversal, reparse points, unknown arguments, and zero row budgets before execution. tools/run-asset-import-regression-corpus.ps1 runs the existing corpus check first, invokes the CLI, reruns it in a fresh process for report equality, retains report/stdout/stderr/hash evidence, and passes -RequireReady only to the final validator. GameEngine.AssetImportRegressionTriage.v1 maps failed/legal-blocked/nondeterministic report rows to first-party recommended actions, blocked or dry_run_allowed reimport decisions, preset diff and axis/unit preview flags, and sanitized repro command ids without serializing third-party source snippets. tools/check-asset-import-regression-operator-loop.ps1 reads retained report text or synthetic reports, emits operator-loop counters, and invokes focused asset/editor-core tests under -SyntheticSmoke. The native MK_editor shell accepts only --asset-import-regression-report project-relative report paths, sanitizes visible retained report rows before projecting them into Source Pulse import workflow rows, emits editor_asset_import_regression_* smoke counters, and redacts unsafe source paths. Batch reimport planning, preset diff review, axis/unit preview, operator triage rows, and visible shell report rows are value-only planner surfaces; the editor workflow projects them into Source Pulse retained UI without executing importers, mutating packages, exposing native handles, or claiming external-engine compatibility.",
       "unsupportedClaims": [
         "runtime source parsing",
         "external network fetch",
@@ -2390,6 +2402,11 @@
       "name": "asset-import-regression-operator-loop",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -SyntheticSmoke",
       "purpose": "Validate the host-independent operator triage loop for GameEngine.AssetImportRegressionReport.v1 by generating a synthetic first-party report, classifying failed, legal-blocked, nondeterministic, preset-diff, and axis/unit-preview rows into GameEngine.AssetImportRegressionTriage.v1 counters, proving editor-core retained rows remain value-only, and running focused MK_asset_import_regression_tests plus MK_editor_core_tests."
+    },
+    {
+      "name": "asset-import-regression-visible-shell-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests",
+      "purpose": "Validate the visible native Assets panel asset import regression workflow smoke by parsing safe --asset-import-regression-report project-relative paths, rejecting unsafe report paths, projecting sanitized retained GameEngine.AssetImportRegressionReport.v1 and triage rows into asset_browser.import_workflow.*, emitting editor_asset_import_regression_* smoke counters, enabling preset-diff and axis/unit preview command rows, disabling reimport when legal-blocked rows exist, and proving no editor-core importer execution, native handle exposure, absolute host path leakage, or external-engine compatibility claim."
     },
     {
       "name": "physics-jolt",

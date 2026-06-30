@@ -84,6 +84,15 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t editor_asset_browser_source_pulse_rows{0};
     std::uint32_t editor_asset_browser_hardcoded_rows{0};
     bool editor_asset_browser_native_handles_exposed{false};
+    bool editor_asset_import_regression_workflow_visible{false};
+    std::uint32_t editor_asset_import_regression_workflow_rows{0};
+    std::uint32_t editor_asset_import_regression_failed_rows{0};
+    bool editor_asset_import_regression_reimport_command_enabled{false};
+    bool editor_asset_import_regression_preset_diff_command_enabled{false};
+    bool editor_asset_import_regression_axis_unit_preview_command_enabled{false};
+    bool editor_asset_import_regression_importers_executed_in_core{false};
+    bool editor_asset_import_regression_native_handles_exposed{false};
+    bool editor_asset_import_regression_external_engine_claim{false};
     bool runtime_ui_editor_panel_visible{false};
     std::uint32_t runtime_ui_editor_hierarchy_rows{0};
     std::uint32_t runtime_ui_editor_inspector_rows{0};
