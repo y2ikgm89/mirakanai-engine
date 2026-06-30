@@ -201,6 +201,7 @@ foreach ($needle in @(
 foreach ($needle in @(
         "checkAssetImportRegressionCorpus",
         "checkAssetImportRegressionOperatorLoop",
+        "check-asset-import-regression-operator-loop.ps1 [-ReportPath <path>] [-CorpusRoot <path>] [-OutputRoot <path>] [-SyntheticSmoke] [-RequireReady]",
         "generateAssetImportRegressionCorpusManifest",
         "runAssetImportRegressionCorpus",
         "validateAssetImportRegressionCorpus",
