@@ -57,11 +57,11 @@ When closing the active plan, do not leave `currentActivePlan` pointing at a com
 
 For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.json.aiOperableProductionLoop`, finish one selected unsupported gap or active phase at a time, prefer official best practices and clean breaking implementation over compatibility shims, optimize context and rate use with focused reads/tests and bounded independent subagents, keep the tree free of temporary/dead files, and close each phase only after code, tests, docs, skills, manifest, static checks, remaining gaps, next plan, and host-gated blockers match the validation evidence.
 
-## Current Production Completion Selection Gate
+## Current Production Completion Active Slice
 
 | Kind | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) (`next-production-gap-selection`) | No child production plan is active. `currentActivePlan` points back to the master plan, `recommendedNextPlan.id = next-production-gap-selection`, and `unsupportedProductionGaps = []`. |
+| Active milestone (`currentActivePlan`) | [2D Commercial Production Excellence v1](2026-06-29-2d-commercial-production-excellence-v1.md) (`2d-commercial-production-excellence-v1`) | Active milestone selected after Diagnostics Backend Adapter Handoff v1. Phase 5 adds the 2D commercial runtime UI closeout gate over selected Windows DirectWrite/TSF/UIA/D3D12 proof and keeps Linux/macOS/iOS/Android/Vulkan/Metal UI readiness host-gated or dependency-gated. Phase 6 renderer/RHI 2D commercial quality is next, and `unsupportedProductionGaps = []`. |
 
 ## Recent Completed Diagnostics Backend Adapter Handoff Work
 
@@ -359,7 +359,7 @@ Recent completed 2D Production Engine Capability Gap Cluster v1 Phase 6 evidence
 | Retained first-party UI runtime/editor production roadmap evidence | [First-Party UI Runtime And Editor Production Roadmap v1](2026-06-12-first-party-ui-runtime-editor-production-roadmap-v1.md) |
 | Completed highest-level runtime UI/editor platform production closeout | [First-Party Runtime UI And Editor Platform Production v1](2026-06-24-first-party-runtime-ui-and-editor-platform-production-v1.md) |
 | Completed original 2D commercial authoring/live-iteration evidence | [Original 2D Commercial Authoring And Live Iteration v1](2026-06-24-original-2d-commercial-authoring-live-iteration-v1.md) |
-| Candidate 2D commercial production excellence roadmap | [2D Commercial Production Excellence v1](2026-06-29-2d-commercial-production-excellence-v1.md) (candidate only; does not change `currentActivePlan`, readiness counters, or `unsupportedProductionGaps`) |
+| Active 2D commercial production excellence roadmap | [2D Commercial Production Excellence v1](2026-06-29-2d-commercial-production-excellence-v1.md) (active milestone; Phase 5 selected Windows/D3D12 runtime UI closeout is implemented, Phase 6 renderer/RHI 2D commercial quality is next; does not change readiness counters or `unsupportedProductionGaps`) |
 | Historical Physics 1.0 Jolt exclusion evidence (`physics-jolt-adapter-gate-v1`) | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Engine save settings profile implementation evidence | [Engine Save Settings Profile v1](2026-05-23-engine-save-settings-profile-v1.md) |
 | Engine UI game menu HUD implementation evidence | [Engine UI Game Menu HUD v1](2026-05-23-engine-ui-game-menu-hud-v1.md) |
