@@ -40,6 +40,7 @@ enum class RuntimePackageResidencyPolicyStatus : std::uint8_t {
     within_budget,
     eviction_required,
     budget_unreachable,
+    telemetry_budget_exceeded,
     unsupported_request,
 };
 
@@ -59,8 +60,10 @@ struct RuntimePackageResidencyTelemetryRow {
     std::uint64_t last_touched_frame{0};
     std::uint64_t io_bytes_read{0};
     std::uint64_t decompressed_bytes{0};
+    std::uint64_t decompression_time_us{0};
     std::uint64_t cpu_time_us{0};
     std::uint64_t gpu_upload_bytes{0};
+    std::uint64_t memory_high_water_bytes{0};
     std::uint32_t asset_miss_count{0};
     std::uint32_t pop_in_count{0};
 };
@@ -72,6 +75,14 @@ struct RuntimePackageResidencyPolicyDesc {
     bool safe_point_required{true};
     std::vector<RuntimePackageResidencyTelemetryRow> telemetry_rows;
     std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    std::uint64_t max_io_bytes_read{0};
+    std::uint64_t max_decompressed_bytes{0};
+    std::uint64_t max_decompression_time_us{0};
+    std::uint64_t max_cpu_time_us{0};
+    std::uint64_t max_gpu_upload_bytes{0};
+    std::uint64_t max_memory_high_water_bytes{0};
+    std::uint32_t max_asset_miss_count{0};
+    std::uint32_t max_pop_in_count{0};
     bool request_background_read_execution{false};
     bool request_package_script_execution{false};
     bool request_external_process{false};
@@ -105,11 +116,22 @@ struct RuntimePackageResidencyPolicyPlan {
     std::uint32_t package_budget_count{0};
     std::uint64_t io_bytes_read{0};
     std::uint64_t decompressed_bytes{0};
+    std::uint64_t decompression_time_us{0};
     std::uint64_t cpu_time_us{0};
     std::uint64_t gpu_upload_bytes{0};
+    std::uint64_t memory_high_water_bytes{0};
     std::uint32_t asset_miss_count{0};
     std::uint32_t pop_in_count{0};
+    std::uint64_t io_byte_budget{0};
+    std::uint64_t decompressed_byte_budget{0};
+    std::uint64_t decompression_time_budget_us{0};
+    std::uint64_t cpu_time_budget_us{0};
+    std::uint64_t gpu_upload_byte_budget{0};
+    std::uint64_t memory_high_water_budget_bytes{0};
+    std::uint32_t asset_miss_budget_count{0};
+    std::uint32_t pop_in_budget_count{0};
     bool safe_point_required{true};
+    bool telemetry_budget_exceeded{false};
     bool background_read_execution_invoked{false};
     bool package_script_execution_invoked{false};
     bool external_process_invoked{false};
