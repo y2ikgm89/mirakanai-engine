@@ -313,6 +313,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_2d_gameplay_execution_loop_tests)
     add_test(NAME MK_runtime_2d_gameplay_execution_loop_tests COMMAND MK_runtime_2d_gameplay_execution_loop_tests)
 
+    add_executable(MK_runtime_2d_commercial_input_closeout_tests
+        tests/unit/runtime_2d_commercial_input_closeout_tests.cpp
+    )
+    target_link_libraries(MK_runtime_2d_commercial_input_closeout_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_2d_commercial_input_closeout_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_2d_commercial_input_closeout_tests)
+    add_test(NAME MK_runtime_2d_commercial_input_closeout_tests COMMAND MK_runtime_2d_commercial_input_closeout_tests)
+
     add_executable(MK_runtime_sprite_atlas_residency_tests
         tests/unit/runtime_sprite_atlas_residency_tests.cpp
     )

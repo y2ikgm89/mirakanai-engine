@@ -45,6 +45,7 @@
 #include "mirakana/runtime/sprite_atlas_residency.hpp"
 #include "mirakana/runtime/sprite_collision_hitbox.hpp"
 #include "mirakana/runtime/sprite_effect_particles.hpp"
+#include "mirakana/runtime/two_d_commercial_input_closeout.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -134,6 +135,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_sprite_throughput{false};
     bool require_2d_physics_runtime_extension{false};
     bool require_2d_input_device_production_ux{false};
+    bool require_2d_commercial_input_closeout{false};
     bool require_2d_package_playtest_productization{false};
     bool require_2d_source_pulse{false};
     bool require_gameplay_authoring_review{false};
@@ -1427,6 +1429,11 @@ physics2d_runtime_extension_status_name(const Physics2DRuntimeExtensionProbeResu
 
 [[nodiscard]] const char*
 input_device_production_ux_status_name(const InputDeviceProductionUxProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] const char* commercial_input_closeout_status_name(
+    const mirakana::runtime::Runtime2DCommercialInputCloseoutResult& result) noexcept {
     return result.ready ? "ready" : "diagnostics";
 }
 
@@ -6204,6 +6211,190 @@ count_input_device_ux_diagnostics(const mirakana::runtime::RuntimeInputDevicePro
                    result.ui_rendering_rows == 0U && result.input_middleware_rows == 0U &&
                    result.glyph_rendering_rows == 0U && result.ui_widget_rows == 0U;
     return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeInputActionMap make_2d_commercial_input_closeout_base_actions() {
+    mirakana::runtime::RuntimeInputActionMap base;
+    base.bind_key_in_context("gameplay", "confirm", mirakana::Key::space);
+    base.bind_pointer_in_context("gameplay", "confirm", mirakana::primary_pointer_id);
+    base.bind_key_in_context("gameplay", "cancel", mirakana::Key::escape);
+    base.bind_gamepad_button_in_context("gameplay", "cancel", mirakana::GamepadId{1}, mirakana::GamepadButton::east);
+    base.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+    base.bind_gamepad_button_in_context("gameplay", "dash", mirakana::GamepadId{1}, mirakana::GamepadButton::south);
+    return base;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeInputRebindingProfile make_2d_commercial_input_closeout_profile() {
+    mirakana::runtime::RuntimeInputRebindingProfile profile;
+    profile.profile_id = "player_one";
+    profile.action_overrides.push_back(mirakana::runtime::RuntimeInputRebindingActionOverride{
+        .context = "gameplay",
+        .action = "confirm",
+        .triggers = {make_input_rebinding_gamepad_button_trigger(mirakana::GamepadId{1},
+                                                                 mirakana::GamepadButton::north),
+                     mirakana::runtime::RuntimeInputActionTrigger{
+                         .kind = mirakana::runtime::RuntimeInputActionTriggerKind::key,
+                         .key = mirakana::Key::space,
+                     }},
+    });
+    profile.axis_overrides.push_back(mirakana::runtime::RuntimeInputRebindingAxisOverride{
+        .context = "gameplay",
+        .action = "move_x",
+        .sources = {make_input_rebinding_gamepad_axis_source(mirakana::GamepadId{1}, mirakana::GamepadAxis::left_x,
+                                                             1.0F, 0.25F)},
+    });
+    return profile;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeInputDeviceProductionUxPlan
+make_2d_commercial_input_closeout_device_ux_plan(const mirakana::runtime::RuntimeInputActionMap& base) {
+    mirakana::runtime::RuntimeInputDeviceProductionUxRequest request;
+    request.base_actions = base;
+    request.gesture_bindings = {
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "confirm",
+                                                          .gesture = mirakana::TouchGestureKind::tap,
+                                                          .phase = mirakana::TouchGesturePhase::ended},
+        mirakana::runtime::RuntimeInputGestureBindingDesc{.context = "gameplay",
+                                                          .action = "move_x",
+                                                          .gesture = mirakana::TouchGestureKind::pan,
+                                                          .phase = mirakana::TouchGesturePhase::changed},
+    };
+    request.gesture_events = {
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::tap,
+                                    .phase = mirakana::TouchGesturePhase::ended,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1U},
+        mirakana::TouchGestureEvent{.kind = mirakana::TouchGestureKind::pan,
+                                    .phase = mirakana::TouchGesturePhase::changed,
+                                    .primary_pointer_id = mirakana::primary_pointer_id,
+                                    .touch_count = 1U,
+                                    .delta = mirakana::Vec2{.x = 6.0F, .y = 0.0F}},
+    };
+    request.device_assignments = {
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{
+            .player_id = "player_one",
+            .device_id = "keyboard_mouse:0",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::keyboard_mouse,
+            .profile_id = "player_one_keyboard"},
+        mirakana::runtime::RuntimeInputDeviceAssignmentDesc{.player_id = "player_two",
+                                                            .device_id = "gamepad:1",
+                                                            .device_kind =
+                                                                mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+                                                            .profile_id = "player_two_gamepad"},
+    };
+    request.per_device_profiles = {
+        mirakana::runtime::RuntimeInputPerDeviceProfileDesc{
+            .profile_id = "player_two_gamepad",
+            .device_id = "gamepad:1",
+            .device_kind = mirakana::runtime::RuntimeInputDeviceKind::gamepad,
+            .left_stick_radial_deadzone = 0.35F,
+            .right_stick_radial_deadzone = 0.20F,
+            .response_curve = mirakana::runtime::RuntimeInputStickResponseCurve::squared},
+    };
+    request.glyph_assets = {
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "keyboard.key.space", .platform = "keyboard", .asset_id = "ui/input/key_space"},
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "gamepad.1.button.north", .platform = "xbox", .asset_id = "ui/input/xbox_button_north"},
+        mirakana::runtime::RuntimeInputGlyphAssetDesc{
+            .glyph_lookup_key = "gamepad.1.button.east", .platform = "xbox", .asset_id = "ui/input/xbox_button_east"},
+    };
+    request.keyboard_layout_labels = {
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "en-US",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+        mirakana::runtime::RuntimeInputKeyboardLayoutLabelDesc{.layout_id = "jp-JIS",
+                                                               .physical_key = mirakana::Key::space,
+                                                               .logical_key = mirakana::Key::space,
+                                                               .display_label = "Space"},
+    };
+    return mirakana::runtime::plan_runtime_input_device_production_ux(request);
+}
+
+[[nodiscard]] std::array<mirakana::runtime::Runtime2DCommercialInputOfficialSourceRow, 5U>
+make_2d_commercial_input_closeout_official_source_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialInputOfficialSourceKind;
+    return {
+        mirakana::runtime::Runtime2DCommercialInputOfficialSourceRow{
+            .id = "microsoft.learn.gameinput",
+            .kind = Kind::microsoft_gameinput,
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialInputOfficialSourceRow{
+            .id = "microsoft.learn.raw-input",
+            .kind = Kind::microsoft_raw_input,
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialInputOfficialSourceRow{
+            .id = "microsoft.learn.pointer-input",
+            .kind = Kind::microsoft_pointer_input,
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialInputOfficialSourceRow{
+            .id = "microsoft.learn.uia",
+            .kind = Kind::microsoft_uia,
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialInputOfficialSourceRow{
+            .id = "repository.legal-policy",
+            .kind = Kind::repository_legal_policy,
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialInputCloseoutResult
+validate_2d_commercial_input_closeout_package_evidence() {
+    auto base = make_2d_commercial_input_closeout_base_actions();
+    return mirakana::runtime::evaluate_runtime_2d_commercial_input_closeout(
+        mirakana::runtime::Runtime2DCommercialInputCloseoutDesc{
+            .base_actions = base,
+            .rebinding_profile = make_2d_commercial_input_closeout_profile(),
+            .device_ux_plan = make_2d_commercial_input_closeout_device_ux_plan(base),
+            .navigation_rows =
+                {
+                    mirakana::runtime::Runtime2DCommercialInputNavigationRow{
+                        .id = "input.nav.pause.resume",
+                        .context = "gameplay",
+                        .action = "confirm",
+                        .focus_scope_id = "pause.menu",
+                        .keyboard_glyph_lookup_key = "keyboard.key.space",
+                        .controller_glyph_lookup_key = "gamepad.1.button.north",
+                        .accessibility_label = "Resume",
+                        .reachable_by_keyboard = true,
+                        .reachable_by_controller = true,
+                        .selected = true,
+                        .ready = true,
+                    },
+                    mirakana::runtime::Runtime2DCommercialInputNavigationRow{
+                        .id = "input.nav.pause.cancel",
+                        .context = "gameplay",
+                        .action = "cancel",
+                        .focus_scope_id = "pause.menu",
+                        .keyboard_glyph_lookup_key = "keyboard.key.escape",
+                        .controller_glyph_lookup_key = "gamepad.1.button.east",
+                        .accessibility_label = "Cancel",
+                        .reachable_by_keyboard = true,
+                        .reachable_by_controller = true,
+                        .selected = true,
+                        .ready = true,
+                    },
+                },
+            .official_source_rows = make_2d_commercial_input_closeout_official_source_rows(),
+            .selected_2d_package_ready_claim = true,
+        });
 }
 
 [[nodiscard]] PackagePlaytestProductizationProbeResult validate_2d_package_playtest_productization_package_evidence(
@@ -11723,7 +11914,8 @@ void print_usage() {
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
-                 "[--require-2d-input-device-production-ux] [--require-2d-package-playtest-productization] "
+                 "[--require-2d-input-device-production-ux] [--require-2d-commercial-input-closeout] "
+                 "[--require-2d-package-playtest-productization] "
                  "[--require-2d-source-pulse] [--require-gameplay-authoring-review] "
                  "[--require-sandbox-authoring-review] "
                  "[--require-production-authoring-workflows] "
@@ -11878,6 +12070,12 @@ void print_usage() {
         }
         if (arg == "--require-2d-input-device-production-ux") {
             options.require_2d_input_device_production_ux = true;
+            continue;
+        }
+        if (arg == "--require-2d-commercial-input-closeout") {
+            options.require_2d_commercial_input_closeout = true;
+            options.require_2d_input_device_production_ux = true;
+            options.require_gameplay_systems = true;
             continue;
         }
         if (arg == "--require-2d-package-playtest-productization") {
@@ -12914,6 +13112,9 @@ int main(int argc, char** argv) {
         options.require_2d_package_playtest_productization
             ? validate_2d_package_playtest_productization_package_evidence(runtime_package, long_run_readiness_probe)
             : PackagePlaytestProductizationProbeResult{};
+    const auto commercial_input_closeout_probe = options.require_2d_commercial_input_closeout
+                                                     ? validate_2d_commercial_input_closeout_package_evidence()
+                                                     : mirakana::runtime::Runtime2DCommercialInputCloseoutResult{};
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -13581,7 +13782,50 @@ int main(int argc, char** argv) {
         << " 2d_input_device_production_ux_glyph_rendering_rows="
         << input_device_production_ux_probe.glyph_rendering_rows
         << " 2d_input_device_production_ux_ui_widget_rows=" << input_device_production_ux_probe.ui_widget_rows
-        << " 2d_package_playtest_productization_status="
+        << " 2d_commercial_input_closeout_status="
+        << commercial_input_closeout_status_name(commercial_input_closeout_probe)
+        << " 2d_commercial_input_closeout_ready=" << (commercial_input_closeout_probe.ready ? 1 : 0)
+        << " 2d_commercial_input_action_map_ready=" << (commercial_input_closeout_probe.action_map_ready ? 1 : 0)
+        << " 2d_commercial_input_rebinding_ready=" << (commercial_input_closeout_probe.rebinding_ready ? 1 : 0)
+        << " 2d_commercial_input_device_ux_ready=" << (commercial_input_closeout_probe.device_ux_ready ? 1 : 0)
+        << " 2d_commercial_input_accessibility_navigation_ready="
+        << (commercial_input_closeout_probe.accessibility_navigation_ready ? 1 : 0)
+        << " 2d_commercial_input_official_source_ready="
+        << (commercial_input_closeout_probe.official_source_ready ? 1 : 0)
+        << " 2d_commercial_input_action_binding_rows=" << commercial_input_closeout_probe.action_binding_rows
+        << " 2d_commercial_input_axis_binding_rows=" << commercial_input_closeout_probe.axis_binding_rows
+        << " 2d_commercial_input_profile_overlay_rows=" << commercial_input_closeout_probe.profile_overlay_rows
+        << " 2d_commercial_input_presentation_rows=" << commercial_input_closeout_probe.presentation_rows
+        << " 2d_commercial_input_glyph_lookup_keys=" << commercial_input_closeout_probe.presentation_glyph_lookup_keys
+        << " 2d_commercial_input_keyboard_mouse_device_rows="
+        << commercial_input_closeout_probe.keyboard_mouse_device_rows
+        << " 2d_commercial_input_gamepad_device_rows=" << commercial_input_closeout_probe.gamepad_device_rows
+        << " 2d_commercial_input_touch_gesture_rows=" << commercial_input_closeout_probe.touch_gesture_rows
+        << " 2d_commercial_input_multiplayer_device_assignment_rows="
+        << commercial_input_closeout_probe.multiplayer_device_assignment_rows
+        << " 2d_commercial_input_per_device_profile_rows=" << commercial_input_closeout_probe.per_device_profile_rows
+        << " 2d_commercial_input_glyph_asset_lookup_rows=" << commercial_input_closeout_probe.glyph_asset_lookup_rows
+        << " 2d_commercial_input_keyboard_layout_label_rows="
+        << commercial_input_closeout_probe.keyboard_layout_label_rows
+        << " 2d_commercial_input_accessibility_navigation_rows="
+        << commercial_input_closeout_probe.accessibility_navigation_rows
+        << " 2d_commercial_input_keyboard_accessible_rows=" << commercial_input_closeout_probe.keyboard_accessible_rows
+        << " 2d_commercial_input_controller_accessible_rows="
+        << commercial_input_closeout_probe.controller_accessible_rows
+        << " 2d_commercial_input_official_source_rows=" << commercial_input_closeout_probe.official_source_rows
+        << " 2d_commercial_input_diagnostics=" << commercial_input_closeout_probe.diagnostics.size()
+        << " 2d_commercial_input_native_handle_access_rows="
+        << commercial_input_closeout_probe.native_handle_access_rows
+        << " 2d_commercial_input_input_middleware_rows=" << commercial_input_closeout_probe.input_middleware_rows
+        << " 2d_commercial_input_ui_rendering_rows=" << commercial_input_closeout_probe.ui_rendering_rows
+        << " 2d_commercial_input_glyph_rendering_rows=" << commercial_input_closeout_probe.glyph_rendering_rows
+        << " 2d_commercial_input_ui_widget_rows=" << commercial_input_closeout_probe.ui_widget_rows
+        << " 2d_commercial_input_external_engine_claim_rows="
+        << commercial_input_closeout_probe.external_engine_claim_rows
+        << " 2d_commercial_input_cross_platform_parity_claim_rows="
+        << commercial_input_closeout_probe.cross_platform_parity_claim_rows
+        << " 2d_commercial_input_legal_approval_claim_rows="
+        << commercial_input_closeout_probe.legal_approval_claim_rows << " 2d_package_playtest_productization_status="
         << package_playtest_productization_status_name(package_playtest_productization_probe.status)
         << " 2d_package_playtest_productization_ready=" << (package_playtest_productization_probe.ready ? 1 : 0)
         << " 2d_package_playtest_productization_recipe_rows=" << package_playtest_productization_probe.recipe_rows
@@ -15094,6 +15338,51 @@ int main(int argc, char** argv) {
                   << " 2d_input_device_production_ux_ui_widget_rows=" << input_device_production_ux_probe.ui_widget_rows
                   << '\n';
         return 47;
+    }
+
+    if (options.require_2d_commercial_input_closeout && !commercial_input_closeout_probe.ready) {
+        std::cout
+            << "sample_2d_desktop_runtime_package required_2d_commercial_input_closeout_unavailable"
+            << " 2d_commercial_input_closeout_status="
+            << commercial_input_closeout_status_name(commercial_input_closeout_probe)
+            << " 2d_commercial_input_closeout_ready=" << (commercial_input_closeout_probe.ready ? 1 : 0)
+            << " 2d_commercial_input_action_map_ready=" << (commercial_input_closeout_probe.action_map_ready ? 1 : 0)
+            << " 2d_commercial_input_rebinding_ready=" << (commercial_input_closeout_probe.rebinding_ready ? 1 : 0)
+            << " 2d_commercial_input_device_ux_ready=" << (commercial_input_closeout_probe.device_ux_ready ? 1 : 0)
+            << " 2d_commercial_input_accessibility_navigation_ready="
+            << (commercial_input_closeout_probe.accessibility_navigation_ready ? 1 : 0)
+            << " 2d_commercial_input_official_source_ready="
+            << (commercial_input_closeout_probe.official_source_ready ? 1 : 0)
+            << " 2d_commercial_input_action_binding_rows=" << commercial_input_closeout_probe.action_binding_rows
+            << " 2d_commercial_input_axis_binding_rows=" << commercial_input_closeout_probe.axis_binding_rows
+            << " 2d_commercial_input_profile_overlay_rows=" << commercial_input_closeout_probe.profile_overlay_rows
+            << " 2d_commercial_input_presentation_rows=" << commercial_input_closeout_probe.presentation_rows
+            << " 2d_commercial_input_glyph_lookup_keys="
+            << commercial_input_closeout_probe.presentation_glyph_lookup_keys
+            << " 2d_commercial_input_keyboard_mouse_device_rows="
+            << commercial_input_closeout_probe.keyboard_mouse_device_rows
+            << " 2d_commercial_input_gamepad_device_rows=" << commercial_input_closeout_probe.gamepad_device_rows
+            << " 2d_commercial_input_touch_gesture_rows=" << commercial_input_closeout_probe.touch_gesture_rows
+            << " 2d_commercial_input_multiplayer_device_assignment_rows="
+            << commercial_input_closeout_probe.multiplayer_device_assignment_rows
+            << " 2d_commercial_input_accessibility_navigation_rows="
+            << commercial_input_closeout_probe.accessibility_navigation_rows
+            << " 2d_commercial_input_keyboard_accessible_rows="
+            << commercial_input_closeout_probe.keyboard_accessible_rows
+            << " 2d_commercial_input_controller_accessible_rows="
+            << commercial_input_closeout_probe.controller_accessible_rows
+            << " 2d_commercial_input_official_source_rows=" << commercial_input_closeout_probe.official_source_rows
+            << " 2d_commercial_input_diagnostics=" << commercial_input_closeout_probe.diagnostics.size()
+            << " 2d_commercial_input_native_handle_access_rows="
+            << commercial_input_closeout_probe.native_handle_access_rows
+            << " 2d_commercial_input_input_middleware_rows=" << commercial_input_closeout_probe.input_middleware_rows
+            << " 2d_commercial_input_external_engine_claim_rows="
+            << commercial_input_closeout_probe.external_engine_claim_rows
+            << " 2d_commercial_input_cross_platform_parity_claim_rows="
+            << commercial_input_closeout_probe.cross_platform_parity_claim_rows
+            << " 2d_commercial_input_legal_approval_claim_rows="
+            << commercial_input_closeout_probe.legal_approval_claim_rows << '\n';
+        return 92;
     }
 
     if (options.require_2d_package_playtest_productization && !package_playtest_productization_probe.ready) {

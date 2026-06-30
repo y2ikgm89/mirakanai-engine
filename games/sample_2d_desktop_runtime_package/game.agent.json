@@ -169,6 +169,7 @@
         "installed-2d-sprite-throughput-smoke",
         "installed-2d-physics-runtime-extension-smoke",
         "installed-2d-input-device-production-ux-smoke",
+        "installed-2d-commercial-input-closeout-smoke",
         "installed-2d-package-playtest-productization-smoke",
         "installed-2d-source-pulse-smoke",
         "installed-2d-sprite-effects-particles-smoke",
@@ -286,6 +287,13 @@
           "evidence": "2D input device production UX smoke reports deterministic gesture/action, device assignment, per-device profile, symbolic glyph lookup, keyboard layout label, clean diagnostic, zero native-handle, zero UI rendering, zero input middleware, zero glyph rendering, and zero UI widget counters.",
           "recipeIds": [
             "installed-2d-input-device-production-ux-smoke"
+          ]
+        },
+        {
+          "id": "input-commercial-closeout-2d",
+          "evidence": "2D commercial input closeout smoke reports action-map, rebinding, keyboard/mouse, gamepad, touch, multiplayer assignment, per-device profile, glyph lookup, keyboard label, accessibility navigation, official-source, clean diagnostic, zero native-handle, zero input middleware, zero UI rendering, zero external-engine, zero cross-platform parity, and zero legal-approval counters.",
+          "recipeIds": [
+            "installed-2d-commercial-input-closeout-smoke"
           ]
         },
         {
@@ -3297,6 +3305,7 @@
     "spriteThroughput": "mirakana::plan_sprite_batch_production_throughput plus mirakana::runtime::plan_runtime_entity_scale_culling_sprite_draw_intents under --require-2d-sprite-throughput; selected smoke requires 2d_sprite_throughput_status=ready, 2d_sprite_throughput_ready=1, culling draw-intent status ready, 3 workload rows, 512/4096 dense visible sprites, 12000 logical projectile sprites, 768 visible projectile sprites, 11232 culled projectile sprites, 14 draw rows, 5376 instance rows, 319488 upload bytes, 6 atlas-page rows, 5 material-lane rows, 1 measured row, 2 host-gated rows, 1 retained timing artifact, retained hash 9817, diagnostics=0, over_budget_rows=0, clean culling rows, and zero scene mutation, renderer ownership, native handle access, broad optimization, cross-backend parity, or Metal readiness claims",
     "physicsRuntimeExtension2D": "mirakana::simulate_physics2d_step under --require-2d-physics-runtime-extension; selected smoke requires 2d_physics_runtime_extension_status=ready, simulate_status=simulated, 2 simulation runs, 5 TOI rows, 3 exact sweep shape-pair rows, 4 hit rows, 1 no-hit row, 1 initial-overlap row, 1 kinematic contact row, 4 joint rows across distance/hinge/prismatic/spring, 2 trigger event rows with enter/exit, diagnostics=0, native_handle_exposure=0, middleware_dispatches=0, and dynamic_vs_dynamic_ccd_claimed=0 without middleware/native handles, dynamic-vs-dynamic CCD broad claims, renderer/RHI ownership, package mutation, or third-party engine API surface",
     "inputDeviceProductionUx2D": "mirakana::runtime::plan_runtime_input_device_production_ux under --require-2d-input-device-production-ux; selected smoke requires 2d_input_device_production_ux_status=ready, 7 gesture binding rows, 7 gesture event rows, 7 gesture action rows, 2 device assignment rows, 1 per-device profile row, 0 clamped deadzone rows, 2 symbolic glyph asset lookup rows, 2 keyboard layout label rows, diagnostics=0, native_handle_access_rows=0, ui_rendering_rows=0, input_middleware_rows=0, glyph_rendering_rows=0, and ui_widget_rows=0 without visible runtime/game rebinding panels, UI rendering, text/IME, accessibility, native input handles, input middleware, or rendered glyph widgets",
+    "inputCommercialCloseout2D": "mirakana::runtime::evaluate_runtime_2d_commercial_input_closeout under --require-2d-commercial-input-closeout; selected smoke requires 2d_commercial_input_closeout_ready=1, action_map/rebinding/device_ux/accessibility_navigation/official_source ready rows, 3 action bindings, 1 axis binding, 2 profile overlay rows, 4 presentation rows, 9 symbolic glyph lookup keys, keyboard/mouse/gamepad/touch evidence, 2 multiplayer assignment rows, 1 per-device profile row, 3 glyph asset lookup rows, 2 keyboard layout label rows, 2 accessibility navigation rows, 2 keyboard-accessible rows, 2 controller-accessible rows, 2d_commercial_input_official_source_rows=5, 2d_commercial_input_diagnostics=0, 2d_commercial_input_native_handle_access_rows=0, 2d_commercial_input_input_middleware_rows=0, 2d_commercial_input_ui_rendering_rows=0, 2d_commercial_input_glyph_rendering_rows=0, 2d_commercial_input_ui_widget_rows=0, 2d_commercial_input_external_engine_claim_rows=0, 2d_commercial_input_cross_platform_parity_claim_rows=0, and 2d_commercial_input_legal_approval_claim_rows=0 without public native input handles, input middleware adoption, UI rendering/widgets, external engine compatibility, cross-platform parity, or legal approval",
     "worldEntityModel": "mirakana::runtime::plan_runtime_world_entity_lifecycle under --require-simulation-orchestration; selected smoke requires world_entity_model_status=ready, world_entity_model_ready=1, 3 entity rows, 4 component rows, 3 region ownership rows, 3 lifecycle rows, one persistence bridge row, one streaming bridge row, one duplicate-entity diagnostic probe, invalid_request bridge rejection with five diagnostics, zero rejected bridge rows, one propagated streaming diagnostic, fail-closed evidence, and world_entity_model_diagnostics=0 without scene mutation, lifecycle execution, package IO, streaming execution, renderer/RHI work, threads, or native handles",
     "addressableContentStreaming": "mirakana::runtime::plan_runtime_addressable_content_streaming under --require-simulation-orchestration; selected smoke requires addressable_content_status=ready, addressable_content_ready=1, 5 address rows, 6 dependency rows, 3 load rows, 1 release row, 4 refcount rows, resident byte and budget counters, budget_limited rejection diagnostics, and addressable_content_package_io=0/addressable_content_async_execution=0/addressable_content_committed=0/addressable_content_diagnostics=0 without reading packages, mutating resident state, executing async work, creating renderer/RHI resources, creating threads, or exposing native handles",
     "rpgSystems": "mirakana::runtime::plan_runtime_rpg_systems under --require-gameplay-systems; selected smoke requires rpg_systems_status=ready, rpg_systems_ready=1, rpg_systems_party_members=2, rpg_systems_enemy_members=1, rpg_systems_stat_rows=8, rpg_systems_progression_rows=2, rpg_systems_skill_rows=2, rpg_systems_skill_blocked_rows=1, rpg_systems_equipment_rows=2, rpg_systems_equipment_blocked_rows=1, rpg_systems_combat_turn_rows=6, rpg_systems_combat_rounds=2, rpg_systems_reward_rows=2, rpg_systems_save_validation_rows=2, rpg_systems_save_validation_repairable_rows=1, positive rpg_systems_replay_hash, zero combat/reward/save side-effect counters, and rpg_systems_diagnostics=0 without combat execution, reward application, save IO, package/world mutation, renderer/RHI work, native handles, or story/balance/tuning claims",
@@ -3379,6 +3388,7 @@
       "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
       "installed-2d-runtime-ui-package-smoke-scenes",
       "installed-2d-input-device-production-ux-smoke",
+      "installed-2d-commercial-input-closeout-smoke",
       "host-2d-long-run-readiness-soak",
       "installed-native-2d-sprite-smoke",
       "desktop-game-runtime"
@@ -4191,6 +4201,10 @@
     {
       "name": "installed-2d-input-device-production-ux-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-input-device-production-ux"
+    },
+    {
+      "name": "installed-2d-commercial-input-closeout-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-commercial-input-closeout"
     },
     {
       "name": "installed-2d-package-playtest-productization-smoke",
