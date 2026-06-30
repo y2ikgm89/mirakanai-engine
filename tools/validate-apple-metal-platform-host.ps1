@@ -184,7 +184,9 @@ function Invoke-IosMetalEvidenceIfRequired {
         "-BootTimeoutSeconds",
         "420",
         "-BootAttempts",
-        "2"
+        "2",
+        "-InformationAction",
+        "Continue"
     )
     if ($SkipIosBuild) {
         $smokeArguments += "-SkipBuild"
@@ -192,11 +194,16 @@ function Invoke-IosMetalEvidenceIfRequired {
     $result = Invoke-ToolCapture -FilePath "pwsh" -Arguments $smokeArguments -TimeoutSeconds 2700
     $text = [string]::Join("`n", @($result.Output, $result.Error))
     $smokeReady = $result.ExitCode -eq 0 -and $text.Contains("ios-smoke: ok")
-    if (-not $smokeReady -and -not [string]::IsNullOrWhiteSpace($text)) {
+    if (-not $smokeReady) {
         Write-Output "ios-metal-smoke-output-begin"
-        foreach ($line in ($text -split "`r?`n")) {
-            if (-not [string]::IsNullOrWhiteSpace($line)) {
-                Write-Output "ios-metal-smoke-output: $line"
+        Write-Output "ios-metal-smoke-output: exit_code=$($result.ExitCode)"
+        if ([string]::IsNullOrWhiteSpace($text)) {
+            Write-Output "ios-metal-smoke-output: <empty>"
+        } else {
+            foreach ($line in ($text -split "`r?`n")) {
+                if (-not [string]::IsNullOrWhiteSpace($line)) {
+                    Write-Output "ios-metal-smoke-output: $line"
+                }
             }
         }
         Write-Output "ios-metal-smoke-output-end"
