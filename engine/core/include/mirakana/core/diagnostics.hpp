@@ -320,13 +320,32 @@ enum class DiagnosticsOpsArtifactKind : std::uint8_t { summary, trace_event_json
 
 enum class DiagnosticsOpsArtifactStatus : std::uint8_t { ready, host_gated, unsupported };
 
-struct DiagnosticsOpsHostStatus {
-    bool debugging_tools_for_windows_available{false};
-    bool telemetry_backend_configured{false};
+struct DiagnosticsCrashReviewAdapterDesc {
+    std::string tool_id;
+    std::string producer;
+    bool tool_available{false};
+    bool symbols_configured{false};
+    bool dump_capture_reviewed{false};
+    bool operator_handoff_ready{false};
+};
+
+struct DiagnosticsTelemetryBackendDesc {
+    std::string backend_id;
+    std::string producer;
+    std::string service_name;
+    bool open_telemetry_trace_contract_reviewed{false};
+    bool redacts_local_paths{false};
+    bool redacts_secrets{false};
+    bool operator_handoff_ready{false};
+};
+
+struct DiagnosticsOpsAdapterDesc {
+    DiagnosticsCrashReviewAdapterDesc crash_review;
+    DiagnosticsTelemetryBackendDesc telemetry_backend;
 };
 
 struct DiagnosticsOpsPlanOptions {
-    DiagnosticsOpsHostStatus host_status;
+    DiagnosticsOpsAdapterDesc adapters;
 };
 
 struct DiagnosticsOpsArtifact {
@@ -337,6 +356,11 @@ struct DiagnosticsOpsArtifact {
     std::string producer;
     std::string format;
     std::string blocker;
+    std::string schema_id;
+    std::string backend_id;
+    std::string service_name;
+    std::string payload_contract;
+    bool operator_handoff_ready{false};
     std::uint64_t event_count{0};
     std::uint64_t counter_count{0};
     std::uint64_t profile_count{0};

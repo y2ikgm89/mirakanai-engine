@@ -483,8 +483,6 @@ MK_TEST("diagnostics ops plan reports trace summary and unsupported upload bound
         .name = "runtime_host.frame", .frame_index = 13, .start_time_ns = 2000, .duration_ns = 5000, .depth = 0});
 
     mirakana::DiagnosticsOpsPlanOptions options;
-    options.host_status.debugging_tools_for_windows_available = false;
-    options.host_status.telemetry_backend_configured = false;
 
     const auto plan = mirakana::build_diagnostics_ops_plan(capture, options);
 
@@ -528,12 +526,32 @@ MK_TEST("diagnostics ops plan reports trace summary and unsupported upload bound
     MK_REQUIRE(telemetry->status == mirakana::DiagnosticsOpsArtifactStatus::unsupported);
     MK_REQUIRE(telemetry->blocker.contains("telemetry backend"));
     MK_REQUIRE(telemetry->producer.empty());
+    MK_REQUIRE(telemetry->format == "OpenTelemetry OTLP trace JSON handoff");
+    MK_REQUIRE(telemetry->schema_id == "GameEngine.DiagnosticsTelemetryHandoff.v1");
+    MK_REQUIRE(telemetry->payload_contract.contains("resourceSpans"));
+    MK_REQUIRE(telemetry->payload_contract.contains("service.name"));
+    MK_REQUIRE(!telemetry->operator_handoff_ready);
 }
 
-MK_TEST("diagnostics ops plan marks host supplied crash and telemetry adapters ready") {
+MK_TEST("diagnostics ops plan requires reviewed crash and telemetry adapter descriptors") {
     mirakana::DiagnosticsOpsPlanOptions options;
-    options.host_status.debugging_tools_for_windows_available = true;
-    options.host_status.telemetry_backend_configured = true;
+    options.adapters.crash_review = mirakana::DiagnosticsCrashReviewAdapterDesc{
+        .tool_id = "debugging-tools-for-windows",
+        .producer = "Debugging Tools for Windows",
+        .tool_available = true,
+        .symbols_configured = true,
+        .dump_capture_reviewed = true,
+        .operator_handoff_ready = true,
+    };
+    options.adapters.telemetry_backend = mirakana::DiagnosticsTelemetryBackendDesc{
+        .backend_id = "studio-otel-collector",
+        .producer = "studio OpenTelemetry collector",
+        .service_name = "mirakanai.sample_desktop_runtime_game",
+        .open_telemetry_trace_contract_reviewed = true,
+        .redacts_local_paths = true,
+        .redacts_secrets = true,
+        .operator_handoff_ready = true,
+    };
 
     const auto plan = mirakana::build_diagnostics_ops_plan(mirakana::DiagnosticCapture{}, options);
 
@@ -551,11 +569,63 @@ MK_TEST("diagnostics ops plan marks host supplied crash and telemetry adapters r
     MK_REQUIRE(crash != nullptr);
     MK_REQUIRE(crash->status == mirakana::DiagnosticsOpsArtifactStatus::ready);
     MK_REQUIRE(crash->producer == "Debugging Tools for Windows");
+    MK_REQUIRE(crash->backend_id == "debugging-tools-for-windows");
+    MK_REQUIRE(crash->operator_handoff_ready);
 
     const auto* telemetry = find_artifact(mirakana::DiagnosticsOpsArtifactKind::telemetry_upload);
     MK_REQUIRE(telemetry != nullptr);
     MK_REQUIRE(telemetry->status == mirakana::DiagnosticsOpsArtifactStatus::ready);
-    MK_REQUIRE(telemetry->producer == "caller-provided telemetry backend");
+    MK_REQUIRE(telemetry->producer == "studio OpenTelemetry collector");
+    MK_REQUIRE(telemetry->backend_id == "studio-otel-collector");
+    MK_REQUIRE(telemetry->service_name == "mirakanai.sample_desktop_runtime_game");
+    MK_REQUIRE(telemetry->payload_contract.contains("spans"));
+    MK_REQUIRE(telemetry->operator_handoff_ready);
+}
+
+MK_TEST("diagnostics ops plan gates partial backend adapter descriptors") {
+    mirakana::DiagnosticsOpsPlanOptions options;
+    options.adapters.crash_review = mirakana::DiagnosticsCrashReviewAdapterDesc{
+        .tool_id = "debugging-tools-for-windows",
+        .producer = "Debugging Tools for Windows",
+        .tool_available = true,
+        .symbols_configured = false,
+        .dump_capture_reviewed = true,
+        .operator_handoff_ready = true,
+    };
+    options.adapters.telemetry_backend = mirakana::DiagnosticsTelemetryBackendDesc{
+        .backend_id = "studio-otel-collector",
+        .producer = "studio OpenTelemetry collector",
+        .service_name = "",
+        .open_telemetry_trace_contract_reviewed = true,
+        .redacts_local_paths = true,
+        .redacts_secrets = true,
+        .operator_handoff_ready = true,
+    };
+
+    const auto plan = mirakana::build_diagnostics_ops_plan(mirakana::DiagnosticCapture{}, options);
+
+    const auto find_artifact =
+        [&plan](mirakana::DiagnosticsOpsArtifactKind kind) -> const mirakana::DiagnosticsOpsArtifact* {
+        for (const auto& artifact : plan.artifacts) {
+            if (artifact.kind == kind) {
+                return &artifact;
+            }
+        }
+        return nullptr;
+    };
+
+    const auto* crash = find_artifact(mirakana::DiagnosticsOpsArtifactKind::crash_dump_review);
+    MK_REQUIRE(crash != nullptr);
+    MK_REQUIRE(crash->status == mirakana::DiagnosticsOpsArtifactStatus::host_gated);
+    MK_REQUIRE(crash->blocker.contains("symbol"));
+    MK_REQUIRE(!crash->operator_handoff_ready);
+
+    const auto* telemetry = find_artifact(mirakana::DiagnosticsOpsArtifactKind::telemetry_upload);
+    MK_REQUIRE(telemetry != nullptr);
+    MK_REQUIRE(telemetry->status == mirakana::DiagnosticsOpsArtifactStatus::host_gated);
+    MK_REQUIRE(telemetry->blocker.contains("service.name"));
+    MK_REQUIRE(telemetry->backend_id == "studio-otel-collector");
+    MK_REQUIRE(!telemetry->operator_handoff_ready);
 }
 
 MK_TEST("diagnostics budget summaries compute deterministic counter and profile percentiles") {

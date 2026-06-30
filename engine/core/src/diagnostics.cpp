@@ -2057,6 +2057,59 @@ std::string_view diagnostics_ops_artifact_status_label(DiagnosticsOpsArtifactSta
     return "unknown";
 }
 
+[[nodiscard]] static std::string crash_review_blocker(const DiagnosticsCrashReviewAdapterDesc& adapter) {
+    if (!adapter.tool_available) {
+        return "Debugging Tools for Windows is required for native crash and dump review.";
+    }
+    if (adapter.tool_id.empty()) {
+        return "Crash dump review requires a non-empty tool id.";
+    }
+    if (adapter.producer.empty()) {
+        return "Crash dump review requires a producer label.";
+    }
+    if (!adapter.symbols_configured) {
+        return "Crash dump review requires configured symbol paths before handoff.";
+    }
+    if (!adapter.dump_capture_reviewed) {
+        return "Crash dump review requires reviewed dump capture policy before handoff.";
+    }
+    if (!adapter.operator_handoff_ready) {
+        return "Crash dump review requires operator handoff readiness evidence.";
+    }
+    return {};
+}
+
+[[nodiscard]] static bool telemetry_backend_absent(const DiagnosticsTelemetryBackendDesc& backend) noexcept {
+    return backend.backend_id.empty() && backend.producer.empty() && backend.service_name.empty() &&
+           !backend.open_telemetry_trace_contract_reviewed && !backend.redacts_local_paths &&
+           !backend.redacts_secrets && !backend.operator_handoff_ready;
+}
+
+[[nodiscard]] static std::string telemetry_backend_blocker(const DiagnosticsTelemetryBackendDesc& backend) {
+    if (backend.backend_id.empty()) {
+        return "Telemetry backend handoff requires a non-empty backend id.";
+    }
+    if (backend.producer.empty()) {
+        return "Telemetry backend handoff requires a producer label.";
+    }
+    if (backend.service_name.empty()) {
+        return "Telemetry backend handoff requires an OpenTelemetry resource service.name.";
+    }
+    if (!backend.open_telemetry_trace_contract_reviewed) {
+        return "Telemetry backend handoff requires OpenTelemetry resourceSpans trace payload contract review.";
+    }
+    if (!backend.redacts_local_paths) {
+        return "Telemetry backend handoff requires local path redaction review.";
+    }
+    if (!backend.redacts_secrets) {
+        return "Telemetry backend handoff requires secret redaction review.";
+    }
+    if (!backend.operator_handoff_ready) {
+        return "Telemetry backend handoff requires operator handoff readiness evidence.";
+    }
+    return {};
+}
+
 DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,
                                               const DiagnosticsOpsPlanOptions& options) {
     DiagnosticsOpsPlan plan;
@@ -2096,12 +2149,16 @@ DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,
     crash.id = "crash-dump-review";
     crash.label = "Crash dump review";
     crash.format = "Windows native dump review";
-    if (options.host_status.debugging_tools_for_windows_available) {
+    crash.backend_id = options.adapters.crash_review.tool_id;
+    const auto crash_blocker = crash_review_blocker(options.adapters.crash_review);
+    if (crash_blocker.empty()) {
         crash.status = DiagnosticsOpsArtifactStatus::ready;
-        crash.producer = "Debugging Tools for Windows";
+        crash.producer = options.adapters.crash_review.producer;
+        crash.operator_handoff_ready = true;
     } else {
         crash.status = DiagnosticsOpsArtifactStatus::host_gated;
-        crash.blocker = "Debugging Tools for Windows is required for native crash and dump review.";
+        crash.producer = options.adapters.crash_review.producer;
+        crash.blocker = crash_blocker;
     }
     plan.artifacts.push_back(std::move(crash));
 
@@ -2109,14 +2166,26 @@ DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,
     telemetry.kind = DiagnosticsOpsArtifactKind::telemetry_upload;
     telemetry.id = "telemetry-upload";
     telemetry.label = "Telemetry upload";
-    telemetry.format = "caller-defined telemetry payload";
+    telemetry.format = "OpenTelemetry OTLP trace JSON handoff";
+    telemetry.schema_id = "GameEngine.DiagnosticsTelemetryHandoff.v1";
+    telemetry.backend_id = options.adapters.telemetry_backend.backend_id;
+    telemetry.service_name = options.adapters.telemetry_backend.service_name;
+    telemetry.payload_contract =
+        "OpenTelemetry resourceSpans trace JSON with resource service.name, spans, events, links, status, and "
+        "Unix-nano timing";
     add_capture_counts(telemetry);
-    if (options.host_status.telemetry_backend_configured) {
-        telemetry.status = DiagnosticsOpsArtifactStatus::ready;
-        telemetry.producer = "caller-provided telemetry backend";
-    } else {
+    if (telemetry_backend_absent(options.adapters.telemetry_backend)) {
         telemetry.status = DiagnosticsOpsArtifactStatus::unsupported;
         telemetry.blocker = "No telemetry backend is configured; mirakana_core does not upload diagnostics.";
+    } else if (const auto telemetry_blocker = telemetry_backend_blocker(options.adapters.telemetry_backend);
+               telemetry_blocker.empty()) {
+        telemetry.status = DiagnosticsOpsArtifactStatus::ready;
+        telemetry.producer = options.adapters.telemetry_backend.producer;
+        telemetry.operator_handoff_ready = true;
+    } else {
+        telemetry.status = DiagnosticsOpsArtifactStatus::host_gated;
+        telemetry.producer = options.adapters.telemetry_backend.producer;
+        telemetry.blocker = telemetry_blocker;
     }
     plan.artifacts.push_back(std::move(telemetry));
 

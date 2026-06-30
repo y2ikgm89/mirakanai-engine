@@ -2278,10 +2278,8 @@ Assert-ContainsText $crashTelemetryTraceOpsPlanText "Crash Telemetry Trace Ops v
 Assert-ContainsText $crashTelemetryTraceOpsPlanText "**Status:** Completed" "Crash Telemetry Trace Ops plan"
 Assert-ContainsText $crashTelemetryTraceOpsPlanText "build_diagnostics_ops_plan" "Crash Telemetry Trace Ops plan"
 Assert-ContainsText $crashTelemetryTraceOpsPlanText "without adding native dump writing" "Crash Telemetry Trace Ops plan"
-Assert-ContainsText $coreDiagnosticsHeaderText "DiagnosticsOpsPlan" "engine/core/include/mirakana/core/diagnostics.hpp"
-Assert-ContainsText $coreDiagnosticsHeaderText "DiagnosticsOpsArtifactStatus" "engine/core/include/mirakana/core/diagnostics.hpp"
-Assert-ContainsText $coreDiagnosticsHeaderText "build_diagnostics_ops_plan" "engine/core/include/mirakana/core/diagnostics.hpp"
-Assert-ContainsText $coreTestsText "diagnostics ops plan reports trace summary and unsupported upload boundaries" "tests/unit/core_tests.cpp"
+foreach ($needle in @("DiagnosticsOpsPlan", "DiagnosticsOpsArtifactStatus", "DiagnosticsCrashReviewAdapterDesc", "DiagnosticsTelemetryBackendDesc", "DiagnosticsOpsAdapterDesc", "build_diagnostics_ops_plan")) { Assert-ContainsText $coreDiagnosticsHeaderText $needle "engine/core/include/mirakana/core/diagnostics.hpp" }
+foreach ($needle in @("diagnostics ops plan reports trace summary and unsupported upload boundaries", "diagnostics ops plan gates partial backend adapter descriptors")) { Assert-ContainsText $coreTestsText $needle "tests/unit/core_tests.cpp" }
 foreach ($memoryDiagnosticsNeedle in @(
         "MemoryLifetimeClass",
         "MemoryCounterRow",
