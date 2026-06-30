@@ -257,6 +257,11 @@ Likely surfaces: `engine/renderer/`, `engine/rhi/`, `engine/runtime_scene_rhi/`,
 
 Done when: each claimed backend has its own official-doc-aligned host proof, retained metrics, package-visible evidence, and no broad renderer/commercial readiness promotion from missing or adjacent evidence.
 
+Phase 6 validation evidence:
+
+- 2026-07-01 2D Commercial Renderer/RHI Quality Gate v1 slice: added `TwoDCommercialRendererRhiQualityOfficialSourceKind`, `TwoDCommercialRendererRhiQualityOfficialSourceRow`, `TwoDCommercialRendererRhiQualityEvidenceRow`, `TwoDCommercialRendererRhiQualityDesc`, `TwoDCommercialRendererRhiQualityResult`, and `evaluate_2d_commercial_renderer_rhi_quality` in `MK_renderer`. The value-only gate can report ready only for the selected D3D12 scope after refreshed Microsoft D3D12, Khronos Vulkan, Apple Metal, and repository legal policy source rows, selected D3D12 command allocator/list/fence, descriptor heap, PSO reuse, resource barrier, debug validation, timestamp/PIX, package readback, sprite throughput, atlas residency/upload scheduling, frame pacing, claim-control, and clean-room rows are all ready. It rejects stale official-source rows, public native handles, cross-backend Vulkan/Metal inference, broad backend/renderer readiness claims, external Unity/Unreal Engine/Godot code/sample/asset/trademark/compatibility rows, and legal-approval claims. This does not execute GPU commands, native captures, package scripts, shell commands, or promote Vulkan/Metal/broad renderer commercial readiness.
+- 2026-07-01 RED/GREEN: `tools/cmake.ps1 --build --preset dev --target MK_2d_renderer_rhi_quality_tests` first failed on missing `mirakana/renderer/two_d_commercial_renderer_rhi_quality.hpp`, then passed after adding the value contract, source, renderer CMake source entry, root CMake test target, and focused tests. `tools/ctest.ps1 --preset dev --output-on-failure -R MK_two_d_commercial_renderer_rhi_quality_tests` passed.
+
 ### Phase 7: Gameplay Runtime Depth
 
 Goal: raise 2D gameplay capability beyond package proof without creating broad false claims.
