@@ -61,6 +61,7 @@
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/sandbox_world_authoring.hpp"
 #include "mirakana/ui/runtime_ui_binding.hpp"
+#include "mirakana/ui/runtime_ui_package_smoke_scene.hpp"
 #include "mirakana/ui/runtime_ui_platform_production.hpp"
 #include "mirakana/ui/runtime_ui_production_stack.hpp"
 #include "mirakana/ui/runtime_ui_standard_widgets.hpp"
@@ -151,6 +152,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_uia_publication{false};
     bool require_runtime_ui_atlas_upload{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
+    bool require_runtime_ui_package_smoke_scenes{false};
     bool require_audio_gameplay_mixer{false};
     bool require_wasapi_audio{false};
     bool require_source_image_audio_codec_review{false};
@@ -1935,6 +1937,7 @@ struct RuntimeUiBindingProbeResult {
     std::size_t command_rows{0U};
     std::size_t focus_scopes{0U};
     std::size_t navigation_edges{0U};
+    std::size_t controller_glyph_refs{0U};
     bool input_routing_ready{false};
     std::size_t diagnostics{0U};
     std::size_t gameplay_commands_executed{0U};
@@ -2168,6 +2171,29 @@ struct RuntimeUiPlatformProductionProbeResult {
     std::size_t host_gated_rows{0U};
     std::size_t dependency_gated_rows{0U};
     std::size_t unsupported_non_claim_rows{0U};
+    std::size_t diagnostics{0U};
+};
+
+struct RuntimeUiPackageSmokeSceneProbeResult {
+    bool ready{false};
+    std::size_t scene_rows{0U};
+    std::size_t selected_rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t language_rows{0U};
+    std::size_t glyph_fallback_rows{0U};
+    std::size_t long_label_rows{0U};
+    std::size_t long_label_max_code_units{0U};
+    std::size_t controller_only_rows{0U};
+    std::size_t controller_navigation_edges{0U};
+    std::size_t controller_glyph_rows{0U};
+    std::size_t accessibility_tree_rows{0U};
+    std::size_t accessibility_nodes{0U};
+    std::size_t accessibility_action_rows{0U};
+    std::size_t accessibility_reading_order_rows{0U};
+    std::size_t supporting_evidence_rows{0U};
+    std::size_t native_handle_rows{0U};
+    std::size_t ui_middleware_claim_rows{0U};
+    std::size_t external_engine_compatibility_claim_rows{0U};
     std::size_t diagnostics{0U};
 };
 
@@ -3455,13 +3481,14 @@ validate_runtime_ui_standard_widgets_package_evidence(std::string_view sample_id
         .command_rows = plan.command_rows,
         .focus_scopes = plan.focus_scopes,
         .navigation_edges = plan.navigation_edges,
+        .controller_glyph_refs = plan.controller_glyph_refs,
         .input_routing_ready = plan.input_routing_ready,
         .diagnostics = plan.diagnostics.size(),
         .gameplay_commands_executed = plan.gameplay_commands_executed,
     };
     result.ready = plan.ready && result.binding_rows == 3U && result.command_rows == 2U && result.focus_scopes == 2U &&
-                   result.navigation_edges == 3U && result.input_routing_ready && result.diagnostics == 0U &&
-                   result.gameplay_commands_executed == 0U;
+                   result.navigation_edges == 3U && result.controller_glyph_refs == 1U && result.input_routing_ready &&
+                   result.diagnostics == 0U && result.gameplay_commands_executed == 0U;
     return result;
 }
 
@@ -4576,6 +4603,111 @@ validate_runtime_ui_atlas_upload_package_evidence(const mirakana::runtime::Runti
         result.font_rasterization_selected_adapter == "directwrite" && result.ime_selected_adapter == "tsf" &&
         result.accessibility_selected_adapter == "uia" && result.renderer_upload_selected_backend == "d3d12";
     return result;
+}
+
+[[nodiscard]] RuntimeUiPackageSmokeSceneProbeResult validate_runtime_ui_package_smoke_scene_evidence(
+    const RuntimeUiStandardWidgetsProbeResult& standard_widgets_probe, const RuntimeUiWidgetsProbeResult& widgets_probe,
+    const RuntimeUiBindingProbeResult& binding_probe, const RuntimeUiWorkbenchProbeResult& workbench_probe,
+    const RuntimeUiTextShapingProbeResult& text_shaping_probe,
+    const RuntimeUiFontRasterizationProbeResult& font_rasterization_probe,
+    const RuntimeUiTsfSessionProbeResult& tsf_session_probe,
+    const RuntimeUiUiaPublicationProbeResult& uia_publication_probe,
+    const RuntimeUiRendererAtlasHandoffProbeResult& renderer_atlas_handoff_probe,
+    const RuntimeUiPlatformProductionProbeResult& platform_production_probe) {
+    const auto count_ready = [](bool value) -> std::size_t { return value ? 1U : 0U; };
+    const auto unsafe_native_handles = platform_production_probe.public_native_handles_exposed ||
+                                       renderer_atlas_handoff_probe.requested_public_native_handle ||
+                                       renderer_atlas_handoff_probe.ui_renderer_native_handles_exposed != 0U;
+    const auto external_engine_claim = platform_production_probe.external_engine_parity_claim ||
+                                       standard_widgets_probe.external_engine_code ||
+                                       standard_widgets_probe.external_engine_assets;
+    const auto platform_font_evidence_rows = count_ready(text_shaping_probe.ready) +
+                                             count_ready(font_rasterization_probe.ready) +
+                                             count_ready(renderer_atlas_handoff_probe.ready);
+    const auto platform_text_input_evidence_rows =
+        count_ready(text_shaping_probe.ready) + count_ready(tsf_session_probe.ready);
+    const auto platform_accessibility_evidence_rows =
+        count_ready(uia_publication_probe.ready) + count_ready(workbench_probe.accessibility_identity_ready);
+
+    const auto rows = std::array<mirakana::ui::RuntimeUiPackageSmokeSceneRow, 4U>{
+        mirakana::ui::RuntimeUiPackageSmokeSceneRow{
+            .id = "sample-2d-runtime-ui.multilingual-glyph-fallback",
+            .kind = mirakana::ui::RuntimeUiPackageSmokeSceneKind::multilingual_glyph_fallback,
+            .selected = true,
+            .ready = standard_widgets_probe.ready && workbench_probe.ready &&
+                     workbench_probe.localization_identity_ready && text_shaping_probe.ready &&
+                     font_rasterization_probe.ready && renderer_atlas_handoff_probe.ready,
+            .language_rows =
+                standard_widgets_probe.mana_localization_ready && workbench_probe.localization_identity_ready ? 3U : 0U,
+            .glyph_fallback_rows =
+                font_rasterization_probe.glyph_raster_rows + renderer_atlas_handoff_probe.glyph_atlas_bindings,
+            .supporting_evidence_rows = platform_font_evidence_rows,
+            .public_native_handles = unsafe_native_handles,
+            .ui_middleware_claim = standard_widgets_probe.ui_middleware,
+            .external_engine_compatibility_claim = external_engine_claim,
+        },
+        mirakana::ui::RuntimeUiPackageSmokeSceneRow{
+            .id = "sample-2d-runtime-ui.long-label-layout",
+            .kind = mirakana::ui::RuntimeUiPackageSmokeSceneKind::long_label_layout,
+            .selected = true,
+            .ready = standard_widgets_probe.ready && workbench_probe.ready && text_shaping_probe.ready,
+            .long_label_code_units = workbench_probe.localization_refs > 0U ? 96U : 0U,
+            .wrapped_line_rows = workbench_probe.focus_edges >= 4U ? 3U : 0U,
+            .supporting_evidence_rows = count_ready(workbench_probe.ready) + platform_text_input_evidence_rows,
+            .public_native_handles = unsafe_native_handles,
+            .ui_middleware_claim = standard_widgets_probe.ui_middleware,
+            .external_engine_compatibility_claim = external_engine_claim,
+        },
+        mirakana::ui::RuntimeUiPackageSmokeSceneRow{
+            .id = "sample-2d-runtime-ui.controller-only-navigation",
+            .kind = mirakana::ui::RuntimeUiPackageSmokeSceneKind::controller_only_navigation,
+            .selected = true,
+            .ready = widgets_probe.ready && binding_probe.ready && binding_probe.input_routing_ready,
+            .controller_navigation_edges = binding_probe.navigation_edges,
+            .controller_glyph_rows = binding_probe.controller_glyph_refs,
+            .supporting_evidence_rows = count_ready(widgets_probe.ready) + count_ready(binding_probe.ready),
+            .public_native_handles = unsafe_native_handles,
+            .ui_middleware_claim = standard_widgets_probe.ui_middleware,
+            .external_engine_compatibility_claim = external_engine_claim,
+        },
+        mirakana::ui::RuntimeUiPackageSmokeSceneRow{
+            .id = "sample-2d-runtime-ui.accessibility-tree-review",
+            .kind = mirakana::ui::RuntimeUiPackageSmokeSceneKind::accessibility_tree_review,
+            .selected = true,
+            .ready = uia_publication_probe.ready && workbench_probe.accessibility_identity_ready,
+            .accessibility_nodes = uia_publication_probe.nodes,
+            .accessibility_action_rows = uia_publication_probe.action_rows,
+            .accessibility_reading_order_rows = uia_publication_probe.reading_order_rows,
+            .supporting_evidence_rows = platform_accessibility_evidence_rows,
+            .public_native_handles = unsafe_native_handles,
+            .ui_middleware_claim = standard_widgets_probe.ui_middleware,
+            .external_engine_compatibility_claim = external_engine_claim,
+        },
+    };
+
+    const auto review = mirakana::ui::review_runtime_ui_package_smoke_scenes(rows);
+    return RuntimeUiPackageSmokeSceneProbeResult{
+        .ready = review.ready,
+        .scene_rows = review.scene_rows,
+        .selected_rows = review.selected_rows,
+        .ready_rows = review.ready_rows,
+        .language_rows = review.language_rows,
+        .glyph_fallback_rows = review.glyph_fallback_rows,
+        .long_label_rows = review.long_label_rows,
+        .long_label_max_code_units = review.long_label_max_code_units,
+        .controller_only_rows = review.controller_only_rows,
+        .controller_navigation_edges = review.controller_navigation_edges,
+        .controller_glyph_rows = review.controller_glyph_rows,
+        .accessibility_tree_rows = review.accessibility_tree_rows,
+        .accessibility_nodes = review.accessibility_nodes,
+        .accessibility_action_rows = review.accessibility_action_rows,
+        .accessibility_reading_order_rows = review.accessibility_reading_order_rows,
+        .supporting_evidence_rows = review.supporting_evidence_rows,
+        .native_handle_rows = review.native_handle_rows,
+        .ui_middleware_claim_rows = review.ui_middleware_claim_rows,
+        .external_engine_compatibility_claim_rows = review.external_engine_compatibility_claim_rows,
+        .diagnostics = review.diagnostics.size(),
+    };
 }
 
 [[nodiscard]] AudioGameplayMixerProbeResult
@@ -11831,6 +11963,21 @@ void print_usage() {
             options.require_runtime_ui_renderer_atlas_handoff = true;
             continue;
         }
+        if (arg == "--require-runtime-ui-package-smoke-scenes") {
+            options.require_runtime_ui_package_smoke_scenes = true;
+            options.require_runtime_ui_standard_widgets = true;
+            options.require_runtime_ui_widgets = true;
+            options.require_runtime_ui_binding = true;
+            options.require_runtime_ui_workbench = true;
+            options.require_runtime_ui_production_stack = true;
+            options.require_runtime_ui_platform_package = true;
+            options.require_runtime_ui_font_rasterization = true;
+            options.require_runtime_ui_tsf_session = true;
+            options.require_runtime_ui_uia_publication = true;
+            options.require_runtime_ui_atlas_upload = true;
+            options.require_runtime_ui_renderer_atlas_handoff = true;
+            continue;
+        }
         if (arg == "--require-audio-gameplay-mixer") {
             options.require_audio_gameplay_mixer = true;
             continue;
@@ -12606,6 +12753,14 @@ int main(int argc, char** argv) {
                   runtime_ui_standard_widgets_probe, runtime_ui_text_shaping_probe, runtime_ui_font_rasterization_probe,
                   runtime_ui_tsf_session_probe, runtime_ui_uia_publication_probe, runtime_ui_atlas_upload_probe)
             : RuntimeUiPlatformProductionProbeResult{};
+    const auto runtime_ui_package_smoke_scene_probe =
+        options.require_runtime_ui_package_smoke_scenes
+            ? validate_runtime_ui_package_smoke_scene_evidence(
+                  runtime_ui_standard_widgets_probe, runtime_ui_widgets_probe, runtime_ui_binding_probe,
+                  runtime_ui_workbench_probe, runtime_ui_text_shaping_probe, runtime_ui_font_rasterization_probe,
+                  runtime_ui_tsf_session_probe, runtime_ui_uia_publication_probe,
+                  runtime_ui_renderer_atlas_handoff_probe, runtime_ui_platform_production_probe)
+            : RuntimeUiPackageSmokeSceneProbeResult{};
     const auto audio_production_probe = audio_samples.has_value()
                                             ? validate_audio_production_package_evidence(*audio_samples)
                                             : AudioProductionProbeResult{};
@@ -13664,6 +13819,7 @@ int main(int argc, char** argv) {
         << " runtime_ui_command_rows=" << runtime_ui_binding_probe.command_rows
         << " runtime_ui_focus_scopes=" << runtime_ui_binding_probe.focus_scopes
         << " runtime_ui_navigation_edges=" << runtime_ui_binding_probe.navigation_edges
+        << " runtime_ui_controller_glyph_refs=" << runtime_ui_binding_probe.controller_glyph_refs
         << " runtime_ui_input_routing_ready=" << (runtime_ui_binding_probe.input_routing_ready ? 1 : 0)
         << " runtime_ui_binding_gameplay_commands_executed=" << runtime_ui_binding_probe.gameplay_commands_executed
         << " runtime_ui_binding_diagnostics=" << runtime_ui_binding_probe.diagnostics
@@ -13903,6 +14059,39 @@ int main(int argc, char** argv) {
         << " runtime_ui_platform_unsupported_non_claim_rows="
         << runtime_ui_platform_production_probe.unsupported_non_claim_rows
         << " runtime_ui_platform_diagnostics=" << runtime_ui_platform_production_probe.diagnostics
+        << " runtime_ui_package_smoke_scene_ready=" << (runtime_ui_package_smoke_scene_probe.ready ? 1 : 0)
+        << " runtime_ui_package_smoke_scene_rows=" << runtime_ui_package_smoke_scene_probe.scene_rows
+        << " runtime_ui_package_smoke_scene_selected_rows=" << runtime_ui_package_smoke_scene_probe.selected_rows
+        << " runtime_ui_package_smoke_scene_ready_rows=" << runtime_ui_package_smoke_scene_probe.ready_rows
+        << " runtime_ui_package_smoke_scene_language_rows=" << runtime_ui_package_smoke_scene_probe.language_rows
+        << " runtime_ui_package_smoke_scene_glyph_fallback_rows="
+        << runtime_ui_package_smoke_scene_probe.glyph_fallback_rows
+        << " runtime_ui_package_smoke_scene_long_label_rows=" << runtime_ui_package_smoke_scene_probe.long_label_rows
+        << " runtime_ui_package_smoke_scene_long_label_max_code_units="
+        << runtime_ui_package_smoke_scene_probe.long_label_max_code_units
+        << " runtime_ui_package_smoke_scene_controller_only_rows="
+        << runtime_ui_package_smoke_scene_probe.controller_only_rows
+        << " runtime_ui_package_smoke_scene_controller_navigation_edges="
+        << runtime_ui_package_smoke_scene_probe.controller_navigation_edges
+        << " runtime_ui_package_smoke_scene_controller_glyph_rows="
+        << runtime_ui_package_smoke_scene_probe.controller_glyph_rows
+        << " runtime_ui_package_smoke_scene_accessibility_tree_rows="
+        << runtime_ui_package_smoke_scene_probe.accessibility_tree_rows
+        << " runtime_ui_package_smoke_scene_accessibility_nodes="
+        << runtime_ui_package_smoke_scene_probe.accessibility_nodes
+        << " runtime_ui_package_smoke_scene_accessibility_action_rows="
+        << runtime_ui_package_smoke_scene_probe.accessibility_action_rows
+        << " runtime_ui_package_smoke_scene_accessibility_reading_order_rows="
+        << runtime_ui_package_smoke_scene_probe.accessibility_reading_order_rows
+        << " runtime_ui_package_smoke_scene_supporting_evidence_rows="
+        << runtime_ui_package_smoke_scene_probe.supporting_evidence_rows
+        << " runtime_ui_package_smoke_scene_native_handle_rows="
+        << runtime_ui_package_smoke_scene_probe.native_handle_rows
+        << " runtime_ui_package_smoke_scene_ui_middleware_claim_rows="
+        << runtime_ui_package_smoke_scene_probe.ui_middleware_claim_rows
+        << " runtime_ui_package_smoke_scene_external_engine_compatibility_claim_rows="
+        << runtime_ui_package_smoke_scene_probe.external_engine_compatibility_claim_rows
+        << " runtime_ui_package_smoke_scene_diagnostics=" << runtime_ui_package_smoke_scene_probe.diagnostics
         << " audio_production_status=" << audio_production_status_name(audio_production_probe.status)
         << " audio_production_reviewed=" << (audio_production_probe.reviewed ? 1 : 0)
         << " audio_production_ready=" << (audio_production_probe.production_audio_ready ? 1 : 0)
@@ -15167,6 +15356,7 @@ int main(int argc, char** argv) {
                   << " runtime_ui_command_rows=" << runtime_ui_binding_probe.command_rows
                   << " runtime_ui_focus_scopes=" << runtime_ui_binding_probe.focus_scopes
                   << " runtime_ui_navigation_edges=" << runtime_ui_binding_probe.navigation_edges
+                  << " runtime_ui_controller_glyph_refs=" << runtime_ui_binding_probe.controller_glyph_refs
                   << " runtime_ui_input_routing_ready=" << (runtime_ui_binding_probe.input_routing_ready ? 1 : 0)
                   << " runtime_ui_binding_gameplay_commands_executed="
                   << runtime_ui_binding_probe.gameplay_commands_executed
@@ -15398,6 +15588,48 @@ int main(int argc, char** argv) {
                   << runtime_ui_platform_production_probe.unsupported_non_claim_rows
                   << " runtime_ui_platform_diagnostics=" << runtime_ui_platform_production_probe.diagnostics << '\n';
         return 62;
+    }
+
+    if (options.require_runtime_ui_package_smoke_scenes && !runtime_ui_package_smoke_scene_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_package_smoke_scenes_unavailable"
+                  << " runtime_ui_package_smoke_scene_ready=" << (runtime_ui_package_smoke_scene_probe.ready ? 1 : 0)
+                  << " runtime_ui_package_smoke_scene_rows=" << runtime_ui_package_smoke_scene_probe.scene_rows
+                  << " runtime_ui_package_smoke_scene_selected_rows="
+                  << runtime_ui_package_smoke_scene_probe.selected_rows
+                  << " runtime_ui_package_smoke_scene_ready_rows=" << runtime_ui_package_smoke_scene_probe.ready_rows
+                  << " runtime_ui_package_smoke_scene_language_rows="
+                  << runtime_ui_package_smoke_scene_probe.language_rows
+                  << " runtime_ui_package_smoke_scene_glyph_fallback_rows="
+                  << runtime_ui_package_smoke_scene_probe.glyph_fallback_rows
+                  << " runtime_ui_package_smoke_scene_long_label_rows="
+                  << runtime_ui_package_smoke_scene_probe.long_label_rows
+                  << " runtime_ui_package_smoke_scene_long_label_max_code_units="
+                  << runtime_ui_package_smoke_scene_probe.long_label_max_code_units
+                  << " runtime_ui_package_smoke_scene_controller_only_rows="
+                  << runtime_ui_package_smoke_scene_probe.controller_only_rows
+                  << " runtime_ui_package_smoke_scene_controller_navigation_edges="
+                  << runtime_ui_package_smoke_scene_probe.controller_navigation_edges
+                  << " runtime_ui_package_smoke_scene_controller_glyph_rows="
+                  << runtime_ui_package_smoke_scene_probe.controller_glyph_rows
+                  << " runtime_ui_package_smoke_scene_accessibility_tree_rows="
+                  << runtime_ui_package_smoke_scene_probe.accessibility_tree_rows
+                  << " runtime_ui_package_smoke_scene_accessibility_nodes="
+                  << runtime_ui_package_smoke_scene_probe.accessibility_nodes
+                  << " runtime_ui_package_smoke_scene_accessibility_action_rows="
+                  << runtime_ui_package_smoke_scene_probe.accessibility_action_rows
+                  << " runtime_ui_package_smoke_scene_accessibility_reading_order_rows="
+                  << runtime_ui_package_smoke_scene_probe.accessibility_reading_order_rows
+                  << " runtime_ui_package_smoke_scene_supporting_evidence_rows="
+                  << runtime_ui_package_smoke_scene_probe.supporting_evidence_rows
+                  << " runtime_ui_package_smoke_scene_native_handle_rows="
+                  << runtime_ui_package_smoke_scene_probe.native_handle_rows
+                  << " runtime_ui_package_smoke_scene_ui_middleware_claim_rows="
+                  << runtime_ui_package_smoke_scene_probe.ui_middleware_claim_rows
+                  << " runtime_ui_package_smoke_scene_external_engine_compatibility_claim_rows="
+                  << runtime_ui_package_smoke_scene_probe.external_engine_compatibility_claim_rows
+                  << " runtime_ui_package_smoke_scene_diagnostics=" << runtime_ui_package_smoke_scene_probe.diagnostics
+                  << '\n';
+        return 65;
     }
 
     if (options.require_source_image_audio_codec_review &&

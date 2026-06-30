@@ -1690,10 +1690,18 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-gameplay-authoring-review
             --require-sandbox-authoring-review
             --require-production-authoring-workflows
+            --require-runtime-ui-standard-widgets
+            --require-runtime-ui-widgets
+            --require-runtime-ui-binding
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-platform-package
+            --require-runtime-ui-font-rasterization
+            --require-runtime-ui-tsf-session
+            --require-runtime-ui-uia-publication
             --require-runtime-ui-atlas-upload
             --require-runtime-ui-renderer-atlas-handoff
+            --require-runtime-ui-package-smoke-scenes
             --require-wasapi-audio
             --require-sandbox-package-budgets
         PACKAGE_SMOKE_ARGS
@@ -1732,10 +1740,18 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-gameplay-authoring-review
             --require-sandbox-authoring-review
             --require-production-authoring-workflows
+            --require-runtime-ui-standard-widgets
+            --require-runtime-ui-widgets
+            --require-runtime-ui-binding
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-platform-package
+            --require-runtime-ui-font-rasterization
+            --require-runtime-ui-tsf-session
+            --require-runtime-ui-uia-publication
             --require-runtime-ui-atlas-upload
             --require-runtime-ui-renderer-atlas-handoff
+            --require-runtime-ui-package-smoke-scenes
             --require-wasapi-audio
             --require-sandbox-package-budgets
             --require-performance-baseline

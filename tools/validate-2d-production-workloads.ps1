@@ -33,7 +33,7 @@ $requiredWorkloads = @(
     @{
         Id = "2d-ui-overlay"
         Status = "ready"
-        Recipes = @("installed-2d-runtime-ui-renderer-atlas-handoff-smoke")
+        Recipes = @("installed-2d-runtime-ui-renderer-atlas-handoff-smoke", "installed-2d-runtime-ui-package-smoke-scenes")
         Budgets = @("ui-overlay-renderer-sprites", "ui-overlay-atlas-budget-rows")
         Evidence = @("ui-overlay-workload-smoke")
     },
@@ -95,6 +95,17 @@ $readySmokeExpectations = @{
     "ui_renderer_clip_rects" = "1"
     "ui_renderer_unresolved_resources" = "0"
     "ui_renderer_native_handles_exposed" = "0"
+    "runtime_ui_package_smoke_scene_ready" = "1"
+    "runtime_ui_package_smoke_scene_rows" = "4"
+    "runtime_ui_package_smoke_scene_language_rows" = "3"
+    "runtime_ui_package_smoke_scene_glyph_fallback_rows" = "2"
+    "runtime_ui_package_smoke_scene_long_label_rows" = "1"
+    "runtime_ui_package_smoke_scene_controller_only_rows" = "1"
+    "runtime_ui_package_smoke_scene_accessibility_tree_rows" = "1"
+    "runtime_ui_package_smoke_scene_native_handle_rows" = "0"
+    "runtime_ui_package_smoke_scene_ui_middleware_claim_rows" = "0"
+    "runtime_ui_package_smoke_scene_external_engine_compatibility_claim_rows" = "0"
+    "runtime_ui_package_smoke_scene_diagnostics" = "0"
     "performance_baseline_status" = "ready"
     "performance_baseline_frame_p95_us" = "16000"
     "performance_baseline_frame_p99_us" = "16000"
@@ -244,6 +255,7 @@ Assert-ContainsAll $budgetValidationRecipeSet @(
     "installed-2d-sandbox-package-budget-smoke",
     "installed-2d-tilemap-runtime-ux-smoke",
     "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+    "installed-2d-runtime-ui-package-smoke-scenes",
     "installed-2d-input-device-production-ux-smoke",
     "installed-2d-long-run-readiness-smoke",
     "host-2d-long-run-readiness-soak"
@@ -339,7 +351,18 @@ if ($RequireReady.IsPresent) {
         "--require-procedural-generation",
         "--require-tilemap-runtime-ux",
         "--require-production-tile-renderer",
+        "--require-runtime-ui-standard-widgets",
+        "--require-runtime-ui-widgets",
+        "--require-runtime-ui-binding",
+        "--require-runtime-ui-workbench",
+        "--require-runtime-ui-production-stack",
+        "--require-runtime-ui-platform-package",
+        "--require-runtime-ui-font-rasterization",
+        "--require-runtime-ui-tsf-session",
+        "--require-runtime-ui-uia-publication",
+        "--require-runtime-ui-atlas-upload",
         "--require-runtime-ui-renderer-atlas-handoff",
+        "--require-runtime-ui-package-smoke-scenes",
         "--require-sandbox-package-budgets",
         "--require-performance-baseline",
         "--require-long-run-performance-readiness",

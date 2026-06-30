@@ -144,6 +144,7 @@ struct RuntimeUiBindingPlan {
     std::size_t command_rows{0U};
     std::size_t focus_scopes{0U};
     std::size_t navigation_edges{0U};
+    std::size_t controller_glyph_refs{0U};
     std::size_t gameplay_commands_executed{0U};
     std::vector<RuntimeUiBindingDiagnostic> diagnostics;
 };

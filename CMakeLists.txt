@@ -1367,6 +1367,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_ui_platform_production_tests)
     add_test(NAME MK_runtime_ui_platform_production_tests COMMAND MK_runtime_ui_platform_production_tests)
 
+    add_executable(MK_runtime_ui_package_smoke_scene_tests
+        tests/unit/runtime_ui_package_smoke_scene_tests.cpp
+    )
+    target_link_libraries(MK_runtime_ui_package_smoke_scene_tests PRIVATE MK_ui)
+    target_include_directories(MK_runtime_ui_package_smoke_scene_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_ui_package_smoke_scene_tests)
+    add_test(NAME MK_runtime_ui_package_smoke_scene_tests COMMAND MK_runtime_ui_package_smoke_scene_tests)
+
     add_executable(MK_ui_renderer_tests
         tests/unit/ui_renderer_tests.cpp
     )
