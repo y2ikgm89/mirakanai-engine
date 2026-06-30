@@ -16,6 +16,7 @@
     "buildAssetImporters": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
     "generateAssetImportRegressionCorpusManifest": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-asset-import-regression-corpus-manifest.ps1 -CorpusRoot <path> -SourcesRoot <path> -NoticesPath <path> -OutputManifest <path> [-FailOnMissingNotice]",
     "checkAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 [-CorpusRoot <path>] [-RequireReady]",
+    "runAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot <path> -OutputRoot <path> [-Presets <path>] [-RowBudget <n>] [-WriteCookedOutputs] [-CompareExpectedHashes] [-CollectPreviewRows] [-RequireReady]",
     "validateAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 [-CorpusRoot <path>] [-RequireReady]",
     "validatePhysicsJolt": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
     "validateNetworkEnet": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",

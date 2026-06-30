@@ -415,14 +415,14 @@ $outputParent = Split-Path -Parent $resolvedOutputManifest
 if (-not (Test-Path -LiteralPath $outputParent -PathType Container)) {
     $null = New-Item -ItemType Directory -Path $outputParent -Force
 }
-Set-Content -LiteralPath $resolvedOutputManifest -Value $manifestLines -Encoding utf8NoBOM
+Set-Content -LiteralPath $resolvedOutputManifest -Value (($manifestLines -join "`n") + "`n") -Encoding utf8NoBOM -NoNewline
 
 $expectedRoot = Join-Path $resolvedCorpusRoot "expected"
 if (-not (Test-Path -LiteralPath $expectedRoot -PathType Container)) {
     $null = New-Item -ItemType Directory -Path $expectedRoot -Force
 }
 $expectedHashesPath = Join-Path $expectedRoot "hashes.gehashes"
-Set-Content -LiteralPath $expectedHashesPath -Value $hashLines -Encoding utf8NoBOM
+Set-Content -LiteralPath $expectedHashesPath -Value (($hashLines -join "`n") + "`n") -Encoding utf8NoBOM -NoNewline
 
 $relativeManifest = [System.IO.Path]::GetRelativePath($repoRoot, $resolvedOutputManifest).Replace("\", "/")
 $relativeHashes = [System.IO.Path]::GetRelativePath($repoRoot, $expectedHashesPath).Replace("\", "/")
