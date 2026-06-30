@@ -2593,6 +2593,137 @@ MK_TEST("editor content browser filters sorts and selects assets") {
     MK_REQUIRE(browser.selected_asset()->path == "textures/player.png");
 }
 
+MK_TEST("editor content browser plans large filtered pages and selected asset navigation without mutation") {
+    mirakana::AssetRegistry registry;
+    std::vector<mirakana::AssetId> texture_ids;
+    texture_ids.reserve(260U);
+    for (std::size_t index = 0; index < 260U; ++index) {
+        auto suffix = std::to_string(index);
+        while (suffix.size() < 3U) {
+            suffix.insert(suffix.begin(), '0');
+        }
+        const auto path = "textures/atlas_" + suffix + ".texture";
+        const auto id = mirakana::AssetId::from_name(path);
+        texture_ids.push_back(id);
+        registry.add(mirakana::AssetRecord{
+            .id = id,
+            .kind = mirakana::AssetKind::texture,
+            .path = path,
+        });
+    }
+    registry.add(mirakana::AssetRecord{
+        .id = mirakana::AssetId::from_name("materials/player.material"),
+        .kind = mirakana::AssetKind::material,
+        .path = "materials/player.material",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(registry);
+    browser.set_text_filter("textures/atlas_");
+    MK_REQUIRE(browser.select(texture_ids[123U]));
+
+    const auto selected_page = mirakana::editor::plan_content_browser_navigation(
+        browser, mirakana::editor::ContentBrowserNavigationRequest{
+                     .page_offset = 0U,
+                     .page_size = 50U,
+                     .action = mirakana::editor::ContentBrowserNavigationAction::selected_page,
+                 });
+
+    MK_REQUIRE(selected_page.visible_item_count == 260U);
+    MK_REQUIRE(selected_page.page_size == 50U);
+    MK_REQUIRE(selected_page.page_offset == 100U);
+    MK_REQUIRE(selected_page.page_index == 2U);
+    MK_REQUIRE(selected_page.page_count == 6U);
+    MK_REQUIRE(selected_page.rows.size() == 50U);
+    MK_REQUIRE(selected_page.has_previous_page);
+    MK_REQUIRE(selected_page.has_next_page);
+    MK_REQUIRE(selected_page.has_selected_visible_asset);
+    MK_REQUIRE(selected_page.selected_visible_index == 123U);
+    MK_REQUIRE(selected_page.selected_page_index == 2U);
+    MK_REQUIRE(selected_page.rows[23U].selected);
+    MK_REQUIRE(selected_page.rows[23U].visible_index == 123U);
+    MK_REQUIRE(selected_page.rows[23U].path == "textures/atlas_123.texture");
+    MK_REQUIRE(!selected_page.mutates);
+    MK_REQUIRE(!selected_page.executes);
+
+    const auto next_page = mirakana::editor::plan_content_browser_navigation(
+        browser, mirakana::editor::ContentBrowserNavigationRequest{
+                     .page_offset = selected_page.page_offset,
+                     .page_size = selected_page.page_size,
+                     .action = mirakana::editor::ContentBrowserNavigationAction::next_page,
+                 });
+    MK_REQUIRE(next_page.page_offset == 150U);
+    MK_REQUIRE(next_page.page_index == 3U);
+
+    const auto last_page = mirakana::editor::plan_content_browser_navigation(
+        browser, mirakana::editor::ContentBrowserNavigationRequest{
+                     .page_offset = 0U,
+                     .page_size = 50U,
+                     .action = mirakana::editor::ContentBrowserNavigationAction::last_page,
+                 });
+    MK_REQUIRE(last_page.page_offset == 250U);
+    MK_REQUIRE(last_page.rows.size() == 10U);
+
+    const auto saturated_next_page = mirakana::editor::plan_content_browser_navigation(
+        browser, mirakana::editor::ContentBrowserNavigationRequest{
+                     .page_offset = std::numeric_limits<std::size_t>::max(),
+                     .page_size = 50U,
+                     .action = mirakana::editor::ContentBrowserNavigationAction::next_page,
+                 });
+    MK_REQUIRE(saturated_next_page.page_offset == 250U);
+    MK_REQUIRE(saturated_next_page.clamped);
+}
+
+MK_TEST("editor content browser navigation clamps unsafe page requests and reports missing visible selection") {
+    mirakana::AssetRegistry registry;
+    registry.add(mirakana::AssetRecord{
+        .id = mirakana::AssetId::from_name("textures/player.texture"),
+        .kind = mirakana::AssetKind::texture,
+        .path = "textures/player.texture",
+    });
+    registry.add(mirakana::AssetRecord{
+        .id = mirakana::AssetId::from_name("materials/player.material"),
+        .kind = mirakana::AssetKind::material,
+        .path = "materials/player.material",
+    });
+
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(registry);
+    MK_REQUIRE(browser.select(mirakana::AssetId::from_name("materials/player.material")));
+    browser.set_kind_filter(mirakana::AssetKind::texture);
+
+    const auto clamped = mirakana::editor::plan_content_browser_navigation(
+        browser, mirakana::editor::ContentBrowserNavigationRequest{
+                     .page_offset = 999U,
+                     .page_size = 0U,
+                     .action = mirakana::editor::ContentBrowserNavigationAction::selected_page,
+                 });
+
+    auto has_diagnostic = [&clamped](std::string_view text) {
+        return std::ranges::any_of(clamped.diagnostics,
+                                   [text](const std::string& diagnostic) { return diagnostic.contains(text); });
+    };
+
+    MK_REQUIRE(clamped.visible_item_count == 1U);
+    MK_REQUIRE(clamped.page_size == 1U);
+    MK_REQUIRE(clamped.page_offset == 0U);
+    MK_REQUIRE(clamped.page_count == 1U);
+    MK_REQUIRE(clamped.rows.size() == 1U);
+    MK_REQUIRE(!clamped.has_selected_visible_asset);
+    MK_REQUIRE(clamped.clamped);
+    MK_REQUIRE(has_diagnostic("page size"));
+    MK_REQUIRE(has_diagnostic("selected asset is not visible"));
+
+    const auto capped = mirakana::editor::plan_content_browser_navigation(
+        browser, mirakana::editor::ContentBrowserNavigationRequest{
+                     .page_offset = 0U,
+                     .page_size = mirakana::editor::kContentBrowserNavigationMaxPageSize + 1U,
+                     .action = mirakana::editor::ContentBrowserNavigationAction::stay,
+                 });
+    MK_REQUIRE(capped.page_size == mirakana::editor::kContentBrowserNavigationMaxPageSize);
+    MK_REQUIRE(capped.clamped);
+}
+
 MK_TEST("editor content browser annotates asset identity rows") {
     const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
     const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};
