@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -158,12 +160,125 @@ struct RuntimePackageStreamingExecutionResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct RuntimePackageBackgroundReadDiagnostic {
+    std::size_t row_index{0};
+    std::string target_id;
+    std::string package_index_path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageBackgroundReadQueueDesc {
+    std::span<const RuntimePackageStreamingExecutionDesc> reviewed_rows;
+    std::uint64_t frame_index{0};
+    std::uint64_t scratch_bytes_per_task{64};
+};
+
+struct RuntimePackageBackgroundLoadedRow {
+    std::size_t row_index{0};
+    RuntimePackageStreamingExecutionDesc desc;
+    RuntimePackageCandidateLoadResultV2 candidate_load;
+    std::uint32_t worker_id{0};
+    bool invoked_candidate_load{false};
+};
+
+struct RuntimePackageBackgroundReadQueueResult {
+    std::vector<RuntimePackageBackgroundLoadedRow> loaded_rows;
+    JobExecutionRunResult execution;
+    std::vector<RuntimePackageBackgroundReadDiagnostic> diagnostics;
+    std::size_t input_row_count{0};
+    std::size_t dispatched_row_count{0};
+    std::size_t loaded_row_count{0};
+    std::size_t failed_row_count{0};
+    bool invoked_file_io{false};
+    bool invoked_candidate_load{false};
+    bool executed_streaming{false};
+    bool executed_background_worker{false};
+    bool committed{false};
+    bool mutated_mount_set{false};
+    bool invoked_catalog_refresh{false};
+    bool executed_package_scripts{false};
+    bool spawned_external_process{false};
+    bool parsed_runtime_source{false};
+    bool touched_renderer_or_rhi_handles{false};
+    bool invoked_direct_storage{false};
+    bool applied_gpu_memory_pressure_policy{false};
+    bool proved_async_overlap_performance{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && execution.ready() && failed_row_count == 0U;
+    }
+};
+
+struct RuntimePackageBackgroundReadServiceState {
+    std::vector<RuntimePackageStreamingExecutionDesc> pending_rows;
+};
+
+struct RuntimePackageBackgroundReadServiceTickDesc {
+    std::span<const RuntimePackageStreamingExecutionDesc> reviewed_rows;
+    std::size_t max_pending_rows{0};
+    std::size_t max_dispatch_rows{0};
+    std::uint64_t frame_index{0};
+    std::uint64_t scratch_bytes_per_task{64};
+};
+
+struct RuntimePackageBackgroundReadServiceTickResult {
+    RuntimePackageBackgroundReadQueueResult dispatch;
+    std::vector<RuntimePackageBackgroundLoadedRow> loaded_rows;
+    std::vector<RuntimePackageBackgroundReadDiagnostic> diagnostics;
+    std::size_t input_row_count{0};
+    std::size_t accepted_row_count{0};
+    std::size_t duplicate_pending_row_count{0};
+    std::size_t budget_dropped_request_count{0};
+    std::size_t pending_row_count_before{0};
+    std::size_t pending_row_count_after{0};
+    std::size_t dispatched_row_count{0};
+    std::size_t loaded_row_count{0};
+    std::size_t failed_row_count{0};
+    bool budget_degraded{false};
+    bool invoked_file_io{false};
+    bool invoked_candidate_load{false};
+    bool executed_streaming{false};
+    bool executed_background_worker{false};
+    bool committed{false};
+    bool mutated_mount_set{false};
+    bool invoked_catalog_refresh{false};
+    bool executed_package_scripts{false};
+    bool spawned_external_process{false};
+    bool parsed_runtime_source{false};
+    bool touched_renderer_or_rhi_handles{false};
+    bool invoked_direct_storage{false};
+    bool applied_gpu_memory_pressure_policy{false};
+    bool proved_async_overlap_performance{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && failed_row_count == 0U;
+    }
+};
+
 /// Plans package-residency pressure counters and caller-reviewed LRU eviction order for already-mounted cooked
 /// packages. This value-only helper never reads package files, launches background IO, executes scripts, touches
 /// renderer/RHI residency, or exposes native handles.
 [[nodiscard]] RuntimePackageResidencyPolicyPlan
 plan_runtime_package_residency_policy(const RuntimeResidentPackageMountSetV2& mount_set,
                                       const RuntimePackageResidencyPolicyDesc& desc);
+
+/// Dispatches reviewed package descriptors onto a caller-owned first-party job execution pool. The helper performs
+/// package candidate file IO on workers and returns loaded package rows for a later caller-owned safe point; it does
+/// not mount packages, refresh catalogs, execute scripts/processes, parse runtime source, execute DirectStorage,
+/// integrate GPU memory pressure, prove async overlap/performance, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageBackgroundReadQueueResult
+dispatch_runtime_package_background_reads(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                          RuntimePackageBackgroundReadQueueDesc desc);
+
+/// Maintains caller-owned pending package descriptors across frames and dispatches a bounded subset through the
+/// reviewed background read queue. Loaded rows are returned for later caller-owned safe-point adoption. The service
+/// does not mount packages, refresh catalogs, execute scripts/processes, parse runtime source, execute DirectStorage,
+/// integrate GPU memory pressure, prove async overlap/performance, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageBackgroundReadServiceTickResult
+tick_runtime_package_background_read_service(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                             RuntimePackageBackgroundReadServiceState& state,
+                                             RuntimePackageBackgroundReadServiceTickDesc desc);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
     RuntimeAssetPackageStore& store, RuntimeResourceCatalogV2& catalog,
