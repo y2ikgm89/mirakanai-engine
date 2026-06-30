@@ -14,6 +14,7 @@
     "buildEditor": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1",
     "desktopGameRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
     "buildAssetImporters": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
+    "generateAssetImportRegressionCorpusManifest": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/generate-asset-import-regression-corpus-manifest.ps1 -CorpusRoot <path> -SourcesRoot <path> -NoticesPath <path> -OutputManifest <path> [-FailOnMissingNotice]",
     "checkAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 [-CorpusRoot <path>] [-RequireReady]",
     "validateAssetImportRegressionCorpus": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 [-CorpusRoot <path>] [-RequireReady]",
     "validatePhysicsJolt": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
