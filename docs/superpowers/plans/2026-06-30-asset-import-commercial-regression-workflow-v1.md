@@ -12,20 +12,23 @@
 
 ## Authoring Status
 
-- Date: 2026-06-30.
-- Status: candidate implementation plan with Tasks 1-12 implemented as the foundation and Task 13 host-independent runner CLI/wrapper gate implemented. Task 13 real-corpus `-RequireReady` execution plus Tasks 14-17 remain the commercial-operation closeout and are not selected by `currentActivePlan`.
+- Date: 2026-07-01.
+- Status: candidate implementation plan with Tasks 1-12 implemented as the foundation and Task 13 host-independent runner CLI/wrapper gate implemented. Task 14 is the next implementable candidate and is now specified as a report-driven failure diagnosis/operator triage loop. Task 13 real-corpus `-RequireReady` execution plus Tasks 15-17 remain the commercial-operation closeout and are not selected by `currentActivePlan`.
 - Selected project coordinate convention: right-handed, `+Y` up, meters, matching the current `AssetImportPresets.v1` and `AssetCoordinateNormalizationPlan` implementation.
-- Current readiness estimate after the 2026-06-30 re-audit: core design and safe import contract 85-90%, visible Assets panel integration 70-80%, whole commercial asset browser/import regression product 55-60%. These are planning estimates only; no readiness counter changes until Task 17 evidence lands.
+- Current readiness estimate after the 2026-07-01 re-audit: core design and safe import contract about 90%, visible Assets panel integration 70-80%, whole commercial asset browser/import regression product 55-60% and closer to 60% after Task 13. These are planning estimates only; no readiness counter changes until Task 17 evidence lands.
 - Current hard blocker: no approved large real-asset corpus has been run through `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady`, and the optional `asset-importers` lane still needs a dependency-ready host where `tools/bootstrap-deps.ps1 -Feature asset-importers` and `tools/build-asset-importers.ps1` pass.
 
 ## Sources Reviewed
 
 - Project files: `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/007-importerCapabilities.json`, `engine/assets/include/mirakana/assets/asset_import_presets.hpp`, `engine/assets/include/mirakana/assets/asset_import_pipeline.hpp`, `engine/assets/include/mirakana/assets/asset_import_provenance.hpp`, `engine/assets/include/mirakana/assets/asset_import_production_review.hpp`, `engine/tools/include/mirakana/tools/asset_coordinate_normalization.hpp`, `engine/tools/include/mirakana/tools/asset_import_tool.hpp`, `engine/tools/include/mirakana/tools/asset_import_adapters.hpp`, `engine/tools/include/mirakana/tools/gltf_*`, `editor/core/include/mirakana/editor/asset_browser_production.hpp`, `tests/unit/tools_tests.cpp`, and `tests/unit/editor_core_tests.cpp`.
+- 2026-07-01 project re-audit files for Task 14: `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`, `engine/assets/src/asset_import_regression_corpus.cpp`, `engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp`, `engine/tools/asset/asset_import_regression_runner.cpp`, `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`, `editor/core/src/asset_import_regression_workflow.cpp`, `tests/unit/asset_import_regression_tests.cpp`, `tests/unit/editor_core_tests.cpp`, `tools/run-asset-import-regression-corpus.ps1`, and `tools/validate-asset-import-regression-corpus.ps1`.
 - Context7 `/spnda/fastgltf`: `fastgltf::Parser`, `GltfDataBuffer`, `Options::LoadExternalBuffers`, `Options::LoadExternalImages`, `Options::DecomposeNodeMatrices`, `Options::GenerateMeshIndices`, `fastgltf::validate`, accessor iteration, material/image inspection, and parser reuse constraints.
+- Context7 `/kitware/cmake`: add focused executables/tests with `add_executable`, `target_link_libraries(... PRIVATE ...)`, and `add_test`; use imported/library targets where dependency packages already exist and do not make CMake configure install external packages.
+- Context7 `/microsoftdocs/powershell-docs`: validation scripts use explicit parameters, `$ErrorActionPreference = 'Stop'`, deterministic `Write-Output` counters, `Write-Error` for failed checks, and `ShouldProcess` only for host-visible mutations. The Task 14 operator-loop check script is read/validate-only and must not mutate source/project outputs.
 - Context7 `/khronosgroup/ktx-software`: `ktxTexture2_CreateFromNamedFile`, `ktxTexture2_NeedsTranscoding`, `ktxTexture2_TranscodeBasis`, level/layer/face/dimension metadata, selected transcode targets, and native handle isolation.
 - Context7 `/mackron/miniaudio`: `ma_decoder_init_file`, `ma_decoder_init_memory`, `ma_decoder_read_pcm_frames`, `ma_data_source_get_length_in_pcm_frames`, `ma_decoder_seek_to_pcm_frame`, `ma_decoder_uninit`, WAV/FLAC/MP3 decoder availability, and private decoder lifetime boundaries.
 - Khronos glTF 2.0 specification: right-handed coordinates, `+Y` up, meters, radians, glTF scenes/nodes/meshes/materials/animations, and external resource rules. Official reference: `https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html`.
-- Khronos glTF registry and June 2026 glTF 2.1 planning blog: the registry still identifies glTF 2.0 as the current registry specification, while the 2.1 work is a focused future/backward-compatible large-scene plan. This plan stays on glTF 2.0 import execution and treats glTF 2.1 BVH/encapsulated/progressive-scene topics as future corpus observation rows only. Official references: `https://registry.khronos.org/glTF/` and `https://www.khronos.org/blog/introducing-gltf-2.1-with-complex-scenes`.
+- Khronos glTF registry and June 2026 glTF 2.1 planning blog: the official registry checked on 2026-07-01 still identifies glTF 2.0 as the current registry specification, while the 2.1 work is a focused future/backward-compatible large-scene plan. This plan stays on glTF 2.0 import execution and treats glTF 2.1 BVH/encapsulated/progressive-scene topics as future corpus observation rows only. Non-Khronos reporting is not an implementation source. Official references: `https://registry.khronos.org/glTF/` and `https://www.khronos.org/blog/introducing-gltf-2.1-with-complex-scenes`.
 - Khronos glTF Sample Assets: per-asset license metadata is required; the top-level README is not sufficient for redistribution approval. Official reference: `https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/README.md`.
 - Khronos glTF Asset Generator: useful for generated specification-coverage cases, but generated outputs still need exact source revision, generator command, license, and expected SHA-256 rows before corpus use. Official reference: `https://github.com/KhronosGroup/glTF-Asset-Generator`.
 - Khronos KTX Software/libktx: KTX 1/2 loading, Basis Universal transcode, KTX2 metadata, OpenGL/Vulkan upload helpers, and KTX/native handle boundaries. Official reference: `https://github.khronos.org/KTX-Software/libktx/index.html`.
@@ -540,37 +543,197 @@ Current validation evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tool
 
 ### Task 14: Failure Diagnosis And Operator Triage Loop
 
-**Status:** planned, not implemented.
+**Status:** implemented locally; final slice validation and publication are in progress. This task is host-independent and validated with synthetic first-party reports before any real corpus is available.
+
+**Design decision:** keep `GameEngine.AssetImportRegressionReport.v1` as raw measured evidence and add a separate first-party `GameEngine.AssetImportRegressionTriage.v1` value contract. This avoids mixing importer evidence with operator decisions, keeps failure diagnosis deterministic, and lets Task 15 consume triage rows without making editor-core execute importers.
 
 **Files:**
-- Modify: `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`
-- Modify: `engine/assets/src/asset_import_regression_corpus.cpp`
-- Modify: `engine/tools/asset/asset_import_regression_runner.cpp`
+- Create: `engine/assets/include/mirakana/assets/asset_import_regression_triage.hpp`
+- Create: `engine/assets/src/asset_import_regression_triage.cpp`
+- Modify: `engine/assets/CMakeLists.txt`
 - Modify: `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`
 - Modify: `editor/core/src/asset_import_regression_workflow.cpp`
+- Modify: `tools/check-asset-import-regression-corpus.ps1`
+- Create: `tools/check-asset-import-regression-operator-loop.ps1`
 - Test: `tests/unit/asset_import_regression_tests.cpp`
 - Test: `tests/unit/editor_core_tests.cpp`
+- Modify if new retained row ids become durable needles: `tools/check-ai-integration-147-asset-import-regression-corpus.ps1`
+- Modify only if AI-operable command contracts change: `engine/agent/manifest.fragments/002-commands.json`, then run `tools/compose-agent-manifest.ps1 -Write`
 
-- [ ] Extend report rows with triage-only fields: `recommended_action`, `repro_command`, `source_excerpt_hash`, `preset_diff_required`, `axis_unit_preview_required`, and `reimport_candidate`. These fields must be deterministic strings and must not include absolute local paths or secret/user account paths.
-- [ ] Map every diagnostic code to exactly one `recommended_action`:
-  - legal/provenance blockers: `fix_notice_or_remove_asset`;
-  - missing source/hash mismatch: `refresh_corpus_manifest`;
-  - parser/validator/external resource failures: `inspect_source_asset`;
-  - unsupported extension/channel/skin/morph: `record_unsupported_or_reduce_source`;
-  - coordinate normalization: `open_axis_unit_preview`;
-  - texture/audio decode/transcode: `inspect_codec_dependency`;
-  - cooked mismatch/nondeterminism: `rerun_isolated_and_compare_hashes`;
-  - row budget: `split_corpus_or_raise_reviewed_budget`.
-- [ ] Add editor retained rows under `asset_browser.import_workflow.failure.<asset_id>` with severity, phase, code, recommended action, repro command id, and whether batch reimport is allowed. The editor model remains value-only and must keep `executes_import_tools=false`.
-- [ ] Add tests proving every code has a non-empty label, non-empty recommended action, deterministic repro command row, and correct editor command enablement.
+Required public value types:
+
+```cpp
+namespace mirakana {
+
+enum class AssetImportRegressionTriageSeverity : std::uint8_t {
+    info,
+    action_required,
+    blocked,
+};
+
+enum class AssetImportRegressionRecommendedAction : std::uint8_t {
+    none,
+    fix_notice_or_remove_asset,
+    refresh_corpus_manifest,
+    inspect_source_asset,
+    record_unsupported_or_reduce_source,
+    open_axis_unit_preview,
+    inspect_codec_dependency,
+    rerun_isolated_and_compare_hashes,
+    split_corpus_or_raise_reviewed_budget,
+};
+
+enum class AssetImportRegressionReimportDecision : std::uint8_t {
+    not_needed,
+    dry_run_allowed,
+    blocked,
+};
+
+struct AssetImportRegressionTriageRowV1 {
+    std::string asset_id;
+    AssetImportRegressionCorpusAssetKind kind{AssetImportRegressionCorpusAssetKind::gltf_mesh};
+    AssetId asset;
+    std::string source_path;
+    std::string source_sha256;
+    std::string preset_sha256;
+    std::string importer_id;
+    std::string importer_version;
+    std::string phase;
+    AssetImportRegressionDiagnosticCode code{AssetImportRegressionDiagnosticCode::none};
+    AssetImportRegressionTriageSeverity severity{AssetImportRegressionTriageSeverity::info};
+    AssetImportRegressionRecommendedAction recommended_action{AssetImportRegressionRecommendedAction::none};
+    AssetImportRegressionReimportDecision reimport_decision{AssetImportRegressionReimportDecision::not_needed};
+    std::string repro_command_id;
+    std::string repro_command;
+    std::string source_excerpt_hash;
+    bool preset_diff_required{false};
+    bool axis_unit_preview_required{false};
+    bool legal_blocked{false};
+    bool nondeterministic{false};
+};
+
+struct AssetImportRegressionTriageDocumentV1 {
+    std::string format{"GameEngine.AssetImportRegressionTriage.v1"};
+    std::string corpus_id;
+    std::string run_id;
+    std::vector<AssetImportRegressionTriageRowV1> rows;
+    std::size_t row_count{0U};
+    std::size_t blocked_count{0U};
+    std::size_t reimport_candidate_count{0U};
+    std::size_t preset_diff_required_count{0U};
+    std::size_t axis_unit_preview_required_count{0U};
+    bool ready_for_operator_review{false};
+};
+
+[[nodiscard]] std::string_view
+asset_import_regression_triage_severity_label(AssetImportRegressionTriageSeverity value) noexcept;
+[[nodiscard]] std::string_view
+asset_import_regression_recommended_action_label(AssetImportRegressionRecommendedAction value) noexcept;
+[[nodiscard]] std::string_view
+asset_import_regression_reimport_decision_label(AssetImportRegressionReimportDecision value) noexcept;
+
+[[nodiscard]] AssetImportRegressionRecommendedAction
+recommended_action_for_asset_import_regression_code(AssetImportRegressionDiagnosticCode code) noexcept;
+[[nodiscard]] AssetImportRegressionTriageDocumentV1
+make_asset_import_regression_triage_v1(const AssetImportRegressionReportV1& report);
+[[nodiscard]] std::string serialize_asset_import_regression_triage_v1(const AssetImportRegressionTriageDocumentV1& document);
+[[nodiscard]] AssetImportRegressionTriageDocumentV1
+deserialize_asset_import_regression_triage_v1(std::string_view text);
+
+} // namespace mirakana
+```
+
+Diagnostic-to-action table:
+
+| Diagnostic code | Recommended action | Reimport decision | Extra flags |
+| --- | --- | --- | --- |
+| `none` | `none` | `not_needed` | none |
+| `invalid_manifest`, `duplicate_asset_id`, `unsafe_source_path`, `row_budget_exceeded` | `split_corpus_or_raise_reviewed_budget` | `blocked` | none |
+| `missing_source_file`, `source_hash_mismatch` | `refresh_corpus_manifest` | `blocked` | `preset_diff_required=false`, `axis_unit_preview_required=false` |
+| `missing_license_provenance`, `rejected_license`, `external_engine_material` | `fix_notice_or_remove_asset` | `blocked` | `legal_blocked=true` |
+| `unsupported_format`, `unsupported_extension`, `unsupported_animation_channel`, `unsupported_skin_or_morph_combination` | `record_unsupported_or_reduce_source` | `blocked` | none |
+| `parser_error`, `validator_error`, `missing_external_resource`, `unsafe_external_resource_path` | `inspect_source_asset` | `dry_run_allowed` | none |
+| `coordinate_normalization_failed` | `open_axis_unit_preview` | `dry_run_allowed` | `axis_unit_preview_required=true` |
+| `material_extraction_failed` | `inspect_source_asset` | `dry_run_allowed` | `preset_diff_required=true` |
+| `texture_decode_failed`, `texture_transcode_failed` | `inspect_codec_dependency` | `dry_run_allowed` | `preset_diff_required=true` |
+| `cooked_output_mismatch`, `nondeterministic_output` | `rerun_isolated_and_compare_hashes` | `blocked` | `nondeterministic=true` only for `nondeterministic_output` |
+
+Clean-room and legal rules:
+
+- Triage rows are first-party labels and commands only. Do not use Unity, Unreal Engine, Godot, Fab, Asset Store, marketplace, Blender UI, or other product command names as row categories, labels, command ids, or statuses.
+- Any row whose corpus/provenance source mentions external-engine content, marketplace-only terms, missing license, NC, ND, trademark-heavy content, or unclear AI-generated rights remains `fix_notice_or_remove_asset` and `reimport_decision=blocked`.
+- `repro_command` must be a repository-relative PowerShell command template that never embeds absolute host paths, user profile paths, secrets, network URLs, native handles, parser dumps, or marketplace URLs.
+- `source_excerpt_hash` is a hash of a bounded sanitized diagnostic/source excerpt. Do not serialize source snippets from third-party assets into the triage document.
+- No broad compatibility or parity claim is created by triage. glTF 2.1 rows remain observation-only until Khronos publishes a current registry specification and the importer explicitly supports the relevant feature.
+
+Implementation steps:
+
+- [x] Add the `asset_import_regression_triage.hpp` public value contract exactly as listed above and include only first-party asset/report headers plus standard-library headers.
+- [x] Add `asset_import_regression_triage.cpp` with label functions, a full `switch` for every `AssetImportRegressionDiagnosticCode`, deterministic triage construction, and LF-only deterministic text serialization using the same `key=value` style as `asset_import_regression_corpus.cpp`.
+- [x] Make `make_asset_import_regression_triage_v1` preserve report row order, copy report evidence fields unchanged, compute counts from rows, set `ready_for_operator_review=true` when `row_count > 0`, and reject duplicate/unsupported serialized triage keys during deserialization.
+- [ ] Generate `repro_command_id` as `asset_import_regression.repro.<sanitized-asset-id>` and `repro_command` as:
+
+```text
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -OutputRoot out/asset-import-regression/staging/<run-id>
+```
+
+  Replace `<run-id>` with the sanitized `report.run_id`. The command reproduces the retained corpus run, not a hidden one-off asset import, because the current reviewed runner does not have a per-asset filter.
+
+- [x] Add tests in `tests/unit/asset_import_regression_tests.cpp` before implementation:
+  - every diagnostic code maps to one non-`invalid`, non-empty recommended action label;
+  - a mixed report with `rejected_license`, `source_hash_mismatch`, `coordinate_normalization_failed`, `texture_decode_failed`, `nondeterministic_output`, and `none` serializes/deserializes deterministically;
+  - the triage text contains no backslashes, drive prefixes, absolute paths, user profile path fragments, network URLs, source snippets, parser type names, or external engine compatibility labels;
+  - `coordinate_normalization_failed` sets `axis_unit_preview_required=true` and `reimport_decision=dry_run_allowed`;
+  - legal rows set `legal_blocked=true` and `reimport_decision=blocked`;
+  - nondeterministic rows set `nondeterministic=true` and `reimport_decision=blocked`.
+- [x] Extend `EditorAssetImportRegressionWorkflowDesc` with `const AssetImportRegressionTriageDocumentV1* triage{nullptr};`.
+- [x] Extend editor-core retained rows under `asset_browser.import_workflow.failure.<asset_id>` with `category_label=triage_failure`, severity, phase, diagnostic code, recommended action, repro command id, and reimport decision. These rows must leave `mutates_project_files=false`, `executes_import_tools=false`, `executes_package_scripts=false`, `executes_validation_recipes=false`, and `exposes_native_handles=false`.
+- [x] Update command enablement in `make_editor_asset_import_regression_workflow_model`:
+  - `open_report` is enabled when a report exists;
+  - `batch_reimport` is enabled only when triage exists and at least one row has `reimport_decision=dry_run_allowed` with no `legal_blocked` rows selected;
+  - `preset_diff` is enabled when any triage row has `preset_diff_required=true`;
+  - `axis_unit_preview` is enabled when any triage row has `axis_unit_preview_required=true`;
+  - `run_corpus` remains gated by corpus legal readiness and still requires user confirmation.
+- [x] Add editor-core tests proving legal-blocked rows disable reimport, codec/material rows enable preset diff only as retained command rows, coordinate rows enable axis/unit preview, and all safety booleans remain false.
+- [x] Add `tools/check-asset-import-regression-operator-loop.ps1` with parameters `-ReportPath`, optional `-OutputRoot`, and switch `-SyntheticSmoke`. With `-SyntheticSmoke`, generate a small first-party report under `out/tmp/asset-import-regression-operator-loop-<pid>/`, run the focused CMake build/test for `MK_asset_import_regression_tests` and `MK_editor_core_tests`, validate deterministic triage serialization through the C++ unit tests and script-generated triage text, and emit:
+
+```text
+asset_import_regression_operator_loop_ready=1
+asset_import_regression_operator_loop_report_rows=<positive>
+asset_import_regression_operator_loop_blocked_rows=<n>
+asset_import_regression_operator_loop_reimport_candidates=<n>
+asset_import_regression_operator_loop_preset_diff_required=<n>
+asset_import_regression_operator_loop_axis_unit_preview_required=<n>
+asset_import_regression_operator_loop_legal_blocked_rows=<n>
+asset_import_regression_operator_loop_nondeterministic_rows=<n>
+asset_import_regression_operator_loop_editor_core_value_only=1
+asset_import_regression_operator_loop_external_engine_claim=0
+```
+
+  Without `-SyntheticSmoke`, the script reads an existing retained report and fails if the triage cannot be parsed, if counters are missing, if unsafe paths/URLs appear, or if the report has no rows.
+
+- [x] Update `tools/check-asset-import-regression-corpus.ps1` to call `tools/check-asset-import-regression-operator-loop.ps1 -SyntheticSmoke` after the existing runner CLI smoke.
+- [x] Run the targeted agent-surface drift check. The new script name, command counters, public triage APIs, and retained row ids are durable AI-operable contracts, so `tools/check-ai-integration-147-asset-import-regression-corpus.ps1` and manifest fragments were updated.
 
 Required validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_editor_core_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_regression_tests|MK_editor_core_tests"
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_regression_corpus.cpp,engine/tools/asset/asset_import_regression_runner.cpp,editor/core/src/asset_import_regression_workflow.cpp,tests/unit/asset_import_regression_tests.cpp,tests/unit/editor_core_tests.cpp
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -SyntheticSmoke
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 ```
+
+Slice completion rules:
+
+- Do not run or require a real large corpus in this task.
+- Do not change readiness counters or commercial claims.
+- Do not add external assets, dependency installs, external-engine compatibility, runtime source parsing, native handle exposure, or marketplace/network acquisition.
+- If any public header or CMake target layout changes beyond the triage contract, also run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`.
+- If Task 14 touches durable command or AI-operable manifest contracts, also run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` after composing the manifest.
 
 ### Task 15: Batch Reimport, Preset Diff, And Axis/Unit Preview On Real Corpus
 
@@ -583,10 +746,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine
 - Modify: `engine/assets/src/asset_import_preset_diff.cpp`
 - Modify: `engine/tools/include/mirakana/tools/asset_axis_unit_preview.hpp`
 - Modify: `engine/tools/asset/asset_axis_unit_preview.cpp`
-- Create: `tools/check-asset-import-regression-operator-loop.ps1`
+- Modify: `tools/check-asset-import-regression-operator-loop.ps1`
 - Test: `tests/unit/asset_import_regression_tests.cpp`
 
-- [ ] Add an operator-loop validation script that consumes one retained successful run and one retained failure run from the large corpus. The script must prove:
+- [ ] Extend the Task 14 operator-loop validation script with `-CorpusRoot` and `-RequireReady` so it consumes one retained successful run and one retained failure run from the large corpus. The script must prove:
   - batch reimport dry-run rejects stale hashes and legal blockers;
   - apply writes only to `out/asset-import-regression/staging/<run-id>/` until every selected row validates;
   - preset diff lists all affected outputs for `mesh.unit_scale`, `mesh.up_axis`, texture color/compression policy, and audio decode mode changes;
@@ -687,16 +850,21 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 ## Final Validation Evidence Table
 
-| Command | Required before completion | Observed 2026-06-30 |
+| Command | Required before completion | Observed 2026-07-01 |
 | --- | --- | --- |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Every slice | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Plan/tool text slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Schema/manifest/static-contract slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Manifest/docs/agent-surface slice | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; generator smoke passed, first-party fixture corpus has 12 assets, `MK_asset_import_regression_tests` and `MK_asset_import_regression_runner` built, runner CLI smoke emitted one succeeded material row, wrapper emitted `asset_import_regression_fresh_process_match=1`, URL rejection emitted `network_url_rejected`, and fixture validation remained non-ready with `corpus_ready=0` |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_asset_import_regression_runner` | Asset workflow C++ contract | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Tool/script/agent hygiene slice | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Public C++ API slice | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -SyntheticSmoke` | Task 14 operator triage loop | Pass; emitted `asset_import_regression_operator_loop_report_rows=6`, `failed_rows=5`, `legal_blocked_rows=1`, `nondeterministic_rows=1`, `reimport_candidates=2`, `blocked_rows=3`, `preset_diff_required=1`, `axis_unit_preview_required=1`, `editor_core_value_only=1`, and `external_engine_claim=0` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; existing generator/runner/fresh-process checks passed and the integrated operator-loop synthetic smoke passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_editor_core_tests` | Asset triage and editor-core retained row C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_regression_tests|MK_editor_core_tests"` | Asset triage and editor-core retained row C++ contract | Pass; 2/2 tests passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_regression_triage.cpp,editor/core/src/asset_import_regression_workflow.cpp,tests/unit/asset_import_regression_tests.cpp,tests/unit/editor_core_tests.cpp` | Focused C++ static analysis | Pass; 4 files checked |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 161/161 tests passed |
-| Tasks 13 real-corpus `-RequireReady` remainder and Tasks 14-17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |
+| Tasks 13 real-corpus `-RequireReady` remainder and Tasks 15-17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |

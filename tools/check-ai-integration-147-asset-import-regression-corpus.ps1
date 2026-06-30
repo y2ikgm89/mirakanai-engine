@@ -6,6 +6,8 @@
 
 $assetRegressionHeader = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp"
 $assetRegressionSource = Get-AgentSurfaceText "engine/assets/src/asset_import_regression_corpus.cpp"
+$assetRegressionTriageHeader = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_import_regression_triage.hpp"
+$assetRegressionTriageSource = Get-AgentSurfaceText "engine/assets/src/asset_import_regression_triage.cpp"
 $assetRegressionRunnerHeader = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp"
 $assetRegressionRunnerSource = Get-AgentSurfaceText "engine/tools/asset/asset_import_regression_runner.cpp"
 $assetRegressionRunnerCli = Get-AgentSurfaceText "engine/tools/asset/asset_import_regression_runner_cli.cpp"
@@ -14,6 +16,10 @@ $assetRegressionCheckScript = Get-AgentSurfaceText "tools/check-asset-import-reg
 $assetRegressionValidateScript = Get-AgentSurfaceText "tools/validate-asset-import-regression-corpus.ps1"
 $assetRegressionGenerateScript = Get-AgentSurfaceText "tools/generate-asset-import-regression-corpus-manifest.ps1"
 $assetRegressionRunScript = Get-AgentSurfaceText "tools/run-asset-import-regression-corpus.ps1"
+$assetRegressionOperatorLoopScript = Get-AgentSurfaceText "tools/check-asset-import-regression-operator-loop.ps1"
+$editorAssetRegressionWorkflowHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp"
+$editorAssetRegressionWorkflowSource = Get-AgentSurfaceText "editor/core/src/asset_import_regression_workflow.cpp"
+$editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
 $assetRegressionFixtureReadme = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/README.md"
 $assetRegressionFixtureCorpus = Get-AgentSurfaceText "tests/fixtures/asset_import_regression/first_party_corpus.gecorpus"
 $assetCMake = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
@@ -63,6 +69,47 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "GameEngine.AssetImportRegressionTriage.v1",
+        "AssetImportRegressionTriageRowV1",
+        "AssetImportRegressionTriageDocumentV1",
+        "AssetImportRegressionRecommendedAction",
+        "AssetImportRegressionReimportDecision",
+        "recommended_action_for_asset_import_regression_code",
+        "make_asset_import_regression_triage_v1",
+        "serialize_asset_import_regression_triage_v1",
+        "deserialize_asset_import_regression_triage_v1"
+    )) {
+    Assert-ContainsText $assetRegressionTriageHeader $needle "asset_import_regression_triage.hpp"
+}
+
+foreach ($needle in @(
+        "fix_notice_or_remove_asset",
+        "open_axis_unit_preview",
+        "inspect_codec_dependency",
+        "rerun_isolated_and_compare_hashes",
+        "dry_run_allowed",
+        "source_excerpt_hash",
+        "preset_diff_required",
+        "axis_unit_preview_required",
+        "legal_blocked",
+        "nondeterministic"
+    )) {
+    Assert-ContainsText $assetRegressionTriageSource $needle "asset_import_regression_triage.cpp"
+}
+
+foreach ($needle in @(
+        "const AssetImportRegressionTriageDocumentV1* triage",
+        "workflow_row_id(`"failure`"",
+        "triage_failure",
+        "recommended_action=",
+        "reimport_decision=",
+        "preset_diff_required",
+        "axis_unit_preview_required"
+    )) {
+    Assert-ContainsText ($editorAssetRegressionWorkflowHeader + "`n" + $editorAssetRegressionWorkflowSource) $needle "editor asset import regression workflow triage rows"
+}
+
+foreach ($needle in @(
         "asset import regression corpus serializes deterministically and round trips",
         "asset import regression corpus rejects unsafe paths and legal blockers",
         "asset import regression corpus deserialize rejects duplicate keys",
@@ -70,11 +117,27 @@ foreach ($needle in @(
         "asset import regression committed first-party corpus fixture validates expected coverage",
         "asset import regression runner rejects invalid manifests without touching source files",
         "asset import regression runner maps corpus assets to deterministic success and failure rows",
+        "asset import regression triage maps every diagnostic to a deterministic operator action",
+        "asset import regression triage serializes safe deterministic operator rows",
         "asset.0.mesh.unit_scale=0.01",
         "asset.2.third_party_missing_expected_sha256",
         "first_party_corpus.gecorpus"
     )) {
     Assert-ContainsText $assetRegressionTests $needle "asset_import_regression_tests.cpp"
+}
+
+foreach ($needle in @(
+        "editor asset import regression triage rows drive retained commands without executing tools",
+        "editor asset import regression triage legal blockers disable retained reimport command",
+        "asset_browser.import_workflow.failure.mesh.axis",
+        "asset_browser.import_workflow.failure.texture.codec",
+        "asset_browser.import_workflow.failure.mesh.legal",
+        "recommended_action=open_axis_unit_preview",
+        "reimport_decision=dry_run_allowed",
+        "recommended_action=fix_notice_or_remove_asset",
+        "reimport_decision=blocked"
+    )) {
+    Assert-ContainsText $editorCoreTests $needle "editor_core_tests.cpp asset import regression triage"
 }
 
 foreach ($needle in @(
@@ -117,6 +180,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "asset_import_regression_corpus.cpp",
+        "asset_import_regression_triage.cpp",
         "asset_import_regression_runner.cpp",
         "asset_import_regression_runner_cli.cpp",
         "MK_asset_import_regression_tests",
@@ -129,11 +193,13 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "checkAssetImportRegressionCorpus",
+        "checkAssetImportRegressionOperatorLoop",
         "generateAssetImportRegressionCorpusManifest",
         "runAssetImportRegressionCorpus",
         "validateAssetImportRegressionCorpus",
         "asset-import-regression-corpus",
         "tools/check-asset-import-regression-corpus.ps1",
+        "tools/check-asset-import-regression-operator-loop.ps1",
         "tools/generate-asset-import-regression-corpus-manifest.ps1",
         "tools/run-asset-import-regression-corpus.ps1",
         "tools/validate-asset-import-regression-corpus.ps1",
@@ -141,6 +207,8 @@ foreach ($needle in @(
         "Asset Import Regression Corpus v1",
         "GameEngine.AssetImportRegressionCorpus.v1",
         "GameEngine.AssetImportRegressionReport.v1",
+        "GameEngine.AssetImportRegressionTriage.v1",
+        "mirakana::make_asset_import_regression_triage_v1",
         "schemas/asset-import-regression-corpus.schema.json",
         "schemas/asset-import-regression-report.schema.json",
         "implemented-value-contract-and-mk-tools-runner-foundation",
@@ -170,6 +238,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "generate-asset-import-regression-corpus-manifest.ps1",
+        "check-asset-import-regression-operator-loop.ps1",
         "FailOnMissingNotice",
         "asset_import_regression_manifest_generator_ready",
         "asset_import_regression_manifest_generator_downloaded_assets=0",
@@ -192,6 +261,16 @@ foreach ($needle in @(
         "asset_import_regression_minimum_composition_ready",
         "asset_import_regression_required_feature_categories_ready",
         "asset_import_regression_replay_hash",
+        "asset_import_regression_operator_loop_ready",
+        "asset_import_regression_operator_loop_report_rows",
+        "asset_import_regression_operator_loop_blocked_rows",
+        "asset_import_regression_operator_loop_reimport_candidates",
+        "asset_import_regression_operator_loop_preset_diff_required",
+        "asset_import_regression_operator_loop_axis_unit_preview_required",
+        "asset_import_regression_operator_loop_legal_blocked_rows",
+        "asset_import_regression_operator_loop_nondeterministic_rows",
+        "asset_import_regression_operator_loop_editor_core_value_only",
+        "asset_import_regression_operator_loop_external_engine_claim",
         "retained-hashes.gehashes",
         "SkipCorpusCheck",
         "Get-FileHash",
@@ -214,7 +293,7 @@ foreach ($needle in @(
         "retained/corpus-selection-summary.md",
         "out/host-artifacts/asset-import-regression-corpus"
     )) {
-    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionRunScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
+    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionRunScript + "`n" + $assetRegressionOperatorLoopScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
 }
 
 foreach ($needle in @(

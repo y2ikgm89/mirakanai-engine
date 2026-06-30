@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/asset_import_provenance.hpp"
+#include "mirakana/assets/asset_import_regression_triage.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/material_graph.hpp"
 
@@ -5507,6 +5508,163 @@ MK_TEST("editor asset import regression workflow blocks failed legal and preview
     MK_REQUIRE(std::ranges::any_of(model.diagnostics, [](const auto& diagnostic) {
         return diagnostic.find("external_engine_material") != std::string::npos;
     }));
+}
+
+MK_TEST("editor asset import regression triage rows drive retained commands without executing tools") {
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .run_id = "run-editor-triage",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.axis",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.axis"),
+                    .source_path = "sources/gltf/axis.gltf",
+                    .source_sha256 = "sha256:axis",
+                    .preset_sha256 = "sha256:preset-axis",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "normalization",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::coordinate_normalization_failed,
+                    .message = "coordinate normalization failed",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "texture.codec",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::png_texture,
+                    .asset = mirakana::AssetId::from_name("texture.codec"),
+                    .source_path = "sources/textures/codec.png",
+                    .source_sha256 = "sha256:codec",
+                    .preset_sha256 = "sha256:preset-codec",
+                    .importer_id = "mirakana.importer.png_texture",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "decode",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::texture_decode_failed,
+                    .message = "texture decode failed",
+                },
+            },
+        .asset_count = 2U,
+        .failed_count = 2U,
+    };
+    const auto triage = mirakana::make_asset_import_regression_triage_v1(report);
+
+    const auto model = mirakana::editor::make_editor_asset_import_regression_workflow_model(
+        mirakana::editor::EditorAssetImportRegressionWorkflowDesc{
+            .latest_report = &report,
+            .triage = &triage,
+            .generation = 14U,
+        });
+
+    const auto find_command = [&model](std::string_view command_id) {
+        return std::ranges::find_if(model.command_rows,
+                                    [command_id](const auto& row) { return row.command_id == command_id; });
+    };
+    const auto find_row = [&model](std::string_view row_id) {
+        return std::ranges::find_if(model.rows, [row_id](const auto& row) { return row.id == row_id; });
+    };
+
+    const auto open_report = find_command("asset_browser.importer_corpus.open_report");
+    const auto batch_reimport = find_command("asset_browser.import.batch_reimport");
+    const auto preset_diff = find_command("asset_browser.import.preset_diff");
+    const auto axis_preview = find_command("asset_browser.import.axis_unit_preview");
+    MK_REQUIRE(open_report != model.command_rows.end());
+    MK_REQUIRE(batch_reimport != model.command_rows.end());
+    MK_REQUIRE(preset_diff != model.command_rows.end());
+    MK_REQUIRE(axis_preview != model.command_rows.end());
+    MK_REQUIRE(open_report->enabled);
+    MK_REQUIRE(batch_reimport->enabled);
+    MK_REQUIRE(preset_diff->enabled);
+    MK_REQUIRE(axis_preview->enabled);
+    MK_REQUIRE(std::ranges::all_of(model.command_rows, [](const auto& row) {
+        return !row.executes_import_tools && !row.executes_package_scripts && !row.executes_validation_recipes &&
+               !row.exposes_native_handles;
+    }));
+
+    const auto axis_row = find_row("asset_browser.import_workflow.failure.mesh.axis");
+    const auto codec_row = find_row("asset_browser.import_workflow.failure.texture.codec");
+    MK_REQUIRE(axis_row != model.rows.end());
+    MK_REQUIRE(codec_row != model.rows.end());
+    MK_REQUIRE(axis_row->category_label == "triage_failure");
+    MK_REQUIRE(axis_row->detail_label.contains("recommended_action=open_axis_unit_preview"));
+    MK_REQUIRE(axis_row->detail_label.contains("reimport_decision=dry_run_allowed"));
+    MK_REQUIRE(axis_row->detail_label.contains("repro=asset_import_regression.repro.mesh.axis"));
+    MK_REQUIRE(codec_row->detail_label.contains("recommended_action=inspect_codec_dependency"));
+    MK_REQUIRE(codec_row->detail_label.contains("reimport_decision=dry_run_allowed"));
+    MK_REQUIRE(!model.executes_import_tools);
+    MK_REQUIRE(!model.mutates_project_files);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.executes_validation_recipes);
+    MK_REQUIRE(!model.exposes_native_handles);
+}
+
+MK_TEST("editor asset import regression triage legal blockers disable retained reimport command") {
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .run_id = "run-editor-triage-legal",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.legal",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.legal"),
+                    .source_path = "sources/gltf/legal.gltf",
+                    .source_sha256 = "sha256:legal",
+                    .preset_sha256 = "sha256:preset-legal",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "legal",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::external_engine_material,
+                    .message = "external engine material is blocked",
+                },
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.axis",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.axis"),
+                    .source_path = "sources/gltf/axis.gltf",
+                    .source_sha256 = "sha256:axis",
+                    .preset_sha256 = "sha256:preset-axis",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "normalization",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::coordinate_normalization_failed,
+                    .message = "axis preview is allowed but batch reimport stays blocked by legal row",
+                },
+            },
+        .asset_count = 2U,
+        .failed_count = 2U,
+        .legal_blocked_count = 1U,
+    };
+    const auto triage = mirakana::make_asset_import_regression_triage_v1(report);
+
+    const auto model = mirakana::editor::make_editor_asset_import_regression_workflow_model(
+        mirakana::editor::EditorAssetImportRegressionWorkflowDesc{
+            .latest_report = &report,
+            .triage = &triage,
+            .generation = 15U,
+        });
+
+    const auto batch_reimport = std::ranges::find_if(
+        model.command_rows, [](const auto& row) { return row.command_id == "asset_browser.import.batch_reimport"; });
+    const auto axis_preview = std::ranges::find_if(
+        model.command_rows, [](const auto& row) { return row.command_id == "asset_browser.import.axis_unit_preview"; });
+    const auto legal_row = std::ranges::find_if(
+        model.rows, [](const auto& row) { return row.id == "asset_browser.import_workflow.failure.mesh.legal"; });
+    const auto axis_row = std::ranges::find_if(
+        model.rows, [](const auto& row) { return row.id == "asset_browser.import_workflow.failure.mesh.axis"; });
+
+    MK_REQUIRE(batch_reimport != model.command_rows.end());
+    MK_REQUIRE(axis_preview != model.command_rows.end());
+    MK_REQUIRE(!batch_reimport->enabled);
+    MK_REQUIRE(axis_preview->enabled);
+    MK_REQUIRE(legal_row != model.rows.end());
+    MK_REQUIRE(axis_row != model.rows.end());
+    MK_REQUIRE(legal_row->detail_label.contains("recommended_action=fix_notice_or_remove_asset"));
+    MK_REQUIRE(legal_row->detail_label.contains("reimport_decision=blocked"));
+    MK_REQUIRE(axis_row->detail_label.contains("recommended_action=open_axis_unit_preview"));
+    MK_REQUIRE(axis_row->detail_label.contains("reimport_decision=dry_run_allowed"));
+    MK_REQUIRE(legal_row->blocked);
+    MK_REQUIRE(!model.executes_import_tools);
+    MK_REQUIRE(!model.exposes_native_handles);
 }
 
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
