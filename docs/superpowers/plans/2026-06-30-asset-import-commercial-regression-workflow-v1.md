@@ -13,19 +13,28 @@
 ## Authoring Status
 
 - Date: 2026-06-30.
-- Status: candidate implementation plan. This file does not change `currentActivePlan`, readiness counters, `unsupportedProductionGaps`, dependencies, or legal notices by itself.
+- Status: candidate implementation plan with Tasks 1-11 implemented as the foundation. Tasks 12-17 are the remaining real-corpus commercial-operation closeout and are not selected by `currentActivePlan`.
 - Selected project coordinate convention: right-handed, `+Y` up, meters, matching the current `AssetImportPresets.v1` and `AssetCoordinateNormalizationPlan` implementation.
+- Current readiness estimate after the 2026-06-30 re-audit: core design and safe import contract 85-90%, visible Assets panel integration 70-80%, whole commercial asset browser/import regression product 55-60%. These are planning estimates only; no readiness counter changes until Task 17 evidence lands.
+- Current hard blocker: no approved large real-asset corpus has been run through `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady`, and the optional `asset-importers` lane still needs a dependency-ready host where `tools/bootstrap-deps.ps1 -Feature asset-importers` and `tools/build-asset-importers.ps1` pass.
 
 ## Sources Reviewed
 
 - Project files: `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/007-importerCapabilities.json`, `engine/assets/include/mirakana/assets/asset_import_presets.hpp`, `engine/assets/include/mirakana/assets/asset_import_pipeline.hpp`, `engine/assets/include/mirakana/assets/asset_import_provenance.hpp`, `engine/assets/include/mirakana/assets/asset_import_production_review.hpp`, `engine/tools/include/mirakana/tools/asset_coordinate_normalization.hpp`, `engine/tools/include/mirakana/tools/asset_import_tool.hpp`, `engine/tools/include/mirakana/tools/asset_import_adapters.hpp`, `engine/tools/include/mirakana/tools/gltf_*`, `editor/core/include/mirakana/editor/asset_browser_production.hpp`, `tests/unit/tools_tests.cpp`, and `tests/unit/editor_core_tests.cpp`.
 - Context7 `/spnda/fastgltf`: `fastgltf::Parser`, `GltfDataBuffer`, `Options::LoadExternalBuffers`, `Options::LoadExternalImages`, `Options::DecomposeNodeMatrices`, `Options::GenerateMeshIndices`, `fastgltf::validate`, accessor iteration, material/image inspection, and parser reuse constraints.
 - Context7 `/khronosgroup/ktx-software`: `ktxTexture2_CreateFromNamedFile`, `ktxTexture2_NeedsTranscoding`, `ktxTexture2_TranscodeBasis`, level/layer/face/dimension metadata, selected transcode targets, and native handle isolation.
+- Context7 `/mackron/miniaudio`: `ma_decoder_init_file`, `ma_decoder_init_memory`, `ma_decoder_read_pcm_frames`, `ma_data_source_get_length_in_pcm_frames`, `ma_decoder_seek_to_pcm_frame`, `ma_decoder_uninit`, WAV/FLAC/MP3 decoder availability, and private decoder lifetime boundaries.
 - Khronos glTF 2.0 specification: right-handed coordinates, `+Y` up, meters, radians, glTF scenes/nodes/meshes/materials/animations, and external resource rules. Official reference: `https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html`.
+- Khronos glTF registry and June 2026 glTF 2.1 planning blog: the registry still identifies glTF 2.0 as the current registry specification, while the 2.1 work is a focused future/backward-compatible large-scene plan. This plan stays on glTF 2.0 import execution and treats glTF 2.1 BVH/encapsulated/progressive-scene topics as future corpus observation rows only. Official references: `https://registry.khronos.org/glTF/` and `https://www.khronos.org/blog/introducing-gltf-2.1-with-complex-scenes`.
 - Khronos glTF Sample Assets: per-asset license metadata is required; the top-level README is not sufficient for redistribution approval. Official reference: `https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/README.md`.
+- Khronos glTF Asset Generator: useful for generated specification-coverage cases, but generated outputs still need exact source revision, generator command, license, and expected SHA-256 rows before corpus use. Official reference: `https://github.com/KhronosGroup/glTF-Asset-Generator`.
 - Khronos KTX Software/libktx: KTX 1/2 loading, Basis Universal transcode, KTX2 metadata, OpenGL/Vulkan upload helpers, and KTX/native handle boundaries. Official reference: `https://github.khronos.org/KTX-Software/libktx/index.html`.
+- Khronos KTX 2.0 specification: texture dimensions, levels, layers, faces, `vkFormat`, supercompression, data format descriptor, and registered metadata keys must be captured as review rows before KTX2/Basis package evidence. Official reference: `https://registry.khronos.org/KTX/specs/2.0/ktxspec.v2.html`.
+- W3C PNG Third Edition: PNG corpus rows must record color type, bit depth, alpha, transparency, gamma/sRGB/color-management metadata, and decoded RGBA8 policy before package evidence. Official reference: `https://www.w3.org/TR/png-3/`.
 - OpenEXR documentation: scene-linear HDR semantics and EXR metadata/window/channel concepts. Official references: `https://openexr.com/en/latest/SceneLinear.html` and `https://openexr.com/en/latest/TechnicalIntroduction.html`.
-- Legal/trademark category references: Unity trademark guidelines `https://unity.com/legal/branding-trademarks`, Unreal Engine/Epic trademark guidance `https://www.unrealengine.com/release` and `https://www.epic.com/epic/page/trademark-usage-guidelines-non-licensee/`, Godot logo/trademark guidance `https://godotengine.org/press/`, and Godot license documentation `https://godotengine.org/license/`.
+- Audio format references: IETF FLAC RFC 9639 for FLAC stream/metadata/frame diagnostics, Microsoft RIFF services documentation for chunked WAV container diagnostics, and miniaudio Context7 docs for private source decode lifecycle. Official references: `https://www.rfc-editor.org/rfc/rfc9639.html` and `https://learn.microsoft.com/en-us/windows/win32/multimedia/resource-interchange-file-format-services`.
+- License/corpus references: SPDX License List identifiers, Creative Commons license terms, Poly Haven CC0 asset license page, and Khronos glTF Sample Assets per-model license README requirements. Official references: `https://spdx.org/licenses/`, `https://creativecommons.org/share-your-work/cclicenses/`, `https://polyhaven.com/license`, and `https://github.com/KhronosGroup/glTF-Sample-Assets`.
+- Legal/trademark category references: Unity trademark guidelines `https://unity.com/legal/trademarks`, Epic Content License Agreement `https://www.unrealengine.com/eula/content`, Epic non-licensee trademark guidelines `https://www.epic.com/epic/page/trademark-usage-guidelines-non-licensee/`, Godot license documentation `https://godotengine.org/license/`, and Godot license compliance documentation `https://docs.godotengine.org/en/stable/about/complying_with_licenses.html`.
 
 ## Current Baseline
 
@@ -34,6 +43,19 @@
 - `MK_tools` coordinate normalization already consumes `mesh.unit_scale` and `mesh.up_axis` for selected glTF mesh, morph mesh, skin, node transform, and animation paths.
 - `MK_editor_core` already has a first-party asset browser production model, import review, reimport/recook/hot-reload planning, provenance/legal rows, KTX2/Basis source review rows, OpenEXR source review rows, import jobs, folder/drag-drop source review, and retained command rows.
 - Existing validation covers selected fixtures and package-review evidence, but it does not yet provide a large real-asset corpus manifest, corpus runner, per-run diagnostic reports, batch reimport execution plans over a corpus, preset diff reports, or asset-browser axis/unit preview rows.
+- Tasks 1-11 now provide the deterministic corpus/report contract, tiny first-party fixture corpus, host-corpus validator, `MK_tools` runner foundation, failure diagnostics, batch reimport staging, preset diff, axis/unit preview, and editor retained workflow rows.
+- Remaining commercial gap: no large approved host corpus has been executed end-to-end across real glTF scenes/meshes/animations, PNG/OpenEXR/KTX2/Basis textures, material documents, and WAV/MP3/FLAC audio; no retained report proves zero failures, zero legal blockers, zero nondeterminism, and successful operator triage/reimport/preset-diff/axis-preview loops.
+
+## Commercial Closeout Delta
+
+| Area | Current state | Commercial closeout requirement |
+| --- | --- | --- |
+| Safe import contract | Value contracts, legal gates, deterministic report text, and fail-closed schemas are implemented. | Run a dependency-ready optional importer lane plus a real host corpus and retain `report.gereport`, replay hash, source notices, and corpus manifest evidence. |
+| glTF and animation | Selected glTF mesh, morph, node transform, quaternion animation, and coordinate normalization paths are implemented for glTF 2.0. | Corpus must include external buffers/images, PBR material variants, skins, morph targets, quaternion TRS, invalid diagnostics, large scenes, and glTF 2.1 observation-only assets that remain non-promoting until parser support is explicit. |
+| Texture/material | PNG, OpenEXR, KTX2/Basis review/transcode paths exist as optional or value-only surfaces. | Corpus must include color-management PNGs, HDR EXR metadata/window/channel cases, KTX2/Basis needs-transcoding and backend-target cases, material texture dependency rows, and package-output hash checks. |
+| Audio | Common-audio optional adapter and source document paths exist. | Corpus must include WAV RIFF/chunk variants, MP3, FLAC RFC 9639 metadata/frame cases, static PCM and streaming-review preset rows, decode error rows, and cooked output hash checks. |
+| Editor workflow | Source Pulse rows expose corpus run, report, batch reimport, preset diff, and axis/unit preview as value-only commands. | Visible shell must show retained workflow rows from a real corpus report, keep command enable/disable state accurate, and smoke positive row counters without executing importers in `editor/core`. |
+| Legal/originality | Corpus policy blocks NC/ND, missing notice, external-engine, marketplace, trademark-heavy, and unapproved AI-generated material. | Every third-party asset row must have per-asset SPDX/custom license, copyright holder, source URL, retrieved date, version/commit, modification status, distribution target, expected SHA-256, and notice row before execution. |
 
 ## Non-Goals
 
@@ -403,6 +425,238 @@ on a dependency-ready host and the importer lane is rerun.
 
 No dependency, feature flag, optional package, or third-party corpus asset was added in candidate 2, so `docs/dependencies.md` and `THIRD_PARTY_NOTICES.md` intentionally remain unchanged.
 
+### Task 12: Approved Large Corpus Intake And Dependency-Ready Host
+
+**Status:** planned, not implemented.
+
+**Files:**
+- Create: `tools/generate-asset-import-regression-corpus-manifest.ps1`
+- Modify: `tools/check-asset-import-regression-corpus.ps1`
+- Modify: `tools/validate-asset-import-regression-corpus.ps1`
+- Modify: `tests/fixtures/asset_import_regression/README.md`
+- Modify only if third-party assets are tracked or redistributed: `THIRD_PARTY_NOTICES.md`, `docs/legal-and-licensing.md`, `docs/dependencies.md`
+
+- [ ] Add `tools/generate-asset-import-regression-corpus-manifest.ps1` with `-CorpusRoot`, `-SourcesRoot`, `-NoticesPath`, `-OutputManifest`, and `-FailOnMissingNotice` parameters. The script must not download assets or infer licenses; it only reads already-local source files and operator-supplied notice rows.
+- [ ] Require this host layout before execution:
+
+```text
+out/host-artifacts/asset-import-regression-corpus/
+  corpus.gecorpus
+  report.gereport
+  sources/
+    gltf/
+    textures/
+    materials/
+    audio/
+  notices/
+    THIRD_PARTY_ASSET_NOTICES.md
+  expected/
+    hashes.gehashes
+  retained/
+    official-source-ledger.md
+    corpus-selection-summary.md
+```
+
+- [ ] Lock minimum corpus composition in `corpus-selection-summary.md`:
+  - at least 40 glTF rows, including mesh-only, scene, skin, morph, material, external buffer, external image, animation TRS, quaternion animation, invalid external path, invalid extension, invalid accessor, and unsupported interpolation cases;
+  - at least 30 texture rows across PNG, OpenEXR, and KTX2/Basis, including color-management, alpha, HDR metadata, mip/array/cubemap, needs-transcoding, and backend-target-policy cases;
+  - at least 20 material rows covering factor-only, texture-backed, missing dependency, duplicated texture reference, unsupported graph/export, and package-output cases;
+  - at least 20 animation rows covering node TRS, skin, morph weight, valid/invalid quaternion, unit/up-axis conversion, and unsupported scalar z-up rotation cases;
+  - at least 20 audio rows across WAV, MP3, and FLAC, including static PCM, streaming-source-review, invalid/truncated decode, channel/sample-rate variance, and loop/normalization preset cases.
+- [ ] Allow Khronos glTF Sample Assets, glTF Asset Generator output, Poly Haven CC0 assets, or other public assets only when each asset row has a direct source URL, retrieved date, version or commit, author/copyright holder, SPDX/custom license id, modification status, distribution target, expected SHA-256, and notice id. The top-level project license alone is not enough when the asset directory has its own README/license.
+- [ ] Keep Unity, Unreal Engine, Godot, Fab, Asset Store, Starter Content, templates, marketplace packages, sample projects, serialized schemas, editor UI screenshots/icons, and trademark-heavy assets out of the corpus unless a separate legal approval artifact exists before execution.
+- [ ] Run dependency bootstrap on an approval-capable dependency host:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
+```
+
+Expected ready evidence: `asset-importers` configure/build passes and does not add default-build dependencies or runtime source parsing claims. If bootstrap is blocked, record the exact missing vcpkg package or host error and do not attempt Task 13.
+
+### Task 13: Real Corpus Runner CLI And Retained Report
+
+**Status:** planned, not implemented.
+
+**Files:**
+- Create: `engine/tools/asset/asset_import_regression_runner_cli.cpp`
+- Modify: `engine/tools/asset/CMakeLists.txt`
+- Create: `tools/run-asset-import-regression-corpus.ps1`
+- Modify: `tools/check-asset-import-regression-corpus.ps1`
+- Test: `tests/unit/asset_import_regression_tests.cpp`
+
+- [ ] Add a narrow `MK_asset_import_regression_runner` executable that accepts only reviewed arguments:
+
+```text
+--corpus-root <path>
+--output-root <path>
+--presets <path>
+--write-report <path>
+--write-cooked-outputs
+--compare-expected-hashes
+--collect-preview-rows
+--row-budget <positive integer>
+```
+
+It must reject network URLs, absolute source paths from the manifest, parent traversal, reparse points, native handle requests, parser object dumping, and arbitrary importer plugin ids.
+
+- [ ] `tools/run-asset-import-regression-corpus.ps1` must call `tools/check-asset-import-regression-corpus.ps1 -CorpusRoot <path>` first, then run `MK_asset_import_regression_runner`, then run `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot <path>`. With `-RequireReady`, it must pass through `-RequireReady` to the final validator and fail unless `asset_import_regression_corpus_ready=1`.
+- [ ] Runner output must include only first-party deterministic rows:
+
+```text
+asset_import_regression_report=<relative report path>
+asset_import_regression_asset_count=<n>
+asset_import_regression_succeeded_count=<n>
+asset_import_regression_failed_count=<n>
+asset_import_regression_legal_blocked_count=<n>
+asset_import_regression_nondeterministic_count=<n>
+asset_import_regression_replay_hash=sha256:<64 hex>
+```
+
+- [ ] Report rows must include `asset_id`, `kind`, `source_path`, `source_sha256`, `preset_sha256`, `importer_id`, `importer_version`, `phase`, `code`, `message`, `deterministic_output_hash`, `succeeded`, and `ready_for_commercial_evidence`.
+- [ ] Run each accepted asset twice in one process and once in a fresh process. Any output hash mismatch must set `nondeterministic_output` and block commercial promotion.
+- [ ] Retain `report.gereport`, runner stdout, runner stderr, dependency versions, corpus manifest hash, notices hash, and `asset-importers` build log under `out/host-artifacts/asset-import-regression-corpus/retained/<run-id>/`.
+
+Required validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -OutputRoot out/asset-import-regression/staging/large-corpus -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
+```
+
+### Task 14: Failure Diagnosis And Operator Triage Loop
+
+**Status:** planned, not implemented.
+
+**Files:**
+- Modify: `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`
+- Modify: `engine/assets/src/asset_import_regression_corpus.cpp`
+- Modify: `engine/tools/asset/asset_import_regression_runner.cpp`
+- Modify: `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`
+- Modify: `editor/core/src/asset_import_regression_workflow.cpp`
+- Test: `tests/unit/asset_import_regression_tests.cpp`
+- Test: `tests/unit/editor_core_tests.cpp`
+
+- [ ] Extend report rows with triage-only fields: `recommended_action`, `repro_command`, `source_excerpt_hash`, `preset_diff_required`, `axis_unit_preview_required`, and `reimport_candidate`. These fields must be deterministic strings and must not include absolute local paths or secret/user account paths.
+- [ ] Map every diagnostic code to exactly one `recommended_action`:
+  - legal/provenance blockers: `fix_notice_or_remove_asset`;
+  - missing source/hash mismatch: `refresh_corpus_manifest`;
+  - parser/validator/external resource failures: `inspect_source_asset`;
+  - unsupported extension/channel/skin/morph: `record_unsupported_or_reduce_source`;
+  - coordinate normalization: `open_axis_unit_preview`;
+  - texture/audio decode/transcode: `inspect_codec_dependency`;
+  - cooked mismatch/nondeterminism: `rerun_isolated_and_compare_hashes`;
+  - row budget: `split_corpus_or_raise_reviewed_budget`.
+- [ ] Add editor retained rows under `asset_browser.import_workflow.failure.<asset_id>` with severity, phase, code, recommended action, repro command id, and whether batch reimport is allowed. The editor model remains value-only and must keep `executes_import_tools=false`.
+- [ ] Add tests proving every code has a non-empty label, non-empty recommended action, deterministic repro command row, and correct editor command enablement.
+
+Required validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_regression_tests|MK_editor_core_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_regression_corpus.cpp,engine/tools/asset/asset_import_regression_runner.cpp,editor/core/src/asset_import_regression_workflow.cpp,tests/unit/asset_import_regression_tests.cpp,tests/unit/editor_core_tests.cpp
+```
+
+### Task 15: Batch Reimport, Preset Diff, And Axis/Unit Preview On Real Corpus
+
+**Status:** planned, not implemented.
+
+**Files:**
+- Modify: `engine/assets/include/mirakana/assets/asset_import_batch_reimport.hpp`
+- Modify: `engine/assets/src/asset_import_batch_reimport.cpp`
+- Modify: `engine/assets/include/mirakana/assets/asset_import_preset_diff.hpp`
+- Modify: `engine/assets/src/asset_import_preset_diff.cpp`
+- Modify: `engine/tools/include/mirakana/tools/asset_axis_unit_preview.hpp`
+- Modify: `engine/tools/asset/asset_axis_unit_preview.cpp`
+- Create: `tools/check-asset-import-regression-operator-loop.ps1`
+- Test: `tests/unit/asset_import_regression_tests.cpp`
+
+- [ ] Add an operator-loop validation script that consumes one retained successful run and one retained failure run from the large corpus. The script must prove:
+  - batch reimport dry-run rejects stale hashes and legal blockers;
+  - apply writes only to `out/asset-import-regression/staging/<run-id>/` until every selected row validates;
+  - preset diff lists all affected outputs for `mesh.unit_scale`, `mesh.up_axis`, texture color/compression policy, and audio decode mode changes;
+  - axis/unit preview uses the same normalization helper as import and emits before/after bounds, basis triad, unit scale, sample vertices, sample joints, and unsupported-source blockers;
+  - no editor-core command executes importers, package scripts, validation recipes, or native handles.
+- [ ] Add real-corpus regression fixtures by retaining compact `*.gereport` and `*.gepreview` text outputs only. Do not commit third-party source assets or large binary outputs.
+- [ ] Promote `preset_diff_required=true` and `axis_unit_preview_required=true` report rows into Source Pulse command enablement and tests.
+
+Required validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+### Task 16: Visible Assets Panel Commercial Workflow Smoke
+
+**Status:** planned, not implemented.
+
+**Files:**
+- Modify: `editor/src/native_editor_app.cpp`
+- Modify: `editor/src/first_party_editor_document.cpp`
+- Modify: `editor/src/native_editor_smoke.cpp`
+- Modify: `tests/unit/editor_native_shell_tests.cpp`
+- Modify only if retained ids become static needles: `tools/check-ai-integration-147-asset-import-regression-corpus.ps1`
+
+- [ ] Add shell-owned import-regression workflow handoff that reads retained corpus/report text from a project-selected path and feeds `EditorAssetImportRegressionWorkflowDesc`. It must not run importers from `editor/core`.
+- [ ] Extend editor smoke output with exact counters:
+
+```text
+editor_asset_import_regression_workflow_visible=1
+editor_asset_import_regression_workflow_rows=<positive>
+editor_asset_import_regression_failed_rows=<n>
+editor_asset_import_regression_reimport_command_enabled=<0|1>
+editor_asset_import_regression_preset_diff_command_enabled=<0|1>
+editor_asset_import_regression_axis_unit_preview_command_enabled=<0|1>
+editor_asset_import_regression_importers_executed_in_core=0
+editor_asset_import_regression_native_handles_exposed=0
+editor_asset_import_regression_external_engine_claim=0
+```
+
+- [ ] Add native-shell tests proving a retained ready report enables open-report/preset-diff/axis-preview rows, a failed legal report disables reimport, and no absolute host corpus paths are exposed in retained UI text.
+
+Required validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
+out\build\desktop-editor\editor\Debug\MK_editor.exe --smoke-frames 1 --no-user-config
+```
+
+### Task 17: Commercial Evidence Promotion And Documentation Sync
+
+**Status:** planned, not implemented.
+
+**Files:**
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/editor.md`
+- Modify: `docs/legal-and-licensing.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/007-importerCapabilities.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only if this plan becomes active or readiness counters change
+- Modify: `engine/agent/manifest.json` only by running `tools/compose-agent-manifest.ps1 -Write`
+- Modify only when notices change: `THIRD_PARTY_NOTICES.md`
+
+- [ ] Promote only the exact evidenced claim: "large approved host-owned asset import regression corpus ready for selected source importers." Do not promote broad asset browser commercial readiness, marketplace ingestion, external-engine compatibility, runtime source parsing, or all-format importer readiness.
+- [ ] Update manifest importer capability rows with retained run id, corpus asset counts, ready/failure/legal/nondeterminism counters, replay hash, optional dependency feature status, and unsupported claims.
+- [ ] If any third-party corpus asset is tracked, packaged, or distributed by the repository, update `THIRD_PARTY_NOTICES.md` with name, source URL, retrieved date, version or commit, author/copyright holder, SPDX/custom license, modification status, and distribution target before readiness promotion.
+- [ ] Run the agent-surface drift check and repository consistency checks:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+- [ ] Before publication, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` and publish through the standard PR flow. Do not push directly to `main`.
+
 ## Acceptance Criteria
 
 - The source tree contains a deterministic first-party corpus contract, report contract, tests, and validation wrappers.
@@ -415,6 +669,8 @@ No dependency, feature flag, optional package, or third-party corpus asset was a
 - Editor asset browser rows expose corpus runs, failure reports, preset diff, batch reimport, and axis/unit preview without parser/runtime/native handle leakage.
 - Legal gates block unapproved, NC, ND, trademark-heavy, external-engine, or notice-missing assets before import.
 - Static checks prevent future docs/manifest claims from expanding into runtime source parsing, external downloads, arbitrary importer plugins, native handles, or external-engine compatibility.
+- Commercial promotion requires Tasks 12-17 to produce retained real-corpus evidence with `asset_import_regression_large_corpus_present=1`, `asset_import_regression_failed_count=0`, `asset_import_regression_legal_blocked_count=0`, `asset_import_regression_nondeterministic_count=0`, and `asset_import_regression_corpus_ready=1`.
+- Any asset or official-source row that mentions Unity, Unreal Engine, Godot, Fab, Asset Store, or marketplace material remains a rejection/category/legal row, not an import compatibility or implementation source row.
 
 ## Final Validation Evidence Table
 
@@ -429,3 +685,4 @@ No dependency, feature flag, optional package, or third-party corpus asset was a
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 160/160 tests passed |
+| Tasks 12-17 real-corpus closeout | Commercial regression workflow promotion | Planned; no readiness counter change |
