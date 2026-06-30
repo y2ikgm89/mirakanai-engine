@@ -1842,6 +1842,246 @@ MK_TEST("runtime package streaming resident unmount commit preserves state on pr
     MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
 }
 
+MK_TEST("runtime package residency policy plans lru reviewed evictions under high water limits") {
+    const auto cold = mirakana::AssetId::from_name("textures/cold");
+    const auto protected_asset = mirakana::AssetId::from_name("textures/protected");
+    const auto hot = mirakana::AssetId::from_name("textures/hot");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                       .label = "cold",
+                       .package = make_package(make_record(cold, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "cold")),
+                   })
+                   .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
+                       .label = "protected",
+                       .package = make_package(make_record(protected_asset, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2}, "pp")),
+                   })
+                   .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3},
+                       .label = "hot",
+                       .package = make_package(make_record(hot, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 3}, "hhh")),
+                   })
+                   .succeeded());
+
+    const auto
+        plan =
+            mirakana::runtime::plan_runtime_package_residency_policy(
+                mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                               .max_resident_content_bytes = 5,
+                               .max_resident_asset_records = 2,
+                               .max_resident_packages = 2,
+                               .safe_point_required = true,
+                               .telemetry_rows =
+                                   {
+                                       {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                                        .last_touched_frame = 10,
+                                        .io_bytes_read = 4,
+                                        .decompressed_bytes = 4,
+                                        .cpu_time_us = 7,
+                                        .gpu_upload_bytes = 4,
+                                        .asset_miss_count = 1,
+                                        .pop_in_count = 1},
+                                       {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
+                                        .last_touched_frame = 1,
+                                        .io_bytes_read = 2,
+                                        .decompressed_bytes = 2,
+                                        .cpu_time_us = 3,
+                                        .gpu_upload_bytes = 2,
+                                        .asset_miss_count = 0,
+                                        .pop_in_count = 0},
+                                       {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3},
+                                        .last_touched_frame = 30,
+                                        .io_bytes_read = 3,
+                                        .decompressed_bytes = 3,
+                                        .cpu_time_us = 5,
+                                        .gpu_upload_bytes = 3,
+                                        .asset_miss_count = 0,
+                                        .pop_in_count = 0},
+                                   },
+                               .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2}},
+                           });
+
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::eviction_required);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.safe_point_required);
+    MK_REQUIRE(plan.resident_package_count == 3);
+    MK_REQUIRE(plan.resident_asset_record_count == 3);
+    MK_REQUIRE(plan.estimated_resident_bytes == 9);
+    MK_REQUIRE(plan.content_budget_bytes == 5);
+    MK_REQUIRE(plan.package_budget_count == 2);
+    MK_REQUIRE(plan.io_bytes_read == 9);
+    MK_REQUIRE(plan.decompressed_bytes == 9);
+    MK_REQUIRE(plan.cpu_time_us == 15);
+    MK_REQUIRE(plan.gpu_upload_bytes == 9);
+    MK_REQUIRE(plan.asset_miss_count == 1);
+    MK_REQUIRE(plan.pop_in_count == 1);
+    MK_REQUIRE(plan.lru_candidate_mount_ids.size() == 2);
+    MK_REQUIRE(plan.lru_candidate_mount_ids[0] == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1});
+    MK_REQUIRE(plan.lru_candidate_mount_ids[1] == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3});
+    MK_REQUIRE(plan.recommended_eviction_mount_ids.size() == 1);
+    MK_REQUIRE(plan.recommended_eviction_mount_ids[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1});
+    MK_REQUIRE(plan.rows.size() == 3);
+    MK_REQUIRE(plan.rows[0].recommended_eviction);
+    MK_REQUIRE(plan.rows[1].protected_from_eviction);
+    MK_REQUIRE(!plan.rows[1].eviction_candidate);
+    MK_REQUIRE(!plan.rows[2].recommended_eviction);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(!plan.background_read_execution_invoked);
+    MK_REQUIRE(!plan.package_script_execution_invoked);
+    MK_REQUIRE(!plan.external_process_invoked);
+    MK_REQUIRE(!plan.runtime_source_parsing_invoked);
+    MK_REQUIRE(!plan.renderer_rhi_residency_invoked);
+    MK_REQUIRE(!plan.native_handle_exposed);
+}
+
+MK_TEST("runtime package residency policy counts overridden resident payloads toward high water limits") {
+    const auto texture = mirakana::AssetId::from_name("textures/shared");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11},
+                .label = "old-visible-overridden",
+                .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1}, "oldold")),
+            })
+            .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12},
+                       .label = "new-visible",
+                       .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2}, "n")),
+                   })
+                   .succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_package_residency_policy(
+        mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                       .max_resident_content_bytes = 2,
+                       .max_resident_asset_records = 2,
+                       .max_resident_packages = 2,
+                       .safe_point_required = true,
+                       .telemetry_rows =
+                           {
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11},
+                                .last_touched_frame = 1},
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12},
+                                .last_touched_frame = 20},
+                           },
+                   });
+
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::eviction_required);
+    MK_REQUIRE(plan.estimated_resident_bytes == 7);
+    MK_REQUIRE(plan.resident_asset_record_count == 2);
+    MK_REQUIRE(plan.lru_candidate_mount_ids.size() == 2);
+    MK_REQUIRE(plan.lru_candidate_mount_ids[0] == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(plan.lru_candidate_mount_ids[1] == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12});
+    MK_REQUIRE(plan.recommended_eviction_mount_ids.size() == 1);
+    MK_REQUIRE(plan.recommended_eviction_mount_ids[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(plan.rows[0].resident_bytes == 6);
+    MK_REQUIRE(plan.rows[1].resident_bytes == 1);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("runtime package residency policy rejects ambiguous telemetry and unsupported execution claims") {
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+                       .label = "base",
+                       .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+
+    const auto missing_telemetry = mirakana::runtime::plan_runtime_package_residency_policy(
+        mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                       .max_resident_content_bytes = 64,
+                       .max_resident_asset_records = 1,
+                       .max_resident_packages = 1,
+                       .safe_point_required = true,
+                   });
+    MK_REQUIRE(missing_telemetry.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::invalid_descriptor);
+    MK_REQUIRE(!missing_telemetry.succeeded());
+    MK_REQUIRE(missing_telemetry.diagnostics.size() == 1);
+    MK_REQUIRE(missing_telemetry.diagnostics[0].code == "missing-mount-telemetry");
+
+    const auto unsupported = mirakana::runtime::plan_runtime_package_residency_policy(
+        mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                       .max_resident_content_bytes = 64,
+                       .max_resident_asset_records = 1,
+                       .max_resident_packages = 1,
+                       .safe_point_required = true,
+                       .telemetry_rows =
+                           {
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+                                .last_touched_frame = 4},
+                           },
+                       .request_background_read_execution = true,
+                       .request_package_script_execution = true,
+                       .request_external_process = true,
+                       .request_runtime_source_parsing = true,
+                       .request_renderer_rhi_residency = true,
+                       .request_native_handle_access = true,
+                   });
+    MK_REQUIRE(unsupported.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::unsupported_request);
+    MK_REQUIRE(!unsupported.succeeded());
+    MK_REQUIRE(unsupported.diagnostics.size() == 6);
+    MK_REQUIRE(!unsupported.background_read_execution_invoked);
+    MK_REQUIRE(!unsupported.package_script_execution_invoked);
+    MK_REQUIRE(!unsupported.external_process_invoked);
+    MK_REQUIRE(!unsupported.runtime_source_parsing_invoked);
+    MK_REQUIRE(!unsupported.renderer_rhi_residency_invoked);
+    MK_REQUIRE(!unsupported.native_handle_exposed);
+}
+
+MK_TEST("runtime package residency policy reports budget unreachable when protected mounts block eviction") {
+    const auto large = mirakana::AssetId::from_name("textures/large");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 8},
+                       .label = "large",
+                       .package = make_package(make_record(large, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1},
+                                                           "large payload")),
+                   })
+                   .succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_package_residency_policy(
+        mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                       .max_resident_content_bytes = 4,
+                       .max_resident_asset_records = 1,
+                       .max_resident_packages = 1,
+                       .safe_point_required = true,
+                       .telemetry_rows =
+                           {
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 8},
+                                .last_touched_frame = 2},
+                           },
+                       .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 8}},
+                   });
+
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::budget_unreachable);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.lru_candidate_mount_ids.empty());
+    MK_REQUIRE(plan.recommended_eviction_mount_ids.empty());
+    MK_REQUIRE(plan.diagnostics.size() == 1);
+    MK_REQUIRE(plan.diagnostics[0].code == "resident-budget-unreachable");
+}
+
 int main() {
     return mirakana::test::run_all();
 }
