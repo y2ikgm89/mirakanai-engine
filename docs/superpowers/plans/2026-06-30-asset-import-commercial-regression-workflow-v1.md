@@ -13,17 +13,19 @@
 ## Authoring Status
 
 - Date: 2026-07-01.
-- Status: candidate implementation plan with Tasks 1-12 implemented as the foundation and Task 13 host-independent runner CLI/wrapper gate implemented. Task 14 is the next implementable candidate and is now specified as a report-driven failure diagnosis/operator triage loop. Task 13 real-corpus `-RequireReady` execution plus Tasks 15-17 remain the commercial-operation closeout and are not selected by `currentActivePlan`.
+- Status: candidate implementation plan with Tasks 1-14 implemented as the host-independent foundation plus Task 16 implemented as the visible native Assets panel smoke. Task 13 real-corpus `-RequireReady` execution, Task 15 real-corpus reimport/diff/preview loops, and Task 17 commercial evidence promotion remain the commercial-operation closeout and are not selected by `currentActivePlan`.
 - Selected project coordinate convention: right-handed, `+Y` up, meters, matching the current `AssetImportPresets.v1` and `AssetCoordinateNormalizationPlan` implementation.
-- Current readiness estimate after the 2026-07-01 re-audit: core design and safe import contract about 90%, visible Assets panel integration 70-80%, whole commercial asset browser/import regression product 55-60% and closer to 60% after Task 13. These are planning estimates only; no readiness counter changes until Task 17 evidence lands.
+- Current readiness estimate after the 2026-07-01 Task 16 implementation: core design and safe import contract about 90%, visible Assets panel integration 80-85%, whole commercial asset browser/import regression product about 60%. These are planning estimates only; no readiness counter changes until Task 17 real-corpus evidence lands.
 - Current hard blocker: no approved large real-asset corpus has been run through `tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady`, and the optional `asset-importers` lane still needs a dependency-ready host where `tools/bootstrap-deps.ps1 -Feature asset-importers` and `tools/build-asset-importers.ps1` pass.
 
 ## Sources Reviewed
 
 - Project files: `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/007-importerCapabilities.json`, `engine/assets/include/mirakana/assets/asset_import_presets.hpp`, `engine/assets/include/mirakana/assets/asset_import_pipeline.hpp`, `engine/assets/include/mirakana/assets/asset_import_provenance.hpp`, `engine/assets/include/mirakana/assets/asset_import_production_review.hpp`, `engine/tools/include/mirakana/tools/asset_coordinate_normalization.hpp`, `engine/tools/include/mirakana/tools/asset_import_tool.hpp`, `engine/tools/include/mirakana/tools/asset_import_adapters.hpp`, `engine/tools/include/mirakana/tools/gltf_*`, `editor/core/include/mirakana/editor/asset_browser_production.hpp`, `tests/unit/tools_tests.cpp`, and `tests/unit/editor_core_tests.cpp`.
 - 2026-07-01 project re-audit files for Task 14: `engine/assets/include/mirakana/assets/asset_import_regression_corpus.hpp`, `engine/assets/src/asset_import_regression_corpus.cpp`, `engine/tools/include/mirakana/tools/asset_import_regression_runner.hpp`, `engine/tools/asset/asset_import_regression_runner.cpp`, `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`, `editor/core/src/asset_import_regression_workflow.cpp`, `tests/unit/asset_import_regression_tests.cpp`, `tests/unit/editor_core_tests.cpp`, `tools/run-asset-import-regression-corpus.ps1`, and `tools/validate-asset-import-regression-corpus.ps1`.
+- 2026-07-01 Task 16 implementation files: `editor/src/native_editor_launch.*`, `editor/src/native_editor_app.cpp`, `editor/src/first_party_editor_document.*`, `editor/src/main.cpp`, and `tests/unit/editor_native_shell_tests.cpp`.
 - Context7 `/spnda/fastgltf`: `fastgltf::Parser`, `GltfDataBuffer`, `Options::LoadExternalBuffers`, `Options::LoadExternalImages`, `Options::DecomposeNodeMatrices`, `Options::GenerateMeshIndices`, `fastgltf::validate`, accessor iteration, material/image inspection, and parser reuse constraints.
 - Context7 `/kitware/cmake`: add focused executables/tests with `add_executable`, `target_link_libraries(... PRIVATE ...)`, and `add_test`; use imported/library targets where dependency packages already exist and do not make CMake configure install external packages.
+- Context7 `/kitware/cmake`: CMake/CTest presets support `cmake --preset <preset>`, `cmake --build --preset <preset> --target <target>`, and `ctest --preset <preset> -R <regex>` style focused validation; the repository wrappers keep those official entrypoints normalized.
 - Context7 `/microsoftdocs/powershell-docs`: validation scripts use explicit parameters, `$ErrorActionPreference = 'Stop'`, deterministic `Write-Output` counters, `Write-Error` for failed checks, and `ShouldProcess` only for host-visible mutations. The Task 14 operator-loop check script is read/validate-only and must not mutate source/project outputs.
 - Context7 `/khronosgroup/ktx-software`: `ktxTexture2_CreateFromNamedFile`, `ktxTexture2_NeedsTranscoding`, `ktxTexture2_TranscodeBasis`, level/layer/face/dimension metadata, selected transcode targets, and native handle isolation.
 - Context7 `/mackron/miniaudio`: `ma_decoder_init_file`, `ma_decoder_init_memory`, `ma_decoder_read_pcm_frames`, `ma_data_source_get_length_in_pcm_frames`, `ma_decoder_seek_to_pcm_frame`, `ma_decoder_uninit`, WAV/FLAC/MP3 decoder availability, and private decoder lifetime boundaries.
@@ -543,7 +545,7 @@ Current validation evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tool
 
 ### Task 14: Failure Diagnosis And Operator Triage Loop
 
-**Status:** implemented locally; final slice validation and publication are in progress. This task is host-independent and validated with synthetic first-party reports before any real corpus is available.
+**Status:** implemented and validated with synthetic first-party reports. This task is host-independent and does not require a real corpus.
 
 **Design decision:** keep `GameEngine.AssetImportRegressionReport.v1` as raw measured evidence and add a separate first-party `GameEngine.AssetImportRegressionTriage.v1` value contract. This avoids mixing importer evidence with operator decisions, keeps failure diagnosis deterministic, and lets Task 15 consume triage rows without making editor-core execute importers.
 
@@ -671,7 +673,7 @@ Implementation steps:
 - [x] Add the `asset_import_regression_triage.hpp` public value contract exactly as listed above and include only first-party asset/report headers plus standard-library headers.
 - [x] Add `asset_import_regression_triage.cpp` with label functions, a full `switch` for every `AssetImportRegressionDiagnosticCode`, deterministic triage construction, and LF-only deterministic text serialization using the same `key=value` style as `asset_import_regression_corpus.cpp`.
 - [x] Make `make_asset_import_regression_triage_v1` preserve report row order, copy report evidence fields unchanged, compute counts from rows, set `ready_for_operator_review=true` when `row_count > 0`, and reject duplicate/unsupported serialized triage keys during deserialization.
-- [ ] Generate `repro_command_id` as `asset_import_regression.repro.<sanitized-asset-id>` and `repro_command` as:
+- [x] Generate `repro_command_id` as `asset_import_regression.repro.<sanitized-asset-id>` and `repro_command` as:
 
 ```text
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -OutputRoot out/asset-import-regression/staging/<run-id>
@@ -737,7 +739,7 @@ Slice completion rules:
 
 ### Task 15: Batch Reimport, Preset Diff, And Axis/Unit Preview On Real Corpus
 
-**Status:** planned, not implemented.
+**Status:** planned, host-gated by the approved large corpus and optional `asset-importers` dependency host. Task 14 already added retained triage command enablement for synthetic reports; this task is limited to real-corpus retained evidence and apply/diff/preview closeout.
 
 **Files:**
 - Modify: `engine/assets/include/mirakana/assets/asset_import_batch_reimport.hpp`
@@ -756,7 +758,7 @@ Slice completion rules:
   - axis/unit preview uses the same normalization helper as import and emits before/after bounds, basis triad, unit scale, sample vertices, sample joints, and unsupported-source blockers;
   - no editor-core command executes importers, package scripts, validation recipes, or native handles.
 - [ ] Add real-corpus regression fixtures by retaining compact `*.gereport` and `*.gepreview` text outputs only. Do not commit third-party source assets or large binary outputs.
-- [ ] Promote `preset_diff_required=true` and `axis_unit_preview_required=true` report rows into Source Pulse command enablement and tests.
+- [ ] Consume retained real-corpus `preset_diff_required=true` and `axis_unit_preview_required=true` rows through the already implemented Source Pulse command enablement, then retain real-corpus diff/preview output evidence without committing third-party sources or large binaries.
 
 Required validation:
 
@@ -768,17 +770,20 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 ### Task 16: Visible Assets Panel Commercial Workflow Smoke
 
-**Status:** planned, not implemented.
+**Status:** implemented and validated with synthetic first-party retained reports plus native shell smoke. This task is host-independent and does not require a real corpus.
 
 **Files:**
 - Modify: `editor/src/native_editor_app.cpp`
+- Modify: `editor/src/native_editor_launch.hpp`
+- Modify: `editor/src/native_editor_launch.cpp`
+- Modify: `editor/src/first_party_editor_document.hpp`
 - Modify: `editor/src/first_party_editor_document.cpp`
-- Modify: `editor/src/native_editor_smoke.cpp`
+- Modify: `editor/src/main.cpp`
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 - Modify only if retained ids become static needles: `tools/check-ai-integration-147-asset-import-regression-corpus.ps1`
 
-- [ ] Add shell-owned import-regression workflow handoff that reads retained corpus/report text from a project-selected path and feeds `EditorAssetImportRegressionWorkflowDesc`. It must not run importers from `editor/core`.
-- [ ] Extend editor smoke output with exact counters:
+- [x] Add shell-owned import-regression workflow handoff that reads retained report text from `--asset-import-regression-report <project-relative-report>`, sanitizes visible report rows, derives `GameEngine.AssetImportRegressionTriage.v1`, and feeds `EditorAssetImportRegressionWorkflowDesc`. It must not run importers from `editor/core`.
+- [x] Extend editor smoke output with exact counters:
 
 ```text
 editor_asset_import_regression_workflow_visible=1
@@ -792,13 +797,15 @@ editor_asset_import_regression_native_handles_exposed=0
 editor_asset_import_regression_external_engine_claim=0
 ```
 
-- [ ] Add native-shell tests proving a retained ready report enables open-report/preset-diff/axis-preview rows, a failed legal report disables reimport, and no absolute host corpus paths are exposed in retained UI text.
+- [x] Add native-shell tests proving safe project-relative launch parsing, unsafe path rejection, retained report projection into `asset_browser.import_workflow.*`, preset-diff/axis-preview command enablement, legal-blocked reimport disablement, and no absolute host corpus paths exposed in retained UI text.
 
 Required validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 out\build\desktop-editor\editor\Debug\MK_editor.exe --smoke-frames 1 --no-user-config
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests
 ```
 
 ### Task 17: Commercial Evidence Promotion And Documentation Sync
@@ -863,8 +870,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_editor_core_tests` | Asset triage and editor-core retained row C++ contract | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_regression_tests|MK_editor_core_tests"` | Asset triage and editor-core retained row C++ contract | Pass; 2/2 tests passed |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_regression_triage.cpp,editor/core/src/asset_import_regression_workflow.cpp,tests/unit/asset_import_regression_tests.cpp,tests/unit/editor_core_tests.cpp` | Focused C++ static analysis | Pass; 4 files checked |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/src/native_editor_launch.cpp,editor/src/native_editor_app.cpp,editor/src/first_party_editor_document.cpp,tests/unit/editor_native_shell_tests.cpp` | Task 16 focused C++ static analysis | Pass; 4 files checked; `editor/src/main.cpp` is outside the `dev` compile database and is covered by `tools/build-editor.ps1` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` | Task 16 visible native Assets panel smoke C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` | Task 16 visible native Assets panel smoke C++ contract | Pass; 1/1 test target passed |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` | Task 16 native shell executable and smoke lane | Pass; `MK_editor.exe`, `MK_editor_native_shell_tests`, and desktop-editor tests passed |
+| `out\build\desktop-editor\editor\Debug\MK_editor.exe --smoke-frames 1 --no-user-config` | Task 16 direct shell smoke counters | Pass; emitted `editor_asset_import_regression_*` counters with no report path, workflow rows `0`, and importer/native-handle/external-engine counters `0` |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 161/161 tests passed |
-| Tasks 13 real-corpus `-RequireReady` remainder and Tasks 15-17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |
+| Tasks 13 real-corpus `-RequireReady` remainder, Task 15 real-corpus loops, and Task 17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |

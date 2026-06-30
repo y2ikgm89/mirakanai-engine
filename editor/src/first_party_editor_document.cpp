@@ -10,6 +10,7 @@
 #include "mirakana/editor/editor_rich_text.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -172,6 +173,43 @@ command_plan_executes_package_scripts(const NativeEditorEnvironmentArtistWorkflo
 [[nodiscard]] std::uint32_t count_legacy_asset_rows(const ui::UiDocument& document) {
     return static_cast<std::uint32_t>(std::ranges::count_if(
         document.traverse(), [](const ui::Element& element) { return element.id.value.starts_with("assets."); }));
+}
+
+[[nodiscard]] bool asset_browser_command_enabled(const EditorAssetBrowserProductionModel& model,
+                                                 std::string_view command_id) noexcept {
+    return std::ranges::any_of(model.command_rows,
+                               [command_id](const auto& row) { return row.command_id == command_id && row.enabled; });
+}
+
+[[nodiscard]] std::uint32_t
+count_asset_import_regression_failed_rows(const EditorAssetBrowserProductionModel& model) noexcept {
+    const auto triage_failures = static_cast<std::uint32_t>(std::ranges::count_if(
+        model.import_workflow_rows, [](const auto& row) { return row.category_label == "triage_failure"; }));
+    if (triage_failures > 0U) {
+        return triage_failures;
+    }
+    return static_cast<std::uint32_t>(std::ranges::count_if(
+        model.import_workflow_rows, [](const auto& row) { return row.category_label == "report" && row.blocked; }));
+}
+
+[[nodiscard]] bool contains_external_engine_claim_label(std::string_view value) noexcept {
+    constexpr std::array claim_terms{"Unity",         "Unreal",      "Godot",  "Asset Store", "Fab",
+                                     "compatibility", "equivalence", "parity", "replacement"};
+    return std::ranges::any_of(claim_terms,
+                               [value](std::string_view term) { return value.find(term) != std::string_view::npos; });
+}
+
+[[nodiscard]] bool
+asset_import_regression_external_engine_claim(const EditorAssetBrowserProductionModel& model) noexcept {
+    return std::ranges::any_of(model.import_workflow_rows, [](const auto& row) {
+        return contains_external_engine_claim_label(row.category_label) ||
+               contains_external_engine_claim_label(row.asset_id) ||
+               contains_external_engine_claim_label(row.asset_key_label) ||
+               contains_external_engine_claim_label(row.source_path) ||
+               contains_external_engine_claim_label(row.status_label) ||
+               contains_external_engine_claim_label(row.detail_label) ||
+               contains_external_engine_claim_label(row.diagnostic);
+    });
 }
 
 void append_environment_artist_workflow_command_plan_rows(ui::UiDocument& document, const ui::ElementId& root,
@@ -723,6 +761,24 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .editor_asset_browser_source_pulse_rows = static_cast<std::uint32_t>(asset_browser.rows.size()),
         .editor_asset_browser_hardcoded_rows = count_legacy_asset_rows(document.document),
         .editor_asset_browser_native_handles_exposed = asset_browser.exposes_native_handles,
+        .editor_asset_import_regression_workflow_visible =
+            !asset_browser.import_workflow_rows.empty() &&
+            document.document.find(ui::ElementId{"asset_browser.import_workflow"}) != nullptr,
+        .editor_asset_import_regression_workflow_rows =
+            static_cast<std::uint32_t>(asset_browser.import_workflow_rows.size()),
+        .editor_asset_import_regression_failed_rows = count_asset_import_regression_failed_rows(asset_browser),
+        .editor_asset_import_regression_reimport_command_enabled =
+            asset_browser_command_enabled(asset_browser, "asset_browser.import.batch_reimport"),
+        .editor_asset_import_regression_preset_diff_command_enabled =
+            asset_browser_command_enabled(asset_browser, "asset_browser.import.preset_diff"),
+        .editor_asset_import_regression_axis_unit_preview_command_enabled =
+            asset_browser_command_enabled(asset_browser, "asset_browser.import.axis_unit_preview"),
+        .editor_asset_import_regression_importers_executed_in_core = std::ranges::any_of(
+            asset_browser.import_workflow_rows, [](const auto& row) { return row.executes_import_tools; }),
+        .editor_asset_import_regression_native_handles_exposed = std::ranges::any_of(
+            asset_browser.import_workflow_rows, [](const auto& row) { return row.exposes_native_handles; }),
+        .editor_asset_import_regression_external_engine_claim =
+            asset_import_regression_external_engine_claim(asset_browser),
         .runtime_ui_editor_panel_visible =
             app.has_native_panel("runtime_ui_editor") && app.is_panel_visible(PanelId::runtime_ui_editor),
         .runtime_ui_editor_hierarchy_rows = static_cast<std::uint32_t>(runtime_ui.hierarchy_rows.size()),

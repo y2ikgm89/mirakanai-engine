@@ -145,6 +145,24 @@ int main(int argc, char** argv) {
             << "editor_asset_browser_hardcoded_rows=" << smoke_counters.editor_asset_browser_hardcoded_rows << '\n'
             << "editor_asset_browser_native_handles_exposed="
             << (smoke_counters.editor_asset_browser_native_handles_exposed ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_workflow_visible="
+            << (smoke_counters.editor_asset_import_regression_workflow_visible ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_workflow_rows="
+            << smoke_counters.editor_asset_import_regression_workflow_rows << '\n'
+            << "editor_asset_import_regression_failed_rows="
+            << smoke_counters.editor_asset_import_regression_failed_rows << '\n'
+            << "editor_asset_import_regression_reimport_command_enabled="
+            << (smoke_counters.editor_asset_import_regression_reimport_command_enabled ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_preset_diff_command_enabled="
+            << (smoke_counters.editor_asset_import_regression_preset_diff_command_enabled ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_axis_unit_preview_command_enabled="
+            << (smoke_counters.editor_asset_import_regression_axis_unit_preview_command_enabled ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_importers_executed_in_core="
+            << (smoke_counters.editor_asset_import_regression_importers_executed_in_core ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_native_handles_exposed="
+            << (smoke_counters.editor_asset_import_regression_native_handles_exposed ? 1 : 0) << '\n'
+            << "editor_asset_import_regression_external_engine_claim="
+            << (smoke_counters.editor_asset_import_regression_external_engine_claim ? 1 : 0) << '\n'
             << "editor_shell_resizes=" << result.resize_count << '\n'
             << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n'
             << "editor_shell_renderer_boxes_submitted=" << result.renderer_boxes_submitted << '\n'

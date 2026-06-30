@@ -83,9 +83,11 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `make_editor_asset_import_regression_workflow_retained_ui_desc`; retained rows use
   `asset_browser.import_workflow.*`, and reviewed command ids are `asset_browser.importer_corpus.run`,
   `asset_browser.importer_corpus.open_report`, `asset_browser.import.batch_reimport`,
-  `asset_browser.import.preset_diff`, and `asset_browser.import.axis_unit_preview`. Keep these value-only:
-  no editor-core importer execution, package scripts, validation recipes, package mutation, native handles,
-  arbitrary importer plugins, external downloads, or Unity/Unreal/Godot compatibility claims.
+  `asset_browser.import.preset_diff`, and `asset_browser.import.axis_unit_preview`. The native shell may read a safe
+  `--asset-import-regression-report <project-relative-report>` path, sanitize retained report rows, and emit
+  `editor_asset_import_regression_*` smoke counters. Keep these value-only: no editor-core importer execution,
+  package scripts, validation recipes, package mutation, native handles, arbitrary importer plugins, absolute host path
+  leakage, external downloads, or Unity/Unreal/Godot compatibility claims.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.
