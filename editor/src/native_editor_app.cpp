@@ -1223,7 +1223,7 @@ struct NativeEditorApp::Impl {
 };
 
 NativeEditorApp::NativeEditorApp(NativeEditorLaunchOptions options)
-    : options_{options}, impl_{std::make_unique<Impl>(options_)} {}
+    : options_{std::move(options)}, impl_{std::make_unique<Impl>(options_)} {}
 
 NativeEditorApp::~NativeEditorApp() = default;
 
