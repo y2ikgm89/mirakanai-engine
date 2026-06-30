@@ -130,11 +130,32 @@ struct EditorAssetBrowserRetainedLegalRow {
     bool blocked{true};
 };
 
+struct EditorAssetBrowserImportWorkflowRow {
+    std::string id;
+    std::string category_label;
+    std::string asset_id;
+    std::string asset_key_label;
+    std::string source_path;
+    std::string status_label;
+    std::string detail_label;
+    std::string diagnostic;
+    bool ready{false};
+    bool blocked{true};
+    bool selected{false};
+    bool host_owned{true};
+    bool mutates_project_files{false};
+    bool executes_import_tools{false};
+    bool executes_package_scripts{false};
+    bool executes_validation_recipes{false};
+    bool exposes_native_handles{false};
+};
+
 struct EditorAssetBrowserRetainedUiDesc {
     std::string query_text;
     std::string query_status_label{"Asset browser query empty"};
     std::vector<EditorAssetBrowserRetainedCommandRow> command_rows;
     std::vector<EditorAssetBrowserRetainedLegalRow> legal_rows;
+    std::vector<EditorAssetBrowserImportWorkflowRow> import_workflow_rows;
 };
 
 struct EditorAssetBrowserPackageReviewRow {
@@ -197,6 +218,7 @@ struct EditorAssetBrowserProductionModel {
     std::string query_status_label{"Asset browser query empty"};
     std::vector<EditorAssetBrowserRetainedCommandRow> command_rows;
     std::vector<EditorAssetBrowserRetainedLegalRow> legal_rows;
+    std::vector<EditorAssetBrowserImportWorkflowRow> import_workflow_rows;
     EditorAssetBrowserPackageReviewModel package_review;
     std::vector<std::string> diagnostics;
     bool mutates{false};

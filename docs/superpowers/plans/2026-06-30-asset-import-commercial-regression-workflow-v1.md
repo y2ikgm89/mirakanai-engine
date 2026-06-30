@@ -301,41 +301,73 @@ Each failure row must include `asset_id`, `source_path`, `source_sha256`, `prese
 
 ### Task 6: Batch Reimport Planner And Transaction Staging
 
-- [ ] Add `engine/assets/include/mirakana/assets/asset_import_batch_reimport.hpp`.
-- [ ] Add `engine/assets/src/asset_import_batch_reimport.cpp`.
-- [ ] Add `engine/tools/include/mirakana/tools/asset_import_batch_reimport_tool.hpp`.
-- [ ] Add `engine/tools/asset/asset_import_batch_reimport_tool.cpp`.
-- [ ] Add tests in `tests/unit/asset_import_regression_tests.cpp` and `tests/unit/editor_core_tests.cpp`.
+- [x] Add `engine/assets/include/mirakana/assets/asset_import_batch_reimport.hpp`.
+- [x] Add `engine/assets/src/asset_import_batch_reimport.cpp`.
+- [x] Add `engine/tools/include/mirakana/tools/asset_import_batch_reimport_tool.hpp`.
+- [x] Add `engine/tools/asset/asset_import_batch_reimport_tool.cpp`.
+- [x] Add planner, executor, and editor-facing dry-run row tests in `tests/unit/asset_import_regression_tests.cpp`.
 
 Execution rules: dry-run is mandatory before apply; apply writes to `out/asset-import-regression/staging/<run-id>/` first; project outputs are replaced only after all selected rows pass hash, legal, preset, importer, and output validation; failed apply leaves project outputs unchanged.
 
+Slice 2026-06-30 candidate 5 adds `AssetImportBatchReimportDesc` / `AssetImportBatchReimportPlan` as value-only asset-layer contracts and `execute_asset_import_batch_reimport` in `MK_tools` as the only staging/apply executor. The planner treats empty selection as explicit select-all, rejects unsafe or duplicate selections, blocks legal-policy diagnostics, source-path drift, missing import actions, failed corpus rows, unsafe paths, and stale output hashes, and only exposes `mutates_project_outputs` when an acknowledged apply is fully allowed. The executor imports selected rows into the staging root first, validates every staged output, then replaces project outputs all-or-nothing; failed validation leaves existing project outputs unchanged.
+
+Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_batch_reimport.cpp,engine/tools/asset/asset_import_batch_reimport_tool.cpp,tests/unit/asset_import_regression_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
+
+Slice gate validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+
 ### Task 7: Preset Diff Engine
 
-- [ ] Add `engine/assets/include/mirakana/assets/asset_import_preset_diff.hpp`.
-- [ ] Add `engine/assets/src/asset_import_preset_diff.cpp`.
-- [ ] Add the files to `engine/assets/CMakeLists.txt`.
-- [ ] Add tests in `tests/unit/asset_import_regression_tests.cpp`.
+- [x] Add `engine/assets/include/mirakana/assets/asset_import_preset_diff.hpp`.
+- [x] Add `engine/assets/src/asset_import_preset_diff.cpp`.
+- [x] Add the files to `engine/assets/CMakeLists.txt`.
+- [x] Add tests in `tests/unit/asset_import_regression_tests.cpp`.
 
 Diff rules: `mesh.unit_scale` and `mesh.up_axis` always mark mesh, morph mesh, skin, and transform animation rows as cooked output changes; texture preset fields map to texture source/cooked/package impacts; unsupported combinations return `review_blocked`; the diff engine never executes importers.
 
+Slice 2026-06-30 candidate 6 adds the value-only `AssetImportPresetDiffDesc` / `AssetImportPresetDiff` API in `MK_assets`. The diff engine compares effective `AssetImportPresets.v1` defaults and per-`AssetKeyV2` overrides against caller-provided asset rows plus an existing `AssetImportPlan`; it never reads source assets, hashes outputs, executes importers, downloads assets, exposes parser/native handles, or claims external-engine compatibility. Mesh coordinate convention changes (`mesh.unit_scale`, `mesh.up_axis`) mark mesh, morph mesh CPU, and transform animation rows as cooked/package output changes. Texture fields map to source-review, cooked-output, and package-output impact rows. Invalid preset combinations, unsupported action kinds, failed/legal latest regression rows, and missing latest regression evidence for affected rows fail closed as `review_blocked`.
+
+Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_preset_diff.cpp,tests/unit/asset_import_regression_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
+
+Slice gate validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+
 ### Task 8: Axis And Unit Preview
 
-- [ ] Add `engine/tools/include/mirakana/tools/asset_axis_unit_preview.hpp`.
-- [ ] Add `engine/tools/asset/asset_axis_unit_preview.cpp`.
-- [ ] Add tests in `tests/unit/asset_import_regression_tests.cpp`.
-- [ ] Wire preview rows into the editor model in Task 9.
+- [x] Add `engine/tools/include/mirakana/tools/asset_axis_unit_preview.hpp`.
+- [x] Add `engine/tools/asset/asset_axis_unit_preview.cpp`.
+- [x] Add tests in `tests/unit/asset_import_regression_tests.cpp`.
+- [x] Wire preview rows into the editor model in Task 9.
 
 Preview rules: use the same normalization helpers as import, include before/after bounds, a basis triad, unit scale, sample vertex/joint rows, and fail closed on unsupported sources.
 
+Slice 2026-06-30 candidate 7 adds `AssetAxisUnitPreviewDesc` / `AssetAxisUnitPreview` in `MK_tools` as a value-only preview over caller-supplied vertex and joint samples. The implementation uses the same `make_asset_coordinate_normalization_plan`, `normalize_asset_position`, `normalize_asset_direction`, and `normalize_asset_rotation` helpers as import/cook, emits source/project bounds, a three-axis basis triad, unit scale, up-axis, sample vertex/joint rows, and fails closed for unsupported action kinds, unsafe source paths, invalid mesh presets, missing samples, and row-budget overages. It does not parse glTF, read source files, execute importers, expose parser/native handles, or copy external-engine preview semantics.
+
+Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/tools/asset/asset_axis_unit_preview.cpp,tests/unit/asset_import_regression_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
+
+Slice gate validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+
 ### Task 9: Editor Asset Browser Workflow Rows
 
-- [ ] Add `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`.
-- [ ] Add `editor/core/src/asset_import_regression_workflow.cpp`.
-- [ ] Add the files to `editor/core/CMakeLists.txt`.
-- [ ] Extend `editor/core/include/mirakana/editor/asset_browser_production.hpp` only with retained row inputs, not importer execution.
-- [ ] Add tests in `tests/unit/editor_core_tests.cpp`.
+- [x] Add `editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp`.
+- [x] Add `editor/core/src/asset_import_regression_workflow.cpp`.
+- [x] Add the files to `editor/CMakeLists.txt`.
+- [x] Extend `editor/core/include/mirakana/editor/asset_browser_production.hpp` only with retained row inputs, not importer execution.
+- [x] Add tests in `tests/unit/editor_core_tests.cpp`.
 
 Required editor command ids: `asset_browser.importer_corpus.run`, `asset_browser.importer_corpus.open_report`, `asset_browser.import.batch_reimport`, `asset_browser.import.preset_diff`, and `asset_browser.import.axis_unit_preview`.
+
+Slice 2026-06-30 candidate 8 adds `EditorAssetImportRegressionWorkflowDesc` /
+`EditorAssetImportRegressionWorkflowModel` in `MK_editor_core` and wires the
+workflow into Source Pulse through `EditorAssetBrowserImportWorkflowRow` retained
+rows. The workflow projects corpus/report evidence, batch reimport plans, preset
+diff rows, and axis/unit preview rows into `asset_browser.import_workflow.*`, and
+exposes the required command ids as value-only reviewed command rows. Editor core
+does not execute importers, parse glTF, mutate project files, run package scripts
+or validation recipes, expose native handles, download external assets, or claim
+Unity/Unreal/Godot compatibility.
+
+Focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/core/src/asset_import_regression_workflow.cpp,editor/core/src/asset_browser_production.cpp,tests/unit/editor_core_tests.cpp`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`.
+
+Slice gate validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests`, and full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 
 ### Task 10: CI, Static Guards, And Validation Recipes
 
@@ -355,6 +387,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regressio
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
+
+`tools/build-asset-importers.ps1` remains a host dependency gate in this session:
+configure reaches the `asset-importers` preset but fails because `SPNGConfig.cmake`
+is not present in the linked `vcpkg_installed` tree. No importer source execution
+claim is made until `tools/bootstrap-deps.ps1 -Feature asset-importers` succeeds
+on a dependency-ready host and the importer lane is rerun.
 
 ### Task 11: Docs, Manifest, And Legal Records
 
@@ -380,12 +418,14 @@ No dependency, feature flag, optional package, or third-party corpus asset was a
 
 ## Final Validation Evidence Table
 
-| Command | Required before completion | Expected result |
+| Command | Required before completion | Observed 2026-06-30 |
 | --- | --- | --- |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Every slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Schema/manifest/static-contract slice | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Manifest/docs/agent-surface slice | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Pass or explicit missing `asset-importers` bootstrap blocker |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Pass on host with approved corpus, otherwise explicit host/legal blocker |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1` | Corpus workflow slice | Pass; first-party fixture corpus has 12 assets, `large_corpus_present=0`, `corpus_ready=0` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_regression_tests` | Asset workflow C++ contract | Pass |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 160/160 tests passed |
