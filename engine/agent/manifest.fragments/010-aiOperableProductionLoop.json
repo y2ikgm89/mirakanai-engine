@@ -2031,6 +2031,85 @@
         "notes": "This loop makes package streaming and residency-budget intent machine-readable for selected host-gated safe-point execution. It relies on existing runtime scene validation and host-owned resource upload gates, does not add command strings, and does not make broad async/background streaming, arbitrary eviction, allocator/GPU budget enforcement, Metal readiness, or renderer quality ready."
       },
       {
+        "id": "reviewed-package-background-read-queue",
+        "status": "ready",
+        "owner": "MK_runtime",
+        "summary": "Selected reviewed package background read queue for RuntimePackageStreamingExecutionDesc rows. It validates descriptors before worker dispatch, reads package candidates through load_runtime_package_candidate_v2 on a caller-owned JobExecutionPool, returns loaded rows in deterministic input order for later caller-owned safe-point adoption, and provides a bounded pending-row service without live mount mutation, catalog refresh, package scripts, external processes, runtime source parsing, renderer/RHI/native handles, DirectStorage execution, GPU memory pressure integration, async-overlap/performance proof, or broad background package streaming claims.",
+        "orderedSteps": [
+          {
+            "id": "select-reviewed-package-background-read-descriptors",
+            "surface": "RuntimePackageStreamingExecutionDesc rows",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Select reviewed descriptors that already satisfy host_gated_safe_point mode, safe_point_required, positive resident budget, .geindex package path, and runtime scene validation evidence."
+          },
+          {
+            "id": "dispatch-reviewed-package-background-reads",
+            "surface": "mirakana::runtime::dispatch_runtime_package_background_reads",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Dispatch candidate package loads through caller-owned JobExecutionPool workers and return RuntimePackageBackgroundLoadedRow values without mounting packages or refreshing catalogs."
+          },
+          {
+            "id": "tick-reviewed-package-background-read-service",
+            "surface": "mirakana::runtime::tick_runtime_package_background_read_service",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Retain pending descriptors across ticks, coalesce duplicate target/package descriptors, respect max_pending_rows and max_dispatch_rows, and return loaded rows for later safe-point adoption."
+          },
+          {
+            "id": "adopt-loaded-package-at-safe-point",
+            "surface": "mirakana::runtime::execute_selected_runtime_package_streaming_safe_point",
+            "status": "ready",
+            "mutates": true,
+            "notes": "Apply loaded rows only through existing main/runtime-owned safe-point package mount, replacement, or unmount APIs after caller review."
+          }
+        ],
+        "requiredManifestFields": [
+          "runtimePackageFiles",
+          "runtimeSceneValidationTargets",
+          "packageStreamingResidencyTargets",
+          "validationRecipes"
+        ],
+        "resultFields": [
+          "input_row_count",
+          "dispatched_row_count",
+          "loaded_row_count",
+          "failed_row_count",
+          "loaded_rows",
+          "diagnostics",
+          "executed_background_worker",
+          "invoked_file_io",
+          "committed",
+          "mutated_mount_set",
+          "invoked_catalog_refresh"
+        ],
+        "blockedExecution": [
+          "live package mount mutation inside background queue",
+          "resident catalog refresh inside background queue",
+          "package scripts",
+          "external process execution",
+          "runtime source parsing",
+          "renderer/RHI residency",
+          "public native/RHI handles",
+          "DirectStorage execution",
+          "GPU memory pressure integration",
+          "async-overlap/performance proof"
+        ],
+        "unsupportedClaims": [
+          "broad async/background package streaming",
+          "autonomous streaming scheduler",
+          "arbitrary eviction",
+          "texture streaming",
+          "allocator/GPU budget enforcement",
+          "public native/RHI handles",
+          "Metal readiness",
+          "general renderer quality",
+          "commercial 2D legal approval"
+        ],
+        "notes": "This loop narrows background package work to reviewed descriptor reads and deterministic loaded-row handoff. It complements, but does not replace, host-gated safe-point package streaming execution and the value-only package residency policy."
+      },
+      {
         "id": "host-gated-package-streaming-execution",
         "status": "host-gated",
         "owner": "MK_runtime",

@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/asset_registry.hpp"
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -1840,6 +1841,205 @@ MK_TEST("runtime package streaming resident unmount commit preserves state on pr
     MK_REQUIRE(mount_set.generation() == previous_mount_generation);
     MK_REQUIRE(mount_set.mounts().size() == 2);
     MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package background read queue dispatches reviewed descriptors through workers") {
+    const auto texture = mirakana::AssetId::from_name("textures/background/player");
+    CountingFileSystem filesystem;
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/background/player.geasset",
+                  "background texture payload");
+    auto first = make_valid_desc(4096);
+    first.target_id = "background-stream-a";
+    auto second = make_valid_desc(4096);
+    second.target_id = "background-stream-b";
+    const std::vector<mirakana::runtime::RuntimePackageStreamingExecutionDesc> rows{first, second};
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "runtime.package.background_read_queue",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 91,
+    });
+
+    const auto result = mirakana::runtime::dispatch_runtime_package_background_reads(
+        filesystem, pool,
+        mirakana::runtime::RuntimePackageBackgroundReadQueueDesc{
+            .reviewed_rows = rows,
+            .frame_index = 91,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.input_row_count == 2U);
+    MK_REQUIRE(result.dispatched_row_count == 2U);
+    MK_REQUIRE(result.loaded_row_count == 2U);
+    MK_REQUIRE(result.failed_row_count == 0U);
+    MK_REQUIRE(result.loaded_rows.size() == 2U);
+    MK_REQUIRE(result.loaded_rows[0].desc.target_id == "background-stream-a");
+    MK_REQUIRE(result.loaded_rows[1].desc.target_id == "background-stream-b");
+    MK_REQUIRE(result.loaded_rows[0].candidate_load.loaded_record_count == 1U);
+    MK_REQUIRE(result.loaded_rows[1].candidate_load.loaded_record_count == 1U);
+    MK_REQUIRE(result.loaded_rows[0].invoked_candidate_load);
+    MK_REQUIRE(result.loaded_rows[1].invoked_candidate_load);
+    MK_REQUIRE(result.invoked_file_io);
+    MK_REQUIRE(result.invoked_candidate_load);
+    MK_REQUIRE(result.executed_streaming);
+    MK_REQUIRE(result.executed_background_worker);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.invoked_catalog_refresh);
+    MK_REQUIRE(!result.executed_package_scripts);
+    MK_REQUIRE(!result.spawned_external_process);
+    MK_REQUIRE(!result.parsed_runtime_source);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(!result.invoked_direct_storage);
+    MK_REQUIRE(!result.applied_gpu_memory_pressure_policy);
+    MK_REQUIRE(!result.proved_async_overlap_performance);
+}
+
+MK_TEST("runtime package background read queue reports load failures without safe point mutation") {
+    CountingFileSystem filesystem;
+    const std::vector<mirakana::runtime::RuntimePackageStreamingExecutionDesc> rows{make_valid_desc(4096)};
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "runtime.package.background_read_queue.failure",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 92,
+    });
+
+    const auto result = mirakana::runtime::dispatch_runtime_package_background_reads(
+        filesystem, pool,
+        mirakana::runtime::RuntimePackageBackgroundReadQueueDesc{
+            .reviewed_rows = rows,
+            .frame_index = 92,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.input_row_count == 1U);
+    MK_REQUIRE(result.dispatched_row_count == 1U);
+    MK_REQUIRE(result.loaded_row_count == 0U);
+    MK_REQUIRE(result.failed_row_count == 1U);
+    MK_REQUIRE(result.loaded_rows.size() == 1U);
+    MK_REQUIRE(!result.loaded_rows[0].candidate_load.succeeded());
+    MK_REQUIRE(!result.diagnostics.empty());
+    MK_REQUIRE(result.invoked_file_io);
+    MK_REQUIRE(result.invoked_candidate_load);
+    MK_REQUIRE(result.executed_background_worker);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.invoked_catalog_refresh);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime package background read service dispatches bounded rows across ticks") {
+    const auto texture = mirakana::AssetId::from_name("textures/background/service");
+    CountingFileSystem filesystem;
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/background/service.geasset",
+                  "background service payload");
+    auto first = make_valid_desc(4096);
+    first.target_id = "background-service-a";
+    auto second = make_valid_desc(4096);
+    second.target_id = "background-service-b";
+    const std::vector<mirakana::runtime::RuntimePackageStreamingExecutionDesc> rows{first, second};
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "runtime.package.background_read_service",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 93,
+    });
+    mirakana::runtime::RuntimePackageBackgroundReadServiceState state;
+
+    const auto first_tick = mirakana::runtime::tick_runtime_package_background_read_service(
+        filesystem, pool, state,
+        mirakana::runtime::RuntimePackageBackgroundReadServiceTickDesc{
+            .reviewed_rows = rows,
+            .max_dispatch_rows = 1,
+            .frame_index = 93,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(first_tick.succeeded());
+    MK_REQUIRE(first_tick.input_row_count == 2U);
+    MK_REQUIRE(first_tick.accepted_row_count == 2U);
+    MK_REQUIRE(first_tick.dispatched_row_count == 1U);
+    MK_REQUIRE(first_tick.loaded_row_count == 1U);
+    MK_REQUIRE(first_tick.pending_row_count_after == 1U);
+    MK_REQUIRE(first_tick.loaded_rows.size() == 1U);
+    MK_REQUIRE(first_tick.loaded_rows[0].desc.target_id == "background-service-a");
+    MK_REQUIRE(state.pending_rows.size() == 1U);
+    MK_REQUIRE(state.pending_rows[0].target_id == "background-service-b");
+    MK_REQUIRE(first_tick.invoked_file_io);
+    MK_REQUIRE(first_tick.executed_background_worker);
+    MK_REQUIRE(!first_tick.committed);
+    MK_REQUIRE(!first_tick.mutated_mount_set);
+    MK_REQUIRE(!first_tick.invoked_catalog_refresh);
+    MK_REQUIRE(!first_tick.touched_renderer_or_rhi_handles);
+
+    const auto second_tick = mirakana::runtime::tick_runtime_package_background_read_service(
+        filesystem, pool, state,
+        mirakana::runtime::RuntimePackageBackgroundReadServiceTickDesc{
+            .reviewed_rows = {},
+            .max_dispatch_rows = 1,
+            .frame_index = 94,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(second_tick.succeeded());
+    MK_REQUIRE(second_tick.input_row_count == 0U);
+    MK_REQUIRE(second_tick.accepted_row_count == 0U);
+    MK_REQUIRE(second_tick.dispatched_row_count == 1U);
+    MK_REQUIRE(second_tick.loaded_row_count == 1U);
+    MK_REQUIRE(second_tick.pending_row_count_after == 0U);
+    MK_REQUIRE(second_tick.loaded_rows.size() == 1U);
+    MK_REQUIRE(second_tick.loaded_rows[0].desc.target_id == "background-service-b");
+    MK_REQUIRE(state.pending_rows.empty());
+}
+
+MK_TEST("runtime package background read service coalesces duplicate pending descriptors") {
+    const auto texture = mirakana::AssetId::from_name("textures/background/duplicate");
+    CountingFileSystem filesystem;
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/background/duplicate.geasset",
+                  "background duplicate payload");
+    auto stale = make_valid_desc(4096);
+    stale.target_id = "background-duplicate";
+    stale.runtime_scene_validation_target_id = "stale-validation";
+    auto reviewed = stale;
+    reviewed.runtime_scene_validation_target_id = "fresh-validation";
+    const std::vector<mirakana::runtime::RuntimePackageStreamingExecutionDesc> rows{reviewed};
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "runtime.package.background_read_service.duplicates",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 95,
+    });
+    mirakana::runtime::RuntimePackageBackgroundReadServiceState state{.pending_rows = {stale}};
+
+    const auto tick = mirakana::runtime::tick_runtime_package_background_read_service(
+        filesystem, pool, state,
+        mirakana::runtime::RuntimePackageBackgroundReadServiceTickDesc{
+            .reviewed_rows = rows,
+            .max_dispatch_rows = 1,
+            .frame_index = 95,
+            .scratch_bytes_per_task = 64,
+        });
+
+    MK_REQUIRE(tick.succeeded());
+    MK_REQUIRE(tick.input_row_count == 1U);
+    MK_REQUIRE(tick.accepted_row_count == 0U);
+    MK_REQUIRE(tick.duplicate_pending_row_count == 1U);
+    MK_REQUIRE(tick.dispatched_row_count == 1U);
+    MK_REQUIRE(tick.loaded_row_count == 1U);
+    MK_REQUIRE(tick.loaded_rows.size() == 1U);
+    MK_REQUIRE(tick.loaded_rows[0].desc.runtime_scene_validation_target_id == "fresh-validation");
+    MK_REQUIRE(state.pending_rows.empty());
 }
 
 MK_TEST("runtime package residency policy plans lru reviewed evictions under high water limits") {

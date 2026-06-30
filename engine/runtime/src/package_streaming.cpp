@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <utility>
@@ -21,6 +22,28 @@ namespace {
 
 void add_diagnostic(RuntimePackageStreamingExecutionResult& result, std::string code, std::string message) {
     result.diagnostics.push_back(RuntimePackageStreamingExecutionDiagnostic{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimePackageBackgroundReadQueueResult& result, std::size_t row_index,
+                    const RuntimePackageStreamingExecutionDesc& desc, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageBackgroundReadDiagnostic{
+        .row_index = row_index,
+        .target_id = desc.target_id,
+        .package_index_path = desc.package_index_path,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimePackageBackgroundReadServiceTickResult& result, std::size_t row_index,
+                    const RuntimePackageStreamingExecutionDesc& desc, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageBackgroundReadDiagnostic{
+        .row_index = row_index,
+        .target_id = desc.target_id,
+        .package_index_path = desc.package_index_path,
         .code = std::move(code),
         .message = std::move(message),
     });
@@ -445,6 +468,79 @@ void add_candidate_load_diagnostics(RuntimePackageStreamingExecutionResult& resu
     }
 }
 
+void copy_descriptor_validation_diagnostics(RuntimePackageBackgroundReadQueueResult& result, std::size_t row_index,
+                                            const RuntimePackageStreamingExecutionDesc& desc,
+                                            const RuntimePackageStreamingExecutionResult& validation) {
+    if (validation.diagnostics.empty()) {
+        add_diagnostic(result, row_index, desc, "invalid-background-read-descriptor",
+                       "background package read descriptor validation failed without diagnostics");
+        return;
+    }
+
+    for (const auto& diagnostic : validation.diagnostics) {
+        add_diagnostic(result, row_index, desc, diagnostic.code, diagnostic.message);
+    }
+}
+
+[[nodiscard]] bool validate_background_read_desc(RuntimePackageBackgroundReadQueueResult& result, std::size_t row_index,
+                                                 const RuntimePackageStreamingExecutionDesc& desc) {
+    RuntimePackageStreamingExecutionResult validation;
+    validation.target_id = desc.target_id;
+    validation.package_index_path = desc.package_index_path;
+    validation.runtime_scene_validation_target_id = desc.runtime_scene_validation_target_id;
+    validation.resident_budget_bytes = desc.resident_budget_bytes;
+    validation.required_preload_asset_count = static_cast<std::uint32_t>(desc.required_preload_assets.size());
+    validation.resident_resource_kind_count = static_cast<std::uint32_t>(desc.resident_resource_kinds.size());
+
+    if (!validate_descriptor(desc, validation)) {
+        copy_descriptor_validation_diagnostics(result, row_index, desc, validation);
+        return false;
+    }
+    if (!desc.runtime_scene_validation_succeeded) {
+        add_diagnostic(result, row_index, desc, "runtime-scene-validation-required",
+                       "validate-runtime-scene-package must succeed before reviewed package background read");
+        return false;
+    }
+    return true;
+}
+
+void copy_background_read_load_diagnostics(RuntimePackageBackgroundReadQueueResult& result,
+                                           const RuntimePackageBackgroundLoadedRow& row) {
+    if (row.candidate_load.succeeded()) {
+        return;
+    }
+
+    if (row.candidate_load.diagnostics.empty()) {
+        add_diagnostic(result, row.row_index, row.desc, "background-package-load-failed",
+                       "background package read failed without package diagnostics");
+        return;
+    }
+
+    for (const auto& diagnostic : row.candidate_load.diagnostics) {
+        auto message = std::string{"background package read failed"};
+        if (!diagnostic.message.empty()) {
+            message += ": ";
+            message += diagnostic.message;
+        }
+        if (!diagnostic.path.empty()) {
+            message += " at ";
+            message += diagnostic.path;
+        }
+        add_diagnostic(result, row.row_index, row.desc, diagnostic.code, std::move(message));
+    }
+}
+
+void copy_background_read_diagnostics(RuntimePackageBackgroundReadServiceTickResult& result) {
+    for (const auto& diagnostic : result.dispatch.diagnostics) {
+        result.diagnostics.push_back(diagnostic);
+    }
+}
+
+[[nodiscard]] bool same_background_read_key(const RuntimePackageStreamingExecutionDesc& lhs,
+                                            const RuntimePackageStreamingExecutionDesc& rhs) noexcept {
+    return lhs.target_id == rhs.target_id && lhs.package_index_path == rhs.package_index_path;
+}
+
 void add_reviewed_evictions_mount_diagnostics(
     RuntimePackageStreamingExecutionResult& result,
     const RuntimePackageCandidateResidentMountReviewedEvictionsResultV2& reviewed_mount) {
@@ -713,6 +809,199 @@ plan_runtime_package_residency_policy(const RuntimeResidentPackageMountSetV2& mo
                           "resident package budget cannot be reached without evicting protected mounts");
     plan.status = RuntimePackageResidencyPolicyStatus::budget_unreachable;
     return plan;
+}
+
+RuntimePackageBackgroundReadQueueResult
+dispatch_runtime_package_background_reads(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                          RuntimePackageBackgroundReadQueueDesc desc) {
+    auto result = RuntimePackageBackgroundReadQueueResult{};
+    result.input_row_count = desc.reviewed_rows.size();
+
+    if (desc.reviewed_rows.empty()) {
+        add_diagnostic(result, 0, RuntimePackageStreamingExecutionDesc{}, "missing-background-read-rows",
+                       "package background read dispatch requires at least one reviewed descriptor");
+        return result;
+    }
+
+    bool all_descriptors_valid = true;
+    for (std::size_t index = 0; index < desc.reviewed_rows.size(); ++index) {
+        all_descriptors_valid =
+            validate_background_read_desc(result, index, desc.reviewed_rows[index]) && all_descriptors_valid;
+    }
+    if (!all_descriptors_valid) {
+        return result;
+    }
+
+    std::vector<std::optional<RuntimePackageBackgroundLoadedRow>> loaded_rows(desc.reviewed_rows.size());
+    std::vector<std::uint8_t> completed(desc.reviewed_rows.size(), 0U);
+    std::mutex loaded_mutex;
+    std::mutex filesystem_mutex;
+
+    const auto worker_count = std::max<std::uint32_t>(execution_pool.worker_threads_started(), 1U);
+    const auto scratch_bytes = std::max<std::uint64_t>(desc.scratch_bytes_per_task, 1U);
+    auto batch = JobExecutionBatchDesc{};
+    batch.tasks.reserve(desc.reviewed_rows.size());
+    for (std::size_t index = 0; index < desc.reviewed_rows.size(); ++index) {
+        const auto row = desc.reviewed_rows[index];
+        batch.tasks.push_back(JobExecutionTaskDesc{
+            .evidence =
+                JobSchedulingWorkItemRow{
+                    .job_id = "package_background_read_" + std::to_string(index),
+                    .worker_id = static_cast<std::uint32_t>(index % worker_count),
+                    .batch_size = 1,
+                    .scratch_bytes = scratch_bytes,
+                    .worker_local_output_count = 1,
+                    .merge_order = static_cast<std::uint64_t>(index),
+                },
+            .body =
+                [index, row, &filesystem, &filesystem_mutex, &loaded_mutex, &loaded_rows,
+                 &completed](JobExecutionContext& context) {
+                    auto candidate_load = [&filesystem, &filesystem_mutex, &row] {
+                        std::scoped_lock lock(filesystem_mutex);
+                        return load_runtime_package_candidate_v2(filesystem, make_package_streaming_candidate(row));
+                    }();
+                    {
+                        std::scoped_lock lock(loaded_mutex);
+                        loaded_rows[index].emplace(RuntimePackageBackgroundLoadedRow{
+                            .row_index = index,
+                            .desc = row,
+                            .candidate_load = std::move(candidate_load),
+                            .worker_id = context.worker_id,
+                            .invoked_candidate_load = true,
+                        });
+                        completed[index] = 1U;
+                    }
+                },
+        });
+    }
+    batch.options.frame_index = desc.frame_index;
+    batch.options.minimum_batch_size = 1;
+    batch.options.maximum_batch_size = std::max<std::uint64_t>(desc.reviewed_rows.size(), 1U);
+
+    result.execution = execution_pool.execute(batch);
+    result.dispatched_row_count = result.execution.tasks_executed;
+    result.executed_background_worker = result.execution.tasks_executed > 0U;
+    result.executed_streaming = result.executed_background_worker;
+    result.invoked_file_io = result.executed_background_worker;
+    result.invoked_candidate_load = result.executed_background_worker;
+
+    if (!result.execution.ready()) {
+        add_diagnostic(result, 0, desc.reviewed_rows.front(), "background-dispatch-failed",
+                       "package background read dispatch did not drain successfully");
+    }
+
+    result.loaded_rows.reserve(desc.reviewed_rows.size());
+    for (std::size_t index = 0; index < loaded_rows.size(); ++index) {
+        if (completed[index] == 0U) {
+            continue;
+        }
+        if (!loaded_rows[index].has_value()) {
+            continue;
+        }
+        if (loaded_rows[index]->candidate_load.succeeded()) {
+            ++result.loaded_row_count;
+        } else {
+            ++result.failed_row_count;
+            copy_background_read_load_diagnostics(result, *loaded_rows[index]);
+        }
+        result.loaded_rows.push_back(std::move(*loaded_rows[index]));
+    }
+    return result;
+}
+
+RuntimePackageBackgroundReadServiceTickResult
+tick_runtime_package_background_read_service(IFileSystem& filesystem, JobExecutionPool& execution_pool,
+                                             RuntimePackageBackgroundReadServiceState& state,
+                                             RuntimePackageBackgroundReadServiceTickDesc desc) {
+    auto result = RuntimePackageBackgroundReadServiceTickResult{};
+    result.input_row_count = desc.reviewed_rows.size();
+    result.pending_row_count_before = state.pending_rows.size();
+
+    auto validation = RuntimePackageBackgroundReadQueueResult{};
+    bool all_descriptors_valid = true;
+    for (std::size_t index = 0; index < state.pending_rows.size(); ++index) {
+        all_descriptors_valid =
+            validate_background_read_desc(validation, index, state.pending_rows[index]) && all_descriptors_valid;
+    }
+    for (std::size_t index = 0; index < desc.reviewed_rows.size(); ++index) {
+        all_descriptors_valid =
+            validate_background_read_desc(validation, index, desc.reviewed_rows[index]) && all_descriptors_valid;
+    }
+    if (!all_descriptors_valid) {
+        result.diagnostics = std::move(validation.diagnostics);
+        result.pending_row_count_after = state.pending_rows.size();
+        return result;
+    }
+
+    auto next_pending = state.pending_rows;
+    for (const auto& row : desc.reviewed_rows) {
+        const auto duplicate =
+            std::ranges::find_if(next_pending, [&row](const RuntimePackageStreamingExecutionDesc& pending) {
+                return same_background_read_key(pending, row);
+            });
+        if (duplicate != next_pending.end()) {
+            ++result.duplicate_pending_row_count;
+            *duplicate = row;
+            continue;
+        }
+
+        if (desc.max_pending_rows > 0U && next_pending.size() >= desc.max_pending_rows) {
+            result.budget_degraded = true;
+            ++result.budget_dropped_request_count;
+            continue;
+        }
+
+        next_pending.push_back(row);
+        ++result.accepted_row_count;
+    }
+
+    const auto dispatch_count =
+        desc.max_dispatch_rows > 0U ? std::min(desc.max_dispatch_rows, next_pending.size()) : next_pending.size();
+    if (dispatch_count == 0U) {
+        state.pending_rows = std::move(next_pending);
+        result.pending_row_count_after = state.pending_rows.size();
+        return result;
+    }
+
+    std::vector<RuntimePackageStreamingExecutionDesc> dispatch_rows;
+    dispatch_rows.reserve(dispatch_count);
+    for (std::size_t index = 0; index < dispatch_count; ++index) {
+        dispatch_rows.push_back(next_pending[index]);
+    }
+
+    result.dispatch =
+        dispatch_runtime_package_background_reads(filesystem, execution_pool,
+                                                  RuntimePackageBackgroundReadQueueDesc{
+                                                      .reviewed_rows = dispatch_rows,
+                                                      .frame_index = desc.frame_index,
+                                                      .scratch_bytes_per_task = desc.scratch_bytes_per_task,
+                                                  });
+    result.loaded_rows = std::move(result.dispatch.loaded_rows);
+    result.dispatched_row_count = result.dispatch.dispatched_row_count;
+    result.loaded_row_count = result.dispatch.loaded_row_count;
+    result.failed_row_count = result.dispatch.failed_row_count;
+    result.invoked_file_io = result.dispatch.invoked_file_io;
+    result.invoked_candidate_load = result.dispatch.invoked_candidate_load;
+    result.executed_streaming = result.dispatch.executed_streaming;
+    result.executed_background_worker = result.dispatch.executed_background_worker;
+    result.committed = result.dispatch.committed;
+    result.mutated_mount_set = result.dispatch.mutated_mount_set;
+    result.invoked_catalog_refresh = result.dispatch.invoked_catalog_refresh;
+    result.executed_package_scripts = result.dispatch.executed_package_scripts;
+    result.spawned_external_process = result.dispatch.spawned_external_process;
+    result.parsed_runtime_source = result.dispatch.parsed_runtime_source;
+    result.touched_renderer_or_rhi_handles = result.dispatch.touched_renderer_or_rhi_handles;
+    result.invoked_direct_storage = result.dispatch.invoked_direct_storage;
+    result.applied_gpu_memory_pressure_policy = result.dispatch.applied_gpu_memory_pressure_policy;
+    result.proved_async_overlap_performance = result.dispatch.proved_async_overlap_performance;
+    copy_background_read_diagnostics(result);
+
+    if (result.executed_background_worker) {
+        next_pending.erase(next_pending.begin(), next_pending.begin() + static_cast<std::ptrdiff_t>(dispatch_count));
+    }
+    state.pending_rows = std::move(next_pending);
+    result.pending_row_count_after = state.pending_rows.size();
+    return result;
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
