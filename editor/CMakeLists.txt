@@ -37,6 +37,7 @@ add_library(MK_editor_core
     core/src/shader_compile.cpp
     core/src/shader_tool_discovery.cpp
     core/src/source_registry_browser.cpp
+    core/src/two_d_commercial_authoring_review.cpp
     core/src/ui_model.cpp
     core/src/viewport.cpp
     core/src/viewport_shader_artifacts.cpp

@@ -165,13 +165,20 @@ Done when: selected 2D package cook output can be rebuilt deterministically from
 
 Goal: provide production-grade authoring models without copying third-party editor expression.
 
-- [ ] Add or extend first-party retained editor models for atlas inspection, tile-set review, tilemap chunk editing, collision overlay review, animation preview, package-diff review, and validation diagnostics.
-- [ ] Keep editor-core state value-only; visible shell widgets must use first-party `mirakana_ui` / `mirakana::ui` and project styling.
+- [x] Add or extend first-party retained editor models for atlas inspection, tile-set review, tilemap chunk editing, collision overlay review, animation preview, package-diff review, and validation diagnostics.
+- [x] Keep editor-core state value-only; visible shell widgets must use first-party `mirakana_ui` / `mirakana::ui` and project styling.
 - [ ] Provide undo/redo revision safety, safe package mutation previews, selected package smoke review, and rejection diagnostics before applying any package update.
 - [ ] Add large-scene navigation and filtering primitives for asset browser/import flows if missing.
 - [ ] Prove authoring workflows using first-party sample content and generated fixtures only.
 
 Likely surfaces: `editor/core/include/mirakana/editor/`, `editor/core/`, `editor/tests/`, `engine/ui/`, `games/sample_2d_desktop_runtime_package/`, editor validation scripts.
+
+Phase 3 validation evidence:
+
+- 2026-06-30 retained authoring review model: added `Editor2DCommercialAuthoringReviewStatus`, `Editor2DCommercialAuthoringReviewSurface`, `Editor2DCommercialAuthoringReviewRowInput`, `Editor2DCommercialAuthoringReviewRow`, `Editor2DCommercialAuthoringReviewDesc`, `Editor2DCommercialAuthoringReviewModel`, `make_editor_2d_commercial_authoring_review_model`, and `make_editor_2d_commercial_authoring_review_ui_model` in `MK_editor_core`. The value-only retained model aggregates atlas inspection, tile-set review, tilemap chunk editing, collision overlay review, animation preview, package-diff review, and validation diagnostics rows from existing sprite/tilemap/preflight diagnostics plus explicit first-party review inputs. It rejects missing retained rows, duplicate retained ids, input mutation/execution/native-handle claims, package mutation, validation execution, runtime source parsing, renderer/RHI handle exposure, native handle exposure, external engine project import, and external engine API parity claims. It does not apply package updates, execute validation, expose native handles, promote runtime source parsing, add visible editor widgets, or claim broad commercial 2D readiness.
+- 2026-06-30 RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed on missing `mirakana/editor/two_d_commercial_authoring_review.hpp`.
+- 2026-06-30 GREEN: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`, and `tools/ctest.ps1 --preset dev -R MK_editor_core_tests --output-on-failure` passed for the retained authoring review model.
+- 2026-06-30 closeout: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files 'editor/core/src/two_d_commercial_authoring_review.cpp,tests/unit/editor_core_tests.cpp'`, `git diff --check`, and full `tools/validate.ps1` passed.
 
 Done when: a reviewer can inspect, edit, validate, and package a non-trivial 2D atlas/tilemap scene through first-party editor models and retained evidence without external engine UI/layout/schema influence.
 

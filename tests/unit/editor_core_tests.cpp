@@ -43,6 +43,7 @@
 #include "mirakana/editor/shader_compile.hpp"
 #include "mirakana/editor/shader_tool_discovery.hpp"
 #include "mirakana/editor/source_registry_browser.hpp"
+#include "mirakana/editor/two_d_commercial_authoring_review.hpp"
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/editor/viewport.hpp"
 #include "mirakana/editor/viewport_shader_artifacts.hpp"
@@ -347,6 +348,14 @@ find_2d_live_iteration_review_row(const std::vector<mirakana::editor::Editor2DLi
                                   std::string_view id) noexcept {
     const auto it = std::ranges::find_if(
         rows, [id](const mirakana::editor::Editor2DLiveIterationEvidenceRow& row) { return row.id == id; });
+    return it == rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::editor::Editor2DCommercialAuthoringReviewRow*
+find_2d_commercial_authoring_review_row(const std::vector<mirakana::editor::Editor2DCommercialAuthoringReviewRow>& rows,
+                                        std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        rows, [id](const mirakana::editor::Editor2DCommercialAuthoringReviewRow& row) { return row.id == id; });
     return it == rows.end() ? nullptr : &(*it);
 }
 
@@ -14616,6 +14625,263 @@ MK_TEST("editor sprite preview diagnostics fail closed sanitized selection id co
     const auto* diagnostic = ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.diagnostics.0"});
     MK_REQUIRE(diagnostic != nullptr);
     MK_REQUIRE(diagnostic->text.label.contains("selected sprite row id"));
+}
+
+MK_TEST(
+    "editor 2d commercial authoring review aggregates retained atlas tilemap collision animation and validation rows") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+    auto
+        sprite_preview =
+            mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+                make_editor_sprite_preview_test_package(),
+                mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                    .selected_sprites =
+                        {
+                            mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                .id = "player.idle",
+                                .target_node_name = "player",
+                                .frame_id = "idle",
+                                .entity_id = "player",
+                                .renderer =
+                                    mirakana::SpriteRendererComponent{
+                                        .sprite = sprite,
+                                        .material = material,
+                                        .size = mirakana::Vec2{.x = 32.0F, .y = 48.0F},
+                                        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                                        .visible = true,
+                                        .sorting_layer = 4,
+                                        .order_in_layer = 12,
+                                        .sorting_space = mirakana::SpriteSortingSpace::camera_space,
+                                        .draw_mode = mirakana::SpriteDrawMode::simple,
+                                        .slice_border = {},
+                                        .tile_size = mirakana::Vec2{.x = 16.0F, .y = 16.0F},
+                                    },
+                            },
+                        },
+                    .hitbox_request =
+                        mirakana::runtime::RuntimeSpriteCollisionHitboxRequest{
+                            .boxes =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionBoxDesc{
+                                        .id = "player.attack",
+                                        .frame_id = "idle",
+                                        .entity_id = "player",
+                                        .kind = mirakana::runtime::RuntimeSpriteCollisionBoxKind::hitbox,
+                                        .center_x = 0.0F,
+                                        .center_y = 0.0F,
+                                        .half_width = 0.5F,
+                                        .half_height = 0.5F,
+                                        .layer = 1U,
+                                        .mask = 1U,
+                                        .gameplay_kind = mirakana::runtime::RuntimeGameplayInteractionKind::damage,
+                                        .gameplay_amount = 1,
+                                        .gameplay_feedback_id = "slash",
+                                        .source_index = 0U,
+                                    },
+                                },
+                            .frame_poses =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionFramePoseDesc{
+                                        .frame_id = "idle",
+                                        .entity_id = "player",
+                                        .world_x = 0.0F,
+                                        .world_y = 0.0F,
+                                        .active = true,
+                                        .source_index = 0U,
+                                    },
+                                },
+                            .max_hit_rows = 4U,
+                        },
+                    .request_package_mutation = false,
+                    .request_renderer_rhi_handle_exposure = false,
+                    .request_native_preview_handles = false,
+                    .request_arbitrary_shell_execution = false,
+                });
+    mirakana::editor::apply_editor_sprite_preview_execution_snapshot(
+        sprite_preview, mirakana::editor::EditorSpritePreviewExecutionSnapshot{
+                            .status = mirakana::editor::EditorSpritePreviewExecutionStatus::ready,
+                            .diagnostic = "host shell rendered first-party preview",
+                            .backend_label = "host-owned",
+                            .display_path_label = "retained-ui",
+                            .frames_rendered = 2U,
+                            .executes = false,
+                            .exposes_native_handles = false,
+                        });
+
+    const auto tilemap_diagnostics =
+        mirakana::editor::make_editor_tilemap_package_diagnostics_model(make_editor_tilemap_test_package());
+    const auto validation_preflight = mirakana::editor::make_editor_ai_validation_recipe_preflight_model(
+        mirakana::editor::EditorAiValidationRecipePreflightDesc{
+            .manifest_validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+            .selected_validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+            .dry_run_plan_rows =
+                {
+                    mirakana::editor::EditorAiValidationRecipeDryRunPlanRow{
+                        .id = "desktop-runtime-2d-package-smoke",
+                        .command_display =
+                            "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 "
+                            "-Mode DryRun -Recipe desktop-runtime-2d-package-smoke",
+                        .host_gates = {},
+                        .blocked_by = {},
+                        .executes = false,
+                        .diagnostic = "reviewed dry-run plan is available",
+                        .argv = {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                                 "tools/run-validation-recipe.ps1", "-Mode", "DryRun", "-Recipe",
+                                 "desktop-runtime-2d-package-smoke"},
+                    },
+                },
+        });
+
+    const auto model = mirakana::editor::make_editor_2d_commercial_authoring_review_model(
+        mirakana::editor::Editor2DCommercialAuthoringReviewDesc{
+            .tilemap_diagnostics = tilemap_diagnostics,
+            .sprite_preview_diagnostics = sprite_preview,
+            .validation_preflight = validation_preflight,
+            .review_rows =
+                {
+                    mirakana::editor::Editor2DCommercialAuthoringReviewRowInput{
+                        .id = "tile-set-review",
+                        .surface = mirakana::editor::Editor2DCommercialAuthoringReviewSurface::tile_set_review,
+                        .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+                        .source_model = "EditorTileSetReviewModel",
+                        .source_row_count = 2U,
+                        .retained_ui_row_ids = {"2d_commercial_authoring_review.tile_set_review.palette"},
+                        .diagnostic = "tile-set palette reviewed against first-party atlas metadata",
+                    },
+                    mirakana::editor::Editor2DCommercialAuthoringReviewRowInput{
+                        .id = "package-diff-review",
+                        .surface = mirakana::editor::Editor2DCommercialAuthoringReviewSurface::package_diff_review,
+                        .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+                        .source_model = "EditorPackageDiffReviewModel",
+                        .source_row_count = 3U,
+                        .retained_ui_row_ids = {"2d_commercial_authoring_review.package_diff_review.added",
+                                                "2d_commercial_authoring_review.package_diff_review.changed"},
+                        .diagnostic = "runtime package diff reviewed without package mutation",
+                    },
+                },
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready);
+    MK_REQUIRE(model.ready_for_authoring_review);
+    MK_REQUIRE(model.rows.size() == 7U);
+    MK_REQUIRE(!model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+
+    const auto* atlas =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.atlas_inspection");
+    const auto* tile_set =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.tile_set_review");
+    const auto* tilemap =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.tilemap_chunk_editing");
+    const auto* collision =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.collision_overlay_review");
+    const auto* animation =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.animation_preview");
+    const auto* package_diff =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.package_diff_review");
+    const auto* validation =
+        find_2d_commercial_authoring_review_row(model.rows, "2d_commercial_authoring_review.validation_diagnostics");
+    MK_REQUIRE(atlas != nullptr);
+    MK_REQUIRE(tile_set != nullptr);
+    MK_REQUIRE(tilemap != nullptr);
+    MK_REQUIRE(collision != nullptr);
+    MK_REQUIRE(animation != nullptr);
+    MK_REQUIRE(package_diff != nullptr);
+    MK_REQUIRE(validation != nullptr);
+    MK_REQUIRE(atlas->retained_ui_row_ids[0] == "sprite_preview_diagnostics.atlas");
+    MK_REQUIRE(tilemap->source_row_count == 1U);
+    MK_REQUIRE(collision->source_row_count == 1U);
+    MK_REQUIRE(animation->source_row_count == 1U);
+    MK_REQUIRE(validation->source_row_count == 1U);
+
+    const auto ui = mirakana::editor::make_editor_2d_commercial_authoring_review_ui_model(model);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.atlas_inspection.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.tile_set_review.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.tilemap_chunk_editing.status"}) !=
+               nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.collision_overlay_review.status"}) !=
+               nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.animation_preview.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.package_diff_review.status"}) !=
+               nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"2d_commercial_authoring_review.validation_diagnostics.status"}) !=
+               nullptr);
+}
+
+MK_TEST("editor 2d commercial authoring review fails closed on unsafe claims duplicates and missing surfaces") {
+    const auto model = mirakana::editor::make_editor_2d_commercial_authoring_review_model(
+        mirakana::editor::Editor2DCommercialAuthoringReviewDesc{
+            .tilemap_diagnostics = mirakana::editor::EditorTilemapPackageDiagnosticsModel{},
+            .sprite_preview_diagnostics = mirakana::editor::EditorSpritePreviewDiagnosticsModel{},
+            .validation_preflight = mirakana::editor::EditorAiValidationRecipePreflightModel{},
+            .review_rows =
+                {
+                    mirakana::editor::Editor2DCommercialAuthoringReviewRowInput{
+                        .id = "tile-set-review",
+                        .surface = mirakana::editor::Editor2DCommercialAuthoringReviewSurface::tile_set_review,
+                        .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+                        .source_model = "UnsafeTileSetReview",
+                        .source_row_count = 1U,
+                        .retained_ui_row_ids = {"duplicate.retained.row"},
+                        .diagnostic = "unsafe row",
+                        .mutates = true,
+                    },
+                    mirakana::editor::Editor2DCommercialAuthoringReviewRowInput{
+                        .id = "tile-set-review-copy",
+                        .surface = mirakana::editor::Editor2DCommercialAuthoringReviewSurface::package_diff_review,
+                        .status = mirakana::editor::Editor2DCommercialAuthoringReviewStatus::ready,
+                        .source_model = "UnsafePackageDiff",
+                        .source_row_count = 1U,
+                        .retained_ui_row_ids = {"duplicate.retained.row"},
+                        .diagnostic = "unsafe duplicate row",
+                        .executes = true,
+                        .exposes_native_handles = true,
+                    },
+                },
+            .request_package_mutation = true,
+            .request_validation_execution = true,
+            .request_runtime_source_parsing = true,
+            .request_renderer_rhi_handle_exposure = true,
+            .request_native_handle_exposure = true,
+            .request_external_engine_project_import = true,
+            .request_external_engine_api_parity_claim = true,
+        });
+
+    auto has_diagnostic = [&model](std::string_view text) {
+        return std::ranges::any_of(model.diagnostics,
+                                   [text](const std::string& diagnostic) { return diagnostic.contains(text); });
+    };
+    auto has_unsupported_claim = [&model](std::string_view text) {
+        return std::ranges::any_of(model.unsupported_claims,
+                                   [text](const std::string& claim) { return claim.contains(text); });
+    };
+
+    MK_REQUIRE(model.status == mirakana::editor::Editor2DCommercialAuthoringReviewStatus::blocked);
+    MK_REQUIRE(!model.ready_for_authoring_review);
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(has_diagnostic("missing atlas inspection"));
+    MK_REQUIRE(has_diagnostic("missing tilemap chunk editing"));
+    MK_REQUIRE(has_diagnostic("missing collision overlay review"));
+    MK_REQUIRE(has_diagnostic("missing animation preview"));
+    MK_REQUIRE(has_diagnostic("missing validation diagnostics"));
+    MK_REQUIRE(has_diagnostic("duplicate retained ui row id"));
+    MK_REQUIRE(has_diagnostic("input row must not mutate"));
+    MK_REQUIRE(has_diagnostic("input row must not execute"));
+    MK_REQUIRE(has_diagnostic("input row must not expose native handles"));
+    MK_REQUIRE(has_unsupported_claim("package mutation"));
+    MK_REQUIRE(has_unsupported_claim("validation execution"));
+    MK_REQUIRE(has_unsupported_claim("runtime source parsing"));
+    MK_REQUIRE(has_unsupported_claim("renderer/RHI handle exposure"));
+    MK_REQUIRE(has_unsupported_claim("native handle exposure"));
+    MK_REQUIRE(has_unsupported_claim("external engine project import"));
+    MK_REQUIRE(has_unsupported_claim("external engine API parity"));
 }
 
 MK_TEST("editor ai package authoring diagnostics reject mutation and execution claims") {
