@@ -10,6 +10,7 @@
 #include "mirakana/runtime/resource_runtime.hpp"
 
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -2086,28 +2087,42 @@ MK_TEST("runtime package residency policy plans lru reviewed evictions under hig
                                         .last_touched_frame = 10,
                                         .io_bytes_read = 4,
                                         .decompressed_bytes = 4,
+                                        .decompression_time_us = 6,
                                         .cpu_time_us = 7,
                                         .gpu_upload_bytes = 4,
+                                        .memory_high_water_bytes = 11,
                                         .asset_miss_count = 1,
                                         .pop_in_count = 1},
                                        {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
                                         .last_touched_frame = 1,
                                         .io_bytes_read = 2,
                                         .decompressed_bytes = 2,
+                                        .decompression_time_us = 3,
                                         .cpu_time_us = 3,
                                         .gpu_upload_bytes = 2,
+                                        .memory_high_water_bytes = 5,
                                         .asset_miss_count = 0,
                                         .pop_in_count = 0},
                                        {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3},
                                         .last_touched_frame = 30,
                                         .io_bytes_read = 3,
                                         .decompressed_bytes = 3,
+                                        .decompression_time_us = 8,
                                         .cpu_time_us = 5,
                                         .gpu_upload_bytes = 3,
+                                        .memory_high_water_bytes = 17,
                                         .asset_miss_count = 0,
                                         .pop_in_count = 0},
                                    },
                                .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2}},
+                               .max_io_bytes_read = 16,
+                               .max_decompressed_bytes = 16,
+                               .max_decompression_time_us = 24,
+                               .max_cpu_time_us = 32,
+                               .max_gpu_upload_bytes = 16,
+                               .max_memory_high_water_bytes = 32,
+                               .max_asset_miss_count = 2,
+                               .max_pop_in_count = 2,
                            });
 
     MK_REQUIRE(plan.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::eviction_required);
@@ -2120,10 +2135,21 @@ MK_TEST("runtime package residency policy plans lru reviewed evictions under hig
     MK_REQUIRE(plan.package_budget_count == 2);
     MK_REQUIRE(plan.io_bytes_read == 9);
     MK_REQUIRE(plan.decompressed_bytes == 9);
+    MK_REQUIRE(plan.decompression_time_us == 17);
     MK_REQUIRE(plan.cpu_time_us == 15);
     MK_REQUIRE(plan.gpu_upload_bytes == 9);
+    MK_REQUIRE(plan.memory_high_water_bytes == 17);
     MK_REQUIRE(plan.asset_miss_count == 1);
     MK_REQUIRE(plan.pop_in_count == 1);
+    MK_REQUIRE(plan.io_byte_budget == 16);
+    MK_REQUIRE(plan.decompressed_byte_budget == 16);
+    MK_REQUIRE(plan.decompression_time_budget_us == 24);
+    MK_REQUIRE(plan.cpu_time_budget_us == 32);
+    MK_REQUIRE(plan.gpu_upload_byte_budget == 16);
+    MK_REQUIRE(plan.memory_high_water_budget_bytes == 32);
+    MK_REQUIRE(plan.asset_miss_budget_count == 2);
+    MK_REQUIRE(plan.pop_in_budget_count == 2);
+    MK_REQUIRE(!plan.telemetry_budget_exceeded);
     MK_REQUIRE(plan.lru_candidate_mount_ids.size() == 2);
     MK_REQUIRE(plan.lru_candidate_mount_ids[0] == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1});
     MK_REQUIRE(plan.lru_candidate_mount_ids[1] == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3});
@@ -2142,6 +2168,143 @@ MK_TEST("runtime package residency policy plans lru reviewed evictions under hig
     MK_REQUIRE(!plan.runtime_source_parsing_invoked);
     MK_REQUIRE(!plan.renderer_rhi_residency_invoked);
     MK_REQUIRE(!plan.native_handle_exposed);
+}
+
+MK_TEST("runtime package residency policy fails closed on telemetry budget overages") {
+    const auto texture = mirakana::AssetId::from_name("textures/telemetry/over-budget");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 41},
+                .label = "telemetry-heavy",
+                .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1}, "payload")),
+            })
+            .succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_package_residency_policy(
+        mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                       .max_resident_content_bytes = 64,
+                       .max_resident_asset_records = 1,
+                       .max_resident_packages = 1,
+                       .safe_point_required = true,
+                       .telemetry_rows =
+                           {
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 41},
+                                .last_touched_frame = 99,
+                                .io_bytes_read = 33,
+                                .decompressed_bytes = 55,
+                                .decompression_time_us = 21,
+                                .cpu_time_us = 34,
+                                .gpu_upload_bytes = 89,
+                                .memory_high_water_bytes = 144,
+                                .asset_miss_count = 5,
+                                .pop_in_count = 3},
+                           },
+                       .max_io_bytes_read = 32,
+                       .max_decompressed_bytes = 54,
+                       .max_decompression_time_us = 20,
+                       .max_cpu_time_us = 33,
+                       .max_gpu_upload_bytes = 88,
+                       .max_memory_high_water_bytes = 143,
+                       .max_asset_miss_count = 4,
+                       .max_pop_in_count = 2,
+                   });
+
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::telemetry_budget_exceeded);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.telemetry_budget_exceeded);
+    MK_REQUIRE(plan.io_bytes_read == 33);
+    MK_REQUIRE(plan.decompressed_bytes == 55);
+    MK_REQUIRE(plan.decompression_time_us == 21);
+    MK_REQUIRE(plan.cpu_time_us == 34);
+    MK_REQUIRE(plan.gpu_upload_bytes == 89);
+    MK_REQUIRE(plan.memory_high_water_bytes == 144);
+    MK_REQUIRE(plan.asset_miss_count == 5);
+    MK_REQUIRE(plan.pop_in_count == 3);
+    MK_REQUIRE(plan.diagnostics.size() == 8);
+    MK_REQUIRE(plan.diagnostics[0].code == "io-bytes-read-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[1].code == "decompressed-bytes-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[2].code == "decompression-time-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[3].code == "cpu-time-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[4].code == "gpu-upload-bytes-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[5].code == "memory-high-water-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[6].code == "asset-miss-budget-exceeded");
+    MK_REQUIRE(plan.diagnostics[7].code == "pop-in-budget-exceeded");
+    MK_REQUIRE(!plan.background_read_execution_invoked);
+    MK_REQUIRE(!plan.package_script_execution_invoked);
+    MK_REQUIRE(!plan.external_process_invoked);
+    MK_REQUIRE(!plan.runtime_source_parsing_invoked);
+    MK_REQUIRE(!plan.renderer_rhi_residency_invoked);
+    MK_REQUIRE(!plan.native_handle_exposed);
+}
+
+MK_TEST("runtime package residency policy saturates telemetry aggregates at numeric limits") {
+    const auto first = mirakana::AssetId::from_name("textures/telemetry/saturate-a");
+    const auto second = mirakana::AssetId::from_name("textures/telemetry/saturate-b");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 51},
+                       .label = "telemetry-a",
+                       .package = make_package(make_record(first, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "a")),
+                   })
+                   .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 52},
+                       .label = "telemetry-b",
+                       .package = make_package(make_record(second, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2}, "b")),
+                   })
+                   .succeeded());
+
+    const auto max_u64 = std::numeric_limits<std::uint64_t>::max();
+    const auto max_u32 = std::numeric_limits<std::uint32_t>::max();
+    const auto plan = mirakana::runtime::plan_runtime_package_residency_policy(
+        mount_set, mirakana::runtime::RuntimePackageResidencyPolicyDesc{
+                       .max_resident_content_bytes = 64,
+                       .max_resident_asset_records = 2,
+                       .max_resident_packages = 2,
+                       .safe_point_required = true,
+                       .telemetry_rows =
+                           {
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 51},
+                                .last_touched_frame = 1,
+                                .io_bytes_read = max_u64,
+                                .decompressed_bytes = max_u64,
+                                .decompression_time_us = max_u64,
+                                .cpu_time_us = max_u64,
+                                .gpu_upload_bytes = max_u64,
+                                .memory_high_water_bytes = 100,
+                                .asset_miss_count = max_u32,
+                                .pop_in_count = max_u32},
+                               {.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 52},
+                                .last_touched_frame = 2,
+                                .io_bytes_read = 1,
+                                .decompressed_bytes = 1,
+                                .decompression_time_us = 1,
+                                .cpu_time_us = 1,
+                                .gpu_upload_bytes = 1,
+                                .memory_high_water_bytes = 200,
+                                .asset_miss_count = 1,
+                                .pop_in_count = 1},
+                           },
+                   });
+
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimePackageResidencyPolicyStatus::within_budget);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.io_bytes_read == max_u64);
+    MK_REQUIRE(plan.decompressed_bytes == max_u64);
+    MK_REQUIRE(plan.decompression_time_us == max_u64);
+    MK_REQUIRE(plan.cpu_time_us == max_u64);
+    MK_REQUIRE(plan.gpu_upload_bytes == max_u64);
+    MK_REQUIRE(plan.memory_high_water_bytes == 200);
+    MK_REQUIRE(plan.asset_miss_count == max_u32);
+    MK_REQUIRE(plan.pop_in_count == max_u32);
+    MK_REQUIRE(plan.diagnostics.empty());
 }
 
 MK_TEST("runtime package residency policy counts overridden resident payloads toward high water limits") {

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -19,6 +20,15 @@
 
 namespace mirakana::runtime {
 namespace {
+
+template <class UInt> [[nodiscard]] UInt saturating_add_unsigned(UInt lhs, UInt rhs) noexcept {
+    static_assert(std::numeric_limits<UInt>::is_integer && !std::numeric_limits<UInt>::is_signed);
+    const auto max = std::numeric_limits<UInt>::max();
+    if (max - lhs < rhs) {
+        return max;
+    }
+    return static_cast<UInt>(lhs + rhs);
+}
 
 void add_diagnostic(RuntimePackageStreamingExecutionResult& result, std::string code, std::string message) {
     result.diagnostics.push_back(RuntimePackageStreamingExecutionDiagnostic{
@@ -284,6 +294,48 @@ find_policy_telemetry_row(const RuntimePackageResidencyPolicyDesc& desc, Runtime
     return desc.request_background_read_execution || desc.request_package_script_execution ||
            desc.request_external_process || desc.request_runtime_source_parsing ||
            desc.request_renderer_rhi_residency || desc.request_native_handle_access;
+}
+
+void add_telemetry_budget_diagnostic(RuntimePackageResidencyPolicyPlan& plan, std::string code, std::string message) {
+    plan.telemetry_budget_exceeded = true;
+    add_policy_diagnostic(plan, {}, std::move(code), std::move(message));
+}
+
+[[nodiscard]] bool telemetry_exceeds_budget(const RuntimePackageResidencyPolicyDesc& desc,
+                                            RuntimePackageResidencyPolicyPlan& plan) {
+    if (desc.max_io_bytes_read > 0 && plan.io_bytes_read > desc.max_io_bytes_read) {
+        add_telemetry_budget_diagnostic(plan, "io-bytes-read-budget-exceeded",
+                                        "package residency telemetry exceeds max_io_bytes_read");
+    }
+    if (desc.max_decompressed_bytes > 0 && plan.decompressed_bytes > desc.max_decompressed_bytes) {
+        add_telemetry_budget_diagnostic(plan, "decompressed-bytes-budget-exceeded",
+                                        "package residency telemetry exceeds max_decompressed_bytes");
+    }
+    if (desc.max_decompression_time_us > 0 && plan.decompression_time_us > desc.max_decompression_time_us) {
+        add_telemetry_budget_diagnostic(plan, "decompression-time-budget-exceeded",
+                                        "package residency telemetry exceeds max_decompression_time_us");
+    }
+    if (desc.max_cpu_time_us > 0 && plan.cpu_time_us > desc.max_cpu_time_us) {
+        add_telemetry_budget_diagnostic(plan, "cpu-time-budget-exceeded",
+                                        "package residency telemetry exceeds max_cpu_time_us");
+    }
+    if (desc.max_gpu_upload_bytes > 0 && plan.gpu_upload_bytes > desc.max_gpu_upload_bytes) {
+        add_telemetry_budget_diagnostic(plan, "gpu-upload-bytes-budget-exceeded",
+                                        "package residency telemetry exceeds max_gpu_upload_bytes");
+    }
+    if (desc.max_memory_high_water_bytes > 0 && plan.memory_high_water_bytes > desc.max_memory_high_water_bytes) {
+        add_telemetry_budget_diagnostic(plan, "memory-high-water-budget-exceeded",
+                                        "package residency telemetry exceeds max_memory_high_water_bytes");
+    }
+    if (desc.max_asset_miss_count > 0 && plan.asset_miss_count > desc.max_asset_miss_count) {
+        add_telemetry_budget_diagnostic(plan, "asset-miss-budget-exceeded",
+                                        "package residency telemetry exceeds max_asset_miss_count");
+    }
+    if (desc.max_pop_in_count > 0 && plan.pop_in_count > desc.max_pop_in_count) {
+        add_telemetry_budget_diagnostic(plan, "pop-in-budget-exceeded",
+                                        "package residency telemetry exceeds max_pop_in_count");
+    }
+    return plan.telemetry_budget_exceeded;
 }
 
 [[nodiscard]] bool package_count_within_budget(const RuntimeResidentPackageMountSetV2& mount_set,
@@ -705,6 +757,14 @@ plan_runtime_package_residency_policy(const RuntimeResidentPackageMountSetV2& mo
     plan.content_budget_bytes = desc.max_resident_content_bytes;
     plan.asset_record_budget_count = desc.max_resident_asset_records;
     plan.package_budget_count = desc.max_resident_packages;
+    plan.io_byte_budget = desc.max_io_bytes_read;
+    plan.decompressed_byte_budget = desc.max_decompressed_bytes;
+    plan.decompression_time_budget_us = desc.max_decompression_time_us;
+    plan.cpu_time_budget_us = desc.max_cpu_time_us;
+    plan.gpu_upload_byte_budget = desc.max_gpu_upload_bytes;
+    plan.memory_high_water_budget_bytes = desc.max_memory_high_water_bytes;
+    plan.asset_miss_budget_count = desc.max_asset_miss_count;
+    plan.pop_in_budget_count = desc.max_pop_in_count;
     plan.safe_point_required = desc.safe_point_required;
     plan.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
 
@@ -734,13 +794,21 @@ plan_runtime_package_residency_policy(const RuntimeResidentPackageMountSetV2& mo
         });
 
         if (telemetry != nullptr) {
-            plan.io_bytes_read += telemetry->io_bytes_read;
-            plan.decompressed_bytes += telemetry->decompressed_bytes;
-            plan.cpu_time_us += telemetry->cpu_time_us;
-            plan.gpu_upload_bytes += telemetry->gpu_upload_bytes;
-            plan.asset_miss_count += telemetry->asset_miss_count;
-            plan.pop_in_count += telemetry->pop_in_count;
+            plan.io_bytes_read = saturating_add_unsigned(plan.io_bytes_read, telemetry->io_bytes_read);
+            plan.decompressed_bytes = saturating_add_unsigned(plan.decompressed_bytes, telemetry->decompressed_bytes);
+            plan.decompression_time_us =
+                saturating_add_unsigned(plan.decompression_time_us, telemetry->decompression_time_us);
+            plan.cpu_time_us = saturating_add_unsigned(plan.cpu_time_us, telemetry->cpu_time_us);
+            plan.gpu_upload_bytes = saturating_add_unsigned(plan.gpu_upload_bytes, telemetry->gpu_upload_bytes);
+            plan.memory_high_water_bytes = std::max(plan.memory_high_water_bytes, telemetry->memory_high_water_bytes);
+            plan.asset_miss_count = saturating_add_unsigned(plan.asset_miss_count, telemetry->asset_miss_count);
+            plan.pop_in_count = saturating_add_unsigned(plan.pop_in_count, telemetry->pop_in_count);
         }
+    }
+
+    if (telemetry_exceeds_budget(desc, plan)) {
+        plan.status = RuntimePackageResidencyPolicyStatus::telemetry_budget_exceeded;
+        return plan;
     }
 
     RuntimeResourceResidencyBudgetExecutionResultV2 current_budget;
