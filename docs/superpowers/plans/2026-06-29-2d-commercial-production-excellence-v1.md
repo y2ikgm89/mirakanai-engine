@@ -207,6 +207,11 @@ Goal: turn descriptor-only or selected safe-point package proof into measured lo
 
 Likely surfaces: `engine/runtime/`, `engine/tools/asset/`, `engine/platform/`, package validators, performance artifacts under ignored/retained artifact roots as appropriate.
 
+Phase 4 validation evidence:
+
+- 2026-06-30 package residency policy slice: added `RuntimePackageResidencyPolicyStatus`, `RuntimePackageResidencyTelemetryRow`, `RuntimePackageResidencyPolicyDesc`, `RuntimePackageResidencyPolicyPlan`, and `plan_runtime_package_residency_policy` in `MK_runtime`. The helper is value-only over all already-mounted cooked packages, including overlay-overridden resident payloads: it reports resident byte/record/package counters, caller-supplied telemetry counters, LRU candidate order from reviewed `last_touched_frame` rows, protected eviction blockers, and the minimum recommended mount ids needed to return within high-water limits. It fail-closes missing/duplicate/unknown telemetry and unsupported execution requests while keeping package file reads, background IO, package scripts, external processes, runtime source parsing, renderer/RHI residency, native handles, broad background streaming, long-run performance readiness, commercial 2D readiness, external-engine compatibility/equivalence/parity/replacement, and legal approval unclaimed.
+- 2026-06-30 focused validation: RED `tools/cmake.ps1 --build --preset dev --target MK_runtime_package_streaming_resident_mount_tests` failed before the API existed; GREEN `tools/cmake.ps1 --build --preset dev --target MK_runtime_package_streaming_resident_mount_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_package_streaming_resident_mount_tests` passed.
+
 Done when: selected 2D packages can stream cooked payloads under measured CPU/memory/IO/GPU-upload budgets with deterministic eviction and no runtime source mutation or package-script execution.
 
 ### Phase 5: Runtime UI, Text, IME, Accessibility, And Localization Closeout

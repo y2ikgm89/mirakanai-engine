@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -137,6 +139,171 @@ bool contains_mount_id(const RuntimeResidentPackageMountSetV2& mount_set, Runtim
     return std::ranges::any_of(mount_set.mounts(), [mount_id](const RuntimeResidentPackageMountRecordV2& mounted) {
         return mounted.id == mount_id;
     });
+}
+
+bool contains_mount_id(const std::vector<RuntimeResidentPackageMountIdV2>& mount_ids,
+                       RuntimeResidentPackageMountIdV2 mount_id) {
+    return std::ranges::find(mount_ids, mount_id) != mount_ids.end();
+}
+
+void add_policy_diagnostic(RuntimePackageResidencyPolicyPlan& plan, RuntimeResidentPackageMountIdV2 mount_id,
+                           std::string code, std::string message) {
+    plan.diagnostics.push_back(RuntimePackageResidencyPolicyDiagnostic{
+        .mount_id = mount_id,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] const RuntimePackageResidencyTelemetryRow*
+find_policy_telemetry_row(const RuntimePackageResidencyPolicyDesc& desc, RuntimeResidentPackageMountIdV2 mount_id) {
+    const auto it =
+        std::ranges::find_if(desc.telemetry_rows, [mount_id](const RuntimePackageResidencyTelemetryRow& row) {
+            return row.mount_id == mount_id;
+        });
+    if (it == desc.telemetry_rows.end()) {
+        return nullptr;
+    }
+    return std::addressof(*it);
+}
+
+[[nodiscard]] bool has_duplicate_policy_telemetry_rows(const RuntimePackageResidencyPolicyDesc& desc,
+                                                       RuntimePackageResidencyPolicyPlan& plan) {
+    std::vector<RuntimeResidentPackageMountIdV2> seen;
+    seen.reserve(desc.telemetry_rows.size());
+    for (const auto& row : desc.telemetry_rows) {
+        if (row.mount_id.value == 0) {
+            add_policy_diagnostic(plan, row.mount_id, "invalid-mount-telemetry",
+                                  "package residency telemetry mount ids must be non-zero");
+            return true;
+        }
+        if (contains_mount_id(seen, row.mount_id)) {
+            add_policy_diagnostic(plan, row.mount_id, "duplicate-mount-telemetry",
+                                  "package residency telemetry mount id appears more than once");
+            return true;
+        }
+        seen.push_back(row.mount_id);
+    }
+    return false;
+}
+
+[[nodiscard]] bool validate_package_residency_policy_desc(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                          const RuntimePackageResidencyPolicyDesc& desc,
+                                                          RuntimePackageResidencyPolicyPlan& plan) {
+    bool valid = true;
+    if (mount_set.mounts().empty()) {
+        add_policy_diagnostic(plan, {}, "resident-mounts-required",
+                              "package residency policy requires at least one resident package mount");
+        valid = false;
+    }
+    if (!desc.safe_point_required) {
+        add_policy_diagnostic(plan, {}, "safe-point-required",
+                              "package residency policy requires caller-reviewed safe-point execution");
+        valid = false;
+    }
+    if (has_duplicate_policy_telemetry_rows(desc, plan)) {
+        valid = false;
+    }
+    for (const auto& mount : mount_set.mounts()) {
+        if (find_policy_telemetry_row(desc, mount.id) == nullptr) {
+            add_policy_diagnostic(plan, mount.id, "missing-mount-telemetry",
+                                  "package residency policy requires one telemetry row per resident mount");
+            valid = false;
+        }
+    }
+    for (const auto& row : desc.telemetry_rows) {
+        if (!contains_mount_id(mount_set, row.mount_id)) {
+            add_policy_diagnostic(plan, row.mount_id, "unknown-mount-telemetry",
+                                  "package residency telemetry references a mount id that is not resident");
+            valid = false;
+        }
+    }
+    for (const auto protected_mount_id : desc.protected_mount_ids) {
+        if (protected_mount_id.value == 0) {
+            add_policy_diagnostic(plan, protected_mount_id, "invalid-protected-mount-id",
+                                  "protected package residency mount ids must be non-zero");
+            valid = false;
+        } else if (!contains_mount_id(mount_set, protected_mount_id)) {
+            add_policy_diagnostic(plan, protected_mount_id, "missing-protected-mount-id",
+                                  "protected package residency mount id is not resident");
+            valid = false;
+        }
+    }
+    return valid;
+}
+
+[[nodiscard]] bool reject_unsupported_package_residency_requests(const RuntimePackageResidencyPolicyDesc& desc,
+                                                                 RuntimePackageResidencyPolicyPlan& plan) {
+    if (desc.request_background_read_execution) {
+        add_policy_diagnostic(plan, {}, "background-read-execution-unsupported",
+                              "package residency policy does not launch background reads");
+    }
+    if (desc.request_package_script_execution) {
+        add_policy_diagnostic(plan, {}, "package-script-execution-unsupported",
+                              "package residency policy does not execute package scripts");
+    }
+    if (desc.request_external_process) {
+        add_policy_diagnostic(plan, {}, "external-process-unsupported",
+                              "package residency policy does not launch external processes");
+    }
+    if (desc.request_runtime_source_parsing) {
+        add_policy_diagnostic(plan, {}, "runtime-source-parsing-unsupported",
+                              "package residency policy does not parse runtime source assets");
+    }
+    if (desc.request_renderer_rhi_residency) {
+        add_policy_diagnostic(plan, {}, "renderer-rhi-residency-unsupported",
+                              "package residency policy does not touch renderer or RHI residency");
+    }
+    if (desc.request_native_handle_access) {
+        add_policy_diagnostic(plan, {}, "native-handle-access-unsupported",
+                              "package residency policy does not expose native handles");
+    }
+    return desc.request_background_read_execution || desc.request_package_script_execution ||
+           desc.request_external_process || desc.request_runtime_source_parsing ||
+           desc.request_renderer_rhi_residency || desc.request_native_handle_access;
+}
+
+[[nodiscard]] bool package_count_within_budget(const RuntimeResidentPackageMountSetV2& mount_set,
+                                               const RuntimePackageResidencyPolicyDesc& desc) noexcept {
+    return desc.max_resident_packages == 0 ||
+           mount_set.mounts().size() <= static_cast<std::size_t>(desc.max_resident_packages);
+}
+
+[[nodiscard]] RuntimeResourceResidencyBudgetExecutionResultV2
+evaluate_package_residency_mount_budget(const RuntimeResidentPackageMountSetV2& mount_set,
+                                        const RuntimePackageResidencyPolicyDesc& desc) {
+    RuntimeResourceResidencyBudgetExecutionResultV2 result;
+    for (const auto& mount : mount_set.mounts()) {
+        result.estimated_resident_content_bytes += estimate_runtime_asset_package_resident_bytes(mount.package);
+        result.resident_asset_record_count += mount.package.records().size();
+    }
+
+    if (desc.max_resident_content_bytes > 0 &&
+        result.estimated_resident_content_bytes > desc.max_resident_content_bytes) {
+        result.within_budget = false;
+        result.diagnostics.push_back(RuntimeResourceResidencyBudgetDiagnosticV2{
+            .code = "resident-content-bytes-exceed-budget",
+            .message = "runtime package content byte estimate exceeds max_resident_content_bytes",
+        });
+    }
+    if (desc.max_resident_asset_records > 0 && result.resident_asset_record_count > desc.max_resident_asset_records) {
+        result.within_budget = false;
+        result.diagnostics.push_back(RuntimeResourceResidencyBudgetDiagnosticV2{
+            .code = "resident-asset-record-count-exceeds-budget",
+            .message = "runtime package asset record count exceeds max_resident_asset_records",
+        });
+    }
+    return result;
+}
+
+[[nodiscard]] bool residency_policy_budget_passes(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                  const RuntimePackageResidencyPolicyDesc& desc,
+                                                  RuntimeResourceResidencyBudgetExecutionResultV2* budget_out) {
+    auto budget_execution = evaluate_package_residency_mount_budget(mount_set, desc);
+    if (budget_out != nullptr) {
+        *budget_out = budget_execution;
+    }
+    return budget_execution.within_budget && package_count_within_budget(mount_set, desc);
 }
 
 void set_resident_mount_failure(RuntimePackageStreamingExecutionResult& result,
@@ -426,8 +593,126 @@ make_package_streaming_candidate(const RuntimePackageStreamingExecutionDesc& des
 
 } // namespace
 
+bool RuntimePackageResidencyPolicyPlan::succeeded() const noexcept {
+    return status == RuntimePackageResidencyPolicyStatus::within_budget ||
+           status == RuntimePackageResidencyPolicyStatus::eviction_required;
+}
+
 bool RuntimePackageStreamingExecutionResult::succeeded() const noexcept {
     return status == RuntimePackageStreamingExecutionStatus::committed && committed;
+}
+
+RuntimePackageResidencyPolicyPlan
+plan_runtime_package_residency_policy(const RuntimeResidentPackageMountSetV2& mount_set,
+                                      const RuntimePackageResidencyPolicyDesc& desc) {
+    RuntimePackageResidencyPolicyPlan plan;
+    plan.content_budget_bytes = desc.max_resident_content_bytes;
+    plan.asset_record_budget_count = desc.max_resident_asset_records;
+    plan.package_budget_count = desc.max_resident_packages;
+    plan.safe_point_required = desc.safe_point_required;
+    plan.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+
+    if (!validate_package_residency_policy_desc(mount_set, desc, plan)) {
+        plan.status = RuntimePackageResidencyPolicyStatus::invalid_descriptor;
+        return plan;
+    }
+
+    if (reject_unsupported_package_residency_requests(desc, plan)) {
+        plan.status = RuntimePackageResidencyPolicyStatus::unsupported_request;
+        return plan;
+    }
+
+    plan.rows.reserve(mount_set.mounts().size());
+    for (const auto& mount : mount_set.mounts()) {
+        const auto* telemetry = find_policy_telemetry_row(desc, mount.id);
+        const auto resident_bytes = estimate_runtime_asset_package_resident_bytes(mount.package);
+        plan.rows.push_back(RuntimePackageResidencyPolicyRow{
+            .mount_id = mount.id,
+            .label = mount.label,
+            .resident_bytes = resident_bytes,
+            .resident_asset_records = mount.package.records().size(),
+            .last_touched_frame = telemetry != nullptr ? telemetry->last_touched_frame : 0,
+            .protected_from_eviction = contains_mount_id(desc.protected_mount_ids, mount.id),
+            .eviction_candidate = !contains_mount_id(desc.protected_mount_ids, mount.id),
+            .recommended_eviction = false,
+        });
+
+        if (telemetry != nullptr) {
+            plan.io_bytes_read += telemetry->io_bytes_read;
+            plan.decompressed_bytes += telemetry->decompressed_bytes;
+            plan.cpu_time_us += telemetry->cpu_time_us;
+            plan.gpu_upload_bytes += telemetry->gpu_upload_bytes;
+            plan.asset_miss_count += telemetry->asset_miss_count;
+            plan.pop_in_count += telemetry->pop_in_count;
+        }
+    }
+
+    RuntimeResourceResidencyBudgetExecutionResultV2 current_budget;
+    if (residency_policy_budget_passes(mount_set, desc, std::addressof(current_budget))) {
+        plan.status = RuntimePackageResidencyPolicyStatus::within_budget;
+        plan.estimated_resident_bytes = current_budget.estimated_resident_content_bytes;
+        plan.resident_asset_record_count = current_budget.resident_asset_record_count;
+        for (const auto& row : plan.rows) {
+            if (row.eviction_candidate) {
+                plan.lru_candidate_mount_ids.push_back(row.mount_id);
+            }
+        }
+        std::ranges::sort(plan.lru_candidate_mount_ids, [&](const auto lhs, const auto rhs) {
+            const auto* lhs_telemetry = find_policy_telemetry_row(desc, lhs);
+            const auto* rhs_telemetry = find_policy_telemetry_row(desc, rhs);
+            const auto lhs_frame = lhs_telemetry != nullptr ? lhs_telemetry->last_touched_frame : 0;
+            const auto rhs_frame = rhs_telemetry != nullptr ? rhs_telemetry->last_touched_frame : 0;
+            if (lhs_frame == rhs_frame) {
+                return lhs.value < rhs.value;
+            }
+            return lhs_frame < rhs_frame;
+        });
+        return plan;
+    }
+
+    plan.estimated_resident_bytes = current_budget.estimated_resident_content_bytes;
+    plan.resident_asset_record_count = current_budget.resident_asset_record_count;
+
+    for (const auto& row : plan.rows) {
+        if (row.eviction_candidate) {
+            plan.lru_candidate_mount_ids.push_back(row.mount_id);
+        }
+    }
+    std::ranges::sort(plan.lru_candidate_mount_ids, [&](const auto lhs, const auto rhs) {
+        const auto* lhs_telemetry = find_policy_telemetry_row(desc, lhs);
+        const auto* rhs_telemetry = find_policy_telemetry_row(desc, rhs);
+        const auto lhs_frame = lhs_telemetry != nullptr ? lhs_telemetry->last_touched_frame : 0;
+        const auto rhs_frame = rhs_telemetry != nullptr ? rhs_telemetry->last_touched_frame : 0;
+        if (lhs_frame == rhs_frame) {
+            return lhs.value < rhs.value;
+        }
+        return lhs_frame < rhs_frame;
+    });
+
+    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
+    for (const auto candidate : plan.lru_candidate_mount_ids) {
+        const auto unmount = projected_mount_set.unmount(candidate);
+        if (!unmount.succeeded()) {
+            add_policy_diagnostic(plan, candidate, unmount.diagnostic.code, unmount.diagnostic.message);
+            plan.status = RuntimePackageResidencyPolicyStatus::budget_unreachable;
+            return plan;
+        }
+        plan.recommended_eviction_mount_ids.push_back(candidate);
+
+        RuntimeResourceResidencyBudgetExecutionResultV2 projected_budget;
+        if (residency_policy_budget_passes(projected_mount_set, desc, std::addressof(projected_budget))) {
+            for (auto& row : plan.rows) {
+                row.recommended_eviction = contains_mount_id(plan.recommended_eviction_mount_ids, row.mount_id);
+            }
+            plan.status = RuntimePackageResidencyPolicyStatus::eviction_required;
+            return plan;
+        }
+    }
+
+    add_policy_diagnostic(plan, {}, "resident-budget-unreachable",
+                          "resident package budget cannot be reached without evicting protected mounts");
+    plan.status = RuntimePackageResidencyPolicyStatus::budget_unreachable;
+    return plan;
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
