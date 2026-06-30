@@ -11,6 +11,7 @@
 #include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/asset_browser_production.hpp"
 #include "mirakana/editor/asset_import_jobs.hpp"
+#include "mirakana/editor/asset_import_regression_workflow.hpp"
 #include "mirakana/editor/asset_import_review.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/command.hpp"
@@ -5177,6 +5178,335 @@ MK_TEST("editor asset browser production model exposes package review rows") {
     const auto* apply_status = document.find(mirakana::ui::ElementId{"asset_browser.package.apply_plan.status"});
     MK_REQUIRE(apply_status != nullptr);
     MK_REQUIRE(apply_status->text.label == "ready");
+}
+
+MK_TEST("editor asset import regression workflow exposes corpus report diff reimport and preview rows") {
+    const mirakana::AssetKeyV2 mesh_key{"assets/meshes/hero"};
+    const auto mesh_id = mirakana::asset_id_from_key_v2(mesh_key);
+    const mirakana::AssetImportProvenanceRowV1 provenance{
+        .asset_key = mesh_key,
+        .origin = mirakana::AssetImportProvenanceOrigin::first_party,
+        .source_url = "first-party://asset-import-regression/hero",
+        .retrieved_date = "2026-06-30",
+        .version_or_commit = "generated-fixture-v1",
+        .copyright_holder = "GameEngine contributors",
+        .license_id = "LicenseRef-Proprietary",
+        .modification_status = "generated fixture",
+        .distribution_target = "source-tree",
+        .notice_id = "LICENSES/LicenseRef-Proprietary.txt",
+        .notice_complete = true,
+    };
+    const mirakana::AssetImportRegressionCorpusDocumentV1 corpus{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .corpus_version = "1",
+        .root_path = "tests/fixtures/asset_import_regression",
+        .assets =
+            {
+                mirakana::AssetImportRegressionCorpusAssetV1{
+                    .asset_id = "mesh.hero",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset_key = mesh_key,
+                    .source_path = "sources/gltf/hero.gltf",
+                    .expected_sha256 = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    .expected_output_kinds = {"GameEngine.CookedMesh.v2"},
+                    .required_features = {"gltf_geometry"},
+                    .mesh_preset =
+                        mirakana::AssetImportMeshPresetV1{
+                            .unit_scale = 0.01F,
+                            .up_axis = mirakana::AssetImportMeshUpAxis::z,
+                            .triangulate = true,
+                            .generate_normals = false,
+                            .generate_tangents = false,
+                        },
+                    .preset_metadata = {"mesh.unit_scale=0.01", "mesh.up_axis=z"},
+                    .provenance = provenance,
+                    .license_policy = mirakana::AssetImportRegressionLicensePolicy::accepted_for_source_tree,
+                    .allow_checked_in_distribution = true,
+                },
+            },
+        .row_budget = 8U,
+    };
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = corpus.corpus_id,
+        .run_id = "run-2026-06-30",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.hero",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mesh_id,
+                    .source_path = "sources/gltf/hero.gltf",
+                    .source_sha256 = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    .preset_sha256 = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    .importer_id = "mirakana.gltf.mesh",
+                    .importer_version = "v1",
+                    .phase = "cook",
+                    .deterministic_output_hash =
+                        "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    .succeeded = true,
+                    .ready_for_commercial_evidence = true,
+                },
+            },
+        .asset_count = 1U,
+        .succeeded_count = 1U,
+        .ready = true,
+    };
+    const mirakana::AssetImportBatchReimportPlan batch{
+        .rows =
+            {
+                mirakana::AssetImportBatchReimportPlanRow{
+                    .asset_id = "mesh.hero",
+                    .asset = mesh_id,
+                    .kind = mirakana::AssetImportActionKind::mesh,
+                    .source_path = "sources/gltf/hero.gltf",
+                    .output_path = "assets/meshes/hero.mesh",
+                    .staging_path = "out/asset-import-regression/staging/run-2026-06-30/assets/meshes/hero.mesh",
+                    .expected_output_hash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    .status = mirakana::AssetImportBatchReimportRowStatus::ready,
+                    .selected = true,
+                    .output_validation_required = true,
+                },
+            },
+        .selected_count = 1U,
+        .ready_row_count = 1U,
+        .dry_run_acknowledged = true,
+        .apply_allowed = true,
+        .ready_for_apply = true,
+    };
+    const mirakana::AssetImportPresetDiff preset_diff{
+        .rows =
+            {
+                mirakana::AssetImportPresetDiffRow{
+                    .asset_id = "mesh.hero",
+                    .asset_key = mesh_key,
+                    .asset = mesh_id,
+                    .corpus_kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .action_kind = mirakana::AssetImportActionKind::mesh,
+                    .source_path = "sources/gltf/hero.gltf",
+                    .output_path = "assets/meshes/hero.mesh",
+                    .status = mirakana::AssetImportPresetDiffRowStatus::changed,
+                    .field_changes =
+                        {
+                            mirakana::AssetImportPresetDiffFieldChange{
+                                .field = "mesh.up_axis",
+                                .before_value = "y",
+                                .after_value = "z",
+                                .impacts =
+                                    {
+                                        mirakana::AssetImportPresetDiffImpact::cooked_output,
+                                        mirakana::AssetImportPresetDiffImpact::package_output,
+                                    },
+                            },
+                        },
+                    .cooked_output_changes = true,
+                    .package_output_changes = true,
+                },
+            },
+        .affected_count = 1U,
+        .cooked_output_change_count = 1U,
+        .package_output_change_count = 1U,
+    };
+    const mirakana::AssetAxisUnitPreview axis_preview{
+        .asset_id = "mesh.hero",
+        .source_path = "sources/gltf/hero.gltf",
+        .up_axis = mirakana::AssetImportMeshUpAxis::z,
+        .unit_scale = 0.01F,
+        .changes_coordinates = true,
+        .rows =
+            {
+                mirakana::AssetAxisUnitPreviewRow{
+                    .kind = mirakana::AssetAxisUnitPreviewSampleKind::vertex,
+                    .label = "v0",
+                    .source_position = mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F},
+                    .project_position = mirakana::Vec3{.x = 0.01F, .y = 0.03F, .z = -0.02F},
+                },
+            },
+    };
+
+    const auto model = mirakana::editor::make_editor_asset_import_regression_workflow_model(
+        mirakana::editor::EditorAssetImportRegressionWorkflowDesc{
+            .corpus = &corpus,
+            .latest_report = &report,
+            .batch_reimport = &batch,
+            .preset_diff = &preset_diff,
+            .axis_unit_previews = {axis_preview},
+            .generation = 12U,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EditorAssetImportRegressionWorkflowStatus::ready);
+    MK_REQUIRE(model.command_rows.size() == 5U);
+    MK_REQUIRE(model.command_rows[0].command_id == "asset_browser.importer_corpus.run");
+    MK_REQUIRE(model.command_rows[1].command_id == "asset_browser.importer_corpus.open_report");
+    MK_REQUIRE(model.command_rows[2].command_id == "asset_browser.import.batch_reimport");
+    MK_REQUIRE(model.command_rows[3].command_id == "asset_browser.import.preset_diff");
+    MK_REQUIRE(model.command_rows[4].command_id == "asset_browser.import.axis_unit_preview");
+    MK_REQUIRE(std::ranges::all_of(model.command_rows, [](const auto& row) {
+        return row.enabled && !row.executes_import_tools && !row.exposes_native_handles;
+    }));
+    MK_REQUIRE(model.rows.size() == 5U);
+    MK_REQUIRE(model.ready_row_count == 5U);
+    MK_REQUIRE(model.blocked_row_count == 0U);
+    MK_REQUIRE(!model.executes_import_tools);
+    MK_REQUIRE(!model.mutates_project_files);
+    MK_REQUIRE(!model.exposes_native_handles);
+
+    const auto find_row = [&model](std::string_view id) {
+        return std::ranges::find_if(model.rows, [id](const auto& row) { return row.id == id; });
+    };
+    const auto preview = find_row("asset_browser.import_workflow.axis_unit_preview.mesh.hero");
+    MK_REQUIRE(preview != model.rows.end());
+    MK_REQUIRE(preview->status_label == "ready");
+    MK_REQUIRE(preview->detail_label.contains("unit_scale=0.010000"));
+    MK_REQUIRE(preview->detail_label.contains("up_axis=z"));
+
+    mirakana::SourceAssetRegistryDocumentV1 source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = mesh_key,
+        .kind = mirakana::AssetKind::mesh,
+        .source_path = "sources/gltf/hero.gltf",
+        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::mesh)},
+        .imported_path = "assets/meshes/hero.mesh",
+    });
+    mirakana::editor::ContentBrowserState browser;
+    browser.refresh_from(source_registry);
+
+    const auto retained_ui = mirakana::editor::make_editor_asset_import_regression_workflow_retained_ui_desc(model);
+    const auto production =
+        mirakana::editor::make_editor_asset_browser_production_model(mirakana::editor::EditorAssetBrowserProductionDesc{
+            .browser = &browser,
+            .generation = 12U,
+            .retained_ui = &retained_ui,
+        });
+    MK_REQUIRE(production.import_workflow_rows.size() == model.rows.size());
+    const auto document = mirakana::editor::make_editor_asset_browser_production_ui_model(production);
+    MK_REQUIRE(document.find(mirakana::ui::ElementId{"asset_browser.import_workflow"}) != nullptr);
+    MK_REQUIRE(document.find(mirakana::ui::ElementId{
+                   "asset_browser.import_workflow.axis_unit_preview.mesh.hero.status"}) != nullptr);
+    MK_REQUIRE(document
+                   .find(mirakana::ui::ElementId{
+                       "asset_browser.commands.asset_browser.import.axis_unit_preview.executes_import_tools"})
+                   ->text.label == "false");
+}
+
+MK_TEST("editor asset import regression workflow blocks failed legal and preview evidence without execution claims") {
+    const mirakana::AssetKeyV2 mesh_key{"assets/meshes/copied"};
+    const auto mesh_id = mirakana::asset_id_from_key_v2(mesh_key);
+    const mirakana::AssetImportProvenanceRowV1 provenance{
+        .asset_key = mesh_key,
+        .origin = mirakana::AssetImportProvenanceOrigin::third_party,
+        .source_url = "https://assetstore.unity.com/packages/example",
+        .retrieved_date = "2026-06-30",
+        .version_or_commit = "unknown",
+        .copyright_holder = "Unknown",
+        .license_id = "Unity Asset Store",
+        .modification_status = "copied editor sample",
+        .distribution_target = "source-tree",
+        .notice_id = "THIRD_PARTY_NOTICES.md#blocked",
+        .notice_complete = false,
+        .external_engine_material = true,
+    };
+    const mirakana::AssetImportRegressionCorpusDocumentV1 corpus{
+        .root_path = "tests/fixtures/asset_import_regression",
+        .assets =
+            {
+                mirakana::AssetImportRegressionCorpusAssetV1{
+                    .asset_id = "mesh.copied",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset_key = mesh_key,
+                    .source_path = "sources/gltf/copied.gltf",
+                    .expected_sha256 = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    .expected_output_kinds = {"GameEngine.CookedMesh.v2"},
+                    .required_features = {"gltf_geometry"},
+                    .provenance = provenance,
+                    .license_policy = mirakana::AssetImportRegressionLicensePolicy::rejected,
+                },
+            },
+        .row_budget = 8U,
+    };
+    const mirakana::AssetImportRegressionReportV1 report{
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.copied",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mesh_id,
+                    .source_path = "sources/gltf/copied.gltf",
+                    .phase = "legal",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::external_engine_material,
+                    .message = "external engine material is blocked",
+                    .succeeded = false,
+                    .ready_for_commercial_evidence = false,
+                },
+            },
+        .asset_count = 1U,
+        .failed_count = 1U,
+        .legal_blocked_count = 1U,
+    };
+    const mirakana::AssetImportBatchReimportPlan batch{
+        .rows =
+            {
+                mirakana::AssetImportBatchReimportPlanRow{
+                    .asset_id = "mesh.copied",
+                    .asset = mesh_id,
+                    .kind = mirakana::AssetImportActionKind::mesh,
+                    .source_path = "sources/gltf/copied.gltf",
+                    .status = mirakana::AssetImportBatchReimportRowStatus::blocked,
+                    .diagnostic = "legal_blocked",
+                    .selected = true,
+                    .legal_blocked = true,
+                },
+            },
+        .selected_count = 1U,
+        .blocked_row_count = 1U,
+    };
+    const mirakana::AssetImportPresetDiff preset_diff{
+        .rows =
+            {
+                mirakana::AssetImportPresetDiffRow{
+                    .asset_id = "mesh.copied",
+                    .asset_key = mesh_key,
+                    .asset = mesh_id,
+                    .source_path = "sources/gltf/copied.gltf",
+                    .status = mirakana::AssetImportPresetDiffRowStatus::review_blocked,
+                    .diagnostics = {"latest report row is not ready for commercial evidence"},
+                    .review_blocked = true,
+                },
+            },
+        .affected_count = 1U,
+        .review_blocked_count = 1U,
+    };
+    const mirakana::AssetAxisUnitPreview axis_preview{
+        .asset_id = "mesh.copied",
+        .source_path = "sources/gltf/copied.gltf",
+        .diagnostics = {"unsupported action kind"},
+    };
+
+    const auto model = mirakana::editor::make_editor_asset_import_regression_workflow_model(
+        mirakana::editor::EditorAssetImportRegressionWorkflowDesc{
+            .corpus = &corpus,
+            .latest_report = &report,
+            .batch_reimport = &batch,
+            .preset_diff = &preset_diff,
+            .axis_unit_previews = {axis_preview},
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EditorAssetImportRegressionWorkflowStatus::blocked);
+    MK_REQUIRE(model.blocked_row_count >= 5U);
+    MK_REQUIRE(!model.command_rows[0].enabled);
+    MK_REQUIRE(!model.command_rows[2].enabled);
+    MK_REQUIRE(!model.command_rows[3].enabled);
+    MK_REQUIRE(!model.command_rows[4].enabled);
+    MK_REQUIRE(std::ranges::all_of(model.command_rows, [](const auto& row) {
+        return !row.executes_import_tools && !row.executes_package_scripts && !row.executes_validation_recipes &&
+               !row.exposes_native_handles;
+    }));
+    MK_REQUIRE(std::ranges::all_of(model.rows, [](const auto& row) {
+        return row.host_owned && !row.executes_import_tools && !row.mutates_project_files &&
+               !row.exposes_native_handles;
+    }));
+    MK_REQUIRE(std::ranges::any_of(model.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.find("external_engine_material") != std::string::npos;
+    }));
 }
 
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
