@@ -226,6 +226,8 @@ enum class Runtime2DPackagePlaytestFailureClassification : std::uint8_t {
     hot_reload_recook_failure,
     runtime_replacement_failure,
     host_gated_backend,
+    long_run_budget_exceeded,
+    retained_artifact_missing,
 };
 
 struct Runtime2DPackagePlaytestRecipeRow {
@@ -237,6 +239,10 @@ struct Runtime2DPackagePlaytestRecipeRow {
     std::vector<Runtime2DPackagePlaytestFailureClassification> failure_classifications;
     std::string runtime_host_launch_row_id;
     std::string hot_reload_safe_point_evidence_id;
+    std::uint64_t required_frame_count{0};
+    bool require_zero_over_budget_frames{false};
+    bool require_memory_high_water{false};
+    bool require_retained_profile_artifact{false};
     bool validation_recipe_declared{false};
     bool generated_playtest_declared{false};
     bool runtime_host_launch_declared{false};
@@ -251,6 +257,10 @@ struct Runtime2DPackagePlaytestEvidenceRow {
     std::vector<std::string> package_smoke_counters;
     std::vector<std::string> profile_artifacts;
     std::vector<std::string> remediation_handoff_ids;
+    std::uint64_t frame_count{0};
+    std::uint64_t over_budget_frame_count{0};
+    std::uint64_t memory_high_water_bytes{0};
+    std::uint64_t retained_artifact_hash{0};
     bool externally_supplied{true};
     bool claims_editor_core_execution{false};
     bool claims_validation_recipe_execution{false};
@@ -282,6 +292,11 @@ struct Runtime2DPackagePlaytestResult {
     std::size_t profile_artifact_count{0};
     std::size_t remediation_handoff_count{0};
     std::size_t failure_classification_count{0};
+    std::uint64_t long_run_frame_count{0};
+    std::uint64_t long_run_over_budget_frame_count{0};
+    std::uint64_t long_run_memory_high_water_bytes{0};
+    std::size_t retained_profile_artifact_hash_count{0};
+    std::uint64_t retained_profile_artifact_hash{0};
     bool invoked_editor_core_execution{false};
     bool invoked_validation_recipe_execution{false};
     bool invoked_arbitrary_shell{false};

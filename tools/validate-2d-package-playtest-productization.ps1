@@ -21,7 +21,7 @@ $sourcePulsePlaytestRecipeId = "installed-2d-source-pulse-smoke-playtest"
 $runtimeHostLaunchRowId = "desktop-game-runtime-playtest"
 $hotReloadSafePointEvidenceId = "packaged-2d-residency-budget"
 $hotReloadExternalEvidenceId = "hot-reload-package-playtest-evidence"
-$requiredFailureClassifications = @(
+$baseFailureClassifications = @(
     "missing-package-file",
     "invalid-scene-binding",
     "package-load-failure",
@@ -31,21 +31,29 @@ $requiredFailureClassifications = @(
     "runtime-replacement-failure",
     "host-gated-backend"
 )
+$packagePlaytestFailureClassifications = @(
+    $baseFailureClassifications
+    "long-run-budget-exceeded",
+    "retained-artifact-missing"
+)
 $readySmokeExpectations = @{
     "2d_package_playtest_productization_status" = "ready"
     "2d_package_playtest_productization_ready" = "1"
     "2d_package_playtest_productization_recipe_rows" = "1"
     "2d_package_playtest_productization_evidence_rows" = "1"
     "2d_package_playtest_productization_imported_evidence_rows" = "1"
-    "2d_package_playtest_productization_package_smoke_counter_rows" = "11"
+    "2d_package_playtest_productization_package_smoke_counter_rows" = "16"
     "2d_package_playtest_productization_profile_artifact_rows" = "1"
     "2d_package_playtest_productization_remediation_handoff_rows" = "4"
-    "2d_package_playtest_productization_failure_classification_rows" = "8"
+    "2d_package_playtest_productization_failure_classification_rows" = "10"
     "2d_package_playtest_productization_diagnostics" = "0"
     "2d_package_playtest_productization_declared_validation_recipe_rows" = "1"
     "2d_package_playtest_productization_declared_generated_playtest_rows" = "1"
     "2d_package_playtest_productization_declared_runtime_host_launch_rows" = "1"
     "2d_package_playtest_productization_declared_hot_reload_safe_point_rows" = "1"
+    "2d_package_playtest_productization_long_run_frames" = "3"
+    "2d_package_playtest_productization_long_run_over_budget_frames" = "0"
+    "2d_package_playtest_productization_retained_profile_artifact_hashes" = "1"
     "2d_package_playtest_productization_editor_core_execution" = "0"
     "2d_package_playtest_productization_validation_recipe_execution" = "0"
     "2d_package_playtest_productization_arbitrary_shell_execution" = "0"
@@ -172,7 +180,7 @@ if ($null -eq $playtestLoop) {
 Assert-ObjectProperties $playtestLoop @("selectedRecipes", "failureClassifications", "unsupportedClaims") "$gameManifestPath generatedGamePlaytestLoop"
 
 $failureClassificationSet = New-Set (@($playtestLoop.failureClassifications) | ForEach-Object { [string]$_.id })
-Assert-ContainsAll $failureClassificationSet $requiredFailureClassifications "$gameManifestPath generatedGamePlaytestLoop failureClassifications"
+Assert-ContainsAll $failureClassificationSet $packagePlaytestFailureClassifications "$gameManifestPath generatedGamePlaytestLoop failureClassifications"
 Assert-ContainsAll (New-Set @($playtestLoop.unsupportedClaims)) @(
     "arbitrary-shell",
     "raw-manifest-command-evaluation",
@@ -212,7 +220,7 @@ if ([string]$selectedRecipe.runtimeHostLaunchRowId -ne $runtimeHostLaunchRowId) 
 if ([string]$selectedRecipe.hotReloadSafePointEvidenceId -ne $hotReloadSafePointEvidenceId) {
     Write-Error "$gameManifestPath $playtestRecipeId hotReloadSafePointEvidenceId expected $hotReloadSafePointEvidenceId"
 }
-Assert-ContainsAll (New-Set @($selectedRecipe.failureClassificationIds)) $requiredFailureClassifications "$gameManifestPath $playtestRecipeId failureClassificationIds"
+Assert-ContainsAll (New-Set @($selectedRecipe.failureClassificationIds)) $packagePlaytestFailureClassifications "$gameManifestPath $playtestRecipeId failureClassificationIds"
 Assert-ContainsAll (New-Set @($selectedRecipe.expectedSignals)) @(
     "2d_package_playtest_productization_status=ready",
     "2d_package_playtest_productization_ready=1",
@@ -220,7 +228,11 @@ Assert-ContainsAll (New-Set @($selectedRecipe.expectedSignals)) @(
     "2d_package_playtest_productization_validation_recipe_execution=0",
     "2d_package_playtest_productization_arbitrary_shell_execution=0",
     "2d_package_playtest_productization_active_session_hot_reload=0",
-    "2d_package_playtest_productization_native_handle_exposure=0"
+    "2d_package_playtest_productization_native_handle_exposure=0",
+    "2d_package_playtest_productization_long_run_frames=3",
+    "2d_package_playtest_productization_long_run_over_budget_frames=0",
+    "2d_package_playtest_productization_retained_profile_artifact_hashes=1",
+    "2d_package_playtest_productization_retained_profile_artifact_hash"
 ) "$gameManifestPath $playtestRecipeId expectedSignals"
 
 $sourcePulseRecipe = @($playtestLoop.selectedRecipes | Where-Object { [string]$_.id -eq $sourcePulsePlaytestRecipeId })
@@ -254,7 +266,7 @@ if ([string]$sourcePulseRecipe.runtimeHostLaunchRowId -ne $runtimeHostLaunchRowI
 if ([string]$sourcePulseRecipe.hotReloadSafePointEvidenceId -ne $hotReloadSafePointEvidenceId) {
     Write-Error "$gameManifestPath $sourcePulsePlaytestRecipeId hotReloadSafePointEvidenceId expected $hotReloadSafePointEvidenceId"
 }
-Assert-ContainsAll (New-Set @($sourcePulseRecipe.failureClassificationIds)) $requiredFailureClassifications "$gameManifestPath $sourcePulsePlaytestRecipeId failureClassificationIds"
+Assert-ContainsAll (New-Set @($sourcePulseRecipe.failureClassificationIds)) $baseFailureClassifications "$gameManifestPath $sourcePulsePlaytestRecipeId failureClassificationIds"
 Assert-ContainsAll (New-Set @($sourcePulseRecipe.expectedSignals)) @(
     "2d_source_pulse_status=ready",
     "2d_source_pulse_ready=1",
@@ -302,6 +314,10 @@ if ($RequireReady.IsPresent) {
         "--require-win32-runtime-host",
         "--require-d3d12-shaders",
         "--require-d3d12-renderer",
+        "--require-runtime-ui-renderer-atlas-handoff",
+        "--require-sandbox-package-budgets",
+        "--require-performance-baseline",
+        "--require-long-run-performance-readiness",
         "--require-2d-package-playtest-productization",
         "--require-2d-source-pulse"
     )
@@ -331,6 +347,14 @@ if ($RequireReady.IsPresent) {
     }
     foreach ($entry in $sourcePulseSmokeExpectations.GetEnumerator()) {
         Assert-SmokeField $fields $entry.Key $entry.Value
+    }
+    foreach ($positiveCounter in @(
+            "2d_package_playtest_productization_long_run_memory_high_water_bytes",
+            "2d_package_playtest_productization_retained_profile_artifact_hash"
+        )) {
+        if (-not $fields.ContainsKey($positiveCounter) -or [decimal]$fields[$positiveCounter] -le 0) {
+            Write-Error "2d-package-playtest-productization: package smoke counter $positiveCounter must be positive"
+        }
     }
 }
 

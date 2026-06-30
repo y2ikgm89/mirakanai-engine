@@ -1046,11 +1046,21 @@ has_required_2d_package_playtest_failure_classifications(const Runtime2DPackageP
         Runtime2DPackagePlaytestFailureClassification::hot_reload_recook_failure,
         Runtime2DPackagePlaytestFailureClassification::runtime_replacement_failure,
         Runtime2DPackagePlaytestFailureClassification::host_gated_backend,
+        Runtime2DPackagePlaytestFailureClassification::long_run_budget_exceeded,
+        Runtime2DPackagePlaytestFailureClassification::retained_artifact_missing,
     };
 
     return std::ranges::all_of(required, [&row](Runtime2DPackagePlaytestFailureClassification classification) {
         return std::ranges::find(row.failure_classifications, classification) != row.failure_classifications.end();
     });
+}
+
+[[nodiscard]] static const Runtime2DPackagePlaytestRecipeRow*
+find_2d_package_playtest_recipe(const std::vector<Runtime2DPackagePlaytestRecipeRow>& rows,
+                                std::string_view id) noexcept {
+    const auto it =
+        std::ranges::find_if(rows, [id](const Runtime2DPackagePlaytestRecipeRow& row) { return row.id == id; });
+    return it == rows.end() ? nullptr : &*it;
 }
 
 bool Runtime2DPackagePlaytestResult::succeeded() const noexcept {
@@ -1116,6 +1126,7 @@ plan_runtime_2d_package_playtest_productization(const Runtime2DPackagePlaytestDe
     }
 
     for (const auto& evidence : result.evidence_rows) {
+        const auto* recipe = find_2d_package_playtest_recipe(result.recipe_rows, evidence.recipe_id);
         if (evidence.claims_editor_core_execution) {
             add_2d_package_playtest_diagnostic(result, "evidence-claims-editor-core-execution");
         }
@@ -1134,9 +1145,40 @@ plan_runtime_2d_package_playtest_productization(const Runtime2DPackagePlaytestDe
         if (evidence.externally_supplied && evidence.status != Runtime2DPackagePlaytestEvidenceStatus::missing) {
             ++result.imported_evidence_count;
         }
+        if (evidence.status != Runtime2DPackagePlaytestEvidenceStatus::passed &&
+            evidence.status != Runtime2DPackagePlaytestEvidenceStatus::missing) {
+            add_2d_package_playtest_diagnostic(result, "playtest-evidence-not-passed");
+        }
         result.package_smoke_counter_count += evidence.package_smoke_counters.size();
         result.profile_artifact_count += evidence.profile_artifacts.size();
         result.remediation_handoff_count += evidence.remediation_handoff_ids.size();
+
+        result.long_run_frame_count += evidence.frame_count;
+        result.long_run_over_budget_frame_count += evidence.over_budget_frame_count;
+        result.long_run_memory_high_water_bytes =
+            std::max(result.long_run_memory_high_water_bytes, evidence.memory_high_water_bytes);
+        if (evidence.retained_artifact_hash != 0U && !evidence.profile_artifacts.empty()) {
+            ++result.retained_profile_artifact_hash_count;
+            result.retained_profile_artifact_hash += evidence.retained_artifact_hash;
+        }
+
+        if (recipe == nullptr) {
+            add_2d_package_playtest_diagnostic(result, "missing-playtest-recipe-for-evidence");
+            continue;
+        }
+        if (recipe->required_frame_count > 0U && evidence.frame_count < recipe->required_frame_count) {
+            add_2d_package_playtest_diagnostic(result, "long-run-frame-count-below-required");
+        }
+        if (recipe->require_zero_over_budget_frames && evidence.over_budget_frame_count != 0U) {
+            add_2d_package_playtest_diagnostic(result, "long-run-over-budget-frames");
+        }
+        if (recipe->require_memory_high_water && evidence.memory_high_water_bytes == 0U) {
+            add_2d_package_playtest_diagnostic(result, "missing-long-run-memory-high-water");
+        }
+        if (recipe->require_retained_profile_artifact &&
+            (evidence.profile_artifacts.empty() || evidence.retained_artifact_hash == 0U)) {
+            add_2d_package_playtest_diagnostic(result, "missing-retained-profile-artifact-hash");
+        }
     }
 
     if (!result.diagnostics.empty()) {

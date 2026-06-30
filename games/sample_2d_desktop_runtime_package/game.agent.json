@@ -2300,7 +2300,11 @@
             "2d_package_playtest_productization_validation_recipe_execution=0",
             "2d_package_playtest_productization_arbitrary_shell_execution=0",
             "2d_package_playtest_productization_active_session_hot_reload=0",
-            "2d_package_playtest_productization_native_handle_exposure=0"
+            "2d_package_playtest_productization_native_handle_exposure=0",
+            "2d_package_playtest_productization_long_run_frames=3",
+            "2d_package_playtest_productization_long_run_over_budget_frames=0",
+            "2d_package_playtest_productization_retained_profile_artifact_hashes=1",
+            "2d_package_playtest_productization_retained_profile_artifact_hash"
           ],
           "failureClassificationIds": [
             "missing-package-file",
@@ -2310,7 +2314,9 @@
             "counter-mismatch",
             "hot-reload-recook-failure",
             "runtime-replacement-failure",
-            "host-gated-backend"
+            "host-gated-backend",
+            "long-run-budget-exceeded",
+            "retained-artifact-missing"
           ],
           "runtimeHostLaunchRowId": "desktop-game-runtime-playtest",
           "hotReloadSafePointEvidenceId": "packaged-2d-residency-budget",
@@ -2647,6 +2653,18 @@
           "trigger": "The selected package playtest requires a backend or runtime host that is unavailable on the current host.",
           "remediationActionId": "validation-failure",
           "evidence": "Record host-gated backend evidence and do not substitute another backend readiness claim."
+        },
+        {
+          "id": "long-run-budget-exceeded",
+          "trigger": "The selected package playtest long-run counters report insufficient frames, over-budget frames, or missing memory high-water evidence.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Retain the over-budget package playtest evidence and repair game-owned workload rows or budgets before rerunning the selected smoke."
+        },
+        {
+          "id": "retained-artifact-missing",
+          "trigger": "The selected package playtest evidence lacks a retained profile artifact path or deterministic artifact hash.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Attach retained package playtest evidence rooted under the reviewed playtest reports directory before promoting the package row."
         },
         {
           "id": "unsafe-mutation-request",
@@ -4163,7 +4181,7 @@
     },
     {
       "name": "installed-2d-package-playtest-productization-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-2d-package-playtest-productization"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-runtime-ui-renderer-atlas-handoff --require-sandbox-package-budgets --require-performance-baseline --require-long-run-performance-readiness --require-2d-package-playtest-productization"
     },
     {
       "name": "installed-2d-source-pulse-smoke",
