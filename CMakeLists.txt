@@ -1261,6 +1261,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_commercial_quality_closeout_tests)
     add_test(NAME MK_renderer_commercial_quality_closeout_tests COMMAND MK_renderer_commercial_quality_closeout_tests)
 
+    add_executable(MK_2d_renderer_rhi_quality_tests
+        tests/unit/two_d_commercial_renderer_rhi_quality_tests.cpp
+    )
+    target_link_libraries(MK_2d_renderer_rhi_quality_tests PRIVATE MK_renderer)
+    target_include_directories(MK_2d_renderer_rhi_quality_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_2d_renderer_rhi_quality_tests)
+    add_test(NAME MK_two_d_commercial_renderer_rhi_quality_tests COMMAND MK_2d_renderer_rhi_quality_tests)
+
     add_executable(MK_renderer_commercial_readiness_evidence_tests
         tests/unit/renderer_commercial_readiness_evidence_tests.cpp
     )
