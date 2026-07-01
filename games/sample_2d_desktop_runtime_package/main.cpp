@@ -47,6 +47,7 @@
 #include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime/two_d_commercial_input_closeout.hpp"
 #include "mirakana/runtime/two_d_commercial_performance_regression_gate.hpp"
+#include "mirakana/runtime/two_d_commercial_physics_closeout.hpp"
 #include "mirakana/runtime/two_d_commercial_release_legal_gate.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
@@ -136,6 +137,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_sprite_atlas_residency{false};
     bool require_2d_sprite_throughput{false};
     bool require_2d_physics_runtime_extension{false};
+    bool require_2d_commercial_physics_closeout{false};
     bool require_2d_input_device_production_ux{false};
     bool require_2d_commercial_input_closeout{false};
     bool require_2d_commercial_performance_regression_gate{false};
@@ -1428,6 +1430,11 @@ sprite_atlas_residency_status_name(mirakana::runtime::RuntimeSpriteAtlasResidenc
 
 [[nodiscard]] const char*
 physics2d_runtime_extension_status_name(const Physics2DRuntimeExtensionProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] const char* commercial_physics_closeout_status_name(
+    const mirakana::runtime::Runtime2DCommercialPhysicsCloseoutResult& result) noexcept {
     return result.ready ? "ready" : "diagnostics";
 }
 
@@ -6066,6 +6073,136 @@ make_sprite_throughput_dense_draw_intents(std::uint64_t count, std::uint32_t mat
                   probe.native_handle_exposure == 0U && probe.middleware_dispatches == 0U &&
                   !probe.dynamic_vs_dynamic_ccd_claimed;
     return probe;
+}
+
+[[nodiscard]] std::uint64_t mix_2d_commercial_physics_hash(std::uint64_t hash, std::uint64_t value) noexcept {
+    hash ^= value + 0x9E37'79B9'7F4A'7C15ULL + (hash << 6U) + (hash >> 2U);
+    return hash;
+}
+
+[[nodiscard]] std::uint64_t
+make_2d_commercial_physics_replay_hash(const Physics2DRuntimeExtensionProbeResult& physics_probe) noexcept {
+    std::uint64_t hash = 0xCBF2'9CE4'8422'2325ULL;
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.simulation_runs);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.time_of_impact_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.exact_sweep_shape_pair_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.hit_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.no_hit_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.initial_overlap_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.kinematic_contact_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.joint_rows);
+    hash = mix_2d_commercial_physics_hash(hash, physics_probe.trigger_event_rows);
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialPhysicsFeatureRow
+make_2d_commercial_physics_feature_row(const Physics2DRuntimeExtensionProbeResult& physics_probe,
+                                       mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind kind, std::string id) {
+    mirakana::runtime::Runtime2DCommercialPhysicsFeatureRow row{
+        .id = std::move(id),
+        .kind = kind,
+        .validation_recipe_id = "installed-2d-commercial-physics-closeout-smoke",
+        .package_counter_prefix = "2d_physics_runtime_extension",
+        .ready = physics_probe.ready,
+        .package_visible = true,
+        .deterministic = true,
+        .selected_2d_scope = true,
+        .simulation_runs = physics_probe.simulation_runs,
+    };
+
+    switch (kind) {
+    case mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind::time_of_impact_ccd:
+        row.time_of_impact_rows = physics_probe.time_of_impact_rows;
+        row.exact_sweep_shape_pair_rows = physics_probe.exact_sweep_shape_pair_rows;
+        break;
+    case mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind::joint_constraints:
+        row.joint_rows = physics_probe.joint_rows;
+        break;
+    case mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind::trigger_area_events:
+        row.trigger_event_rows = physics_probe.trigger_event_rows;
+        break;
+    case mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind::kinematic_contact_resolution:
+        row.kinematic_contact_rows = physics_probe.kinematic_contact_rows;
+        break;
+    case mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind::deterministic_replay:
+        row.deterministic_replay_hash = make_2d_commercial_physics_replay_hash(physics_probe);
+        break;
+    case mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind::package_counters:
+        row.diagnostics = physics_probe.diagnostics;
+        row.native_handle_access_rows = physics_probe.native_handle_exposure;
+        row.middleware_dispatch_rows = physics_probe.middleware_dispatches;
+        row.dynamic_vs_dynamic_ccd_claim_rows = physics_probe.dynamic_vs_dynamic_ccd_claimed ? 1U : 0U;
+        break;
+    }
+    return row;
+}
+
+[[nodiscard]] std::vector<mirakana::runtime::Runtime2DCommercialPhysicsFeatureRow>
+make_2d_commercial_physics_feature_rows(const Physics2DRuntimeExtensionProbeResult& physics_probe) {
+    using Kind = mirakana::runtime::Runtime2DCommercialPhysicsFeatureKind;
+    return {
+        make_2d_commercial_physics_feature_row(physics_probe, Kind::time_of_impact_ccd, "physics.toi-ccd"),
+        make_2d_commercial_physics_feature_row(physics_probe, Kind::joint_constraints, "physics.joint-constraints"),
+        make_2d_commercial_physics_feature_row(physics_probe, Kind::trigger_area_events, "physics.trigger-area-events"),
+        make_2d_commercial_physics_feature_row(physics_probe, Kind::kinematic_contact_resolution,
+                                               "physics.kinematic-contact-resolution"),
+        make_2d_commercial_physics_feature_row(physics_probe, Kind::deterministic_replay,
+                                               "physics.deterministic-replay"),
+        make_2d_commercial_physics_feature_row(physics_probe, Kind::package_counters, "physics.package-counters"),
+    };
+}
+
+[[nodiscard]] std::array<mirakana::runtime::Runtime2DCommercialPhysicsSourceRow, 4U>
+make_2d_commercial_physics_source_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialPhysicsSourceKind;
+    return {
+        mirakana::runtime::Runtime2DCommercialPhysicsSourceRow{
+            .id = "repository.physics2d-runtime-api",
+            .kind = Kind::physics2d_runtime_extension_api,
+            .source_path_or_url = "engine/physics/include/mirakana/physics/physics2d.hpp",
+            .ready = true,
+            .reviewed = true,
+            .first_party_or_official = true,
+            .public_docs_or_tracked_repo = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPhysicsSourceRow{
+            .id = "repository.physics2d-runtime-tests",
+            .kind = Kind::physics2d_runtime_extension_tests,
+            .source_path_or_url = "tests/unit/physics2d_runtime_extension_tests.cpp",
+            .ready = true,
+            .reviewed = true,
+            .first_party_or_official = true,
+            .public_docs_or_tracked_repo = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPhysicsSourceRow{
+            .id = "repository.sample-package-counter-contract",
+            .kind = Kind::sample_package_counter_contract,
+            .source_path_or_url = "games/sample_2d_desktop_runtime_package/game.agent.json",
+            .ready = true,
+            .reviewed = true,
+            .first_party_or_official = true,
+            .public_docs_or_tracked_repo = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPhysicsSourceRow{
+            .id = "repository.legal-policy",
+            .kind = Kind::repository_legal_policy,
+            .source_path_or_url = "docs/legal-and-licensing.md",
+            .ready = true,
+            .reviewed = true,
+            .first_party_or_official = true,
+            .public_docs_or_tracked_repo = true,
+        },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialPhysicsCloseoutResult
+validate_2d_commercial_physics_closeout_package_evidence(const Physics2DRuntimeExtensionProbeResult& physics_probe) {
+    return mirakana::runtime::evaluate_runtime_2d_commercial_physics_closeout(
+        mirakana::runtime::Runtime2DCommercialPhysicsCloseoutDesc{
+            .feature_rows = make_2d_commercial_physics_feature_rows(physics_probe),
+            .source_rows = make_2d_commercial_physics_source_rows(),
+            .selected_package_physics_closeout_claim = true,
+        });
 }
 
 [[nodiscard]] std::uint64_t
@@ -12269,6 +12406,7 @@ void print_usage() {
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
+                 "[--require-2d-commercial-physics-closeout] "
                  "[--require-2d-input-device-production-ux] [--require-2d-commercial-input-closeout] "
                  "[--require-2d-commercial-performance-regression-gate] "
                  "[--require-2d-commercial-release-legal-gate] "
@@ -12422,6 +12560,11 @@ void print_usage() {
             continue;
         }
         if (arg == "--require-2d-physics-runtime-extension") {
+            options.require_2d_physics_runtime_extension = true;
+            continue;
+        }
+        if (arg == "--require-2d-commercial-physics-closeout") {
+            options.require_2d_commercial_physics_closeout = true;
             options.require_2d_physics_runtime_extension = true;
             continue;
         }
@@ -13270,6 +13413,10 @@ int main(int argc, char** argv) {
     const auto physics_runtime_extension_probe = options.require_2d_physics_runtime_extension
                                                      ? validate_2d_physics_runtime_extension_package_evidence()
                                                      : Physics2DRuntimeExtensionProbeResult{};
+    const auto commercial_physics_closeout_probe =
+        options.require_2d_commercial_physics_closeout
+            ? validate_2d_commercial_physics_closeout_package_evidence(physics_runtime_extension_probe)
+            : mirakana::runtime::Runtime2DCommercialPhysicsCloseoutResult{};
     const auto input_device_production_ux_probe = options.require_2d_input_device_production_ux
                                                       ? validate_2d_input_device_production_ux_package_evidence()
                                                       : InputDeviceProductionUxProbeResult{};
@@ -14147,6 +14294,49 @@ int main(int argc, char** argv) {
         << physics_runtime_extension_probe.middleware_dispatches
         << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
         << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0)
+        << " 2d_commercial_physics_closeout_status="
+        << commercial_physics_closeout_status_name(commercial_physics_closeout_probe)
+        << " 2d_commercial_physics_closeout_ready=" << (commercial_physics_closeout_probe.ready ? 1 : 0)
+        << " 2d_commercial_physics_feature_gate_ready="
+        << (commercial_physics_closeout_probe.feature_gate_ready ? 1 : 0)
+        << " 2d_commercial_physics_source_gate_ready=" << (commercial_physics_closeout_probe.source_gate_ready ? 1 : 0)
+        << " 2d_commercial_physics_package_counter_gate_ready="
+        << (commercial_physics_closeout_probe.package_counter_gate_ready ? 1 : 0)
+        << " 2d_commercial_physics_deterministic_replay_ready="
+        << (commercial_physics_closeout_probe.deterministic_replay_ready ? 1 : 0)
+        << " 2d_commercial_physics_feature_rows=" << commercial_physics_closeout_probe.feature_rows
+        << " 2d_commercial_physics_source_rows=" << commercial_physics_closeout_probe.source_rows
+        << " 2d_commercial_physics_package_visible_feature_rows="
+        << commercial_physics_closeout_probe.package_visible_feature_rows
+        << " 2d_commercial_physics_deterministic_feature_rows="
+        << commercial_physics_closeout_probe.deterministic_feature_rows
+        << " 2d_commercial_physics_simulation_runs=" << commercial_physics_closeout_probe.simulation_runs
+        << " 2d_commercial_physics_time_of_impact_rows=" << commercial_physics_closeout_probe.time_of_impact_rows
+        << " 2d_commercial_physics_exact_sweep_shape_pair_rows="
+        << commercial_physics_closeout_probe.exact_sweep_shape_pair_rows
+        << " 2d_commercial_physics_kinematic_contact_rows=" << commercial_physics_closeout_probe.kinematic_contact_rows
+        << " 2d_commercial_physics_joint_rows=" << commercial_physics_closeout_probe.joint_rows
+        << " 2d_commercial_physics_trigger_event_rows=" << commercial_physics_closeout_probe.trigger_event_rows
+        << " 2d_commercial_physics_deterministic_replay_hash="
+        << commercial_physics_closeout_probe.deterministic_replay_hash
+        << " 2d_commercial_physics_diagnostic_rows=" << commercial_physics_closeout_probe.diagnostic_rows
+        << " 2d_commercial_physics_native_handle_access_rows="
+        << commercial_physics_closeout_probe.native_handle_access_rows
+        << " 2d_commercial_physics_middleware_dispatch_rows="
+        << commercial_physics_closeout_probe.middleware_dispatch_rows
+        << " 2d_commercial_physics_dynamic_vs_dynamic_ccd_claim_rows="
+        << commercial_physics_closeout_probe.dynamic_vs_dynamic_ccd_claim_rows
+        << " 2d_commercial_physics_physics_middleware_claim_rows="
+        << commercial_physics_closeout_probe.physics_middleware_claim_rows
+        << " 2d_commercial_physics_broad_physics_parity_claim_rows="
+        << commercial_physics_closeout_probe.broad_physics_parity_claim_rows
+        << " 2d_commercial_physics_external_engine_claim_rows="
+        << commercial_physics_closeout_probe.external_engine_claim_rows
+        << " 2d_commercial_physics_cross_platform_parity_claim_rows="
+        << commercial_physics_closeout_probe.cross_platform_parity_claim_rows
+        << " 2d_commercial_physics_legal_approval_claim_rows="
+        << commercial_physics_closeout_probe.legal_approval_claim_rows
+        << " 2d_commercial_physics_diagnostics=" << commercial_physics_closeout_probe.diagnostics.size()
         << " 2d_input_device_production_ux_status="
         << input_device_production_ux_status_name(input_device_production_ux_probe)
         << " 2d_input_device_production_ux_ready=" << (input_device_production_ux_probe.ready ? 1 : 0)
@@ -15774,6 +15964,59 @@ int main(int argc, char** argv) {
                   << " 2d_physics_runtime_extension_dynamic_vs_dynamic_ccd_claimed="
                   << (physics_runtime_extension_probe.dynamic_vs_dynamic_ccd_claimed ? 1 : 0) << '\n';
         return 46;
+    }
+
+    if (options.require_2d_commercial_physics_closeout && !commercial_physics_closeout_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_commercial_physics_closeout_unavailable"
+                  << " 2d_commercial_physics_closeout_status="
+                  << commercial_physics_closeout_status_name(commercial_physics_closeout_probe)
+                  << " 2d_commercial_physics_closeout_ready=" << (commercial_physics_closeout_probe.ready ? 1 : 0)
+                  << " 2d_commercial_physics_feature_gate_ready="
+                  << (commercial_physics_closeout_probe.feature_gate_ready ? 1 : 0)
+                  << " 2d_commercial_physics_source_gate_ready="
+                  << (commercial_physics_closeout_probe.source_gate_ready ? 1 : 0)
+                  << " 2d_commercial_physics_package_counter_gate_ready="
+                  << (commercial_physics_closeout_probe.package_counter_gate_ready ? 1 : 0)
+                  << " 2d_commercial_physics_deterministic_replay_ready="
+                  << (commercial_physics_closeout_probe.deterministic_replay_ready ? 1 : 0)
+                  << " 2d_commercial_physics_feature_rows=" << commercial_physics_closeout_probe.feature_rows
+                  << " 2d_commercial_physics_source_rows=" << commercial_physics_closeout_probe.source_rows
+                  << " 2d_commercial_physics_package_visible_feature_rows="
+                  << commercial_physics_closeout_probe.package_visible_feature_rows
+                  << " 2d_commercial_physics_deterministic_feature_rows="
+                  << commercial_physics_closeout_probe.deterministic_feature_rows
+                  << " 2d_commercial_physics_simulation_runs=" << commercial_physics_closeout_probe.simulation_runs
+                  << " 2d_commercial_physics_time_of_impact_rows="
+                  << commercial_physics_closeout_probe.time_of_impact_rows
+                  << " 2d_commercial_physics_exact_sweep_shape_pair_rows="
+                  << commercial_physics_closeout_probe.exact_sweep_shape_pair_rows
+                  << " 2d_commercial_physics_kinematic_contact_rows="
+                  << commercial_physics_closeout_probe.kinematic_contact_rows
+                  << " 2d_commercial_physics_joint_rows=" << commercial_physics_closeout_probe.joint_rows
+                  << " 2d_commercial_physics_trigger_event_rows="
+                  << commercial_physics_closeout_probe.trigger_event_rows
+                  << " 2d_commercial_physics_deterministic_replay_hash="
+                  << commercial_physics_closeout_probe.deterministic_replay_hash
+                  << " 2d_commercial_physics_diagnostic_rows=" << commercial_physics_closeout_probe.diagnostic_rows
+                  << " 2d_commercial_physics_native_handle_access_rows="
+                  << commercial_physics_closeout_probe.native_handle_access_rows
+                  << " 2d_commercial_physics_middleware_dispatch_rows="
+                  << commercial_physics_closeout_probe.middleware_dispatch_rows
+                  << " 2d_commercial_physics_dynamic_vs_dynamic_ccd_claim_rows="
+                  << commercial_physics_closeout_probe.dynamic_vs_dynamic_ccd_claim_rows
+                  << " 2d_commercial_physics_physics_middleware_claim_rows="
+                  << commercial_physics_closeout_probe.physics_middleware_claim_rows
+                  << " 2d_commercial_physics_broad_physics_parity_claim_rows="
+                  << commercial_physics_closeout_probe.broad_physics_parity_claim_rows
+                  << " 2d_commercial_physics_external_engine_claim_rows="
+                  << commercial_physics_closeout_probe.external_engine_claim_rows
+                  << " 2d_commercial_physics_cross_platform_parity_claim_rows="
+                  << commercial_physics_closeout_probe.cross_platform_parity_claim_rows
+                  << " 2d_commercial_physics_legal_approval_claim_rows="
+                  << commercial_physics_closeout_probe.legal_approval_claim_rows
+                  << " 2d_commercial_physics_diagnostics=" << commercial_physics_closeout_probe.diagnostics.size()
+                  << '\n';
+        return 91;
     }
 
     if (options.require_2d_input_device_production_ux && !input_device_production_ux_probe.ready) {
