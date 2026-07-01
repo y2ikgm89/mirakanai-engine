@@ -30,6 +30,7 @@
     "package_rows": {
       "type": "array",
       "minItems": 9,
+      "maxItems": 9,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -90,6 +91,7 @@
     "platform_gate_rows": {
       "type": "array",
       "minItems": 3,
+      "maxItems": 3,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -118,13 +120,45 @@
     "official_source_rows": {
       "type": "array",
       "minItems": 5,
+      "maxItems": 5,
       "items": {
         "type": "object",
-        "required": [ "id", "kind", "url", "use", "ready", "official", "public_docs_only" ]
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "url",
+          "use",
+          "ready",
+          "official",
+          "public_docs_only",
+          "implementation_input",
+          "copied_expression_allowed"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": {
+            "enum": [
+              "microsoft_msix_signing",
+              "apple_notarization_distribution",
+              "android_app_signing",
+              "repository_clean_room_ledger",
+              "repository_legal_policy"
+            ]
+          },
+          "url": { "type": "string", "minLength": 1 },
+          "use": { "type": "string", "minLength": 1 },
+          "ready": { "const": true },
+          "official": { "const": true },
+          "public_docs_only": { "const": true },
+          "implementation_input": { "const": false },
+          "copied_expression_allowed": { "const": false }
+        }
       }
     },
     "non_claims": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "legal_approval",
         "external_engine_compatibility",

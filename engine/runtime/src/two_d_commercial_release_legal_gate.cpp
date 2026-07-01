@@ -68,6 +68,7 @@ void evaluate_evidence_rows(const Runtime2DCommercialReleaseGateDesc& desc,
                             Runtime2DCommercialReleaseGateResult& result) {
     bool engineering_review_input_ready = true;
     bool counsel_review_required = true;
+    bool all_evidence_rows_ready = true;
     for (const auto& row : desc.evidence_rows) {
         if (evidence_row_ready(row)) {
             ++result.evidence_rows;
@@ -75,6 +76,7 @@ void evaluate_evidence_rows(const Runtime2DCommercialReleaseGateDesc& desc,
             append_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::evidence_not_ready, row.id,
                               "2D commercial release evidence rows must be package-visible counsel-ready "
                               "engineering review inputs");
+            all_evidence_rows_ready = false;
             engineering_review_input_ready = false;
             counsel_review_required = false;
         }
@@ -82,6 +84,7 @@ void evaluate_evidence_rows(const Runtime2DCommercialReleaseGateDesc& desc,
         counsel_review_required = counsel_review_required && row.counsel_review_required;
     }
 
+    std::size_t required_evidence_rows = 0U;
     for (const auto kind : kRequiredEvidenceKinds) {
         bool found = false;
         for (const auto& row : desc.evidence_rows) {
@@ -94,16 +97,20 @@ void evaluate_evidence_rows(const Runtime2DCommercialReleaseGateDesc& desc,
             append_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::evidence_not_ready,
                               std::string{runtime_2d_commercial_release_evidence_kind_name(kind)},
                               "2D commercial release gate is missing a required engineering evidence row");
+        } else {
+            ++required_evidence_rows;
         }
     }
 
-    result.evidence_gate_ready = result.evidence_rows == kRequiredEvidenceKinds.size();
+    result.evidence_gate_ready = all_evidence_rows_ready && required_evidence_rows == kRequiredEvidenceKinds.size() &&
+                                 result.evidence_rows == kRequiredEvidenceKinds.size();
     result.engineering_review_input_ready = result.evidence_gate_ready && engineering_review_input_ready;
     result.counsel_review_required = result.evidence_gate_ready && counsel_review_required;
 }
 
 void evaluate_official_sources(const Runtime2DCommercialReleaseGateDesc& desc,
                                Runtime2DCommercialReleaseGateResult& result) {
+    bool all_official_source_rows_ready = true;
     for (const auto& row : desc.official_source_rows) {
         if (official_source_row_ready(row)) {
             ++result.official_source_rows;
@@ -111,9 +118,11 @@ void evaluate_official_sources(const Runtime2DCommercialReleaseGateDesc& desc,
             append_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::official_source_not_ready,
                               row.id,
                               "2D commercial release official-source rows must be official public documentation rows");
+            all_official_source_rows_ready = false;
         }
     }
 
+    std::size_t required_official_source_rows = 0U;
     for (const auto kind : kRequiredOfficialSourceKinds) {
         bool found = false;
         for (const auto& row : desc.official_source_rows) {
@@ -126,14 +135,19 @@ void evaluate_official_sources(const Runtime2DCommercialReleaseGateDesc& desc,
             append_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::official_source_not_ready,
                               std::string{runtime_2d_commercial_release_official_source_kind_name(kind)},
                               "2D commercial release gate is missing a required official-source row");
+        } else {
+            ++required_official_source_rows;
         }
     }
 
-    result.official_source_ready = result.official_source_rows == kRequiredOfficialSourceKinds.size();
+    result.official_source_ready = all_official_source_rows_ready &&
+                                   required_official_source_rows == kRequiredOfficialSourceKinds.size() &&
+                                   result.official_source_rows == kRequiredOfficialSourceKinds.size();
 }
 
 void evaluate_platform_gates(const Runtime2DCommercialReleaseGateDesc& desc,
                              Runtime2DCommercialReleaseGateResult& result) {
+    bool all_platform_gate_rows_ready = true;
     for (const auto& row : desc.platform_gate_rows) {
         if (platform_gate_row_ready(row)) {
             ++result.platform_gate_rows;
@@ -142,12 +156,14 @@ void evaluate_platform_gates(const Runtime2DCommercialReleaseGateDesc& desc,
                               row.id,
                               "2D commercial release signing, notarization, and store rows must remain separate "
                               "platform gates backed by official documentation");
+            all_platform_gate_rows_ready = false;
         }
         if (row.host_gated) {
             ++result.host_gated_platform_rows;
         }
     }
 
+    std::size_t required_platform_gate_rows = 0U;
     for (const auto kind : kRequiredPlatformGateKinds) {
         bool found = false;
         for (const auto& row : desc.platform_gate_rows) {
@@ -160,10 +176,14 @@ void evaluate_platform_gates(const Runtime2DCommercialReleaseGateDesc& desc,
             append_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::platform_gate_not_ready,
                               std::string{runtime_2d_commercial_release_platform_gate_kind_name(kind)},
                               "2D commercial release gate is missing a required platform release gate row");
+        } else {
+            ++required_platform_gate_rows;
         }
     }
 
-    result.platform_gate_ready = result.platform_gate_rows == kRequiredPlatformGateKinds.size();
+    result.platform_gate_ready = all_platform_gate_rows_ready &&
+                                 required_platform_gate_rows == kRequiredPlatformGateKinds.size() &&
+                                 result.platform_gate_rows == kRequiredPlatformGateKinds.size();
 }
 
 void evaluate_blocker_claims(const Runtime2DCommercialReleaseGateDesc& desc,
@@ -292,10 +312,10 @@ evaluate_runtime_2d_commercial_release_legal_gate(const Runtime2DCommercialRelea
     evaluate_platform_gates(desc, result);
     evaluate_blocker_claims(desc, result);
 
-    result.ready = desc.selected_package_release_gate_claim && result.evidence_gate_ready &&
-                   result.official_source_ready && result.platform_gate_ready &&
-                   result.engineering_review_input_ready && result.counsel_review_required &&
-                   result.release_blocker_rows == 0U && result.legal_approval_claim_rows == 0U;
+    result.ready =
+        desc.selected_package_release_gate_claim && result.evidence_gate_ready && result.official_source_ready &&
+        result.platform_gate_ready && result.engineering_review_input_ready && result.counsel_review_required &&
+        result.release_blocker_rows == 0U && result.legal_approval_claim_rows == 0U && result.diagnostics.empty();
     return result;
 }
 

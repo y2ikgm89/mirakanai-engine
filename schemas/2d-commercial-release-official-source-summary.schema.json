@@ -20,6 +20,7 @@
     "official_source_rows": {
       "type": "array",
       "minItems": 5,
+      "maxItems": 5,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -57,6 +58,7 @@
     },
     "non_claims": {
       "type": "object",
+      "additionalProperties": false,
       "required": [ "legal_approval", "compatibility", "parity" ],
       "properties": {
         "legal_approval": { "const": false },

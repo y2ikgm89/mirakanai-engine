@@ -167,6 +167,39 @@ MK_TEST("runtime 2d commercial release legal gate accepts counsel ready engineer
     MK_REQUIRE(result.diagnostics.empty());
 }
 
+MK_TEST("runtime 2d commercial release legal gate rejects duplicate rows missing required kinds") {
+    auto desc = make_ready_desc();
+    desc.evidence_rows[8] = evidence(Runtime2DCommercialReleaseEvidenceKind::package_content_inventory,
+                                     "duplicate-package-content-inventory");
+    desc.official_source_rows[4] = Runtime2DCommercialReleaseOfficialSourceRow{
+        .id = "duplicate.microsoft.msix.signing",
+        .kind = Runtime2DCommercialReleaseOfficialSourceKind::microsoft_msix_signing,
+        .url = "https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview",
+        .ready = true,
+        .official = true,
+        .public_docs_only = true,
+    };
+    desc.platform_gate_rows[2] = Runtime2DCommercialReleasePlatformGateRow{
+        .id = "duplicate-windows-msix-signing",
+        .kind = Runtime2DCommercialReleasePlatformGateKind::windows_msix_signing,
+        .official_source_id = "microsoft.msix.signing",
+        .host_class_id = "windows-release-signing-host",
+        .host_gated = true,
+        .ready = false,
+        .separate_platform_gate = true,
+    };
+
+    const auto result = mirakana::runtime::evaluate_runtime_2d_commercial_release_legal_gate(desc);
+
+    MK_REQUIRE(!result.ready);
+    MK_REQUIRE(!result.evidence_gate_ready);
+    MK_REQUIRE(!result.official_source_ready);
+    MK_REQUIRE(!result.platform_gate_ready);
+    MK_REQUIRE(has_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::evidence_not_ready));
+    MK_REQUIRE(has_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::official_source_not_ready));
+    MK_REQUIRE(has_diagnostic(result.diagnostics, Runtime2DCommercialReleaseDiagnosticCode::platform_gate_not_ready));
+}
+
 MK_TEST("runtime 2d commercial release legal gate rejects missing notices and unknown licenses") {
     auto desc = make_ready_desc();
     desc.evidence_rows[1].ready = false;

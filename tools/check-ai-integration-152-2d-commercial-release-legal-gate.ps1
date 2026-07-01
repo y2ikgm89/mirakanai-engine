@@ -1,7 +1,7 @@
 #requires -Version 7.0
 #requires -PSEdition Core
 
-# Chapter 151 for check-ai-integration.ps1 static contracts.
+# Chapter 152 for check-ai-integration.ps1 static contracts.
 # Runtime 2D Commercial Release Legal Gate v1 package/manifest/plan alignment.
 
 $releaseHeader = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/two_d_commercial_release_legal_gate.hpp"

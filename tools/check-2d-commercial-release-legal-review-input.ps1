@@ -73,6 +73,9 @@ if ($review.legal_advice -ne $false -or $review.engineering_review_input -ne $tr
     Write-Error "release legal review must be counsel-ready engineering input and not legal advice"
 }
 
+if (@($review.package_rows).Count -ne 9) {
+    Write-Error "release legal review package_rows must contain exactly 9 rows"
+}
 foreach ($expectedKind in @(
         "package_content_inventory",
         "third_party_notice_record",
@@ -103,12 +106,18 @@ foreach ($blockerName in @(
     }
 }
 
+if (@($review.platform_gate_rows).Count -ne 3) {
+    Write-Error "release legal review platform_gate_rows must contain exactly 3 rows"
+}
 foreach ($gateId in @("windows-msix-signing", "macos-notarization", "android-play-signing")) {
     if (@($review.platform_gate_rows | Where-Object { [string]$_.id -eq $gateId -and $_.host_gated -eq $true }).Count -ne 1) {
         Write-Error "release legal review platform_gate_rows must contain host-gated $gateId"
     }
 }
 
+if (@($review.official_source_rows).Count -ne 5) {
+    Write-Error "release legal review official_source_rows must contain exactly 5 rows"
+}
 foreach ($sourceId in @(
         "microsoft.msix.signing",
         "apple.notarization.distribution",
@@ -137,6 +146,9 @@ if ($summary.validation_recipe -ne "2d-commercial-release-legal-review-input") {
 }
 if ($summary.legal_advice -ne $false) {
     Write-Error "release legal official source summary must not be legal advice"
+}
+if (@($summary.official_source_rows).Count -ne 5) {
+    Write-Error "release legal official source summary official_source_rows must contain exactly 5 rows"
 }
 
 $summaryText = Get-Content -LiteralPath $summaryPath -Raw
