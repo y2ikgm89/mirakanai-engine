@@ -767,6 +767,8 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .editor_asset_import_regression_workflow_rows =
             static_cast<std::uint32_t>(asset_browser.import_workflow_rows.size()),
         .editor_asset_import_regression_failed_rows = count_asset_import_regression_failed_rows(asset_browser),
+        .editor_asset_import_regression_open_report_command_enabled =
+            asset_browser_command_enabled(asset_browser, "asset_browser.importer_corpus.open_report"),
         .editor_asset_import_regression_reimport_command_enabled =
             asset_browser_command_enabled(asset_browser, "asset_browser.import.batch_reimport"),
         .editor_asset_import_regression_preset_diff_command_enabled =

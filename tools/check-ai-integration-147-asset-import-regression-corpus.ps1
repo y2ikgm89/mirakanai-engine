@@ -114,8 +114,9 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "const AssetImportRegressionTriageDocumentV1* triage",
-        "workflow_row_id(`"failure`"",
+        "workflow_row_id(failed ? `"failure`" : `"triage`"",
         "triage_failure",
+        "triage_review",
         "recommended_action=",
         "reimport_decision=",
         "preset_diff_required",
@@ -356,6 +357,7 @@ foreach ($needle in @(
         "editor_asset_import_regression_workflow_visible",
         "editor_asset_import_regression_workflow_rows",
         "editor_asset_import_regression_failed_rows",
+        "editor_asset_import_regression_open_report_command_enabled",
         "editor_asset_import_regression_reimport_command_enabled",
         "editor_asset_import_regression_preset_diff_command_enabled",
         "editor_asset_import_regression_axis_unit_preview_command_enabled",
@@ -363,6 +365,7 @@ foreach ($needle in @(
         "editor_asset_import_regression_native_handles_exposed",
         "editor_asset_import_regression_external_engine_claim",
         "editor first party document exposes retained asset import regression workflow from report path",
+        "editor first party document exposes successful retained asset import regression report without side effects",
         "MK_editor_native_shell_tests",
         "asset-import-regression-visible-shell-smoke"
     )) {

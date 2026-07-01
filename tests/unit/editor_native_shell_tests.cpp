@@ -651,6 +651,8 @@ MK_TEST("editor first party document exposes retained asset import regression wo
         MK_REQUIRE(contains_element(shell_document.document, "asset_browser.import_workflow.failure.mesh.axis"));
         MK_REQUIRE(
             contains_element(shell_document.document, "asset_browser.import_workflow.failure.mesh.axis.source_path"));
+        MK_REQUIRE(contains_element(shell_document.document,
+                                    "asset_browser.commands.asset_browser.importer_corpus.open_report"));
         MK_REQUIRE(
             contains_element(shell_document.document, "asset_browser.commands.asset_browser.import.preset_diff"));
         MK_REQUIRE(
@@ -659,6 +661,7 @@ MK_TEST("editor first party document exposes retained asset import regression wo
         MK_REQUIRE(counters.editor_asset_import_regression_workflow_visible);
         MK_REQUIRE(counters.editor_asset_import_regression_workflow_rows == 6U);
         MK_REQUIRE(counters.editor_asset_import_regression_failed_rows == 3U);
+        MK_REQUIRE(counters.editor_asset_import_regression_open_report_command_enabled);
         MK_REQUIRE(!counters.editor_asset_import_regression_reimport_command_enabled);
         MK_REQUIRE(counters.editor_asset_import_regression_preset_diff_command_enabled);
         MK_REQUIRE(counters.editor_asset_import_regression_axis_unit_preview_command_enabled);
@@ -671,6 +674,76 @@ MK_TEST("editor first party document exposes retained asset import regression wo
             MK_REQUIRE(element.text.label.find("C:/Users/operator") == std::string::npos);
             MK_REQUIRE(element.accessibility_label.find("C:/Users/operator") == std::string::npos);
         }
+    } catch (...) {
+        std::filesystem::current_path(old_current_path);
+        std::filesystem::remove_all(project_root);
+        throw;
+    }
+    std::filesystem::current_path(old_current_path);
+    std::filesystem::remove_all(project_root);
+}
+
+MK_TEST("editor first party document exposes successful retained asset import regression report without side effects") {
+    const auto project_root = std::filesystem::temp_directory_path() / "MK_native_asset_import_regression_ready_report";
+    std::filesystem::remove_all(project_root);
+    std::filesystem::create_directories(project_root / "retained" / "asset-import-regression");
+
+    const mirakana::AssetImportRegressionReportV1 report{
+        .corpus_id = "first_party_ready_corpus",
+        .run_id = "visible-shell-ready-smoke",
+        .rows =
+            {
+                mirakana::AssetImportRegressionReportRowV1{
+                    .asset_id = "mesh.ready",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId{2001U},
+                    .source_path = "sources/gltf/ready.gltf",
+                    .source_sha256 = "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                    .preset_sha256 = "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+                    .importer_id = "MK_tools.gltf",
+                    .importer_version = "test",
+                    .phase = "import",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::none,
+                    .message = "synthetic ready row",
+                    .deterministic_output_hash =
+                        "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+                    .succeeded = true,
+                    .ready_for_commercial_evidence = true,
+                },
+            },
+        .asset_count = 1U,
+        .succeeded_count = 1U,
+        .ready = true,
+    };
+
+    mirakana::RootedFileSystem filesystem{project_root};
+    filesystem.write_text("retained/asset-import-regression/report.gereport",
+                          mirakana::serialize_asset_import_regression_report_v1(report));
+
+    auto old_current_path = std::filesystem::current_path();
+    std::filesystem::current_path(project_root);
+    try {
+        const mirakana::editor::NativeEditorLaunchOptions options{
+            .asset_import_regression_report_path = "retained/asset-import-regression/report.gereport"};
+        mirakana::editor::NativeEditorApp app{options};
+
+        const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+        const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+        MK_REQUIRE(contains_element(shell_document.document, "asset_browser.import_workflow"));
+        MK_REQUIRE(contains_element(shell_document.document, "asset_browser.import_workflow.report.mesh.ready"));
+        MK_REQUIRE(contains_element(shell_document.document,
+                                    "asset_browser.commands.asset_browser.importer_corpus.open_report"));
+        MK_REQUIRE(counters.editor_asset_import_regression_workflow_visible);
+        MK_REQUIRE(counters.editor_asset_import_regression_workflow_rows == 2U);
+        MK_REQUIRE(counters.editor_asset_import_regression_failed_rows == 0U);
+        MK_REQUIRE(counters.editor_asset_import_regression_open_report_command_enabled);
+        MK_REQUIRE(!counters.editor_asset_import_regression_reimport_command_enabled);
+        MK_REQUIRE(!counters.editor_asset_import_regression_preset_diff_command_enabled);
+        MK_REQUIRE(!counters.editor_asset_import_regression_axis_unit_preview_command_enabled);
+        MK_REQUIRE(!counters.editor_asset_import_regression_importers_executed_in_core);
+        MK_REQUIRE(!counters.editor_asset_import_regression_native_handles_exposed);
+        MK_REQUIRE(!counters.editor_asset_import_regression_external_engine_claim);
     } catch (...) {
         std::filesystem::current_path(old_current_path);
         std::filesystem::remove_all(project_root);
