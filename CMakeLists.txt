@@ -922,6 +922,16 @@ if(BUILD_TESTING)
         COMMAND MK_runtime_rhi_mavg_ds_gdeflate_execution_tests
     )
 
+    add_executable(MK_runtime_rhi_mavg_ds_zstd_preview_tests
+        tests/unit/runtime_rhi_mavg_directstorage_zstd_preview_review_tests.cpp
+    )
+    target_link_libraries(MK_runtime_rhi_mavg_ds_zstd_preview_tests PRIVATE MK_runtime_rhi)
+    target_include_directories(MK_runtime_rhi_mavg_ds_zstd_preview_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_rhi_mavg_ds_zstd_preview_tests)
+    add_test(NAME MK_runtime_rhi_mavg_ds_zstd_preview_tests
+        COMMAND MK_runtime_rhi_mavg_ds_zstd_preview_tests
+    )
+
     add_executable(MK_runtime_rhi_mavg_advanced_backend_evidence_tests
         tests/unit/runtime_rhi_mavg_advanced_backend_evidence_tests.cpp
     )

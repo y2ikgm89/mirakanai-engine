@@ -74,6 +74,7 @@
     "mavgDirectStorageGpuDecompressionPolicyCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-directstorage-gpu-decompression-policy.ps1",
     "mavgDirectStorageGpuDestinationExecutionCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-directstorage-gpu-destination-execution.ps1",
     "mavgDirectStorageGDeflateExecutionCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-directstorage-gdeflate-execution.ps1",
+    "mavgDirectStorageZstdPreviewReviewCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-directstorage-zstd-preview-review.ps1",
     "mavgBroadOptimizationCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-broad-optimization.ps1",
     "mavgNaniteComparisonCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-nanite-comparison.ps1",
     "productionReadinessAuditCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1",

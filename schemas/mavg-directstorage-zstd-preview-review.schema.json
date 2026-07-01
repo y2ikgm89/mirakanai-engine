@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mirakanai.local/GameEngine.MavgDirectStorageZstdPreviewReview.v1.schema.json",
+  "title": "GameEngine.MavgDirectStorageZstdPreviewReview.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "planId",
+    "sourceRows",
+    "reviewRows",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "GameEngine.MavgDirectStorageZstdPreviewReview.v1"
+    },
+    "planId": {
+      "const": "mavg-directstorage-zstd-preview-review-v1"
+    },
+    "sourceRows": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "$ref": "#/$defs/sourceRow"
+      }
+    },
+    "reviewRows": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "$ref": "#/$defs/reviewRow"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    }
+  },
+  "$defs": {
+    "sourceRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId",
+        "url",
+        "reviewed",
+        "notes"
+      ],
+      "properties": {
+        "sourceId": {
+          "enum": [
+            "microsoft-directstorage-api-downloads",
+            "microsoft-directstorage-1.4-zstd-preview",
+            "microsoft-directstorage-nuget-1.4-preview",
+            "microsoft-directstorage-1.3-enqueue-requests"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "reviewRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rowId",
+        "feature",
+        "officialSourceId",
+        "sdkPackageVersion",
+        "reviewed",
+        "directStorage14PreviewSelected",
+        "zstdCompressionFormatReviewed",
+        "cpuDecompressionPathReviewed",
+        "gpuDecompressionPathReviewed",
+        "gaclPublicPreviewReviewed",
+        "gaclShuffleTransformReviewed",
+        "gaclBcnPostprocessScopeReviewed",
+        "gaclBc7PostprocessClaimed",
+        "creatorIdSupportReviewed",
+        "explicitApiUsageRequired",
+        "authoredZstdAssetsRequired",
+        "stagingBufferOver256MbKnownIssueReviewed",
+        "zstdGpuFallbackShaderTdrKnownIssueReviewed",
+        "previewNoRuntimePromotionReviewed",
+        "claims"
+      ],
+      "properties": {
+        "rowId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[A-Za-z0-9._:/-]+$"
+        },
+        "feature": {
+          "enum": [
+            "zstd_codec",
+            "gacl_shuffle_transform",
+            "creator_id",
+            "preview_known_issue"
+          ]
+        },
+        "officialSourceId": {
+          "enum": [
+            "microsoft-directstorage-api-downloads",
+            "microsoft-directstorage-1.4-zstd-preview",
+            "microsoft-directstorage-nuget-1.4-preview",
+            "microsoft-directstorage-1.3-enqueue-requests"
+          ]
+        },
+        "sdkPackageVersion": {
+          "pattern": "^1\\.4\\.0-preview[0-9A-Za-z._-]+$"
+        },
+        "reviewed": {
+          "const": true
+        },
+        "directStorage14PreviewSelected": {
+          "const": true
+        },
+        "zstdCompressionFormatReviewed": {
+          "const": true
+        },
+        "cpuDecompressionPathReviewed": {
+          "const": true
+        },
+        "gpuDecompressionPathReviewed": {
+          "const": true
+        },
+        "gaclPublicPreviewReviewed": {
+          "const": true
+        },
+        "gaclShuffleTransformReviewed": {
+          "const": true
+        },
+        "gaclBcnPostprocessScopeReviewed": {
+          "const": true
+        },
+        "gaclBc7PostprocessClaimed": {
+          "const": false
+        },
+        "creatorIdSupportReviewed": {
+          "const": true
+        },
+        "explicitApiUsageRequired": {
+          "const": true
+        },
+        "authoredZstdAssetsRequired": {
+          "const": true
+        },
+        "stagingBufferOver256MbKnownIssueReviewed": {
+          "const": true
+        },
+        "zstdGpuFallbackShaderTdrKnownIssueReviewed": {
+          "const": true
+        },
+        "previewNoRuntimePromotionReviewed": {
+          "const": true
+        },
+        "claims": {
+          "$ref": "#/$defs/claims"
+        }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dllReplacementEnablesFeatures",
+        "nativeHandlesExposed",
+        "zstdPreviewRuntimeReady",
+        "zstdExecutionReady",
+        "gaclPipelineReady",
+        "performanceReady",
+        "packageVisibleBackendReadinessReady",
+        "broadMavgBackendReady",
+        "broadCpuGpuMemoryOptimizationReady",
+        "naniteCompatible",
+        "naniteEquivalent",
+        "naniteSuperior",
+        "unityUnrealGodotCompatibility"
+      ],
+      "properties": {
+        "dllReplacementEnablesFeatures": {
+          "const": false
+        },
+        "nativeHandlesExposed": {
+          "const": false
+        },
+        "zstdPreviewRuntimeReady": {
+          "const": false
+        },
+        "zstdExecutionReady": {
+          "const": false
+        },
+        "gaclPipelineReady": {
+          "const": false
+        },
+        "performanceReady": {
+          "const": false
+        },
+        "packageVisibleBackendReadinessReady": {
+          "const": false
+        },
+        "broadMavgBackendReady": {
+          "const": false
+        },
+        "broadCpuGpuMemoryOptimizationReady": {
+          "const": false
+        },
+        "naniteCompatible": {
+          "const": false
+        },
+        "naniteEquivalent": {
+          "const": false
+        },
+        "naniteSuperior": {
+          "const": false
+        },
+        "unityUnrealGodotCompatibility": {
+          "const": false
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mavg_directstorage_zstd_preview_review_ready",
+        "mavg_directstorage_zstd_preview_selected",
+        "mavg_directstorage_zstd_preview_ready",
+        "mavg_directstorage_zstd_execution_ready",
+        "mavg_directstorage_gacl_pipeline_ready",
+        "mavg_directstorage_creator_id_policy_reviewed",
+        "mavg_directstorage_native_handles_exposed",
+        "mavg_directstorage_performance_ready",
+        "mavg_package_visible_backend_readiness_ready",
+        "mavg_broad_cpu_gpu_memory_optimization_ready",
+        "mavg_nanite_compatible",
+        "mavg_nanite_equivalent",
+        "mavg_nanite_superior",
+        "mavg_external_engine_compatibility"
+      ],
+      "properties": {
+        "mavg_directstorage_zstd_preview_review_ready": {
+          "const": 1
+        },
+        "mavg_directstorage_zstd_preview_selected": {
+          "const": 1
+        },
+        "mavg_directstorage_zstd_preview_ready": {
+          "const": 0
+        },
+        "mavg_directstorage_zstd_execution_ready": {
+          "const": 0
+        },
+        "mavg_directstorage_gacl_pipeline_ready": {
+          "const": 0
+        },
+        "mavg_directstorage_creator_id_policy_reviewed": {
+          "const": 1
+        },
+        "mavg_directstorage_native_handles_exposed": {
+          "const": 0
+        },
+        "mavg_directstorage_performance_ready": {
+          "const": 0
+        },
+        "mavg_package_visible_backend_readiness_ready": {
+          "const": 0
+        },
+        "mavg_broad_cpu_gpu_memory_optimization_ready": {
+          "const": 0
+        },
+        "mavg_nanite_compatible": {
+          "const": 0
+        },
+        "mavg_nanite_equivalent": {
+          "const": 0
+        },
+        "mavg_nanite_superior": {
+          "const": 0
+        },
+        "mavg_external_engine_compatibility": {
+          "const": 0
+        }
+      }
+    }
+  }
+}

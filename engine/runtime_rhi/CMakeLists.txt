@@ -13,6 +13,7 @@ add_library(mirakana_runtime_rhi
     src/mavg_directstorage_gpu_destination_execution.cpp
     src/mavg_directstorage_gpu_decompression_policy.cpp
     src/mavg_directstorage_gdeflate_execution.cpp
+    src/mavg_directstorage_zstd_preview_review.cpp
     src/mavg_streaming_upload_overlap_evidence.cpp
     src/package_streaming_frame_graph.cpp
     src/runtime_upload.cpp
