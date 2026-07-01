@@ -4,7 +4,7 @@
 
 **Plan ID:** `2d-commercial-production-excellence-v1`
 **Date:** `2026-06-29`
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Define a clean-break, first-party, legally safe, official-recommendation-aligned path from the selected ready 2D desktop runtime package proof to a highest-level commercial 2D game-production engine surface. The plan must keep the current ready claims honest, close the remaining 2D authoring/runtime/renderer/UI/package/performance gaps with exact evidence, and avoid copying or implying compatibility with Unity, Unreal Engine, Godot, or any other engine.
 
@@ -325,13 +325,18 @@ Phase 9 validation evidence:
 
 Goal: promote only exact, evidence-backed claims and leave every other claim fail-closed.
 
-- [ ] Update `docs/current-capabilities.md`, `docs/roadmap.md`, plan registry, game manifests, validation recipes, schemas, static checks, and manifest fragments only for completed and validated surfaces.
-- [ ] Compose `engine/agent/manifest.json` if fragments change.
-- [ ] Run targeted public API, package, JSON, agent-surface, legal/dependency, and static guards.
-- [ ] Run `tools/validate.ps1` for runtime/build/public-contract changes.
-- [ ] Record remaining host-gated rows, dependency-gated rows, unsupported broad claims, and recommended next plan.
+- [x] Update `docs/current-capabilities.md`, `docs/roadmap.md`, plan registry, game manifests, validation recipes, schemas, static checks, and manifest fragments only for completed and validated surfaces.
+- [x] Compose `engine/agent/manifest.json` if fragments change.
+- [x] Run targeted public API, package, JSON, agent-surface, legal/dependency, and static guards.
+- [x] Run `tools/validate.ps1` for runtime/build/public-contract changes.
+- [x] Record remaining host-gated rows, dependency-gated rows, unsupported broad claims, and recommended next plan.
 
 Done when: selected ready counters match retained evidence, no stale plan/manifest/docs drift exists, and broad 2D/commercial/all-platform claims remain unclaimed unless all exact gates are satisfied.
+
+Phase 10 validation evidence:
+
+- 2026-07-01 closeout: `currentActivePlan` returns to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`; `recommendedNextPlan.id = next-production-gap-selection`; `unsupportedProductionGaps = []`. Phase 5 runtime UI closeout, Phase 6 renderer/RHI quality, Phase 7 input closeout, Phase 8 performance regression and profiler artifact collector evidence, and Phase 9 release legal gate evidence remain retained without promoting broad all-feature/all-platform 2D engine readiness, broad editor execution, runtime-host playtest, package scripts, arbitrary shell, broad hot reload productization, backend parity, Metal readiness, renderer/RHI ownership, Unity/Unreal/Godot compatibility, or legal advice; legal approval remains unclaimed.
+- PR #928 merged Phase 9 release legal gate evidence to `origin/main` at merge commit `389af051390852fc29606cbedb1987067d16263e`. Local validation for that runtime/build/public-contract slice included full `tools/validate.ps1`; this Phase 10 slice changes only docs, manifest fragments, composed manifest, and static integration guards, so it uses focused agent/json/format/dependency/publication checks after composition.
 
 ## Validation Matrix
 

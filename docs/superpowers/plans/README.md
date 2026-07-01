@@ -61,7 +61,11 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Kind | Plan | Notes |
 | --- | --- | --- |
-| Active milestone (`currentActivePlan`) | [2D Commercial Production Excellence v1](2026-06-29-2d-commercial-production-excellence-v1.md) (`2d-commercial-production-excellence-v1`) | Active milestone selected after Diagnostics Backend Adapter Handoff v1. Phase 5 adds the 2D commercial runtime UI closeout gate over selected Windows DirectWrite/TSF/UIA/D3D12 proof and keeps Linux/macOS/iOS/Android/Vulkan/Metal UI readiness host-gated or dependency-gated. Phase 6 renderer/RHI 2D commercial quality is next, and `unsupportedProductionGaps = []`. |
+| Selection gate (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) (`next-production-gap-selection`) | 2D Commercial Production Excellence v1 is completed through Phase 10 closeout. The next implementation slice must be selected from the master-plan production-completion loop; `unsupportedProductionGaps = []` remains true. |
+
+## Recent Completed 2D Commercial Production Excellence Work
+
+[2D Commercial Production Excellence v1](2026-06-29-2d-commercial-production-excellence-v1.md) (`2d-commercial-production-excellence-v1`) is completed through Phase 10 closeout after retaining selected runtime UI closeout, renderer/RHI 2D quality, input closeout, performance regression gates, profiler artifact collector validation, and 2D Commercial Release Legal Gate v1 evidence. Phase 9 merged through PR #928 at merge commit `389af051390852fc29606cbedb1987067d16263e`; it added counsel-ready engineering legal/dependency/provenance review input, official MSIX signing, Apple notarization, Android app signing, repository legal policy source rows, and host-gated platform distribution rows without claiming legal advice, legal approval, store certification, external-engine compatibility, or Unity/Unreal/Godot compatibility/equivalence/parity/replacement. Live execution returned to the production-completion selection gate with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`.
 
 ## Recent Completed Diagnostics Backend Adapter Handoff Work
 
