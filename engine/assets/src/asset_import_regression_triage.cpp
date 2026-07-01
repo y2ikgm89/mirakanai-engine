@@ -435,6 +435,50 @@ void parse_triage_row_field(TriageTextRow& row, std::string_view field, std::str
     }
 }
 
+void validate_triage_counts(const AssetImportRegressionTriageDocumentV1& document) {
+    std::size_t failed_count = 0U;
+    std::size_t blocked_count = 0U;
+    std::size_t reimport_candidate_count = 0U;
+    std::size_t preset_diff_required_count = 0U;
+    std::size_t axis_unit_preview_required_count = 0U;
+    std::size_t legal_blocked_count = 0U;
+    std::size_t nondeterministic_count = 0U;
+
+    for (const auto& row : document.rows) {
+        if (row.code != AssetImportRegressionDiagnosticCode::none) {
+            ++failed_count;
+        }
+        if (row.reimport_decision == AssetImportRegressionReimportDecision::blocked) {
+            ++blocked_count;
+        }
+        if (row.reimport_decision == AssetImportRegressionReimportDecision::dry_run_allowed) {
+            ++reimport_candidate_count;
+        }
+        if (row.preset_diff_required) {
+            ++preset_diff_required_count;
+        }
+        if (row.axis_unit_preview_required) {
+            ++axis_unit_preview_required_count;
+        }
+        if (row.legal_blocked) {
+            ++legal_blocked_count;
+        }
+        if (row.nondeterministic) {
+            ++nondeterministic_count;
+        }
+    }
+
+    if (document.row_count != document.rows.size() || document.failed_count != failed_count ||
+        document.blocked_count != blocked_count || document.reimport_candidate_count != reimport_candidate_count ||
+        document.preset_diff_required_count != preset_diff_required_count ||
+        document.axis_unit_preview_required_count != axis_unit_preview_required_count ||
+        document.legal_blocked_count != legal_blocked_count ||
+        document.nondeterministic_count != nondeterministic_count ||
+        document.ready_for_operator_review != !document.rows.empty()) {
+        throw std::invalid_argument("asset import regression triage counters are inconsistent");
+    }
+}
+
 } // namespace
 
 std::string_view asset_import_regression_triage_severity_label(AssetImportRegressionTriageSeverity value) noexcept {
@@ -543,6 +587,8 @@ make_asset_import_regression_triage_v1(const AssetImportRegressionReportV1& repo
     for (const auto& report_row : report.rows) {
         const auto action = recommended_action_for_asset_import_regression_code(report_row.code);
         const auto decision = reimport_decision_for_action(action);
+        const bool failed = report_row.code != AssetImportRegressionDiagnosticCode::none;
+        const bool legal_blocked = legal_blocked_code(report_row.code);
         const bool nondeterministic = report_row.code == AssetImportRegressionDiagnosticCode::nondeterministic_output;
         auto row = AssetImportRegressionTriageRowV1{
             .asset_id = sanitize_token(report_row.asset_id),
@@ -567,9 +613,12 @@ make_asset_import_regression_triage_v1(const AssetImportRegressionReportV1& repo
             .preset_diff_required = preset_diff_required_code(report_row.code),
             .axis_unit_preview_required =
                 report_row.code == AssetImportRegressionDiagnosticCode::coordinate_normalization_failed,
-            .legal_blocked = legal_blocked_code(report_row.code),
+            .legal_blocked = legal_blocked,
             .nondeterministic = nondeterministic,
         };
+        if (failed) {
+            ++document.failed_count;
+        }
         if (row.reimport_decision == AssetImportRegressionReimportDecision::blocked) {
             ++document.blocked_count;
         }
@@ -582,6 +631,12 @@ make_asset_import_regression_triage_v1(const AssetImportRegressionReportV1& repo
         if (row.axis_unit_preview_required) {
             ++document.axis_unit_preview_required_count;
         }
+        if (legal_blocked) {
+            ++document.legal_blocked_count;
+        }
+        if (nondeterministic) {
+            ++document.nondeterministic_count;
+        }
         document.rows.push_back(std::move(row));
     }
 
@@ -591,15 +646,20 @@ make_asset_import_regression_triage_v1(const AssetImportRegressionReportV1& repo
 }
 
 std::string serialize_asset_import_regression_triage_v1(const AssetImportRegressionTriageDocumentV1& document) {
+    validate_triage_counts(document);
+
     std::ostringstream output;
     output << "format=" << triage_format_v1 << '\n';
     output << "corpus_id=" << document.corpus_id << '\n';
     output << "run_id=" << document.run_id << '\n';
     output << "row_count=" << document.row_count << '\n';
+    output << "failed_count=" << document.failed_count << '\n';
     output << "blocked_count=" << document.blocked_count << '\n';
     output << "reimport_candidate_count=" << document.reimport_candidate_count << '\n';
     output << "preset_diff_required_count=" << document.preset_diff_required_count << '\n';
     output << "axis_unit_preview_required_count=" << document.axis_unit_preview_required_count << '\n';
+    output << "legal_blocked_count=" << document.legal_blocked_count << '\n';
+    output << "nondeterministic_count=" << document.nondeterministic_count << '\n';
     output << "ready_for_operator_review=" << bool_text(document.ready_for_operator_review) << '\n';
     output << "row.count=" << document.rows.size() << '\n';
     for (std::size_t index = 0U; index < document.rows.size(); ++index) {
@@ -635,6 +695,15 @@ std::string serialize_asset_import_regression_triage_v1(const AssetImportRegress
 
 AssetImportRegressionTriageDocumentV1 deserialize_asset_import_regression_triage_v1(std::string_view text) {
     bool saw_format = false;
+    bool saw_document_row_count = false;
+    bool saw_failed_count = false;
+    bool saw_blocked_count = false;
+    bool saw_reimport_candidate_count = false;
+    bool saw_preset_diff_required_count = false;
+    bool saw_axis_unit_preview_required_count = false;
+    bool saw_legal_blocked_count = false;
+    bool saw_nondeterministic_count = false;
+    bool saw_ready_for_operator_review = false;
     bool saw_row_count = false;
     std::size_t serialized_row_count = 0U;
     std::unordered_set<std::string> seen_keys;
@@ -672,19 +741,36 @@ AssetImportRegressionTriageDocumentV1 deserialize_asset_import_regression_triage
         } else if (key == "run_id") {
             document.run_id = std::string{value};
         } else if (key == "row_count") {
+            saw_document_row_count = true;
             document.row_count = parse_size(value, "asset import regression triage row count is invalid");
+        } else if (key == "failed_count") {
+            saw_failed_count = true;
+            document.failed_count = parse_size(value, "asset import regression triage failed count is invalid");
         } else if (key == "blocked_count") {
+            saw_blocked_count = true;
             document.blocked_count = parse_size(value, "asset import regression triage blocked count is invalid");
         } else if (key == "reimport_candidate_count") {
+            saw_reimport_candidate_count = true;
             document.reimport_candidate_count =
                 parse_size(value, "asset import regression triage reimport candidate count is invalid");
         } else if (key == "preset_diff_required_count") {
+            saw_preset_diff_required_count = true;
             document.preset_diff_required_count =
                 parse_size(value, "asset import regression triage preset diff count is invalid");
         } else if (key == "axis_unit_preview_required_count") {
+            saw_axis_unit_preview_required_count = true;
             document.axis_unit_preview_required_count =
                 parse_size(value, "asset import regression triage axis unit preview count is invalid");
+        } else if (key == "legal_blocked_count") {
+            saw_legal_blocked_count = true;
+            document.legal_blocked_count =
+                parse_size(value, "asset import regression triage legal blocked count is invalid");
+        } else if (key == "nondeterministic_count") {
+            saw_nondeterministic_count = true;
+            document.nondeterministic_count =
+                parse_size(value, "asset import regression triage nondeterministic count is invalid");
         } else if (key == "ready_for_operator_review") {
+            saw_ready_for_operator_review = true;
             document.ready_for_operator_review = parse_bool(value);
         } else if (key == "row.count") {
             saw_row_count = true;
@@ -703,8 +789,10 @@ AssetImportRegressionTriageDocumentV1 deserialize_asset_import_regression_triage
         }
     }
 
-    if (!saw_format || !saw_row_count || rows.size() != serialized_row_count ||
-        document.row_count != serialized_row_count) {
+    if (!saw_format || !saw_document_row_count || !saw_failed_count || !saw_blocked_count ||
+        !saw_reimport_candidate_count || !saw_preset_diff_required_count || !saw_axis_unit_preview_required_count ||
+        !saw_legal_blocked_count || !saw_nondeterministic_count || !saw_ready_for_operator_review || !saw_row_count ||
+        rows.size() != serialized_row_count || document.row_count != serialized_row_count) {
         throw std::invalid_argument("asset import regression triage document is incomplete");
     }
     document.rows.reserve(serialized_row_count);
@@ -715,6 +803,7 @@ AssetImportRegressionTriageDocumentV1 deserialize_asset_import_regression_triage
         }
         document.rows.push_back(row->second.row);
     }
+    validate_triage_counts(document);
     return document;
 }
 
