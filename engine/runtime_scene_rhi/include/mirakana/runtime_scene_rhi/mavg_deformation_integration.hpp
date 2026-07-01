@@ -79,6 +79,23 @@ struct MavgDeformationBackendExecutionRow {
     bool touched_native_handles{false};
 };
 
+struct MavgDeformationBackendExecutionEvidenceDesc {
+    MavgDeformationBackendKind backend{MavgDeformationBackendKind::d3d12};
+    std::string_view row_id;
+    bool reviewed{false};
+    bool upload_execution_ready{false};
+    std::size_t compute_morph_skinned_mesh_bindings{0};
+    std::size_t morph_mesh_uploads{0};
+    std::uint64_t uploaded_morph_bytes{0};
+    std::uint64_t uploaded_compute_morph_base_position_bytes{0};
+    std::uint64_t compute_morph_output_position_bytes{0};
+    std::size_t submitted_upload_fence_count{0};
+    bool renderer_consumption_reviewed{false};
+    bool apple_host_execution_evidence{false};
+    bool touched_native_handles{false};
+    bool request_broad_deformation_readiness{false};
+};
+
 struct MavgDeformationIntegrationDesc {
     const MavgClusterGraphDocument* graph{nullptr};
     std::span<const MavgDeformationClusterBoundsRow> cluster_bounds_rows;
@@ -105,6 +122,14 @@ struct MavgDeformationIntegrationDiagnostic {
     std::string message;
 };
 
+struct MavgDeformationBackendExecutionEvidenceResult {
+    MavgDeformationBackendExecutionRow row;
+    std::vector<MavgDeformationIntegrationDiagnostic> diagnostics;
+    bool ready{false};
+    bool native_handles_exposed{false};
+    bool broad_deformation_readiness_ready{false};
+};
+
 struct MavgDeformationIntegrationResult {
     std::vector<MavgDeformationIntegratedCluster> integrated_clusters;
     std::vector<MavgDeformationIntegrationDiagnostic> diagnostics;
@@ -123,6 +148,9 @@ struct MavgDeformationIntegrationResult {
 
 [[nodiscard]] MavgDeformationIntegrationResult
 plan_mavg_deformation_integrated_clusters(const MavgDeformationIntegrationDesc& desc);
+
+[[nodiscard]] MavgDeformationBackendExecutionEvidenceResult
+evaluate_mavg_deformation_backend_execution_evidence(const MavgDeformationBackendExecutionEvidenceDesc& desc);
 
 [[nodiscard]] bool has_mavg_deformation_integration_diagnostic(const MavgDeformationIntegrationResult& result,
                                                                MavgDeformationIntegrationDiagnosticCode code) noexcept;

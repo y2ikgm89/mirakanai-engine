@@ -23,6 +23,16 @@ void add_diagnostic(MavgDeformationIntegrationResult& result, Code code, std::ui
     });
 }
 
+void add_diagnostic(MavgDeformationBackendExecutionEvidenceResult& result, Code code, std::string row_id,
+                    std::string message) {
+    result.diagnostics.push_back(MavgDeformationIntegrationDiagnostic{
+        .code = code,
+        .cluster_index = 0,
+        .row_id = std::move(row_id),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool valid_bounds(const MavgBounds3f& bounds) noexcept {
     return bounds.min.x <= bounds.max.x && bounds.min.y <= bounds.max.y && bounds.min.z <= bounds.max.z;
 }
@@ -152,6 +162,61 @@ void validate_cluster_row(MavgDeformationIntegrationResult& result, const MavgCl
 }
 
 } // namespace
+
+MavgDeformationBackendExecutionEvidenceResult
+evaluate_mavg_deformation_backend_execution_evidence(const MavgDeformationBackendExecutionEvidenceDesc& desc) {
+    constexpr std::string_view default_row_id = "mavg.deformation.backend";
+    const auto row_id = desc.row_id.empty() ? std::string(default_row_id) : std::string(desc.row_id);
+    MavgDeformationBackendExecutionEvidenceResult result;
+    result.row = MavgDeformationBackendExecutionRow{
+        .backend = desc.backend,
+        .row_id = desc.row_id.empty() ? default_row_id : desc.row_id,
+        .reviewed = desc.reviewed,
+        .execution_evidence = false,
+        .ready = false,
+        .touched_native_handles = desc.touched_native_handles,
+    };
+
+    if (desc.touched_native_handles) {
+        result.native_handles_exposed = true;
+        add_diagnostic(result, Code::native_handle_access, row_id,
+                       "MAVG deformation backend execution evidence must not expose native handles");
+    }
+    if (desc.request_broad_deformation_readiness) {
+        add_diagnostic(result, Code::broad_deformation_readiness_not_promoted, row_id,
+                       "MAVG deformation backend execution evidence does not promote broad deformation readiness");
+    }
+
+    const auto has_runtime_scene_compute_morph_evidence =
+        desc.upload_execution_ready && desc.compute_morph_skinned_mesh_bindings > 0U && desc.morph_mesh_uploads > 0U &&
+        desc.uploaded_morph_bytes > 0U && desc.uploaded_compute_morph_base_position_bytes > 0U &&
+        desc.compute_morph_output_position_bytes > 0U && desc.submitted_upload_fence_count > 0U &&
+        desc.renderer_consumption_reviewed;
+
+    bool backend_evidence_ready = false;
+    switch (desc.backend) {
+    case MavgDeformationBackendKind::d3d12:
+    case MavgDeformationBackendKind::vulkan:
+        backend_evidence_ready = desc.reviewed && has_runtime_scene_compute_morph_evidence;
+        break;
+    case MavgDeformationBackendKind::metal_apple_host:
+        backend_evidence_ready =
+            desc.reviewed && has_runtime_scene_compute_morph_evidence && desc.apple_host_execution_evidence;
+        break;
+    }
+
+    if (!backend_evidence_ready) {
+        add_diagnostic(result, Code::backend_execution_not_ready, row_id,
+                       "MAVG deformation backend execution evidence requires reviewed selected backend upload, "
+                       "compute morph/skinned payload, submitted fence, and renderer consumption rows");
+    }
+
+    result.ready = backend_evidence_ready && result.diagnostics.empty() && !result.native_handles_exposed;
+    result.row.execution_evidence = result.ready;
+    result.row.ready = result.ready;
+    result.broad_deformation_readiness_ready = false;
+    return result;
+}
 
 MavgDeformationIntegrationResult plan_mavg_deformation_integrated_clusters(const MavgDeformationIntegrationDesc& desc) {
     MavgDeformationIntegrationResult result;

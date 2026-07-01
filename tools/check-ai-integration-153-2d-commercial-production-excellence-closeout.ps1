@@ -16,20 +16,30 @@ function Assert-2DCommercialCloseoutProductionLoopPointer {
     $productionLoopDocument = $Text | ConvertFrom-Json -Depth 100
     $productionLoop = $productionLoopDocument.aiOperableProductionLoop
     $expectedMasterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
-    if ($productionLoop.currentActivePlan -ne $expectedMasterPlanPath) {
-        Write-Error "$Label currentActivePlan must return to the production-completion master plan"
-    }
+    if ($productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+        if ($productionLoop.currentActivePlan -ne $expectedMasterPlanPath) {
+            Write-Error "$Label currentActivePlan must return to the production-completion master plan at the selection gate"
+        }
 
-    if ($productionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
-        Write-Error "$Label recommendedNextPlan.id must return to next-production-gap-selection"
-    }
+        if ($productionLoop.recommendedNextPlan.status -ne "selection-gate") {
+            Write-Error "$Label recommendedNextPlan.status must be selection-gate at the selection gate"
+        }
 
-    if ($productionLoop.recommendedNextPlan.status -ne "selection-gate") {
-        Write-Error "$Label recommendedNextPlan.status must be selection-gate"
-    }
+        if ($productionLoop.recommendedNextPlan.path -ne $expectedMasterPlanPath) {
+            Write-Error "$Label recommendedNextPlan.path must point at the production-completion master plan at the selection gate"
+        }
+    } else {
+        if ($productionLoop.recommendedNextPlan.status -ne "active-child-plan") {
+            Write-Error "$Label recommendedNextPlan.status must be active-child-plan when a later child plan is selected"
+        }
 
-    if ($productionLoop.recommendedNextPlan.path -ne $expectedMasterPlanPath) {
-        Write-Error "$Label recommendedNextPlan.path must point at the production-completion master plan"
+        if ($productionLoop.recommendedNextPlan.path -ne $productionLoop.currentActivePlan) {
+            Write-Error "$Label recommendedNextPlan.path must match currentActivePlan when a later child plan is selected"
+        }
+
+        if (-not ([string]$productionLoop.currentActivePlan).StartsWith("docs/superpowers/plans/2026-")) {
+            Write-Error "$Label currentActivePlan must point at a dated child plan when not at the selection gate"
+        }
     }
 
     if (@($productionLoop.unsupportedProductionGaps).Count -ne 0) {
@@ -73,7 +83,7 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
-        '| Selection gate (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) (`next-production-gap-selection`) | 2D Commercial Production Excellence v1 is completed through Phase 10 closeout',
+        '2D Commercial Production Excellence v1 is completed through Phase 10 closeout',
         '## Recent Completed 2D Commercial Production Excellence Work',
         '2D Commercial Release Legal Gate v1',
         'PR #928',
@@ -87,8 +97,6 @@ Assert-DoesNotContainText $planRegistry '| Active milestone (`currentActivePlan`
     "docs/superpowers/plans/README.md stale 2d commercial active milestone"
 
 foreach ($needle in @(
-        'currentActivePlan` points at `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`',
-        'recommendedNextPlan.id = next-production-gap-selection',
         '2D Commercial Production Excellence v1 is completed through Phase 10 closeout',
         '2D Commercial Release Legal Gate v1',
         'PR #928',

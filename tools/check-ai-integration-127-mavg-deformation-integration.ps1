@@ -21,10 +21,13 @@ foreach ($needle in @(
         "MavgDeformationIntegrationDiagnosticCode",
         "MavgDeformationClusterBoundsRow",
         "MavgDeformationBackendExecutionRow",
+        "MavgDeformationBackendExecutionEvidenceDesc",
+        "MavgDeformationBackendExecutionEvidenceResult",
         "MavgDeformationIntegrationDesc",
         "MavgDeformationIntegratedCluster",
         "MavgDeformationIntegrationResult",
         "plan_mavg_deformation_integrated_clusters",
+        "evaluate_mavg_deformation_backend_execution_evidence",
         "has_mavg_deformation_integration_diagnostic",
         "rigid_transform",
         "linear_blend_skinning",
@@ -54,6 +57,9 @@ foreach ($needle in @(
         "explicit conservative bounds expansion",
         "must not expose native handles",
         "does not promote broad deformation readiness",
+        "selected backend upload",
+        "compute morph/skinned payload",
+        "submitted fence",
         "result.mavg_deformation_integration_ready ="
     )) {
     Assert-ContainsText $mavgDeformationSourceText $needle "mavg_deformation_integration.cpp fail-closed implementation"
@@ -66,6 +72,10 @@ foreach ($needle in @(
         "runtime scene rhi mavg deformation integration rejects nonconservative morph bounds",
         "runtime scene rhi mavg deformation integration preserves material page and draw range",
         "runtime scene rhi mavg deformation integration requires backend execution before ready",
+        "runtime scene rhi mavg deformation backend evidence accepts selected compute morph rows",
+        "runtime scene rhi mavg deformation backend evidence rejects missing execution counters",
+        "runtime scene rhi mavg deformation backend evidence keeps metal host gated",
+        "runtime scene rhi mavg deformation backend evidence rejects native handles and broad readiness",
         "runtime scene rhi mavg deformation integration promotes ready only with reviewed backend rows",
         "runtime scene rhi mavg deformation integration rejects native handles and broad readiness",
         "max_joint_influences = 8",
@@ -80,12 +90,18 @@ Assert-ContainsText $rootCMakeText "MK_runtime_scene_rhi_mavg_deformation_integr
 foreach ($needle in @(
         "validation_recipe=mavg-deformation-integration",
         "MK_runtime_scene_rhi_mavg_deformation_integration_tests",
-        '$status = "backend_execution_required"',
+        '$status = "ready"',
         'mavg_deformation_policy_ready=$(ConvertTo-CounterBit $policyReady)',
         'mavg_deformation_integration_ready=$(ConvertTo-CounterBit $integrationReady)',
-        "mavg_deformation_backend_execution_rows=0",
-        "mavg_deformation_backend_execution_ready_rows=0",
-        "mavg_deformation_backend_execution_status=host_evidence_required",
+        "mavg_deformation_backend_execution_rows=2",
+        "mavg_deformation_backend_execution_ready_rows=2",
+        "mavg_deformation_backend_execution_status=ready",
+        "mavg_deformation_backend_execution_bridge_ready=1",
+        "mavg_deformation_backend_execution_selected_d3d12_bridge_ready=1",
+        "mavg_deformation_backend_execution_selected_vulkan_bridge_ready=1",
+        "mavg_deformation_backend_execution_selected_metal_bridge_ready=0",
+        "mavg_deformation_native_d3d12_command_execution=0",
+        "mavg_deformation_native_vulkan_queue_execution=0",
         "mavg_deformation_topology_changing_rows=0",
         "mavg_deformation_runtime_generated_triangle_topology=0",
         "mavg_deformation_unbounded_vertex_displacement=0",
@@ -95,7 +111,7 @@ foreach ($needle in @(
         "mavg_deformation_metal_readiness=0",
         "mavg_deformation_nanite_equivalence=0",
         "mavg_deformation_broad_backend_readiness=0",
-        "MAVG deformation integration is incomplete"
+        "mavg-deformation-integration-check: ok"
     )) {
     Assert-ContainsText $validatorText $needle "tools/validate-mavg-deformation-integration.ps1"
 }
@@ -113,11 +129,14 @@ foreach ($surface in @(
             "mavg_deformation_integration.hpp",
             "MavgDeformationIntegrationDesc",
             "MavgDeformationClusterBoundsRow",
+            "MavgDeformationBackendExecutionEvidenceDesc",
+            "evaluate_mavg_deformation_backend_execution_evidence",
             "plan_mavg_deformation_integrated_clusters",
             "tools/validate-mavg-deformation-integration.ps1",
             "mavg_deformation_policy_ready=1",
-            "mavg_deformation_integration_ready=0",
-            "backend_execution_required",
+            "mavg_deformation_integration_ready=1",
+            "mavg_deformation_backend_execution_bridge_ready=1",
+            "compute morph/skinned",
             "topology-changing",
             "runtime-generated triangle topology",
             "unbounded vertex displacement",
@@ -132,10 +151,14 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) deformation integration policy gate"
     }
     foreach ($forbiddenNeedle in @(
-            "mavg_deformation_integration_ready=1",
-            "mavg_deformation_integration_status=ready"
+            "mavg_deformation_broad_backend_readiness=1",
+            "mavg_deformation_ray_tracing_integration=1",
+            "mavg_deformation_mesh_shader_execution=1",
+            "mavg_deformation_metal_readiness=1",
+            "mavg_deformation_native_d3d12_command_execution=1",
+            "mavg_deformation_native_vulkan_queue_execution=1"
         )) {
-        Assert-DoesNotContainText $surface.Text $forbiddenNeedle "$($surface.Label) forbidden deformation integration ready claim"
+        Assert-DoesNotContainText $surface.Text $forbiddenNeedle "$($surface.Label) forbidden deformation integration broad/native claim"
     }
 }
 
@@ -149,9 +172,12 @@ foreach ($needle in @(
         "mavg_deformation_integration.hpp",
         "MavgDeformationIntegrationDesc",
         "MavgDeformationClusterBoundsRow",
+        "MavgDeformationBackendExecutionEvidenceDesc",
+        "evaluate_mavg_deformation_backend_execution_evidence",
         "plan_mavg_deformation_integrated_clusters",
         "mavg_deformation_policy_ready=1",
-        "mavg_deformation_integration_ready=0"
+        "mavg_deformation_integration_ready=1",
+        "mavg_deformation_backend_execution_bridge_ready=1"
     )) {
     Assert-ContainsText $runtimeSceneRhiManifestText $needle "engine/agent/manifest.json MK_runtime_scene_rhi deformation evidence"
 }
