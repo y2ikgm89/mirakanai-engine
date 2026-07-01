@@ -695,7 +695,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-
   - legal rows set `legal_blocked=true` and `reimport_decision=blocked`;
   - nondeterministic rows set `nondeterministic=true` and `reimport_decision=blocked`.
 - [x] Extend `EditorAssetImportRegressionWorkflowDesc` with `const AssetImportRegressionTriageDocumentV1* triage{nullptr};`.
-- [x] Extend editor-core retained rows under `asset_browser.import_workflow.failure.<asset_id>` with `category_label=triage_failure`, severity, phase, diagnostic code, recommended action, repro command id, and reimport decision. These rows must leave `mutates_project_files=false`, `executes_import_tools=false`, `executes_package_scripts=false`, `executes_validation_recipes=false`, and `exposes_native_handles=false`.
+- [x] Extend editor-core retained rows so non-`none` diagnostics use `asset_browser.import_workflow.failure.<asset_id>` with `category_label=triage_failure`, while successful retained triage evidence uses `asset_browser.import_workflow.triage.<asset_id>` with `category_label=triage_review`. Rows carry severity, phase, diagnostic code, recommended action, repro command id, and reimport decision while leaving `mutates_project_files=false`, `executes_import_tools=false`, `executes_package_scripts=false`, `executes_validation_recipes=false`, and `exposes_native_handles=false`.
 - [x] Update command enablement in `make_editor_asset_import_regression_workflow_model`:
   - `open_report` is enabled when a report exists;
   - `batch_reimport` is enabled only when triage exists and at least one row has `reimport_decision=dry_run_allowed` with no `legal_blocked` rows selected;
@@ -809,6 +809,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 editor_asset_import_regression_workflow_visible=1
 editor_asset_import_regression_workflow_rows=<positive>
 editor_asset_import_regression_failed_rows=<n>
+editor_asset_import_regression_open_report_command_enabled=<0|1>
 editor_asset_import_regression_reimport_command_enabled=<0|1>
 editor_asset_import_regression_preset_diff_command_enabled=<0|1>
 editor_asset_import_regression_axis_unit_preview_command_enabled=<0|1>
@@ -817,7 +818,7 @@ editor_asset_import_regression_native_handles_exposed=0
 editor_asset_import_regression_external_engine_claim=0
 ```
 
-- [x] Add native-shell tests proving safe project-relative launch parsing, unsafe path rejection, retained report projection into `asset_browser.import_workflow.*`, preset-diff/axis-preview command enablement, legal-blocked reimport disablement, and no absolute host corpus paths exposed in retained UI text.
+- [x] Add native-shell tests proving safe project-relative launch parsing, unsafe path rejection, retained report projection into `asset_browser.import_workflow.*`, open-report command enablement, successful retained report rows staying out of failed-row counters, preset-diff/axis-preview command enablement for diagnosed failures, legal-blocked reimport disablement, and no absolute host corpus paths exposed in retained UI text.
 
 Required validation:
 
@@ -892,13 +893,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_regression_tests MK_editor_core_tests` | Asset triage and editor-core retained row C++ contract | Pass |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_regression_tests|MK_editor_core_tests"` | Asset triage and editor-core retained row C++ contract | Pass; 2/2 tests passed |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/asset_import_regression_triage.cpp,editor/core/src/asset_import_regression_workflow.cpp,tests/unit/asset_import_regression_tests.cpp,tests/unit/editor_core_tests.cpp` | Focused C++ static analysis | Pass; 4 files checked |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/src/native_editor_launch.cpp,editor/src/native_editor_app.cpp,editor/src/first_party_editor_document.cpp,tests/unit/editor_native_shell_tests.cpp` | Task 16 focused C++ static analysis | Pass; 4 files checked; `editor/src/main.cpp` is outside the `dev` compile database and is covered by `tools/build-editor.ps1` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'editor/core/src/asset_import_regression_workflow.cpp,editor/src/first_party_editor_document.cpp,tests/unit/editor_native_shell_tests.cpp'` | Task 16 dev-preset focused C++ static analysis | Pass; 3 files checked |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-editor -Files 'editor/src/main.cpp,editor/src/first_party_editor_document.cpp'` | Task 16 desktop-editor focused C++ static analysis | Pass; 2 files checked |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` | Task 16 visible native Assets panel smoke C++ contract | Pass |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` | Task 16 visible native Assets panel smoke C++ contract | Pass; 1/1 test target passed |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` | Task 16 native shell executable and smoke lane | Pass; `MK_editor.exe`, `MK_editor_native_shell_tests`, and desktop-editor tests passed |
-| `out\build\desktop-editor\editor\Debug\MK_editor.exe --smoke-frames 1 --no-user-config` | Task 16 direct shell smoke counters | Pass; emitted `editor_asset_import_regression_*` counters with no report path, workflow rows `0`, and importer/native-handle/external-engine counters `0` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` | Task 16 visible native Assets panel smoke C++ contract | Pass; 1/1 test target passed, including successful retained report open-report enablement, failed-row count `0`, legal-blocked reimport disablement, preset/axis command enablement for diagnosed failures, and host-path redaction |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` | Task 16 native shell executable and smoke lane | Pass; `MK_editor.exe`, `MK_editor_native_shell_tests`, `MK_editor_smoke`, and desktop-editor CTest passed with 167/167 tests |
+| `out\build\desktop-editor\editor\Debug\MK_editor.exe --smoke-frames 1 --no-user-config` | Task 16 direct shell smoke counters | Pass; emitted `editor_asset_import_regression_*` counters with no report path, workflow rows `0`, open-report command `0`, and importer/native-handle/external-engine counters `0` |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers` | Optional importer dependency host | Blocked by approval policy in this session; rerun on an approval-capable host |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Optional importer execution slice | Blocked by missing `SPNGConfig.cmake` in `vcpkg_installed`; rerun after `asset-importers` bootstrap succeeds |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady` | Commercial corpus promotion | Not run; requires host-owned approved large corpus |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 166/166 tests passed in this handoff-planner slice |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Final implementation closeout | Pass; 166/166 tests passed in this visible-shell counter refinement slice |
 | Tasks 13 real-corpus `-RequireReady` remainder, Task 15 real-corpus loops, and Task 17 closeout | Commercial regression workflow promotion | Planned/host-gated; no readiness counter change |

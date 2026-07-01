@@ -87,6 +87,7 @@ struct FirstPartyEditorShellSmokeCounters {
     bool editor_asset_import_regression_workflow_visible{false};
     std::uint32_t editor_asset_import_regression_workflow_rows{0};
     std::uint32_t editor_asset_import_regression_failed_rows{0};
+    bool editor_asset_import_regression_open_report_command_enabled{false};
     bool editor_asset_import_regression_reimport_command_enabled{false};
     bool editor_asset_import_regression_preset_diff_command_enabled{false};
     bool editor_asset_import_regression_axis_unit_preview_command_enabled{false};

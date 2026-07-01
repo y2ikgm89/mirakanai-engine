@@ -151,6 +151,8 @@ int main(int argc, char** argv) {
             << smoke_counters.editor_asset_import_regression_workflow_rows << '\n'
             << "editor_asset_import_regression_failed_rows="
             << smoke_counters.editor_asset_import_regression_failed_rows << '\n'
+            << "editor_asset_import_regression_open_report_command_enabled="
+            << (smoke_counters.editor_asset_import_regression_open_report_command_enabled ? 1 : 0) << '\n'
             << "editor_asset_import_regression_reimport_command_enabled="
             << (smoke_counters.editor_asset_import_regression_reimport_command_enabled ? 1 : 0) << '\n'
             << "editor_asset_import_regression_preset_diff_command_enabled="
