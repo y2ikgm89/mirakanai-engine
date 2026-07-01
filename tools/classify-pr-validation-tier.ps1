@@ -83,7 +83,8 @@ function Test-RuntimeOrBuildPath {
         $Path -eq "CMakeLists.txt" -or
         $Path -match "/CMakeLists\.txt$" -or
         $Path -eq "CMakePresets.json" -or
-        $Path -match "^(cmake|engine|editor|games|platform|runtime|shaders|examples|tests)/" -or
+        $Path -match "^(cmake|editor|games|platform|runtime|shaders|examples|tests)/" -or
+        $Path -match "^engine/(?!agent/)" -or
         $Path -eq "vcpkg.json" -or
         $Path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-text-format|check-text-format-contract|format|format-text|text-format-core|check-dependency-policy|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
     )
@@ -167,7 +168,10 @@ function Test-AppleHostEvidencePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     return (
-        (Test-PlatformEvidenceFoundationPath -Path $Path) -or
+        $Path -match "^engine/(environment|platform|renderer|rhi|runtime_scene_rhi|scene_renderer|ui_renderer)/" -or
+        $Path -match "^games/sample_(2d_desktop_runtime_package|3d_desktop_runtime_package|desktop_runtime_game)/" -or
+        $Path -match "^platform/" -or
+        $Path -match "^shaders/" -or
         $Path -match "^tools/(apple-host-helpers|build-mobile-apple|check-mobile-packaging|collect-renderer-metal-memory-profiling-host-evidence|check-renderer-metal-memory-profiling-host-evidence|check-renderer-metal-memory-profiling-host-evidence-collector|generate-renderer-metal-memory-profiling-host-artifacts|generate-environment-metal-optimization-artifacts|smoke-ios-package|validate-apple-metal-platform-host|validate-environment-metal-host-aggregate|validate-environment-weather-metal-solver-host-gate|validate-renderer-metal-apple)\.ps1$"
     )
 }
@@ -179,11 +183,6 @@ function Test-RendererCommercialQualityCloseoutPath {
         $Path -eq "tools/validate-renderer-commercial-quality-closeout.ps1" -or
         $Path -eq "tools/check-ai-integration-142-renderer-commercial-quality-closeout.ps1" -or
         $Path -eq "tools/run-validation-recipe-plans.ps1" -or
-        $Path -eq "engine/agent/manifest.fragments/002-commands.json" -or
-        $Path -eq "engine/agent/manifest.fragments/009-validationRecipes.json" -or
-        $Path -eq "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" -or
-        $Path -eq "docs/current-capabilities.md" -or
-        $Path -eq "docs/superpowers/plans/README.md" -or
         $Path -eq "docs/superpowers/plans/2026-06-25-renderer-commercial-quality-closeout-v1.md"
     )
 }
@@ -199,11 +198,6 @@ function Test-RendererCommercialReadinessEvidencePath {
         $Path -eq "tools/check-validation-recipe-runner.ps1" -or
         $Path -eq "schemas/renderer-commercial-readiness-evidence.schema.json" -or
         $Path -match "^tests/fixtures/renderer/commercial-readiness-evidence/" -or
-        $Path -eq "engine/agent/manifest.fragments/002-commands.json" -or
-        $Path -eq "engine/agent/manifest.fragments/009-validationRecipes.json" -or
-        $Path -eq "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json" -or
-        $Path -eq "docs/current-capabilities.md" -or
-        $Path -eq "docs/superpowers/plans/README.md" -or
         $Path -eq "docs/superpowers/plans/2026-06-25-renderer-commercial-readiness-evidence-promotion-v1.md"
     )
 }
