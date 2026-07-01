@@ -2012,7 +2012,7 @@ jobs:
       - windows-cpp23
       - linux-vulkan
       - macos
-    if: ${{ always() && !cancelled() && needs.changes.outputs.windows_msvc == 'true' && needs.changes.outputs.linux_vulkan_host == 'true' && needs.changes.outputs.macos_metal_cmake == 'true' }}
+    if: ${{ always() && !cancelled() && needs.changes.outputs.windows_msvc == 'true' && needs.changes.outputs.windows_cpp23_release == 'true' && needs.changes.outputs.linux_vulkan_host == 'true' && needs.changes.outputs.macos_metal_cmake == 'true' && needs.changes.outputs.metal_host_evidence == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
