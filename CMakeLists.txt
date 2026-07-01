@@ -1495,6 +1495,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_tools_tests)
     add_test(NAME MK_tools_tests COMMAND MK_tools_tests)
 
+    add_executable(MK_tools_cooked_animation_workflow_review_tests
+        tests/unit/tools_cooked_animation_workflow_review_tests.cpp
+    )
+    target_link_libraries(MK_tools_cooked_animation_workflow_review_tests PRIVATE MK_tools)
+    target_include_directories(MK_tools_cooked_animation_workflow_review_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_tools_cooked_animation_workflow_review_tests)
+    add_test(NAME MK_tools_cooked_animation_workflow_review_tests COMMAND MK_tools_cooked_animation_workflow_review_tests)
+
     add_executable(MK_tools_mavg_cluster_cook_tests
         tests/unit/tools_mavg_cluster_cook_tests.cpp
     )
