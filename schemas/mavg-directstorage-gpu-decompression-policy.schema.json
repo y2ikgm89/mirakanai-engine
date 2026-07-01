@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mirakanai.local/GameEngine.MavgDirectStorageGpuDecompressionPolicy.v1.schema.json",
+  "title": "GameEngine.MavgDirectStorageGpuDecompressionPolicy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "planId",
+    "policyRows",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "GameEngine.MavgDirectStorageGpuDecompressionPolicy.v1"
+    },
+    "planId": {
+      "const": "mavg-gpu-directstorage-gdeflate-policy-v1"
+    },
+    "policyRows": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/policyRow"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policyRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rowId",
+        "officialSourceId",
+        "sdkPackageVersion",
+        "destination",
+        "compression",
+        "reviewed",
+        "stableDirectStorage13Selected",
+        "directStorage13FeatureReviewed",
+        "directStorage14PreviewSelected",
+        "gpuResourceDestinationReviewed",
+        "d3d12FenceSynchronizationReviewed",
+        "gdeflateCompressionReviewed",
+        "zstdPreviewReviewed",
+        "retainedArtifactId",
+        "retainedArtifactSha256",
+        "claims"
+      ],
+      "properties": {
+        "rowId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        "officialSourceId": {
+          "enum": [
+            "microsoft-directstorage-api-downloads",
+            "microsoft-directstorage-1.3-release",
+            "microsoft-directstorage-developer-guidance",
+            "microsoft-directstorage-1.4-zstd-preview"
+          ]
+        },
+        "sdkPackageVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "destination": {
+          "enum": [
+            "d3d12_buffer",
+            "d3d12_texture",
+            "d3d12_multiple_subresources_range"
+          ]
+        },
+        "compression": {
+          "enum": [
+            "none",
+            "gdeflate",
+            "zstd_preview"
+          ]
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "stableDirectStorage13Selected": {
+          "type": "boolean"
+        },
+        "directStorage13FeatureReviewed": {
+          "type": "boolean"
+        },
+        "directStorage14PreviewSelected": {
+          "type": "boolean"
+        },
+        "gpuResourceDestinationReviewed": {
+          "type": "boolean"
+        },
+        "d3d12FenceSynchronizationReviewed": {
+          "type": "boolean"
+        },
+        "gdeflateCompressionReviewed": {
+          "type": "boolean"
+        },
+        "zstdPreviewReviewed": {
+          "type": "boolean"
+        },
+        "retainedArtifactId": {
+          "type": "string",
+          "maxLength": 160,
+          "pattern": "^$|^[A-Za-z0-9._:/-]+$"
+        },
+        "retainedArtifactSha256": {
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "$ref": "#/$defs/sha256"
+            }
+          ]
+        },
+        "claims": {
+          "$ref": "#/$defs/claims"
+        }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gpuDestinationExecutionReady",
+        "gdeflateExecutionReady",
+        "zstdPreviewReady",
+        "nativeHandlesExposed",
+        "performanceReady",
+        "packageVisibleBackendReadinessReady",
+        "broadCpuGpuMemoryOptimizationReady",
+        "naniteCompatible",
+        "naniteEquivalent",
+        "naniteSuperior",
+        "unityUnrealGodotCompatibility"
+      ],
+      "properties": {
+        "gpuDestinationExecutionReady": {
+          "const": false
+        },
+        "gdeflateExecutionReady": {
+          "const": false
+        },
+        "zstdPreviewReady": {
+          "const": false
+        },
+        "nativeHandlesExposed": {
+          "const": false
+        },
+        "performanceReady": {
+          "const": false
+        },
+        "packageVisibleBackendReadinessReady": {
+          "const": false
+        },
+        "broadCpuGpuMemoryOptimizationReady": {
+          "const": false
+        },
+        "naniteCompatible": {
+          "const": false
+        },
+        "naniteEquivalent": {
+          "const": false
+        },
+        "naniteSuperior": {
+          "const": false
+        },
+        "unityUnrealGodotCompatibility": {
+          "const": false
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mavg_directstorage_gpu_decompression_policy_ready",
+        "mavg_directstorage_gpu_destination_execution_ready",
+        "mavg_directstorage_gdeflate_execution_ready",
+        "mavg_directstorage_zstd_preview_ready",
+        "mavg_package_visible_backend_readiness_ready",
+        "mavg_directstorage_performance_ready",
+        "mavg_broad_cpu_gpu_memory_optimization_ready",
+        "mavg_nanite_compatible",
+        "mavg_nanite_equivalent",
+        "mavg_nanite_superior"
+      ],
+      "properties": {
+        "mavg_directstorage_gpu_decompression_policy_ready": {
+          "const": 1
+        },
+        "mavg_directstorage_gpu_destination_execution_ready": {
+          "const": 0
+        },
+        "mavg_directstorage_gdeflate_execution_ready": {
+          "const": 0
+        },
+        "mavg_directstorage_zstd_preview_ready": {
+          "const": 0
+        },
+        "mavg_package_visible_backend_readiness_ready": {
+          "const": 0
+        },
+        "mavg_directstorage_performance_ready": {
+          "const": 0
+        },
+        "mavg_broad_cpu_gpu_memory_optimization_ready": {
+          "const": 0
+        },
+        "mavg_nanite_compatible": {
+          "const": 0
+        },
+        "mavg_nanite_equivalent": {
+          "const": 0
+        },
+        "mavg_nanite_superior": {
+          "const": 0
+        }
+      }
+    }
+  }
+}
