@@ -10,6 +10,7 @@ add_library(mirakana_runtime_rhi
     src/mavg_async_overlap_performance.cpp
     src/mavg_async_overlap_performance_proof.cpp
     src/mavg_broad_optimization_evidence.cpp
+    src/mavg_directstorage_gpu_destination_execution.cpp
     src/mavg_directstorage_gpu_decompression_policy.cpp
     src/mavg_streaming_upload_overlap_evidence.cpp
     src/package_streaming_frame_graph.cpp
