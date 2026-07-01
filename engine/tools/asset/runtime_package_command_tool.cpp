@@ -97,7 +97,9 @@ namespace {
         return false;
     }
     const auto first = value.front();
-    if (!((first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z') || first == '_')) {
+    const auto starts_with_valid_character =
+        (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z') || first == '_';
+    if (!starts_with_valid_character) {
         return false;
     }
     return std::ranges::all_of(value, [](char character) {
