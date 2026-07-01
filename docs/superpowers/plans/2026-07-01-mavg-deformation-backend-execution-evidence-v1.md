@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-deformation-backend-execution-evidence-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Selection:** Child plan selected from the production-completion selection gate.
 
@@ -328,7 +328,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: full repository validation passes.
 
-- [ ] **Step 3: Return active plan to selection gate at closeout**
+- [x] **Step 3: Return active plan to selection gate at closeout**
 
 After validation evidence is recorded, update:
 
@@ -342,7 +342,7 @@ After validation evidence is recorded, update:
 
 Keep a completed registry row for this plan.
 
-- [ ] **Step 4: Publication preflight, commit, push, PR, CI, merge**
+- [x] **Step 4: Publication preflight, commit, push, PR, CI, merge**
 
 Run:
 
@@ -355,4 +355,4 @@ git push -u origin codex/mavg-phase0-child-plan
 gh pr create --draft --base main --head codex/mavg-phase0-child-plan --title "Promote MAVG deformation backend evidence" --body-file <generated-body>
 ```
 
-Expected: PR is created with validation evidence. Convert to ready only through the guarded repository wrapper once checks pass.
+Closeout evidence: PR #936 merged at `34093e5b3799734e1c891fdbc8eedcab39ac629f` after local full validation passed with 167/167 tests and hosted PR Gate passed. The follow-up closeout sync returns `currentActivePlan` to the production-completion master plan, sets `recommendedNextPlan.id = next-production-gap-selection`, keeps `unsupportedProductionGaps = []`, and leaves native D3D12 command execution, native Vulkan queue execution, Metal readiness, ray tracing integration, mesh shader execution, broad deformation readiness, broad MAVG backend readiness, broad CPU/GPU/memory optimization, Unity/Unreal/Godot/Nanite compatibility/equivalence/parity/replacement/superiority, legal advice, and legal approval unclaimed.
