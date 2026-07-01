@@ -11,6 +11,11 @@
       "purpose": "Validate AI instructions, manifests, schemas, and generated context."
     },
     {
+      "name": "mavg-directstorage-zstd-preview-review",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-mavg-directstorage-zstd-preview-review.ps1",
+      "purpose": "Build and test the MAVG DirectStorage 1.4/Zstd public-preview review gate. The retained value-only evidence validates official Microsoft DirectStorage 1.4 preview, Zstd, GACL shuffle/postprocess scope, D3D12 CreatorID, authored-asset and explicit-API requirements, preview known issues, and zero DirectStorage execution, asset conditioning execution, native handle exposure, package-visible backend readiness, performance readiness, broad optimization readiness, Unity/Unreal/Godot compatibility, Nanite compatibility/equivalence/superiority, legal advice, or legal approval claims."
+    },
+    {
       "name": "public-api-boundary",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
       "purpose": "Check public headers and backend interop boundaries after public API or handle-boundary changes."
