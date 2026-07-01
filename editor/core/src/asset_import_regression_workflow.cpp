@@ -133,6 +133,7 @@ namespace {
 }
 
 [[nodiscard]] EditorAssetBrowserImportWorkflowRow make_triage_row(const AssetImportRegressionTriageRowV1& row) {
+    const bool failed = row.code != AssetImportRegressionDiagnosticCode::none;
     const bool blocked = row.reimport_decision == AssetImportRegressionReimportDecision::blocked;
     std::string detail =
         "phase=" + row.phase + " code=" + std::string{asset_import_regression_diagnostic_code_label(row.code)} +
@@ -153,8 +154,8 @@ namespace {
         detail += " nondeterministic=true";
     }
     return EditorAssetBrowserImportWorkflowRow{
-        .id = workflow_row_id("failure", row.asset_id),
-        .category_label = "triage_failure",
+        .id = workflow_row_id(failed ? "failure" : "triage", row.asset_id),
+        .category_label = failed ? "triage_failure" : "triage_review",
         .asset_id = row.asset_id,
         .asset_key_label = std::to_string(row.asset.value),
         .source_path = row.source_path,
