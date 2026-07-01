@@ -8,6 +8,7 @@ add_library(MK_tools_asset OBJECT
     asset_runtime_package_hot_reload_tool.cpp
     asset_import_tool.cpp
     asset_package_tool.cpp
+    cooked_animation_workflow_review.cpp
     2d_originality_review.cpp
     2d_source_pulse.cpp
     environment_texture_pipeline_v2.cpp
