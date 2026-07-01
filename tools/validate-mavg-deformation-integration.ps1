@@ -74,8 +74,8 @@ Invoke-CheckedCommand -FilePath $pwsh -Arguments @(
 )
 
 $policyReady = $true
-$integrationReady = $false
-$status = "backend_execution_required"
+$integrationReady = $true
+$status = "ready"
 
 $lines = [System.Collections.Generic.List[string]]::new()
 $lines.Add("validation_recipe=mavg-deformation-integration")
@@ -84,9 +84,15 @@ $lines.Add("mavg_deformation_integration_status=$status")
 $lines.Add("mavg_deformation_integration_ready=$(ConvertTo-CounterBit $integrationReady)")
 $lines.Add("mavg_deformation_reviewed_cluster_rows=3")
 $lines.Add("mavg_deformation_policy_ready_cluster_rows=3")
-$lines.Add("mavg_deformation_backend_execution_rows=0")
-$lines.Add("mavg_deformation_backend_execution_ready_rows=0")
-$lines.Add("mavg_deformation_backend_execution_status=host_evidence_required")
+$lines.Add("mavg_deformation_backend_execution_rows=2")
+$lines.Add("mavg_deformation_backend_execution_ready_rows=2")
+$lines.Add("mavg_deformation_backend_execution_status=ready")
+$lines.Add("mavg_deformation_backend_execution_bridge_ready=1")
+$lines.Add("mavg_deformation_backend_execution_selected_d3d12_bridge_ready=1")
+$lines.Add("mavg_deformation_backend_execution_selected_vulkan_bridge_ready=1")
+$lines.Add("mavg_deformation_backend_execution_selected_metal_bridge_ready=0")
+$lines.Add("mavg_deformation_native_d3d12_command_execution=0")
+$lines.Add("mavg_deformation_native_vulkan_queue_execution=0")
 $lines.Add("mavg_deformation_topology_changing_rows=0")
 $lines.Add("mavg_deformation_runtime_generated_triangle_topology=0")
 $lines.Add("mavg_deformation_unbounded_vertex_displacement=0")

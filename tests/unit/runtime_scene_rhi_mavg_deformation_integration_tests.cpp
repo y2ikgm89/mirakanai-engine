@@ -162,6 +162,12 @@ make_policy_rows(const mirakana::MavgClusterGraphDocument& graph) {
                                                                                             code);
 }
 
+[[nodiscard]] bool
+has_evidence_code(const mirakana::runtime_scene_rhi::MavgDeformationBackendExecutionEvidenceResult& result,
+                  MavgDeformationIntegrationDiagnosticCode code) noexcept {
+    return std::ranges::any_of(result.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
 } // namespace
 
 MK_TEST("runtime scene rhi mavg deformation integration accepts selected value policy rows") {
@@ -262,6 +268,115 @@ MK_TEST("runtime scene rhi mavg deformation integration requires backend executi
     MK_REQUIRE(result.mavg_deformation_policy_ready);
     MK_REQUIRE(!result.mavg_deformation_integration_ready);
     MK_REQUIRE(has_code(result, MavgDeformationIntegrationDiagnosticCode::backend_execution_required));
+}
+
+MK_TEST("runtime scene rhi mavg deformation backend evidence accepts selected compute morph rows") {
+    const auto d3d12_evidence = mirakana::runtime_scene_rhi::evaluate_mavg_deformation_backend_execution_evidence(
+        mirakana::runtime_scene_rhi::MavgDeformationBackendExecutionEvidenceDesc{
+            .backend = mirakana::runtime_scene_rhi::MavgDeformationBackendKind::d3d12,
+            .row_id = "mavg.deformation.backend.d3d12.compute_morph_skinned_upload",
+            .reviewed = true,
+            .upload_execution_ready = true,
+            .compute_morph_skinned_mesh_bindings = 1,
+            .morph_mesh_uploads = 1,
+            .uploaded_morph_bytes = 292,
+            .uploaded_compute_morph_base_position_bytes = 36,
+            .compute_morph_output_position_bytes = 36,
+            .submitted_upload_fence_count = 4,
+            .renderer_consumption_reviewed = true,
+        });
+    const auto vulkan_evidence = mirakana::runtime_scene_rhi::evaluate_mavg_deformation_backend_execution_evidence(
+        mirakana::runtime_scene_rhi::MavgDeformationBackendExecutionEvidenceDesc{
+            .backend = mirakana::runtime_scene_rhi::MavgDeformationBackendKind::vulkan,
+            .row_id = "mavg.deformation.backend.vulkan.compute_morph_skinned_upload",
+            .reviewed = true,
+            .upload_execution_ready = true,
+            .compute_morph_skinned_mesh_bindings = 1,
+            .morph_mesh_uploads = 1,
+            .uploaded_morph_bytes = 292,
+            .uploaded_compute_morph_base_position_bytes = 36,
+            .compute_morph_output_position_bytes = 36,
+            .submitted_upload_fence_count = 4,
+            .renderer_consumption_reviewed = true,
+        });
+
+    MK_REQUIRE(d3d12_evidence.ready);
+    MK_REQUIRE(d3d12_evidence.row.ready);
+    MK_REQUIRE(d3d12_evidence.row.execution_evidence);
+    MK_REQUIRE(d3d12_evidence.diagnostics.empty());
+    MK_REQUIRE(vulkan_evidence.ready);
+    MK_REQUIRE(vulkan_evidence.row.ready);
+    MK_REQUIRE(vulkan_evidence.row.execution_evidence);
+    MK_REQUIRE(vulkan_evidence.diagnostics.empty());
+}
+
+MK_TEST("runtime scene rhi mavg deformation backend evidence rejects missing execution counters") {
+    const auto evidence = mirakana::runtime_scene_rhi::evaluate_mavg_deformation_backend_execution_evidence(
+        mirakana::runtime_scene_rhi::MavgDeformationBackendExecutionEvidenceDesc{
+            .backend = mirakana::runtime_scene_rhi::MavgDeformationBackendKind::d3d12,
+            .row_id = "mavg.deformation.backend.d3d12.missing_output",
+            .reviewed = true,
+            .upload_execution_ready = true,
+            .compute_morph_skinned_mesh_bindings = 1,
+            .morph_mesh_uploads = 1,
+            .uploaded_morph_bytes = 292,
+            .uploaded_compute_morph_base_position_bytes = 36,
+            .compute_morph_output_position_bytes = 0,
+            .submitted_upload_fence_count = 0,
+            .renderer_consumption_reviewed = true,
+        });
+
+    MK_REQUIRE(!evidence.ready);
+    MK_REQUIRE(!evidence.row.ready);
+    MK_REQUIRE(has_evidence_code(evidence, MavgDeformationIntegrationDiagnosticCode::backend_execution_not_ready));
+}
+
+MK_TEST("runtime scene rhi mavg deformation backend evidence keeps metal host gated") {
+    const auto evidence = mirakana::runtime_scene_rhi::evaluate_mavg_deformation_backend_execution_evidence(
+        mirakana::runtime_scene_rhi::MavgDeformationBackendExecutionEvidenceDesc{
+            .backend = mirakana::runtime_scene_rhi::MavgDeformationBackendKind::metal_apple_host,
+            .row_id = "mavg.deformation.backend.metal.compute_morph_skinned_upload",
+            .reviewed = true,
+            .upload_execution_ready = true,
+            .compute_morph_skinned_mesh_bindings = 1,
+            .morph_mesh_uploads = 1,
+            .uploaded_morph_bytes = 292,
+            .uploaded_compute_morph_base_position_bytes = 36,
+            .compute_morph_output_position_bytes = 36,
+            .submitted_upload_fence_count = 4,
+            .renderer_consumption_reviewed = true,
+        });
+
+    MK_REQUIRE(!evidence.ready);
+    MK_REQUIRE(!evidence.row.ready);
+    MK_REQUIRE(has_evidence_code(evidence, MavgDeformationIntegrationDiagnosticCode::backend_execution_not_ready));
+}
+
+MK_TEST("runtime scene rhi mavg deformation backend evidence rejects native handles and broad readiness") {
+    const auto evidence = mirakana::runtime_scene_rhi::evaluate_mavg_deformation_backend_execution_evidence(
+        mirakana::runtime_scene_rhi::MavgDeformationBackendExecutionEvidenceDesc{
+            .backend = mirakana::runtime_scene_rhi::MavgDeformationBackendKind::vulkan,
+            .row_id = "mavg.deformation.backend.vulkan.native_handle_claim",
+            .reviewed = true,
+            .upload_execution_ready = true,
+            .compute_morph_skinned_mesh_bindings = 1,
+            .morph_mesh_uploads = 1,
+            .uploaded_morph_bytes = 292,
+            .uploaded_compute_morph_base_position_bytes = 36,
+            .compute_morph_output_position_bytes = 36,
+            .submitted_upload_fence_count = 4,
+            .renderer_consumption_reviewed = true,
+            .touched_native_handles = true,
+            .request_broad_deformation_readiness = true,
+        });
+
+    MK_REQUIRE(!evidence.ready);
+    MK_REQUIRE(!evidence.row.ready);
+    MK_REQUIRE(evidence.native_handles_exposed);
+    MK_REQUIRE(!evidence.broad_deformation_readiness_ready);
+    MK_REQUIRE(has_evidence_code(evidence, MavgDeformationIntegrationDiagnosticCode::native_handle_access));
+    MK_REQUIRE(has_evidence_code(evidence,
+                                 MavgDeformationIntegrationDiagnosticCode::broad_deformation_readiness_not_promoted));
 }
 
 MK_TEST("runtime scene rhi mavg deformation integration promotes ready only with reviewed backend rows") {
