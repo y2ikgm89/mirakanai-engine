@@ -12,9 +12,9 @@
 
 **Plan ID:** `mavg-deformation-backend-execution-evidence-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Selection:** Child plan selected from the production-completion selection gate.
+**Selection:** Child plan completed through PR #936 / merge commit `34093e5b3799734e1c891fdbc8eedcab39ac629f`; the active pointer returns to the production-completion selection gate.
 
 **Date:** 2026-07-01
 
@@ -328,7 +328,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: full repository validation passes.
 
-- [ ] **Step 3: Return active plan to selection gate at closeout**
+- [x] **Step 3: Return active plan to selection gate at closeout**
 
 After validation evidence is recorded, update:
 
@@ -342,7 +342,7 @@ After validation evidence is recorded, update:
 
 Keep a completed registry row for this plan.
 
-- [ ] **Step 4: Publication preflight, commit, push, PR, CI, merge**
+- [x] **Step 4: Publication preflight, commit, push, PR, CI, merge**
 
 Run:
 
@@ -355,4 +355,4 @@ git push -u origin codex/mavg-phase0-child-plan
 gh pr create --draft --base main --head codex/mavg-phase0-child-plan --title "Promote MAVG deformation backend evidence" --body-file <generated-body>
 ```
 
-Expected: PR is created with validation evidence. Convert to ready only through the guarded repository wrapper once checks pass.
+Evidence: implementation PR #936 merged through GitHub Flow at merge commit `34093e5b3799734e1c891fdbc8eedcab39ac629f` after local `tools/validate.ps1` passed 167/167 tests and hosted PR Gate checks passed. The closeout keeps `unsupportedProductionGaps = []`, returns `currentActivePlan` to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, sets `recommendedNextPlan.id = next-production-gap-selection`, and keeps Metal readiness, native D3D12 command execution, native Vulkan queue execution, ray tracing, mesh shader execution, Nanite compatibility/equivalence/superiority, broad MAVG backend readiness, broad deformation readiness, broad optimization, and Unity/Unreal/Godot compatibility/parity/equivalence/replacement unclaimed.
