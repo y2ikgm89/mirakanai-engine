@@ -448,6 +448,12 @@ MK_TEST("asset import regression triage serializes safe deterministic operator r
     MK_REQUIRE(parsed.reimport_candidate_count == 2U);
     MK_REQUIRE(parsed.preset_diff_required_count == 1U);
     MK_REQUIRE(parsed.axis_unit_preview_required_count == 1U);
+    MK_REQUIRE(parsed.failed_count == 5U);
+    MK_REQUIRE(parsed.legal_blocked_count == 1U);
+    MK_REQUIRE(parsed.nondeterministic_count == 1U);
+    MK_REQUIRE(text.contains("failed_count=5\n"));
+    MK_REQUIRE(text.contains("legal_blocked_count=1\n"));
+    MK_REQUIRE(text.contains("nondeterministic_count=1\n"));
     MK_REQUIRE(parsed.rows[0].legal_blocked);
     MK_REQUIRE(parsed.rows[0].reimport_decision == mirakana::AssetImportRegressionReimportDecision::blocked);
     MK_REQUIRE(parsed.rows[2].axis_unit_preview_required);
@@ -458,6 +464,65 @@ MK_TEST("asset import regression triage serializes safe deterministic operator r
     MK_REQUIRE(parsed.rows[5].reimport_decision == mirakana::AssetImportRegressionReimportDecision::not_needed);
     MK_REQUIRE(parsed.rows[0].source_excerpt_hash.starts_with("sha256:"));
     MK_REQUIRE(parsed.rows[0].repro_command.contains("tools/run-asset-import-regression-corpus.ps1"));
+}
+
+MK_TEST("asset import regression triage rejects inconsistent aggregate counters") {
+    mirakana::AssetImportRegressionTriageDocumentV1 document{
+        .corpus_id = "GameEngine.AssetImportRegressionCorpus.v1",
+        .run_id = "run-invalid-aggregate",
+        .rows =
+            {
+                mirakana::AssetImportRegressionTriageRowV1{
+                    .asset_id = "mesh.legal",
+                    .kind = mirakana::AssetImportRegressionCorpusAssetKind::gltf_mesh,
+                    .asset = mirakana::AssetId::from_name("mesh.legal"),
+                    .source_path = "sources/gltf/legal.gltf",
+                    .source_sha256 = "sha256:legal",
+                    .preset_sha256 = "sha256:preset-legal",
+                    .importer_id = "mirakana.importer.gltf_mesh",
+                    .importer_version = "asset-import-regression-v1",
+                    .phase = "legal",
+                    .code = mirakana::AssetImportRegressionDiagnosticCode::rejected_license,
+                    .severity = mirakana::AssetImportRegressionTriageSeverity::blocked,
+                    .recommended_action = mirakana::AssetImportRegressionRecommendedAction::fix_notice_or_remove_asset,
+                    .reimport_decision = mirakana::AssetImportRegressionReimportDecision::blocked,
+                    .repro_command_id = "asset_import_regression.repro.mesh.legal",
+                    .repro_command = "pwsh -NoProfile -ExecutionPolicy Bypass -File "
+                                     "tools/run-asset-import-regression-corpus.ps1",
+                    .source_excerpt_hash = "sha256:legal",
+                    .legal_blocked = true,
+                },
+            },
+        .row_count = 1U,
+        .failed_count = 0U,
+        .blocked_count = 1U,
+        .legal_blocked_count = 1U,
+        .ready_for_operator_review = true,
+    };
+
+    bool serialize_threw = false;
+    try {
+        (void)mirakana::serialize_asset_import_regression_triage_v1(document);
+    } catch (const std::invalid_argument&) {
+        serialize_threw = true;
+    }
+    MK_REQUIRE(serialize_threw);
+
+    document.failed_count = 1U;
+    const auto text = mirakana::serialize_asset_import_regression_triage_v1(document);
+    auto inconsistent_text = text;
+    const auto needle = std::string{"legal_blocked_count=1\n"};
+    const auto position = inconsistent_text.find(needle);
+    MK_REQUIRE(position != std::string::npos);
+    inconsistent_text.replace(position, needle.size(), "legal_blocked_count=0\n");
+
+    bool deserialize_threw = false;
+    try {
+        (void)mirakana::deserialize_asset_import_regression_triage_v1(inconsistent_text);
+    } catch (const std::invalid_argument&) {
+        deserialize_threw = true;
+    }
+    MK_REQUIRE(deserialize_threw);
 }
 
 MK_TEST("asset import regression committed first-party corpus fixture validates expected coverage") {

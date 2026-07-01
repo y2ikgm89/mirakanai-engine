@@ -66,10 +66,13 @@ struct AssetImportRegressionTriageDocumentV1 {
     std::string run_id;
     std::vector<AssetImportRegressionTriageRowV1> rows;
     std::size_t row_count{0U};
+    std::size_t failed_count{0U};
     std::size_t blocked_count{0U};
     std::size_t reimport_candidate_count{0U};
     std::size_t preset_diff_required_count{0U};
     std::size_t axis_unit_preview_required_count{0U};
+    std::size_t legal_blocked_count{0U};
+    std::size_t nondeterministic_count{0U};
     bool ready_for_operator_review{false};
 };
 
