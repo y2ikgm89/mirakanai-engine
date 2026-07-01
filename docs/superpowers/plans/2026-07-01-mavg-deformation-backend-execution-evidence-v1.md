@@ -14,7 +14,7 @@
 
 **Status:** Completed.
 
-**Selection:** Child plan selected from the production-completion selection gate.
+**Selection:** Child plan completed through PR #936 / merge commit `34093e5b3799734e1c891fdbc8eedcab39ac629f`; the active pointer returns to the production-completion selection gate.
 
 **Date:** 2026-07-01
 
