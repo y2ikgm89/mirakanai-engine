@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/2d-commercial-release-legal-review-input.schema.json",
+  "title": "GameEngine 2D Commercial Release Legal Review Input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_id",
+    "validation_recipe",
+    "legal_advice",
+    "engineering_review_input",
+    "counsel_review_required",
+    "selected_package",
+    "package_rows",
+    "release_blockers",
+    "platform_gate_rows",
+    "official_source_rows",
+    "non_claims"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "claim_id": { "const": "2d-commercial-release-legal-gate-v1" },
+    "validation_recipe": { "const": "2d-commercial-release-legal-review-input" },
+    "generated_by": { "const": "tools/generate-2d-commercial-release-legal-review-input.ps1" },
+    "legal_advice": { "const": false },
+    "engineering_review_input": { "const": true },
+    "counsel_review_required": { "const": true },
+    "selected_package": { "const": "sample_2d_desktop_runtime_package" },
+    "package_rows": {
+      "type": "array",
+      "minItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "path_or_record_id",
+          "validation_recipe_id",
+          "ready",
+          "package_visible",
+          "engineering_review_input",
+          "counsel_review_required"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": {
+            "enum": [
+              "package_content_inventory",
+              "third_party_notice_record",
+              "dependency_manifest_record",
+              "source_provenance_summary",
+              "clean_room_static_guard",
+              "trademark_surface_guard",
+              "distribution_artifact_inventory",
+              "generated_asset_review",
+              "legal_review_input_record"
+            ]
+          },
+          "path_or_record_id": { "type": "string", "minLength": 1 },
+          "validation_recipe_id": { "const": "installed-2d-commercial-release-legal-gate-smoke" },
+          "ready": { "const": true },
+          "package_visible": { "const": true },
+          "engineering_review_input": { "const": true },
+          "counsel_review_required": { "const": true }
+        }
+      }
+    },
+    "release_blockers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missing_notices",
+        "unknown_license_rows",
+        "unapproved_dependencies",
+        "external_engine_marks",
+        "copied_assets",
+        "unreviewed_generated_assets"
+      ],
+      "properties": {
+        "missing_notices": { "const": 0 },
+        "unknown_license_rows": { "const": 0 },
+        "unapproved_dependencies": { "const": 0 },
+        "external_engine_marks": { "const": 0 },
+        "copied_assets": { "const": 0 },
+        "unreviewed_generated_assets": { "const": 0 }
+      }
+    },
+    "platform_gate_rows": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "official_source_id",
+          "host_class_id",
+          "requirement",
+          "host_gated",
+          "ready",
+          "separate_platform_gate"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "enum": [ "windows_msix_signing", "macos_notarization", "android_play_signing" ] },
+          "official_source_id": { "type": "string", "minLength": 1 },
+          "host_class_id": { "type": "string", "minLength": 1 },
+          "requirement": { "type": "string", "minLength": 1 },
+          "host_gated": { "const": true },
+          "ready": { "const": false },
+          "separate_platform_gate": { "const": true }
+        }
+      }
+    },
+    "official_source_rows": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [ "id", "kind", "url", "use", "ready", "official", "public_docs_only" ]
+      }
+    },
+    "non_claims": {
+      "type": "object",
+      "required": [
+        "legal_approval",
+        "external_engine_compatibility",
+        "external_engine_parity",
+        "native_handles",
+        "store_certification_complete",
+        "notarization_complete",
+        "signing_complete"
+      ],
+      "properties": {
+        "legal_approval": { "const": false },
+        "external_engine_compatibility": { "const": false },
+        "external_engine_parity": { "const": false },
+        "native_handles": { "const": false },
+        "store_certification_complete": { "const": false },
+        "notarization_complete": { "const": false },
+        "signing_complete": { "const": false }
+      }
+    }
+  }
+}

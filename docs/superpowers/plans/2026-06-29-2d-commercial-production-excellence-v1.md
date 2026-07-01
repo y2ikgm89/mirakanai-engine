@@ -306,15 +306,20 @@ Phase 8 validation evidence:
 
 Goal: prepare a counsel-ready and distribution-ready 2D package path without overstating legal conclusions.
 
-- [ ] Validate package contents, notices, dependency manifests, source/provenance summaries, static clean-room guards, trademark-surface guards, and distribution artifact inventory.
-- [ ] Add package signing/notarization/store-certification planning only through platform-specific official docs and separate host gates.
-- [ ] Generate retained legal review input records from official-source tables, dependency records, third-party notice records, and clean-room static-check summaries.
-- [ ] Keep legal output phrased as "engineering review input" and "requires counsel review"; do not claim legal approval.
-- [ ] Add release blockers for missing notices, unapproved dependencies, external engine marks, copied assets, unknown license rows, and unreviewed generated assets.
+- [x] Validate package contents, notices, dependency manifests, source/provenance summaries, static clean-room guards, trademark-surface guards, and distribution artifact inventory.
+- [x] Add package signing/notarization/store-certification planning only through platform-specific official docs and separate host gates.
+- [x] Generate retained legal review input records from official-source tables, dependency records, third-party notice records, and clean-room static-check summaries.
+- [x] Keep legal output phrased as "engineering review input" and "requires counsel review"; do not claim legal approval.
+- [x] Add release blockers for missing notices, unapproved dependencies, external engine marks, copied assets, unknown license rows, and unreviewed generated assets.
 
 Likely surfaces: packaging scripts, `docs/legal-and-licensing.md`, `docs/dependencies.md`, `THIRD_PARTY_NOTICES.md`, `tools/check-dependency-policy.ps1`, release validators, package manifests.
 
 Done when: the selected 2D release package has a complete engineering legal/dependency/provenance handoff and blocks release on unresolved license or originality risks.
+
+Phase 9 validation evidence:
+
+- 2026-07-01 2D Commercial Release Legal Gate v1 slice: added `Runtime2DCommercialReleaseEvidenceKind`, `Runtime2DCommercialReleaseOfficialSourceKind`, `Runtime2DCommercialReleasePlatformGateKind`, `Runtime2DCommercialReleaseEvidenceRow`, `Runtime2DCommercialReleaseOfficialSourceRow`, `Runtime2DCommercialReleasePlatformGateRow`, `Runtime2DCommercialReleaseGateDesc`, `Runtime2DCommercialReleaseGateResult`, and `evaluate_runtime_2d_commercial_release_legal_gate` in `MK_runtime`; `sample_2d_desktop_runtime_package --require-2d-commercial-release-legal-gate`; `tools/generate-2d-commercial-release-legal-review-input.ps1`; `tools/check-2d-commercial-release-legal-review-input.ps1`; `tools/validate-2d-commercial-release-legal-gate.ps1`; `installed-2d-commercial-release-legal-gate-smoke`; retained schemas `schemas/2d-commercial-release-legal-review-input.schema.json` and `schemas/2d-commercial-release-official-source-summary.schema.json`; and manifest/static guidance for `desktop-runtime-2d-commercial-release-legal-gate`. The gate emits counsel-ready engineering review input for package content inventory, third-party notice record, dependency manifest record, source provenance summary, clean-room static guard, trademark-surface guard, distribution artifact inventory, generated asset review, and legal review input record. It keeps signing/notarization/store distribution as separate host gates and requires zero missing notices, unknown license rows, unapproved dependencies, external engine marks, copied assets, unreviewed generated assets, external-engine compatibility claims, and legal-approval claims.
+- Official-source documentation checked on 2026-07-01 through Context7 and official documentation: Microsoft MSIX package signing (`https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview`), Apple notarization before distribution (`https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution`), Android app signing and Play App Signing (`https://developer.android.com/studio/publish/app-signing`), repository clean-room ledger, and repository legal policy. These references are engineering source rows only; they do not add legal advice, legal approval, completed signing/notarization/store certification, or external-engine compatibility.
 
 ### Phase 10: Closeout And Promotion
 
