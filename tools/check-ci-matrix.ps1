@@ -347,6 +347,46 @@ Assert-ValidationTierSelection `
     -ExpectedClassificationReasons "runtime-or-build,sanitizer-relevant,source-code"
 
 Assert-ValidationTierSelection `
+    -Label "runtime RHI policy/evidence PR" `
+    -ChangedPath @("engine/runtime_rhi/src/example.cpp") `
+    -ExpectedWindowsMsvc $true `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $true `
+    -ExpectedLinuxVulkanHost $true `
+    -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $true `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $true `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "windows_msvc,linux_cmake,linux_vulkan_host,linux_sanitizers,full_static_analysis,macos_metal_cmake" `
+    -ExpectedClassificationReasons "linux-vulkan-host-evidence,runtime-or-build,sanitizer-relevant,source-code"
+
+Assert-ValidationTierSelection `
+    -Label "generic production docs manifest sync PR" `
+    -ChangedPath @("docs/current-capabilities.md", "docs/superpowers/plans/README.md", "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json") `
+    -ExpectedWindowsMsvc $false `
+    -ExpectedWindowsCpuProfilingHost $false `
+    -ExpectedWindowsAssetImporters $false `
+    -ExpectedWindowsDesktopEditor $false `
+    -ExpectedWindowsNetworkEnet $false `
+    -ExpectedLinuxCmake $false `
+    -ExpectedLinuxVulkanHost $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedFullStaticAnalysis $false `
+    -ExpectedWindowsCpp23Release $false `
+    -ExpectedMacosMetalCmake $false `
+    -ExpectedMetalHostEvidence $false `
+    -ExpectedIosMetalEvidence $false `
+    -ExpectedSelectedLanes "none" `
+    -ExpectedClassificationReasons "docs-agent-rules-subagent-only"
+
+Assert-ValidationTierSelection `
     -Label "workflow PR" `
     -ChangedPath @(".github/workflows/validate.yml") `
     -ExpectedWindowsMsvc $true `
