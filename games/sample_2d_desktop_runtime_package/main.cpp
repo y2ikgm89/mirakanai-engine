@@ -47,6 +47,7 @@
 #include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime/two_d_commercial_input_closeout.hpp"
 #include "mirakana/runtime/two_d_commercial_performance_regression_gate.hpp"
+#include "mirakana/runtime/two_d_commercial_release_legal_gate.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -138,6 +139,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_input_device_production_ux{false};
     bool require_2d_commercial_input_closeout{false};
     bool require_2d_commercial_performance_regression_gate{false};
+    bool require_2d_commercial_release_legal_gate{false};
     bool require_2d_package_playtest_productization{false};
     bool require_2d_source_pulse{false};
     bool require_gameplay_authoring_review{false};
@@ -6609,6 +6611,147 @@ validate_2d_commercial_performance_regression_package_evidence(
         });
 }
 
+[[nodiscard]] std::string_view commercial_release_legal_gate_status_name(
+    const mirakana::runtime::Runtime2DCommercialReleaseGateResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialReleaseEvidenceRow
+make_2d_commercial_release_evidence_row(mirakana::runtime::Runtime2DCommercialReleaseEvidenceKind kind, std::string id,
+                                        std::string path_or_record_id) {
+    return mirakana::runtime::Runtime2DCommercialReleaseEvidenceRow{
+        .id = std::move(id),
+        .kind = kind,
+        .path_or_record_id = std::move(path_or_record_id),
+        .validation_recipe_id = "installed-2d-commercial-release-legal-gate-smoke",
+        .ready = true,
+        .package_visible = true,
+        .engineering_review_input = true,
+        .counsel_review_required = true,
+    };
+}
+
+[[nodiscard]] std::vector<mirakana::runtime::Runtime2DCommercialReleaseEvidenceRow>
+make_2d_commercial_release_evidence_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialReleaseEvidenceKind;
+    return {
+        make_2d_commercial_release_evidence_row(Kind::package_content_inventory, "package-content-inventory",
+                                                "out/install/desktop-runtime-release/share/Mirakanai/"
+                                                "desktop-runtime-games.json"),
+        make_2d_commercial_release_evidence_row(Kind::third_party_notice_record, "third-party-notice-record",
+                                                "THIRD_PARTY_NOTICES.md"),
+        make_2d_commercial_release_evidence_row(Kind::dependency_manifest_record, "dependency-manifest-record",
+                                                "vcpkg.json"),
+        make_2d_commercial_release_evidence_row(Kind::source_provenance_summary, "source-provenance-summary",
+                                                "games/sample_2d_desktop_runtime_package/game.agent.json"),
+        make_2d_commercial_release_evidence_row(Kind::clean_room_static_guard, "clean-room-static-guard",
+                                                "tools/check-2d-commercial-clean-room.ps1"),
+        make_2d_commercial_release_evidence_row(Kind::trademark_surface_guard, "trademark-surface-guard",
+                                                "tools/check-2d-commercial-source-diagnostics.ps1"),
+        make_2d_commercial_release_evidence_row(Kind::distribution_artifact_inventory,
+                                                "distribution-artifact-inventory",
+                                                "out/package/Mirakanai-0.1.0-Windows-AMD64.zip"),
+        make_2d_commercial_release_evidence_row(Kind::generated_asset_review, "generated-asset-review",
+                                                "aiWorkflow.gameDesignSpec.assetRequests"),
+        make_2d_commercial_release_evidence_row(Kind::legal_review_input_record, "legal-review-input-record",
+                                                "artifacts/2d-commercial/release-legal-review/"
+                                                "2d-commercial-production-excellence"),
+    };
+}
+
+[[nodiscard]] std::array<mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceRow, 5U>
+make_2d_commercial_release_official_source_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceKind;
+    return {
+        mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceRow{
+            .id = "microsoft.msix.signing",
+            .kind = Kind::microsoft_msix_signing,
+            .url = "https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceRow{
+            .id = "apple.notarization.distribution",
+            .kind = Kind::apple_notarization_distribution,
+            .url = "https://developer.apple.com/documentation/security/"
+                   "notarizing-macos-software-before-distribution",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceRow{
+            .id = "android.app.signing",
+            .kind = Kind::android_app_signing,
+            .url = "https://developer.android.com/studio/publish/app-signing",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceRow{
+            .id = "repository.2d-clean-room-ledger",
+            .kind = Kind::repository_clean_room_ledger,
+            .url = "docs/specs/2026-06-30-2d-commercial-clean-room-source-ledger-v1.md",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialReleaseOfficialSourceRow{
+            .id = "repository.legal-policy",
+            .kind = Kind::repository_legal_policy,
+            .url = "docs/legal-and-licensing.md",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+    };
+}
+
+[[nodiscard]] std::vector<mirakana::runtime::Runtime2DCommercialReleasePlatformGateRow>
+make_2d_commercial_release_platform_gate_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialReleasePlatformGateKind;
+    return {
+        mirakana::runtime::Runtime2DCommercialReleasePlatformGateRow{
+            .id = "windows-msix-signing",
+            .kind = Kind::windows_msix_signing,
+            .official_source_id = "microsoft.msix.signing",
+            .host_class_id = "windows-release-signing-host",
+            .host_gated = true,
+            .ready = false,
+            .separate_platform_gate = true,
+        },
+        mirakana::runtime::Runtime2DCommercialReleasePlatformGateRow{
+            .id = "macos-notarization",
+            .kind = Kind::macos_notarization,
+            .official_source_id = "apple.notarization.distribution",
+            .host_class_id = "macos-xcode-notarization-host",
+            .host_gated = true,
+            .ready = false,
+            .separate_platform_gate = true,
+        },
+        mirakana::runtime::Runtime2DCommercialReleasePlatformGateRow{
+            .id = "android-play-signing",
+            .kind = Kind::android_play_signing,
+            .official_source_id = "android.app.signing",
+            .host_class_id = "android-release-signing-host",
+            .host_gated = true,
+            .ready = false,
+            .separate_platform_gate = true,
+        },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialReleaseGateResult
+validate_2d_commercial_release_legal_gate_package_evidence() {
+    return mirakana::runtime::evaluate_runtime_2d_commercial_release_legal_gate(
+        mirakana::runtime::Runtime2DCommercialReleaseGateDesc{
+            .evidence_rows = make_2d_commercial_release_evidence_rows(),
+            .official_source_rows = make_2d_commercial_release_official_source_rows(),
+            .platform_gate_rows = make_2d_commercial_release_platform_gate_rows(),
+            .selected_package_release_gate_claim = true,
+        });
+}
+
 [[nodiscard]] PackagePlaytestProductizationProbeResult validate_2d_package_playtest_productization_package_evidence(
     const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
     const LongRunReadinessProbeResult& long_run_readiness_probe) {
@@ -12128,6 +12271,7 @@ void print_usage() {
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
                  "[--require-2d-input-device-production-ux] [--require-2d-commercial-input-closeout] "
                  "[--require-2d-commercial-performance-regression-gate] "
+                 "[--require-2d-commercial-release-legal-gate] "
                  "[--require-2d-package-playtest-productization] "
                  "[--require-2d-source-pulse] [--require-gameplay-authoring-review] "
                  "[--require-sandbox-authoring-review] "
@@ -12293,6 +12437,21 @@ void print_usage() {
         }
         if (arg == "--require-2d-commercial-performance-regression-gate") {
             options.require_2d_commercial_performance_regression_gate = true;
+            options.require_performance_baseline = true;
+            options.require_long_run_performance_readiness = true;
+            options.require_win32_runtime_host = true;
+            options.require_win32_d3d12_presentation = true;
+            options.require_d3d12_renderer = true;
+            options.require_d3d12_shaders = true;
+            continue;
+        }
+        if (arg == "--require-2d-commercial-release-legal-gate") {
+            options.require_2d_commercial_release_legal_gate = true;
+            options.require_2d_commercial_performance_regression_gate = true;
+            options.require_2d_package_playtest_productization = true;
+            options.require_2d_source_pulse = true;
+            options.require_runtime_ui_renderer_atlas_handoff = true;
+            options.require_sandbox_package_budgets = true;
             options.require_performance_baseline = true;
             options.require_long_run_performance_readiness = true;
             options.require_win32_runtime_host = true;
@@ -13344,6 +13503,9 @@ int main(int argc, char** argv) {
             ? validate_2d_commercial_performance_regression_package_evidence(performance_baseline_probe,
                                                                              long_run_readiness_probe)
             : mirakana::runtime::Runtime2DCommercialPerformanceRegressionGateResult{};
+    const auto commercial_release_legal_gate_probe = options.require_2d_commercial_release_legal_gate
+                                                         ? validate_2d_commercial_release_legal_gate_package_evidence()
+                                                         : mirakana::runtime::Runtime2DCommercialReleaseGateResult{};
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -14100,6 +14262,39 @@ int main(int argc, char** argv) {
         << " 2d_commercial_performance_legal_approval_claim_rows="
         << commercial_performance_regression_probe.legal_approval_claim_rows
         << " 2d_commercial_performance_diagnostics=" << commercial_performance_regression_probe.diagnostics.size()
+        << " 2d_commercial_release_legal_gate_status="
+        << commercial_release_legal_gate_status_name(commercial_release_legal_gate_probe)
+        << " 2d_commercial_release_legal_gate_ready=" << (commercial_release_legal_gate_probe.ready ? 1 : 0)
+        << " 2d_commercial_release_evidence_gate_ready="
+        << (commercial_release_legal_gate_probe.evidence_gate_ready ? 1 : 0)
+        << " 2d_commercial_release_official_source_ready="
+        << (commercial_release_legal_gate_probe.official_source_ready ? 1 : 0)
+        << " 2d_commercial_release_platform_gate_ready="
+        << (commercial_release_legal_gate_probe.platform_gate_ready ? 1 : 0)
+        << " 2d_commercial_release_engineering_review_input_ready="
+        << (commercial_release_legal_gate_probe.engineering_review_input_ready ? 1 : 0)
+        << " 2d_commercial_release_counsel_review_required="
+        << (commercial_release_legal_gate_probe.counsel_review_required ? 1 : 0)
+        << " 2d_commercial_release_evidence_rows=" << commercial_release_legal_gate_probe.evidence_rows
+        << " 2d_commercial_release_official_source_rows=" << commercial_release_legal_gate_probe.official_source_rows
+        << " 2d_commercial_release_platform_gate_rows=" << commercial_release_legal_gate_probe.platform_gate_rows
+        << " 2d_commercial_release_host_gated_platform_rows="
+        << commercial_release_legal_gate_probe.host_gated_platform_rows
+        << " 2d_commercial_release_blocker_rows=" << commercial_release_legal_gate_probe.release_blocker_rows
+        << " 2d_commercial_release_missing_notice_rows=" << commercial_release_legal_gate_probe.missing_notice_rows
+        << " 2d_commercial_release_unknown_license_rows=" << commercial_release_legal_gate_probe.unknown_license_rows
+        << " 2d_commercial_release_unapproved_dependency_rows="
+        << commercial_release_legal_gate_probe.unapproved_dependency_rows
+        << " 2d_commercial_release_external_engine_mark_rows="
+        << commercial_release_legal_gate_probe.external_engine_mark_rows
+        << " 2d_commercial_release_copied_asset_rows=" << commercial_release_legal_gate_probe.copied_asset_rows
+        << " 2d_commercial_release_unreviewed_generated_asset_rows="
+        << commercial_release_legal_gate_probe.unreviewed_generated_asset_rows
+        << " 2d_commercial_release_external_engine_claim_rows="
+        << commercial_release_legal_gate_probe.external_engine_claim_rows
+        << " 2d_commercial_release_legal_approval_claim_rows="
+        << commercial_release_legal_gate_probe.legal_approval_claim_rows
+        << " 2d_commercial_release_diagnostics=" << commercial_release_legal_gate_probe.diagnostics.size()
         << " 2d_package_playtest_productization_status="
         << package_playtest_productization_status_name(package_playtest_productization_probe.status)
         << " 2d_package_playtest_productization_ready=" << (package_playtest_productization_probe.ready ? 1 : 0)
@@ -15710,6 +15905,47 @@ int main(int argc, char** argv) {
                   << " 2d_commercial_performance_diagnostics="
                   << commercial_performance_regression_probe.diagnostics.size() << '\n';
         return 93;
+    }
+
+    if (options.require_2d_commercial_release_legal_gate && !commercial_release_legal_gate_probe.ready) {
+        std::cout
+            << "sample_2d_desktop_runtime_package required_2d_commercial_release_legal_gate_unavailable"
+            << " 2d_commercial_release_legal_gate_status="
+            << commercial_release_legal_gate_status_name(commercial_release_legal_gate_probe)
+            << " 2d_commercial_release_legal_gate_ready=" << (commercial_release_legal_gate_probe.ready ? 1 : 0)
+            << " 2d_commercial_release_evidence_gate_ready="
+            << (commercial_release_legal_gate_probe.evidence_gate_ready ? 1 : 0)
+            << " 2d_commercial_release_official_source_ready="
+            << (commercial_release_legal_gate_probe.official_source_ready ? 1 : 0)
+            << " 2d_commercial_release_platform_gate_ready="
+            << (commercial_release_legal_gate_probe.platform_gate_ready ? 1 : 0)
+            << " 2d_commercial_release_engineering_review_input_ready="
+            << (commercial_release_legal_gate_probe.engineering_review_input_ready ? 1 : 0)
+            << " 2d_commercial_release_counsel_review_required="
+            << (commercial_release_legal_gate_probe.counsel_review_required ? 1 : 0)
+            << " 2d_commercial_release_evidence_rows=" << commercial_release_legal_gate_probe.evidence_rows
+            << " 2d_commercial_release_official_source_rows="
+            << commercial_release_legal_gate_probe.official_source_rows
+            << " 2d_commercial_release_platform_gate_rows=" << commercial_release_legal_gate_probe.platform_gate_rows
+            << " 2d_commercial_release_host_gated_platform_rows="
+            << commercial_release_legal_gate_probe.host_gated_platform_rows
+            << " 2d_commercial_release_blocker_rows=" << commercial_release_legal_gate_probe.release_blocker_rows
+            << " 2d_commercial_release_missing_notice_rows=" << commercial_release_legal_gate_probe.missing_notice_rows
+            << " 2d_commercial_release_unknown_license_rows="
+            << commercial_release_legal_gate_probe.unknown_license_rows
+            << " 2d_commercial_release_unapproved_dependency_rows="
+            << commercial_release_legal_gate_probe.unapproved_dependency_rows
+            << " 2d_commercial_release_external_engine_mark_rows="
+            << commercial_release_legal_gate_probe.external_engine_mark_rows
+            << " 2d_commercial_release_copied_asset_rows=" << commercial_release_legal_gate_probe.copied_asset_rows
+            << " 2d_commercial_release_unreviewed_generated_asset_rows="
+            << commercial_release_legal_gate_probe.unreviewed_generated_asset_rows
+            << " 2d_commercial_release_external_engine_claim_rows="
+            << commercial_release_legal_gate_probe.external_engine_claim_rows
+            << " 2d_commercial_release_legal_approval_claim_rows="
+            << commercial_release_legal_gate_probe.legal_approval_claim_rows
+            << " 2d_commercial_release_diagnostics=" << commercial_release_legal_gate_probe.diagnostics.size() << '\n';
+        return 94;
     }
 
     if (options.require_2d_package_playtest_productization && !package_playtest_productization_probe.ready) {
