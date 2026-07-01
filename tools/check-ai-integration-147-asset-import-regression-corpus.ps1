@@ -21,6 +21,8 @@ $assetRegressionHandoffCheckScript = Get-AgentSurfaceText "tools/check-asset-imp
 $assetRegressionOperatorLoopScript = Get-AgentSurfaceText "tools/check-asset-import-regression-operator-loop.ps1"
 $editorAssetRegressionWorkflowHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp"
 $editorAssetRegressionWorkflowSource = Get-AgentSurfaceText "editor/core/src/asset_import_regression_workflow.cpp"
+$editorGltfMeshCatalogHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/gltf_mesh_catalog.hpp"
+$editorGltfMeshCatalogSource = Get-AgentSurfaceText "editor/core/src/gltf_mesh_catalog.cpp"
 $editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
 $nativeEditorLaunchHeader = Get-AgentSurfaceText "editor/src/native_editor_launch.hpp"
 $nativeEditorLaunchSource = Get-AgentSurfaceText "editor/src/native_editor_launch.cpp"
@@ -45,6 +47,7 @@ $reportSchema = Get-AgentSurfaceText "schemas/asset-import-regression-report.sch
 $jsonContractChapter = Get-AgentSurfaceText "tools/check-json-contracts-081-asset-import-regression-corpus.ps1"
 $legalDoc = Get-AgentSurfaceText "docs/legal-and-licensing.md"
 $architectureDoc = Get-AgentSurfaceText "docs/architecture.md"
+$editorDoc = Get-AgentSurfaceText "docs/editor.md"
 $currentCapabilitiesDoc = Get-AgentSurfaceText "docs/current-capabilities.md"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-30-asset-import-commercial-regression-workflow-v1.md"
 $planReadme = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
@@ -123,6 +126,21 @@ foreach ($needle in @(
         "axis_unit_preview_required"
     )) {
     Assert-ContainsText ($editorAssetRegressionWorkflowHeader + "`n" + $editorAssetRegressionWorkflowSource) $needle "editor asset import regression workflow triage rows"
+}
+
+foreach ($needle in @(
+        "EditorGltfMeshInspectSelectionStatus",
+        "EditorGltfMeshInspectSelectionDesc",
+        "EditorGltfMeshInspectSelectionModel",
+        "make_editor_gltf_mesh_inspect_selection_model",
+        "make_editor_gltf_mesh_inspect_selection_retained_ui_desc",
+        "asset_browser.import_workflow.gltf_mesh_inspect.",
+        "asset_browser.selection.inspect",
+        "glTF mesh inspect ready",
+        "editor-core input claimed mutation, execution",
+        "Unity/Unreal/Godot"
+    )) {
+    Assert-ContainsText ($editorGltfMeshCatalogHeader + "`n" + $editorGltfMeshCatalogSource + "`n" + $editorCoreTests + "`n" + $editorDoc + "`n" + $currentCapabilitiesDoc + "`n" + $modulesManifest + "`n" + $planReadme) $needle "editor glTF mesh Assets retained review contract"
 }
 
 foreach ($needle in @(

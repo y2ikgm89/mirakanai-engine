@@ -19910,6 +19910,114 @@ MK_TEST("editor gltf mesh catalog maps failed inspect to inspector status row") 
     MK_REQUIRE(serialized.contains("gltf_mesh_inspect.contract"));
 }
 
+MK_TEST("editor gltf mesh catalog builds selected asset review rows without executing importers") {
+    const auto asset = mirakana::AssetId::from_name("assets/meshes/hero");
+    mirakana::GltfMeshInspectReport report;
+    report.parse_succeeded = true;
+    report.warnings.push_back("unused material slot");
+    report.rows.push_back(mirakana::GltfMeshPrimitiveInspectRow{
+        .mesh_name = "HeroMesh",
+        .mesh_index = 0U,
+        .primitive_index = 0U,
+        .position_vertex_count = 128U,
+        .has_position = true,
+        .has_normal = true,
+        .has_texcoord0 = true,
+        .indexed = true,
+        .triangles = true,
+    });
+
+    const auto model = mirakana::editor::make_editor_gltf_mesh_inspect_selection_model(
+        mirakana::editor::EditorGltfMeshInspectSelectionDesc{
+            .asset = asset,
+            .asset_key_label = "assets/meshes/hero",
+            .source_path = "source/meshes/hero.gltf",
+            .report = &report,
+            .selected = true,
+            .source_visible = true,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EditorGltfMeshInspectSelectionStatus::ready);
+    MK_REQUIRE(model.status_label == "glTF mesh inspect ready");
+    MK_REQUIRE(model.row_id == "asset_browser.import_workflow.gltf_mesh_inspect." + std::to_string(asset.value));
+    MK_REQUIRE(model.inspect_supported);
+    MK_REQUIRE(model.ready);
+    MK_REQUIRE(!model.blocked);
+    MK_REQUIRE(model.primitive_count == 1U);
+    MK_REQUIRE(model.warning_count == 1U);
+    MK_REQUIRE(!model.mutates_project_files);
+    MK_REQUIRE(!model.executes_import_tools);
+    MK_REQUIRE(!model.executes_package_scripts);
+    MK_REQUIRE(!model.executes_validation_recipes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.inspector_rows.size() >= 4U);
+    MK_REQUIRE(model.command_rows.size() == 1U);
+    MK_REQUIRE(model.command_rows[0].command_id == "asset_browser.selection.inspect");
+    MK_REQUIRE(model.command_rows[0].label == "Inspect glTF mesh");
+    MK_REQUIRE(model.command_rows[0].enabled);
+    MK_REQUIRE(!model.command_rows[0].executes_import_tools);
+    MK_REQUIRE(model.import_workflow_rows.size() == 1U);
+    MK_REQUIRE(model.import_workflow_rows[0].id == model.row_id);
+    MK_REQUIRE(model.import_workflow_rows[0].status_label == "ready");
+    MK_REQUIRE(model.import_workflow_rows[0].detail_label.contains("primitives=1"));
+    MK_REQUIRE(model.import_workflow_rows[0].detail_label.contains("warnings=1"));
+    MK_REQUIRE(!model.import_workflow_rows[0].executes_import_tools);
+    MK_REQUIRE(!model.import_workflow_rows[0].exposes_native_handles);
+
+    const auto retained_ui = mirakana::editor::make_editor_gltf_mesh_inspect_selection_retained_ui_desc(model);
+    MK_REQUIRE(retained_ui.query_status_label == model.status_label);
+    MK_REQUIRE(retained_ui.command_rows.size() == 1U);
+    MK_REQUIRE(retained_ui.import_workflow_rows.size() == 1U);
+
+    const auto unsupported = mirakana::editor::make_editor_gltf_mesh_inspect_selection_model(
+        mirakana::editor::EditorGltfMeshInspectSelectionDesc{
+            .asset = asset,
+            .asset_key_label = "assets/meshes/hero",
+            .source_path = "source/meshes/hero.fbx",
+            .report = &report,
+            .selected = true,
+            .source_visible = true,
+        });
+    MK_REQUIRE(unsupported.status == mirakana::editor::EditorGltfMeshInspectSelectionStatus::unsupported);
+    MK_REQUIRE(!unsupported.inspect_supported);
+    MK_REQUIRE(!unsupported.command_rows[0].enabled);
+
+    mirakana::GltfMeshInspectReport failed_report;
+    failed_report.parse_succeeded = false;
+    failed_report.diagnostic = "parser failed";
+    const auto blocked = mirakana::editor::make_editor_gltf_mesh_inspect_selection_model(
+        mirakana::editor::EditorGltfMeshInspectSelectionDesc{
+            .asset = asset,
+            .asset_key_label = "assets/meshes/hero",
+            .source_path = "source/meshes/hero.gltf",
+            .report = &failed_report,
+            .selected = true,
+            .source_visible = true,
+        });
+    MK_REQUIRE(blocked.status == mirakana::editor::EditorGltfMeshInspectSelectionStatus::blocked);
+    MK_REQUIRE(blocked.blocked);
+    MK_REQUIRE(!blocked.command_rows[0].enabled);
+    MK_REQUIRE(blocked.diagnostics[0].contains("parser failed"));
+
+    const auto unsafe = mirakana::editor::make_editor_gltf_mesh_inspect_selection_model(
+        mirakana::editor::EditorGltfMeshInspectSelectionDesc{
+            .asset = asset,
+            .asset_key_label = "assets/meshes/hero",
+            .source_path = "source/meshes/hero.gltf",
+            .report = &report,
+            .selected = true,
+            .source_visible = true,
+            .executes_import_tools = true,
+            .exposes_native_handles = true,
+        });
+    MK_REQUIRE(unsafe.status == mirakana::editor::EditorGltfMeshInspectSelectionStatus::blocked);
+    MK_REQUIRE(unsafe.blocked);
+    MK_REQUIRE(unsafe.executes_import_tools);
+    MK_REQUIRE(unsafe.exposes_native_handles);
+    MK_REQUIRE(!unsafe.command_rows[0].enabled);
+    MK_REQUIRE(unsafe.diagnostics[0].contains("claimed mutation"));
+}
+
 MK_TEST("editor gltf mesh catalog maps triangle gltf inspect when importers are enabled") {
     if (!mirakana::external_asset_importers_available()) {
         return;
