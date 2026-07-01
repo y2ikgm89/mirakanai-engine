@@ -39,6 +39,7 @@
 - Context7 `/khronosgroup/ktx-software`: `ktxTexture2_CreateFromNamedFile`, `ktxTexture2_NeedsTranscoding`, `ktxTexture2_TranscodeBasis`, level/layer/face/dimension metadata, selected transcode targets, and native handle isolation.
 - Context7 `/mackron/miniaudio`: `ma_decoder_init_file`, `ma_decoder_init_memory`, `ma_decoder_read_pcm_frames`, `ma_data_source_get_length_in_pcm_frames`, `ma_decoder_seek_to_pcm_frame`, `ma_decoder_uninit`, WAV/FLAC/MP3 decoder availability, and private decoder lifetime boundaries.
 - Khronos glTF 2.0 specification: right-handed coordinates, `+Y` up, meters, radians, glTF scenes/nodes/meshes/materials/animations, and external resource rules. Official reference: `https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html`.
+- Khronos glTF Validator: validation is local for the browser tool, command-line/NPM/VS Code validation paths exist, and validator reports are useful diagnostic inputs but do not replace the glTF 2.0 specification or this plan's first-party triage contract. Official reference: `https://github.khronos.org/glTF-Validator/`.
 - Khronos glTF registry and June 2026 glTF 2.1 planning blog: the official registry checked on 2026-07-01 still identifies glTF 2.0 as the current registry specification, while the 2.1 work is a focused future/backward-compatible large-scene plan. This plan stays on glTF 2.0 import execution and treats glTF 2.1 BVH/encapsulated/progressive-scene topics as future corpus observation rows only. Non-Khronos reporting is not an implementation source. Official references: `https://registry.khronos.org/glTF/` and `https://www.khronos.org/blog/introducing-gltf-2.1-with-complex-scenes`.
 - Khronos glTF Sample Assets: per-asset license metadata is required; the top-level README is not sufficient for redistribution approval. Official reference: `https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/README.md`.
 - Khronos glTF Asset Generator: useful for generated specification-coverage cases, but generated outputs still need exact source revision, generator command, license, and expected SHA-256 rows before corpus use. Official reference: `https://github.com/KhronosGroup/glTF-Asset-Generator`.
@@ -70,6 +71,38 @@
 | Audio | Common-audio optional adapter and source document paths exist. | Corpus must include WAV RIFF/chunk variants, MP3, FLAC RFC 9639 metadata/frame cases, static PCM and streaming-review preset rows, decode error rows, and cooked output hash checks. |
 | Editor workflow | Source Pulse rows expose corpus run, report, batch reimport, preset diff, and axis/unit preview as value-only commands. | Visible shell must show retained workflow rows from a real corpus report, keep command enable/disable state accurate, and smoke positive row counters without executing importers in `editor/core`. |
 | Legal/originality | Corpus policy blocks NC/ND, missing notice, external-engine, marketplace, trademark-heavy, and unapproved AI-generated material. | Every third-party asset row must have per-asset SPDX/custom license, copyright holder, source URL, retrieved date, version/commit, modification status, distribution target, expected SHA-256, and notice row before execution. |
+
+## Operator Loop Implementation Lock
+
+The 2026-07-02 implementation decision is to keep the requested failure diagnosis/operator triage loop as the current clean-break v1 contract, not to add a second compatibility surface. `GameEngine.AssetImportRegressionReport.v1` remains raw measured evidence. `GameEngine.AssetImportRegressionTriage.v1` is the derived operator artifact for failure class, recommended action, reimport decision, preset-diff requirement, axis/unit preview requirement, sanitized repro command, and aggregate counters. No legacy alias, Unity/Unreal/Godot compatibility mode, marketplace schema, third-party parser type, native handle, or runtime source parser is introduced.
+
+Classification and reimport gates are fixed as follows:
+
+| Report row condition | Triage class | Recommended action | Reimport decision |
+| --- | --- | --- | --- |
+| `code=none` and successful row | success / review row | `none` | `not_needed` |
+| `missing_license_provenance`, `rejected_license`, or `external_engine_material` | `legal_blocked` | `fix_notice_or_remove_asset` | `blocked` |
+| `nondeterministic_output` | `nondeterministic` | `rerun_isolated_and_compare_hashes` | `blocked` |
+| `parser_error`, `validator_error`, `missing_external_resource`, `unsafe_external_resource_path`, or `material_extraction_failed` | failed, source-inspection needed | `inspect_source_asset` | `dry_run_allowed` |
+| `coordinate_normalization_failed` | failed, transform preview needed | `open_axis_unit_preview` | `dry_run_allowed` |
+| `texture_decode_failed` or `texture_transcode_failed` | failed, codec/dependency inspection needed | `inspect_codec_dependency` | `dry_run_allowed` |
+| manifest, hash, missing source, unsupported format/extension/channel/skin-morph, cooked mismatch, or row-budget diagnostics | failed, corpus/importer evidence blocked | corpus refresh, unsupported-record, rerun, or reviewed-budget action | `blocked` |
+
+The editor-core retained workflow consumes these rows as value-only data. A legal-blocked row disables the batch reimport command even if another row is otherwise dry-run eligible. Preset diff and axis/unit preview commands may be enabled from triage flags or attached real-corpus artifacts, but they must remain review surfaces and must not execute importers inside `editor/core`.
+
+The real-corpus closeout sequence is intentionally host-gated and exact:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/plan-asset-import-regression-corpus-handoff.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 -Feature asset-importers
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -OutputRoot out/asset-import-regression/staging/real-corpus -WriteCookedOutputs -CompareExpectedHashes -CollectPreviewRows -RequireReady
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-operator-loop.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady -OutputRoot out/asset-import-regression/operator-loop
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-asset-import-regression-corpus.ps1 -CorpusRoot out/host-artifacts/asset-import-regression-corpus -RequireReady
+```
+
+Task 17 promotion is blocked until the corpus root contains `corpus.gecorpus`, `expected/hashes.gehashes`, `notices/THIRD_PARTY_ASSET_NOTICES.md`, canonical `sources/gltf`, `sources/textures`, `sources/materials`, and `sources/audio` rows, `retained/official-source-ledger.md`, `retained/corpus-selection-summary.md`, at least one retained successful `report.gereport`, at least one retained failed `report.gereport`, generated `triage.geoperator` output, and compact retained preset-diff / axis-unit preview evidence for the affected rows. A successful synthetic fixture, a local-only generated fixture, or a report with any failed, legal-blocked, nondeterministic, missing-notice, external-engine-material, unsafe-path, reparse-point, or inconsistent aggregate counter row is not commercial-ready evidence.
 
 ## Non-Goals
 
