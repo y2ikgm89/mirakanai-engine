@@ -4971,23 +4971,23 @@
       {
         "id": "cook-runtime-package",
         "schemaVersion": 1,
-        "status": "planned",
+        "status": "ready",
         "owner": "MK_tools/editor-core",
-        "summary": "Plan runtime package cooking and validation recipes without executing package builds.",
+        "summary": "Reviewed dry-run value contract for runtime package cooking plans and validation recipes without executing package builds.",
         "requestModes": [
           {
             "id": "dry-run",
-            "status": "planned",
+            "status": "ready",
             "mutates": false,
             "requiresDryRun": false,
-            "notes": "Future dry-run validates package files, cooked artifact requests, selected recipes, and host gates."
+            "notes": "mirakana::plan_runtime_package_command validates game manifest path, package target, runtimePackageFiles rows, selected recipes, smoke arguments, shader artifact requirements, backend host gates, and unsupported claims; it returns plannedChanges/capabilityGates only and performs no IO or process execution."
           },
           {
             "id": "apply",
             "status": "blocked",
             "mutates": true,
             "requiresDryRun": true,
-            "notes": "Apply remains blocked until cooking and package execution are command-owned."
+            "notes": "Apply remains blocked with package_build_execution_not_command_owned and package_apply_not_ready blockers until cooking, package execution, and file mutation are command-owned."
           }
         ],
         "requestShape": {
@@ -5001,9 +5001,23 @@
           "optionalFields": [
             "backend",
             "smokeArgs",
-            "shaderArtifactRequirements"
+            "shaderArtifactRequirements",
+            "validationRecipes",
+            "packageBuildExecution",
+            "packageScripts",
+            "shaderCompilerExecution",
+            "runtimePackageLoadExecution",
+            "rendererRhiResidency",
+            "packageStreaming",
+            "publicNativeRhiHandles",
+            "legalApproval",
+            "externalEngineCompatibility",
+            "externalEngineProjectImport",
+            "externalEngineAssets",
+            "arbitraryShell",
+            "freeFormEdit"
           ],
-          "pathPolicy": "Game manifests and runtime package files must be repository-relative and game-relative where required.",
+          "pathPolicy": "Game manifests must be games/<game_name>/game.agent.json, packageTarget must match ^[A-Za-z_][A-Za-z0-9_]*$, and runtime package files must be safe game-relative runtime/ paths with no aliases or duplicates.",
           "nativeHandlePolicy": "forbidden"
         },
         "resultShape": {
@@ -5063,6 +5077,8 @@
         ],
         "validationRecipes": [
           "agent-contract",
+          "public-api-boundary",
+          "desktop-game-runtime",
           "default"
         ],
         "unsupportedGapIds": [],
@@ -5070,7 +5086,7 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders until package cooking apply is implemented."
         },
-        "notes": "Descriptor-only; this does not execute package builds, shader compilers, or native GPU uploads."
+        "notes": "Ready dry-run is implemented by mirakana::plan_runtime_package_command in runtime_package_command_tool.hpp/cpp. It is a clean-room first-party value contract: it does not execute package builds, package scripts, shader compilers, runtime package loads, renderer/RHI residency, package streaming, native/RHI handle access, arbitrary shell, or free-form edits. It does not provide legal advice or legal approval, and it does not import, copy, imitate, or claim compatibility/parity/equivalence/replacement with Unity, Unreal Engine, Godot, their projects, schemas, code, samples, assets, UI, branding, or trademarks."
       },
       {
         "id": "register-runtime-package-files",

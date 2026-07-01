@@ -14,6 +14,7 @@ add_library(MK_tools_asset OBJECT
     environment_texture_source_review.cpp
     morph_mesh_cpu_source_bridge.cpp
     registered_source_asset_cook_package_tool.cpp
+    runtime_package_command_tool.cpp
     source_asset_registration_tool.cpp
     source_image_decode.cpp
     sprite_atlas_tool.cpp
