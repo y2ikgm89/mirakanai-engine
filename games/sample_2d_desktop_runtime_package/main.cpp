@@ -46,6 +46,7 @@
 #include "mirakana/runtime/sprite_collision_hitbox.hpp"
 #include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime/two_d_commercial_input_closeout.hpp"
+#include "mirakana/runtime/two_d_commercial_performance_regression_gate.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -136,6 +137,7 @@ struct DesktopRuntimeOptions {
     bool require_2d_physics_runtime_extension{false};
     bool require_2d_input_device_production_ux{false};
     bool require_2d_commercial_input_closeout{false};
+    bool require_2d_commercial_performance_regression_gate{false};
     bool require_2d_package_playtest_productization{false};
     bool require_2d_source_pulse{false};
     bool require_gameplay_authoring_review{false};
@@ -6397,6 +6399,216 @@ validate_2d_commercial_input_closeout_package_evidence() {
         });
 }
 
+[[nodiscard]] std::string_view commercial_performance_regression_status_name(
+    const mirakana::runtime::Runtime2DCommercialPerformanceRegressionGateResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] std::vector<mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow>
+make_2d_commercial_performance_workload_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialPerformanceWorkloadKind;
+    constexpr std::string_view kHostClassId{"windows-d3d12-package-smoke"};
+    constexpr std::string_view kRecipeId{"installed-2d-commercial-performance-regression-smoke"};
+    return {
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-dense-sprites",
+            .kind = Kind::dense_sprites,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-large-tilemap",
+            .kind = Kind::large_tilemap,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-ui-heavy-scene",
+            .kind = Kind::ui_heavy_scene,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-animation-heavy-scene",
+            .kind = Kind::animation_heavy_scene,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-streaming-stress",
+            .kind = Kind::streaming_stress,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-physics-stress",
+            .kind = Kind::physics_stress,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-audio-input-stress",
+            .kind = Kind::audio_input_stress,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceWorkloadRow{
+            .id = "2d-long-running-playtest",
+            .kind = Kind::long_running_playtest,
+            .host_class_id = std::string{kHostClassId},
+            .validation_recipe_id = std::string{kRecipeId},
+            .ready = true,
+            .package_visible = true,
+        },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialPerformanceMetricRow
+make_2d_commercial_performance_metric_row(mirakana::runtime::Runtime2DCommercialPerformanceMetricKind kind,
+                                          std::string id, std::uint64_t p50, std::uint64_t p95, std::uint64_t p99,
+                                          bool host_gated_artifact = false, std::uint64_t p50_limit = 16'670U,
+                                          std::uint64_t p95_limit = 16'670U, std::uint64_t p99_limit = 16'670U) {
+    return mirakana::runtime::Runtime2DCommercialPerformanceMetricRow{
+        .id = std::move(id),
+        .kind = kind,
+        .host_class_id = "windows-d3d12-package-smoke",
+        .counter_name = "sample_2d.commercial_performance",
+        .p50_value = p50,
+        .p95_value = p95,
+        .p99_value = p99,
+        .p50_limit = p50_limit,
+        .p95_limit = p95_limit,
+        .p99_limit = p99_limit,
+        .ready = true,
+        .package_visible = !host_gated_artifact,
+        .host_gated_artifact = host_gated_artifact,
+        .threshold_host_class_specific = true,
+    };
+}
+
+[[nodiscard]] std::vector<mirakana::runtime::Runtime2DCommercialPerformanceMetricRow>
+make_2d_commercial_performance_metric_rows(const PerformanceBaselineProbeResult& performance_baseline_probe,
+                                           const LongRunReadinessProbeResult& long_run_readiness_probe) {
+    using Kind = mirakana::runtime::Runtime2DCommercialPerformanceMetricKind;
+    constexpr std::uint64_t kSelectedPackageCpuFrameP50Us{15'800U};
+    const auto p50 = kSelectedPackageCpuFrameP50Us;
+    const auto p95 = static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.p95);
+    const auto p99 = static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.p99);
+    return {
+        make_2d_commercial_performance_metric_row(Kind::cpu_frame_time, "cpu-frame-time", p50, p95, p99),
+        make_2d_commercial_performance_metric_row(Kind::gpu_frame_time, "gpu-frame-time", 0U, 0U, 0U, true),
+        make_2d_commercial_performance_metric_row(Kind::input_to_present_latency, "input-to-present-latency", 0U, 0U,
+                                                  0U, true),
+        make_2d_commercial_performance_metric_row(Kind::present_pacing, "present-pacing", 0U, 0U, 0U, true),
+        make_2d_commercial_performance_metric_row(Kind::io_decompression_upload_overlap,
+                                                  "io-decompression-upload-overlap", 1U, 1U, 1U, false, 1U, 1U, 1U),
+        make_2d_commercial_performance_metric_row(
+            Kind::memory_high_water, "memory-high-water", long_run_readiness_probe.memory_high_water_bytes,
+            long_run_readiness_probe.memory_high_water_bytes, long_run_readiness_probe.memory_high_water_bytes, false,
+            33'554'432U, 33'554'432U, 33'554'432U),
+        make_2d_commercial_performance_metric_row(Kind::gpu_residency_pressure, "gpu-residency-pressure", 0U, 0U, 0U,
+                                                  true),
+        make_2d_commercial_performance_metric_row(Kind::allocator_churn, "allocator-churn", 0U, 0U, 0U, false, 0U, 0U,
+                                                  0U),
+        make_2d_commercial_performance_metric_row(Kind::job_queue_depth, "job-queue-depth", 1U, 1U, 1U, false, 1U, 1U,
+                                                  1U),
+        make_2d_commercial_performance_metric_row(Kind::cache_misses, "cache-misses", 0U, 0U, 0U, true),
+        make_2d_commercial_performance_metric_row(Kind::package_miss_pop_in, "package-miss-pop-in", 0U, 0U, 0U, false,
+                                                  0U, 0U, 0U),
+    };
+}
+
+[[nodiscard]] std::array<mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow, 7U>
+make_2d_commercial_performance_official_source_rows() {
+    using Kind = mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceKind;
+    return {
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "microsoft.learn.d3d12",
+            .kind = Kind::microsoft_d3d12,
+            .url = "https://learn.microsoft.com/en-us/windows/win32/direct3d12/direct3d-12-graphics",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "microsoft.learn.windows-performance-toolkit",
+            .kind = Kind::microsoft_wpt,
+            .url = "https://learn.microsoft.com/en-us/windows-hardware/test/wpt/",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "microsoft.pix-on-windows",
+            .kind = Kind::microsoft_pix,
+            .url = "https://learn.microsoft.com/en-us/windows/win32/direct3dtools/pix/articles/general/pix-overview",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "khronos.vulkan-timestamps-debug-utils",
+            .kind = Kind::khronos_vulkan_timestamp_debug_utils,
+            .url = "https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "apple.xctrace-metal-capture",
+            .kind = Kind::apple_xctrace_metal_capture,
+            .url = "https://developer.apple.com/metal/tools/",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "linux.perf",
+            .kind = Kind::linux_perf,
+            .url = "https://perf.wiki.kernel.org/index.php/Main_Page",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+        mirakana::runtime::Runtime2DCommercialPerformanceOfficialSourceRow{
+            .id = "repository.legal-policy",
+            .kind = Kind::repository_legal_policy,
+            .url = "docs/legal-and-licensing.md",
+            .ready = true,
+            .official = true,
+            .public_docs_only = true,
+        },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::Runtime2DCommercialPerformanceRegressionGateResult
+validate_2d_commercial_performance_regression_package_evidence(
+    const PerformanceBaselineProbeResult& performance_baseline_probe,
+    const LongRunReadinessProbeResult& long_run_readiness_probe) {
+    return mirakana::runtime::evaluate_runtime_2d_commercial_performance_regression_gate(
+        mirakana::runtime::Runtime2DCommercialPerformanceRegressionGateDesc{
+            .workload_rows = make_2d_commercial_performance_workload_rows(),
+            .metric_rows =
+                make_2d_commercial_performance_metric_rows(performance_baseline_probe, long_run_readiness_probe),
+            .official_source_rows = make_2d_commercial_performance_official_source_rows(),
+            .selected_package_regression_gate_claim = true,
+        });
+}
+
 [[nodiscard]] PackagePlaytestProductizationProbeResult validate_2d_package_playtest_productization_package_evidence(
     const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
     const LongRunReadinessProbeResult& long_run_readiness_probe) {
@@ -11915,6 +12127,7 @@ void print_usage() {
                  "[--require-2d-gameplay-execution-loop] [--require-2d-sprite-atlas-residency] "
                  "[--require-2d-sprite-throughput] [--require-2d-physics-runtime-extension] "
                  "[--require-2d-input-device-production-ux] [--require-2d-commercial-input-closeout] "
+                 "[--require-2d-commercial-performance-regression-gate] "
                  "[--require-2d-package-playtest-productization] "
                  "[--require-2d-source-pulse] [--require-gameplay-authoring-review] "
                  "[--require-sandbox-authoring-review] "
@@ -12076,6 +12289,16 @@ void print_usage() {
             options.require_2d_commercial_input_closeout = true;
             options.require_2d_input_device_production_ux = true;
             options.require_gameplay_systems = true;
+            continue;
+        }
+        if (arg == "--require-2d-commercial-performance-regression-gate") {
+            options.require_2d_commercial_performance_regression_gate = true;
+            options.require_performance_baseline = true;
+            options.require_long_run_performance_readiness = true;
+            options.require_win32_runtime_host = true;
+            options.require_win32_d3d12_presentation = true;
+            options.require_d3d12_renderer = true;
+            options.require_d3d12_shaders = true;
             continue;
         }
         if (arg == "--require-2d-package-playtest-productization") {
@@ -12295,6 +12518,16 @@ void print_usage() {
             options.require_d3d12_shaders = true;
         }
     }
+    if (options.require_long_run_performance_readiness) {
+        options.require_performance_baseline = true;
+    }
+    if (options.require_performance_baseline) {
+        options.require_sandbox_package_budgets = true;
+        options.require_win32_runtime_host = true;
+        options.require_win32_d3d12_presentation = true;
+        options.require_d3d12_renderer = true;
+        options.require_d3d12_shaders = true;
+    }
     if (options.require_sandbox_package_budgets) {
         options.require_win32_runtime_host = true;
         options.require_wasapi_audio = true;
@@ -12307,17 +12540,8 @@ void print_usage() {
         options.require_tilemap_runtime_ux = true;
         options.require_sandbox_authoring_review = true;
         options.require_production_authoring_workflows = true;
+        options.require_runtime_ui_atlas_upload = true;
         options.require_runtime_ui_renderer_atlas_handoff = true;
-    }
-    if (options.require_long_run_performance_readiness) {
-        options.require_performance_baseline = true;
-    }
-    if (options.require_performance_baseline) {
-        options.require_sandbox_package_budgets = true;
-        options.require_win32_runtime_host = true;
-        options.require_win32_d3d12_presentation = true;
-        options.require_d3d12_renderer = true;
-        options.require_d3d12_shaders = true;
     }
     if (options.require_2d_package_playtest_productization) {
         options.require_win32_runtime_host = true;
@@ -13115,6 +13339,11 @@ int main(int argc, char** argv) {
     const auto commercial_input_closeout_probe = options.require_2d_commercial_input_closeout
                                                      ? validate_2d_commercial_input_closeout_package_evidence()
                                                      : mirakana::runtime::Runtime2DCommercialInputCloseoutResult{};
+    const auto commercial_performance_regression_probe =
+        options.require_2d_commercial_performance_regression_gate
+            ? validate_2d_commercial_performance_regression_package_evidence(performance_baseline_probe,
+                                                                             long_run_readiness_probe)
+            : mirakana::runtime::Runtime2DCommercialPerformanceRegressionGateResult{};
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -13825,7 +14054,53 @@ int main(int argc, char** argv) {
         << " 2d_commercial_input_cross_platform_parity_claim_rows="
         << commercial_input_closeout_probe.cross_platform_parity_claim_rows
         << " 2d_commercial_input_legal_approval_claim_rows="
-        << commercial_input_closeout_probe.legal_approval_claim_rows << " 2d_package_playtest_productization_status="
+        << commercial_input_closeout_probe.legal_approval_claim_rows << " 2d_commercial_performance_regression_status="
+        << commercial_performance_regression_status_name(commercial_performance_regression_probe)
+        << " 2d_commercial_performance_regression_ready=" << (commercial_performance_regression_probe.ready ? 1 : 0)
+        << " 2d_commercial_performance_workload_gate_ready="
+        << (commercial_performance_regression_probe.workload_gate_ready ? 1 : 0)
+        << " 2d_commercial_performance_metric_gate_ready="
+        << (commercial_performance_regression_probe.metric_gate_ready ? 1 : 0)
+        << " 2d_commercial_performance_official_source_ready="
+        << (commercial_performance_regression_probe.official_source_ready ? 1 : 0)
+        << " 2d_commercial_performance_host_threshold_gate_ready="
+        << (commercial_performance_regression_probe.host_threshold_gate_ready ? 1 : 0)
+        << " 2d_commercial_performance_workload_rows=" << commercial_performance_regression_probe.workload_rows
+        << " 2d_commercial_performance_metric_rows=" << commercial_performance_regression_probe.metric_rows
+        << " 2d_commercial_performance_host_class_threshold_rows="
+        << commercial_performance_regression_probe.host_class_threshold_rows
+        << " 2d_commercial_performance_package_visible_metric_rows="
+        << commercial_performance_regression_probe.package_visible_metric_rows
+        << " 2d_commercial_performance_host_gated_profiler_artifact_rows="
+        << commercial_performance_regression_probe.host_gated_profiler_artifact_rows
+        << " 2d_commercial_performance_official_source_rows="
+        << commercial_performance_regression_probe.official_source_rows
+        << " 2d_commercial_performance_cpu_frame_p50_us=" << commercial_performance_regression_probe.cpu_frame_p50_us
+        << " 2d_commercial_performance_cpu_frame_p95_us=" << commercial_performance_regression_probe.cpu_frame_p95_us
+        << " 2d_commercial_performance_cpu_frame_p99_us=" << commercial_performance_regression_probe.cpu_frame_p99_us
+        << " 2d_commercial_performance_over_budget_rows=" << commercial_performance_regression_probe.over_budget_rows
+        << " 2d_commercial_performance_broad_optimization_claim_rows="
+        << commercial_performance_regression_probe.broad_optimization_claim_rows
+        << " 2d_commercial_performance_cross_vendor_parity_claim_rows="
+        << commercial_performance_regression_probe.cross_vendor_parity_claim_rows
+        << " 2d_commercial_performance_cross_backend_parity_claim_rows="
+        << commercial_performance_regression_probe.cross_backend_parity_claim_rows
+        << " 2d_commercial_performance_native_handle_access_rows="
+        << commercial_performance_regression_probe.native_handle_access_rows
+        << " 2d_commercial_performance_renderer_rhi_residency_claim_rows="
+        << commercial_performance_regression_probe.renderer_rhi_residency_claim_rows
+        << " 2d_commercial_performance_allocator_gpu_budget_enforcement_claim_rows="
+        << commercial_performance_regression_probe.allocator_gpu_budget_enforcement_claim_rows
+        << " 2d_commercial_performance_pgo_lto_default_lane_claim_rows="
+        << commercial_performance_regression_probe.pgo_lto_default_lane_claim_rows
+        << " 2d_commercial_performance_profiler_artifact_ready_without_artifact_rows="
+        << commercial_performance_regression_probe.profiler_artifact_ready_without_artifact_rows
+        << " 2d_commercial_performance_external_engine_claim_rows="
+        << commercial_performance_regression_probe.external_engine_claim_rows
+        << " 2d_commercial_performance_legal_approval_claim_rows="
+        << commercial_performance_regression_probe.legal_approval_claim_rows
+        << " 2d_commercial_performance_diagnostics=" << commercial_performance_regression_probe.diagnostics.size()
+        << " 2d_package_playtest_productization_status="
         << package_playtest_productization_status_name(package_playtest_productization_probe.status)
         << " 2d_package_playtest_productization_ready=" << (package_playtest_productization_probe.ready ? 1 : 0)
         << " 2d_package_playtest_productization_recipe_rows=" << package_playtest_productization_probe.recipe_rows
@@ -15383,6 +15658,58 @@ int main(int argc, char** argv) {
             << " 2d_commercial_input_legal_approval_claim_rows="
             << commercial_input_closeout_probe.legal_approval_claim_rows << '\n';
         return 92;
+    }
+
+    if (options.require_2d_commercial_performance_regression_gate && !commercial_performance_regression_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_2d_commercial_performance_regression_gate_unavailable"
+                  << " 2d_commercial_performance_regression_status="
+                  << commercial_performance_regression_status_name(commercial_performance_regression_probe)
+                  << " 2d_commercial_performance_regression_ready="
+                  << (commercial_performance_regression_probe.ready ? 1 : 0)
+                  << " 2d_commercial_performance_workload_gate_ready="
+                  << (commercial_performance_regression_probe.workload_gate_ready ? 1 : 0)
+                  << " 2d_commercial_performance_metric_gate_ready="
+                  << (commercial_performance_regression_probe.metric_gate_ready ? 1 : 0)
+                  << " 2d_commercial_performance_official_source_ready="
+                  << (commercial_performance_regression_probe.official_source_ready ? 1 : 0)
+                  << " 2d_commercial_performance_host_threshold_gate_ready="
+                  << (commercial_performance_regression_probe.host_threshold_gate_ready ? 1 : 0)
+                  << " 2d_commercial_performance_workload_rows="
+                  << commercial_performance_regression_probe.workload_rows
+                  << " 2d_commercial_performance_metric_rows=" << commercial_performance_regression_probe.metric_rows
+                  << " 2d_commercial_performance_host_class_threshold_rows="
+                  << commercial_performance_regression_probe.host_class_threshold_rows
+                  << " 2d_commercial_performance_package_visible_metric_rows="
+                  << commercial_performance_regression_probe.package_visible_metric_rows
+                  << " 2d_commercial_performance_host_gated_profiler_artifact_rows="
+                  << commercial_performance_regression_probe.host_gated_profiler_artifact_rows
+                  << " 2d_commercial_performance_official_source_rows="
+                  << commercial_performance_regression_probe.official_source_rows
+                  << " 2d_commercial_performance_over_budget_rows="
+                  << commercial_performance_regression_probe.over_budget_rows
+                  << " 2d_commercial_performance_broad_optimization_claim_rows="
+                  << commercial_performance_regression_probe.broad_optimization_claim_rows
+                  << " 2d_commercial_performance_cross_vendor_parity_claim_rows="
+                  << commercial_performance_regression_probe.cross_vendor_parity_claim_rows
+                  << " 2d_commercial_performance_cross_backend_parity_claim_rows="
+                  << commercial_performance_regression_probe.cross_backend_parity_claim_rows
+                  << " 2d_commercial_performance_native_handle_access_rows="
+                  << commercial_performance_regression_probe.native_handle_access_rows
+                  << " 2d_commercial_performance_renderer_rhi_residency_claim_rows="
+                  << commercial_performance_regression_probe.renderer_rhi_residency_claim_rows
+                  << " 2d_commercial_performance_allocator_gpu_budget_enforcement_claim_rows="
+                  << commercial_performance_regression_probe.allocator_gpu_budget_enforcement_claim_rows
+                  << " 2d_commercial_performance_pgo_lto_default_lane_claim_rows="
+                  << commercial_performance_regression_probe.pgo_lto_default_lane_claim_rows
+                  << " 2d_commercial_performance_profiler_artifact_ready_without_artifact_rows="
+                  << commercial_performance_regression_probe.profiler_artifact_ready_without_artifact_rows
+                  << " 2d_commercial_performance_external_engine_claim_rows="
+                  << commercial_performance_regression_probe.external_engine_claim_rows
+                  << " 2d_commercial_performance_legal_approval_claim_rows="
+                  << commercial_performance_regression_probe.legal_approval_claim_rows
+                  << " 2d_commercial_performance_diagnostics="
+                  << commercial_performance_regression_probe.diagnostics.size() << '\n';
+        return 93;
     }
 
     if (options.require_2d_package_playtest_productization && !package_playtest_productization_probe.ready) {

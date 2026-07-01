@@ -170,6 +170,7 @@
         "installed-2d-physics-runtime-extension-smoke",
         "installed-2d-input-device-production-ux-smoke",
         "installed-2d-commercial-input-closeout-smoke",
+        "installed-2d-commercial-performance-regression-smoke",
         "installed-2d-package-playtest-productization-smoke",
         "installed-2d-source-pulse-smoke",
         "installed-2d-sprite-effects-particles-smoke",
@@ -294,6 +295,13 @@
           "evidence": "2D commercial input closeout smoke reports action-map, rebinding, keyboard/mouse, gamepad, touch, multiplayer assignment, per-device profile, glyph lookup, keyboard label, accessibility navigation, official-source, clean diagnostic, zero native-handle, zero input middleware, zero UI rendering, zero external-engine, zero cross-platform parity, and zero legal-approval counters.",
           "recipeIds": [
             "installed-2d-commercial-input-closeout-smoke"
+          ]
+        },
+        {
+          "id": "performance-regression-gate-2d",
+          "evidence": "2D commercial performance regression smoke reports eight selected workload rows, eleven metric rows, host-class-specific p50/p95/p99 thresholds, package-visible CPU/frame/IO/memory/job/package counters, host-gated profiler artifact rows for GPU timing, input-to-present latency, present pacing, GPU residency pressure, and cache misses, official source rows for Microsoft Direct3D 12, WPT/WPA, PIX on Windows, Vulkan timestamp/debug-utils, Apple xctrace/Metal capture, Linux perf, repository legal policy, zero over-budget rows, zero broad optimization, zero cross-vendor parity, zero cross-backend parity, zero native-handle, zero renderer/RHI residency, zero allocator/GPU enforcement, zero PGO/LTO default-lane, zero external-engine, and zero legal-approval counters.",
+          "recipeIds": [
+            "installed-2d-commercial-performance-regression-smoke"
           ]
         },
         {
@@ -3306,6 +3314,7 @@
     "physicsRuntimeExtension2D": "mirakana::simulate_physics2d_step under --require-2d-physics-runtime-extension; selected smoke requires 2d_physics_runtime_extension_status=ready, simulate_status=simulated, 2 simulation runs, 5 TOI rows, 3 exact sweep shape-pair rows, 4 hit rows, 1 no-hit row, 1 initial-overlap row, 1 kinematic contact row, 4 joint rows across distance/hinge/prismatic/spring, 2 trigger event rows with enter/exit, diagnostics=0, native_handle_exposure=0, middleware_dispatches=0, and dynamic_vs_dynamic_ccd_claimed=0 without middleware/native handles, dynamic-vs-dynamic CCD broad claims, renderer/RHI ownership, package mutation, or third-party engine API surface",
     "inputDeviceProductionUx2D": "mirakana::runtime::plan_runtime_input_device_production_ux under --require-2d-input-device-production-ux; selected smoke requires 2d_input_device_production_ux_status=ready, 7 gesture binding rows, 7 gesture event rows, 7 gesture action rows, 2 device assignment rows, 1 per-device profile row, 0 clamped deadzone rows, 2 symbolic glyph asset lookup rows, 2 keyboard layout label rows, diagnostics=0, native_handle_access_rows=0, ui_rendering_rows=0, input_middleware_rows=0, glyph_rendering_rows=0, and ui_widget_rows=0 without visible runtime/game rebinding panels, UI rendering, text/IME, accessibility, native input handles, input middleware, or rendered glyph widgets",
     "inputCommercialCloseout2D": "mirakana::runtime::evaluate_runtime_2d_commercial_input_closeout under --require-2d-commercial-input-closeout; selected smoke requires 2d_commercial_input_closeout_ready=1, action_map/rebinding/device_ux/accessibility_navigation/official_source ready rows, 3 action bindings, 1 axis binding, 2 profile overlay rows, 4 presentation rows, 9 symbolic glyph lookup keys, keyboard/mouse/gamepad/touch evidence, 2 multiplayer assignment rows, 1 per-device profile row, 3 glyph asset lookup rows, 2 keyboard layout label rows, 2 accessibility navigation rows, 2 keyboard-accessible rows, 2 controller-accessible rows, 2d_commercial_input_official_source_rows=5, 2d_commercial_input_diagnostics=0, 2d_commercial_input_native_handle_access_rows=0, 2d_commercial_input_input_middleware_rows=0, 2d_commercial_input_ui_rendering_rows=0, 2d_commercial_input_glyph_rendering_rows=0, 2d_commercial_input_ui_widget_rows=0, 2d_commercial_input_external_engine_claim_rows=0, 2d_commercial_input_cross_platform_parity_claim_rows=0, and 2d_commercial_input_legal_approval_claim_rows=0 without public native input handles, input middleware adoption, UI rendering/widgets, external engine compatibility, cross-platform parity, or legal approval",
+    "commercialPerformanceRegression2D": "mirakana::runtime::evaluate_runtime_2d_commercial_performance_regression_gate under --require-2d-commercial-performance-regression-gate; selected smoke requires 2d_commercial_performance_regression_ready=1, workload/metric/official-source/host-threshold gates ready, 2d_commercial_performance_workload_rows=8, 2d_commercial_performance_metric_rows=11, 2d_commercial_performance_host_class_threshold_rows=11, 2d_commercial_performance_package_visible_metric_rows=6, 2d_commercial_performance_host_gated_profiler_artifact_rows=5, 2d_commercial_performance_official_source_rows=7, 2d_commercial_performance_cpu_frame_p50_us=15800, 2d_commercial_performance_cpu_frame_p95_us=16000, 2d_commercial_performance_cpu_frame_p99_us=16000, 2d_commercial_performance_over_budget_rows=0, 2d_commercial_performance_broad_optimization_claim_rows=0, 2d_commercial_performance_cross_vendor_parity_claim_rows=0, 2d_commercial_performance_cross_backend_parity_claim_rows=0, 2d_commercial_performance_native_handle_access_rows=0, 2d_commercial_performance_renderer_rhi_residency_claim_rows=0, 2d_commercial_performance_allocator_gpu_budget_enforcement_claim_rows=0, 2d_commercial_performance_pgo_lto_default_lane_claim_rows=0, 2d_commercial_performance_profiler_artifact_ready_without_artifact_rows=0, 2d_commercial_performance_external_engine_claim_rows=0, 2d_commercial_performance_legal_approval_claim_rows=0, and diagnostics=0. The gate aggregates selected D3D12 package performance/long-run counters and official/public-source rows for Microsoft Direct3D 12, WPT/WPA, PIX on Windows, Vulkan, Apple Metal tools, Linux perf, and repository legal policy. It does not claim broad optimization, cross-vendor parity, cross-backend parity, external commercial engine compatibility, renderer/RHI residency ownership, native handles, PGO/LTO default-lane readiness, or legal approval",
     "worldEntityModel": "mirakana::runtime::plan_runtime_world_entity_lifecycle under --require-simulation-orchestration; selected smoke requires world_entity_model_status=ready, world_entity_model_ready=1, 3 entity rows, 4 component rows, 3 region ownership rows, 3 lifecycle rows, one persistence bridge row, one streaming bridge row, one duplicate-entity diagnostic probe, invalid_request bridge rejection with five diagnostics, zero rejected bridge rows, one propagated streaming diagnostic, fail-closed evidence, and world_entity_model_diagnostics=0 without scene mutation, lifecycle execution, package IO, streaming execution, renderer/RHI work, threads, or native handles",
     "addressableContentStreaming": "mirakana::runtime::plan_runtime_addressable_content_streaming under --require-simulation-orchestration; selected smoke requires addressable_content_status=ready, addressable_content_ready=1, 5 address rows, 6 dependency rows, 3 load rows, 1 release row, 4 refcount rows, resident byte and budget counters, budget_limited rejection diagnostics, and addressable_content_package_io=0/addressable_content_async_execution=0/addressable_content_committed=0/addressable_content_diagnostics=0 without reading packages, mutating resident state, executing async work, creating renderer/RHI resources, creating threads, or exposing native handles",
     "rpgSystems": "mirakana::runtime::plan_runtime_rpg_systems under --require-gameplay-systems; selected smoke requires rpg_systems_status=ready, rpg_systems_ready=1, rpg_systems_party_members=2, rpg_systems_enemy_members=1, rpg_systems_stat_rows=8, rpg_systems_progression_rows=2, rpg_systems_skill_rows=2, rpg_systems_skill_blocked_rows=1, rpg_systems_equipment_rows=2, rpg_systems_equipment_blocked_rows=1, rpg_systems_combat_turn_rows=6, rpg_systems_combat_rounds=2, rpg_systems_reward_rows=2, rpg_systems_save_validation_rows=2, rpg_systems_save_validation_repairable_rows=1, positive rpg_systems_replay_hash, zero combat/reward/save side-effect counters, and rpg_systems_diagnostics=0 without combat execution, reward application, save IO, package/world mutation, renderer/RHI work, native handles, or story/balance/tuning claims",
@@ -3389,6 +3398,7 @@
       "installed-2d-runtime-ui-package-smoke-scenes",
       "installed-2d-input-device-production-ux-smoke",
       "installed-2d-commercial-input-closeout-smoke",
+      "installed-2d-commercial-performance-regression-smoke",
       "host-2d-long-run-readiness-soak",
       "installed-native-2d-sprite-smoke",
       "desktop-game-runtime"
@@ -3600,6 +3610,105 @@
         "unit": "count",
         "evidenceRequired": true,
         "notes": "Selected short long-run readiness is fixed at the deterministic package smoke sample count; the 108000-frame soak remains opt-in host evidence."
+      },
+      {
+        "id": "commercial-cpu-frame-time",
+        "category": "cpu",
+        "metric": "2d_commercial_performance_cpu_frame_p50_p95_p99_us",
+        "limit": 16670,
+        "unit": "us",
+        "evidenceRequired": true,
+        "notes": "Selected commercial regression gate records CPU frame p50/p95/p99 thresholds for the Windows D3D12 package smoke host class."
+      },
+      {
+        "id": "commercial-gpu-frame-time-host",
+        "category": "gpu",
+        "metric": "2d_commercial_performance_gpu_frame_time_host_artifact",
+        "limit": 16670,
+        "unit": "us",
+        "evidenceRequired": true,
+        "notes": "GPU frame timing remains host-gated profiler evidence and must not be inferred from CPU package counters."
+      },
+      {
+        "id": "commercial-input-to-present-latency-host",
+        "category": "frame",
+        "metric": "2d_commercial_performance_input_to_present_latency_host_artifact",
+        "limit": 16670,
+        "unit": "us",
+        "evidenceRequired": true,
+        "notes": "Input-to-present latency is a host-gated profiler artifact row, not a broad input latency readiness claim."
+      },
+      {
+        "id": "commercial-present-pacing-host",
+        "category": "frame",
+        "metric": "2d_commercial_performance_present_pacing_host_artifact",
+        "limit": 16670,
+        "unit": "us",
+        "evidenceRequired": true,
+        "notes": "Present pacing remains host-gated and backend-specific until retained host artifacts exist."
+      },
+      {
+        "id": "commercial-io-decompression-upload-overlap",
+        "category": "streaming",
+        "metric": "2d_commercial_performance_io_decompression_upload_overlap_rows",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected package evidence records reviewed IO/decompression/upload overlap rows without claiming broad async performance."
+      },
+      {
+        "id": "commercial-memory-high-water",
+        "category": "memory",
+        "metric": "2d_commercial_performance_memory_high_water_bytes",
+        "limit": 33554432,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Memory high-water is bounded to the selected package host class and does not imply allocator enforcement."
+      },
+      {
+        "id": "commercial-gpu-residency-pressure-host",
+        "category": "gpu",
+        "metric": "2d_commercial_performance_gpu_residency_pressure_host_artifact",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "GPU residency pressure is host-gated profiler evidence and does not claim renderer/RHI residency ownership."
+      },
+      {
+        "id": "commercial-allocator-churn",
+        "category": "memory",
+        "metric": "2d_commercial_performance_allocator_churn_rows",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Allocator churn is a package-visible counter row and does not promote allocator replacement or enforcement."
+      },
+      {
+        "id": "commercial-job-queue-depth",
+        "category": "cpu",
+        "metric": "2d_commercial_performance_job_queue_depth_rows",
+        "limit": 1,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Job queue depth is selected package evidence only and does not claim OS affinity or all-core placement."
+      },
+      {
+        "id": "commercial-cache-misses-host",
+        "category": "cpu",
+        "metric": "2d_commercial_performance_cache_misses_host_artifact",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Cache miss evidence is host-gated profiler evidence and is not collected in default validation."
+      },
+      {
+        "id": "commercial-package-miss-pop-in",
+        "category": "package",
+        "metric": "2d_commercial_performance_package_miss_pop_in_rows",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Package miss and pop-in rows must remain zero for the selected package lane before regression readiness is claimed."
       }
     ],
     "evidenceRows": [
@@ -3742,6 +3851,35 @@
         "evidenceKind": "manual-host-evidence",
         "source": "Optional host-2d-long-run-readiness-soak evidence for a 108000-frame package soak. It is not part of default validation and must not promote broad long-running or broad optimization readiness.",
         "validationRecipeId": "host-2d-long-run-readiness-soak",
+        "status": "host-gated"
+      },
+      {
+        "id": "commercial-performance-package-smoke",
+        "budgetRowIds": [
+          "commercial-cpu-frame-time",
+          "commercial-io-decompression-upload-overlap",
+          "commercial-memory-high-water",
+          "commercial-allocator-churn",
+          "commercial-job-queue-depth",
+          "commercial-package-miss-pop-in"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible 2d_commercial_performance_* counters from installed 2D commercial performance regression smoke: eight workload rows, eleven metric rows, host-class thresholds, CPU frame p50/p95/p99, zero over-budget rows, zero broad optimization, zero cross-vendor/backend parity, zero native handles, zero renderer/RHI residency, zero allocator/GPU enforcement, zero PGO/LTO default-lane, zero external-engine, and zero legal-approval claims.",
+        "validationRecipeId": "installed-2d-commercial-performance-regression-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "commercial-performance-official-profiler-sources",
+        "budgetRowIds": [
+          "commercial-gpu-frame-time-host",
+          "commercial-input-to-present-latency-host",
+          "commercial-present-pacing-host",
+          "commercial-gpu-residency-pressure-host",
+          "commercial-cache-misses-host"
+        ],
+        "evidenceKind": "static-contract",
+        "source": "Official/public-source rows for Microsoft Learn Windows Performance Toolkit WPR/WPA, PIX on Windows, Khronos Vulkan timestamp queries and debug utils, Apple xctrace and Metal capture, Linux perf/perf_event_open documentation, and repository legal policy. These rows are host-gated sources for retained artifacts, not executed profiler artifacts in default validation.",
+        "validationRecipeId": "installed-2d-commercial-performance-regression-smoke",
         "status": "host-gated"
       }
     ],
@@ -4205,6 +4343,10 @@
     {
       "name": "installed-2d-commercial-input-closeout-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-2d-commercial-input-closeout"
+    },
+    {
+      "name": "installed-2d-commercial-performance-regression-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 3 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-d3d12-shaders --require-d3d12-renderer --require-2d-commercial-performance-regression-gate"
     },
     {
       "name": "installed-2d-package-playtest-productization-smoke",
