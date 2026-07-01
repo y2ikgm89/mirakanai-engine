@@ -16,6 +16,8 @@ $assetRegressionCheckScript = Get-AgentSurfaceText "tools/check-asset-import-reg
 $assetRegressionValidateScript = Get-AgentSurfaceText "tools/validate-asset-import-regression-corpus.ps1"
 $assetRegressionGenerateScript = Get-AgentSurfaceText "tools/generate-asset-import-regression-corpus-manifest.ps1"
 $assetRegressionRunScript = Get-AgentSurfaceText "tools/run-asset-import-regression-corpus.ps1"
+$assetRegressionHandoffPlannerScript = Get-AgentSurfaceText "tools/plan-asset-import-regression-corpus-handoff.ps1"
+$assetRegressionHandoffCheckScript = Get-AgentSurfaceText "tools/check-asset-import-regression-corpus-handoff.ps1"
 $assetRegressionOperatorLoopScript = Get-AgentSurfaceText "tools/check-asset-import-regression-operator-loop.ps1"
 $editorAssetRegressionWorkflowHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/asset_import_regression_workflow.hpp"
 $editorAssetRegressionWorkflowSource = Get-AgentSurfaceText "editor/core/src/asset_import_regression_workflow.cpp"
@@ -200,13 +202,20 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "checkAssetImportRegressionCorpus",
+        "planAssetImportRegressionCorpusHandoff",
+        "checkAssetImportRegressionCorpusHandoff",
         "checkAssetImportRegressionOperatorLoop",
+        "plan-asset-import-regression-corpus-handoff.ps1 [-CorpusRoot <path>] [-RequireReady]",
+        "check-asset-import-regression-corpus-handoff.ps1",
         "check-asset-import-regression-operator-loop.ps1 [-ReportPath <path>] [-CorpusRoot <path>] [-OutputRoot <path>] [-SyntheticSmoke] [-RequireReady]",
         "generateAssetImportRegressionCorpusManifest",
         "runAssetImportRegressionCorpus",
         "validateAssetImportRegressionCorpus",
         "asset-import-regression-corpus",
+        "asset-import-regression-corpus-handoff",
         "tools/check-asset-import-regression-corpus.ps1",
+        "tools/plan-asset-import-regression-corpus-handoff.ps1",
+        "tools/check-asset-import-regression-corpus-handoff.ps1",
         "tools/check-asset-import-regression-operator-loop.ps1",
         "tools/generate-asset-import-regression-corpus-manifest.ps1",
         "tools/run-asset-import-regression-corpus.ps1",
@@ -246,6 +255,8 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "generate-asset-import-regression-corpus-manifest.ps1",
+        "plan-asset-import-regression-corpus-handoff.ps1",
+        "check-asset-import-regression-corpus-handoff.ps1",
         "check-asset-import-regression-operator-loop.ps1",
         "FailOnMissingNotice",
         "asset_import_regression_manifest_generator_ready",
@@ -284,6 +295,20 @@ foreach ($needle in @(
         "asset_import_regression_operator_loop_corpus_ready",
         "asset_import_regression_operator_loop_editor_core_value_only",
         "asset_import_regression_operator_loop_external_engine_claim",
+        "asset_import_regression_handoff_status",
+        "asset_import_regression_handoff_ready",
+        "asset_import_regression_handoff_next_action",
+        "asset_import_regression_handoff_failed_count",
+        "asset_import_regression_handoff_legal_blocked_count",
+        "asset_import_regression_handoff_nondeterministic_count",
+        "asset_import_regression_handoff_retained_success_reports",
+        "asset_import_regression_handoff_retained_failure_reports",
+        "asset_import_regression_handoff_operator_loop_input_ready",
+        "asset_import_regression_handoff_external_engine_claim=0",
+        "asset_import_regression_handoff_legal_approval_claim=0",
+        "asset_import_regression_handoff_unity_unreal_godot_compatibility_claim=0",
+        "asset_import_regression_handoff_diagnostic=require_ready.missing_corpus",
+        "operator_loop_required",
         "require_ready.retained_success_report_missing",
         "require_ready.retained_failure_report_missing",
         "retained/success/report.gereport",
@@ -310,7 +335,7 @@ foreach ($needle in @(
         "retained/corpus-selection-summary.md",
         "out/host-artifacts/asset-import-regression-corpus"
     )) {
-    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionRunScript + "`n" + $assetRegressionOperatorLoopScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
+    Assert-ContainsText ($assetRegressionCheckScript + "`n" + $assetRegressionValidateScript + "`n" + $assetRegressionGenerateScript + "`n" + $assetRegressionRunScript + "`n" + $assetRegressionHandoffPlannerScript + "`n" + $assetRegressionHandoffCheckScript + "`n" + $assetRegressionOperatorLoopScript + "`n" + $assetRegressionFixtureReadme) $needle "asset import regression corpus validation scripts"
 }
 
 foreach ($needle in @(
