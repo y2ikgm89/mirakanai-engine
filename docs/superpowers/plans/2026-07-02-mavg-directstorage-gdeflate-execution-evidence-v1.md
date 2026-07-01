@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-directstorage-gdeflate-execution-evidence-v1`
 
-**Status:** Implemented and validated locally in branch `codex/mavg-directstorage-gdeflate-execution-evidence`; hosted CI and merge are pending.
+**Status:** Completed through PR #944 / merge commit `08828f48db9a93f8cecc110dac78be2a412de5de` after local full validation, hosted PR Gate, ready conversion, and guarded merge.
 
 **Date:** 2026-07-02
 
@@ -83,7 +83,7 @@ Required behavior:
 - [x] Update current capabilities, roadmap, plan registry, and MAVG master plan with the retained host-gated GDeflate execution evidence contract and exact non-claims.
 - [x] Add manifest command, `MK_runtime_rhi` public header/recent evidence, and retained production-loop evidence fragment rows, then run `tools/compose-agent-manifest.ps1 -Write`.
 - [x] Run focused validator, public API boundary, agent, JSON contract, AI integration, full validation, and publication preflight.
-- [ ] Commit, push, draft PR, hosted CI/PR Gate, ready conversion, and guarded auto-merge.
+- [x] Commit, push, draft PR, hosted CI/PR Gate, ready conversion, and guarded auto-merge.
 
 ## Expected Default Counters
 
@@ -121,3 +121,5 @@ This plan uses Microsoft official documentation only as constraints. It does not
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed on 2026-07-02. |
 | `git diff --check` | Passed on 2026-07-02. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed on 2026-07-02; static checks passed, build succeeded, and CTest reported `170/170` passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` | Passed on 2026-07-02 after adding the renderer artifact intake lane guard so source artifact intake only runs when its required upstream artifact lanes are selected. |
+| Hosted PR #944 checks | Passed on head `7e71e96f06258602ea01052f67005ec397fa5744`, including PR Gate, CodeQL, Windows MSVC, Windows C++23 Release Evaluation, Windows optional asset importers/editor/ENet lanes, Linux CMake/Coverage/ASan/Vulkan, full static shards, macOS Metal CMake, iOS Metal Evidence, iOS Simulator smoke, and Renderer Commercial Artifact Intake; merged to `main` at `08828f48db9a93f8cecc110dac78be2a412de5de`. |
