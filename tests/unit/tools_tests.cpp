@@ -36,6 +36,7 @@
 #include "mirakana/tools/placeholder_asset_tool.hpp"
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
+#include "mirakana/tools/runtime_package_command_tool.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
 #include "mirakana/tools/sandbox_world_authoring.hpp"
 #include "mirakana/tools/scene_prefab_authoring_tool.hpp"
@@ -1049,6 +1050,23 @@ void append_le_f32(std::string& output, float value) {
     return request;
 }
 
+[[nodiscard]] mirakana::RuntimePackageCommandRequest make_runtime_package_command_request() {
+    mirakana::RuntimePackageCommandRequest request;
+    request.mode = mirakana::RuntimePackageCommandMode::dry_run;
+    request.game_manifest_path = "games/sample_2d_desktop_runtime_package/game.agent.json";
+    request.package_target = "sample_2d_desktop_runtime_package";
+    request.runtime_package_files = {
+        "runtime/assets/2d/jump.audio.geasset",
+        "runtime/assets/2d/player.material",
+        "runtime/assets/2d/player.texture.geasset",
+    };
+    request.backend = mirakana::RuntimePackageCommandBackend::d3d12;
+    request.smoke_args = {"--require-d3d12-shaders", "--require-d3d12-renderer"};
+    request.shader_artifact_requirements = {"d3d12-dxil-runtime-scene"};
+    request.validation_recipes = {"desktop-game-runtime", "installed-2d-package-smoke", "installed-d3d12-window-smoke"};
+    return request;
+}
+
 [[nodiscard]] mirakana::RegisteredSourceAssetCookPackageRequest make_registered_scene_workflow_cook_request() {
     auto request = make_registered_cook_request();
     request.selected_asset_keys = {
@@ -1670,6 +1688,13 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
 }
 
 [[nodiscard]] bool failures_contain(const std::vector<mirakana::RegisteredSourceAssetCookPackageDiagnostic>& failures,
+                                    std::string_view needle) {
+    return std::ranges::any_of(failures, [needle](const auto& failure) {
+        return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
+    });
+}
+
+[[nodiscard]] bool failures_contain(const std::vector<mirakana::RuntimePackageCommandDiagnostic>& failures,
                                     std::string_view needle) {
     return std::ranges::any_of(failures, [needle](const auto& failure) {
         return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
@@ -5600,6 +5625,115 @@ MK_TEST("engine capability handoff review rejects non game owned files and lower
     };
     MK_REQUIRE(has_diagnostic("invalid_affected_game_file", "engine/renderer/private_hitbox_bridge.hpp"));
     MK_REQUIRE(has_diagnostic("unsafe_public_contract"));
+}
+
+MK_TEST("runtime package command dry-run plans package target validation rows") {
+    const auto request = make_runtime_package_command_request();
+
+    const auto result = mirakana::plan_runtime_package_command(request);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.command_id == "cook-runtime-package");
+    MK_REQUIRE(result.mode == "dry-run");
+    MK_REQUIRE(result.status == "ready");
+    MK_REQUIRE(result.schema == "GameEngine.AiCommand.CookRuntimePackage.Result.v1");
+    MK_REQUIRE(result.would_change);
+    MK_REQUIRE(result.changed_files.empty());
+    MK_REQUIRE(result.validation_recipes == request.validation_recipes);
+    MK_REQUIRE(result.undo_token == "placeholder-only");
+    MK_REQUIRE(!gap_ids_contain(result.unsupported_gap_ids, "unity-compatibility"));
+
+    const auto has_change = [&result](std::string_view kind, std::string_view needle) {
+        return std::ranges::any_of(result.planned_changes, [kind, needle](const auto& change) {
+            return change.kind == kind &&
+                   (change.path.find(needle) != std::string::npos || change.detail.find(needle) != std::string::npos);
+        });
+    };
+    MK_REQUIRE(has_change("review_game_manifest", request.game_manifest_path));
+    MK_REQUIRE(has_change("runtime_package_file", "runtime/assets/2d/player.texture.geasset"));
+    MK_REQUIRE(has_change("validation_recipe", "installed-d3d12-window-smoke"));
+    MK_REQUIRE(has_change("package_command", "tools/package-desktop-runtime.ps1"));
+    MK_REQUIRE(has_change("shader_artifact_requirement", "d3d12-dxil-runtime-scene"));
+
+    const auto has_gate = [&result](std::string_view id, std::string_view status) {
+        return std::ranges::any_of(result.capability_gates,
+                                   [id, status](const auto& gate) { return gate.id == id && gate.status == status; });
+    };
+    MK_REQUIRE(has_gate("MK_runtime", "ready-safe-point-controller"));
+    MK_REQUIRE(has_gate("desktop-runtime-cooked-scene-package", "host-gated"));
+    MK_REQUIRE(has_gate("d3d12-windows-primary", "host-gated"));
+}
+
+MK_TEST("runtime package command rejects unsafe paths typed values and duplicates") {
+    auto request = make_runtime_package_command_request();
+    request.game_manifest_path = "../sample/game.agent.json";
+    request.package_target = "bad-target";
+    request.runtime_package_files = {
+        "runtime/assets/2d/player.texture.geasset",
+        "runtime/assets/2d/player.texture.geasset",
+        "../runtime/escape.geasset",
+    };
+    request.smoke_args = {"--require-d3d12-shaders", "--bad;command"};
+    request.shader_artifact_requirements = {"d3d12-dxil-runtime-scene", "bad\nartifact"};
+
+    const auto result = mirakana::plan_runtime_package_command(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.status == "invalid");
+    MK_REQUIRE(failures_contain(result.diagnostics, "game manifest path must be games/<game_name>/game.agent.json"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "package target must match"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "runtime package file path is duplicated"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "runtime package file must be game-relative"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "smoke argument must be a safe typed value"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "shader artifact requirement must be a safe typed value"));
+    MK_REQUIRE(result.planned_changes.empty());
+    MK_REQUIRE(result.changed_files.empty());
+}
+
+MK_TEST("runtime package command rejects unsupported execution native legal and external engine claims") {
+    auto request = make_runtime_package_command_request();
+    request.package_build_execution = "ready";
+    request.package_scripts = "ready";
+    request.renderer_rhi_residency = "ready";
+    request.public_native_rhi_handles = "ready";
+    request.legal_approval = "approved";
+    request.external_engine_compatibility = "Unity Unreal Godot compatible";
+    request.arbitrary_shell = "pwsh -File tools/package-desktop-runtime.ps1";
+    request.free_form_edit = "append package files";
+
+    const auto result = mirakana::plan_runtime_package_command(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(failures_contain(result.diagnostics, "package build execution is not command-owned"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "package script execution is not supported"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "renderer/RHI residency is not supported"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "public native/RHI handles are not supported"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "legal approval is not provided"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "external engine compatibility is not supported"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "arbitrary shell execution is not supported"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "free-form edits are not supported"));
+    MK_REQUIRE(gap_ids_contain(result.unsupported_gap_ids, "editor-productization"));
+    MK_REQUIRE(gap_ids_contain(result.unsupported_gap_ids, "renderer-rhi-resource-foundation"));
+}
+
+MK_TEST("runtime package command apply remains blocked and non mutating") {
+    auto request = make_runtime_package_command_request();
+    request.mode = mirakana::RuntimePackageCommandMode::apply;
+
+    const auto result = mirakana::plan_runtime_package_command(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.command_id == "cook-runtime-package");
+    MK_REQUIRE(result.mode == "apply");
+    MK_REQUIRE(result.status == "blocked");
+    MK_REQUIRE(result.would_change);
+    MK_REQUIRE(result.changed_files.empty());
+    MK_REQUIRE(failures_contain(result.diagnostics, "apply mode is blocked"));
+    const auto has_blocker = [&result](std::string_view id) {
+        return std::ranges::any_of(result.blocked_by, [id](const auto& blocker) { return blocker.id == id; });
+    };
+    MK_REQUIRE(has_blocker("package_build_execution_not_command_owned"));
+    MK_REQUIRE(has_blocker("package_apply_not_ready"));
 }
 
 MK_TEST("registered source asset cook package rejects empty selected asset keys") {
