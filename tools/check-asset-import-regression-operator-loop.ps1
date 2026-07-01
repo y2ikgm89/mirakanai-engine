@@ -420,6 +420,7 @@ function New-OperatorTriage {
     param([Parameter(Mandatory = $true)]$Report)
 
     $rows = [System.Collections.Generic.List[object]]::new()
+    $failedCount = 0
     $blockedCount = 0
     $reimportCandidateCount = 0
     $presetDiffRequiredCount = 0
@@ -436,7 +437,11 @@ function New-OperatorTriage {
         $presetDiffRequired = Test-PresetDiffCode -Code $reportRow.Code
         $axisUnitPreviewRequired = $reportRow.Code -eq "coordinate_normalization_failed"
         $nondeterministic = $reportRow.Code -eq "nondeterministic_output"
+        $failed = $reportRow.Code -ne "none"
 
+        if ($failed) {
+            $failedCount++
+        }
         if ($decision -eq "blocked") {
             $blockedCount++
         }
@@ -487,6 +492,7 @@ function New-OperatorTriage {
         RunId                        = $Report.RunId
         Rows                         = $rows
         RowCount                     = $rows.Count
+        FailedCount                  = $failedCount
         BlockedCount                 = $blockedCount
         ReimportCandidateCount       = $reimportCandidateCount
         PresetDiffRequiredCount      = $presetDiffRequiredCount
@@ -515,10 +521,13 @@ function ConvertTo-TriageText {
     $lines.Add("corpus_id=$($Triage.CorpusId)")
     $lines.Add("run_id=$($Triage.RunId)")
     $lines.Add("row_count=$($Triage.RowCount)")
+    $lines.Add("failed_count=$($Triage.FailedCount)")
     $lines.Add("blocked_count=$($Triage.BlockedCount)")
     $lines.Add("reimport_candidate_count=$($Triage.ReimportCandidateCount)")
     $lines.Add("preset_diff_required_count=$($Triage.PresetDiffRequiredCount)")
     $lines.Add("axis_unit_preview_required_count=$($Triage.AxisUnitPreviewRequiredCount)")
+    $lines.Add("legal_blocked_count=$($Triage.LegalBlockedCount)")
+    $lines.Add("nondeterministic_count=$($Triage.NondeterministicCount)")
     $lines.Add("ready_for_operator_review=$(ConvertTo-BoolText -Value $Triage.ReadyForOperatorReview)")
     $lines.Add("row.count=$($Triage.Rows.Count)")
     for ($index = 0; $index -lt $Triage.Rows.Count; $index++) {
@@ -701,6 +710,11 @@ row.5.ready_for_commercial_evidence=true
         Assert-LinePresent $lines "asset_import_regression_operator_loop_blocked_rows=3" "asset import regression operator-loop synthetic smoke"
         Assert-LinePresent $lines "asset_import_regression_operator_loop_preset_diff_required=1" "asset import regression operator-loop synthetic smoke"
         Assert-LinePresent $lines "asset_import_regression_operator_loop_axis_unit_preview_required=1" "asset import regression operator-loop synthetic smoke"
+
+        $triageLines = @(Get-Content -LiteralPath (Join-Path $triageRoot "triage.geoperator") -Encoding utf8)
+        Assert-LinePresent $triageLines "failed_count=5" "asset import regression operator-loop generated triage"
+        Assert-LinePresent $triageLines "legal_blocked_count=1" "asset import regression operator-loop generated triage"
+        Assert-LinePresent $triageLines "nondeterministic_count=1" "asset import regression operator-loop generated triage"
 
         Invoke-RepoScript -RelativeScript "cmake.ps1" -ScriptArguments @("--build", "--preset", "dev", "--target", "MK_asset_import_regression_tests", "MK_editor_core_tests")
         Invoke-RepoScript -RelativeScript "ctest.ps1" -ScriptArguments @("--preset", "dev", "--output-on-failure", "-R", "MK_asset_import_regression_tests|MK_editor_core_tests")
