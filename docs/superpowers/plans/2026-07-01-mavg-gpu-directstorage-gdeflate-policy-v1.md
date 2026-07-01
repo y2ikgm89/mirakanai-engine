@@ -12,7 +12,7 @@
 
 **Plan ID:** `mavg-gpu-directstorage-gdeflate-policy-v1`
 
-**Status:** Validated implementation ready for publication.
+**Status:** Completed and merged through PR #940 / merge commit `6abd058bb48a3f8d2550f453530ec40ad1422282`.
 
 **Date:** 2026-07-01
 
@@ -104,6 +104,7 @@ mavg_nanite_superior=0
 - Agent-surface drift check: `tools/check-ai-integration.ps1` passed after adding `tools/check-ai-integration-155-mavg-directstorage-gpu-decompression-policy.ps1`.
 - Static contract checks: `tools/check-json-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, and `git diff --check` passed.
 - Full validation: `tools/validate.ps1` passed, including 52 static checks and 168 CTest tests.
+- Hosted publication: PR #940 passed PR Gate and selected hosted checks, then merged on 2026-07-01 at merge commit `6abd058bb48a3f8d2550f453530ec40ad1422282`.
 - Official-source split is explicit: DirectStorage 1.1 introduced GDeflate GPU decompression, DirectStorage 1.3 introduced `EnqueueRequests` and `DSTORAGE_DESTINATION_MULTIPLE_SUBRESOURCES_RANGE`, and DirectStorage 1.4/Zstd/GACL remains preview-only in this policy slice.
 
 ## Legal And Originality Boundary
